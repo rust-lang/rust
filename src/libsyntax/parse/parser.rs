@@ -465,17 +465,17 @@ impl From<P<Expr>> for LhsExpr {
 /// Create a placeholder argument.
 fn dummy_arg(span: Span) -> Arg {
     let spanned = Spanned {
-        span: span,
+        span,
         node: keywords::Invalid.ident()
     };
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
         node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), spanned, None),
-        span: span
+        span,
     });
     let ty = Ty {
         node: TyKind::Err,
-        span: span,
+        span,
         id: ast::DUMMY_NODE_ID
     };
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
@@ -489,7 +489,7 @@ impl<'a> Parser<'a> {
                desugar_doc_comments: bool)
                -> Self {
         let mut parser = Parser {
-            sess: sess,
+            sess,
             token: token::Underscore,
             span: syntax_pos::DUMMY_SP,
             prev_span: syntax_pos::DUMMY_SP,
@@ -497,7 +497,7 @@ impl<'a> Parser<'a> {
             prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
             obsolete_set: HashSet::new(),
-            recurse_into_file_modules: recurse_into_file_modules,
+            recurse_into_file_modules,
             directory: Directory { path: PathBuf::new(), ownership: DirectoryOwnership::Owned },
             root_module_name: None,
             expected_tokens: Vec::new(),
@@ -508,7 +508,7 @@ impl<'a> Parser<'a> {
                 }),
                 stack: Vec::new(),
             },
-            desugar_doc_comments: desugar_doc_comments,
+            desugar_doc_comments,
             cfg_mods: true,
         };
 
@@ -1216,15 +1216,15 @@ impl<'a> Parser<'a> {
         let (inputs, variadic) = self.parse_fn_args(false, true)?;
         let ret_ty = self.parse_ret_ty()?;
         let decl = P(FnDecl {
-            inputs: inputs,
+            inputs,
             output: ret_ty,
-            variadic: variadic
+            variadic,
         });
         Ok(TyKind::BareFn(P(BareFnTy {
-            abi: abi,
-            unsafety: unsafety,
+            abi,
+            unsafety,
             lifetimes: lifetime_defs,
-            decl: decl
+            decl,
         })))
     }
 
@@ -1312,11 +1312,11 @@ impl<'a> Parser<'a> {
 
             generics.where_clause = self.parse_where_clause()?;
             let sig = ast::MethodSig {
-                unsafety: unsafety,
-                constness: constness,
+                unsafety,
+                constness,
                 decl: d,
-                generics: generics,
-                abi: abi,
+                generics,
+                abi,
             };
 
             let body = match self.token {
@@ -1344,8 +1344,8 @@ impl<'a> Parser<'a> {
         Ok(TraitItem {
             id: ast::DUMMY_NODE_ID,
             ident: name,
-            attrs: attrs,
-            node: node,
+            attrs,
+            node,
             span: lo.to(self.prev_span),
             tokens: None,
         })
@@ -1625,7 +1625,7 @@ impl<'a> Parser<'a> {
 
         Ok(Arg {
             ty: t,
-            pat: pat,
+            pat,
             id: ast::DUMMY_NODE_ID,
         })
     }
@@ -1649,7 +1649,7 @@ impl<'a> Parser<'a> {
         };
         Ok(Arg {
             ty: t,
-            pat: pat,
+            pat,
             id: ast::DUMMY_NODE_ID
         })
     }
@@ -1934,8 +1934,8 @@ impl<'a> Parser<'a> {
         Ok(ast::Field {
             ident: respan(lo.to(hi), fieldname),
             span: lo.to(expr.span),
-            expr: expr,
-            is_shorthand: is_shorthand,
+            expr,
+            is_shorthand,
             attrs: attrs.into(),
         })
     }
@@ -1943,8 +1943,8 @@ impl<'a> Parser<'a> {
     pub fn mk_expr(&mut self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
-            node: node,
-            span: span,
+            node,
+            span,
             attrs: attrs.into(),
         })
     }
@@ -1990,8 +1990,8 @@ impl<'a> Parser<'a> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: ExprKind::Mac(codemap::Spanned {node: m, span: span}),
-            span: span,
-            attrs: attrs,
+            span,
+            attrs,
         })
     }
 
@@ -2006,7 +2006,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             node: ExprKind::Lit(lv_lit),
             span: *span,
-            attrs: attrs,
+            attrs,
         })
     }
 
@@ -3153,9 +3153,9 @@ impl<'a> Parser<'a> {
         }
 
         Ok(ast::Arm {
-            attrs: attrs,
-            pats: pats,
-            guard: guard,
+            attrs,
+            pats,
+            guard,
             body: expr,
         })
     }
@@ -3361,7 +3361,7 @@ impl<'a> Parser<'a> {
                                            node: ast::FieldPat {
                                                ident: fieldname,
                                                pat: subpat,
-                                               is_shorthand: is_shorthand,
+                                               is_shorthand,
                                                attrs: attrs.into(),
                                            }
             });
@@ -3597,12 +3597,12 @@ impl<'a> Parser<'a> {
         };
         let init = self.parse_initializer()?;
         Ok(P(ast::Local {
-            ty: ty,
-            pat: pat,
-            init: init,
+            ty,
+            pat,
+            init,
             id: ast::DUMMY_NODE_ID,
             span: lo.to(self.prev_span),
-            attrs: attrs,
+            attrs,
         }))
     }
 
@@ -3618,10 +3618,10 @@ impl<'a> Parser<'a> {
         Ok(StructField {
             span: lo.to(self.prev_span),
             ident: Some(name),
-            vis: vis,
+            vis,
             id: ast::DUMMY_NODE_ID,
-            ty: ty,
-            attrs: attrs,
+            ty,
+            attrs,
         })
     }
 
@@ -3929,7 +3929,7 @@ impl<'a> Parser<'a> {
                 Stmt {
                     id: ast::DUMMY_NODE_ID,
                     span: lo.to(hi),
-                    node: node,
+                    node,
                 }
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3946,7 +3946,7 @@ impl<'a> Parser<'a> {
                 let span = lo.to(hi);
                 Stmt {
                     id: ast::DUMMY_NODE_ID,
-                    span: span,
+                    span,
                     node: StmtKind::Item({
                         self.mk_item(
                             span, id /*id is good here*/,
@@ -4083,7 +4083,7 @@ impl<'a> Parser<'a> {
         }
 
         Ok(P(ast::Block {
-            stmts: stmts,
+            stmts,
             id: ast::DUMMY_NODE_ID,
             rules: s,
             span: lo.to(self.prev_span),
@@ -4227,11 +4227,11 @@ impl<'a> Parser<'a> {
 
         Ok(TyParam {
             attrs: preceding_attrs.into(),
-            ident: ident,
+            ident,
             id: ast::DUMMY_NODE_ID,
-            bounds: bounds,
-            default: default,
-            span: span,
+            bounds,
+            default,
+            span,
         })
     }
 
@@ -4253,8 +4253,8 @@ impl<'a> Parser<'a> {
                 };
                 lifetime_defs.push(LifetimeDef {
                     attrs: attrs.into(),
-                    lifetime: lifetime,
-                    bounds: bounds,
+                    lifetime,
+                    bounds,
                 });
                 if seen_ty_param {
                     self.span_err(self.prev_span,
@@ -4297,7 +4297,7 @@ impl<'a> Parser<'a> {
             self.expect_gt()?;
             Ok(ast::Generics {
                 lifetimes: lifetime_defs,
-                ty_params: ty_params,
+                ty_params,
                 where_clause: WhereClause {
                     id: ast::DUMMY_NODE_ID,
                     predicates: Vec::new(),
@@ -4334,8 +4334,8 @@ impl<'a> Parser<'a> {
                 let ty = self.parse_ty()?;
                 bindings.push(TypeBinding {
                     id: ast::DUMMY_NODE_ID,
-                    ident: ident,
-                    ty: ty,
+                    ident,
+                    ty,
                     span: lo.to(self.prev_span),
                 });
                 seen_binding = true;
@@ -4404,8 +4404,8 @@ impl<'a> Parser<'a> {
                 where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
                     ast::WhereRegionPredicate {
                         span: lo.to(self.prev_span),
-                        lifetime: lifetime,
-                        bounds: bounds,
+                        lifetime,
+                        bounds,
                     }
                 ));
             } else if self.check_type() {
@@ -4427,7 +4427,7 @@ impl<'a> Parser<'a> {
                             span: lo.to(self.prev_span),
                             bound_lifetimes: lifetime_defs,
                             bounded_ty: ty,
-                            bounds: bounds,
+                            bounds,
                         }
                     ));
                 // FIXME: Decide what should be used here, `=` or `==`.
@@ -4437,7 +4437,7 @@ impl<'a> Parser<'a> {
                         ast::WhereEqPredicate {
                             span: lo.to(self.prev_span),
                             lhs_ty: ty,
-                            rhs_ty: rhs_ty,
+                            rhs_ty,
                             id: ast::DUMMY_NODE_ID,
                         }
                     ));
@@ -4518,7 +4518,7 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: args,
             output: ret_ty,
-            variadic: variadic
+            variadic,
         }))
     }
 
@@ -4679,7 +4679,7 @@ impl<'a> Parser<'a> {
 
         Ok(P(FnDecl {
             inputs: inputs_captures,
-            output: output,
+            output,
             variadic: false
         }))
     }
@@ -4694,12 +4694,12 @@ impl<'a> Parser<'a> {
     fn mk_item(&mut self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
-            ident: ident,
-            attrs: attrs,
+            ident,
+            attrs,
             id: ast::DUMMY_NODE_ID,
-            node: node,
-            vis: vis,
-            span: span,
+            node,
+            vis,
+            span,
             tokens: None,
         })
     }
@@ -4799,10 +4799,10 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             span: lo.to(self.prev_span),
             ident: name,
-            vis: vis,
-            defaultness: defaultness,
-            attrs: attrs,
-            node: node,
+            vis,
+            defaultness,
+            attrs,
+            node,
             tokens: None,
         })
     }
@@ -4896,11 +4896,11 @@ impl<'a> Parser<'a> {
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
             Ok((ident, inner_attrs, ast::ImplItemKind::Method(ast::MethodSig {
-                generics: generics,
-                abi: abi,
-                unsafety: unsafety,
-                constness: constness,
-                decl: decl
+                generics,
+                abi,
+                unsafety,
+                constness,
+                decl,
              }, body)))
         }
     }
@@ -5151,11 +5151,11 @@ impl<'a> Parser<'a> {
                 let ty = p.parse_ty()?;
                 Ok(StructField {
                     span: lo.to(p.span),
-                    vis: vis,
+                    vis,
                     ident: None,
                     id: ast::DUMMY_NODE_ID,
-                    ty: ty,
-                    attrs: attrs,
+                    ty,
+                    attrs,
                 })
             })?;
 
@@ -5281,7 +5281,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Mod {
             inner: inner_lo.to(hi),
-            items: items
+            items,
         })
     }
 
@@ -5403,7 +5403,7 @@ impl<'a> Parser<'a> {
         ModulePath {
             name: mod_name,
             path_exists: default_exists || secondary_exists,
-            result: result,
+            result,
         }
     }
 
@@ -5418,7 +5418,7 @@ impl<'a> Parser<'a> {
                     Some("mod.rs") => DirectoryOwnership::Owned,
                     _ => DirectoryOwnership::UnownedViaMod(true),
                 },
-                path: path,
+                path,
                 warn: false,
             });
         }
@@ -5509,12 +5509,12 @@ impl<'a> Parser<'a> {
         let hi = self.span;
         self.expect(&token::Semi)?;
         Ok(ast::ForeignItem {
-            ident: ident,
-            attrs: attrs,
+            ident,
+            attrs,
             node: ForeignItemKind::Fn(decl, generics),
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
-            vis: vis
+            vis,
         })
     }
 
@@ -5529,12 +5529,12 @@ impl<'a> Parser<'a> {
         let hi = self.span;
         self.expect(&token::Semi)?;
         Ok(ForeignItem {
-            ident: ident,
-            attrs: attrs,
+            ident,
+            attrs,
             node: ForeignItemKind::Static(ty, mutbl),
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
-            vis: vis
+            vis,
         })
     }
 
@@ -5596,7 +5596,7 @@ impl<'a> Parser<'a> {
 
         let prev_span = self.prev_span;
         let m = ast::ForeignMod {
-            abi: abi,
+            abi,
             items: foreign_items
         };
         let invalid = keywords::Invalid.ident();
@@ -5647,7 +5647,7 @@ impl<'a> Parser<'a> {
                 name: ident,
                 attrs: variant_attrs,
                 data: struct_def,
-                disr_expr: disr_expr,
+                disr_expr,
             };
             variants.push(respan(vlo.to(self.prev_span), vr));
 
@@ -6162,7 +6162,7 @@ impl<'a> Parser<'a> {
             let rename = this.parse_rename()?;
             let node = ast::PathListItem_ {
                 name: ident,
-                rename: rename,
+                rename,
                 id: ast::DUMMY_NODE_ID
             };
             Ok(respan(lo.to(this.prev_span), node))

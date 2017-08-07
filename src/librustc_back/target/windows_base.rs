@@ -78,7 +78,7 @@ pub fn opts() -> TargetOptions {
         target_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,
-        pre_link_args: pre_link_args,
+        pre_link_args,
         pre_link_objects_exe: vec![
             "crt2.o".to_string(),    // mingw C runtime initialization for executables
             "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
@@ -87,7 +87,7 @@ pub fn opts() -> TargetOptions {
             "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
             "rsbegin.o".to_string(),
         ],
-        late_link_args: late_link_args,
+        late_link_args,
         post_link_objects: vec![
             "rsend.o".to_string()
         ],

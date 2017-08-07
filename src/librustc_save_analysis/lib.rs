@@ -881,7 +881,7 @@ pub struct DumpHandler<'a> {
 impl<'a> DumpHandler<'a> {
     pub fn new(odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
         DumpHandler {
-            odir: odir,
+            odir,
             cratename: cratename.to_owned()
         }
     }
@@ -976,9 +976,9 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
     info!("Dumping crate {}", cratename);
 
     let save_ctxt = SaveContext {
-        tcx: tcx,
+        tcx,
         tables: &ty::TypeckTables::empty(None),
-        analysis: analysis,
+        analysis,
         span_utils: SpanUtils::new(&tcx.sess),
         config: find_config(config),
     };
@@ -1048,7 +1048,7 @@ fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext) -> Vec<rls_data::A
         let value = value[2..value.len()-1].to_string();
 
         rls_data::Attribute {
-            value: value,
+            value,
             span: scx.span_from_span(attr.span),
         }
     }).collect()

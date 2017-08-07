@@ -213,13 +213,13 @@ impl Step for TheBook {
         let name = self.name;
         // build book first edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/first-edition", name)),
         });
 
         // build book second edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 

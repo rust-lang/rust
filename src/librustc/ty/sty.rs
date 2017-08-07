@@ -569,7 +569,7 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     pub fn trait_ref(&self, tcx: TyCtxt) -> ty::TraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::TraitRef {
-            def_id: def_id,
+            def_id,
             substs: self.substs,
         }
     }
@@ -874,7 +874,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
     pub fn trait_ref(&self, tcx: TyCtxt) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::ExistentialTraitRef{
-            def_id: def_id,
+            def_id,
             substs: self.substs,
         }
     }

@@ -73,11 +73,11 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
     let invariant = terms_cx.arena.alloc(ConstantTerm(ty::Invariant));
     let bivariant = terms_cx.arena.alloc(ConstantTerm(ty::Bivariant));
     let mut constraint_cx = ConstraintContext {
-        terms_cx: terms_cx,
-        covariant: covariant,
-        contravariant: contravariant,
-        invariant: invariant,
-        bivariant: bivariant,
+        terms_cx,
+        covariant,
+        contravariant,
+        invariant,
+        bivariant,
         constraints: Vec::new(),
         dependencies: TransitiveRelation::new(),
     };
@@ -213,7 +213,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         debug!("add_constraint(index={}, variance={:?})", index, variance);
         self.constraints.push(Constraint {
             inferred: InferredIndex(current.inferred_start.0 + index as usize),
-            variance: variance,
+            variance,
         });
     }
 

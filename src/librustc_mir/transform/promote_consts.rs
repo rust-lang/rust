@@ -107,7 +107,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                     LvalueContext::Store |
                     LvalueContext::Call => {
                         *temp = TempState::Defined {
-                            location: location,
+                            location,
                             uses: 0
                         };
                         return;
@@ -140,7 +140,7 @@ pub fn collect_temps(mir: &Mir, rpo: &mut ReversePostorder) -> IndexVec<Local, T
     let mut collector = TempCollector {
         temps: IndexVec::from_elem(TempState::Undefined, &mir.local_decls),
         span: mir.span,
-        mir: mir,
+        mir,
     };
     for (bb, data) in rpo {
         collector.visit_basic_block_data(bb, data);
@@ -165,7 +165,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo {
-                    span: span,
+                    span,
                     scope: ARGUMENT_VISIBILITY_SCOPE
                 },
                 kind: TerminatorKind::Return
@@ -179,7 +179,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let data = &mut self.promoted[last];
         data.statements.push(Statement {
             source_info: SourceInfo {
-                span: span,
+                span,
                 scope: ARGUMENT_VISIBILITY_SCOPE
             },
             kind: StatementKind::Assign(Lvalue::Local(dest), rvalue)
@@ -251,7 +251,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Terminator {
                     source_info: terminator.source_info,
                     kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto {
-                        target: target
+                        target,
                     })
                 }
             };
@@ -268,8 +268,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
                     *self.promoted[last].terminator_mut() = Terminator {
                         kind: TerminatorKind::Call {
-                            func: func,
-                            args: args,
+                            func,
+                            args,
                             cleanup: None,
                             destination: Some((Lvalue::Local(new_temp), new_target))
                         },
@@ -289,7 +289,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
     fn promote_candidate(mut self, candidate: Candidate) {
         let span = self.promoted.span;
         let new_operand = Operand::Constant(box Constant {
-            span: span,
+            span,
             ty: self.promoted.return_ty,
             literal: Literal::Promoted {
                 index: Promoted::new(self.source.promoted.len())
@@ -387,7 +387,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             promoted: Mir::new(
                 IndexVec::new(),
                 Some(VisibilityScopeData {
-                    span: span,
+                    span,
                     parent_scope: None
                 }).into_iter().collect(),
                 IndexVec::new(),
@@ -423,7 +423,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
             TerminatorKind::Drop { location: Lvalue::Local(index), target, .. } => {
                 if promoted(index) {
                     terminator.kind = TerminatorKind::Goto {
-                        target: target
+                        target,
                     };
                 }
             }

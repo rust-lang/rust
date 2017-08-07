@@ -49,22 +49,22 @@ impl<'a, 'tcx> LinkerInfo {
         match sess.linker_flavor() {
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {
-                    cmd: cmd,
-                    sess: sess,
+                    cmd,
+                    sess,
                     info: self
                 }) as Box<Linker>
             }
             LinkerFlavor::Em =>  {
                 Box::new(EmLinker {
-                    cmd: cmd,
-                    sess: sess,
+                    cmd,
+                    sess,
                     info: self
                 }) as Box<Linker>
             }
             LinkerFlavor::Gcc =>  {
                 Box::new(GccLinker {
-                    cmd: cmd,
-                    sess: sess,
+                    cmd,
+                    sess,
                     info: self,
                     hinted_static: false,
                     is_ld: false,
@@ -72,8 +72,8 @@ impl<'a, 'tcx> LinkerInfo {
             }
             LinkerFlavor::Ld => {
                 Box::new(GccLinker {
-                    cmd: cmd,
-                    sess: sess,
+                    cmd,
+                    sess,
                     info: self,
                     hinted_static: false,
                     is_ld: true,

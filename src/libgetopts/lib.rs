@@ -250,28 +250,28 @@ impl OptGroup {
             (0, _) => {
                 Opt {
                     name: Long((long_name)),
-                    hasarg: hasarg,
-                    occur: occur,
+                    hasarg,
+                    occur,
                     aliases: Vec::new(),
                 }
             }
             (1, 0) => {
                 Opt {
                     name: Short(short_name.chars().next().unwrap()),
-                    hasarg: hasarg,
-                    occur: occur,
+                    hasarg,
+                    occur,
                     aliases: Vec::new(),
                 }
             }
             (1, _) => {
                 Opt {
                     name: Long((long_name)),
-                    hasarg: hasarg,
-                    occur: occur,
+                    hasarg,
+                    occur,
                     aliases: vec![Opt {
                                       name: Short(short_name.chars().next().unwrap()),
-                                      hasarg: hasarg,
-                                      occur: occur,
+                                      hasarg,
+                                      occur,
                                       aliases: Vec::new(),
                                   }],
                 }
@@ -530,8 +530,8 @@ pub fn opt(short_name: &str,
         long_name: long_name.to_owned(),
         hint: hint.to_owned(),
         desc: desc.to_owned(),
-        hasarg: hasarg,
-        occur: occur,
+        hasarg,
+        occur,
     }
 }
 
@@ -681,9 +681,9 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         }
     }
     Ok(Matches {
-        opts: opts,
-        vals: vals,
-        free: free,
+        opts,
+        vals,
+        free,
     })
 }
 

@@ -141,11 +141,11 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Attribute {
             id: attr::mk_attr_id(),
-            style: style,
-            path: path,
-            tokens: tokens,
+            style,
+            path,
+            tokens,
             is_sugared_doc: false,
-            span: span,
+            span,
         })
     }
 

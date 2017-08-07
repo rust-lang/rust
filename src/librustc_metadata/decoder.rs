@@ -69,7 +69,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             opaque: opaque::Decoder::new(self.raw_bytes(), pos),
             cdata: self.cdata(),
             sess: self.sess().or(tcx.map(|tcx| tcx.sess)),
-            tcx: tcx,
+            tcx,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
         }
@@ -468,7 +468,7 @@ impl<'a, 'tcx> CrateMetadata {
     fn local_def_id(&self, index: DefIndex) -> DefId {
         DefId {
             krate: self.cnum,
-            index: index,
+            index,
         }
     }
 
@@ -703,7 +703,7 @@ impl<'a, 'tcx> CrateMetadata {
                         for child_index in child.children.decode((self, sess)) {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
-                                    def: def,
+                                    def,
                                     ident: Ident::with_empty_ctxt(self.item_name(child_index)),
                                     span: self.entry(child_index).span.decode((self, sess)),
                                 });
@@ -835,8 +835,8 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         ty::AssociatedItem {
-            name: name,
-            kind: kind,
+            name,
+            kind,
             vis: item.visibility.decode(self),
             defaultness: container.defaultness(),
             def_id: self.local_def_id(id),

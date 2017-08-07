@@ -1886,7 +1886,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 
         // Push this run onto the stack.
         runs.push(Run {
-            start: start,
+            start,
             len: end - start,
         });
         end = start;

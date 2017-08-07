@@ -237,7 +237,7 @@ impl ModuleConfig {
     fn new(sess: &Session, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
             tm: create_target_machine(sess),
-            passes: passes,
+            passes,
             opt_level: None,
             opt_size: None,
 
@@ -426,8 +426,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     let tm = config.tm;
 
     let fv = HandlerFreeVars {
-        cgcx: cgcx,
-        diag_handler: diag_handler,
+        cgcx,
+        diag_handler,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
@@ -1012,9 +1012,9 @@ fn build_work_item(mtrans: ModuleTranslation,
                    -> WorkItem
 {
     WorkItem {
-        mtrans: mtrans,
-        config: config,
-        output_names: output_names
+        mtrans,
+        config,
+        output_names,
     }
 }
 
@@ -1136,17 +1136,17 @@ fn start_executing_work(sess: &Session,
 
     let cgcx = CodegenContext {
         crate_types: sess.crate_types.borrow().clone(),
-        each_linked_rlib_for_lto: each_linked_rlib_for_lto,
+        each_linked_rlib_for_lto,
         lto: sess.lto(),
         no_landing_pads: sess.no_landing_pads(),
         opts: Arc::new(sess.opts.clone()),
         time_passes: sess.time_passes(),
-        exported_symbols: exported_symbols,
+        exported_symbols,
         plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
-        coordinator_send: coordinator_send,
+        coordinator_send,
         diag_emitter: shared_emitter.clone(),
         time_graph,
     };

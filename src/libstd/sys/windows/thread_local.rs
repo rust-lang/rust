@@ -122,8 +122,8 @@ struct Node {
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {
     let mut node = Box::new(Node {
-        key: key,
-        dtor: dtor,
+        key,
+        dtor,
         next: ptr::null_mut(),
     });
 

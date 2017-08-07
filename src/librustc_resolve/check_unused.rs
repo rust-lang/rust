@@ -135,7 +135,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
     }
 
     let mut visitor = UnusedImportCheckVisitor {
-        resolver: resolver,
+        resolver,
         unused_imports: NodeMap(),
     };
     visit::walk_crate(&mut visitor, krate);

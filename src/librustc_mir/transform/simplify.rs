@@ -99,8 +99,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         let basic_blocks = mir.basic_blocks_mut();
 
         CfgSimplifier {
-            basic_blocks: basic_blocks,
-            pred_count: pred_count
+            basic_blocks,
+            pred_count,
         }
     }
 

@@ -32,8 +32,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let tcx = ecx.tcx;
         let compute_ich = ecx.compute_ich;
         IsolatedEncoder {
-            tcx: tcx,
-            ecx: ecx,
+            tcx,
+            ecx,
             hcx: if compute_ich {
                 // We are always hashing spans for things in metadata because
                 // don't know if a downstream crate will use them or not.

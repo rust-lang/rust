@@ -114,7 +114,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 Ok(TokenTree::Delimited(span, Delimited {
-                    delim: delim,
+                    delim,
                     tts: tts.into(),
                 }))
             },

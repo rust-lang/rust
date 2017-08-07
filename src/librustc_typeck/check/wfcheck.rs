@@ -54,7 +54,7 @@ impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
             let fcx = FnCtxt::new(&inh, param_env, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 tcx: fcx.tcx.global_tcx(),
-                code: code
+                code,
             });
             fcx.select_all_obligations_or_error();
             fcx.regionck_item(id, span, &wf_tys);
@@ -66,7 +66,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>)
                -> CheckTypeWellFormedVisitor<'a, 'gcx> {
         CheckTypeWellFormedVisitor {
-            tcx: tcx,
+            tcx,
             code: ObligationCauseCode::MiscObligation
         }
     }
@@ -211,8 +211,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         CheckWfFcxBuilder {
             inherited: Inherited::build(self.tcx, def_id),
             code: self.code.clone(),
-            id: id,
-            span: span,
+            id,
+            span,
             param_env: self.tcx.param_env(def_id),
         }
     }
@@ -471,7 +471,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             ExplicitSelf::ByReference(region, mutbl) => {
                 fcx.tcx.mk_ref(region, ty::TypeAndMut {
                     ty: self_ty,
-                    mutbl: mutbl
+                    mutbl,
                 })
             }
             ExplicitSelf::ByBox => fcx.tcx.mk_box(self_ty)

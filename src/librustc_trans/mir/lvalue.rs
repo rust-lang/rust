@@ -380,7 +380,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 LvalueRef {
                     llval: llprojected,
-                    llextra: llextra,
+                    llextra,
                     ty: projected_ty,
                     alignment: align,
                 }

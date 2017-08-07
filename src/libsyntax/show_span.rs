@@ -79,8 +79,8 @@ pub fn run(span_diagnostic: &errors::Handler,
         None => return
     };
     let mut v = ShowSpanVisitor {
-        span_diagnostic: span_diagnostic,
-        mode: mode,
+        span_diagnostic,
+        mode,
     };
     visit::walk_crate(&mut v, krate);
 }

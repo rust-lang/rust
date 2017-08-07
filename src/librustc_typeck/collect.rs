@@ -185,8 +185,8 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
            -> ItemCtxt<'a,'tcx> {
         ItemCtxt {
-            tcx: tcx,
-            item_def_id: item_def_id,
+            tcx,
+            item_def_id,
         }
     }
 }
@@ -630,10 +630,10 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }).collect();
     ty::VariantDef {
-        did: did,
-        name: name,
-        discr: discr,
-        fields: fields,
+        did,
+        name,
+        discr,
+        fields,
         ctor_kind: CtorKind::from_hir(def),
     }
 }
@@ -1028,7 +1028,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             types.extend(fv.iter().enumerate().map(|(i, _)| ty::TypeParameterDef {
                 index: type_start + i as u32,
                 name: Symbol::intern("<upvar>"),
-                def_id: def_id,
+                def_id,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
                 pure_wrt_drop: false,
@@ -1043,11 +1043,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,
-        parent_regions: parent_regions,
-        parent_types: parent_types,
-        regions: regions,
-        types: types,
-        type_param_to_index: type_param_to_index,
+        parent_regions,
+        parent_types,
+        regions,
+        types,
+        type_param_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     })
@@ -1382,7 +1382,7 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                 ItemTrait(_, ref generics, .., ref items) => {
                     is_trait = Some((ty::TraitRef {
-                        def_id: def_id,
+                        def_id,
                         substs: Substs::identity_for_item(tcx, def_id)
                     }, items));
                     generics
@@ -1441,7 +1441,7 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for param in early_bound_lifetimes_from_generics(tcx, ast_generics) {
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir.local_def_id(param.lifetime.id),
-            index: index,
+            index,
             name: param.lifetime.name
         }));
         index += 1;
@@ -1560,7 +1560,7 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     ty::GenericPredicates {
         parent: generics.parent,
-        predicates: predicates
+        predicates,
     }
 }
 
@@ -1611,10 +1611,10 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
     };
 
     Bounds {
-        region_bounds: region_bounds,
-        implicitly_sized: implicitly_sized,
-        trait_bounds: trait_bounds,
-        projection_bounds: projection_bounds,
+        region_bounds,
+        implicitly_sized,
+        trait_bounds,
+        projection_bounds,
     }
 }
 

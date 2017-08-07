@@ -173,6 +173,6 @@ fn call_intrinsic(cx: &ExtCtxt,
         stmts: vec![cx.stmt_expr(call)],
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-        span: span,
+        span,
     }))
 }

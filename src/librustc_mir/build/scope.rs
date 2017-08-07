@@ -213,7 +213,7 @@ impl<'tcx> Scope<'tcx> {
     /// Given a span and this scope's visibility scope, make a SourceInfo.
     fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
-            span: span,
+            span,
             scope: self.visibility_scope
         }
     }
@@ -235,10 +235,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     {
         let extent = self.topmost_scope();
         let scope = BreakableScope {
-            extent: extent,
+            extent,
             continue_block: loop_block,
-            break_block: break_block,
-            break_destination: break_destination,
+            break_block,
+            break_destination,
         };
         self.breakable_scopes.push(scope);
         let res = f(self);
@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let parent = self.visibility_scope;
         let scope = VisibilityScope::new(self.visibility_scopes.len());
         self.visibility_scopes.push(VisibilityScopeData {
-            span: span,
+            span,
             parent_scope: Some(parent),
         });
         scope
@@ -411,7 +411,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Given a span and the current visibility scope, make a SourceInfo.
     pub fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
-            span: span,
+            span,
             scope: self.visibility_scope
         }
     }
@@ -619,7 +619,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
-                               location: location,
+                               location,
                                target: next_target,
                                unwind: diverge_target,
                            });
@@ -637,8 +637,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
-                               location: location,
-                               value: value,
+                               location,
+                               value,
                                target: next_target,
                                unwind: diverge_target,
                            });
@@ -661,11 +661,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
-                               cond: cond,
-                               expected: expected,
-                               msg: msg,
+                               cond,
+                               expected,
+                               msg,
                                target: success_block,
-                               cleanup: cleanup
+                               cleanup,
                            });
 
         success_block
@@ -716,7 +716,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
         match drop_data.location {
             Lvalue::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
-                    source_info: source_info,
+                    source_info,
                     kind: StatementKind::StorageDead(drop_data.location.clone())
                 });
             }
@@ -748,7 +748,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     let visibility_scope = scope.visibility_scope;
     let source_info = |span| SourceInfo {
-        span: span,
+        span,
         scope: visibility_scope
     };
 
@@ -776,7 +776,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cfg.terminate(block, source_info(drop_data.span),
                           TerminatorKind::Drop {
                               location: drop_data.location.clone(),
-                              target: target,
+                              target,
                               unwind: None
                           });
             *cached_block = Some(block);

@@ -138,7 +138,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
         path: Path::new_(vec![krate, "Encodable"], None, vec![], true),
         additional_bounds: Vec::new(),

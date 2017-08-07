@@ -29,9 +29,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
         Block {
             targeted_by_break: self.targeted_by_break,
             extent: CodeExtent::Misc(self.id),
-            opt_destruction_extent: opt_destruction_extent,
+            opt_destruction_extent,
             span: self.span,
-            stmts: stmts,
+            stmts,
             expr: self.expr.to_ref(),
         }
     }
@@ -79,7 +79,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_extent,
                                 init_scope: CodeExtent::Misc(id),
-                                pattern: pattern,
+                                pattern,
                                 initializer: local.init.to_ref(),
                             },
                             opt_destruction_extent: opt_dxn_ext,
@@ -99,7 +99,7 @@ pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let temp_lifetime = cx.region_maps.temporary_scope(block.id);
     let expr = Expr {
         ty: block_ty,
-        temp_lifetime: temp_lifetime,
+        temp_lifetime,
         span: block.span,
         kind: ExprKind::Block { body: block },
     };

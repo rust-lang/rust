@@ -410,12 +410,12 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         });
 
         DataflowAnalysis {
-            mir: mir,
-            dead_unwinds: dead_unwinds,
+            mir,
+            dead_unwinds,
             flow_state: DataflowState {
                 sets: AllSets {
-                    bits_per_block: bits_per_block,
-                    words_per_block: words_per_block,
+                    bits_per_block,
+                    words_per_block,
                     gen_sets: zeroes.clone(),
                     kill_sets: zeroes,
                     on_entry_sets: on_entry,

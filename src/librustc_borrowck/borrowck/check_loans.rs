@@ -194,10 +194,10 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
     let param_env = bccx.tcx.param_env(def_id);
     let mut clcx = CheckLoanCtxt {
-        bccx: bccx,
-        dfcx_loans: dfcx_loans,
-        move_data: move_data,
-        all_loans: all_loans,
+        bccx,
+        dfcx_loans,
+        move_data,
+        all_loans,
         param_env,
     };
     euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)

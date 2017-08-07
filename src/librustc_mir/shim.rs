@@ -303,7 +303,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 span
             ));
             statements.push(Statement {
-                source_info: source_info,
+                source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(ref_rcvr),
                     Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
@@ -317,7 +317,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         CallKind::Indirect => (rcvr, vec![]),
         CallKind::Direct(def_id) => (
             Operand::Constant(box Constant {
-                span: span,
+                span,
                 ty: tcx.type_of(def_id),
                 literal: Literal::Value {
                     value: ConstVal::Function(def_id,
@@ -351,7 +351,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     // BB #0
     block(&mut blocks, statements, TerminatorKind::Call {
         func: callee,
-        args: args,
+        args,
         destination: Some((Lvalue::Local(RETURN_POINTER),
                            BasicBlock::new(1))),
         cleanup: if let Adjustment::RefMut = rcvr_adjustment {
@@ -423,7 +423,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     let local_decls = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo {
-        span: span,
+        span,
         scope: ARGUMENT_VISIBILITY_SCOPE
     };
 
@@ -436,7 +436,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     // return = ADT(arg0, arg1, ...); return
     let start_block = BasicBlockData {
         statements: vec![Statement {
-            source_info: source_info,
+            source_info,
             kind: StatementKind::Assign(
                 Lvalue::Local(RETURN_POINTER),
                 Rvalue::Aggregate(
@@ -448,7 +448,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
             )
         }],
         terminator: Some(Terminator {
-            source_info: source_info,
+            source_info,
             kind: TerminatorKind::Return,
         }),
         is_cleanup: false

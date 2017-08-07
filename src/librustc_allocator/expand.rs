@@ -36,9 +36,9 @@ pub fn modify(sess: &ParseSess,
               krate: Crate,
               handler: &rustc_errors::Handler) -> ast::Crate {
     ExpandAllocatorDirectives {
-        handler: handler,
-        sess: sess,
-        resolver: resolver,
+        handler,
+        sess,
+        resolver,
         found: false,
     }.fold_crate(krate)
 }
@@ -88,7 +88,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         };
         let ecfg = ExpansionConfig::default(name.to_string());
         let mut f = AllocFnFactory {
-            span: span,
+            span,
             kind: AllocatorKind::Global,
             global: item.ident,
             alloc: Ident::from_str("alloc"),

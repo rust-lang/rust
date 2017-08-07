@@ -83,9 +83,9 @@ impl Diagnostic {
 
     pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            code: code,
+            code,
             span: MultiSpan::new(),
             children: vec![],
             suggestions: vec![],
@@ -306,10 +306,10 @@ impl Diagnostic {
            span: MultiSpan,
            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            span: span,
-            render_span: render_span,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }
@@ -322,10 +322,10 @@ impl Diagnostic {
                            span: MultiSpan,
                            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
-            message: message,
-            span: span,
-            render_span: render_span,
+            level,
+            message,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }

@@ -71,8 +71,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             PatternKind::Binding { name, mutability, mode, var, ty, ref subpattern } => {
                 candidate.bindings.push(Binding {
-                    name: name,
-                    mutability: mutability,
+                    name,
+                    mutability,
                     span: match_pair.pattern.span,
                     source: match_pair.lvalue.clone(),
                     var_id: var,

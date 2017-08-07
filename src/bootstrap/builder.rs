@@ -193,7 +193,7 @@ pub struct ShouldRun<'a> {
 impl<'a> ShouldRun<'a> {
     fn new(builder: &'a Builder) -> ShouldRun<'a> {
         ShouldRun {
-            builder: builder,
+            builder,
             paths: BTreeSet::new(),
             is_really_default: true, // by default no additional conditions
         }
@@ -278,9 +278,9 @@ impl<'a> Builder<'a> {
         };
 
         let builder = Builder {
-            build: build,
+            build,
             top_stage: build.config.stage.unwrap_or(2),
-            kind: kind,
+            kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
         };
@@ -309,9 +309,9 @@ impl<'a> Builder<'a> {
         };
 
         let builder = Builder {
-            build: build,
+            build,
             top_stage: build.config.stage.unwrap_or(2),
-            kind: kind,
+            kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
         };

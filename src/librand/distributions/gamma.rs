@@ -127,9 +127,9 @@ impl GammaLargeShape {
     fn new_raw(shape: f64, scale: f64) -> GammaLargeShape {
         let d = shape - 1. / 3.;
         GammaLargeShape {
-            scale: scale,
+            scale,
             c: 1. / (9. * d).sqrt(),
-            d: d,
+            d,
         }
     }
 }

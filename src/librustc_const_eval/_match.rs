@@ -166,8 +166,8 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         let pattern_arena = TypedArena::new();
 
         f(MatchCheckCtxt {
-            tcx: tcx,
-            module: module,
+            tcx,
+            module,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap(),
         })
@@ -296,7 +296,7 @@ impl<'tcx> Witness<'tcx> {
         let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
         self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
             Pattern {
-                ty: ty,
+                ty,
                 span: DUMMY_SP,
                 kind: box PatternKind::Wild,
             }
@@ -344,7 +344,7 @@ impl<'tcx> Witness<'tcx> {
                         if adt.variants.len() > 1 {
                             PatternKind::Variant {
                                 adt_def: adt,
-                                substs: substs,
+                                substs,
                                 variant_index: ctor.variant_index_for_adt(adt),
                                 subpatterns: pats
                             }
@@ -378,7 +378,7 @@ impl<'tcx> Witness<'tcx> {
         };
 
         self.0.push(Pattern {
-            ty: ty,
+            ty,
             span: DUMMY_SP,
             kind: Box::new(pat),
         });
@@ -673,7 +673,7 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
         Pattern {
-            ty: ty,
+            ty,
             span: DUMMY_SP,
             kind: box PatternKind::Wild,
         }

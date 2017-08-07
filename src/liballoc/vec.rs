@@ -1728,9 +1728,9 @@ impl<T> IntoIterator for Vec<T> {
             mem::forget(self);
             IntoIter {
                 buf: Shared::new_unchecked(begin),
-                cap: cap,
+                cap,
                 ptr: begin,
-                end: end,
+                end,
             }
         }
     }

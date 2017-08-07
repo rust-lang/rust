@@ -438,7 +438,7 @@ pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 /// Returns an inner attribute with the given value and span.
 pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
-        id: id,
+        id,
         style: ast::AttrStyle::Inner,
         path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
         tokens: item.node.tokens(item.span),
@@ -456,7 +456,7 @@ pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 /// Returns an outer attribute with the given value and span.
 pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
-        id: id,
+        id,
         style: ast::AttrStyle::Outer,
         path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
         tokens: item.node.tokens(item.span),
@@ -469,12 +469,12 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
     let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
-        id: id,
-        style: style,
+        id,
+        style,
         path: ast::Path::from_ident(span, ast::Ident::from_str("doc")),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
-        span: span,
+        span,
     }
 }
 
@@ -718,8 +718,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     match (since, reason) {
                         (Some(since), Some(reason)) => {
                             rustc_depr = Some(RustcDeprecation {
-                                since: since,
-                                reason: reason,
+                                since,
+                                reason,
                             })
                         }
                         (None, _) => {
@@ -763,7 +763,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                         (Some(feature), reason, Some(issue)) => {
                             stab = Some(Stability {
                                 level: Unstable {
-                                    reason: reason,
+                                    reason,
                                     issue: {
                                         if let Ok(issue) = issue.as_str().parse() {
                                             issue
@@ -774,7 +774,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                         }
                                     }
                                 },
-                                feature: feature,
+                                feature,
                                 rustc_depr: None,
                             })
                         }
@@ -817,9 +817,9 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                         (Some(feature), Some(since)) => {
                             stab = Some(Stability {
                                 level: Stable {
-                                    since: since,
+                                    since,
                                 },
-                                feature: feature,
+                                feature,
                                 rustc_depr: None,
                             })
                         }

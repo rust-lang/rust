@@ -46,7 +46,7 @@ pub fn tokens() -> (WaitToken, SignalToken) {
         inner: inner.clone(),
     };
     let signal_token = SignalToken {
-        inner: inner
+        inner,
     };
     (wait_token, signal_token)
 }

@@ -331,8 +331,8 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     {
         let mut visitor = RootCollector {
-            scx: scx,
-            mode: mode,
+            scx,
+            mode,
             exported_symbols,
             output: &mut roots,
         };
@@ -1035,9 +1035,9 @@ fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let mir = scx.tcx().instance_mir(instance.def);
 
     let mut visitor = MirNeighborCollector {
-        scx: scx,
+        scx,
         mir: &mir,
-        output: output,
+        output,
         param_substs: instance.substs,
         const_context,
     };

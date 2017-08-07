@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
                     this.cfg.push(block, Statement {
-                        source_info: source_info,
+                        source_info,
                         kind: StatementKind::StorageLive(result.clone())
                     });
                     this.schedule_drop(expr_span, scope, &result, value.ty);

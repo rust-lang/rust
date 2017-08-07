@@ -418,10 +418,10 @@ impl Rand for XorShiftRng {
         }
         let (x, y, z, w) = tuple;
         XorShiftRng {
-            x: x,
-            y: y,
-            z: z,
-            w: w,
+            x,
+            y,
+            z,
+            w,
         }
     }
 }

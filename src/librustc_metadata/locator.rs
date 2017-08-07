@@ -518,9 +518,9 @@ impl<'a> Context<'a> {
             if let Some((h, m)) = slot {
                 libraries.insert(h,
                                  Library {
-                                     dylib: dylib,
-                                     rlib: rlib,
-                                     rmeta: rmeta,
+                                     dylib,
+                                     rlib,
+                                     rmeta,
                                      metadata: m,
                                  });
             }
@@ -808,10 +808,10 @@ impl<'a> Context<'a> {
         match slot {
             Some((_, metadata)) => {
                 Some(Library {
-                    dylib: dylib,
-                    rlib: rlib,
-                    rmeta: rmeta,
-                    metadata: metadata,
+                    dylib,
+                    rlib,
+                    rmeta,
+                    metadata,
                 })
             }
             None => None,

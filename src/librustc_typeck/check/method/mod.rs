@@ -83,10 +83,10 @@ impl<'tcx> NoMatchData<'tcx> {
                mode: probe::Mode)
                -> Self {
         NoMatchData {
-            static_candidates: static_candidates,
-            unsatisfied_predicates: unsatisfied_predicates,
-            out_of_scope_traits: out_of_scope_traits,
-            mode: mode,
+            static_candidates,
+            unsatisfied_predicates,
+            out_of_scope_traits,
+            mode,
         }
     }
 }
@@ -331,7 +331,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                  ty::Predicate::WellFormed(method_ty)));
 
         let callee = MethodCallee {
-            def_id: def_id,
+            def_id,
             substs: trait_ref.substs,
             sig: fn_sig,
         };

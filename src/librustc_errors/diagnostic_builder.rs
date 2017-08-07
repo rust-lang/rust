@@ -179,7 +179,7 @@ impl<'a> DiagnosticBuilder<'a> {
                          message: &str)
                          -> DiagnosticBuilder<'a> {
         DiagnosticBuilder {
-            handler: handler,
+            handler,
             diagnostic: Diagnostic::new_with_code(level, code, message)
         }
     }

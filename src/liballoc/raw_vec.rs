@@ -60,8 +60,8 @@ impl<T, A: Alloc> RawVec<T, A> {
         // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
         RawVec {
             ptr: Unique::empty(),
-            cap: cap,
-            a: a,
+            cap,
+            a,
         }
     }
 
@@ -104,8 +104,8 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             RawVec {
                 ptr: Unique::new_unchecked(ptr as *mut _),
-                cap: cap,
-                a: a,
+                cap,
+                a,
             }
         }
     }
@@ -159,8 +159,8 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub unsafe fn from_raw_parts_in(ptr: *mut T, cap: usize, a: A) -> Self {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
-            cap: cap,
-            a: a,
+            cap,
+            a,
         }
     }
 }
@@ -176,7 +176,7 @@ impl<T> RawVec<T, Heap> {
     pub unsafe fn from_raw_parts(ptr: *mut T, cap: usize) -> Self {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
-            cap: cap,
+            cap,
             a: Heap,
         }
     }

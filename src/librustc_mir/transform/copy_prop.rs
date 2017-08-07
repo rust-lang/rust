@@ -299,8 +299,8 @@ impl<'tcx> ConstantPropagationVisitor<'tcx> {
     fn new(dest_local: Local, constant: Constant<'tcx>)
            -> ConstantPropagationVisitor<'tcx> {
         ConstantPropagationVisitor {
-            dest_local: dest_local,
-            constant: constant,
+            dest_local,
+            constant,
             uses_replaced: 0,
         }
     }

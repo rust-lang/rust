@@ -89,7 +89,7 @@ impl<'a> ArchiveBuilder<'a> {
     /// by `config`.
     pub fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
         ArchiveBuilder {
-            config: config,
+            config,
             removals: Vec::new(),
             additions: Vec::new(),
             should_update_symbols: false,
@@ -190,7 +190,7 @@ impl<'a> ArchiveBuilder<'a> {
             Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
         self.additions.push(Addition::Archive {
-            archive: archive,
+            archive,
             skip: Box::new(skip),
         });
         Ok(())

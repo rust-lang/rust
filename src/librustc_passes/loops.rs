@@ -51,7 +51,7 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 pub fn check_crate(sess: &Session, map: &Map) {
     let krate = map.krate();
     krate.visit_all_item_likes(&mut CheckLoopVisitor {
-        sess: sess,
+        sess,
         hir_map: map,
         cx: Normal,
     }.as_deep_visitor());

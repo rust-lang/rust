@@ -87,7 +87,7 @@ impl<I> Utf16Encoder<I> {
         where I: Iterator<Item = char>
     {
         Utf16Encoder {
-            chars: chars,
+            chars,
             extra: 0,
         }
     }

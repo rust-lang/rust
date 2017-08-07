@@ -49,8 +49,8 @@ impl<'tcx> MoveError<'tcx> {
                           move_to: Option<MovePlace<'tcx>>)
                           -> MoveError<'tcx> {
         MoveError {
-            move_from: move_from,
-            move_to: move_to,
+            move_from,
+            move_to,
         }
     }
 }

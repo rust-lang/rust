@@ -407,8 +407,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
 
                 PatternKind::Binding {
-                    mutability: mutability,
-                    mode: mode,
+                    mutability,
+                    mode,
                     name: ident.node,
                     var: id,
                     ty: var_ty,
@@ -470,7 +470,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
         Pattern {
             span: pat.span,
-            ty: ty,
+            ty,
             kind: Box::new(kind),
         }
     }
@@ -569,10 +569,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
                     };
                     PatternKind::Variant {
-                        adt_def: adt_def,
-                        substs: substs,
+                        adt_def,
+                        substs,
                         variant_index: adt_def.variant_index_with_id(variant_id),
-                        subpatterns: subpatterns,
+                        subpatterns,
                     }
                 } else {
                     PatternKind::Leaf { subpatterns: subpatterns }
@@ -626,8 +626,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
         Pattern {
-            span: span,
-            ty: ty,
+            span,
+            ty,
             kind: Box::new(kind),
         }
     }
@@ -762,7 +762,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
         Pattern {
-            span: span,
+            span,
             ty: pat_ty,
             kind: Box::new(kind),
         }

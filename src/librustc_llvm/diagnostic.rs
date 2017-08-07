@@ -82,12 +82,12 @@ impl OptimizationDiagnostic {
         }
 
         OptimizationDiagnostic {
-            kind: kind,
+            kind,
             pass_name: pass_name.expect("got a non-UTF8 pass name from LLVM"),
-            function: function,
-            line: line,
-            column: column,
-            filename: filename,
+            function,
+            line,
+            column,
+            filename,
             message: message.expect("got a non-UTF8 OptimizationDiagnostic message from LLVM")
         }
     }

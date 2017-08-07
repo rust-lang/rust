@@ -117,8 +117,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     def_id: tcx.hir.local_def_id(id),
-                    index: index,
-                    name: name
+                    index,
+                    name,
                 }))
             }
 

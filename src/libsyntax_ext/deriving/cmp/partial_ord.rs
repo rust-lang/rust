@@ -59,7 +59,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         generics: LifetimeBounds::empty(),
         explicit_self: borrowed_explicit_self(),
         args: vec![borrowed_self()],
-        ret_ty: ret_ty,
+        ret_ty,
         attributes: attrs,
         is_unsafe: false,
         unify_fieldless_variants: true,
@@ -82,14 +82,14 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
     };
 
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: vec![],
         path: path_std!(cx, core::cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
-        methods: methods,
+        methods,
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)

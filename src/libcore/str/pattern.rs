@@ -290,7 +290,7 @@ impl<'a, C: CharEq> Pattern<'a> for CharEqPattern<C> {
     fn into_searcher(self, haystack: &'a str) -> CharEqSearcher<'a, C> {
         CharEqSearcher {
             ascii_only: self.0.only_ascii(),
-            haystack: haystack,
+            haystack,
             char_eq: self.0,
             char_indices: haystack.char_indices(),
         }
@@ -596,8 +596,8 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
         if needle.is_empty() {
             StrSearcher {
-                haystack: haystack,
-                needle: needle,
+                haystack,
+                needle,
                 searcher: StrSearcherImpl::Empty(EmptyNeedle {
                     position: 0,
                     end: haystack.len(),
@@ -607,8 +607,8 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
             }
         } else {
             StrSearcher {
-                haystack: haystack,
-                needle: needle,
+                haystack,
+                needle,
                 searcher: StrSearcherImpl::TwoWay(
                     TwoWaySearcher::new(needle.as_bytes(), haystack.len())
                 ),
@@ -899,13 +899,13 @@ impl TwoWaySearcher {
                 TwoWaySearcher::reverse_maximal_suffix(needle, period, true));
 
             TwoWaySearcher {
-                crit_pos: crit_pos,
-                crit_pos_back: crit_pos_back,
-                period: period,
+                crit_pos,
+                crit_pos_back,
+                period,
                 byteset: Self::byteset_create(&needle[..period]),
 
                 position: 0,
-                end: end,
+                end,
                 memory: 0,
                 memory_back: needle.len(),
             }
@@ -918,13 +918,13 @@ impl TwoWaySearcher {
             // reverse search.
 
             TwoWaySearcher {
-                crit_pos: crit_pos,
+                crit_pos,
                 crit_pos_back: crit_pos,
                 period: cmp::max(crit_pos, needle.len() - crit_pos) + 1,
                 byteset: Self::byteset_create(needle),
 
                 position: 0,
-                end: end,
+                end,
                 memory: usize::MAX, // Dummy value to signify that the period is long
                 memory_back: usize::MAX,
             }

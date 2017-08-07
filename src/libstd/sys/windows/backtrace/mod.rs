@@ -68,8 +68,8 @@ pub fn unwind_backtrace(frames: &mut [Frame])
 
     let backtrace_context = BacktraceContext {
         handle: process,
-        SymCleanup: SymCleanup,
-        dbghelp: dbghelp,
+        SymCleanup,
+        dbghelp,
     };
 
     // Initialize this process's symbols

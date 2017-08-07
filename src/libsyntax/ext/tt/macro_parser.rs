@@ -178,7 +178,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         sep: None,
         idx: 0,
         up: None,
-        matches: matches,
+        matches,
         match_lo: 0,
         match_cur: 0,
         match_hi: match_idx_hi,
@@ -374,7 +374,7 @@ fn inner_parse_loop(sess: &ParseSess,
                         stack: vec![],
                         sep: seq.separator.clone(),
                         idx: 0,
-                        matches: matches,
+                        matches,
                         match_lo: item.match_cur,
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
@@ -400,7 +400,7 @@ fn inner_parse_loop(sess: &ParseSess,
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
                         elts: lower_elts,
-                        idx: idx,
+                        idx,
                     });
                     item.idx = 0;
                     cur_items.push(item);

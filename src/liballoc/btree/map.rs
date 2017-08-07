@@ -234,7 +234,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
         match search::search_tree(self.root.as_mut(), key) {
             Found(handle) => {
                 Some(OccupiedEntry {
-                         handle: handle,
+                         handle,
                          length: &mut self.length,
                          _marker: PhantomData,
                      }
@@ -250,8 +250,8 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
                 VacantEntry {
-                    key: key,
-                    handle: handle,
+                    key,
+                    handle,
                     length: &mut self.length,
                     _marker: PhantomData,
                 }
@@ -695,7 +695,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match search::search_tree(self.root.as_mut(), key) {
             Found(handle) => {
                 Some(OccupiedEntry {
-                         handle: handle,
+                         handle,
                          length: &mut self.length,
                          _marker: PhantomData,
                      }
@@ -866,15 +866,15 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {
                 Occupied(OccupiedEntry {
-                    handle: handle,
+                    handle,
                     length: &mut self.length,
                     _marker: PhantomData,
                 })
             }
             GoDown(handle) => {
                 Vacant(VacantEntry {
-                    key: key,
-                    handle: handle,
+                    key,
+                    handle,
                     length: &mut self.length,
                     _marker: PhantomData,
                 })

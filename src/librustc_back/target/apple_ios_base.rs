@@ -97,7 +97,7 @@ pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
         cpu: target_cpu(arch),
         dynamic_linking: false,
         executables: true,
-        pre_link_args: pre_link_args,
+        pre_link_args,
         has_elf_tls: false,
         .. super::apple_base::opts()
     })

@@ -135,13 +135,13 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
         Qualifier {
-            mode: mode,
+            mode,
             span: mir.span,
-            def_id: def_id,
-            mir: mir,
-            rpo: rpo,
-            tcx: tcx,
-            param_env: param_env,
+            def_id,
+            mir,
+            rpo,
+            tcx,
+            param_env,
             temp_qualif: IndexVec::from_elem(None, &mir.local_decls),
             return_qualif: None,
             qualif: Qualif::empty(),

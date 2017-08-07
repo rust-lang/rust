@@ -148,9 +148,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     dest.llval, dest.ty, dest.alignment);
                                 let field_index = active_field_index.unwrap_or(i);
                                 val.ty = LvalueTy::Downcast {
-                                    adt_def: adt_def,
+                                    adt_def,
                                     substs: self.monomorphize(&substs),
-                                    variant_index: variant_index,
+                                    variant_index,
                                 };
                                 let (lldest_i, align) = val.trans_field_ptr(&bcx, field_index);
                                 self.store_operand(&bcx, lldest_i, align.to_align(), op);
@@ -348,7 +348,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
                 };
                 let operand = OperandRef {
-                    val: val,
+                    val,
                     ty: cast_ty
                 };
                 (bcx, operand)

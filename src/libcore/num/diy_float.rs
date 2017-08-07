@@ -86,7 +86,7 @@ impl Fp {
         assert_eq!(self.f << edelta >> edelta, self.f);
         Fp {
             f: self.f << edelta,
-            e: e,
+            e,
         }
     }
 }
