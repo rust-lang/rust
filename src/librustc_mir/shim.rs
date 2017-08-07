@@ -99,16 +99,15 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::DropGlue(def_id, ty) => {
             build_drop_shim(tcx, def_id, ty)
         }
-        ty::InstanceDef::BuiltinShim(def_id, ty) => {
+        ty::InstanceDef::CloneShim(def_id, ty) => {
             let name = tcx.item_name(def_id).as_str();
-            let trait_id = tcx.trait_of_item(def_id);
-            if trait_id == tcx.lang_items.clone_trait() && name == "clone" {
+            if name == "clone" {
                 build_clone_shim(tcx, def_id, ty)
-            } else if trait_id == tcx.lang_items.clone_trait() && name == "clone_from" {
+            } else if name == "clone_from" {
                 debug!("make_shim({:?}: using default trait implementation", instance);
                 return tcx.optimized_mir(def_id);
             } else {
-                bug!("builtin shim {:?} not supported", instance)
+                bug!("builtin clone shim {:?} not supported", instance)
             }
         }
         ty::InstanceDef::Intrinsic(_) => {
@@ -272,10 +271,10 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     }
 }
 
-/// Build a `Clone::clone` shim for `recvr_ty`. Here, `def_id` is `Clone::clone`.
+/// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
-                              rcvr_ty: ty::Ty<'tcx>)
+                              self_ty: ty::Ty<'tcx>)
                               -> Mir<'tcx>
 {
     let sig = tcx.fn_sig(def_id);
@@ -348,7 +347,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         loc
     };
 
-    match rcvr_ty.sty {
+    match self_ty.sty {
         ty::TyArray(ty, len) => {
             let mut returns = Vec::new();
             for i in 0..len {

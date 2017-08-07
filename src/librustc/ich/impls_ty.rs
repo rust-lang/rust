@@ -721,7 +721,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::In
                 def_id.hash_stable(hcx, hasher);
                 t.hash_stable(hcx, hasher);
             }
-            ty::InstanceDef::BuiltinShim(def_id, t) => {
+            ty::InstanceDef::CloneShim(def_id, t) => {
                 def_id.hash_stable(hcx, hasher);
                 t.hash_stable(hcx, hasher);
             }

@@ -362,7 +362,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                 InstanceDef::Intrinsic(..) |
                                 InstanceDef::ClosureOnceShim { .. } |
                                 InstanceDef::DropGlue(..) |
-                                InstanceDef::BuiltinShim(..) => {
+                                InstanceDef::CloneShim(..) => {
                                     bug!("partitioning: Encountered unexpected
                                           root translation item: {:?}",
                                           trans_item)
@@ -605,7 +605,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
                 ty::InstanceDef::Intrinsic(..) |
                 ty::InstanceDef::DropGlue(..) |
                 ty::InstanceDef::Virtual(..) |
-                ty::InstanceDef::BuiltinShim(..) => return None
+                ty::InstanceDef::CloneShim(..) => return None
             };
 
             // If this is a method, we want to put it into the same module as

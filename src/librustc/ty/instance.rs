@@ -39,7 +39,7 @@ pub enum InstanceDef<'tcx> {
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     /// Builtin method implementation, e.g. `Clone::clone`.
-    BuiltinShim(DefId, Ty<'tcx>),
+    CloneShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -52,7 +52,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Intrinsic(def_id, ) |
             InstanceDef::ClosureOnceShim { call_once: def_id } |
             InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::BuiltinShim(def_id, _) => def_id
+            InstanceDef::CloneShim(def_id, _) => def_id
         }
     }
 
@@ -87,7 +87,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::DropGlue(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
-            InstanceDef::BuiltinShim(_, ty) => {
+            InstanceDef::CloneShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
         }
