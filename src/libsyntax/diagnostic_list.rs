@@ -162,6 +162,21 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0554: r##"
+Feature attributes are only allowed on the nightly release channel. Stable or
+beta compilers will not comply.
+
+Example of erroneous code (on a stable compiler):
+
+```ignore (depends on release channel)
+#![feature(non_ascii_idents)] // error: #![feature] may not be used on the
+                              //        stable release channel
+```
+
+If you need the feature, make sure to use a nightly release of the compiler
+(but be warned that the feature may be removed or altered in the future).
+"##,
+
 E0558: r##"
 The `export_name` attribute was malformed.
 
@@ -301,7 +316,6 @@ register_diagnostics! {
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
     E0552, // unrecognized representation hint
-    E0554, // #[feature] may not be used on the [] release channel
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0557, // feature has been removed

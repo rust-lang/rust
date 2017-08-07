@@ -1602,7 +1602,7 @@ fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
             if attr.check_name("feature") {
                 let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
                 span_err!(span_handler, attr.span, E0554,
-                          "#[feature] may not be used on the {} release channel",
+                          "#![feature] may not be used on the {} release channel",
                           release_channel);
             }
         }
