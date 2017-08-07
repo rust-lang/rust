@@ -395,7 +395,7 @@ manually would be impossible.
 [reference-aliases]: #reference-aliases
 
 `impl Trait` type aliases are similar to normal type aliases, except that their
-concrete type is inferred from the module in which they are defined.
+concrete type is determined from the module in which they are defined.
 For example, the following code has to examine the body of `foo` in order to
 determine that the concrete type of `Foo` is `i32`:
 
@@ -407,69 +407,56 @@ fn foo() -> Foo {
 }
 ```
 
-This introduces a certain amount of module-level type inference, since `Foo`
-can be used in multiple places throughout the module:
+`Foo` can be used as `i32` in multiple places throughout the module.
+However, each function that uses `Foo` as `i32` must independently place
+constraints upon `Foo` such that it *must* be `i32`:
 
 ```rust
-type Foo = impl Debug;
-
-fn foo1() -> Foo {
-    5i32
+fn add_to_foo_1(x: Foo) {
+    x + 1 // ERROR: binary operation `+` cannot be applied to type `impl Debug`
+//  ^ `x` here is type `impl Debug`.
+//    Type annotations needed to resolve the concrete type of `x`.
+//    (^ This particular error should only appear within the module in which
+//      `Foo` is defined)
 }
 
-fn foo2() -> Foo {
-    let x: i32 = foo1();
-    x + 5
-}
-
-fn foo3() -> Foo {
-    foo1()
+fn add_to_foo_2(x: Foo) {
+    let x: i32 = x;
+    x + 1
 }
 ```
 
-Without examining the bodies of each of `foo1`, `foo2`, and `foo3`, it's not
-possible for the compiler to know where the concrete type of `Foo` is going
-to come from:
+Each instance of `impl Trait` in a type alias must have at least one function
+which constrains it to a concrete type. A function must either fully
+constrain or place no constraints upon a given instance of `impl Trait` in
+a type alias.
 
-- `foo1` constrains `Foo` because it returns an `i32`, which it claims is equal
-to `Foo`.
-- `foo2` constraints `Foo`, because it sets the result of function `foo1`
-(which returns type `Foo`) to `i32`. It then returns that `i32` value as `Foo`,
-again constraining `Foo` to the concrete type `i32`.
-- `foo3` places no constraints on `Foo` because it merely returns the result
-of `foo1`, which is already known to be `Foo`.
-
-Note that, in order for `foo2` to add `5` to the result of `foo1`, the concrete
-type of the result had to be specified. This is because `foo2` cannot infer
-the concrete type of `Foo` from other functions in the module. This is done
-to prevent the reordering or manipulation of one function from having strange
-effects on the typechecking of another function, possibly hidden somewhere far
-away in the same module.
-
-Note that a function can place constraints upon a type other than plain
-equality:
+The following is an example of an `impl Trait` type alias which contains
+two instances of `impl Trait`. Each instance is determined by exactly one
+of the functions:
 
 ```rust
-type Foo = impl Debug;
+// The concrete type of `Baz` resolves to `(i32, &'static str)`
+type Baz = (impl Default + Debug, impl Default + Debug);
 
-fn foo1() -> Foo {
-    vec![1i32] // Constrains `Foo == Vec<i32>`
+// This function places no constraints on the `impl Trait` types
+fn new_baz() -> Baz {
+    (Default::default(), Default::default())
 }
 
-fn foo2(&mut x: Foo) {
-    let x: Vec<_> = x; // Constrains `Foo == Vec<T>` for some unknown `T`
+// This function fully constraints the first `impl Trait` type,
+// but places no constraints upon the second.
+fn add_to_first(baz: Baz) -> Baz {
+    let first: i32 = baz.0;
+    (first + 1, baz.1)
+}
 
-    // Removes the first element of `x`.
-    // This doesn't require knowing the type `T` in `Vec<T>`, so we're able
-    // to call this function without knowing the full type of `x`.
-    x.remove(0);
+// This function fully constrains the second `impl Trait` type,
+// but places no constraints upon the first.
+fn make_second_hello(baz: Baz) -> Baz {
+    (baz.0, "Hello, world!")
 }
 ```
-
-In the above example, `foo1` fully constrains `Foo` to `Vec<i32>`, but `foo2`
-only partially constrains `Foo` by setting equal to `Vec<_>`. This enables
-the use of `Vec<_>` functions, but it isn't enough to infer the full type
-of `Foo`.
 
 Outside of the module, `impl Trait` alias types behave the same way as
 other `impl Trait` types, except that it can be assumed that two values with
@@ -592,3 +579,12 @@ such as the proposal mentioned in the alternatives section.
 As mentioned above, this feature would be strictly less expressive than this
 RFC. The more general feature proposed in this RFC would help us to define a
 better version of this alternative which could be added in the future.
+- A more general form of inference for `impl Trait` type aliases. This RFC
+forces each function to either fully constrain or place no constraints upon
+an `impl Trait` type. It's possible to allow some partial constraints through
+a process like the one described in
+[this comment](https://github.com/rust-lang/rfcs/pull/2071#issuecomment-320458113).
+However, these partial bounds present implementation concerns, so they have
+been removed from this RFC. If it turns out that partial bounds would be
+greatly useful in practice, they can be added backwards-compatibly in a future
+RFC.
