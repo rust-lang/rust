@@ -736,10 +736,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                                      import_id: Option<ast::NodeId>,
                                                      trait_def_id: DefId,
                                                      item: ty::AssociatedItem) {
-        let trait_def = self.tcx.trait_def(trait_def_id);
-
         // FIXME(arielb1): can we use for_each_relevant_impl here?
-        trait_def.for_each_impl(self.tcx, |impl_def_id| {
+        self.tcx.for_each_impl(trait_def_id, |impl_def_id| {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={:?} \
                                                                   impl_def_id={:?}",
                    trait_def_id,
