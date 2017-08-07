@@ -530,7 +530,7 @@ extern {
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
     fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
-    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const libc::c_char, len: libc::size_t);
+    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const u8, len: libc::size_t);
 }
 
 impl hoedown_buffer {
@@ -620,7 +620,7 @@ pub fn render(w: &mut fmt::Formatter,
                                Some("rust-example-rendered"),
                                None,
                                playground_button.as_ref().map(String::as_str)));
-                hoedown_buffer_put(ob, s.as_ptr() as *const libc::c_char, s.len());
+                hoedown_buffer_put(ob, s.as_ptr(), s.len());
             })
         }
     }
@@ -680,7 +680,7 @@ pub fn render(w: &mut fmt::Formatter,
                            <a href='#{id}'>{sec}{}</a></h{lvl}>",
                            s, lvl = level, id = id, sec = sec);
 
-        unsafe { hoedown_buffer_put(ob, text.as_ptr() as *const libc::c_char, text.len()); }
+        unsafe { hoedown_buffer_put(ob, text.as_ptr(), text.len()); }
     }
 
     extern fn codespan(
@@ -697,9 +697,9 @@ pub fn render(w: &mut fmt::Formatter,
             collapse_whitespace(s)
         };
 
-        let content = format!("<code>{}</code>", Escape(&content)).replace("\0", "\\0");
+        let content = format!("<code>{}</code>", Escape(&content));
         unsafe {
-            hoedown_buffer_put(ob, content.as_ptr() as *const libc::c_char, content.len());
+            hoedown_buffer_put(ob, content.as_ptr(), content.len());
         }
         // Return anything except 0, which would mean "also print the code span verbatim".
         1
