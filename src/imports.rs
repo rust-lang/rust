@@ -157,12 +157,8 @@ fn rewrite_view_path_prefix(
 }
 
 impl Rewrite for ast::ViewPath {
-    // Returns an empty string when the ViewPath is empty (like foo::bar::{})
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match self.node {
-            ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => {
-                Some(String::new())
-            }
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                 rewrite_use_list(shape, path, path_list, self.span, context)
             }
@@ -263,12 +259,11 @@ impl<'a> FmtVisitor<'a> {
             .offset_left(vis.len() + 4)
             .and_then(|shape| shape.sub_width(1))
             .and_then(|shape| match vp.node {
-                // If we have an empty path with attributes attached, we want to skip erasing it
-                ast::ViewPath_::ViewPathList(ref path, ref path_list)
-                    if path_list.is_empty() && !attrs.is_empty() =>
+                // If we have an empty path list with no attributes, we erase it
+                ast::ViewPath_::ViewPathList(_, ref path_list)
+                    if path_list.is_empty() && attrs.is_empty() =>
                 {
-                    rewrite_path(&self.get_context(), PathContext::Import, None, path, shape)
-                        .map(|path_str| format!("{}::{{}}", path_str))
+                    Some("".into())
                 }
                 _ => vp.rewrite(&self.get_context(), shape),
             });
@@ -400,7 +395,7 @@ impl<'a> Ord for ImportItem<'a> {
 }
 
 // Pretty prints a multi-item import.
-// Assumes that path_list.len() > 0.
+// If the path list is empty, it leaves the braces empty.
 fn rewrite_use_list(
     shape: Shape,
     path: &ast::Path,
@@ -418,7 +413,10 @@ fn rewrite_use_list(
     ));
 
     match path_list.len() {
-        0 => unreachable!(),
+        0 => {
+            return rewrite_path(context, PathContext::Import, None, path, shape)
+                .map(|path_str| format!("{}::{{}}", path_str));
+        }
         1 => return Some(rewrite_single_use_list(path_str, &path_list[0])),
         _ => (),
     }
