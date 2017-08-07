@@ -21,6 +21,12 @@
 //! custom operators are required, you should look toward macros or compiler
 //! plugins to extend Rust's syntax.
 //!
+//! Implementations of operator traits should be unsurprising in their
+//! respective contexts, keeping in mind their usual meanings and
+//! [operator precedence]. For example, when implementing [`Mul`], the operation
+//! should have some resemblance to multiplication (and share expected
+//! properties like associativity).
+//!
 //! Note that the `&&` and `||` operators short-circuit, i.e. they only
 //! evaluate their second operand if it contributes to the result. Since this
 //! behavior is not enforceable by traits, `&&` and `||` are not supported as
@@ -46,7 +52,7 @@
 //! ```rust
 //! use std::ops::{Add, Sub};
 //!
-//! #[derive(Debug)]
+//! #[derive(Debug, PartialEq)]
 //! struct Point {
 //!     x: i32,
 //!     y: i32,
@@ -67,10 +73,9 @@
 //!         Point {x: self.x - other.x, y: self.y - other.y}
 //!     }
 //! }
-//! fn main() {
-//!     println!("{:?}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
-//!     println!("{:?}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
-//! }
+//!
+//! assert_eq!(Point {x: 3, y: 3}, Point {x: 1, y: 0} + Point {x: 2, y: 3});
+//! assert_eq!(Point {x: -1, y: -3}, Point {x: 1, y: 0} - Point {x: 2, y: 3});
 //! ```
 //!
 //! See the documentation for each trait for an example implementation.
@@ -143,7 +148,9 @@
 //! [`FnOnce`]: trait.FnOnce.html
 //! [`Add`]: trait.Add.html
 //! [`Sub`]: trait.Sub.html
+//! [`Mul`]: trait.Mul.html
 //! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
+//! [operator precedence]: ../../reference/expressions.html#operator-precedence
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
