@@ -143,9 +143,9 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs
             }
         }
-        traits::VtableBuiltin(ref data) => {
+        traits::VtableBuiltin(..) => {
             Instance {
-                def: ty::InstanceDef::BuiltinShim(def_id, data.ty),
+                def: ty::InstanceDef::BuiltinShim(def_id, trait_ref.self_ty()),
                 substs: rcvr_substs
             }
         }

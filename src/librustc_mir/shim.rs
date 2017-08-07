@@ -275,7 +275,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 /// Build a `Clone::clone` shim for `recvr_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
-                              recvr_ty: ty::Ty<'tcx>)
+                              rcvr_ty: ty::Ty<'tcx>)
                               -> Mir<'tcx>
 {
     let sig = tcx.fn_sig(def_id);
@@ -348,7 +348,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         loc
     };
 
-    match recvr_ty.sty {
+    match rcvr_ty.sty {
         ty::TyArray(ty, len) => {
             let mut returns = Vec::new();
             for i in 0..len {
@@ -374,7 +374,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                     Lvalue::Local(RETURN_POINTER),
                     Rvalue::Aggregate(
                         box AggregateKind::Array(ty),
-                        returns.into_iter().map(|loc| Operand::Consume(loc)).collect()
+                        returns.into_iter().map(Operand::Consume).collect()
                     )
                 )
             };
@@ -396,7 +396,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                     Lvalue::Local(RETURN_POINTER),
                     Rvalue::Aggregate(
                         box AggregateKind::Tuple,
-                        returns.into_iter().map(|loc| Operand::Consume(loc)).collect()
+                        returns.into_iter().map(Operand::Consume).collect()
                     )
                 )
             };

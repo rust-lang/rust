@@ -2265,7 +2265,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn confirm_builtin_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  has_nested: bool)
-                                 -> VtableBuiltinData<'tcx, PredicateObligation<'tcx>>
+                                 -> VtableBuiltinData<PredicateObligation<'tcx>>
     {
         debug!("confirm_builtin_candidate({:?}, {:?})",
                obligation, has_nested);
@@ -2303,8 +2303,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("confirm_builtin_candidate: obligations={:?}",
                obligations);
 
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
-        VtableBuiltinData { ty: self_ty, nested: obligations }
+        VtableBuiltinData { nested: obligations }
     }
 
     /// This handles the case where a `impl Foo for ..` impl is being used.
@@ -2611,7 +2610,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn confirm_builtin_unsize_candidate(&mut self,
                                         obligation: &TraitObligation<'tcx>,)
-        -> Result<VtableBuiltinData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
+        -> Result<VtableBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>>
     {
         let tcx = self.tcx();
 
@@ -2814,7 +2813,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             _ => bug!()
         };
 
-        Ok(VtableBuiltinData { ty: source, nested: nested })
+        Ok(VtableBuiltinData { nested: nested })
     }
 
     ///////////////////////////////////////////////////////////////////////////
