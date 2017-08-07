@@ -207,6 +207,18 @@ If you need the feature, make sure to use a nightly release of the compiler
 (but be warned that the feature may be removed or altered in the future).
 "##,
 
+E0557: r##"
+A feature attribute named a feature that has been removed.
+
+Erroneous code example:
+
+```compile_fail,E0557
+#![feature(managed_boxes)] // error: feature has been removed
+```
+
+Delete the offending feature attribute.
+"##,
+
 E0558: r##"
 The `export_name` attribute was malformed.
 
@@ -347,7 +359,6 @@ register_diagnostics! {
     E0551, // incorrect meta item
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
-    E0557, // feature has been removed
     E0584, // file for module `..` found at both .. and ..
     E0589, // invalid `repr(align)` attribute
 }
