@@ -163,11 +163,12 @@ use boxed::Box;
 /// [`&str`]s as arguments unless they need a `String` for some specific
 /// reason.
 ///
-/// In certain cases Rust doesn't have enough information to make this conversion,
-/// known as deref coercion. For example, in this case a string slice implements
-/// a trait and the function takes anything that implements the trait, Rust would
-/// need to make two implicit conversions which Rust doesn't know how to do. The
-/// following example will not compile for that reason.
+/// In certain cases Rust doesn't have enough information to make this
+/// conversion, known as deref coercion. In the following example a string
+/// slice `&'a str` implements the trait `TraitExample`, and the function
+/// `example_func` takes anything that implements the trait. In this case Rust
+/// would need to make two implicit conversions, which Rust doesn't have the
+/// means to do. For that reason, the following example will not compile.
 ///
 /// ```compile_fail,E0277
 /// trait TraitExample {}
@@ -182,9 +183,10 @@ use boxed::Box;
 /// }
 /// ```
 ///
-/// What would work in this case is changing the line `example_func(&example_string);`
-/// to `example_func(example_string.to_str());`. This works because we're doing the
-/// conversion explicitly, rather than relying on the implicit conversion.
+/// What would work in this case is changing the line
+/// `example_func(&example_string);` to 
+/// `example_func(example_string.to_str());`. This works because we're doing
+/// the conversion explicitly, rather than relying on the implicit conversion.
 ///
 /// # Representation
 ///
