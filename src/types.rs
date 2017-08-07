@@ -241,6 +241,7 @@ fn rewrite_segment(
                     |seg| seg.rewrite(context, generics_shape),
                     list_lo,
                     span_hi,
+                    false,
                 );
                 let generics_str = try_opt!(format_generics_item_list(
                     context,
@@ -344,6 +345,7 @@ where
         },
         list_lo,
         span.hi,
+        false,
     );
 
     let item_vec: Vec<_> = items.collect();

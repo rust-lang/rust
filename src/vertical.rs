@@ -219,6 +219,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),
         span.lo,
         span.hi,
+        false,
     ).collect::<Vec<_>>();
 
     let tactic = definitive_tactic(

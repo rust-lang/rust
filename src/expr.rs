@@ -466,6 +466,7 @@ where
         |item| item.rewrite(context, nested_shape),
         span.lo,
         span.hi,
+        false,
     ).collect::<Vec<_>>();
 
     if items.is_empty() {
@@ -587,6 +588,7 @@ fn rewrite_closure_fn_decl(
         |arg| arg.rewrite(context, arg_shape),
         context.codemap.span_after(span, "|"),
         body.span.lo,
+        false,
     );
     let item_vec = arg_items.collect::<Vec<_>>();
     // 1 = space between arguments and return type.
@@ -2190,6 +2192,7 @@ where
         |item| item.rewrite(context, shape),
         span.lo,
         span.hi,
+        true,
     );
     let mut item_vec: Vec<_> = items.collect();
 
@@ -2651,6 +2654,7 @@ fn rewrite_struct_lit<'a>(
             rewrite,
             body_lo,
             span.hi,
+            false,
         );
         let item_vec = items.collect::<Vec<_>>();
 
@@ -2803,6 +2807,7 @@ where
         |item| item.rewrite(context, nested_shape),
         list_lo,
         span.hi - BytePos(1),
+        false,
     );
     let item_vec: Vec<_> = items.collect();
     let tactic = definitive_tactic(

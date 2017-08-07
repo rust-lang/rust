@@ -818,6 +818,7 @@ impl Rewrite for ast::MetaItem {
                     |nested_meta_item| nested_meta_item.rewrite(context, item_shape),
                     self.span.lo,
                     hi,
+                    false,
                 );
                 let item_vec = items.collect::<Vec<_>>();
                 let fmt = ListFormatting {

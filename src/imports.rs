@@ -442,6 +442,7 @@ fn rewrite_use_list(
             rewrite_path_item,
             context.codemap.span_after(span, "{"),
             span.hi,
+            false,
         );
         items.extend(iter);
         items

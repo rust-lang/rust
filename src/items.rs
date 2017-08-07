@@ -469,6 +469,7 @@ impl<'a> FmtVisitor<'a> {
             |f| self.format_variant(f),
             body_lo,
             body_hi,
+            false,
         );
 
         let shape = Shape::indented(self.block_indent, self.config)
@@ -2207,6 +2208,7 @@ fn rewrite_args(
             },
             comment_span_start,
             span.hi,
+            false,
         );
 
         arg_items.extend(more_items);
@@ -2411,6 +2413,7 @@ fn rewrite_generics_inner(
         |&(_, ref str)| str.clone(),
         context.codemap.span_after(span, "<"),
         span.hi,
+        false,
     );
     format_generics_item_list(context, items, shape, one_line_width)
 }
@@ -2554,6 +2557,7 @@ fn rewrite_where_clause_rfc_style(
         |pred| pred.rewrite(context, block_shape),
         span_start,
         span_end,
+        false,
     );
     let comma_tactic = if where_clause_option.suppress_comma {
         SeparatorTactic::Never
@@ -2654,6 +2658,7 @@ fn rewrite_where_clause(
         |pred| pred.rewrite(context, Shape::legacy(budget, offset)),
         span_start,
         span_end,
+        false,
     );
     let item_vec = items.collect::<Vec<_>>();
     // FIXME: we don't need to collect here if the where_layout isn't
