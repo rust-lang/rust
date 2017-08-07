@@ -175,3 +175,46 @@ fn is_node_cyclic_b() {
     let graph = create_graph_with_cycle();
     assert!(graph.is_node_cyclic(NodeIndex(1)));
 }
+
+#[test]
+fn nodes_in_postorder() {
+    let expected = vec![
+        ("A", vec!["C", "E", "D", "B", "A", "F"]),
+        ("B", vec!["C", "E", "D", "B", "A", "F"]),
+        ("C", vec!["C", "E", "D", "B", "A", "F"]),
+        ("D", vec!["C", "E", "D", "B", "A", "F"]),
+        ("E", vec!["C", "E", "D", "B", "A", "F"]),
+        ("F", vec!["C", "E", "D", "B", "F", "A"])
+    ];
+
+    let graph = create_graph();
+
+    for ((idx, node), &(node_name, ref expected))
+        in graph.enumerated_nodes().zip(&expected)
+    {
+        assert_eq!(node.data, node_name);
+        assert_eq!(expected,
+                   &graph.nodes_in_postorder(OUTGOING, idx)
+                   .into_iter().map(|idx| *graph.node_data(idx))
+                   .collect::<Vec<&str>>());
+    }
+
+    let expected = vec![
+        ("A", vec!["D", "C", "B", "A"]),
+        ("B", vec!["D", "C", "B", "A"]),
+        ("C", vec!["B", "D", "C", "A"]),
+        ("D", vec!["C", "B", "D", "A"]),
+    ];
+
+    let graph = create_graph_with_cycle();
+
+    for ((idx, node), &(node_name, ref expected))
+        in graph.enumerated_nodes().zip(&expected)
+    {
+        assert_eq!(node.data, node_name);
+        assert_eq!(expected,
+                   &graph.nodes_in_postorder(OUTGOING, idx)
+                   .into_iter().map(|idx| *graph.node_data(idx))
+                   .collect::<Vec<&str>>());
+    }
+}
