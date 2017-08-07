@@ -186,9 +186,14 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
         match p.node {
             hir::PatKind::Binding(..) => {
-                let bm = *self.fcx.tables.borrow().pat_binding_modes.get(&p.id)
-                                                                    .expect("missing binding mode");
-                self.tables.pat_binding_modes.insert(p.id, bm);
+                let bm = {
+                    let fcx_tables = self.fcx.tables.borrow();
+                    fcx_tables.validate_hir_id(p.hir_id);
+                    *fcx_tables.pat_binding_modes.get(&p.hir_id.local_id)
+                                                 .expect("missing binding mode")
+                };
+                self.tables.validate_hir_id(p.hir_id);
+                self.tables.pat_binding_modes.insert(p.hir_id.local_id, bm);
             }
             _ => {}
         };

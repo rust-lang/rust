@@ -230,7 +230,7 @@ pub struct TypeckTables<'tcx> {
     pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     // Stores the actual binding mode for all instances of hir::BindingAnnotation.
-    pub pat_binding_modes: NodeMap<BindingMode>,
+    pub pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
@@ -281,7 +281,7 @@ impl<'tcx> TypeckTables<'tcx> {
             node_types: ItemLocalMap(),
             node_substs: ItemLocalMap(),
             adjustments: ItemLocalMap(),
-            pat_binding_modes: NodeMap(),
+            pat_binding_modes: ItemLocalMap(),
             upvar_capture_map: FxHashMap(),
             closure_tys: NodeMap(),
             closure_kinds: NodeMap(),

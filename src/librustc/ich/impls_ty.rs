@@ -642,7 +642,7 @@ for ty::TypeckTables<'gcx> {
             ich::hash_stable_itemlocalmap(hcx, hasher, node_types);
             ich::hash_stable_itemlocalmap(hcx, hasher, node_substs);
             ich::hash_stable_itemlocalmap(hcx, hasher, adjustments);
-            ich::hash_stable_nodemap(hcx, hasher, pat_binding_modes);
+            ich::hash_stable_itemlocalmap(hcx, hasher, pat_binding_modes);
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
                 let ty::UpvarId {
                     var_id,

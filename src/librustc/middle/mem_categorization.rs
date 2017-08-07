@@ -334,7 +334,11 @@ impl MutabilityCategory {
         let ret = match tcx.hir.get(id) {
             hir_map::NodeLocal(p) => match p.node {
                 PatKind::Binding(..) => {
-                    let bm = *tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+
+                    tables.validate_hir_id(p.hir_id);
+                    let bm = *tables.pat_binding_modes
+                                    .get(&p.hir_id.local_id)
+                                    .expect("missing binding mode");
                     if bm == ty::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
@@ -481,7 +485,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
             PatKind::Binding(..) => {
-                let bm = *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
+                self.tables.validate_hir_id(pat.hir_id);
+                let bm = *self.tables
+                              .pat_binding_modes
+                              .get(&pat.hir_id.local_id)
+                              .expect("missing binding mode");
+
                 if let ty::BindByReference(_) = bm {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.

@@ -899,8 +899,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         match pat.node {
-            hir::PatKind::Binding(..) =>
-                *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode"),
+            hir::PatKind::Binding(..) => {
+                self.tables.validate_hir_id(pat.hir_id);
+                *self.tables
+                     .pat_binding_modes
+                     .get(&pat.hir_id.local_id)
+                     .expect("missing binding mode")
+            }
             _ => bug!("local is not a binding: {:?}", pat)
         }
     }
