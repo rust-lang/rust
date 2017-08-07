@@ -1130,10 +1130,8 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
             let expr = &self.block.stmts[0];
-            let if_str = try_opt!(expr.rewrite(
-                context,
-                Shape::legacy(new_width, Indent::empty()),
-            ));
+            let if_str =
+                try_opt!(expr.rewrite(context, Shape::legacy(new_width, Indent::empty()),));
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
@@ -1246,14 +1244,12 @@ impl<'a> ControlFlow<'a> {
         // for event in event
         let between_kwd_cond = mk_sp(
             context.codemap.span_after(self.span, self.keyword.trim()),
-            self.pat.map_or(
-                cond_span.lo,
-                |p| if self.matcher.is_empty() {
+            self.pat
+                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
                     p.span.lo
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
-                },
-            ),
+                }),
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -2253,15 +2249,17 @@ where
                 _ => (),
             }
         }
-        last_arg_shape(&context, &item_vec, shape, args_max_width)
-            .map_or((None, None), |arg_shape| {
+        last_arg_shape(&context, &item_vec, shape, args_max_width).map_or(
+            (None, None),
+            |arg_shape| {
                 rewrite_last_arg_with_overflow(
                     &context,
                     args,
                     &mut item_vec[args.len() - 1],
                     arg_shape,
                 )
-            })
+            },
+        )
     } else {
         (None, None)
     };
