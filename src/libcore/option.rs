@@ -781,6 +781,7 @@ impl<'a, T: Clone> Option<&'a mut T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(option_ref_mut_cloned)]
     /// let mut x = 12;
     /// let opt_x = Some(&mut x);
     /// assert_eq!(opt_x, Some(&mut 12));
