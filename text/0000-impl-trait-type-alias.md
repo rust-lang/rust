@@ -426,10 +426,10 @@ fn add_to_foo_2(x: Foo) {
 }
 ```
 
-Each instance of `impl Trait` in a type alias must have at least one function
-which constrains it to a concrete type. A function must either fully
-constrain or place no constraints upon a given instance of `impl Trait` in
-a type alias.
+Each instance of `impl Trait` in a type alias must be constrained by at least
+one function body or const/static initializer.
+A body or initializer must either fully constrain or place no constraints upon
+a given instance of `impl Trait` in a type alias.
 
 The following is an example of an `impl Trait` type alias which contains
 two instances of `impl Trait`. Each instance is determined by exactly one
