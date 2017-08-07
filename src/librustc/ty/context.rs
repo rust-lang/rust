@@ -1190,18 +1190,6 @@ pub trait Lift<'tcx> {
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
-    type Lifted = ty::ParamEnv<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<ty::ParamEnv<'tcx>> {
-        self.caller_bounds.lift_to_tcx(tcx).and_then(|caller_bounds| {
-            Some(ty::ParamEnv {
-                reveal: self.reveal,
-                caller_bounds,
-            })
-        })
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {

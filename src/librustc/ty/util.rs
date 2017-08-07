@@ -13,6 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use ich::{StableHashingContext, NodeIdHashingMode};
+use middle::const_val::ConstVal;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
@@ -388,7 +389,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::RegionOutlives(..) => {
+                    ty::Predicate::RegionOutlives(..) |
+                    ty::Predicate::ConstEvaluatable(..) => {
                         None
                     }
                     ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(t, r))) => {
@@ -698,7 +700,12 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyUint(u) => self.hash(u),
             TyFloat(f) => self.hash(f),
             TyArray(_, n) => {
-                self.hash(n.val.to_const_int().unwrap().to_u64().unwrap())
+                self.hash_discriminant_u8(&n.val);
+                match n.val {
+                    ConstVal::Integral(x) => self.hash(x.to_u64().unwrap()),
+                    ConstVal::Unevaluated(def_id, _) => self.def_id(def_id),
+                    _ => bug!("arrays should not have {:?} as length", n)
+                }
             }
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),

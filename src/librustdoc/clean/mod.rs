@@ -33,6 +33,7 @@ use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
@@ -936,6 +937,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
             Predicate::ClosureKind(..) => panic!("not user writable"),
+            Predicate::ConstEvaluatable(..) => panic!("not user writable"),
         }
     }
 }
@@ -1784,9 +1786,11 @@ impl Clean<Type> for hir::Ty {
                              type_: box m.ty.clean(cx)}
             }
             TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, length) => {
-                use rustc::middle::const_val::eval_length;
-                let n = eval_length(cx.tcx, length, "array length").unwrap();
+            TyArray(ref ty, n) => {
+                let def_id = cx.tcx.hir.body_owner_def_id(n);
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let substs = Substs::identity_for_item(cx.tcx, def_id);
+                let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
                 let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
                     n.to_string()
                 } else {

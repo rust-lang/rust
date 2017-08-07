@@ -160,6 +160,9 @@ fn push_const<'tcx>(stack: &mut TypeWalkerStack<'tcx>, constant: &'tcx ty::Const
         ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
             push_const(stack, v);
         }
+        ConstVal::Unevaluated(_, substs) => {
+            stack.extend(substs.types().rev());
+        }
     }
     stack.push(constant.ty);
 }

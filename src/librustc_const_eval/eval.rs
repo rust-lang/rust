@@ -334,7 +334,8 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
 
           if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
             let layout_of = |ty: Ty<'tcx>| {
-                ty.layout(tcx, cx.param_env).map_err(|err| {
+                let ty = tcx.erase_regions(&ty);
+                tcx.at(e.span).layout_raw(cx.param_env.reveal_all().and(ty)).map_err(|err| {
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };

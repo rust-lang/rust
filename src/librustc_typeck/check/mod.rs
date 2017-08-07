@@ -128,7 +128,6 @@ use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
-use rustc::middle::const_val::eval_length;
 use rustc_const_math::ConstInt;
 
 mod autoderef;
@@ -3898,7 +3897,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_array(element_ty, args.len() as u64)
           }
           hir::ExprRepeat(ref element, count) => {
-            let count = eval_length(self.tcx, count, "repeat count");
+            let count_def_id = tcx.hir.body_owner_def_id(count);
+            let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+            let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+
+            if let Err(ref err) = count {
+               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+            }
 
             let uty = match expected {
                 ExpectHasType(uty) => {

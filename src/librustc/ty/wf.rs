@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
+use middle::const_val::{ConstVal, ConstAggregate};
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
@@ -100,6 +101,14 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         ty::Predicate::Subtype(ref data) => {
             wf.compute(data.skip_binder().a); // (*)
             wf.compute(data.skip_binder().b); // (*)
+        }
+        ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            let obligations = wf.nominal_obligations(def_id, substs);
+            wf.out.extend(obligations);
+
+            for ty in substs.types() {
+                wf.compute(ty);
+            }
         }
     }
 
@@ -209,7 +218,43 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     /// Pushes the obligations required for a constant value to be WF
     /// into `self.out`.
-    fn compute_const(&mut self, _constant: &'tcx ty::Const<'tcx>) {}
+    fn compute_const(&mut self, constant: &'tcx ty::Const<'tcx>) {
+        self.require_sized(constant.ty, traits::ConstSized);
+        match constant.val {
+            ConstVal::Integral(_) |
+            ConstVal::Float(_) |
+            ConstVal::Str(_) |
+            ConstVal::ByteStr(_) |
+            ConstVal::Bool(_) |
+            ConstVal::Char(_) |
+            ConstVal::Variant(_) |
+            ConstVal::Function(..) => {}
+            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
+                for &(_, v) in fields {
+                    self.compute_const(v);
+                }
+            }
+            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
+            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
+                for v in fields {
+                    self.compute_const(v);
+                }
+            }
+            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
+                self.compute_const(v);
+            }
+            ConstVal::Unevaluated(def_id, substs) => {
+                let obligations = self.nominal_obligations(def_id, substs);
+                self.out.extend(obligations);
+
+                let predicate = ty::Predicate::ConstEvaluatable(def_id, substs);
+                let cause = self.cause(traits::MiscObligation);
+                self.out.push(traits::Obligation::new(cause,
+                                                      self.param_env,
+                                                      predicate));
+            }
+        }
+    }
 
     fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
         if !subty.has_escaping_regions() {

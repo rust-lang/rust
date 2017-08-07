@@ -103,7 +103,8 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Char(c) => C_uint(Type::char(ccx), c as u64),
             ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
             ConstVal::Variant(_) |
-            ConstVal::Aggregate(..) => {
+            ConstVal::Aggregate(..) |
+            ConstVal::Unevaluated(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
         };

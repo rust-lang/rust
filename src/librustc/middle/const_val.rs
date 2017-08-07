@@ -10,13 +10,9 @@
 
 pub use rustc_const_math::ConstInt;
 
-use hir;
-use hir::def::Def;
 use hir::def_id::DefId;
-use traits::Reveal;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
-use util::common::ErrorReported;
 use rustc_const_math::*;
 
 use graphviz::IntoCow;
@@ -41,6 +37,7 @@ pub enum ConstVal<'tcx> {
     Variant(DefId),
     Function(DefId, &'tcx Substs<'tcx>),
     Aggregate(ConstAggregate<'tcx>),
+    Unevaluated(DefId, &'tcx Substs<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]
@@ -219,39 +216,5 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             return;
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();
-    }
-}
-
-/// Returns the value of the length-valued expression
-pub fn eval_length<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                   count: hir::BodyId,
-                                   reason: &str)
-                                   -> Result<&'gcx ty::Const<'gcx>, ErrorReported>
-{
-    let count_expr = &tcx.hir.body(count).value;
-    let count_def_id = tcx.hir.body_owner_def_id(count);
-    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
-    let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-    match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(count) => {
-            // Elsewhere in the compiler this is enforced even in the presence
-            // of erroneous code (type mismatch error has already been emitted).
-            assert_eq!(count.ty, tcx.types.usize);
-            Ok(count)
-        }
-        Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
-        Err(err) => {
-            let mut diag = err.struct_error(tcx, count_expr.span, reason);
-
-            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
-                if let Def::Local(..) = path.def {
-                    diag.note(&format!("`{}` is a variable",
-                                       tcx.hir.node_to_pretty_string(count_expr.id)));
-                }
-            }
-
-            diag.emit();
-            Err(ErrorReported)
-        }
     }
 }

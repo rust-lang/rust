@@ -430,6 +430,9 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
             ty::Predicate::ClosureKind(closure_def_id, kind) => {
                 write!(f, "ClosureKind({:?}, {:?})", closure_def_id, kind)
             }
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
+            }
         }
     }
 }
@@ -894,6 +897,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     ConstVal::Integral(ConstInt::Usize(sz)) => {
                         write!(f, "{}", sz)?;
                     }
+                    ConstVal::Unevaluated(_def_id, substs) => {
+                        write!(f, "<unevaluated{:?}>", &substs[..])?;
+                    }
                     _ => {
                         write!(f, "{:?}", sz)?;
                     }
@@ -1048,6 +1054,11 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
                     write!(f, "the closure `{}` implements the trait `{}`",
                            tcx.item_path_str(closure_def_id), kind)
                 }),
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                write!(f, "the constant `")?;
+                parameterized(f, substs, def_id, &[])?;
+                write!(f, "` can be evaluated")
+            }
         }
     }
 }

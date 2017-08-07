@@ -1521,9 +1521,16 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyImplTrait(_) = ty.node {
-            let def_id = self.tcx.hir.local_def_id(ty.id);
-            self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
+        match ty.node {
+            hir::TyImplTrait(_) => {
+                let def_id = self.tcx.hir.local_def_id(ty.id);
+                self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
+            }
+            hir::TyArray(_, len) => {
+                let def_id = self.tcx.hir.body_owner_def_id(len);
+                self.record(def_id, IsolatedEncoder::encode_info_for_embedded_const, def_id);
+            }
+            _ => {}
         }
     }
 

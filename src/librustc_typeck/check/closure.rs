@@ -192,6 +192,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::TypeOutlives(..) => None,
                     ty::Predicate::WellFormed(..) => None,
                     ty::Predicate::ObjectSafe(..) => None,
+                    ty::Predicate::ConstEvaluatable(..) => None,
 
                     // NB: This predicate is created by breaking down a
                     // `ClosureType: FnFoo()` predicate, where

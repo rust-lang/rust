@@ -442,6 +442,7 @@ macro_rules! impl_trans_normalize {
 
 impl_trans_normalize!('gcx,
     Ty<'gcx>,
+    &'gcx ty::Const<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
     ty::PolyFnSig<'gcx>,
@@ -493,7 +494,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 
@@ -515,7 +516,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 

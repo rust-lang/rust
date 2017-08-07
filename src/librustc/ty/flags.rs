@@ -235,6 +235,10 @@ impl FlagComputation {
             ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
                 self.add_const(v);
             }
+            ConstVal::Unevaluated(_, substs) => {
+                self.add_flags(TypeFlags::HAS_PROJECTION);
+                self.add_substs(substs);
+            }
         }
     }
 

@@ -235,6 +235,10 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Pr
                 def_id.hash_stable(hcx, hasher);
                 closure_kind.hash_stable(hcx, hasher);
             }
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
         }
     }
 }
@@ -316,6 +320,10 @@ for ::middle::const_val::ConstVal<'gcx> {
             Aggregate(Repeat(ref value, times)) => {
                 value.hash_stable(hcx, hasher);
                 times.hash_stable(hcx, hasher);
+            }
+            Unevaluated(def_id, substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
             }
         }
     }

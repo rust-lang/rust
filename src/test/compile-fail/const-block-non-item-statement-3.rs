@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Dim {
-    fn dim() -> usize;
-}
+type Array = [u32; {  let x = 2; 5 }];
+//~^ ERROR: blocks in constants are limited to items and tail expressions
+//~^^ ERROR: blocks in constants are limited to items and tail expressions
 
-enum Dim3 {}
-
-impl Dim for Dim3 {
-    fn dim() -> usize {
-        3
-    }
-}
-
-pub struct Vector<T, D: Dim> {
-    entries: [T; D::dim()],
-    //~^ ERROR no function or associated item named `dim` found for type `D` in the current scope
-    _dummy: D,
-}
-
-fn main() {}
+pub fn main() {}

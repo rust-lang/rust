@@ -12,7 +12,7 @@
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
-use rustc::middle::const_val::eval_length;
+use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use hir;
 use hir::def::Def;
@@ -1082,11 +1082,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyArray(ref ty, length) => {
-                if let Ok(length) = eval_length(tcx, length, "array length") {
-                    tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length))
-                } else {
-                    self.tcx().types.err
-                }
+                let length_def_id = tcx.hir.body_owner_def_id(length);
+                let substs = Substs::identity_for_item(tcx, length_def_id);
+                let length = tcx.mk_const(ty::Const {
+                    val: ConstVal::Unevaluated(length_def_id, substs),
+                    ty: tcx.types.usize
+                });
+                let array_ty = tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length));
+                self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyTypeof(ref _e) => {
                 struct_span_err!(tcx.sess, ast_ty.span, E0516,

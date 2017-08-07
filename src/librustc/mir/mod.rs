@@ -1535,6 +1535,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Variant(def_id) |
         Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Aggregate(_) => bug!("`ConstVal::{:?}` should not be in MIR", const_val),
+        Unevaluated(..) => write!(fmt, "{:?}", const_val)
     }
 }
 

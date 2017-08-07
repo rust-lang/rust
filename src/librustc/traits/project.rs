@@ -27,10 +27,11 @@ use super::util;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use infer::type_variable::TypeVariableOrigin;
+use middle::const_val::ConstVal;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use ty::subst::Subst;
+use ty::subst::{Subst, Substs};
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 use util::common::FN_OUTPUT_NAME;
@@ -260,7 +261,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     fn fold<T:TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
         let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             value.clone()
         } else {
             value.fold_with(self)
@@ -331,6 +332,39 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                 ty
             }
         }
+    }
+
+    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
+            if substs.needs_infer() {
+                let identity_substs = Substs::identity_for_item(self.tcx(), def_id);
+                let data = self.param_env.and((def_id, identity_substs));
+                match self.tcx().lift_to_global(&data) {
+                    Some(data) => {
+                        match self.tcx().const_eval(data) {
+                            Ok(evaluated) => {
+                                let evaluated = evaluated.subst(self.tcx(), substs);
+                                return self.fold_const(evaluated);
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                    None => {}
+                }
+            } else {
+                let data = self.param_env.and((def_id, substs));
+                match self.tcx().lift_to_global(&data) {
+                    Some(data) => {
+                        match self.tcx().const_eval(data) {
+                            Ok(evaluated) => return self.fold_const(evaluated),
+                            Err(_) => {}
+                        }
+                    }
+                    None => {}
+                }
+            }
+        }
+        constant
     }
 }
 
@@ -520,7 +554,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                    depth,
                    obligations);
 
-            let result = if projected_ty.has_projection_types() {
+            let result = if projected_ty.has_projections() {
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx,
                                                                    param_env,
                                                                    cause,

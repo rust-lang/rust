@@ -415,19 +415,21 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 }))
             }).collect()
         }
-        ty::TySlice(ref sub_ty) => {
-            if cx.is_uninhabited(sub_ty) {
-                vec![Slice(0)]
-            } else {
-                (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
-            }
-        }
-        ty::TyArray(ref sub_ty, len) => {
+        ty::TyArray(ref sub_ty, len) if len.val.to_const_int().is_some() => {
             let len = len.val.to_const_int().unwrap().to_u64().unwrap();
             if len != 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
             } else {
                 vec![Slice(len)]
+            }
+        }
+        // Treat arrays of a constant but unknown length like slices.
+        ty::TyArray(ref sub_ty, _) |
+        ty::TySlice(ref sub_ty) => {
+            if cx.is_uninhabited(sub_ty) {
+                vec![Slice(0)]
+            } else {
+                (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
