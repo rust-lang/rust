@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            TupleArgumentsFlag::TupleArguments,
                                                            expected);
 
-        self.write_method_call((call_expr.id, call_expr.hir_id), method_callee);
+        self.write_method_call(call_expr.hir_id, method_callee);
         output_type
     }
 }
@@ -364,7 +364,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
                 adjustments.extend(autoref);
                 fcx.apply_adjustments(self.callee_expr, adjustments);
 
-                fcx.write_method_call((self.call_expr.id, self.call_expr.hir_id),
+                fcx.write_method_call(self.call_expr.hir_id,
                                       method_callee);
             }
             None => {

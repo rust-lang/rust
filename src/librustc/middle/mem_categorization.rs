@@ -435,7 +435,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     fn resolve_type_vars_or_error(&self,
-                                  id: ast::NodeId,
+                                  id: hir::HirId,
                                   ty: Option<Ty<'tcx>>)
                                   -> McResult<Ty<'tcx>> {
         match ty {
@@ -451,26 +451,30 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
+                let id = self.tcx.hir.definitions().find_node_for_hir_id(id);
                 bug!("no type for node {}: {} in mem_categorization",
                      id, self.tcx.hir.node_to_string(id));
             }
         }
     }
 
-    pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(id, self.tables.node_id_to_type_opt(id))
+    pub fn node_ty(&self,
+                   hir_id: hir::HirId)
+                   -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(hir_id,
+                                        self.tables.node_id_to_type_opt(hir_id))
     }
 
     pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_opt(expr))
     }
 
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_adjusted_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
-        let base_ty = self.node_ty(pat.id)?;
+        let base_ty = self.node_ty(pat.hir_id)?;
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
@@ -714,7 +718,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         let upvar_id = ty::UpvarId { var_id,
                                      closure_expr_id: fn_node_id };
-        let var_ty = self.node_ty(var_id)?;
+        let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
+        let var_ty = self.node_ty(var_hir_id)?;
 
         // Mutability of original variable itself
         let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);

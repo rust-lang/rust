@@ -323,7 +323,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        self.write_ty(pat.id, ty);
+        self.write_ty(pat.hir_id, ty);
 
         // (*) In most of the cases above (literals and constants being
         // the exception), we relate types using strict equality, evewn

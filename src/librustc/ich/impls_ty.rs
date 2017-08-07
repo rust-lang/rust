@@ -638,12 +638,10 @@ for ty::TypeckTables<'gcx> {
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_hashmap(hcx, hasher, type_dependent_defs, |_, item_local_id| {
-                *item_local_id
-            });
-            ich::hash_stable_nodemap(hcx, hasher, node_types);
-            ich::hash_stable_nodemap(hcx, hasher, node_substs);
-            ich::hash_stable_nodemap(hcx, hasher, adjustments);
+            ich::hash_stable_itemlocalmap(hcx, hasher, type_dependent_defs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, node_types);
+            ich::hash_stable_itemlocalmap(hcx, hasher, node_substs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, adjustments);
             ich::hash_stable_nodemap(hcx, hasher, pat_binding_modes);
             ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
                 let ty::UpvarId {

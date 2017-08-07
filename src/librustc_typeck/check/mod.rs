@@ -1024,7 +1024,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
             fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::MiscObligation);
         }
 
-        fcx.write_ty(arg.id, arg_ty);
+        fcx.write_ty(arg.hir_id, arg_ty);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
@@ -1807,10 +1807,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
-        debug!("write_ty({}, {:?}) in fcx {}",
-               node_id, self.resolve_type_vars_if_possible(&ty), self.tag());
-        self.tables.borrow_mut().node_types.insert(node_id, ty);
+    pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
+        debug!("write_ty({:?}, {:?}) in fcx {}",
+               id, self.resolve_type_vars_if_possible(&ty), self.tag());
+        {
+            let mut tables = self.tables.borrow_mut();
+            tables.validate_hir_id(id);
+            tables.node_types.insert(id.local_id, ty);
+        }
 
         if ty.references_error() {
             self.has_errors.set(true);
@@ -1821,24 +1825,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // The NodeId and the ItemLocalId must identify the same item. We just pass
     // both of them for consistency checking.
     pub fn write_method_call(&self,
-                             (node_id, hir_id): (ast::NodeId, hir::HirId),
+                             hir_id: hir::HirId,
                              method: MethodCallee<'tcx>) {
         {
             let mut tables = self.tables.borrow_mut();
             tables.validate_hir_id(hir_id);
             tables.type_dependent_defs.insert(hir_id.local_id, Def::Method(method.def_id));
         }
-        self.write_substs(node_id, method.substs);
+        self.write_substs(hir_id, method.substs);
     }
 
-    pub fn write_substs(&self, node_id: ast::NodeId, substs: &'tcx Substs<'tcx>) {
+    pub fn write_substs(&self, node_id: hir::HirId, substs: &'tcx Substs<'tcx>) {
         if !substs.is_noop() {
-            debug!("write_substs({}, {:?}) in fcx {}",
+            debug!("write_substs({:?}, {:?}) in fcx {}",
                    node_id,
                    substs,
                    self.tag());
 
-            self.tables.borrow_mut().node_substs.insert(node_id, substs);
+            let mut tables = self.tables.borrow_mut();
+            tables.validate_hir_id(node_id);
+            tables.node_substs.insert(node_id.local_id, substs);
         }
     }
 
@@ -1849,7 +1855,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        match self.tables.borrow_mut().adjustments.entry(expr.id) {
+        let mut tables = self.tables.borrow_mut();
+        tables.validate_hir_id(expr.hir_id);
+        match tables.adjustments.entry(expr.hir_id.local_id) {
             Entry::Vacant(entry) => { entry.insert(adj); },
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
@@ -2002,13 +2010,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         t
     }
 
-    pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
-        match self.tables.borrow().node_types.get(&id) {
+    pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
+        let tables = self.tables.borrow();
+        tables.validate_hir_id(id);
+        match tables.node_types.get(&id.local_id) {
             Some(&t) => t,
             None if self.err_count_since_creation() != 0 => self.tcx.types.err,
             None => {
+                let node_id = self.tcx.hir.definitions().find_node_for_hir_id(id);
                 bug!("no type for node {}: {} in fcx {}",
-                     id, self.tcx.hir.node_to_string(id),
+                     node_id, self.tcx.hir.node_to_string(node_id),
                      self.tag());
             }
         }
@@ -2276,7 +2287,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 self.apply_adjustments(base_expr, adjustments);
 
-                self.write_method_call((expr.id, expr.hir_id), method);
+                self.write_method_call(expr.hir_id, method);
                 (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
             });
             if result.is_some() {
@@ -2665,7 +2676,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            assert!(!self.tables.borrow().adjustments.contains_key(&expr.id),
+            assert!(!self.tables.borrow().adjustments.contains_key(&expr.hir_id.local_id),
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
                 TypeVariableOrigin::AdjustmentType(expr.span));
@@ -2816,7 +2827,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               expr,
                                               rcvr) {
             Ok(method) => {
-                self.write_method_call((expr.id, expr.hir_id), method);
+                self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }
             Err(error) => {
@@ -3448,7 +3459,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Record the type, which applies it effects.
         // We need to do this after the warning above, so that
         // we don't warn for the diverging expression itself.
-        self.write_ty(expr.id, ty);
+        self.write_ty(expr.hir_id, ty);
 
         // Combine the diverging and has_error flags.
         self.diverges.set(self.diverges.get() | old_diverges);
@@ -3521,7 +3532,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 }]);
                             }
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
-                            self.write_method_call((expr.id, expr.hir_id), method);
+                            self.write_method_call(expr.hir_id, method);
                         } else {
                             type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
                                                "type `{}` cannot be dereferenced",
@@ -3599,7 +3610,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               // We always require that the type provided as the value for
               // a type parameter outlives the moment of instantiation.
-              let substs = self.tables.borrow().node_substs(expr.id);
+              let substs = self.tables.borrow().node_substs(expr.hir_id);
               self.add_wf_bounds(substs, expr);
 
               ty
@@ -4101,19 +4112,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
         let t = self.local_ty(local.span, local.id);
-        self.write_ty(local.id, t);
+        self.write_ty(local.hir_id, t);
 
         if let Some(ref init) = local.init {
             let init_ty = self.check_decl_initializer(local, &init);
             if init_ty.references_error() {
-                self.write_ty(local.id, init_ty);
+                self.write_ty(local.hir_id, init_ty);
             }
         }
 
         self.check_pat(&local.pat, t);
-        let pat_ty = self.node_ty(local.pat.id);
+        let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
-            self.write_ty(local.id, pat_ty);
+            self.write_ty(local.hir_id, pat_ty);
         }
     }
 
@@ -4265,7 +4276,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty = self.tcx.types.err
         }
 
-        self.write_ty(blk.id, ty);
+        self.write_ty(blk.hir_id, ty);
 
         *self.ps.borrow_mut() = prev;
         ty
@@ -4443,7 +4454,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::StmtSemi(ref e, _) => e,
             _ => return,
         };
-        let last_expr_ty = self.node_ty(last_expr.id);
+        let last_expr_ty = self.node_ty(last_expr.hir_id);
         if self.can_sub(self.param_env, last_expr_ty, expected_ty).is_err() {
             return;
         }
@@ -4586,7 +4597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let nid = self.tcx.hir.as_local_node_id(def_id).unwrap();
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(node_id, ty);
+                self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);
                 return ty;
             }
             _ => {}
@@ -4718,7 +4729,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("instantiate_value_path: type of {:?} is {:?}",
                node_id,
                ty_substituted);
-        self.write_substs(node_id, substs);
+        self.write_substs(self.tcx.hir.node_to_hir_id(node_id), substs);
         ty_substituted
     }
 

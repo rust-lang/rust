@@ -345,7 +345,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             collector.visit_pat(&arg.pat);
             let span_utils = self.span.clone();
             for &(id, ref p, ..) in &collector.collected_paths {
-                let typ = match self.save_ctxt.tables.node_types.get(&id) {
+                let hir_id = self.tcx.hir.node_to_hir_id(id);
+                let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
                     Some(s) => s.to_string(),
                     None => continue,
                 };
@@ -893,7 +894,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         match p.node {
             PatKind::Struct(ref _path, ref fields, _) => {
                 // FIXME do something with _path?
-                let adt = match self.save_ctxt.tables.node_id_to_type_opt(p.id) {
+                let hir_id = self.tcx.hir.node_to_hir_id(p.id);
+                let adt = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
                     Some(ty) => ty.ty_adt_def().unwrap(),
                     None => {
                         visit::walk_pat(self, p);
@@ -935,7 +937,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 ast::Mutability::Immutable => value.to_string(),
                 _ => String::new(),
             };
-            let typ = match self.save_ctxt.tables.node_types.get(&id) {
+            let hir_id = self.tcx.hir.node_to_hir_id(id);
+            let typ = match self.save_ctxt.tables.node_id_to_type_opt(hir_id) {
                 Some(typ) => {
                     let typ = typ.to_string();
                     if !value.is_empty() {
@@ -1466,8 +1469,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     } else {
                         "<mutable>".to_string()
                     };
-                    let typ = self.save_ctxt.tables.node_types
-                                  .get(&id).map(|t| t.to_string()).unwrap_or(String::new());
+                    let hir_id = self.tcx.hir.node_to_hir_id(id);
+                    let typ = self.save_ctxt
+                                  .tables
+                                  .node_id_to_type_opt(hir_id)
+                                  .map(|t| t.to_string())
+                                  .unwrap_or(String::new());
                     value.push_str(": ");
                     value.push_str(&typ);
 

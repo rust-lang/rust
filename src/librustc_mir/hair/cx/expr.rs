@@ -217,7 +217,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     None
                 };
                 if let Some((adt_def, index)) = adt_data {
-                    let substs = cx.tables().node_substs(fun.id);
+                    let substs = cx.tables().node_substs(fun.hir_id);
                     let field_refs = args.iter()
                         .enumerate()
                         .map(|(idx, e)| {
@@ -236,7 +236,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                 } else {
                     ExprKind::Call {
-                        ty: cx.tables().node_id_to_type(fun.id),
+                        ty: cx.tables().node_id_to_type(fun.hir_id),
                         fun: fun.to_ref(),
                         args: args.to_ref(),
                     }
@@ -582,7 +582,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
         cx.tables().validate_hir_id(expr.hir_id);
         (cx.tables().type_dependent_defs[&expr.hir_id.local_id].def_id(),
-         cx.tables().node_substs(expr.id))
+         cx.tables().node_substs(expr.hir_id))
     });
     Expr {
         temp_lifetime: temp_lifetime,
@@ -620,7 +620,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      expr: &'tcx hir::Expr,
                                      def: Def)
                                      -> ExprKind<'tcx> {
-    let substs = cx.tables().node_substs(expr.id);
+    let substs = cx.tables().node_substs(expr.hir_id);
     match def {
         // A regular function, constructor function or a constant.
         Def::Fn(def_id) |
@@ -642,7 +642,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Def::StructCtor(def_id, CtorKind::Const) |
         Def::VariantCtor(def_id, CtorKind::Const) => {
-            match cx.tables().node_id_to_type(expr.id).sty {
+            match cx.tables().node_id_to_type(expr.hir_id).sty {
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::TyAdt(adt_def, substs) => {
@@ -684,10 +684,12 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                    id_var,
                    index,
                    closure_expr_id);
-            let var_ty = cx.tables().node_id_to_type(id_var);
+            let var_ty = cx.tables()
+                           .node_id_to_type(cx.tcx.hir.node_to_hir_id(id_var));
 
             // FIXME free regions in closures are not right
-            let closure_ty = cx.tables().node_id_to_type(closure_expr_id);
+            let closure_ty = cx.tables()
+                               .node_id_to_type(cx.tcx.hir.node_to_hir_id(closure_expr_id));
 
             // FIXME we're just hard-coding the idea that the
             // signature will be &self or &mut self and hence will
@@ -879,7 +881,8 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_maps.temporary_scope(closure_expr.id);
-    let var_ty = cx.tables().node_id_to_type(id_var);
+    let var_ty = cx.tables()
+                   .node_id_to_type(cx.tcx.hir.node_to_hir_id(id_var));
     let captured_var = Expr {
         temp_lifetime: temp_lifetime,
         ty: var_ty,

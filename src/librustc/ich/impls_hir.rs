@@ -506,6 +506,7 @@ impl_stable_hash_for!(struct hir::Local {
     ty,
     init,
     id,
+    hir_id,
     span,
     attrs,
     source

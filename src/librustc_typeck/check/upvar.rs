@@ -78,7 +78,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
             hir::ExprClosure(cc, _, body_id, _) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure(expr.id, expr.span, body, cc);
+                self.fcx.analyze_closure((expr.id, expr.hir_id), expr.span, body, cc);
             }
 
             _ => { }
@@ -90,7 +90,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn analyze_closure(&self,
-                       id: ast::NodeId,
+                       (id, hir_id): (ast::NodeId, hir::HirId),
                        span: Span,
                        body: &hir::Body,
                        capture_clause: hir::CaptureClause) {
@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // inference algorithm will reject it).
 
         // Extract the type variables UV0...UVn.
-        let (def_id, closure_substs) = match self.node_ty(id).sty {
+        let (def_id, closure_substs) = match self.node_ty(hir_id).sty {
             ty::TyClosure(def_id, substs) => (def_id, substs),
             ref t => {
                 span_bug!(
@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             freevars.iter().map(|freevar| {
                 let def_id = freevar.def.def_id();
                 let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                let freevar_ty = self.node_ty(var_id);
+                let freevar_ty = self.node_ty(tcx.hir.node_to_hir_id(var_id));
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
                     closure_expr_id: closure_id

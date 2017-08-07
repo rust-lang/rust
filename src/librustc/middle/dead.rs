@@ -121,7 +121,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
 
 
-        let variant = match self.tables.node_id_to_type(lhs.id).sty {
+        let variant = match self.tables.node_id_to_type(lhs.hir_id).sty {
             ty::TyAdt(adt, _) => adt.variant_of_def(def),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };

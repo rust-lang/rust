@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("consume_body(body={:?})", body);
 
         for arg in &body.arguments {
-            let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.id));
+            let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.hir_id));
 
             let fn_body_scope_r = self.tcx().node_scope_region(body.value.id);
             let arg_cmt = self.mc.cat_rvalue(
@@ -826,7 +826,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let bm = *mc.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
 
                 // pat_ty: the type of the binding being produced.
-                let pat_ty = return_if_err!(mc.node_ty(pat.id));
+                let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
@@ -923,8 +923,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
-        let var_ty = self.mc.node_ty(var_id)?;
+        let var_node_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
+        let var_hir_id = self.tcx().hir.node_to_hir_id(var_node_id);
+        let var_ty = self.mc.node_ty(var_hir_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 }

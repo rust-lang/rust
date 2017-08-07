@@ -904,8 +904,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_local(&mut self, l: &Local) -> P<hir::Local> {
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(l.id);
         P(hir::Local {
-            id: self.lower_node_id(l.id).node_id,
+            id: node_id,
+            hir_id,
             ty: l.ty.as_ref().map(|t| self.lower_ty(t)),
             pat: self.lower_pat(&l.pat),
             init: l.init.as_ref().map(|e| P(self.lower_expr(e))),
@@ -2675,11 +2677,14 @@ impl<'a> LoweringContext<'a> {
                     pat: P<hir::Pat>,
                     source: hir::LocalSource)
                     -> hir::Stmt {
+        let LoweredNodeId { node_id, hir_id } = self.next_id();
+
         let local = P(hir::Local {
             pat,
             ty: None,
             init: ex,
-            id: self.next_id().node_id,
+            id: node_id,
+            hir_id,
             span: sp,
             attrs: ThinVec::new(),
             source,

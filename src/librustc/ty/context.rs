@@ -57,7 +57,7 @@ use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, Name};
 use syntax::attr;
 use syntax::codemap::MultiSpan;
 use syntax::symbol::{Symbol, keywords};
@@ -219,15 +219,15 @@ pub struct TypeckTables<'tcx> {
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
     /// typeck::check::fn_ctxt for details.
-    pub node_types: NodeMap<Ty<'tcx>>,
+    pub node_types: ItemLocalMap<Ty<'tcx>>,
 
     /// Stores the type parameters which were substituted to obtain the type
     /// of this node.  This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    pub node_substs: NodeMap<&'tcx Substs<'tcx>>,
+    pub node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
 
-    pub adjustments: NodeMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
+    pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     // Stores the actual binding mode for all instances of hir::BindingAnnotation.
     pub pat_binding_modes: NodeMap<BindingMode>,
@@ -278,9 +278,9 @@ impl<'tcx> TypeckTables<'tcx> {
         TypeckTables {
             local_id_root,
             type_dependent_defs: ItemLocalMap(),
-            node_types: FxHashMap(),
-            node_substs: NodeMap(),
-            adjustments: NodeMap(),
+            node_types: ItemLocalMap(),
+            node_substs: ItemLocalMap(),
+            adjustments: ItemLocalMap(),
             pat_binding_modes: NodeMap(),
             upvar_capture_map: FxHashMap(),
             closure_tys: NodeMap(),
@@ -305,32 +305,37 @@ impl<'tcx> TypeckTables<'tcx> {
         }
     }
 
-    pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
+    pub fn node_id_to_type(&self, id: hir::HirId) -> Ty<'tcx> {
         match self.node_id_to_type_opt(id) {
             Some(ty) => ty,
             None => {
                 bug!("node_id_to_type: no type for node `{}`",
-                     tls::with(|tcx| tcx.hir.node_to_string(id)))
+                    tls::with(|tcx| {
+                        let id = tcx.hir.definitions().find_node_for_hir_id(id);
+                        tcx.hir.node_to_string(id)
+                    }))
             }
         }
     }
 
-    pub fn node_id_to_type_opt(&self, id: NodeId) -> Option<Ty<'tcx>> {
-        self.node_types.get(&id).cloned()
+    pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
+        self.validate_hir_id(id);
+        self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_substs(&self, id: NodeId) -> &'tcx Substs<'tcx> {
-        self.node_substs.get(&id).cloned().unwrap_or(Substs::empty())
+    pub fn node_substs(&self, id: hir::HirId) -> &'tcx Substs<'tcx> {
+        self.validate_hir_id(id);
+        self.node_substs.get(&id.local_id).cloned().unwrap_or(Substs::empty())
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
     pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
-        self.node_id_to_type(pat.id)
+        self.node_id_to_type(pat.hir_id)
     }
 
     pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(pat.id)
+        self.node_id_to_type_opt(pat.hir_id)
     }
 
     // Returns the type of an expression as a monotype.
@@ -344,16 +349,17 @@ impl<'tcx> TypeckTables<'tcx> {
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
     pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
-        self.node_id_to_type(expr.id)
+        self.node_id_to_type(expr.hir_id)
     }
 
     pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
-        self.node_id_to_type_opt(expr.id)
+        self.node_id_to_type_opt(expr.hir_id)
     }
 
     pub fn expr_adjustments(&self, expr: &hir::Expr)
                             -> &[ty::adjustment::Adjustment<'tcx>] {
-        self.adjustments.get(&expr.id).map_or(&[], |a| &a[..])
+        self.validate_hir_id(expr.hir_id);
+        self.adjustments.get(&expr.hir_id.local_id).map_or(&[], |a| &a[..])
     }
 
     /// Returns the type of `expr`, considering any `Adjustment`

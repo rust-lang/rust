@@ -639,7 +639,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Take node ID of an expression or pattern and check its type for privacy.
-    fn check_expr_pat_type(&mut self, id: ast::NodeId, span: Span) -> bool {
+    fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
         if let Some(ty) = self.tables.node_id_to_type_opt(id) {
             if ty.visit_with(self) {
@@ -649,7 +649,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         if self.tables.node_substs(id).visit_with(self) {
             return true;
         }
-        if let Some(adjustments) = self.tables.adjustments.get(&id) {
+        if let Some(adjustments) = self.tables.adjustments.get(&id.local_id) {
             for adjustment in adjustments {
                 if adjustment.target.visit_with(self) {
                     return true;
@@ -735,14 +735,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types of expressions
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if self.check_expr_pat_type(expr.id, expr.span) {
+        if self.check_expr_pat_type(expr.hir_id, expr.span) {
             // Do not check nested expressions if the error already happened.
             return;
         }
         match expr.node {
             hir::ExprAssign(.., ref rhs) | hir::ExprMatch(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
-                if self.check_expr_pat_type(rhs.id, rhs.span) {
+                if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
                     return;
                 }
             }
@@ -783,7 +783,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types of patterns
     fn visit_pat(&mut self, pattern: &'tcx hir::Pat) {
-        if self.check_expr_pat_type(pattern.id, pattern.span) {
+        if self.check_expr_pat_type(pattern.hir_id, pattern.span) {
             // Do not check nested patterns if the error already happened.
             return;
         }
@@ -793,7 +793,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     fn visit_local(&mut self, local: &'tcx hir::Local) {
         if let Some(ref init) = local.init {
-            if self.check_expr_pat_type(init.id, init.span) {
+            if self.check_expr_pat_type(init.hir_id, init.span) {
                 // Do not report duplicate errors for `let x = y`.
                 return;
             }

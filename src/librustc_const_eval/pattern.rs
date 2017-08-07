@@ -303,7 +303,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 
     pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tables.node_id_to_type(pat.id);
+        let mut ty = self.tables.node_id_to_type(pat.hir_id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -321,7 +321,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, (pat.id, pat.hir_id), pat.id, pat.span);
+                return self.lower_path(qpath, pat.hir_id, pat.id, pat.span);
             }
 
             PatKind::Ref(ref subpattern, _) |
@@ -330,7 +330,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                let ty = self.tables.node_id_to_type(pat.id);
+                let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
                     ty::TyRef(_, mt) =>
                         PatternKind::Deref {
@@ -355,7 +355,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
-                let ty = self.tables.node_id_to_type(pat.id);
+                let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
                     ty::TyTuple(ref tys, _) => {
                         let subpatterns =
@@ -376,7 +376,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Binding(_, def_id, ref ident, ref sub) => {
                 let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                let var_ty = self.tables.node_id_to_type(pat.id);
+                let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),
                     _ => None,
@@ -590,12 +590,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
-                  (id, hir_id): (ast::NodeId, hir::HirId),
+                  id: hir::HirId,
                   pat_id: ast::NodeId,
                   span: Span)
                   -> Pattern<'tcx> {
         let ty = self.tables.node_id_to_type(id);
-        let def = self.tables.qpath_def(qpath, hir_id);
+        let def = self.tables.qpath_def(qpath, id);
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
@@ -695,7 +695,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     hir::ExprPath(ref qpath) => qpath,
                     _ => bug!()
                 };
-                let ty = self.tables.node_id_to_type(callee.id);
+                let ty = self.tables.node_id_to_type(callee.hir_id);
                 let def = self.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Fn(..) | Def::Method(..) => self.lower_lit(expr),
@@ -755,7 +755,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             hir::ExprPath(ref qpath) => {
-                return self.lower_path(qpath, (expr.id, expr.hir_id), pat_id, span);
+                return self.lower_path(qpath, expr.hir_id, pat_id, span);
             }
 
             _ => self.lower_lit(expr)

@@ -202,7 +202,8 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: hir::BodyId)
                              -> Ty<'tcx> {
-    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
+    let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
+    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
     let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
     let region = ty::ReFree(ty::FreeRegion {
