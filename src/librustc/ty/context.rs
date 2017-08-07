@@ -236,11 +236,11 @@ pub struct TypeckTables<'tcx> {
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
     /// Records the type of each closure.
-    pub closure_tys: NodeMap<ty::PolyFnSig<'tcx>>,
+    pub closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
 
     /// Records the kind of each closure and the span and name of the variable
     /// that caused the closure to be this kind.
-    pub closure_kinds: NodeMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
+    pub closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -283,8 +283,8 @@ impl<'tcx> TypeckTables<'tcx> {
             adjustments: ItemLocalMap(),
             pat_binding_modes: ItemLocalMap(),
             upvar_capture_map: FxHashMap(),
-            closure_tys: NodeMap(),
-            closure_kinds: NodeMap(),
+            closure_tys: ItemLocalMap(),
+            closure_kinds: ItemLocalMap(),
             liberated_fn_sigs: NodeMap(),
             fru_field_types: NodeMap(),
             cast_kinds: NodeMap(),

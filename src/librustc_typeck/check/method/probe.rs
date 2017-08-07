@@ -820,7 +820,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let closure_id = match step.self_ty.sty {
                 ty::TyClosure(def_id, _) => {
                     if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                        id
+                        self.tcx.hir.node_to_hir_id(id)
                     } else {
                         continue;
                     }
@@ -828,11 +828,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 _ => continue,
             };
 
-            let closure_kinds = &self.tables.borrow().closure_kinds;
-            let closure_kind = match closure_kinds.get(&closure_id) {
-                Some(&(k, _)) => k,
-                None => {
-                    return Err(MethodError::ClosureAmbiguity(trait_def_id));
+            let closure_kind = {
+                let tables = self.tables.borrow();
+                tables.validate_hir_id(closure_id);
+                match tables.closure_kinds.get(&closure_id.local_id) {
+                    Some(&(k, _)) => k,
+                    None => {
+                        return Err(MethodError::ClosureAmbiguity(trait_def_id));
+                    }
                 }
             };
 

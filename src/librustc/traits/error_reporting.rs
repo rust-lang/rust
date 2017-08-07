@@ -682,7 +682,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
                         if let Some(tables) = self.in_progress_tables {
-                            match tables.borrow().closure_kinds.get(&node_id) {
+                            let tables = tables.borrow();
+                            let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
+                            tables.validate_hir_id(closure_hir_id);
+                            match tables.closure_kinds.get(&closure_hir_id.local_id) {
                                 Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
                                     err.span_note(span, &format!(
                                         "closure is `FnOnce` because it moves the \

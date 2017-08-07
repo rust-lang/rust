@@ -598,8 +598,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
+                        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+                        self.tables.validate_hir_id(hir_id);
                         if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                            self.tables.closure_kinds.get(&node_id)
+                            self.tables.closure_kinds.get(&hir_id.local_id)
                         {
                             err.span_note(span, &format!(
                                 "closure cannot be invoked more than once because \

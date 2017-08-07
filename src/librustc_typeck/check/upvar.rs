@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id());
 
-        let infer_kind = match self.tables.borrow_mut().closure_kinds.entry(id) {
+        let infer_kind = match self.tables.borrow_mut().closure_kinds.entry(hir_id.local_id) {
             Entry::Occupied(_) => false,
             Entry::Vacant(entry) => {
                 debug!("check_closure: adding closure {:?} as Fn", id);
@@ -152,7 +152,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Write the adjusted values back into the main tables.
             if infer_kind {
                 if let Some(kind) = delegate.adjust_closure_kinds.remove(&id) {
-                    self.tables.borrow_mut().closure_kinds.insert(id, kind);
+                    self.tables.borrow_mut().closure_kinds.insert(hir_id.local_id, kind);
                 }
             }
             self.tables.borrow_mut().upvar_capture_map.extend(
@@ -468,7 +468,13 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                closure_id, new_kind, upvar_span, var_name);
 
         let closure_kind = self.adjust_closure_kinds.get(&closure_id).cloned()
-            .or_else(|| self.fcx.tables.borrow().closure_kinds.get(&closure_id).cloned());
+            .or_else(|| {
+                let closure_id = self.fcx.tcx.hir.node_to_hir_id(closure_id);
+                let fcx_tables = self.fcx.tables.borrow();
+                fcx_tables.validate_hir_id(closure_id);
+                fcx_tables.closure_kinds.get(&closure_id.local_id).cloned()
+            });
+
         if let Some((existing_kind, _)) = closure_kind {
             debug!("adjust_closure_kind: closure_id={}, existing_kind={:?}, new_kind={:?}",
                    closure_id, existing_kind, new_kind);

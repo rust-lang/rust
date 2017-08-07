@@ -230,12 +230,19 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_closures(&mut self) {
-        for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
-            let closure_ty = self.resolve(closure_ty, &id);
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+
+        for (&id, closure_ty) in fcx_tables.closure_tys.iter() {
+            let hir_id = hir::HirId {
+                owner: fcx_tables.local_id_root.index,
+                local_id: id,
+            };
+            let closure_ty = self.resolve(closure_ty, &hir_id);
             self.tables.closure_tys.insert(id, closure_ty);
         }
 
-        for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
+        for (&id, &closure_kind) in fcx_tables.closure_kinds.iter() {
             self.tables.closure_kinds.insert(id, closure_kind);
         }
     }
@@ -378,6 +385,13 @@ impl Locatable for Span {
 
 impl Locatable for ast::NodeId {
     fn to_span(&self, tcx: &TyCtxt) -> Span { tcx.hir.span(*self) }
+}
+
+impl Locatable for hir::HirId {
+    fn to_span(&self, tcx: &TyCtxt) -> Span {
+        let node_id = tcx.hir.definitions().find_node_for_hir_id(*self);
+        tcx.hir.span(node_id)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

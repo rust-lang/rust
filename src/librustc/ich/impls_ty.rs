@@ -654,8 +654,8 @@ for ty::TypeckTables<'gcx> {
                 (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
             });
 
-            ich::hash_stable_nodemap(hcx, hasher, closure_tys);
-            ich::hash_stable_nodemap(hcx, hasher, closure_kinds);
+            ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);
+            ich::hash_stable_itemlocalmap(hcx, hasher, closure_kinds);
             ich::hash_stable_nodemap(hcx, hasher, liberated_fn_sigs);
             ich::hash_stable_nodemap(hcx, hasher, fru_field_types);
             ich::hash_stable_nodemap(hcx, hasher, cast_kinds);

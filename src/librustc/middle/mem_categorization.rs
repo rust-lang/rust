@@ -697,6 +697,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  fn_node_id: ast::NodeId)
                  -> McResult<cmt<'tcx>>
     {
+        let fn_hir_id = self.tcx.hir.node_to_hir_id(fn_node_id);
+        self.tables.validate_hir_id(fn_hir_id);
+
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
@@ -720,7 +723,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
-        let kind = match self.tables.closure_kinds.get(&fn_node_id) {
+        let kind = match self.tables.closure_kinds.get(&fn_hir_id.local_id) {
             Some(&(kind, _)) => kind,
             None => span_bug!(span, "missing closure kind")
         };

@@ -1239,8 +1239,10 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
-            tcx.typeck_tables_of(def_id).closure_tys[&node_id]
+        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), hir_id, .. }) => {
+            let tables = tcx.typeck_tables_of(def_id);
+            tables.validate_hir_id(hir_id);
+            tables.closure_tys[&hir_id.local_id]
         }
 
         x => {
