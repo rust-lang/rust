@@ -72,3 +72,7 @@ use ::*;
 // spaces used to cause glob imports to disappear (#1356)
 use super:: * ;
 use foo::issue_1356:: * ;
+
+// We shouldn't remove imports which have attributes attached (#1858)
+#[cfg(unix)]
+use self::unix::{};

@@ -293,7 +293,7 @@ impl<'a> FmtVisitor<'a> {
 
         match item.node {
             ast::ItemKind::Use(ref vp) => {
-                self.format_import(&item.vis, vp, item.span);
+                self.format_import(&item.vis, vp, item.span, &item.attrs);
             }
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
