@@ -5,7 +5,7 @@ use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
 
 use super::{
-    MemoryPointer, LockInfo, AccessKind
+    MemoryPointer, Lock, AccessKind
 };
 
 use rustc_const_math::ConstMathErr;
@@ -84,23 +84,23 @@ pub enum EvalErrorKind<'tcx> {
         len: u64,
         frame: usize,
         access: AccessKind,
-        lock: LockInfo,
+        lock: Lock,
     },
     MemoryAcquireConflict {
         ptr: MemoryPointer,
         len: u64,
         kind: AccessKind,
-        lock: LockInfo,
+        lock: Lock,
     },
     InvalidMemoryLockRelease {
         ptr: MemoryPointer,
         len: u64,
         frame: usize,
-        lock: LockInfo,
+        lock: Lock,
     },
     DeallocatedLockedMemory {
         ptr: MemoryPointer,
-        lock: LockInfo,
+        lock: Lock,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,

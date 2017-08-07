@@ -10,7 +10,7 @@ use rustc::middle::region::CodeExtent;
 use super::{
     EvalError, EvalResult, EvalErrorKind,
     EvalContext, DynamicLifetime,
-    AccessKind, LockInfo,
+    AccessKind,
     Value,
     Lvalue, LvalueExtra,
     Machine,
@@ -23,7 +23,7 @@ enum ValidationMode {
     Acquire,
     /// Recover because the given region ended
     Recover(CodeExtent),
-    Release
+    ReleaseUntil(Option<CodeExtent>),
 }
 
 impl ValidationMode {
@@ -31,7 +31,7 @@ impl ValidationMode {
         use self::ValidationMode::*;
         match self {
             Acquire | Recover(_) => true,
-            Release => false,
+            ReleaseUntil(_) => false,
         }
     }
 }
@@ -81,34 +81,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let lval = self.eval_lvalue(&operand.lval)?;
         let query = ValidationQuery { lval, ty, re: operand.re, mutbl: operand.mutbl };
 
+        // Check the mode, and also perform mode-specific operations
         let mode = match op {
             ValidationOp::Acquire => ValidationMode::Acquire,
-            ValidationOp::Release => ValidationMode::Release,
-            ValidationOp::Suspend(_) => ValidationMode::Release,
-        };
-        match self.validate(query.clone(), mode) {
-            Err(EvalError { kind: EvalErrorKind::InvalidMemoryLockRelease { lock: LockInfo::ReadLock(_), .. }, .. }) => {
-                // HACK: When &x is used while x is already borrowed read-only, AddValidation still
-                // emits suspension.  This code is legit, so just ignore the error *and*
-                // do NOT register a suspension.
-                // TODO: Integrate AddValidation better with borrowck so that we can/ not emit
-                // these wrong validation statements.  This is all pretty fragile right now.
-                return Ok(());
-            }
-            res => res,
-        }?;
-        // Now that we are here, we know things went well.  Time to register the suspension.
-        match op {
+            ValidationOp::Release => ValidationMode::ReleaseUntil(None),
             ValidationOp::Suspend(ce) => {
                 if query.mutbl == MutMutable {
                     let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
                     trace!("Suspending {:?} until {:?}", query, ce);
-                    self.suspended.entry(lft).or_insert_with(Vec::new).push(query);
+                    self.suspended.entry(lft).or_insert_with(Vec::new).push(query.clone());
                 }
+                ValidationMode::ReleaseUntil(Some(ce))
             }
-            _ => {}
         };
-        Ok(())
+        self.validate(query, mode)
     }
 
     pub(crate) fn end_region(&mut self, ce: CodeExtent) -> EvalResult<'tcx> {
@@ -162,7 +148,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // TODO: Ideally we would know whether the destination is already initialized, and only
             // release if it is.
             res @ Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..}) => {
-                if let ValidationMode::Release = mode {
+                if !mode.acquiring() {
                     return Ok(());
                 }
                 res
@@ -182,8 +168,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             return Ok(());
         }
         // When we recover, we may see data whose validity *just* ended.  Do not acquire it.
-        if let ValidationMode::Recover(ce) = mode {
-            if Some(ce) == query.re {
+        if let ValidationMode::Recover(ending_ce) = mode {
+            if query.re == Some(ending_ce) {
                 return Ok(());
             }
         }
@@ -249,10 +235,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     if len > 0 {
                         let ptr = ptr.to_ptr()?;
                         let access = match query.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
-                        if mode.acquiring() {
-                            self.memory.acquire_lock(ptr, len, query.re, access)?;
-                        } else {
-                            self.memory.release_write_lock(ptr, len)?;
+                        match mode {
+                            ValidationMode::Acquire => self.memory.acquire_lock(ptr, len, query.re, access)?,
+                            ValidationMode::Recover(ending_ce) => self.memory.recover_write_lock(ptr, len, query.re, ending_ce)?,
+                            ValidationMode::ReleaseUntil(suspended_ce) => self.memory.release_write_lock(ptr, len, query.re, suspended_ce)?,
                         }
                     }
                 }

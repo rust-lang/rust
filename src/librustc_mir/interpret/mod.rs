@@ -14,6 +14,7 @@ mod validation;
 mod machine;
 mod memory;
 mod operator;
+mod range_map;
 mod step;
 mod terminator;
 mod traits;
@@ -51,8 +52,12 @@ pub use self::memory::{
 
 use self::memory::{
     PointerArithmetic,
-    LockInfo,
+    Lock,
     AccessKind,
+};
+
+use self::range_map::{
+    RangeMap
 };
 
 pub use self::value::{

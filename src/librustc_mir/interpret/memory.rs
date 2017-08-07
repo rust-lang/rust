@@ -1,6 +1,6 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{fmt, iter, ptr, mem, io, ops};
+use std::{fmt, iter, ptr, mem, io};
 use std::cell::Cell;
 
 use rustc::ty;
@@ -13,65 +13,12 @@ use super::{
     PrimVal, Pointer,
     EvalContext, DynamicLifetime,
     Machine,
+    RangeMap,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks
 ////////////////////////////////////////////////////////////////////////////////
-
-mod range {
-    use super::*;
-
-    // The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
-    // by the second field.
-    // This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
-    // `MemoryRange`s whose `start` is <= than the one we're looking for, but not > the end of the range we're checking.
-    // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
-    // This kind of search breaks, if `end < start`, so don't do that!
-    #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-    pub struct MemoryRange {
-        start: u64,
-        end: u64,
-    }
-
-    impl MemoryRange {
-        pub fn new(offset: u64, len: u64) -> MemoryRange {
-            assert!(len > 0);
-            MemoryRange {
-                start: offset,
-                end: offset + len,
-            }
-        }
-
-        pub fn range(offset: u64, len: u64) -> ops::Range<MemoryRange> {
-            assert!(len > 0);
-            // We select all elements that are within
-            // the range given by the offset into the allocation and the length.
-            // This is sound if "self.contains() || self.overlaps() == true" implies that self is in-range.
-            let left = MemoryRange {
-                start: 0,
-                end: offset,
-            };
-            let right = MemoryRange {
-                start: offset + len + 1,
-                end: 0,
-            };
-            left..right
-        }
-
-        pub fn contained_in(&self, offset: u64, len: u64) -> bool {
-            assert!(len > 0);
-            offset <= self.start && self.end <= (offset + len)
-        }
-
-        pub fn overlaps(&self, offset: u64, len: u64) -> bool {
-            assert!(len > 0);
-            //let non_overlap = (offset + len) <= self.start || self.end <= offset;
-            (offset + len) > self.start && self.end > offset
-        }
-    }
-}
-use self::range::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum AccessKind {
@@ -81,18 +28,51 @@ pub enum AccessKind {
 
 /// Information about a lock that is currently held.
 #[derive(Clone, Debug)]
-pub enum LockInfo {
+struct LockInfo {
+    suspended: Vec<SuspendedWriteLock>,
+    active: Lock,
+}
+
+#[derive(Clone, Debug)]
+struct SuspendedWriteLock  {
+    /// Original lifetime of the lock that is now suspended
+    lft: DynamicLifetime,
+    /// Regions that all have to end to reenable this suspension
+    suspensions: Vec<CodeExtent>,
+}
+
+#[derive(Clone, Debug)]
+pub enum Lock {
+    NoLock,
     WriteLock(DynamicLifetime),
     ReadLock(Vec<DynamicLifetime>), // This should never be empty -- that would be a read lock held and nobody there to release it...
 }
-use self::LockInfo::*;
+use self::Lock::*;
+
+impl Default for LockInfo {
+    fn default() -> Self {
+        LockInfo::new(NoLock)
+    }
+}
 
 impl LockInfo {
+    fn new(lock: Lock) -> LockInfo {
+        LockInfo { suspended: Vec::new(), active: lock }
+    }
+
     fn access_permitted(&self, frame: Option<usize>, access: AccessKind) -> bool {
         use self::AccessKind::*;
-        match (self, access) {
-            (&ReadLock(_), Read) => true, // Read access to read-locked region is okay, no matter who's holding the read lock.
-            (&WriteLock(ref lft), _) if Some(lft.frame) == frame => true, // All access is okay when we hold the write lock.
+        match (&self.active, access) {
+            (&NoLock, _) => true,
+            (&ReadLock(ref lfts), Read) => {
+                assert!(!lfts.is_empty(), "Someone left an empty read lock behind.");
+                // Read access to read-locked region is okay, no matter who's holding the read lock.
+                true
+            },
+            (&WriteLock(ref lft), _) => {
+                // All access is okay if we are the ones holding it
+                Some(lft.frame) == frame
+            },
             _ => false, // Nothing else is okay.
         }
     }
@@ -130,25 +110,15 @@ pub struct Allocation<M> {
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
     pub kind: Kind<M>,
     /// Memory regions that are locked by some function
-    locks: BTreeMap<MemoryRange, LockInfo>,
+    locks: RangeMap<LockInfo>,
 }
 
 impl<M> Allocation<M> {
-    fn iter_locks<'a>(&'a self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a LockInfo)> + 'a {
-        self.locks.range(MemoryRange::range(offset, len))
-            .filter(move |&(range, _)| range.overlaps(offset, len))
-    }
-
-    fn iter_locks_mut<'a>(&'a mut self, offset: u64, len: u64) -> impl Iterator<Item=(&'a MemoryRange, &'a mut LockInfo)> + 'a {
-        self.locks.range_mut(MemoryRange::range(offset, len))
-            .filter(move |&(range, _)| range.overlaps(offset, len))
-    }
-
     fn check_locks<'tcx>(&self, frame: Option<usize>, offset: u64, len: u64, access: AccessKind) -> Result<(), LockInfo> {
         if len == 0 {
             return Ok(())
         }
-        for (_, lock) in self.iter_locks(offset, len) {
+        for lock in self.locks.iter(offset, len) {
             // Check if the lock is in conflict with the access.
             if !lock.access_permitted(frame, access) {
                 return Err(lock.clone());
@@ -328,7 +298,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             align,
             kind,
             mutable: Mutability::Mutable,
-            locks: BTreeMap::new(),
+            locks: RangeMap::new(),
         };
         let id = self.next_id;
         self.next_id.0 += 1;
@@ -385,7 +355,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         // lock by another frame.  We *have* to permit deallocation if we hold a read lock.
         // TODO: Figure out the exact rules here.
         alloc.check_locks(Some(self.cur_frame), 0, alloc.bytes.len() as u64, AccessKind::Read)
-            .map_err(|lock| EvalErrorKind::DeallocatedLockedMemory { ptr, lock })?;
+            .map_err(|lock| EvalErrorKind::DeallocatedLockedMemory { ptr, lock: lock.active })?;
 
         if alloc.kind != kind {
             return err!(DeallocatedWrongMemoryKind(format!("{:?}", alloc.kind), format!("{:?}", kind)));
@@ -465,70 +435,146 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let alloc = self.get(ptr.alloc_id)?;
         let frame = self.cur_frame;
         alloc.check_locks(Some(frame), ptr.offset, len, access)
-            .map_err(|lock| EvalErrorKind::MemoryLockViolation { ptr, len, frame, access, lock }.into())
+            .map_err(|lock| EvalErrorKind::MemoryLockViolation { ptr, len, frame, access, lock: lock.active }.into())
     }
 
     /// Acquire the lock for the given lifetime
     pub(crate) fn acquire_lock(&mut self, ptr: MemoryPointer, len: u64, region: Option<CodeExtent>, kind: AccessKind) -> EvalResult<'tcx> {
-        use std::collections::btree_map::Entry::*;
-
         let frame = self.cur_frame;
         assert!(len > 0);
         trace!("Frame {} acquiring {:?} lock at {:?}, size {} for region {:?}", frame, kind, ptr, len, region);
         self.check_bounds(ptr.offset(len, self.layout)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
-        // Check if this conflicts with other locks
-        alloc.check_locks(None, ptr.offset, len, kind)
-            .map_err(|lock| EvalErrorKind::MemoryAcquireConflict { ptr, len, kind, lock })?;
-
+        // Iterate over our range and acquire the lock.  If the range is already split into pieces,
+        // we have to manipulate all of them.
         let lifetime = DynamicLifetime { frame, region };
-        match (alloc.locks.entry(MemoryRange::new(ptr.offset, len)), kind) {
-            (Vacant(entry), AccessKind::Read) => { entry.insert(ReadLock(vec![lifetime])); },
-            (Vacant(entry), AccessKind::Write) => { entry.insert(WriteLock(lifetime)); },
-            (Occupied(mut entry), AccessKind::Read) =>
-                match *entry.get_mut() {
-                    ReadLock(ref mut lifetimes) => lifetimes.push(lifetime),
-                    WriteLock(_) => bug!("We already checked that there is no conflicting write lock"),
-                },
-            (Occupied(_), AccessKind::Write) => bug!("We already checked that there is no conflicting lock"),
+        for lock in alloc.locks.iter_mut(ptr.offset, len) {
+            if !lock.access_permitted(None, kind) {
+                return err!(MemoryAcquireConflict { ptr, len, kind, lock: lock.active.clone() });
+            }
+            // See what we have to do
+            match (&mut lock.active, kind) {
+                (active @ &mut NoLock, AccessKind::Write) => {
+                    *active = WriteLock(lifetime);
+                }
+                (active @ &mut NoLock, AccessKind::Read) => {
+                    *active = ReadLock(vec![lifetime]);
+                }
+                (&mut ReadLock(ref mut lifetimes), AccessKind::Read) => {
+                    lifetimes.push(lifetime);
+                }
+                _ => bug!("We already checked that there is no conflicting lock"),
+            }
         };
         Ok(())
     }
 
-    /// Release a write lock prematurely. If there's a read lock or someone else's lock, fail.
-    pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64) -> EvalResult<'tcx> {
+    /// Release or suspend a write lock of the given lifetime prematurely.
+    /// When releasing, if there is no write lock or someone else's write lock, that's an error.
+    /// When suspending, the same cases are fine; we just register an additional suspension.
+    pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64,
+                                     lock_region: Option<CodeExtent>, suspend: Option<CodeExtent>) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
+        let lock_lft = DynamicLifetime { frame: cur_frame, region: lock_region };
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
-        let mut remove_list : Vec<MemoryRange> = Vec::new();
-        for (range, lock) in alloc.iter_locks_mut(ptr.offset, len) {
-            match *lock {
-                WriteLock(ref lft) => {
-                    // Make sure we can release this lock
-                    if lft.frame != cur_frame {
-                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
-                    }
-                    if !range.contained_in(ptr.offset, len) {
-                        return err!(Unimplemented(format!("miri does not support releasing part of a write-locked region")));
-                    }
-                    // Release it later.  We cannot do this now.
-                    remove_list.push(*range);
+        'locks: for lock in alloc.locks.iter_mut(ptr.offset, len) {
+            trace!("Releasing {:?}", lock);
+            let is_our_lock = match lock.active {
+                WriteLock(lft) => {
+                    lft == lock_lft
                 }
-                ReadLock(_) => {
-                    // Abort here and bubble the error outwards so that we do not even register a suspension.
-                    return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.clone() });
-                },
+                ReadLock(_) | NoLock => {
+                    false
+                }
+            };
+            if is_our_lock {
+                // Disable the lock
+                lock.active = NoLock;
+            }
+            match suspend {
+                Some(suspend_region) => {
+                    if is_our_lock {
+                        // We just released this lock, so add a new suspension
+                        lock.suspended.push(SuspendedWriteLock { lft: lock_lft, suspensions: vec![suspend_region] });
+                    } else {
+                        // Find our lock in the suspended ones
+                        for suspended_lock in lock.suspended.iter_mut().rev() {
+                            if suspended_lock.lft == lock_lft {
+                                // Found it!
+                                suspended_lock.suspensions.push(suspend_region);
+                                continue 'locks;
+                            }
+                        }
+                        // We did not find it.  Someone else had the lock and we have not suspended it, that's just wrong.
+                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
+                    }
+                }
+                None => {
+                    // If we do not suspend, make sure we actually released something
+                    if !is_our_lock {
+                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
+                    }
+                }
             }
         }
 
-        for range in remove_list {
-            trace!("Releasing {:?}", alloc.locks[&range]);
-            alloc.locks.remove(&range);
-        }
+        Ok(())
+    }
 
-        // TODO: Test that we actually released a write lock for the entire covered region.
+    /// Release a suspension from the write lock.  If this is the last suspension or if there is no suspension, acquire the lock.
+    pub(crate) fn recover_write_lock(&mut self, ptr: MemoryPointer, len: u64,
+                                     lock_region: Option<CodeExtent>, suspended_region: CodeExtent, )
+        -> EvalResult<'tcx>
+    {
+        assert!(len > 0);
+        let cur_frame = self.cur_frame;
+        let lock_lft = DynamicLifetime { frame: cur_frame, region: lock_region };
+        let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
+
+        for lock in alloc.locks.iter_mut(ptr.offset, len) {
+            // If we have a suspension here, it will be the topmost one
+            let (got_the_lock, pop_suspension) = match lock.suspended.last_mut() {
+                None => (true, false),
+                Some(suspended_lock) => {
+                    if suspended_lock.lft == lock_lft {
+                        // That's us!  Remove suspension (it should be in there).  The same suspension can
+                        // occur multiple times (when there are multiple shared borrows of this that have the same
+                        // lifetime); only remove one of them.
+                        let idx = match suspended_lock.suspensions.iter().enumerate().find(|&(_, re)| re == &suspended_region) {
+                            None => // TODO: Can the user trigger this?
+                                bug!("We have this lock suspended, but not for the given region."),
+                            Some((idx, _)) => idx
+                        };
+                        suspended_lock.suspensions.remove(idx);
+                        let got_lock = suspended_lock.suspensions.is_empty();
+                        (got_lock, got_lock)
+                    } else {
+                        // Someone else's suspension up top, we should be able to grab the lock
+                        (true, false)
+                    }
+                }
+            };
+            if pop_suspension { // with NLL; we could do that up in the match above...
+                lock.suspended.pop();
+            } else {
+                // Sanity check: Our lock should not be in the suspension list
+                let found = lock.suspended.iter().find(|suspended_lock| suspended_lock.lft == lock_lft);
+                assert!(found.is_none());
+            }
+            if got_the_lock {
+                match lock.active {
+                    ref mut active @ NoLock => {
+                        *active = WriteLock(lock_lft);
+                    }
+                    _ => {
+                        return err!(MemoryAcquireConflict { ptr, len, kind: AccessKind::Write, lock: lock.active.clone() })
+                    }
+                }
+            }
+        }
 
         Ok(())
     }
@@ -549,28 +595,28 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         };
 
         for alloc in self.alloc_map.values_mut() {
-            // Collect things for removal as we cannot remove while iterating
-            let mut remove_list : Vec<MemoryRange> = Vec::new();
-            for (range, lock) in alloc.locks.iter_mut() {
+            for lock in alloc.locks.iter_mut_all() {
                 // Delete everything that ends now -- i.e., keep only all the other lifetimes.
-                match *lock {
+                let lock_ended = match lock.active {
                     WriteLock(ref lft) => {
-                        if has_ended(lft) {
-                            remove_list.push(*range);
-                        }
+                        has_ended(lft)
                     }
                     ReadLock(ref mut lfts) => {
                         lfts.retain(|lft| !has_ended(lft));
-                        if lfts.is_empty() {
-                            remove_list.push(*range);
-                        }
-                    },
+                        lfts.is_empty()
+                    }
+                    NoLock => false,
+                };
+                if lock_ended {
+                    lock.active = NoLock;
                 }
+                // Also clean up suspended write locks
+                lock.suspended.retain(|suspended_lock| !has_ended(&suspended_lock.lft));
             }
-            // Perform delayed removal
-            for range in remove_list {
-                alloc.locks.remove(&range);
-            }
+            // Clean up the map
+            alloc.locks.retain(|lock| {
+                match lock.active { NoLock => lock.suspended.len() > 0, _ => true }
+            });
         }
     }
 }
