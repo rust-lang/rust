@@ -1028,7 +1028,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.hir_id, arg_ty);
     }
 
-    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
+    {
+        let mut inh_tables = inherited.tables.borrow_mut();
+        let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
+        inh_tables.validate_hir_id(fn_hir_id);
+        inh_tables.liberated_fn_sigs.insert(fn_hir_id.local_id, fn_sig);
+    }
 
     fcx.check_return_expr(&body.value);
 

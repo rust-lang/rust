@@ -309,8 +309,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
-            let fn_sig_map = &self.tables.borrow().liberated_fn_sigs;
-            match fn_sig_map.get(&id) {
+            let tables = self.tables.borrow();
+            let fn_hir_id = self.tcx.hir.node_to_hir_id(id);
+            tables.validate_hir_id(fn_hir_id);
+            match tables.liberated_fn_sigs.get(&fn_hir_id.local_id) {
                 Some(f) => f.clone(),
                 None => {
                     bug!("No fn-sig entry for id={}", id);

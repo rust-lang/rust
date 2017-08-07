@@ -247,7 +247,7 @@ pub struct TypeckTables<'tcx> {
     /// (including late-bound regions) are replaced with free
     /// equivalents. This table is not used in trans (since regions
     /// are erased there) and hence is not serialized to metadata.
-    pub liberated_fn_sigs: NodeMap<ty::FnSig<'tcx>>,
+    pub liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
     /// For each FRU expression, record the normalized types of the fields
     /// of the struct - this is needed because it is non-trivial to
@@ -285,7 +285,7 @@ impl<'tcx> TypeckTables<'tcx> {
             upvar_capture_map: FxHashMap(),
             closure_tys: ItemLocalMap(),
             closure_kinds: ItemLocalMap(),
-            liberated_fn_sigs: NodeMap(),
+            liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: NodeMap(),
             cast_kinds: NodeMap(),
             used_trait_imports: DefIdSet(),

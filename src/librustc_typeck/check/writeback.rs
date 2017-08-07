@@ -348,9 +348,16 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_liberated_fn_sigs(&mut self) {
-        for (&node_id, fn_sig) in self.fcx.tables.borrow().liberated_fn_sigs.iter() {
-            let fn_sig = self.resolve(fn_sig, &node_id);
-            self.tables.liberated_fn_sigs.insert(node_id, fn_sig.clone());
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+
+        for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs.iter() {
+            let hir_id = hir::HirId {
+                owner: fcx_tables.local_id_root.index,
+                local_id,
+            };
+            let fn_sig = self.resolve(fn_sig, &hir_id);
+            self.tables.liberated_fn_sigs.insert(local_id, fn_sig.clone());
         }
     }
 
