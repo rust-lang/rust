@@ -4,10 +4,10 @@
 //! The initial pass matches items by name in the module hierarchy, registering item removal
 //! and addition, as well as structural changes to ADTs, type- or region parameters, and
 //! function signatures. The second pass then proceeds find non-public items that are named
-//! differently, yet are compatible in their usage. The (currently not implemented) third pass
-//! performs the same analysis on trait bounds. The fourth and final pass now uses the
-//! information collected in the previous passes to compare the types of all item pairs having
-//! been matched.
+//! differently, yet are compatible in their usage. The third pass now uses the information
+//! collected in the previous passes to compare the types and/or trait bounds of all item pairs
+//! that have been matched. Trait and inherent impls can't be matched by name, and are processed
+//! in a fourth pass that uses trait bounds to find matching impls.
 
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::DefId;
@@ -44,11 +44,6 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
     }
 
     // third pass
-    for (old, new) in id_mapping.items() {
-        diff_bounds(&mut changes, &id_mapping, tcx, old, new);
-    }
-
-    // fourth pass
     for (old, new) in id_mapping.items() {
         diff_types(&mut changes, &id_mapping, tcx, old, new);
     }
@@ -122,7 +117,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                                    tcx.def_span(n_def_id),
                                                    true);
 
-                                // FIXME: simplify these conditions ;)
+                                // this seemingly overly complex condition is needed to handle
+                                // `Restricted` visibility correctly.
                                 if o_vis == Public && n_vis != Public {
                                     changes.add_change(ItemMadePrivate, o_def_id, None);
                                 } else if o_vis != Public && n_vis == Public {
@@ -568,10 +564,10 @@ fn diff_generics(changes: &mut ChangeSet,
             (Some(old_region), Some(new_region)) => {
                 id_mapping.add_internal_item(old_region.def_id, new_region.def_id);
             },
-            (Some(_ /* old_region */), None) => {
+            (Some(_), None) => {
                 found.push(RegionParameterRemoved);
             },
-            (None, Some(_ /* new_region */)) => {
+            (None, Some(_)) => {
                 found.push(RegionParameterAdded);
             },
             (None, None) => unreachable!(),
@@ -615,19 +611,8 @@ fn diff_generics(changes: &mut ChangeSet,
     }
 }
 
-// Below functions constitute the third pass of analysis, in which parameter bounds of matching
-// items are used to determine matching relationships between items not being exported.
-
-/// Given two items, compare the bounds on their type and region parameters.
-fn diff_bounds<'a, 'tcx>(_changes: &mut ChangeSet,
-                         _id_mapping: &IdMapping,
-                         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         _old: Def,
-                         _new: Def) {
-}
-
-// Below functions constitute the fourth and last pass of analysis, in which the types and/or
-// trait bounds of matching items are compared for changes.
+// Below functions constitute the third pass of analysis, in which the types and/or trait bounds
+// of matching items are compared for changes.
 
 /// Given two items, compare their types.
 fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
@@ -689,6 +674,77 @@ fn diff_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         _ => (),
     }
 }
+
+/// Compare two types and their trait bounds, possibly registering the resulting change.
+fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                       id_mapping: &IdMapping,
+                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       orig_def_id: DefId,
+                       target_def_id: DefId,
+                       orig: Ty<'tcx>,
+                       target: Ty<'tcx>) {
+    info!("comparing types and bounds of {:?} / {:?}:\n  {:?} / {:?}",
+          orig_def_id, target_def_id, orig, target);
+
+    tcx.infer_ctxt().enter(|infcx| {
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, false);
+
+        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
+        // let orig = orig.subst(infcx.tcx, orig_substs);
+
+        // functions need inference, other items can declare defaulted type parameters
+        let target_substs = if target.is_fn() {
+            compcx.compute_target_infer_substs(target_def_id)
+        } else {
+            compcx.compute_target_default_substs(target_def_id)
+        };
+        let target = target.subst(infcx.tcx, target_substs);
+
+        let target_param_env =
+            infcx.tcx.param_env(target_def_id).subst(infcx.tcx, target_substs);
+
+        if let Some(err) =
+            compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
+        {
+            changes.add_change(TypeChanged { error: err }, orig_def_id, None);
+        } else {
+            // check the bounds if no type error has been found
+            compcx.check_bounds_bidirectional(changes,
+                                              tcx,
+                                              orig_def_id,
+                                              target_def_id,
+                                              orig_substs,
+                                              target_substs);
+        }
+    });
+}
+
+/// Compare the trait bounds of two items, possibly registering the resulting change.
+fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
+                        id_mapping: &IdMapping,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        orig_def_id: DefId,
+                        target_def_id: DefId) {
+    info!("comparing bounds of {:?} / {:?}", orig_def_id, target_def_id);
+
+    tcx.infer_ctxt().enter(|infcx| {
+        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, true);
+
+        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
+        let target_substs = compcx.compute_target_default_substs(target_def_id);
+
+        compcx.check_bounds_bidirectional(changes,
+                                          tcx,
+                                          orig_def_id,
+                                          target_def_id,
+                                          orig_substs,
+                                          target_substs);
+    })
+}
+
+// Below functions constitute the fourth pass of analysis, in which impls are matched up based on
+// their trait bounds and compared for changes, if applicable.
 
 /// Compare the inherent implementations of all matching items.
 fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
@@ -770,7 +826,7 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
     let all_impls = tcx.sess.cstore.implementations_of_trait(None);
 
-    for orig_impl_def_id in all_impls.iter() {
+    for orig_impl_def_id in &all_impls {
         let orig_trait_def_id = tcx.impl_trait_ref(*orig_impl_def_id).unwrap().def_id;
 
         let (forward_trans, err_type) =
@@ -793,104 +849,6 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
             changes.add_change(err_type, *orig_impl_def_id, None);
         }
     }
-}
-
-/// Compare two types and their trait bounds, possibly registering the resulting change.
-fn cmp_types<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
-                       id_mapping: &IdMapping,
-                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       orig_def_id: DefId,
-                       target_def_id: DefId,
-                       orig: Ty<'tcx>,
-                       target: Ty<'tcx>) {
-    info!("comparing types and bounds of {:?} / {:?}:\n  {:?} / {:?}",
-          orig_def_id, target_def_id, orig, target);
-
-    tcx.infer_ctxt().enter(|infcx| {
-        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, false);
-
-        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
-        let orig = compcx.forward_trans.translate_item_type(orig_def_id, orig);
-        // let orig = orig.subst(infcx.tcx, orig_substs);
-
-        // functions need inference, other items can declare defaulted type parameters
-        let target_substs = if target.is_fn() {
-            compcx.compute_target_infer_substs(target_def_id)
-        } else {
-            compcx.compute_target_default_substs(target_def_id)
-        };
-        let target = target.subst(infcx.tcx, target_substs);
-
-        let target_param_env =
-            infcx.tcx.param_env(target_def_id).subst(infcx.tcx, target_substs);
-
-        if let Some(err) =
-            compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
-        {
-            changes.add_change(TypeChanged { error: err }, orig_def_id, None);
-        } else {
-            // check the bounds if no type error has been found
-            compcx.check_bounds_bidirectional(changes,
-                                              tcx,
-                                              orig_def_id,
-                                              target_def_id,
-                                              orig_substs,
-                                              target_substs);
-        }
-    });
-}
-
-/// Compare the trait bounds of two items, possibly registering the resulting change.
-fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
-                        id_mapping: &IdMapping,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        orig_def_id: DefId,
-                        target_def_id: DefId) {
-    info!("comparing bounds of {:?} / {:?}", orig_def_id, target_def_id);
-
-    tcx.infer_ctxt().enter(|infcx| {
-        let compcx = TypeComparisonContext::target_new(&infcx, id_mapping, true);
-
-        let orig_substs = Substs::identity_for_item(infcx.tcx, target_def_id);
-        let target_substs = compcx.compute_target_default_substs(target_def_id);
-
-        compcx.check_bounds_bidirectional(changes,
-                                          tcx,
-                                          orig_def_id,
-                                          target_def_id,
-                                          orig_substs,
-                                          target_substs);
-    })
-}
-
-/// Compare two implementations and indicate whether the target one is compatible with the
-/// original one.
-fn match_trait_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                              trans: &TranslationContext<'a, 'tcx, 'tcx>,
-                              orig_def_id: DefId) -> bool {
-    debug!("matching: {:?}", orig_def_id);
-
-    tcx.infer_ctxt().enter(|infcx| {
-        let old_param_env = if let Some(env) =
-            trans.translate_param_env(orig_def_id, tcx.param_env(orig_def_id))
-        {
-            env
-        } else {
-            return false;
-        };
-
-        debug!("env: {:?}", old_param_env);
-
-        let orig = tcx
-            .impl_trait_ref(orig_def_id)
-            .unwrap();
-        debug!("trait ref: {:?}", orig);
-        debug!("translated ref: {:?}", trans.translate_trait_ref(orig_def_id, &orig));
-
-        let mut bound_cx = BoundContext::new(&infcx, old_param_env);
-        bound_cx.register_trait_ref(trans.translate_trait_ref(orig_def_id, &orig));
-        bound_cx.get_errors().is_none()
-    })
 }
 
 /// Compare an item pair in two inherent implementations and indicate whether the target one is
@@ -1001,5 +959,35 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
         }
 
         true
+    })
+}
+
+/// Compare two implementations and indicate whether the target one is compatible with the
+/// original one.
+fn match_trait_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              trans: &TranslationContext<'a, 'tcx, 'tcx>,
+                              orig_def_id: DefId) -> bool {
+    debug!("matching: {:?}", orig_def_id);
+
+    tcx.infer_ctxt().enter(|infcx| {
+        let old_param_env = if let Some(env) =
+            trans.translate_param_env(orig_def_id, tcx.param_env(orig_def_id))
+        {
+            env
+        } else {
+            return false;
+        };
+
+        debug!("env: {:?}", old_param_env);
+
+        let orig = tcx
+            .impl_trait_ref(orig_def_id)
+            .unwrap();
+        debug!("trait ref: {:?}", orig);
+        debug!("translated ref: {:?}", trans.translate_trait_ref(orig_def_id, &orig));
+
+        let mut bound_cx = BoundContext::new(&infcx, old_param_env);
+        bound_cx.register_trait_ref(trans.translate_trait_ref(orig_def_id, &orig));
+        bound_cx.get_errors().is_none()
     })
 }

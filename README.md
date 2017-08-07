@@ -69,19 +69,20 @@ implementations are not yet handled, and some type checks behave incorrectly.
 At the time of writing, the following types of changes are recognized and classified
 correctly:
 
-* items moving from `pub` to non-`pub`
+* items moving from `pub` to non-`pub` and vice-versa
 * items changing their kind, i.e. from a `struct` to an `enum`
 * additions and removals of region parameters to and from an item's declaration
 * additions and removals of (possibly defaulted) type parameters to and from an item's
   declaration
-* additions of new and removals of old enum variants
-* additions of new and removals of old enum variant- or struct fields
+* additions and removals of enum variants
+* additions and removals of enum variant- or struct fields
 * changes from tuple structs or variants to struct variants and vice-versa
 * changes to a function or method's constness
-* additions and removals of a self-parameter to and from methods
-* addition and removal of (posslibly defaulted) trait items
+* additions and removals of a self-parameter on methods
+* additions and removals of (posslibly defaulted) trait items
 * changes to the unsafety of a trait
-* type changes of all toplevel items
+* type changes of all toplevel items, as well as associated items in inherent impls and
+  trait definitions
 
 Yet, the results presented to the user are merely an approximation of the required
 versioning policy, especially at such an early stage of development.
