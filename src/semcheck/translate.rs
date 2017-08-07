@@ -422,6 +422,11 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 name: orig_entry.name,
             })
     }
+
+    /// Check whether a given `DefId` can be translated.
+    pub fn can_translate(&self, def_id: DefId) -> bool {
+        (self.translate_orig)(self.id_mapping, def_id).is_some()
+    }
 }
 
 #[derive(Clone)]

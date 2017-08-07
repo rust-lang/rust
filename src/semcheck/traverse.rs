@@ -765,41 +765,32 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    let to_new = TranslationContext::target_new(tcx, id_mapping, false);
+    let to_old = TranslationContext::target_old(tcx, id_mapping, false);
+
     let all_impls = tcx.sess.cstore.implementations_of_trait(None);
 
-    // for each trait impl in the old crate, ...
-    for old_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_old_crate(*did)) {
-        let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
-        if id_mapping.get_new_id(old_trait_def_id).is_none() {
+    for orig_impl_def_id in all_impls.iter() {
+        let orig_trait_def_id = tcx.impl_trait_ref(*orig_impl_def_id).unwrap().def_id;
+
+        let (forward_trans, err_type) =
+            if id_mapping.in_old_crate(*orig_impl_def_id) {
+                (&to_new, TraitImplTightened)
+            } else if id_mapping.in_new_crate(*orig_impl_def_id) {
+                (&to_old, TraitImplLoosened)
+            } else {
+                continue
+            };
+
+        if !forward_trans.can_translate(orig_trait_def_id) {
             continue;
         }
 
-        // ... try to match it with a new counterpart
-        if !match_trait_impl(id_mapping, tcx, *old_impl_def_id) {
-            let impl_span = tcx.def_span(*old_impl_def_id);
-
-            changes.new_change_impl(*old_impl_def_id,
-                                    tcx.item_path_str(*old_impl_def_id),
-                                    impl_span);
-            changes.add_change(TraitImplTightened, *old_impl_def_id, None);
-        }
-    }
-
-    // for each trait impl in the new crate, ...
-    for new_impl_def_id in all_impls.iter().filter(|&did| id_mapping.in_new_crate(*did)) {
-        let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
-        if id_mapping.get_old_id(new_trait_def_id).is_none() {
-            continue;
-        }
-
-        // ... try to match it with an old counterpart
-        if !match_trait_impl(id_mapping, tcx, *new_impl_def_id) {
-            let impl_span = tcx.def_span(*new_impl_def_id);
-
-            changes.new_change_impl(*new_impl_def_id,
-                                    tcx.item_path_str(*new_impl_def_id),
-                                    impl_span);
-            changes.add_change(TraitImplLoosened, *new_impl_def_id, None);
+        if !match_trait_impl(tcx, forward_trans, *orig_impl_def_id) {
+            changes.new_change_impl(*orig_impl_def_id,
+                                    tcx.item_path_str(*orig_impl_def_id),
+                                    tcx.def_span(*orig_impl_def_id));
+            changes.add_change(err_type, *orig_impl_def_id, None);
         }
     }
 }
@@ -874,15 +865,9 @@ fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 
 /// Compare two implementations and indicate whether the target one is compatible with the
 /// original one.
-fn match_trait_impl<'a, 'tcx>(id_mapping: &IdMapping,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn match_trait_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              trans: &TranslationContext<'a, 'tcx, 'tcx>,
                               orig_def_id: DefId) -> bool {
-    let trans = if id_mapping.in_old_crate(orig_def_id) {
-        TranslationContext::target_new(tcx, id_mapping, false)
-    } else {
-        TranslationContext::target_old(tcx, id_mapping, false)
-    };
-
     debug!("matching: {:?}", orig_def_id);
 
     tcx.infer_ctxt().enter(|infcx| {
