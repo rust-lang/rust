@@ -11,7 +11,7 @@ use interpret::{
 };
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(crate) fn drop_lvalue(&mut self, lval: Lvalue<'tcx>, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
+    pub(crate) fn drop_lvalue(&mut self, lval: Lvalue, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.
         // However, unaligned accesses will probably make the actual drop implementation fail -- a problem shared

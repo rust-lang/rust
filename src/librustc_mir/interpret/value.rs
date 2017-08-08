@@ -133,6 +133,12 @@ impl ::std::convert::From<MemoryPointer> for Pointer {
     }
 }
 
+impl<'a> ::std::convert::From<&'a MemoryPointer> for Pointer {
+    fn from(ptr: &'a MemoryPointer) -> Self {
+        PrimVal::Ptr(*ptr).into()
+    }
+}
+
 /// A `PrimVal` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes

@@ -38,7 +38,6 @@ pub use self::eval_context::{
 pub use self::lvalue::{
     Lvalue,
     LvalueExtra,
-    Global,
     GlobalId,
 };
 

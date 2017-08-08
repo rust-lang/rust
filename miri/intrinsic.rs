@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
@@ -30,7 +30,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
@@ -291,7 +291,6 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } => self.memory.write_repeat(ptr, 0, size)?,
                     Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat or unaligned ptr target"),
-                    Lvalue::Global(cid) => self.modify_global(cid, init)?,
                 }
             }
 
@@ -469,7 +468,6 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } =>
                         self.memory.mark_definedness(ptr, size, false)?,
                     Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat or unaligned ptr target"),
-                    Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
                 }
             }
 

@@ -18,7 +18,7 @@ use syntax::abi::Abi;
 
 use super::{
     EvalError, EvalResult, EvalErrorKind,
-    Global, GlobalId, Lvalue, LvalueExtra,
+    GlobalId, Lvalue, LvalueExtra,
     Memory, MemoryPointer, HasMemory,
     Kind as MemoryKind,
     operator,
@@ -41,7 +41,7 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
-    pub globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
+    pub globals: HashMap<GlobalId<'tcx>, MemoryPointer>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'tcx>>,
@@ -78,7 +78,7 @@ pub struct Frame<'tcx> {
     pub return_to_block: StackPopCleanup,
 
     /// The location where the result of the current stack frame should be written to.
-    pub return_lvalue: Lvalue<'tcx>,
+    pub return_lvalue: Lvalue,
 
     /// The list of locals for this stack frame, stored in order as
     /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
@@ -386,7 +386,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.type_align_with_substs(ty, self.substs())
     }
 
-    fn type_size_with_substs(
+    pub fn type_size_with_substs(
         &self,
         ty: Ty<'tcx>,
         substs: &'tcx Substs<'tcx>,
@@ -399,7 +399,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, u64> {
+    pub fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, u64> {
         self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
     }
 
@@ -419,7 +419,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         instance: ty::Instance<'tcx>,
         span: codemap::Span,
         mir: &'tcx mir::Mir<'tcx>,
-        return_lvalue: Lvalue<'tcx>,
+        return_lvalue: Lvalue,
         return_to_block: StackPopCleanup,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
@@ -485,31 +485,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             self.memory.set_cur_frame(cur_frame);
         }
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Global(id) = frame.return_lvalue {
-                let global_value = self.globals.get_mut(&id)
-                    .expect("global should have been cached (static)");
-                match global_value.value {
-                    // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                    Value::ByRef { ptr, aligned: _aligned } =>
-                        // Alignment does not matter for this call
-                        self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?,
-                    Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
-                        self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
-                    },
-                    Value::ByValPair(val1, val2) => {
-                        if let PrimVal::Ptr(ptr) = val1 {
-                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
-                        }
-                        if let PrimVal::Ptr(ptr) = val2 {
-                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
-                        }
-                    },
-                }
-                // see comment on `initialized` field
-                assert!(!global_value.initialized);
-                global_value.initialized = true;
-                assert_eq!(global_value.mutable, Mutability::Mutable);
-                global_value.mutable = mutable;
+            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Ptr{ ptr, .. } = frame.return_lvalue {
+                // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
+                self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?
             } else {
                 bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_lvalue);
             },
@@ -543,7 +521,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn assign_discr_and_fields(
         &mut self,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         discr_offset: u64,
         operands: &[mir::Operand<'tcx>],
@@ -568,7 +546,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn assign_fields(
         &mut self,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<'tcx> {
@@ -1046,7 +1024,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Literal::Item { def_id, substs } => {
                         let instance = self.resolve_associated_const(def_id, substs);
                         let cid = GlobalId { instance, promoted: None };
-                        self.globals.get(&cid).expect("static/const not cached").value
+                        Value::by_ref(self.globals.get(&cid).expect("static/const not cached").into())
                     }
 
                     Literal::Promoted { index } => {
@@ -1054,7 +1032,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             instance: self.frame().instance,
                             promoted: Some(index),
                         };
-                        self.globals.get(&cid).expect("promoted not cached").value
+                        Value::by_ref(self.globals.get(&cid).expect("promoted not cached").into())
                     }
                 };
 
@@ -1076,8 +1054,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn force_allocation(
         &mut self,
-        lvalue: Lvalue<'tcx>,
-    ) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        lvalue: Lvalue,
+    ) -> EvalResult<'tcx, Lvalue> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
                 // -1 since we don't store the return value
@@ -1098,28 +1076,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
             }
             Lvalue::Ptr { .. } => lvalue,
-            Lvalue::Global(cid) => {
-                let global_val = self.globals.get(&cid).expect("global not cached").clone();
-                match global_val.value {
-                    Value::ByRef { ptr, aligned } =>
-                        Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None },
-                    _ => {
-                        let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
-                        self.memory.mark_static(ptr.alloc_id);
-                        self.write_value_to_ptr(global_val.value, ptr.into(), global_val.ty)?;
-                        // see comment on `initialized` field
-                        if global_val.initialized {
-                            self.memory.mark_static_initalized(ptr.alloc_id, global_val.mutable)?;
-                        }
-                        let lval = self.globals.get_mut(&cid).expect("already checked");
-                        *lval = Global {
-                            value: Value::by_ref(ptr.into()),
-                            .. global_val
-                        };
-                        Lvalue::from_ptr(ptr)
-                    },
-                }
-            }
         };
         Ok(new_lvalue)
     }
@@ -1149,7 +1105,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn write_null(
         &mut self,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
@@ -1157,7 +1113,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn write_ptr(
         &mut self,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         val: Pointer,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -1166,7 +1122,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn write_primval(
         &mut self,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         val: PrimVal,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -1176,7 +1132,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn write_value(
         &mut self,
         src_val: Value,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         //trace!("Writing {:?} to {:?} at type {:?}", src_val, dest, dest_ty);
@@ -1185,21 +1141,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // correct if we never look at this data with the wrong type.
 
         match dest {
-            Lvalue::Global(cid) => {
-                let dest = self.globals.get_mut(&cid).expect("global should be cached").clone();
-                if dest.mutable == Mutability::Immutable {
-                    return err!(ModifiedConstantMemory);
-                }
-                let write_dest = |this: &mut Self, val| {
-                    *this.globals.get_mut(&cid).expect("already checked") = Global {
-                        value: val,
-                        ..dest
-                    };
-                    Ok(())
-                };
-                self.write_value_possibly_by_val(src_val, write_dest, dest.value, dest_ty)
-            },
-
             Lvalue::Ptr { ptr, extra, aligned } => {
                 assert_eq!(extra, LvalueExtra::None);
                 self.write_maybe_aligned_mut(aligned,
@@ -1542,7 +1483,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         src: Value,
         src_ty: Ty<'tcx>,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         sty: Ty<'tcx>,
         dty: Ty<'tcx>,
@@ -1578,7 +1519,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         src: Value,
         src_ty: Ty<'tcx>,
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match (&src_ty.sty, &dest_ty.sty) {
@@ -1640,7 +1581,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub fn dump_local(&self, lvalue: Lvalue<'tcx>) {
+    pub fn dump_local(&self, lvalue: Lvalue) {
         // Debug output
         if let Lvalue::Local { frame, local } = lvalue {
             let mut allocs = Vec::new();
@@ -1680,20 +1621,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    /// Convenience function to ensure correct usage of globals and code-sharing with locals.
-    pub fn modify_global<F>(&mut self, cid: GlobalId<'tcx>, f: F) -> EvalResult<'tcx>
-        where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
-    {
-        let mut val = self.globals.get(&cid).expect("global not cached").clone();
-        if val.mutable == Mutability::Immutable {
-            return err!(ModifiedConstantMemory);
-        }
-        val.value = f(self, val.value)?;
-        *self.globals.get_mut(&cid).expect("already checked") = val;
-        Ok(())
-    }
-
-    /// Convenience function to ensure correct usage of locals and code-sharing with globals.
+    /// Convenience function to ensure correct usage of locals
     pub fn modify_local<F>(
         &mut self,
         frame: usize,

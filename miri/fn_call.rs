@@ -23,7 +23,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         def_id: DefId,
         arg_operands: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
@@ -33,7 +33,7 @@ pub trait EvalContextExt<'tcx> {
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
@@ -42,7 +42,7 @@ pub trait EvalContextExt<'tcx> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -53,7 +53,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -89,7 +89,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         def_id: DefId,
         arg_operands: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
@@ -329,8 +329,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     if let Ok(instance) = self.resolve_path(path) {
                         let cid = GlobalId { instance, promoted: None };
                         // compute global if not cached
-                        let val = match self.globals.get(&cid).map(|glob| glob.value) {
-                            Some(value) => self.value_to_primval(value, usize)?.to_u64()?,
+                        let val = match self.globals.get(&cid).map(|&ptr| ptr) {
+                            Some(ptr) => self.value_to_primval(Value::by_ref(ptr.into()), usize)?.to_u64()?,
                             None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
                         if val == name {
@@ -459,7 +459,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     fn call_missing_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,

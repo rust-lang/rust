@@ -204,7 +204,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,

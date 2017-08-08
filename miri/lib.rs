@@ -167,7 +167,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -179,7 +179,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: ty::Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,

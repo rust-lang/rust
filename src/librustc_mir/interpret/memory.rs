@@ -234,12 +234,6 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     /// The AllocId to assign to the next new regular allocation. Always incremented, never gets smaller.
     next_alloc_id: u64,
 
-    /// Set of statics, constants, promoteds, vtables, ... to prevent `mark_static_initalized` from
-    /// stepping out of its own allocations. This set only contains statics backed by an
-    /// allocation. If they are ByVal or ByValPair they are not here, but will be inserted once
-    /// they become ByRef.
-    static_alloc: HashSet<AllocId>,
-
     /// Number of virtual bytes allocated.
     memory_usage: u64,
 
@@ -280,7 +274,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             layout,
             memory_size: max_memory,
             memory_usage: 0,
-            static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
             reads_are_aligned: Cell::new(true),
             writes_are_aligned: Cell::new(true),
@@ -859,18 +852,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
 /// Reading and writing
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
-    /// mark an allocation as being the entry point to a static (see `static_alloc` field)
-    pub fn mark_static(&mut self, alloc_id: AllocId) {
-        trace!("mark_static: {:?}", alloc_id);
-        if !self.static_alloc.insert(alloc_id) {
-            bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
-        }
-    }
 
     /// mark an allocation pointed to by a static as static and initialized
     pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
         // relocations into other statics are not "inner allocations"
-        if !self.static_alloc.contains(&alloc) {
+        if self.get(alloc).ok().map_or(false, |alloc| alloc.kind != Kind::UninitializedStatic) {
             self.mark_static_initalized(alloc, mutability)?;
         }
         Ok(())

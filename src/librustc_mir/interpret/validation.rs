@@ -16,7 +16,7 @@ use super::{
     Machine,
 };
 
-pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue<'tcx>>;
+pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
 
 #[derive(Copy, Clone, Debug)]
 enum ValidationMode {
@@ -242,8 +242,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
                 }
-                Lvalue::Local { .. } | Lvalue::Global(..) => {
-                    // These are not backed by memory, so we have nothing to do.
+                Lvalue::Local { .. }  => {
+                    // Not backed by memory, so we have nothing to do.
                 }
             }
         }
