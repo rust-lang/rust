@@ -528,7 +528,6 @@ extern {
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
-    fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
     fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const u8, len: libc::size_t);
 }
@@ -629,7 +628,7 @@ pub fn render(w: &mut fmt::Formatter,
                      level: libc::c_int, data: *const hoedown_renderer_data,
                      _: libc::size_t) {
         // hoedown does this, we may as well too
-        unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
+        unsafe { hoedown_buffer_put(ob, "\n".as_ptr(), 1); }
 
         // Extract the text provided
         let s = if text.is_null() {
