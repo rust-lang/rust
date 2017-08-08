@@ -1,0 +1,11 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_apfloat"
+version = "0.0.0"
+
+[lib]
+name = "rustc_apfloat"
+path = "lib.rs"
+
+[dependencies]
+rustc_bitflags = { path = "../librustc_bitflags" }

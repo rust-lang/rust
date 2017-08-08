@@ -10,7 +10,6 @@
 
 // The Rust HIR.
 
-pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
@@ -49,7 +48,7 @@ use rustc_data_structures::indexed_vec;
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// HIR doesn't commit to a concrete storage type and have its own alias for a vector.
+/// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
 /// behavior. Unlike AST, HIR is mostly a static structure, so we can use an owned slice instead
 /// of `Vec` to avoid keeping extra capacity.
@@ -76,14 +75,14 @@ pub mod pat_util;
 pub mod print;
 pub mod svh;
 
-/// A HirId uniquely identifies a node in the HIR of then current crate. It is
+/// A HirId uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the DefIndex of the directly enclosing
 /// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
 /// and the `local_id` which is unique within the given owner.
 ///
 /// This two-level structure makes for more stable values: One can move an item
 /// around within the source code, or add or remove stuff before it, without
-/// the local_id part of the HirId changing, which is a very useful property
+/// the local_id part of the HirId changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
@@ -628,10 +627,28 @@ pub struct FieldPat {
     pub is_shorthand: bool,
 }
 
+/// Explicit binding annotations given in the HIR for a binding. Note
+/// that this is not the final binding *mode* that we infer after type
+/// inference.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum BindingMode {
-    BindByRef(Mutability),
-    BindByValue(Mutability),
+pub enum BindingAnnotation {
+  /// No binding annotation given: this means that the final binding mode
+  /// will depend on whether we have skipped through a `&` reference
+  /// when matching. For example, the `x` in `Some(x)` will have binding
+  /// mode `None`; if you do `let Some(x) = &Some(22)`, it will
+  /// ultimately be inferred to be by-reference.
+  ///
+  /// Note that implicit reference skipping is not implemented yet (#42640).
+  Unannotated,
+
+  /// Annotated with `mut x` -- could be either ref or not, similar to `None`.
+  Mutable,
+
+  /// Annotated as `ref`, like `ref x`
+  Ref,
+
+  /// Annotated as `ref mut x`.
+  RefMut,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -647,7 +664,7 @@ pub enum PatKind {
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
     /// The `DefId` is for the definition of the variable being bound.
-    Binding(BindingMode, DefId, Spanned<Name>, Option<P<Pat>>),
+    Binding(BindingAnnotation, DefId, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -682,6 +699,16 @@ pub enum PatKind {
 pub enum Mutability {
     MutMutable,
     MutImmutable,
+}
+
+impl Mutability {
+    /// Return MutMutable only if both arguments are mutable.
+    pub fn and(self, other: Self) -> Self {
+        match self {
+            MutMutable => other,
+            MutImmutable => MutImmutable,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -890,6 +917,13 @@ impl Decl_ {
         match *self {
             DeclLocal(ref l) => &l.attrs,
             DeclItem(_) => &[]
+        }
+    }
+
+    pub fn is_local(&self) -> bool {
+        match *self {
+            Decl_::DeclLocal(_) => true,
+            _ => false,
         }
     }
 }
@@ -1686,7 +1720,7 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
-    /// An`extern crate` item, with optional original crate name,
+    /// An `extern crate` item, with optional original crate name,
     ///
     /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
     ItemExternCrate(Option<Name>),

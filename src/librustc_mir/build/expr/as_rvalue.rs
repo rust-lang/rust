@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Yield { value } => {
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let resume = this.cfg.start_new_block();
-                let cleanup = this.generator_drop_cleanup(expr_span);
+                let cleanup = this.generator_drop_cleanup();
                 this.cfg.terminate(block, source_info, TerminatorKind::Yield {
                     value: value,
                     resume: resume,

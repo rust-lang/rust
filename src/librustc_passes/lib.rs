@@ -45,3 +45,5 @@ pub mod loops;
 pub mod mir_stats;
 pub mod no_asm;
 pub mod static_recursion;
+
+__build_diagnostic_array! { librustc_passes, DIAGNOSTICS }

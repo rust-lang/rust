@@ -1025,6 +1025,9 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "the directory the MIR is dumped into"),
     dump_mir_exclude_pass_number: bool = (false, parse_bool, [UNTRACKED],
           "if set, exclude the pass number when dumping MIR (used in tests)"),
+    mir_emit_validate: usize = (0, parse_uint, [TRACKED],
+          "emit Validate MIR statements, interpreted e.g. by miri (0: do not emit; 1: if function \
+           contains unsafe block, only validate arguments; 2: always emit full validation)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
           "print some performance-related statistics"),
     hir_stats: bool = (false, parse_bool, [UNTRACKED],
@@ -1059,6 +1062,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "choose which RELRO level to use"),
     nll: bool = (false, parse_bool, [UNTRACKED],
                  "run the non-lexical lifetimes MIR pass"),
+    trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
+        "generate a graphical HTML report of time spent in trans and LLVM"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1496,6 +1501,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
 
     if cg.codegen_units < 1 {
         early_error(error_format, "Value for codegen units must be a positive nonzero integer");
+    }
+
+    // It's possible that we have `codegen_units > 1` but only one item in
+    // `trans.modules`.  We could theoretically proceed and do LTO in that
+    // case, but it would be confusing to have the validity of
+    // `-Z lto -C codegen-units=2` depend on details of the crate being
+    // compiled, so we complain regardless.
+    if cg.lto && cg.codegen_units > 1 {
+        // This case is impossible to handle because LTO expects to be able
+        // to combine the entire crate and all its dependencies into a
+        // single compilation unit, but each codegen unit is in a separate
+        // LLVM context, so they can't easily be combined.
+        early_error(error_format, "can't perform LTO when using multiple codegen units");
+    }
+
+    if cg.lto && debugging_opts.incremental.is_some() {
+        early_error(error_format, "can't perform LTO when compiling incrementally");
     }
 
     let mut prints = Vec::<PrintRequest>::new();

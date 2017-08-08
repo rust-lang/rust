@@ -91,9 +91,6 @@ check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 // - if we are covariant, then 'a and 'b can be set to the call-site
 //   intersection;
 // - if we are contravariant, then 'a can be inferred to 'static.
-//
-// FIXME(#32330) this is true, but we are not currently impl'ing this
-// full semantics
 check! { bound_a_b_vs_bound_a: (for<'a,'b> fn(&'a u32, &'b u32),
                                 for<'a>    fn(&'a u32, &'a u32)) }
 check! { bound_co_a_b_vs_bound_co_a: (for<'a,'b> fn(Co<'a>, Co<'b>),

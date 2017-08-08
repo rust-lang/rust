@@ -65,6 +65,7 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
 
                 LvalueContext::Inspect |
                 LvalueContext::Consume |
+                LvalueContext::Validate |
 
                 // We consider drops to always be uses of locals.
                 // Drop eloboration should be run before this analysis otherwise

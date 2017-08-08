@@ -60,6 +60,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
         ident: ast::Ident::from_str(name),
         id: ast::DUMMY_NODE_ID,
         span: DUMMY_SP,
+        tokens: None,
     }));
 
     let span = ignored_span(DUMMY_SP);
@@ -82,6 +83,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
         id: ast::DUMMY_NODE_ID,
         ident: keywords::Invalid.ident(),
         span: span,
+        tokens: None,
     }));
 
     krate

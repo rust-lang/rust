@@ -3,8 +3,15 @@
     "intrinsic_prefix": "_vec_",
     "llvm_prefix": "llvm.ppc.altivec.",
     "number_info": {
-        "unsigned": {},
-        "signed": {}
+        "unsigned": {
+            "kind" : "u",
+            "data_type_short": { "8": "b", "16": "h", "32": "w", "64": "d" }
+        },
+        "signed": {
+            "kind" : "s",
+            "data_type_short": { "8": "b", "16": "h", "32": "w", "64": "d" }
+        },
+        "float": {}
     },
     "width_info": {
         "128": { "width": "" }
@@ -16,6 +23,55 @@
             "llvm": "vperm",
             "ret": "s32",
             "args": ["0", "0", "s8"]
+        },
+        {
+            "intrinsic": "mradds",
+            "width": [128],
+            "llvm": "vmhraddshs",
+            "ret": "s16",
+            "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "cmpb",
+            "width": [128],
+            "llvm": "vcmpbfp",
+            "ret": "s32",
+            "args": ["f32", "f32"]
+        },
+        {
+            "intrinsic": "cmpeq{0.data_type_short}",
+            "width": [128],
+            "llvm": "vcmpequ{0.data_type_short}",
+            "ret": "s(8-32)",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "cmpgt{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vcmpgt{1.kind}{1.data_type_short}",
+            "ret": "s(8-32)",
+            "args": ["0u", "1"]
+        },
+        {
+            "intrinsic": "cmpgt{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vcmpgt{1.kind}{1.data_type_short}",
+            "ret": "s(8-32)",
+            "args": ["0", "1"]
+        },
+        {
+            "intrinsic": "max{0.kind}{0.data_type_short}",
+            "width": [128],
+            "llvm": "vmax{0.kind}{0.data_type_short}",
+            "ret": "i(8-32)",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "min{0.kind}{0.data_type_short}",
+            "width": [128],
+            "llvm": "vmin{0.kind}{0.data_type_short}",
+            "ret": "i(8-32)",
+            "args": ["0", "0"]
         }
     ]
 }

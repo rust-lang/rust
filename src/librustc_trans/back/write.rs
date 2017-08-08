@@ -10,36 +10,42 @@
 
 use back::lto;
 use back::link::{self, get_linker, remove};
+use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
+use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
+use time_graph::{self, TimeGraph};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
-use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
+use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use rustc::hir::def_id::CrateNum;
-use rustc::util::common::{time, time_depth, set_time_depth, path2cstr};
-use rustc::util::fs::link_or_copy;
+use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
+use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
-use errors::emitter::Emitter;
+use errors::emitter::{Emitter};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
+use syntax_pos::symbol::Symbol;
 use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
-use crossbeam::{scope, Scope};
 use rustc_demangle;
 
-use std::cmp;
 use std::ffi::CString;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str;
-use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::slice;
+use std::time::Instant;
+use std::thread;
 use libc::{c_uint, c_void, c_char, size_t};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
@@ -190,7 +196,6 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
 
 /// Module-specific configuration for `optimize_and_codegen`.
-#[derive(Clone)]
 pub struct ModuleConfig {
     /// LLVM TargetMachine to use for codegen.
     tm: TargetMachineRef,
@@ -229,9 +234,9 @@ pub struct ModuleConfig {
 unsafe impl Send for ModuleConfig { }
 
 impl ModuleConfig {
-    fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
+    fn new(sess: &Session, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
-            tm: tm,
+            tm: create_target_machine(sess),
             passes: passes,
             opt_level: None,
             opt_size: None,
@@ -255,10 +260,10 @@ impl ModuleConfig {
         }
     }
 
-    fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
+    fn set_flags(&mut self, sess: &Session, no_builtins: bool) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
-        self.no_builtins = trans.no_builtins;
+        self.no_builtins = no_builtins;
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
@@ -279,20 +284,55 @@ impl ModuleConfig {
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
     }
+
+    fn clone(&self, sess: &Session) -> ModuleConfig {
+        ModuleConfig {
+            tm: create_target_machine(sess),
+            passes: self.passes.clone(),
+            opt_level: self.opt_level,
+            opt_size: self.opt_size,
+
+            emit_no_opt_bc: self.emit_no_opt_bc,
+            emit_bc: self.emit_bc,
+            emit_lto_bc: self.emit_lto_bc,
+            emit_ir: self.emit_ir,
+            emit_asm: self.emit_asm,
+            emit_obj: self.emit_obj,
+            obj_is_bitcode: self.obj_is_bitcode,
+
+            no_verify: self.no_verify,
+            no_prepopulate_passes: self.no_prepopulate_passes,
+            no_builtins: self.no_builtins,
+            time_passes: self.time_passes,
+            vectorize_loop: self.vectorize_loop,
+            vectorize_slp: self.vectorize_slp,
+            merge_functions: self.merge_functions,
+            inline_threshold: self.inline_threshold,
+        }
+    }
+}
+
+impl Drop for ModuleConfig {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustDisposeTargetMachine(self.tm);
+        }
+    }
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
-pub struct CodegenContext<'a> {
+#[derive(Clone)]
+pub struct CodegenContext {
     // Resouces needed when running LTO
     pub time_passes: bool,
     pub lto: bool,
     pub no_landing_pads: bool,
-    pub exported_symbols: &'a ExportedSymbols,
-    pub opts: &'a config::Options,
+    pub exported_symbols: Arc<ExportedSymbols>,
+    pub opts: Arc<config::Options>,
     pub crate_types: Vec<config::CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
     // Handler to use for diagnostics produced during codegen.
-    pub handler: &'a Handler,
+    pub diag_emitter: SharedEmitter,
     // LLVM passes added by plugins.
     pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
@@ -303,17 +343,27 @@ pub struct CodegenContext<'a> {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    pub tx: Sender<Message>,
+    coordinator_send: Sender<Message>,
+    // A reference to the TimeGraph so we can register timings. None means that
+    // measuring is disabled.
+    time_graph: Option<TimeGraph>,
+}
+
+impl CodegenContext {
+    fn create_diag_handler(&self) -> Handler {
+        Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
+    }
 }
 
 struct HandlerFreeVars<'a> {
-    cgcx: &'a CodegenContext<'a>,
+    cgcx: &'a CodegenContext,
+    diag_handler: &'a Handler,
 }
 
-unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
+unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
                                                msg: &'b str,
                                                cookie: c_uint) {
-    drop(cgcx.tx.send(Message::InlineAsmError(cookie as u32, msg.to_string())));
+    cgcx.diag_emitter.inline_asm_error(cookie as u32, msg.to_string());
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
@@ -328,7 +378,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
+    let HandlerFreeVars { cgcx, diag_handler, .. } = *(user as *const HandlerFreeVars);
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -344,7 +394,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
             };
 
             if enabled {
-                cgcx.handler.note_without_error(&format!("optimization {} for {} at {}:{}:{}: {}",
+                diag_handler.note_without_error(&format!("optimization {} for {} at {}:{}:{}: {}",
                                                 opt.kind.describe(),
                                                 opt.pass_name,
                                                 opt.filename,
@@ -360,25 +410,32 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
 // Unsafe due to LLVM calls.
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
+                               diag_handler: &Handler,
                                mtrans: ModuleTranslation,
-                               mllvm: ModuleLlvm,
                                config: ModuleConfig,
                                output_names: OutputFilenames)
-    -> Result<(), FatalError>
+    -> Result<CompiledModule, FatalError>
 {
-    let llmod = mllvm.llmod;
-    let llcx = mllvm.llcx;
+    let (llmod, llcx) = match mtrans.source {
+        ModuleSource::Translated(ref llvm) => (llvm.llmod, llvm.llcx),
+        ModuleSource::Preexisting(_) => {
+            bug!("optimize_and_codegen: called with ModuleSource::Preexisting")
+        }
+    };
+
     let tm = config.tm;
 
     let fv = HandlerFreeVars {
         cgcx: cgcx,
+        diag_handler: diag_handler,
     };
     let fv = &fv as *const HandlerFreeVars as *mut c_void;
 
     llvm::LLVMRustSetInlineAsmDiagnosticHandler(llcx, inline_asm_handler, fv);
     llvm::LLVMContextSetDiagnosticHandler(llcx, diagnostic_handler, fv);
 
-    let module_name = Some(&mtrans.name[..]);
+    let module_name = mtrans.name.clone();
+    let module_name = Some(&module_name[..]);
 
     if config.emit_no_opt_bc {
         let out = output_names.temp_path_ext("no-opt.bc", module_name);
@@ -406,7 +463,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 llvm::PassKind::Function => fpm,
                 llvm::PassKind::Module => mpm,
                 llvm::PassKind::Other => {
-                    cgcx.handler.err("Encountered LLVM pass kind we can't handle");
+                    diag_handler.err("Encountered LLVM pass kind we can't handle");
                     return true
                 },
             };
@@ -426,25 +483,25 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         for pass in &config.passes {
             if !addpass(pass) {
-                cgcx.handler.warn(&format!("unknown pass `{}`, ignoring",
+                diag_handler.warn(&format!("unknown pass `{}`, ignoring",
                                            pass));
             }
         }
 
         for pass in &cgcx.plugin_passes {
             if !addpass(pass) {
-                cgcx.handler.err(&format!("a plugin asked for LLVM pass \
+                diag_handler.err(&format!("a plugin asked for LLVM pass \
                                            `{}` but LLVM does not \
                                            recognize it", pass));
             }
         }
 
-        cgcx.handler.abort_if_errors();
+        diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, &format!("llvm function passes [{}]", cgcx.worker), ||
+        time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-        time(config.time_passes, &format!("llvm module passes [{}]", cgcx.worker), ||
+        time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
              llvm::LLVMRunPassManager(mpm, llmod));
 
         // Deallocate managers that we're now done with
@@ -456,6 +513,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 let temp_no_opt_bc_filename =
                     output_names.temp_path_ext("no-opt.lto.bc", module_name);
                 lto::run(cgcx,
+                         diag_handler,
                          llmod,
                          tm,
                          &config,
@@ -506,7 +564,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, bc_out_c.as_ptr());
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", cgcx.worker),
+    time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = output_names.temp_path(OutputType::LlvmAssembly, module_name);
@@ -561,7 +619,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                 llmod
             };
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path,
+                write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
             if config.emit_obj {
@@ -571,7 +629,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &obj_out,
+                write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
             })?;
         }
@@ -582,67 +640,53 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     if copy_bc_to_obj {
         debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
         if let Err(e) = link_or_copy(&bc_out, &obj_out) {
-            cgcx.handler.err(&format!("failed to copy bitcode to object file: {}", e));
+            diag_handler.err(&format!("failed to copy bitcode to object file: {}", e));
         }
     }
 
     if rm_bc {
         debug!("removing_bitcode {:?}", bc_out);
         if let Err(e) = fs::remove_file(&bc_out) {
-            cgcx.handler.err(&format!("failed to remove bitcode: {}", e));
+            diag_handler.err(&format!("failed to remove bitcode: {}", e));
         }
     }
 
-    llvm::LLVMRustDisposeTargetMachine(tm);
-    Ok(())
+    Ok(mtrans.into_compiled_module(config.emit_obj, config.emit_bc))
 }
 
-
-pub fn cleanup_llvm(trans: &CrateTranslation) {
-    for module in trans.modules.iter() {
-        unsafe {
-            match module.source {
-                ModuleSource::Translated(llvm) => {
-                    llvm::LLVMDisposeModule(llvm.llmod);
-                    llvm::LLVMContextDispose(llvm.llcx);
-                }
-                ModuleSource::Preexisting(_) => {
-                }
-            }
-        }
-    }
+pub struct CompiledModules {
+    pub modules: Vec<CompiledModule>,
+    pub metadata_module: CompiledModule,
+    pub allocator_module: Option<CompiledModule>,
 }
 
-pub fn run_passes(sess: &Session,
-                  trans: &CrateTranslation,
-                  output_types: &OutputTypes,
-                  crate_output: &OutputFilenames) {
-    // It's possible that we have `codegen_units > 1` but only one item in
-    // `trans.modules`.  We could theoretically proceed and do LTO in that
-    // case, but it would be confusing to have the validity of
-    // `-Z lto -C codegen-units=2` depend on details of the crate being
-    // compiled, so we complain regardless.
-    if sess.lto() && sess.opts.cg.codegen_units > 1 {
-        // This case is impossible to handle because LTO expects to be able
-        // to combine the entire crate and all its dependencies into a
-        // single compilation unit, but each codegen unit is in a separate
-        // LLVM context, so they can't easily be combined.
-        sess.fatal("can't perform LTO when using multiple codegen units");
-    }
+fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
+    sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
+    sess.opts.output_types.contains_key(&OutputType::Exe)
+}
 
-    // Sanity check
-    assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
-            sess.opts.debugging_opts.incremental.is_some() ||
-            !sess.opts.output_types.should_trans() ||
-            sess.opts.debugging_opts.no_trans);
-
-    let tm = create_target_machine(sess);
+pub fn start_async_translation(sess: &Session,
+                               crate_output: &OutputFilenames,
+                               time_graph: Option<TimeGraph>,
+                               crate_name: Symbol,
+                               link: LinkMeta,
+                               metadata: EncodedMetadata,
+                               exported_symbols: Arc<ExportedSymbols>,
+                               no_builtins: bool,
+                               windows_subsystem: Option<String>,
+                               linker_info: LinkerInfo,
+                               no_integrated_as: bool)
+                               -> OngoingCrateTranslation {
+    let output_types_override = if no_integrated_as {
+        OutputTypes::new(&[(OutputType::Assembly, None)])
+    } else {
+        sess.opts.output_types.clone()
+    };
 
     // Figure out what we actually need to build.
-
-    let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
-    let mut metadata_config = ModuleConfig::new(tm, vec![]);
-    let mut allocator_config = ModuleConfig::new(tm, vec![]);
+    let mut modules_config = ModuleConfig::new(sess, sess.opts.cg.passes.clone());
+    let mut metadata_config = ModuleConfig::new(sess, vec![]);
+    let mut allocator_config = ModuleConfig::new(sess, vec![]);
 
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
@@ -679,16 +723,11 @@ pub fn run_passes(sess: &Session,
     // Emit bitcode files for the crate if we're emitting an rlib.
     // Whenever an rlib is created, the bitcode is inserted into the
     // archive in order to allow LTO against it.
-    let needs_crate_bitcode =
-            sess.crate_types.borrow().contains(&config::CrateTypeRlib) &&
-            sess.opts.output_types.contains_key(&OutputType::Exe);
-    let needs_crate_object =
-            sess.opts.output_types.contains_key(&OutputType::Exe);
-    if needs_crate_bitcode {
+    if need_crate_bitcode_for_rlib(sess) {
         modules_config.emit_bc = true;
     }
 
-    for output_type in output_types.keys() {
+    for output_type in output_types_override.keys() {
         match *output_type {
             OutputType::Bitcode => { modules_config.emit_bc = true; }
             OutputType::LlvmAssembly => { modules_config.emit_ir = true; }
@@ -714,76 +753,86 @@ pub fn run_passes(sess: &Session,
         }
     }
 
-    modules_config.set_flags(sess, trans);
-    metadata_config.set_flags(sess, trans);
-    allocator_config.set_flags(sess, trans);
+    modules_config.set_flags(sess, no_builtins);
+    metadata_config.set_flags(sess, no_builtins);
+    allocator_config.set_flags(sess, no_builtins);
 
-
-    // Populate a buffer with a list of codegen threads.  Items are processed in
-    // LIFO order, just because it's a tiny bit simpler that way.  (The order
-    // doesn't actually matter.)
-    let mut work_items = Vec::with_capacity(1 + trans.modules.len());
-
-    {
-        let work = build_work_item(sess,
-                                   trans.metadata_module.clone(),
-                                   metadata_config.clone(),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
-    if let Some(allocator) = trans.allocator_module.clone() {
-        let work = build_work_item(sess,
-                                   allocator,
-                                   allocator_config.clone(),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
-    for mtrans in trans.modules.iter() {
-        let work = build_work_item(sess,
-                                   mtrans.clone(),
-                                   modules_config.clone(),
-                                   crate_output.clone());
-        work_items.push(work);
-    }
-
-    if sess.opts.debugging_opts.incremental_info {
-        dump_incremental_data(&trans);
-    }
+    // Exclude metadata and allocator modules from time_passes output, since
+    // they throw off the "LLVM passes" measurement.
+    metadata_config.time_passes = false;
+    allocator_config.time_passes = false;
 
     let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
         // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
         // our environment, capping out at 32 so we don't take everything down
         // by hogging the process run queue.
-        let num_workers = cmp::min(work_items.len() - 1, 32);
-        Client::new(num_workers).expect("failed to create jobserver")
-    });
-    scope(|scope| {
-        execute_work(sess, work_items, client, &trans.exported_symbols, scope);
+        Client::new(32).expect("failed to create jobserver")
     });
 
-    // If in incr. comp. mode, preserve the `.o` files for potential re-use
-    for mtrans in trans.modules.iter() {
+    let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
+    let (trans_worker_send, trans_worker_receive) = channel();
+    let (coordinator_send, coordinator_receive) = channel();
+
+    let coordinator_thread = start_executing_work(sess,
+                                                  shared_emitter,
+                                                  trans_worker_send,
+                                                  coordinator_send.clone(),
+                                                  coordinator_receive,
+                                                  client,
+                                                  time_graph.clone(),
+                                                  exported_symbols.clone());
+    OngoingCrateTranslation {
+        crate_name,
+        link,
+        metadata,
+        exported_symbols,
+        no_builtins,
+        windows_subsystem,
+        linker_info,
+        no_integrated_as,
+
+        regular_module_config: modules_config,
+        metadata_module_config: metadata_config,
+        allocator_module_config: allocator_config,
+
+        time_graph,
+        output_filenames: crate_output.clone(),
+        coordinator_send,
+        trans_worker_receive,
+        shared_emitter_main,
+        future: coordinator_thread
+    }
+}
+
+fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
+                                              compiled_modules: &CompiledModules,
+                                              crate_output: &OutputFilenames) {
+    if sess.opts.incremental.is_none() {
+        return;
+    }
+
+    for module in compiled_modules.modules.iter() {
         let mut files = vec![];
 
-        if modules_config.emit_obj {
-            let path = crate_output.temp_path(OutputType::Object, Some(&mtrans.name));
+        if module.emit_obj {
+            let path = crate_output.temp_path(OutputType::Object, Some(&module.name));
             files.push((OutputType::Object, path));
         }
 
-        if modules_config.emit_bc {
-            let path = crate_output.temp_path(OutputType::Bitcode, Some(&mtrans.name));
+        if module.emit_bc {
+            let path = crate_output.temp_path(OutputType::Bitcode, Some(&module.name));
             files.push((OutputType::Bitcode, path));
         }
 
-        save_trans_partition(sess, &mtrans.name, mtrans.symbol_name_hash, &files);
+        save_trans_partition(sess, &module.name, module.symbol_name_hash, &files);
     }
+}
 
-    // All codegen is finished.
-    unsafe {
-        llvm::LLVMRustDisposeTargetMachine(tm);
-    }
+fn produce_final_output_artifacts(sess: &Session,
+                                  compiled_modules: &CompiledModules,
+                                  crate_output: &OutputFilenames) {
+    let mut user_wants_bitcode = false;
+    let mut user_wants_objects = false;
 
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &Path| {
@@ -794,10 +843,10 @@ pub fn run_passes(sess: &Session,
 
     let copy_if_one_unit = |output_type: OutputType,
                             keep_numbered: bool| {
-        if trans.modules.len() == 1 {
+        if compiled_modules.modules.len() == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&trans.modules[0].name[..]);
+            let module_name = Some(&compiled_modules.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
             copy_gracefully(&path,
                             &crate_output.path(output_type));
@@ -834,9 +883,7 @@ pub fn run_passes(sess: &Session,
     // Flag to indicate whether the user explicitly requested bitcode.
     // Otherwise, we produced it only as a temporary output, and will need
     // to get rid of it.
-    let mut user_wants_bitcode = false;
-    let mut user_wants_objects = false;
-    for output_type in output_types.keys() {
+    for output_type in crate_output.outputs.keys() {
         match *output_type {
             OutputType::Bitcode => {
                 user_wants_bitcode = true;
@@ -861,7 +908,6 @@ pub fn run_passes(sess: &Session,
             OutputType::DepInfo => {}
         }
     }
-    let user_wants_bitcode = user_wants_bitcode;
 
     // Clean up unwanted temporary files.
 
@@ -893,33 +939,39 @@ pub fn run_passes(sess: &Session,
         // If you change how this works, also update back::link::link_rlib,
         // where .#module-name#.bc files are (maybe) deleted after making an
         // rlib.
+        let needs_crate_bitcode = need_crate_bitcode_for_rlib(sess);
+        let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
+
         let keep_numbered_bitcode = needs_crate_bitcode ||
                 (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
 
         let keep_numbered_objects = needs_crate_object ||
                 (user_wants_objects && sess.opts.cg.codegen_units > 1);
 
-        for module_name in trans.modules.iter().map(|m| Some(&m.name[..])) {
-            if modules_config.emit_obj && !keep_numbered_objects {
+        for module in compiled_modules.modules.iter() {
+            let module_name = Some(&module.name[..]);
+
+            if module.emit_obj && !keep_numbered_objects {
                 let path = crate_output.temp_path(OutputType::Object, module_name);
                 remove(sess, &path);
             }
 
-            if modules_config.emit_bc && !keep_numbered_bitcode {
+            if module.emit_bc && !keep_numbered_bitcode {
                 let path = crate_output.temp_path(OutputType::Bitcode, module_name);
                 remove(sess, &path);
             }
         }
 
-        if metadata_config.emit_bc && !user_wants_bitcode {
+        if compiled_modules.metadata_module.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
-                                              Some(&trans.metadata_module.name));
+                                              Some(&compiled_modules.metadata_module.name));
             remove(sess, &path);
         }
-        if allocator_config.emit_bc && !user_wants_bitcode {
-            if let Some(ref module) = trans.allocator_module {
+
+        if let Some(ref allocator_module) = compiled_modules.allocator_module {
+            if allocator_module.emit_bc && !user_wants_bitcode {
                 let path = crate_output.temp_path(OutputType::Bitcode,
-                                                  Some(&module.name));
+                                                  Some(&allocator_module.name));
                 remove(sess, &path);
             }
         }
@@ -930,20 +982,13 @@ pub fn run_passes(sess: &Session,
     //  - #crate#.crate.metadata.o
     //  - #crate#.bc
     // These are used in linking steps and will be cleaned up afterward.
-
-    // FIXME: time_llvm_passes support - does this use a global context or
-    // something?
-    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
-        unsafe { llvm::LLVMRustPrintPassTimings(); }
-    }
 }
 
-fn dump_incremental_data(trans: &CrateTranslation) {
+pub fn dump_incremental_data(trans: &CrateTranslation) {
     let mut reuse = 0;
     for mtrans in trans.modules.iter() {
-        match mtrans.source {
-            ModuleSource::Preexisting(..) => reuse += 1,
-            ModuleSource::Translated(..) => (),
+        if mtrans.pre_existing {
+            reuse += 1;
         }
     }
     eprintln!("incremental: re-using {} out of {} modules", reuse, trans.modules.len());
@@ -955,14 +1000,17 @@ struct WorkItem {
     output_names: OutputFilenames
 }
 
-fn build_work_item(sess: &Session,
-                   mtrans: ModuleTranslation,
+impl fmt::Debug for WorkItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WorkItem({})", self.mtrans.name)
+    }
+}
+
+fn build_work_item(mtrans: ModuleTranslation,
                    config: ModuleConfig,
                    output_names: OutputFilenames)
                    -> WorkItem
 {
-    let mut config = config;
-    config.tm = create_target_machine(sess);
     WorkItem {
         mtrans: mtrans,
         config: config,
@@ -971,70 +1019,98 @@ fn build_work_item(sess: &Session,
 }
 
 fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
-    -> Result<(), FatalError>
+    -> Result<CompiledModule, FatalError>
 {
-    unsafe {
-        match work_item.mtrans.source {
-            ModuleSource::Translated(mllvm) => {
-                debug!("llvm-optimizing {:?}", work_item.mtrans.name);
-                optimize_and_codegen(cgcx,
-                                     work_item.mtrans,
-                                     mllvm,
-                                     work_item.config,
-                                     work_item.output_names)?;
-            }
-            ModuleSource::Preexisting(wp) => {
-                let incr_comp_session_dir = cgcx.incr_comp_session_dir
-                                                .as_ref()
-                                                .unwrap();
-                let name = &work_item.mtrans.name;
-                for (kind, saved_file) in wp.saved_files {
-                    let obj_out = work_item.output_names.temp_path(kind, Some(name));
-                    let source_file = in_incr_comp_dir(&incr_comp_session_dir,
-                                                       &saved_file);
-                    debug!("copying pre-existing module `{}` from {:?} to {}",
-                           work_item.mtrans.name,
-                           source_file,
-                           obj_out.display());
-                    match link_or_copy(&source_file, &obj_out) {
-                        Ok(_) => { }
-                        Err(err) => {
-                            cgcx.handler.err(&format!("unable to copy {} to {}: {}",
-                                                      source_file.display(),
-                                                      obj_out.display(),
-                                                      err));
-                        }
-                    }
+    let diag_handler = cgcx.create_diag_handler();
+    let module_name = work_item.mtrans.name.clone();
+
+    let pre_existing = match work_item.mtrans.source {
+        ModuleSource::Translated(_) => None,
+        ModuleSource::Preexisting(ref wp) => Some(wp.clone()),
+    };
+
+    if let Some(wp) = pre_existing {
+        let incr_comp_session_dir = cgcx.incr_comp_session_dir
+                                        .as_ref()
+                                        .unwrap();
+        let name = &work_item.mtrans.name;
+        for (kind, saved_file) in wp.saved_files {
+            let obj_out = work_item.output_names.temp_path(kind, Some(name));
+            let source_file = in_incr_comp_dir(&incr_comp_session_dir,
+                                               &saved_file);
+            debug!("copying pre-existing module `{}` from {:?} to {}",
+                   work_item.mtrans.name,
+                   source_file,
+                   obj_out.display());
+            match link_or_copy(&source_file, &obj_out) {
+                Ok(_) => { }
+                Err(err) => {
+                    diag_handler.err(&format!("unable to copy {} to {}: {}",
+                                              source_file.display(),
+                                              obj_out.display(),
+                                              err));
                 }
             }
         }
+
+        Ok(CompiledModule {
+            name: module_name,
+            kind: ModuleKind::Regular,
+            pre_existing: true,
+            symbol_name_hash: work_item.mtrans.symbol_name_hash,
+            emit_bc: work_item.config.emit_bc,
+            emit_obj: work_item.config.emit_obj,
+        })
+    } else {
+        debug!("llvm-optimizing {:?}", module_name);
+
+        unsafe {
+            optimize_and_codegen(cgcx,
+                                 &diag_handler,
+                                 work_item.mtrans,
+                                 work_item.config,
+                                 work_item.output_names)
+        }
     }
-
-    Ok(())
 }
 
-pub enum Message {
+#[derive(Debug)]
+enum Message {
     Token(io::Result<Acquired>),
-    Diagnostic(Diagnostic),
-    Done { success: bool },
-    InlineAsmError(u32, String),
-    AbortIfErrors,
+    Done {
+        result: Result<CompiledModule, ()>,
+        worker_id: usize,
+    },
+    TranslationDone {
+        llvm_work_item: WorkItem,
+        cost: u64,
+        is_last: bool,
+    },
+    TranslateItem,
 }
 
-pub struct Diagnostic {
+struct Diagnostic {
     msg: String,
     code: Option<String>,
     lvl: Level,
 }
 
-fn execute_work<'a>(sess: &'a Session,
-                    mut work_items: Vec<WorkItem>,
-                    jobserver: Client,
-                    exported_symbols: &'a ExportedSymbols,
-                    scope: &Scope<'a>) {
-    let (tx, rx) = channel();
-    let tx2 = tx.clone();
+#[derive(PartialEq, Clone, Copy, Debug)]
+enum MainThreadWorkerState {
+    Idle,
+    Translating,
+    LLVMing,
+}
 
+fn start_executing_work(sess: &Session,
+                        shared_emitter: SharedEmitter,
+                        trans_worker_send: Sender<Message>,
+                        coordinator_send: Sender<Message>,
+                        coordinator_receive: Receiver<Message>,
+                        jobserver: Client,
+                        time_graph: Option<TimeGraph>,
+                        exported_symbols: Arc<ExportedSymbols>)
+                        -> thread::JoinHandle<CompiledModules> {
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such. Once we've got the helper
     // thread then request `n-1` tokens because all of our work items are ready
@@ -1045,27 +1121,144 @@ fn execute_work<'a>(sess: &'a Session,
     //
     // After we've requested all these tokens then we'll, when we can, get
     // tokens on `rx` above which will get managed in the main loop below.
+    let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver.into_helper_thread(move |token| {
-        drop(tx2.send(Message::Token(token)));
+        drop(coordinator_send2.send(Message::Token(token)));
     }).expect("failed to spawn helper thread");
-    for _ in 0..work_items.len() - 1 {
-        helper.request_token();
-    }
+
+    let mut each_linked_rlib_for_lto = Vec::new();
+    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
+        if link::ignored_for_lto(sess, cnum) {
+            return
+        }
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+    }));
+
+    let cgcx = CodegenContext {
+        crate_types: sess.crate_types.borrow().clone(),
+        each_linked_rlib_for_lto: each_linked_rlib_for_lto,
+        lto: sess.lto(),
+        no_landing_pads: sess.no_landing_pads(),
+        opts: Arc::new(sess.opts.clone()),
+        time_passes: sess.time_passes(),
+        exported_symbols: exported_symbols,
+        plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
+        remark: sess.opts.cg.remark.clone(),
+        worker: 0,
+        incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
+        coordinator_send: coordinator_send,
+        diag_emitter: shared_emitter.clone(),
+        time_graph,
+    };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
     // It's here that we manage parallelism, schedule work, and work with
     // messages coming from clients.
     //
-    // Our channel `rx` created above is a channel of messages coming from our
-    // various worker threads. This includes the jobserver helper thread above
-    // as well as the work we'll spawn off here. Each turn of this loop starts
-    // off by trying to spawn as much work as possible. After we've done that we
-    // then wait for an event and dispatch accordingly once the event is
-    // received. We're only done once all our work items have been drained and
-    // nothing is running, at which point we return back up the stack.
+    // There are a few environmental pre-conditions that shape how the system
+    // is set up:
     //
-    // ## Parallelism management
+    // - Error reporting only can happen on the main thread because that's the
+    //   only place where we have access to the compiler `Session`.
+    // - LLVM work can be done on any thread.
+    // - Translation can only happen on the main thread.
+    // - Each thread doing substantial work most be in possession of a `Token`
+    //   from the `Jobserver`.
+    // - The compiler process always holds one `Token`. Any additional `Tokens`
+    //   have to be requested from the `Jobserver`.
     //
+    // Error Reporting
+    // ===============
+    // The error reporting restriction is handled separately from the rest: We
+    // set up a `SharedEmitter` the holds an open channel to the main thread.
+    // When an error occurs on any thread, the shared emitter will send the
+    // error message to the receiver main thread (`SharedEmitterMain`). The
+    // main thread will periodically query this error message queue and emit
+    // any error messages it has received. It might even abort compilation if
+    // has received a fatal error. In this case we rely on all other threads
+    // being torn down automatically with the main thread.
+    // Since the main thread will often be busy doing translation work, error
+    // reporting will be somewhat delayed, since the message queue can only be
+    // checked in between to work packages.
+    //
+    // Work Processing Infrastructure
+    // ==============================
+    // The work processing infrastructure knows three major actors:
+    //
+    // - the coordinator thread,
+    // - the main thread, and
+    // - LLVM worker threads
+    //
+    // The coordinator thread is running a message loop. It instructs the main
+    // thread about what work to do when, and it will spawn off LLVM worker
+    // threads as open LLVM WorkItems become available.
+    //
+    // The job of the main thread is to translate CGUs into LLVM work package
+    // (since the main thread is the only thread that can do this). The main
+    // thread will block until it receives a message from the coordinator, upon
+    // which it will translate one CGU, send it to the coordinator and block
+    // again. This way the coordinator can control what the main thread is
+    // doing.
+    //
+    // The coordinator keeps a queue of LLVM WorkItems, and when a `Token` is
+    // available, it will spawn off a new LLVM worker thread and let it process
+    // that a WorkItem. When a LLVM worker thread is done with its WorkItem,
+    // it will just shut down, which also frees all resources associated with
+    // the given LLVM module, and sends a message to the coordinator that the
+    // has been completed.
+    //
+    // Work Scheduling
+    // ===============
+    // The scheduler's goal is to minimize the time it takes to complete all
+    // work there is, however, we also want to keep memory consumption low
+    // if possible. These two goals are at odds with each other: If memory
+    // consumption were not an issue, we could just let the main thread produce
+    // LLVM WorkItems at full speed, assuring maximal utilization of
+    // Tokens/LLVM worker threads. However, since translation usual is faster
+    // than LLVM processing, the queue of LLVM WorkItems would fill up and each
+    // WorkItem potentially holds on to a substantial amount of memory.
+    //
+    // So the actual goal is to always produce just enough LLVM WorkItems as
+    // not to starve our LLVM worker threads. That means, once we have enough
+    // WorkItems in our queue, we can block the main thread, so it does not
+    // produce more until we need them.
+    //
+    // Doing LLVM Work on the Main Thread
+    // ----------------------------------
+    // Since the main thread owns the compiler processes implicit `Token`, it is
+    // wasteful to keep it blocked without doing any work. Therefore, what we do
+    // in this case is: We spawn off an additional LLVM worker thread that helps
+    // reduce the queue. The work it is doing corresponds to the implicit
+    // `Token`. The coordinator will mark the main thread as being busy with
+    // LLVM work. (The actual work happens on another OS thread but we just care
+    // about `Tokens`, not actual threads).
+    //
+    // When any LLVM worker thread finishes while the main thread is marked as
+    // "busy with LLVM work", we can do a little switcheroo: We give the Token
+    // of the just finished thread to the LLVM worker thread that is working on
+    // behalf of the main thread's implicit Token, thus freeing up the main
+    // thread again. The coordinator can then again decide what the main thread
+    // should do. This allows the coordinator to make decisions at more points
+    // in time.
+    //
+    // Striking a Balance between Throughput and Memory Consumption
+    // ------------------------------------------------------------
+    // Since our two goals, (1) use as many Tokens as possible and (2) keep
+    // memory consumption as low as possible, are in conflict with each other,
+    // we have to find a trade off between them. Right now, the goal is to keep
+    // all workers busy, which means that no worker should find the queue empty
+    // when it is ready to start.
+    // How do we do achieve this? Good question :) We actually never know how
+    // many `Tokens` are potentially available so it's hard to say how much to
+    // fill up the queue before switching the main thread to LLVM work. Also we
+    // currently don't have a means to estimate how long a running LLVM worker
+    // will still be busy with it's current WorkItem. However, we know the
+    // maximal count of available Tokens that makes sense (=the number of CPU
+    // cores), so we can take a conservative guess. The heuristic we use here
+    // is implemented in the `queue_full_enough()` function.
+    //
+    // Some Background on Jobservers
+    // -----------------------------
     // It's worth also touching on the management of parallelism here. We don't
     // want to just spawn a thread per work item because while that's optimal
     // parallelism it may overload a system with too many threads or violate our
@@ -1078,193 +1271,302 @@ fn execute_work<'a>(sess: &'a Session,
     // and whenever we're done with that work we release the semaphore. In this
     // manner we can ensure that the maximum number of parallel workers is
     // capped at any one point in time.
-    //
-    // The jobserver protocol is a little unique, however. We, as a running
-    // process, already have an ephemeral token assigned to us. We're not going
-    // to be doing any productive work in this thread though so we're going to
-    // give this token to a worker thread (there's no actual token to give, this
-    // is just conceptually). As a result you'll see a few `+1` and `-1`
-    // instances below, and it's about working with this ephemeral token.
-    //
-    // To acquire tokens we have our `helper` thread above which is just in a
-    // loop acquiring tokens and sending them to us. We then store all tokens
-    // locally in a `tokens` vector once they're acquired. Currently we don't
-    // literally send a token to a worker thread to assist with management of
-    // our "ephemeral token".
-    //
-    // As a result, our "spawn as much work as possible" basically means that we
-    // fill up the `running` counter up to the limit of the `tokens` list.
-    // Whenever we get a new token this'll mean a new unit of work is spawned,
-    // and then whenever a unit of work finishes we relinquish a token, if we
-    // had one, to maybe get re-acquired later.
-    //
-    // Note that there's a race which may mean that we acquire more tokens than
-    // we originally anticipated. For example let's say we have 2 units of work.
-    // First we request one token from the helper thread and then we
-    // immediately spawn one unit of work with our ephemeral token after. We may
-    // then finish the first piece of work before the token is acquired, but we
-    // can continue to spawn the second piece of work with our ephemeral token.
-    // Before that work finishes, however, we may acquire a token. In that case
-    // we actually wastefully acquired the token, so we relinquish it back to
-    // the jobserver.
-    let mut tokens = Vec::new();
-    let mut running = 0;
-    while work_items.len() > 0 || running > 0 {
+    return thread::spawn(move || {
+        // We pretend to be within the top-level LLVM time-passes task here:
+        set_time_depth(1);
 
-        // Spin up what work we can, only doing this while we've got available
-        // parallelism slots and work left to spawn.
-        while work_items.len() > 0 && running < tokens.len() + 1 {
-            let item = work_items.pop().unwrap();
-            let index = work_items.len();
-            spawn_work(sess, exported_symbols, scope, tx.clone(), item, index);
-            running += 1;
-        }
-
-        // Relinquish accidentally acquired extra tokens
-        tokens.truncate(running.saturating_sub(1));
-
-        match rx.recv().unwrap() {
-            // Save the token locally and the next turn of the loop will use
-            // this to spawn a new unit of work, or it may get dropped
-            // immediately if we have no more work to spawn.
-            Message::Token(token) => {
-                tokens.push(token.expect("failed to acquire jobserver token"));
+        let max_workers = ::num_cpus::get();
+        let mut worker_id_counter = 0;
+        let mut free_worker_ids = Vec::new();
+        let mut get_worker_id = |free_worker_ids: &mut Vec<usize>| {
+            if let Some(id) = free_worker_ids.pop() {
+                id
+            } else {
+                let id = worker_id_counter;
+                worker_id_counter += 1;
+                id
             }
+        };
 
-            // If a thread exits successfully then we drop a token associated
-            // with that worker and update our `running` count. We may later
-            // re-acquire a token to continue running more work. We may also not
-            // actually drop a token here if the worker was running with an
-            // "ephemeral token"
-            //
-            // Note that if the thread failed that means it panicked, so we
-            // abort immediately.
-            Message::Done { success: true } => {
-                drop(tokens.pop());
-                running -= 1;
-            }
-            Message::Done { success: false } => {
-                sess.fatal("aborting due to worker thread panic");
-            }
+        // This is where we collect codegen units that have gone all the way
+        // through translation and LLVM.
+        let mut compiled_modules = vec![];
+        let mut compiled_metadata_module = None;
+        let mut compiled_allocator_module = None;
 
-            // Our worker wants us to emit an error message, so get ahold of our
-            // `sess` and print it out
-            Message::Diagnostic(diag) => {
-                let handler = sess.diagnostic();
-                match diag.code {
-                    Some(ref code) => {
-                        handler.emit_with_code(&MultiSpan::new(),
-                                               &diag.msg,
-                                               &code,
-                                               diag.lvl);
+        // This flag tracks whether all items have gone through translations
+        let mut translation_done = false;
+
+        // This is the queue of LLVM work items that still need processing.
+        let mut work_items = Vec::new();
+
+        // This are the Jobserver Tokens we currently hold. Does not include
+        // the implicit Token the compiler process owns no matter what.
+        let mut tokens = Vec::new();
+
+        let mut main_thread_worker_state = MainThreadWorkerState::Idle;
+        let mut running = 0;
+
+        let mut llvm_start_time = None;
+
+        // Run the message loop while there's still anything that needs message
+        // processing:
+        while !translation_done ||
+              work_items.len() > 0 ||
+              running > 0 ||
+              main_thread_worker_state != MainThreadWorkerState::Idle {
+
+            // While there are still CGUs to be translated, the coordinator has
+            // to decide how to utilize the compiler processes implicit Token:
+            // For translating more CGU or for running them through LLVM.
+            if !translation_done {
+                if main_thread_worker_state == MainThreadWorkerState::Idle {
+                    if !queue_full_enough(work_items.len(), running, max_workers) {
+                        // The queue is not full enough, translate more items:
+                        if let Err(_) = trans_worker_send.send(Message::TranslateItem) {
+                            panic!("Could not send Message::TranslateItem to main thread")
+                        }
+                        main_thread_worker_state = MainThreadWorkerState::Translating;
+                    } else {
+                        // The queue is full enough to not let the worker
+                        // threads starve. Use the implicit Token to do some
+                        // LLVM work too.
+                        let (item, _) = work_items.pop()
+                            .expect("queue empty - queue_full_enough() broken?");
+                        let cgcx = CodegenContext {
+                            worker: get_worker_id(&mut free_worker_ids),
+                            .. cgcx.clone()
+                        };
+                        maybe_start_llvm_timer(&item, &mut llvm_start_time);
+                        main_thread_worker_state = MainThreadWorkerState::LLVMing;
+                        spawn_work(cgcx, item);
                     }
-                    None => {
-                        handler.emit(&MultiSpan::new(),
-                                     &diag.msg,
-                                     diag.lvl);
+                }
+            } else {
+                // In this branch, we know that everything has been translated,
+                // so it's just a matter of determining whether the implicit
+                // Token is free to use for LLVM work.
+                match main_thread_worker_state {
+                    MainThreadWorkerState::Idle => {
+                        if let Some((item, _)) = work_items.pop() {
+                            let cgcx = CodegenContext {
+                                worker: get_worker_id(&mut free_worker_ids),
+                                .. cgcx.clone()
+                            };
+                            maybe_start_llvm_timer(&item, &mut llvm_start_time);
+                            main_thread_worker_state = MainThreadWorkerState::LLVMing;
+                            spawn_work(cgcx, item);
+                        }
+                    }
+                    MainThreadWorkerState::Translating => {
+                        bug!("trans worker should not be translating after \
+                              translation was already completed")
+                    }
+                    MainThreadWorkerState::LLVMing => {
+                        // Already making good use of that token
                     }
                 }
             }
-            Message::InlineAsmError(cookie, msg) => {
-                match Mark::from_u32(cookie).expn_info() {
-                    Some(ei) => sess.span_err(ei.call_site, &msg),
-                    None     => sess.err(&msg),
-                }
+
+            // Spin up what work we can, only doing this while we've got available
+            // parallelism slots and work left to spawn.
+            while work_items.len() > 0 && running < tokens.len() {
+                let (item, _) = work_items.pop().unwrap();
+
+                maybe_start_llvm_timer(&item, &mut llvm_start_time);
+
+                let cgcx = CodegenContext {
+                    worker: get_worker_id(&mut free_worker_ids),
+                    .. cgcx.clone()
+                };
+
+                spawn_work(cgcx, item);
+                running += 1;
             }
 
-            // Sent to us after a worker sends us a batch of error messages, and
-            // it's the point at which we check for errors.
-            Message::AbortIfErrors => sess.diagnostic().abort_if_errors(),
+            // Relinquish accidentally acquired extra tokens
+            tokens.truncate(running);
+
+            match coordinator_receive.recv().unwrap() {
+                // Save the token locally and the next turn of the loop will use
+                // this to spawn a new unit of work, or it may get dropped
+                // immediately if we have no more work to spawn.
+                Message::Token(token) => {
+                    match token {
+                        Ok(token) => {
+                            tokens.push(token);
+
+                            if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                                // If the main thread token is used for LLVM work
+                                // at the moment, we turn that thread into a regular
+                                // LLVM worker thread, so the main thread is free
+                                // to react to translation demand.
+                                main_thread_worker_state = MainThreadWorkerState::Idle;
+                                running += 1;
+                            }
+                        }
+                        Err(e) => {
+                            let msg = &format!("failed to acquire jobserver token: {}", e);
+                            shared_emitter.fatal(msg);
+                            // Exit the coordinator thread
+                            panic!("{}", msg)
+                        }
+                    }
+                }
+
+                Message::TranslationDone { llvm_work_item, cost, is_last } => {
+                    // We keep the queue sorted by estimated processing cost,
+                    // so that more expensive items are processed earlier. This
+                    // is good for throughput as it gives the main thread more
+                    // time to fill up the queue and it avoids scheduling
+                    // expensive items to the end.
+                    // Note, however, that this is not ideal for memory
+                    // consumption, as LLVM module sizes are not evenly
+                    // distributed.
+                    let insertion_index =
+                        work_items.binary_search_by_key(&cost, |&(_, cost)| cost);
+                    let insertion_index = match insertion_index {
+                        Ok(idx) | Err(idx) => idx
+                    };
+                    work_items.insert(insertion_index, (llvm_work_item, cost));
+
+                    if is_last {
+                        // If this is the last, don't request a token because
+                        // the trans worker thread will be free to handle this
+                        // immediately.
+                        translation_done = true;
+                    } else {
+                        helper.request_token();
+                    }
+
+                    assert_eq!(main_thread_worker_state,
+                               MainThreadWorkerState::Translating);
+                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                }
+
+                // If a thread exits successfully then we drop a token associated
+                // with that worker and update our `running` count. We may later
+                // re-acquire a token to continue running more work. We may also not
+                // actually drop a token here if the worker was running with an
+                // "ephemeral token"
+                //
+                // Note that if the thread failed that means it panicked, so we
+                // abort immediately.
+                Message::Done { result: Ok(compiled_module), worker_id } => {
+                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                        main_thread_worker_state = MainThreadWorkerState::Idle;
+                    } else {
+                        running -= 1;
+                    }
+
+                    free_worker_ids.push(worker_id);
+
+                    match compiled_module.kind {
+                        ModuleKind::Regular => {
+                            compiled_modules.push(compiled_module);
+                        }
+                        ModuleKind::Metadata => {
+                            assert!(compiled_metadata_module.is_none());
+                            compiled_metadata_module = Some(compiled_module);
+                        }
+                        ModuleKind::Allocator => {
+                            assert!(compiled_allocator_module.is_none());
+                            compiled_allocator_module = Some(compiled_module);
+                        }
+                    }
+                }
+                Message::Done { result: Err(()), worker_id: _ } => {
+                    shared_emitter.fatal("aborting due to worker thread panic");
+                    // Exit the coordinator thread
+                    panic!("aborting due to worker thread panic")
+                }
+                Message::TranslateItem => {
+                    bug!("the coordinator should not receive translation requests")
+                }
+            }
         }
+
+        if let Some(llvm_start_time) = llvm_start_time {
+            let total_llvm_time = Instant::now().duration_since(llvm_start_time);
+            // This is the top-level timing for all of LLVM, set the time-depth
+            // to zero.
+            set_time_depth(0);
+            print_time_passes_entry(cgcx.time_passes,
+                                    "LLVM passes",
+                                    total_llvm_time);
+        }
+
+        let compiled_metadata_module = compiled_metadata_module
+            .expect("Metadata module not compiled?");
+
+        CompiledModules {
+            modules: compiled_modules,
+            metadata_module: compiled_metadata_module,
+            allocator_module: compiled_allocator_module,
+        }
+    });
+
+    // A heuristic that determines if we have enough LLVM WorkItems in the
+    // queue so that the main thread can do LLVM work instead of translation
+    fn queue_full_enough(items_in_queue: usize,
+                         workers_running: usize,
+                         max_workers: usize) -> bool {
+        // Tune me, plz.
+        items_in_queue > 0 &&
+        items_in_queue >= max_workers.saturating_sub(workers_running / 2)
     }
 
-    // Just in case, check this on the way out.
-    sess.diagnostic().abort_if_errors();
-}
-
-struct SharedEmitter {
-    tx: Sender<Message>,
-}
-
-impl Emitter for SharedEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        drop(self.tx.send(Message::Diagnostic(Diagnostic {
-            msg: db.message(),
-            code: db.code.clone(),
-            lvl: db.level,
-        })));
-        for child in &db.children {
-            drop(self.tx.send(Message::Diagnostic(Diagnostic {
-                msg: child.message(),
-                code: None,
-                lvl: child.level,
-            })));
+    fn maybe_start_llvm_timer(work_item: &WorkItem,
+                              llvm_start_time: &mut Option<Instant>) {
+        // We keep track of the -Ztime-passes output manually,
+        // since the closure-based interface does not fit well here.
+        if work_item.config.time_passes {
+            if llvm_start_time.is_none() {
+                *llvm_start_time = Some(Instant::now());
+            }
         }
-        drop(self.tx.send(Message::AbortIfErrors));
     }
 }
 
-fn spawn_work<'a>(sess: &'a Session,
-                  exported_symbols: &'a ExportedSymbols,
-                  scope: &Scope<'a>,
-                  tx: Sender<Message>,
-                  work: WorkItem,
-                  idx: usize) {
-    let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
-    let remark = sess.opts.cg.remark.clone();
-    let incr_comp_session_dir = sess.incr_comp_session_dir_opt().map(|r| r.clone());
+pub const TRANS_WORKER_ID: usize = ::std::usize::MAX;
+pub const TRANS_WORKER_TIMELINE: time_graph::TimelineId =
+    time_graph::TimelineId(TRANS_WORKER_ID);
+pub const TRANS_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
+    time_graph::WorkPackageKind(&["#DE9597", "#FED1D3", "#FDC5C7", "#B46668", "#88494B"]);
+const LLVM_WORK_PACKAGE_KIND: time_graph::WorkPackageKind =
+    time_graph::WorkPackageKind(&["#7DB67A", "#C6EEC4", "#ACDAAA", "#579354", "#3E6F3C"]);
+
+fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
     let depth = time_depth();
-    let lto = sess.lto();
-    let crate_types = sess.crate_types.borrow().clone();
-    let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, cnum) {
-            return
-        }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
-    }));
-    let time_passes = sess.time_passes();
-    let no_landing_pads = sess.no_landing_pads();
-    let opts = &sess.opts;
 
-    scope.spawn(move || {
+    thread::spawn(move || {
         set_time_depth(depth);
 
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb {
-            tx: Sender<Message>,
-            success: bool,
+            coordinator_send: Sender<Message>,
+            result: Option<CompiledModule>,
+            worker_id: usize,
         }
         impl Drop for Bomb {
             fn drop(&mut self) {
-                drop(self.tx.send(Message::Done { success: self.success }));
+                let result = match self.result.take() {
+                    Some(compiled_module) => Ok(compiled_module),
+                    None => Err(())
+                };
+
+                drop(self.coordinator_send.send(Message::Done {
+                    result,
+                    worker_id: self.worker_id,
+                }));
             }
         }
+
         let mut bomb = Bomb {
-            tx: tx.clone(),
-            success: false,
-        };
-
-        // Set up our non-`Send` `CodegenContext` now that we're in a helper
-        // thread and have all our info available to us.
-        let emitter = SharedEmitter { tx: tx.clone() };
-        let diag_handler = Handler::with_emitter(true, false, Box::new(emitter));
-
-        let cgcx = CodegenContext {
-            crate_types: crate_types,
-            each_linked_rlib_for_lto: each_linked_rlib_for_lto,
-            lto: lto,
-            no_landing_pads: no_landing_pads,
-            opts: opts,
-            time_passes: time_passes,
-            exported_symbols: exported_symbols,
-            handler: &diag_handler,
-            plugin_passes: plugin_passes,
-            remark: remark,
-            worker: idx,
-            incr_comp_session_dir: incr_comp_session_dir,
-            tx: tx.clone(),
+            coordinator_send: cgcx.coordinator_send.clone(),
+            result: None,
+            worker_id: cgcx.worker,
         };
 
         // Execute the work itself, and if it finishes successfully then flag
@@ -1280,8 +1582,13 @@ fn spawn_work<'a>(sess: &'a Session,
         // we just ignore the result and then send off our message saying that
         // we're done, which if `execute_work_item` failed is unlikely to be
         // seen by the main thread, but hey we might as well try anyway.
-        drop(execute_work_item(&cgcx, work).is_err());
-        bomb.success = true;
+        bomb.result = {
+            let _timing_guard = cgcx.time_graph
+                                .as_ref()
+                                .map(|tg| tg.start(time_graph::TimelineId(cgcx.worker),
+                                                   LLVM_WORK_PACKAGE_KIND));
+            Some(execute_work_item(&cgcx, work).unwrap())
+        };
     });
 }
 
@@ -1374,4 +1681,250 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
 
     f(builder);
     llvm::LLVMPassManagerBuilderDispose(builder);
+}
+
+
+enum SharedEmitterMessage {
+    Diagnostic(Diagnostic),
+    InlineAsmError(u32, String),
+    AbortIfErrors,
+    Fatal(String),
+}
+
+#[derive(Clone)]
+pub struct SharedEmitter {
+    sender: Sender<SharedEmitterMessage>,
+}
+
+pub struct SharedEmitterMain {
+    receiver: Receiver<SharedEmitterMessage>,
+}
+
+impl SharedEmitter {
+    pub fn new() -> (SharedEmitter, SharedEmitterMain) {
+        let (sender, receiver) = channel();
+
+        (SharedEmitter { sender }, SharedEmitterMain { receiver })
+    }
+
+    fn inline_asm_error(&self, cookie: u32, msg: String) {
+        drop(self.sender.send(SharedEmitterMessage::InlineAsmError(cookie, msg)));
+    }
+
+    fn fatal(&self, msg: &str) {
+        drop(self.sender.send(SharedEmitterMessage::Fatal(msg.to_string())));
+    }
+}
+
+impl Emitter for SharedEmitter {
+    fn emit(&mut self, db: &DiagnosticBuilder) {
+        drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+            msg: db.message(),
+            code: db.code.clone(),
+            lvl: db.level,
+        })));
+        for child in &db.children {
+            drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
+                msg: child.message(),
+                code: None,
+                lvl: child.level,
+            })));
+        }
+        drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
+    }
+}
+
+impl SharedEmitterMain {
+    pub fn check(&self, sess: &Session, blocking: bool) {
+        loop {
+            let message = if blocking {
+                match self.receiver.recv() {
+                    Ok(message) => Ok(message),
+                    Err(_) => Err(()),
+                }
+            } else {
+                match self.receiver.try_recv() {
+                    Ok(message) => Ok(message),
+                    Err(_) => Err(()),
+                }
+            };
+
+            match message {
+                Ok(SharedEmitterMessage::Diagnostic(diag)) => {
+                    let handler = sess.diagnostic();
+                    match diag.code {
+                        Some(ref code) => {
+                            handler.emit_with_code(&MultiSpan::new(),
+                                                   &diag.msg,
+                                                   &code,
+                                                   diag.lvl);
+                        }
+                        None => {
+                            handler.emit(&MultiSpan::new(),
+                                         &diag.msg,
+                                         diag.lvl);
+                        }
+                    }
+                }
+                Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
+                    match Mark::from_u32(cookie).expn_info() {
+                        Some(ei) => sess.span_err(ei.call_site, &msg),
+                        None     => sess.err(&msg),
+                    }
+                }
+                Ok(SharedEmitterMessage::AbortIfErrors) => {
+                    sess.abort_if_errors();
+                }
+                Ok(SharedEmitterMessage::Fatal(msg)) => {
+                    sess.fatal(&msg);
+                }
+                Err(_) => {
+                    break;
+                }
+            }
+
+        }
+    }
+}
+
+pub struct OngoingCrateTranslation {
+    crate_name: Symbol,
+    link: LinkMeta,
+    metadata: EncodedMetadata,
+    exported_symbols: Arc<ExportedSymbols>,
+    no_builtins: bool,
+    windows_subsystem: Option<String>,
+    linker_info: LinkerInfo,
+    no_integrated_as: bool,
+
+    output_filenames: OutputFilenames,
+    regular_module_config: ModuleConfig,
+    metadata_module_config: ModuleConfig,
+    allocator_module_config: ModuleConfig,
+
+    time_graph: Option<TimeGraph>,
+    coordinator_send: Sender<Message>,
+    trans_worker_receive: Receiver<Message>,
+    shared_emitter_main: SharedEmitterMain,
+    future: thread::JoinHandle<CompiledModules>,
+}
+
+impl OngoingCrateTranslation {
+    pub fn join(self, sess: &Session) -> CrateTranslation {
+        self.shared_emitter_main.check(sess, true);
+        let compiled_modules = match self.future.join() {
+            Ok(compiled_modules) => compiled_modules,
+            Err(_) => {
+                sess.fatal("Error during translation/LLVM phase.");
+            }
+        };
+
+        sess.abort_if_errors();
+
+        if let Some(time_graph) = self.time_graph {
+            time_graph.dump(&format!("{}-timings", self.crate_name));
+        }
+
+        copy_module_artifacts_into_incr_comp_cache(sess,
+                                                   &compiled_modules,
+                                                   &self.output_filenames);
+        produce_final_output_artifacts(sess,
+                                       &compiled_modules,
+                                       &self.output_filenames);
+
+        // FIXME: time_llvm_passes support - does this use a global context or
+        // something?
+        if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+            unsafe { llvm::LLVMRustPrintPassTimings(); }
+        }
+
+        let trans = CrateTranslation {
+            crate_name: self.crate_name,
+            link: self.link,
+            metadata: self.metadata,
+            exported_symbols: self.exported_symbols,
+            no_builtins: self.no_builtins,
+            windows_subsystem: self.windows_subsystem,
+            linker_info: self.linker_info,
+
+            modules: compiled_modules.modules,
+            metadata_module: compiled_modules.metadata_module,
+            allocator_module: compiled_modules.allocator_module,
+        };
+
+        if self.no_integrated_as {
+            run_assembler(sess,  &self.output_filenames);
+
+            // HACK the linker expects the object file to be named foo.0.o but
+            // `run_assembler` produces an object named just foo.o. Rename it if we
+            // are going to build an executable
+            if sess.opts.output_types.contains_key(&OutputType::Exe) {
+                let f =  self.output_filenames.path(OutputType::Object);
+                rename_or_copy_remove(&f,
+                    f.with_file_name(format!("{}.0.o",
+                                             f.file_stem().unwrap().to_string_lossy()))).unwrap();
+            }
+
+            // Remove assembly source, unless --save-temps was specified
+            if !sess.opts.cg.save_temps {
+                fs::remove_file(&self.output_filenames
+                                     .temp_path(OutputType::Assembly, None)).unwrap();
+            }
+        }
+
+        trans
+    }
+
+    pub fn submit_translated_module_to_llvm(&self,
+                                            sess: &Session,
+                                            mtrans: ModuleTranslation,
+                                            cost: u64,
+                                            is_last: bool) {
+        let module_config = match mtrans.kind {
+            ModuleKind::Regular => self.regular_module_config.clone(sess),
+            ModuleKind::Metadata => self.metadata_module_config.clone(sess),
+            ModuleKind::Allocator => self.allocator_module_config.clone(sess),
+        };
+
+        let llvm_work_item = build_work_item(mtrans,
+                                             module_config,
+                                             self.output_filenames.clone());
+
+        drop(self.coordinator_send.send(Message::TranslationDone {
+            llvm_work_item,
+            cost,
+            is_last
+        }));
+    }
+
+    pub fn submit_pre_translated_module_to_llvm(&self,
+                                                sess: &Session,
+                                                mtrans: ModuleTranslation,
+                                                is_last: bool) {
+        self.wait_for_signal_to_translate_item();
+        self.check_for_errors(sess);
+
+        // These are generally cheap and won't through off scheduling.
+        let cost = 0;
+        self.submit_translated_module_to_llvm(sess, mtrans, cost, is_last);
+    }
+
+    pub fn check_for_errors(&self, sess: &Session) {
+        self.shared_emitter_main.check(sess, false);
+    }
+
+    pub fn wait_for_signal_to_translate_item(&self) {
+        match self.trans_worker_receive.recv() {
+            Ok(Message::TranslateItem) => {
+                // Nothing to do
+            }
+            Ok(message) => {
+                panic!("unexpected message: {:?}", message)
+            }
+            Err(_) => {
+                // One of the LLVM threads must have panicked, fall through so
+                // error handling can be reached.
+            }
+        }
+    }
 }

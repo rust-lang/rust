@@ -40,6 +40,7 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
+use ty::BindingMode;
 use util::nodemap::{NodeMap, NodeSet, DefIdSet};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -223,6 +224,9 @@ pub struct TypeckTables<'tcx> {
 
     pub adjustments: NodeMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
+    // Stores the actual binding mode for all instances of hir::BindingAnnotation.
+    pub pat_binding_modes: NodeMap<BindingMode>,
+
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
@@ -278,6 +282,7 @@ impl<'tcx> TypeckTables<'tcx> {
             node_types: FxHashMap(),
             node_substs: NodeMap(),
             adjustments: NodeMap(),
+            pat_binding_modes: NodeMap(),
             upvar_capture_map: FxHashMap(),
             generator_sigs: NodeMap(),
             generator_interiors: NodeMap(),

@@ -82,7 +82,7 @@ ifeq ($(UNAME),Bitrig)
 	EXTRACXXFLAGS := -lc++ -lc++abi
 else
 ifeq ($(UNAME),SunOS)
-	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket
+	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket -lresolv
 else
 ifeq ($(UNAME),OpenBSD)
 	EXTRACFLAGS := -lm -lpthread

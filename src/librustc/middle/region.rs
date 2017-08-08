@@ -459,10 +459,10 @@ impl<'tcx> RegionMaps {
                                    -> CodeExtent {
         if scope_a == scope_b { return scope_a; }
 
-        /// [1] The initial values for `a_buf` and `b_buf` are not used.
-        /// The `ancestors_of` function will return some prefix that
-        /// is re-initialized with new values (or else fallback to a
-        /// heap-allocated vector).
+        // [1] The initial values for `a_buf` and `b_buf` are not used.
+        // The `ancestors_of` function will return some prefix that
+        // is re-initialized with new values (or else fallback to a
+        // heap-allocated vector).
         let mut a_buf: [CodeExtent; 32] = [scope_a /* [1] */; 32];
         let mut a_vec: Vec<CodeExtent> = vec![];
         let mut b_buf: [CodeExtent; 32] = [scope_b /* [1] */; 32];
@@ -890,8 +890,32 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     ///        | ( ..., P&, ... )
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
+        // Note that the code below looks for *explicit* refs only, that is, it won't
+        // know about *implicit* refs as introduced in #42640.
+        //
+        // This is not a problem. For example, consider
+        //
+        //      let (ref x, ref y) = (Foo { .. }, Bar { .. });
+        //
+        // Due to the explicit refs on the left hand side, the below code would signal
+        // that the temporary value on the right hand side should live until the end of
+        // the enclosing block (as opposed to being dropped after the let is complete).
+        //
+        // To create an implicit ref, however, you must have a borrowed value on the RHS
+        // already, as in this example (which won't compile before #42640):
+        //
+        //      let Foo { x, .. } = &Foo { x: ..., ... };
+        //
+        // in place of
+        //
+        //      let Foo { ref x, .. } = Foo { ... };
+        //
+        // In the former case (the implicit ref version), the temporary is created by the
+        // & expression, and its lifetime would be extended to the end of the block (due
+        // to a different rule, not the below code).
         match pat.node {
-            PatKind::Binding(hir::BindByRef(_), ..) => true,
+            PatKind::Binding(hir::BindingAnnotation::Ref, ..) |
+            PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))

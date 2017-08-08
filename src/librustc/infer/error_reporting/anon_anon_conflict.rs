@@ -77,10 +77,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
                 .span_label(ty1.span,
-                            format!("these references must have the same lifetime"))
+                            format!("these references are not declared with the same lifetime..."))
                 .span_label(ty2.span, format!(""))
                 .span_label(span,
-                            format!("data{}flows{}here", span_label_var1, span_label_var2))
+                            format!("...but data{}flows{}here", span_label_var1, span_label_var2))
                 .emit();
         } else {
             return false;

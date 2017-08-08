@@ -795,7 +795,12 @@ fn usage(verbose: bool, include_unstable_options: bool) {
         (option.apply)(&mut options);
     }
     let message = format!("Usage: rustc [OPTIONS] INPUT");
-    let extra_help = if verbose {
+    let nightly_help = if nightly_options::is_nightly_build() {
+        "\n    -Z help             Print internal options for debugging rustc"
+    } else {
+        ""
+    };
+    let verbose_help = if verbose {
         ""
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
@@ -803,11 +808,10 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     println!("{}\nAdditional help:
     -C help             Print codegen options
     -W help             \
-              Print 'lint' options and default settings
-    -Z help             Print internal \
-              options for debugging rustc{}\n",
+              Print 'lint' options and default settings{}{}\n",
              options.usage(&message),
-             extra_help);
+             nightly_help,
+             verbose_help);
 }
 
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
@@ -1203,6 +1207,10 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_mir::DIAGNOSTICS);
+    all_errors.extend_from_slice(&syntax::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

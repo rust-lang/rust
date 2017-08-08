@@ -312,10 +312,45 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             MethodError::PrivateMatch(def) => {
-                let msg = format!("{} `{}` is private", def.kind_name(), item_name);
-                self.tcx.sess.span_err(span, &msg);
+                struct_span_err!(self.tcx.sess, span, E0624,
+                                 "{} `{}` is private", def.kind_name(), item_name).emit();
+            }
+
+            MethodError::IllegalSizedBound(candidates) => {
+                let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
+                let mut err = self.sess().struct_span_err(span, &msg);
+                if !candidates.is_empty() {
+                    let help = format!("{an}other candidate{s} {were} found in the following \
+                                        trait{s}, perhaps add a `use` for {one_of_them}:",
+                                    an = if candidates.len() == 1 {"an" } else { "" },
+                                    s = if candidates.len() == 1 { "" } else { "s" },
+                                    were = if candidates.len() == 1 { "was" } else { "were" },
+                                    one_of_them = if candidates.len() == 1 {
+                                        "it"
+                                    } else {
+                                        "one_of_them"
+                                    });
+                    self.suggest_use_candidates(&mut err, help, candidates);
+                }
+                err.emit();
             }
         }
+    }
+
+    fn suggest_use_candidates(&self,
+                              err: &mut DiagnosticBuilder,
+                              mut msg: String,
+                              candidates: Vec<DefId>) {
+        let limit = if candidates.len() == 5 { 5 } else { 4 };
+        for (i, trait_did) in candidates.iter().take(limit).enumerate() {
+            msg.push_str(&format!("\ncandidate #{}: `use {};`",
+                                    i + 1,
+                                    self.tcx.item_path_str(*trait_did)));
+        }
+        if candidates.len() > limit {
+            msg.push_str(&format!("\nand {} others", candidates.len() - limit));
+        }
+        err.note(&msg[..]);
     }
 
     fn suggest_traits_to_import(&self,
@@ -330,30 +365,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             candidates.sort();
             candidates.dedup();
             err.help("items from traits can only be used if the trait is in scope");
-            let mut msg = format!("the following {traits_are} implemented but not in scope, \
-                                   perhaps add a `use` for {one_of_them}:",
-                              traits_are = if candidates.len() == 1 {
-                                  "trait is"
-                              } else {
-                                  "traits are"
-                              },
-                              one_of_them = if candidates.len() == 1 {
-                                  "it"
-                              } else {
-                                  "one of them"
-                              });
+            let msg = format!("the following {traits_are} implemented but not in scope, \
+                               perhaps add a `use` for {one_of_them}:",
+                            traits_are = if candidates.len() == 1 {
+                                "trait is"
+                            } else {
+                                "traits are"
+                            },
+                            one_of_them = if candidates.len() == 1 {
+                                "it"
+                            } else {
+                                "one of them"
+                            });
 
-            let limit = if candidates.len() == 5 { 5 } else { 4 };
-            for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                msg.push_str(&format!("\ncandidate #{}: `use {};`",
-                                      i + 1,
-                                      self.tcx.item_path_str(*trait_did)));
-            }
-            if candidates.len() > limit {
-                msg.push_str(&format!("\nand {} others", candidates.len() - limit));
-            }
-            err.note(&msg[..]);
-
+            self.suggest_use_candidates(err, msg, candidates);
             return;
         }
 

@@ -442,9 +442,11 @@ impl_stable_hash_for!(struct hir::FieldPat {
     is_shorthand
 });
 
-impl_stable_hash_for!(enum hir::BindingMode {
-    BindByRef(mutability),
-    BindByValue(mutability)
+impl_stable_hash_for!(enum hir::BindingAnnotation {
+    Unannotated,
+    Mutable,
+    Ref,
+    RefMut
 });
 
 impl_stable_hash_for!(enum hir::RangeEnd {

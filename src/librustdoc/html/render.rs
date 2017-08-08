@@ -2235,6 +2235,13 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 _ => false,
             };
             fmt_impl_for_trait_page(&implementor.impl_, w, use_absolute)?;
+            for it in &implementor.impl_.items {
+                if let clean::TypedefItem(ref tydef, _) = it.inner {
+                    write!(w, "<span class=\"where fmt-newline\">  ")?;
+                    assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+                    write!(w, ";</span>")?;
+                }
+            }
             writeln!(w, "</code></li>")?;
         }
     }
@@ -2962,7 +2969,15 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
-                    render_stability_since_raw(w, item.stable_since(), outer_version)?;
+                    if let Some(l) = (Item { cx, item }).src_href() {
+                        write!(w, "</span><span class='out-of-band'>")?;
+                        write!(w, "<div class='ghost'></div>")?;
+                        render_stability_since_raw(w, item.stable_since(), outer_version)?;
+                        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                               l, "goto source code")?;
+                    } else {
+                        render_stability_since_raw(w, item.stable_since(), outer_version)?;
+                    }
                     write!(w, "</span></h4>\n")?;
                 }
             }

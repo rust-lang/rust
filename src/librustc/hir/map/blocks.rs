@@ -192,6 +192,18 @@ impl<'a> FnLikeNode<'a> {
         }
     }
 
+    pub fn unsafety(self) -> ast::Unsafety {
+        match self.kind() {
+            FnKind::ItemFn(_, _, unsafety, ..) => {
+                unsafety
+            }
+            FnKind::Method(_, m, ..) => {
+                m.unsafety
+            }
+            _ => ast::Unsafety::Normal
+        }
+    }
+
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
             FnKind::ItemFn(p.name, p.generics, p.unsafety, p.constness, p.abi, p.vis, p.attrs)

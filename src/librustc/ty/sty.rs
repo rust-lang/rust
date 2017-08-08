@@ -77,20 +77,6 @@ impl BoundRegion {
     }
 }
 
-/// When a region changed from late-bound to early-bound when #32330
-/// was fixed, its `RegionParameterDef` will have one of these
-/// structures that we can use to give nicer errors.
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable)]
-pub struct Issue32330 {
-    /// fn where is region declared
-    pub fn_def_id: DefId,
-
-    /// name of region; duplicates the info in BrNamed but convenient
-    /// to have it here, and this code is only temporary
-    pub region_name: ast::Name,
-}
-
 /// NB: If you change this, you'll probably want to change the corresponding
 /// AST structure in libsyntax/ast.rs as well.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]

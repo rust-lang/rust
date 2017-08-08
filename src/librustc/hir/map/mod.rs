@@ -555,7 +555,9 @@ impl<'hir> Map<'hir> {
     }
 
     /// Similar to get_parent, returns the parent node id or id if there is no
-    /// parent.
+    /// parent. Note that the parent may be CRATE_NODE_ID, which is not itself
+    /// present in the map -- so passing the return value of get_parent_node to
+    /// get may actually panic.
     /// This function returns the immediate parent in the AST, whereas get_parent
     /// returns the enclosing item. Note that this might not be the actual parent
     /// node in the AST - some kinds of nodes are not in the map and these will
@@ -631,7 +633,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieve the NodeId for `id`'s enclosing method, unless there's a
-    /// `while` or `loop` before reacing it, as block tail returns are not
+    /// `while` or `loop` before reaching it, as block tail returns are not
     /// available in them.
     ///
     /// ```

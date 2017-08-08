@@ -48,6 +48,10 @@ impl Step for Llvm {
         run.path("src/llvm")
     }
 
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Llvm { target: run.target })
+    }
+
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) {
         let build = builder.build;
@@ -75,9 +79,6 @@ impl Step for Llvm {
             if done_contents == rebuild_trigger_contents {
                 return
             }
-        }
-        if build.config.llvm_clean_rebuild {
-            drop(fs::remove_dir_all(&out_dir));
         }
 
         let _folder = build.fold_output(|| "llvm");
@@ -128,6 +129,15 @@ impl Step for Llvm {
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+
+        // This setting makes the LLVM tools link to the dynamic LLVM library,
+        // which saves both memory during parallel links and overall disk space
+        // for the tools.  We don't distribute any of those tools, so this is
+        // just a local concern.  However, it doesn't work well everywhere.
+        if target.contains("linux-gnu") || target.contains("apple-darwin") {
+           cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+        }
+
         if target.contains("msvc") {
             cfg.define("LLVM_USE_CRT_DEBUG", "MT");
             cfg.define("LLVM_USE_CRT_RELEASE", "MT");
@@ -154,6 +164,14 @@ impl Step for Llvm {
             let host = build.llvm_out(build.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
+
+            if target.contains("netbsd") {
+               cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+            } else if target.contains("freebsd") {
+               cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
+            }
+
+            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
         }
 
         let sanitize_cc = |cc: &Path| {

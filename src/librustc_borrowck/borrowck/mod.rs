@@ -111,19 +111,28 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     // is not yet stolen.
     tcx.mir_validated(owner_def_id).borrow();
 
-    let cfg = cfg::CFG::new(bccx.tcx, &body);
-    let AnalysisData { all_loans,
-                       loans: loan_dfcx,
-                       move_data: flowed_moves } =
-        build_borrowck_dataflow_data(bccx, &cfg, body_id);
-
-    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
+    // option dance because you can't capture an uninitialized variable
+    // by mut-ref.
+    let mut cfg = None;
+    if let Some(AnalysisData { all_loans,
+                               loans: loan_dfcx,
+                               move_data: flowed_moves }) =
+        build_borrowck_dataflow_data(bccx, false, body_id,
+                                     |bccx| {
+                                         cfg = Some(cfg::CFG::new(bccx.tcx, &body));
+                                         cfg.as_mut().unwrap()
+                                     })
+    {
+        check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
+    }
 }
 
-fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                                          cfg: &cfg::CFG,
-                                          body_id: hir::BodyId)
-                                          -> AnalysisData<'a, 'tcx>
+fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tcx>,
+                                                 force_analysis: bool,
+                                                 body_id: hir::BodyId,
+                                                 get_cfg: F)
+                                                 -> Option<AnalysisData<'a, 'tcx>>
+    where F: FnOnce(&mut BorrowckCtxt<'a, 'tcx>) -> &'c cfg::CFG
 {
     // Check the body of fn items.
     let tcx = this.tcx;
@@ -135,6 +144,18 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, body_id);
 
+    if !force_analysis && move_data.is_empty() && all_loans.is_empty() {
+        // large arrays of data inserted as constants can take a lot of
+        // time and memory to borrow-check - see issue #36799. However,
+        // they don't have lvalues, so no borrow-check is actually needed.
+        // Recognize that case and skip borrow-checking.
+        debug!("skipping loan propagation for {:?} because of no loans", body_id);
+        return None;
+    } else {
+        debug!("propagating loans in {:?}", body_id);
+    }
+
+    let cfg = get_cfg(this);
     let mut loan_dfcx =
         DataFlowContext::new(this.tcx,
                              "borrowck",
@@ -157,9 +178,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                                       id_range,
                                                       this.body);
 
-    AnalysisData { all_loans: all_loans,
-                   loans: loan_dfcx,
-                   move_data:flowed_moves }
+    Some(AnalysisData { all_loans: all_loans,
+                        loans: loan_dfcx,
+                        move_data:flowed_moves })
 }
 
 /// Accessor for introspective clients inspecting `AnalysisData` and
@@ -177,8 +198,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let body = tcx.hir.body(body_id);
     let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
 
-    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
-    (bccx, dataflow_data)
+    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, true, body_id, |_| cfg);
+    (bccx, dataflow_data.unwrap())
 }
 
 // ----------------------------------------------------------------------
@@ -1072,14 +1093,15 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn local_binding_mode(&self, node_id: ast::NodeId) -> hir::BindingMode {
+    fn local_binding_mode(&self, node_id: ast::NodeId) -> ty::BindingMode {
         let pat = match self.tcx.hir.get(node_id) {
             hir_map::Node::NodeLocal(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
 
         match pat.node {
-            hir::PatKind::Binding(mode, ..) => mode,
+            hir::PatKind::Binding(..) =>
+                *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode"),
             _ => bug!("local is not a binding: {:?}", pat)
         }
     }
@@ -1114,7 +1136,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             Some(ImmutabilityBlame::ClosureEnv(_)) => {}
             Some(ImmutabilityBlame::ImmLocal(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
-                if let hir::BindingMode::BindByValue(..) = self.local_binding_mode(node_id) {
+                if let ty::BindByValue(..) = self.local_binding_mode(node_id) {
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
                         let (_, is_implicit_self) = self.local_ty(node_id);
                         if is_implicit_self && snippet != "self" {
@@ -1131,7 +1153,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             Some(ImmutabilityBlame::LocalDeref(node_id)) => {
                 let let_span = self.tcx.hir.span(node_id);
                 match self.local_binding_mode(node_id) {
-                    hir::BindingMode::BindByRef(..) => {
+                    ty::BindByReference(..) => {
                         let snippet = self.tcx.sess.codemap().span_to_snippet(let_span);
                         if let Ok(snippet) = snippet {
                             db.span_label(
@@ -1141,7 +1163,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    hir::BindingMode::BindByValue(..) => {
+                    ty::BindByValue(..) => {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
                             if let Some(msg) =
                                  self.suggest_mut_for_immutable(local_ty, is_implicit_self) {

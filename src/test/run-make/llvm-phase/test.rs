@@ -54,11 +54,7 @@ impl<'a> CompilerCalls<'a> for JitCalls {
             state.session.abort_if_errors();
             let trans = state.trans.unwrap();
             assert_eq!(trans.modules.len(), 1);
-            let rs_llmod = match trans.modules[0].source {
-                ModuleSource::Preexisting(_) => unimplemented!(),
-                ModuleSource::Translated(llvm) => llvm.llmod,
-            };
-            unsafe { rustc_llvm::LLVMDumpModule(rs_llmod) };
+            println!("name of compiled module = {}", trans.modules[0].name);
         });
         cc
     }

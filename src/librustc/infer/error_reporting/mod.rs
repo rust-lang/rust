@@ -66,8 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, TyCtxt, TypeFoldable};
-use ty::{Region, Issue32330};
+use ty::{self, Region, TyCtxt, TypeFoldable};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -713,35 +712,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.note_and_explain_type_err(diag, terr, span);
     }
 
-    pub fn note_issue_32330(&self,
-                            diag: &mut DiagnosticBuilder<'tcx>,
-                            terr: &TypeError<'tcx>)
-    {
-        debug!("note_issue_32330: terr={:?}", terr);
-        match *terr {
-            TypeError::RegionsInsufficientlyPolymorphic(_, _, Some(box Issue32330 {
-                fn_def_id, region_name
-            })) |
-            TypeError::RegionsOverlyPolymorphic(_, _, Some(box Issue32330 {
-                fn_def_id, region_name
-            })) => {
-                diag.note(
-                    &format!("lifetime parameter `{0}` declared on fn `{1}` \
-                              appears only in the return type, \
-                              but here is required to be higher-ranked, \
-                              which means that `{0}` must appear in both \
-                              argument and return types",
-                             region_name,
-                             self.tcx.item_path_str(fn_def_id)));
-                diag.note(
-                    &format!("this error is the result of a recent bug fix; \
-                              for more information, see issue #33685 \
-                              <https://github.com/rust-lang/rust/issues/33685>"));
-            }
-            _ => {}
-        }
-    }
-
     pub fn report_and_explain_type_error(&self,
                                          trace: TypeTrace<'tcx>,
                                          terr: &TypeError<'tcx>)
@@ -761,7 +731,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
-        self.note_issue_32330(&mut diag, terr);
         diag
     }
 
@@ -934,7 +903,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 format!(" for lifetime parameter {}in trait containing associated type `{}`",
                         br_string(br), type_name)
             }
-            infer::EarlyBoundRegion(_, name, _) => {
+            infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
                         name)
             }

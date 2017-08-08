@@ -268,7 +268,12 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), _, name, None) = p.node {
+        if let PatKind::Binding(_, _, name, None) = p.node {
+            let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+            if bm != ty::BindByValue(hir::MutImmutable) {
+                // Nothing to check.
+                return true;
+            }
             let pat_ty = cx.tables.pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
                 if edef.is_enum() && edef.variants.iter().any(|variant| {
@@ -452,8 +457,9 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
     for pat in pats {
-        pat.each_binding(|bm, _, span, _path| {
-            if let hir::BindByRef(..) = bm {
+        pat.each_binding(|_, id, span, _path| {
+            let bm = *cx.tables.pat_binding_modes.get(&id).expect("missing binding mode");
+            if let ty::BindByReference(..) = bm {
                 by_ref_span = Some(span);
             }
         })
@@ -484,10 +490,16 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 
     for pat in pats {
         pat.walk(|p| {
-            if let PatKind::Binding(hir::BindByValue(..), _, _, ref sub) = p.node {
-                let pat_ty = cx.tables.node_id_to_type(p.id);
-                if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
-                    check_move(p, sub.as_ref().map(|p| &**p));
+            if let PatKind::Binding(_, _, _, ref sub) = p.node {
+                let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+                match bm {
+                    ty::BindByValue(..) => {
+                        let pat_ty = cx.tables.node_id_to_type(p.id);
+                        if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
+                            check_move(p, sub.as_ref().map(|p| &**p));
+                        }
+                    }
+                    _ => {}
                 }
             }
             true

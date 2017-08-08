@@ -546,7 +546,7 @@ impl<'a> PathSource<'a> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Namespace {
     TypeNS,
     ValueNS,
@@ -895,6 +895,19 @@ impl<'a> ModuleData<'a> {
     fn for_each_child<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         for (&(ident, ns), name_resolution) in self.resolutions.borrow().iter() {
             name_resolution.borrow().binding.map(|binding| f(ident, ns, binding));
+        }
+    }
+
+    fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
+        let resolutions = self.resolutions.borrow();
+        let mut resolutions = resolutions.iter().map(|(&(ident, ns), &resolution)| {
+                                                    // Pre-compute keys for sorting
+                                                    (ident.name.as_str(), ns, ident, resolution)
+                                                })
+                                                .collect::<Vec<_>>();
+        resolutions.sort_unstable_by_key(|&(str, ns, ..)| (str, ns));
+        for &(_, ns, ident, resolution) in resolutions.iter() {
+            resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
     }
 
@@ -2277,8 +2290,9 @@ impl<'a> Resolver<'a> {
                                                                       false, pat.span)
                                       .and_then(LexicalScopeBinding::item);
                     let resolution = binding.map(NameBinding::def).and_then(|def| {
+                        let ivmode = BindingMode::ByValue(Mutability::Immutable);
                         let always_binding = !pat_src.is_refutable() || opt_pat.is_some() ||
-                                             bmode != BindingMode::ByValue(Mutability::Immutable);
+                                             bmode != ivmode;
                         match def {
                             Def::StructCtor(_, CtorKind::Const) |
                             Def::VariantCtor(_, CtorKind::Const) |
@@ -3351,8 +3365,9 @@ impl<'a> Resolver<'a> {
                         in_module_is_extern)) = worklist.pop() {
             self.populate_module_if_necessary(in_module);
 
-            in_module.for_each_child(|ident, ns, name_binding| {
-
+            // We have to visit module children in deterministic order to avoid
+            // instabilities in reported imports (#43552).
+            in_module.for_each_child_stable(|ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well

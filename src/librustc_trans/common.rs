@@ -234,12 +234,6 @@ pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
     }
 }
 
-pub fn C_floating_f64(f: f64, t: Type) -> ValueRef {
-    unsafe {
-        llvm::LLVMConstReal(t.to_ref(), f)
-    }
-}
-
 pub fn C_nil(ccx: &CrateContext) -> ValueRef {
     C_struct(ccx, &[], false)
 }
@@ -383,7 +377,7 @@ pub fn const_to_uint(v: ValueRef) -> u64 {
     }
 }
 
-fn is_const_integral(v: ValueRef) -> bool {
+pub fn is_const_integral(v: ValueRef) -> bool {
     unsafe {
         !llvm::LLVMIsAConstantInt(v).is_null()
     }

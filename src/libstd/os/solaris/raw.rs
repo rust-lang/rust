@@ -32,7 +32,7 @@ use os::unix::raw::{uid_t, gid_t};
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i64;
 
 #[stable(feature = "pthread_t", since = "1.8.0")]
-pub type pthread_t = usize;
+pub type pthread_t = u32;
 
 #[repr(C)]
 #[derive(Clone)]

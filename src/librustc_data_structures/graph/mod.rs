@@ -308,6 +308,42 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
 
+    pub fn nodes_in_postorder<'a>(&'a self,
+                                  direction: Direction,
+                                  entry_node: NodeIndex)
+                                  -> Vec<NodeIndex>
+    {
+        let mut visited = BitVector::new(self.len_nodes());
+        let mut stack = vec![];
+        let mut result = Vec::with_capacity(self.len_nodes());
+        let mut push_node = |stack: &mut Vec<_>, node: NodeIndex| {
+            if visited.insert(node.0) {
+                stack.push((node, self.adjacent_edges(node, direction)));
+            }
+        };
+
+        for node in Some(entry_node).into_iter()
+            .chain(self.enumerated_nodes().map(|(node, _)| node))
+        {
+            push_node(&mut stack, node);
+            while let Some((node, mut iter)) = stack.pop() {
+                if let Some((_, child)) = iter.next() {
+                    let target = child.source_or_target(direction);
+                    // the current node needs more processing, so
+                    // add it back to the stack
+                    stack.push((node, iter));
+                    // and then push the new node
+                    push_node(&mut stack, target);
+                } else {
+                    result.push(node);
+                }
+            }
+        }
+
+        assert_eq!(result.len(), self.len_nodes());
+        result
+    }
+
     /// Whether or not a node can be reached from itself.
     pub fn is_node_cyclic(&self, starting_node_index: NodeIndex) -> bool {
         // This is similar to depth traversal below, but we

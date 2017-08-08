@@ -377,13 +377,11 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsNoOverlap(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsNoOverlap(a, b))
             }
-            RegionsInsufficientlyPolymorphic(a, b, ref c) => {
-                let c = c.clone();
-                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b, c))
+            RegionsInsufficientlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b))
             }
-            RegionsOverlyPolymorphic(a, b, ref c) => {
-                let c = c.clone();
-                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b, c))
+            RegionsOverlyPolymorphic(a, b) => {
+                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
             }
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
@@ -1065,13 +1063,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             RegionsNoOverlap(a, b) => {
                 RegionsNoOverlap(a.fold_with(folder), b.fold_with(folder))
             },
-            RegionsInsufficientlyPolymorphic(a, b, ref c) => {
-                let c = c.clone();
-                RegionsInsufficientlyPolymorphic(a, b.fold_with(folder), c)
+            RegionsInsufficientlyPolymorphic(a, b) => {
+                RegionsInsufficientlyPolymorphic(a, b.fold_with(folder))
             },
-            RegionsOverlyPolymorphic(a, b, ref c) => {
-                let c = c.clone();
-                RegionsOverlyPolymorphic(a, b.fold_with(folder), c)
+            RegionsOverlyPolymorphic(a, b) => {
+                RegionsOverlyPolymorphic(a, b.fold_with(folder))
             },
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
@@ -1097,8 +1093,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             RegionsNoOverlap(a, b) => {
                 a.visit_with(visitor) || b.visit_with(visitor)
             },
-            RegionsInsufficientlyPolymorphic(_, b, _) |
-            RegionsOverlyPolymorphic(_, b, _) => {
+            RegionsInsufficientlyPolymorphic(_, b) |
+            RegionsOverlyPolymorphic(_, b) => {
                 b.visit_with(visitor)
             },
             Sorts(x) => x.visit_with(visitor),

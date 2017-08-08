@@ -221,7 +221,7 @@ while break {}
 
 To fix this, add a label specifying which loop is being broken out of:
 ```
-`foo: while break `foo {}
+'foo: while break 'foo {}
 ```
 "##
 }

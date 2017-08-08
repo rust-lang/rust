@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(warnings)]
+#![crate_type="rlib"]
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
-    /// crash
-    let x = 0;
-}
+pub static C: u32 = 0-1;

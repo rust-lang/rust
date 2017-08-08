@@ -26,6 +26,8 @@
 #![feature(i128)]
 #![feature(i128_type)]
 
+extern crate rustc_apfloat;
+
 extern crate syntax;
 
 extern crate serialize as rustc_serialize; // used by deriving

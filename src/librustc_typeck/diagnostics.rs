@@ -2631,26 +2631,6 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
-E0569: r##"
-If an impl has a generic parameter with the `#[may_dangle]` attribute, then
-that impl must be declared as an `unsafe impl. For example:
-
-```compile_fail,E0569
-#![feature(generic_param_attrs)]
-#![feature(dropck_eyepatch)]
-
-struct Foo<X>(X);
-impl<#[may_dangle] X> Drop for Foo<X> {
-    fn drop(&mut self) { }
-}
-```
-
-In this example, we are asserting that the destructor for `Foo` will not
-access any data of type `X`, and require this assertion to be true for
-overall safety in our program. The compiler does not currently attempt to
-verify this assertion; therefore we must tag this `impl` as unsafe.
-"##,
-
 E0318: r##"
 Default impls for a trait must be located in the same crate where the trait was
 defined. For more information see the [opt-in builtin traits RFC][RFC 19].
@@ -3457,6 +3437,56 @@ impl Foo for i32 {
 ```
 "##,
 
+E0436: r##"
+The functional record update syntax is only allowed for structs. (Struct-like
+enum variants don't qualify, for example.)
+
+Erroneous code example:
+
+```compile_fail,E0436
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        c @ PublicationFrequency::SemiMonthly{ .. } =>
+            PublicationFrequency::SemiMonthly {
+                annual_special: true, ..c // error: functional record update
+                                          //        syntax requires a struct
+        }
+    }
+}
+```
+
+Rewrite the expression without functional record update syntax:
+
+```
+enum PublicationFrequency {
+    Weekly,
+    SemiMonthly { days: (u8, u8), annual_special: bool },
+}
+
+fn one_up_competitor(competitor_frequency: PublicationFrequency)
+                     -> PublicationFrequency {
+    match competitor_frequency {
+        PublicationFrequency::Weekly => PublicationFrequency::SemiMonthly {
+            days: (1, 15), annual_special: false
+        },
+        PublicationFrequency::SemiMonthly{ days, .. } =>
+            PublicationFrequency::SemiMonthly {
+                days, annual_special: true // ok!
+        }
+    }
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -3924,6 +3954,28 @@ fn main() {
 See [RFC 1522] for more details.
 
 [RFC 1522]: https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md
+"##,
+
+E0569: r##"
+If an impl has a generic parameter with the `#[may_dangle]` attribute, then
+that impl must be declared as an `unsafe impl.
+
+Erroneous code example:
+
+```compile_fail,E0569
+#![feature(generic_param_attrs)]
+#![feature(dropck_eyepatch)]
+
+struct Foo<X>(X);
+impl<#[may_dangle] X> Drop for Foo<X> {
+    fn drop(&mut self) { }
+}
+```
+
+In this example, we are asserting that the destructor for `Foo` will not
+access any data of type `X`, and require this assertion to be true for
+overall safety in our program. The compiler does not currently attempt to
+verify this assertion; therefore we must tag this `impl` as unsafe.
 "##,
 
 E0570: r##"
@@ -4592,6 +4644,62 @@ whose implementation is handled specially by the compiler. In order to fix this
 error, just declare a function.
 "##,
 
+E0624: r##"
+A private item was used outside of its scope.
+
+Erroneous code example:
+
+```compile_fail,E0627
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        fn method(&self) {}
+    }
+}
+
+let foo = inner::Foo;
+foo.method(); // error: method `method` is private
+```
+
+Two possibilities are available to solve this issue:
+
+1. Only use the item in the scope it has been defined:
+
+```
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        fn method(&self) {}
+    }
+
+    pub fn call_method(foo: &Foo) { // We create a public function.
+        foo.method(); // Which calls the item.
+    }
+}
+
+let foo = inner::Foo;
+inner::call_method(&foo); // And since the function is public, we can call the
+                          // method through it.
+```
+
+2. Make the item public:
+
+```
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        pub fn method(&self) {} // It's now public.
+    }
+}
+
+let foo = inner::Foo;
+foo.method(); // Ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -4655,10 +4763,9 @@ register_diagnostics! {
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0436, // functional record update requires a struct
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
-    E0563, // cannot determine a type for this `impl Trait`: {}
+//  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0567, // auto traits can not have type parameters
@@ -4667,5 +4774,5 @@ register_diagnostics! {
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
-    E0624, // yield statement outside of generator literal
+    E0627, // yield statement outside of generator literal
 }

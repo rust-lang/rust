@@ -723,6 +723,46 @@ impl EarlyLintPass for IllegalFloatLiteralPattern {
 }
 
 declare_lint! {
+    pub UNUSED_DOC_COMMENT,
+    Warn,
+    "detects doc comments that aren't used by rustdoc"
+}
+
+#[derive(Copy, Clone)]
+pub struct UnusedDocComment;
+
+impl LintPass for UnusedDocComment {
+    fn get_lints(&self) -> LintArray {
+        lint_array![UNUSED_DOC_COMMENT]
+    }
+}
+
+impl UnusedDocComment {
+    fn warn_if_doc<'a, 'tcx,
+                   I: Iterator<Item=&'a ast::Attribute>,
+                   C: LintContext<'tcx>>(&self, mut attrs: I, cx: &C) {
+        if let Some(attr) = attrs.find(|a| a.is_value_str() && a.check_name("doc")) {
+            cx.struct_span_lint(UNUSED_DOC_COMMENT, attr.span, "doc comment not used by rustdoc")
+              .emit();
+        }
+    }
+}
+
+impl EarlyLintPass for UnusedDocComment {
+    fn check_local(&mut self, cx: &EarlyContext, decl: &ast::Local) {
+        self.warn_if_doc(decl.attrs.iter(), cx);
+    }
+
+    fn check_arm(&mut self, cx: &EarlyContext, arm: &ast::Arm) {
+        self.warn_if_doc(arm.attrs.iter(), cx);
+    }
+
+    fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
+        self.warn_if_doc(expr.attrs.iter(), cx);
+    }
+}
+
+declare_lint! {
     pub UNCONDITIONAL_RECURSION,
     Warn,
     "functions that cannot return without calling themselves"

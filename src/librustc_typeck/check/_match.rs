@@ -113,10 +113,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.demand_eqtype(pat.span, expected, rhs_ty);
                 common_type
             }
-            PatKind::Binding(bm, def_id, _, ref sub) => {
+            PatKind::Binding(ba, def_id, _, ref sub) => {
+                // Note the binding mode in the typeck tables. For now, what we store is always
+                // identical to what could be scraped from the HIR, but this will change with
+                // default binding modes (#42640).
+                let bm = ty::BindingMode::convert(ba);
+                self.inh.tables.borrow_mut().pat_binding_modes.insert(pat.id, bm);
+
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
-                    hir::BindByRef(mutbl) => {
+                    ty::BindByReference(mutbl) => {
                         // if the binding is like
                         //    ref x | ref const x | ref mut x
                         // then `x` is assigned a value of type `&M T` where M is the mutability
@@ -131,7 +137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.demand_eqtype(pat.span, region_ty, typ);
                     }
                     // otherwise the type of x is the expected type T
-                    hir::BindByValue(_) => {
+                    ty::BindByValue(_) => {
                         // As above, `T <: typeof(x)` is required but we
                         // use equality, see (*) below.
                         self.demand_eqtype(pat.span, expected, typ);
@@ -396,11 +402,59 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        match_src: hir::MatchSource) -> Ty<'tcx> {
         let tcx = self.tcx;
 
-        // Not entirely obvious: if matches may create ref bindings, we
-        // want to use the *precise* type of the discriminant, *not* some
-        // supertype, as the "discriminant type" (issue #23116).
+        // Not entirely obvious: if matches may create ref bindings, we want to
+        // use the *precise* type of the discriminant, *not* some supertype, as
+        // the "discriminant type" (issue #23116).
+        //
+        // FIXME(tschottdorf): don't call contains_explicit_ref_binding, which
+        // is problematic as the HIR is being scraped, but ref bindings may be
+        // implicit after #42640. We need to make sure that pat_adjustments
+        // (once introduced) is populated by the time we get here.
+        //
+        // arielb1 [writes here in this comment thread][c] that there
+        // is certainly *some* potential danger, e.g. for an example
+        // like:
+        //
+        // [c]: https://github.com/rust-lang/rust/pull/43399#discussion_r130223956
+        //
+        // ```
+        // let Foo(x) = f()[0];
+        // ```
+        //
+        // Then if the pattern matches by reference, we want to match
+        // `f()[0]` as a lexpr, so we can't allow it to be
+        // coerced. But if the pattern matches by value, `f()[0]` is
+        // still syntactically a lexpr, but we *do* want to allow
+        // coercions.
+        //
+        // However, *likely* we are ok with allowing coercions to
+        // happen if there are no explicit ref mut patterns - all
+        // implicit ref mut patterns must occur behind a reference, so
+        // they will have the "correct" variance and lifetime.
+        //
+        // This does mean that the following pattern would be legal:
+        //
+        // ```
+        // struct Foo(Bar);
+        // struct Bar(u32);
+        // impl Deref for Foo {
+        //     type Target = Bar;
+        //     fn deref(&self) -> &Bar { &self.0 }
+        // }
+        // impl DerefMut for Foo {
+        //     fn deref_mut(&mut self) -> &mut Bar { &mut self.0 }
+        // }
+        // fn foo(x: &mut Foo) {
+        //     {
+        //         let Bar(z): &mut Bar = x;
+        //         *z = 42;
+        //     }
+        //     assert_eq!(foo.0.0, 42);
+        // }
+        // ```
+
         let contains_ref_bindings = arms.iter()
-                                        .filter_map(|a| a.contains_ref_binding())
+                                        .filter_map(|a| a.contains_explicit_ref_binding())
                                         .max_by_key(|m| match *m {
                                             hir::MutMutable => 1,
                                             hir::MutImmutable => 0,

@@ -16,7 +16,9 @@ use fs;
 use net;
 use os::raw;
 use sys;
+use io;
 use sys_common::{self, AsInner, FromInner, IntoInner};
+use libc;
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -102,6 +104,21 @@ impl AsRawFd for net::TcpListener {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::UdpSocket {
     fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+}
+
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawFd for io::Stdin {
+    fn as_raw_fd(&self) -> RawFd { libc::STDIN_FILENO }
+}
+
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawFd for io::Stdout {
+    fn as_raw_fd(&self) -> RawFd { libc::STDOUT_FILENO }
+}
+
+#[stable(feature = "asraw_stdio", since = "1.21.0")]
+impl AsRawFd for io::Stderr {
+    fn as_raw_fd(&self) -> RawFd { libc::STDERR_FILENO }
 }
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]

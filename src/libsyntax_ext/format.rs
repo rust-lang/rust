@@ -20,7 +20,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
 use std::collections::{HashMap, HashSet};
@@ -558,8 +558,10 @@ impl<'a, 'b> Context<'a, 'b> {
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
             let name = self.ecx.ident_of(&format!("__arg{}", i));
-            let span =
-                Span { ctxt: e.span.ctxt.apply_mark(self.ecx.current_expansion.mark), ..e.span };
+            let span = Span {
+                ctxt: e.span.ctxt.apply_mark(self.ecx.current_expansion.mark),
+                ..DUMMY_SP
+            };
             pats.push(self.ecx.pat_ident(span, name));
             for ref arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));

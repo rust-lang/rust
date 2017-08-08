@@ -69,6 +69,7 @@ mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
+mod l4re_base;
 mod fuchsia_base;
 mod redox_base;
 
@@ -192,6 +193,8 @@ supported_targets! {
 
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
+
+    ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 

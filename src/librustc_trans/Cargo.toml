@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-crossbeam = "0.2"
+num_cpus = "1.0"
 flate2 = "0.2"
 jobserver = "0.1.5"
 log = "0.3"

@@ -18,9 +18,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// the rustc crate store interface. This also includes types that
-// are *mostly* used as a part of that interface, but these should
-// probably get a better home if someone can find one.
+//! the rustc crate store interface. This also includes types that
+//! are *mostly* used as a part of that interface, but these should
+//! probably get a better home if someone can find one.
 
 use hir::def;
 use hir::def_id::{CrateNum, DefId, DefIndex};
@@ -50,13 +50,13 @@ pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct LinkMeta {
     pub crate_hash: Svh,
 }
 
-// Where a crate came from on the local filesystem. One of these three options
-// must be non-None.
+/// Where a crate came from on the local filesystem. One of these three options
+/// must be non-None.
 #[derive(PartialEq, Clone, Debug)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
@@ -120,10 +120,14 @@ pub enum LinkagePreference {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum NativeLibraryKind {
-    NativeStatic,    // native static library (.a archive)
-    NativeStaticNobundle, // native static library, which doesn't get bundled into .rlibs
-    NativeFramework, // macOS-specific
-    NativeUnknown,   // default way to specify a dynamic library
+    /// native static library (.a archive)
+    NativeStatic,
+    /// native static library, which doesn't get bundled into .rlibs
+    NativeStaticNobundle,
+    /// macOS-specific
+    NativeFramework,
+    /// default way to specify a dynamic library
+    NativeUnknown,
 }
 
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
@@ -161,15 +165,13 @@ pub struct ExternCrate {
 }
 
 pub struct EncodedMetadata {
-    pub raw_data: Vec<u8>,
-    pub hashes: EncodedMetadataHashes,
+    pub raw_data: Vec<u8>
 }
 
 impl EncodedMetadata {
     pub fn new() -> EncodedMetadata {
         EncodedMetadata {
             raw_data: Vec::new(),
-            hashes: EncodedMetadataHashes::new(),
         }
     }
 }
@@ -294,7 +296,7 @@ pub trait CrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata;
+                                 -> (EncodedMetadata, EncodedMetadataHashes);
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -424,7 +426,7 @@ impl CrateStore for DummyCrateStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata {
+                                 -> (EncodedMetadata, EncodedMetadataHashes) {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }

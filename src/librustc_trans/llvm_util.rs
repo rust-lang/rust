@@ -80,7 +80,10 @@ const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bm
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
 
-const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0", "vsx\0"];
+const POWERPC_WHITELIST: &'static [&'static str] = &["altivec\0",
+                                                     "power8-altivec\0", "power9-altivec\0",
+                                                     "power8-vector\0", "power9-vector\0",
+                                                     "vsx\0"];
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess);

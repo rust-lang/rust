@@ -1132,6 +1132,24 @@ fn main() {
 ```
 "##,
 
+E0595: r##"
+Closures cannot mutate immutable captured variables.
+
+Erroneous code example:
+
+```compile_fail,E0595
+let x = 3; // error: closure cannot assign to immutable local variable `x`
+let mut c = || { x += 1 };
+```
+
+Make the variable binding mutable:
+
+```
+let mut x = 3; // ok!
+let mut c = || { x += 1 };
+```
+"##,
+
 E0596: r##"
 This error occurs because you tried to mutably borrow a non-mutable variable.
 
@@ -1275,6 +1293,5 @@ register_diagnostics! {
 //    E0385, // {} in an aliasable location
     E0524, // two closures require unique access to `..` at the same time
     E0594, // cannot assign to {}
-    E0595, // closure cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
 }

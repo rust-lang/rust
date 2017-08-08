@@ -1547,6 +1547,8 @@ pub enum PrimitiveType {
     Array,
     Tuple,
     RawPointer,
+    Reference,
+    Fn,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1581,6 +1583,8 @@ impl Type {
             Array(..) | BorrowedRef { type_: box Array(..), .. } => Some(PrimitiveType::Array),
             Tuple(..) => Some(PrimitiveType::Tuple),
             RawPointer(..) => Some(PrimitiveType::RawPointer),
+            BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
+            BareFunction(..) => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1633,6 +1637,8 @@ impl PrimitiveType {
             "slice" => Some(PrimitiveType::Slice),
             "tuple" => Some(PrimitiveType::Tuple),
             "pointer" => Some(PrimitiveType::RawPointer),
+            "reference" => Some(PrimitiveType::Reference),
+            "fn" => Some(PrimitiveType::Fn),
             _ => None,
         }
     }
@@ -1661,6 +1667,8 @@ impl PrimitiveType {
             Slice => "slice",
             Tuple => "tuple",
             RawPointer => "pointer",
+            Reference => "reference",
+            Fn => "fn",
         }
     }
 
@@ -2556,6 +2564,8 @@ fn build_deref_target_impls(cx: &DocContext,
             Array => tcx.lang_items.slice_impl(),
             Tuple => None,
             RawPointer => tcx.lang_items.const_ptr_impl(),
+            Reference => None,
+            Fn => None,
         };
         if let Some(did) = did {
             if !did.is_local() {
@@ -2776,6 +2786,9 @@ fn resolve_type(cx: &DocContext,
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfType.name().to_string());
+        }
+        Def::TyParam(..) if path.segments.len() == 1 => {
+            return Generic(format!("{:#}", path));
         }
         Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
         _ => false,

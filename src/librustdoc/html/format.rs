@@ -607,11 +607,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                        decl.generics,
                        decl.decl)
             } else {
-                write!(f, "{}{}fn{}{}",
-                       UnsafetySpace(decl.unsafety),
-                       AbiSpace(decl.abi),
-                       decl.generics,
-                       decl.decl)
+                write!(f, "{}{}", UnsafetySpace(decl.unsafety), AbiSpace(decl.abi))?;
+                primitive_link(f, PrimitiveType::Fn, "fn")?;
+                write!(f, "{}{}", decl.generics, decl.decl)
             }
         }
         clean::Tuple(ref typs) => {
@@ -665,26 +663,29 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 _ => "".to_string(),
             };
             let m = MutableSpace(mutability);
+            let amp = if f.alternate() {
+                "&".to_string()
+            } else {
+                "&amp;".to_string()
+            };
             match **ty {
                 clean::Slice(ref bt) => { // BorrowedRef{ ... Slice(T) } is &[T]
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
                                 primitive_link(f, PrimitiveType::Slice,
-                                    &format!("&{}{}[{:#}]", lt, m, **bt))
+                                    &format!("{}{}{}[{:#}]", amp, lt, m, **bt))
                             } else {
                                 primitive_link(f, PrimitiveType::Slice,
-                                    &format!("&amp;{}{}[{}]", lt, m, **bt))
+                                    &format!("{}{}{}[{}]", amp, lt, m, **bt))
                             }
                         }
                         _ => {
+                            primitive_link(f, PrimitiveType::Slice,
+                                           &format!("{}{}{}[", amp, lt, m))?;
                             if f.alternate() {
-                                primitive_link(f, PrimitiveType::Slice,
-                                               &format!("&{}{}[", lt, m))?;
                                 write!(f, "{:#}", **bt)?;
                             } else {
-                                primitive_link(f, PrimitiveType::Slice,
-                                               &format!("&amp;{}{}[", lt, m))?;
                                 write!(f, "{}", **bt)?;
                             }
                             primitive_link(f, PrimitiveType::Slice, "]")
@@ -692,23 +693,18 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                     }
                 }
                 clean::ResolvedPath { typarams: Some(ref v), .. } if !v.is_empty() => {
-                    if f.alternate() {
-                        write!(f, "&{}{}", lt, m)?;
-                    } else {
-                        write!(f, "&amp;{}{}", lt, m)?;
-                    }
-                    write!(f, "(")?;
+                    write!(f, "{}{}{}(", amp, lt, m)?;
                     fmt_type(&ty, f, use_absolute)?;
                     write!(f, ")")
                 }
+                clean::Generic(..) => {
+                    primitive_link(f, PrimitiveType::Reference,
+                                   &format!("{}{}{}", amp, lt, m))?;
+                    fmt_type(&ty, f, use_absolute)
+                }
                 _ => {
-                    if f.alternate() {
-                        write!(f, "&{}{}", lt, m)?;
-                        fmt_type(&ty, f, use_absolute)
-                    } else {
-                        write!(f, "&amp;{}{}", lt, m)?;
-                        fmt_type(&ty, f, use_absolute)
-                    }
+                    write!(f, "{}{}{}", amp, lt, m)?;
+                    fmt_type(&ty, f, use_absolute)
                 }
             }
         }

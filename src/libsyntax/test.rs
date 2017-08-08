@@ -192,7 +192,7 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                folded.map(|ast::Item {id, ident, attrs, node, vis, span}| {
+                folded.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
                     let allow_str = Symbol::intern("allow");
                     let dead_code_str = Symbol::intern("dead_code");
                     let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
@@ -212,7 +212,8 @@ impl fold::Folder for EntryPointCleaner {
                             .collect(),
                         node: node,
                         vis: vis,
-                        span: span
+                        span: span,
+                        tokens: tokens,
                     }
                 }),
             EntryPointType::None |
@@ -255,6 +256,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
         node: ast::ItemKind::Mod(reexport_mod),
         vis: ast::Visibility::Public,
         span: DUMMY_SP,
+        tokens: None,
     })).pop().unwrap();
 
     (it, sym)
@@ -465,7 +467,8 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         node: vi,
         attrs: vec![],
         vis: vis,
-        span: sp
+        span: sp,
+        tokens: None,
     })
 }
 
@@ -506,7 +509,8 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
         id: ast::DUMMY_NODE_ID,
         node: main,
         vis: ast::Visibility::Public,
-        span: sp
+        span: sp,
+        tokens: None,
     })
 }
 
@@ -536,6 +540,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         node: item_,
         vis: ast::Visibility::Public,
         span: DUMMY_SP,
+        tokens: None,
     })).pop().unwrap();
     let reexport = cx.reexport_test_harness_main.map(|s| {
         // building `use <ident> = __test::main`
@@ -551,7 +556,8 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Visibility::Inherited,
-            span: DUMMY_SP
+            span: DUMMY_SP,
+            tokens: None,
         })).pop().unwrap()
     });
 

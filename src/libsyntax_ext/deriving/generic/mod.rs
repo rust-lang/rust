@@ -504,6 +504,7 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
+                tokens: None,
             }
         });
 
@@ -930,6 +931,7 @@ impl<'a> MethodDef<'a> {
                                                 decl: fn_decl,
                                             },
                                             body_block),
+            tokens: None,
         }
     }
 
