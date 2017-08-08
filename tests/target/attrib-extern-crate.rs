@@ -1,17 +1,17 @@
 // Attributes on extern crate.
 
-extern crate Foo;
 #[Attr1]
 extern crate Bar;
 #[Attr2]
 #[Attr2]
 extern crate Baz;
+extern crate Foo;
 
 fn foo() {
-    extern crate Foo;
     #[Attr1]
     extern crate Bar;
     #[Attr2]
     #[Attr2]
     extern crate Baz;
+    extern crate Foo;
 }

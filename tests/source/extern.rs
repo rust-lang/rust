@@ -3,6 +3,13 @@
  extern crate       foo    ;   
     extern crate       foo       as bar    ;   
 
+extern crate futures;
+extern crate dotenv;
+extern crate chrono;
+
+extern crate foo;
+extern crate bar;
+
  extern  "C" {
   fn c_func(x: *mut *mut libc::c_void);
 
