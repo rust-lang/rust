@@ -396,8 +396,16 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    /// Validate that a NodeId can safely be converted to an ItemLocalId for
-    /// this table.
+    /// Validate that the given HirId (respectively its `local_id` part) can be
+    /// safely used as a key in the tables of this TypeckTable. For that to be
+    /// the case, the HirId must have the same `owner` as all the other IDs in
+    /// this table (signified by the `local_id_root` field). Otherwise the HirId
+    /// would be in a different frame of reference and using its `local_id`
+    /// would result in lookup errors, or worse, in silently wrong data being
+    /// stored/returned.
+    ///
+    /// Therefore it is advised to call this method anytime before using a given
+    /// HirId::local_id as a key.
     #[inline]
     pub fn validate_hir_id(&self, hir_id: hir::HirId) {
         #[cfg(debug_assertions)]
