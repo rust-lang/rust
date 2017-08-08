@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:attr-args.rs
+// ignore-stage1
 
 #![allow(warnings)]
 #![feature(proc_macro)]

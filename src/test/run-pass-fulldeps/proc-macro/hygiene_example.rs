@@ -10,6 +10,7 @@
 
 // aux-build:hygiene_example_codegen.rs
 // aux-build:hygiene_example.rs
+// ignore-stage1
 
 #![feature(proc_macro)]
 

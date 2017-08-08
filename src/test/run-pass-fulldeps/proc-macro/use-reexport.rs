@@ -10,6 +10,7 @@
 
 // aux-build:derive-a.rs
 // aux-build:derive-reexport.rs
+// ignore-stage1
 
 #[macro_use]
 extern crate derive_reexport;

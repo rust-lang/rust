@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:bang_proc_macro2.rs
+// ignore-stage1
 
 #![feature(proc_macro)]
 #![allow(unused_macros)]
