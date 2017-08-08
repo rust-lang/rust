@@ -422,7 +422,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
-        self.trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).next() {
                 if let Ok(()) = validate(self, impl_did) {
                     dtor_did = Some(item.def_id);

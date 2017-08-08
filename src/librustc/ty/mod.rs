@@ -2507,7 +2507,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         param_env,
         trait_of_item,
         trait_impls_of: trait_def::trait_impls_of_provider,
-        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         ..*providers
     };
 }
@@ -2517,7 +2516,6 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         adt_sized_constraint,
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
-        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         param_env,
         ..*providers
     };

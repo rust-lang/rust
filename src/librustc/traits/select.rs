@@ -1576,10 +1576,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
-        let def = self.tcx().trait_def(obligation.predicate.def_id());
-
-        def.for_each_relevant_impl(
-            self.tcx(),
+        self.tcx().for_each_relevant_impl(
+            obligation.predicate.def_id(),
             obligation.predicate.0.trait_ref.self_ty(),
             |impl_def_id| {
                 self.probe(|this, snapshot| { /* [1] */

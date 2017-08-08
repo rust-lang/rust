@@ -470,12 +470,6 @@ impl<'tcx> QueryDescription for queries::trait_impls_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::relevant_trait_impls_for<'tcx> {
-    fn describe(tcx: TyCtxt, (def_id, ty): (DefId, SimplifiedType)) -> String {
-        format!("relevant impls for: `({}, {:?})`", tcx.item_path_str(def_id), ty)
-    }
-}
-
 impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("determine object safety of trait `{}`", tcx.item_path_str(def_id))
@@ -966,10 +960,7 @@ define_maps! { <'tcx>
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] is_mir_available: IsMirAvailable(DefId) -> bool,
 
-    [] trait_impls_of: TraitImpls(DefId) -> ty::trait_def::TraitImpls,
-    // Note that TraitDef::for_each_relevant_impl() will do type simplication for you.
-    [] relevant_trait_impls_for: relevant_trait_impls_for((DefId, SimplifiedType))
-        -> ty::trait_def::TraitImpls,
+    [] trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
 
@@ -1047,10 +1038,6 @@ fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::CrateVariances
-}
-
-fn relevant_trait_impls_for<'tcx>((def_id, t): (DefId, SimplifiedType)) -> DepConstructor<'tcx> {
-    DepConstructor::RelevantTraitImpls(def_id, t)
 }
 
 fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {

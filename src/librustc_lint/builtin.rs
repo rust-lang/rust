@@ -542,9 +542,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let debug_def = cx.tcx.trait_def(debug);
             let mut impls = NodeSet();
-            debug_def.for_each_impl(cx.tcx, |d| {
+            cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_to_def_id() {
                     if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def) {
                         impls.insert(node_id);
