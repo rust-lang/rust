@@ -214,20 +214,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.stack.len() - 1
     }
 
-    /// Returns true if the current frame or any parent frame is part of a ctfe.
-    ///
-    /// Used to disable features in const eval, which do not have a rfc enabling
-    /// them or which can't be written in a way that they produce the same output
-    /// that evaluating the code at runtime would produce.
-    pub fn const_env(&self) -> bool {
-        for frame in self.stack.iter().rev() {
-            if let StackPopCleanup::MarkStatic(_) = frame.return_to_block {
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_cached(s.as_bytes())?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
