@@ -139,7 +139,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             DoubleFree =>
                 "tried to deallocate dangling pointer",
             InvalidFunctionPointer =>
-                "tried to use an integer pointer or a dangling pointer as a function pointer",
+                "tried to use a function pointer after offsetting it",
             InvalidBool =>
                 "invalid boolean value read",
             InvalidDiscriminant =>
