@@ -427,7 +427,7 @@ impl<'a> Builder<'a> {
             } else {
                 self.sysroot(compiler)
             })
-            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
+            .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
             .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
             .env("RUSTDOC_REAL", self.rustdoc(compiler));
         cmd
