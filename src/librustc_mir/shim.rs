@@ -286,18 +286,26 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
+    let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+
     let mut blocks = IndexVec::new();
-    let block = |blocks: &mut IndexVec<_, _>, statement, kind| {
+    let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData {
-            statements: vec![statement],
+            statements,
             terminator: Some(Terminator { source_info, kind }),
-            is_cleanup: false
+            is_cleanup,
         })
     };
 
-    let rcvr = Lvalue::Local(Local::new(1+0)).deref();
+    let make_lvalue = |mutability, ty, local_decls: &mut IndexVec<_, _>| {
+        Lvalue::Local(
+            local_decls.push(temp_decl(mutability, ty, span))
+        )
+    };
 
-    let call_clone = |i, ty, rcvr_field, blocks: &mut _, local_decls: &mut IndexVec<_, _>| {
+    let call_clone = |ty, rcvr_field, next, cleanup,
+                      blocks: &mut _, local_decls: &mut IndexVec<_, _>|
+    {
         // `func == Clone::clone(&ty) -> ty`
         let substs = Substs::for_item(tcx, def_id, |_, _| tcx.types.re_erased, |_, _| ty);
         let func = Operand::Constant(box Constant {
@@ -308,28 +316,20 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             },
         });
 
-        let ref_loc = Lvalue::Local(
-            local_decls.push(temp_decl(
-                Mutability::Not,
-                tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
-                    ty,
-                    mutbl: hir::Mutability::MutImmutable,
-                }),
-                span
-            ))
+        let ref_loc = make_lvalue(
+            Mutability::Not,
+            tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
+                ty,
+                mutbl: hir::Mutability::MutImmutable,
+            }),
+            local_decls
         );
 
-        let loc = Lvalue::Local(
-            local_decls.push(temp_decl(
-                Mutability::Not,
-                ty,
-                span
-            ))
-        );
+        let loc = make_lvalue(Mutability::Not, ty, local_decls);
 
         // `let ref_loc: &ty = &rcvr_field;`
         let statement = Statement {
-            source_info: source_info,
+            source_info,
             kind: StatementKind::Assign(
                 ref_loc.clone(),
                 Rvalue::Ref(tcx.types.re_erased, BorrowKind::Shared, rcvr_field)
@@ -337,73 +337,260 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         // `let loc = Clone::clone(ref_loc);`
-        block(blocks, statement, TerminatorKind::Call {
+        block(blocks, vec![statement], TerminatorKind::Call {
             func,
             args: vec![Operand::Consume(ref_loc)],
-            destination: Some((loc.clone(), BasicBlock::new(i + 1))),
-            cleanup: None,
-        });
+            destination: Some((loc.clone(), next)),
+            cleanup: Some(cleanup),
+        }, false);
 
         loc
     };
 
     let is_copy = !self_ty.moves_by_default(tcx, tcx.param_env(def_id), span);
-
     match self_ty.sty {
         _ if is_copy => {
             // `return *self;`
-            let statement = Statement {
-                source_info: source_info,
+            let ret_statement = Statement {
+                source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(RETURN_POINTER),
                     Rvalue::Use(Operand::Consume(rcvr))
                 )
             };
-            block(&mut blocks, statement, TerminatorKind::Return);
+            block(&mut blocks, vec![ret_statement], TerminatorKind::Return, false);
         }
         ty::TyArray(ty, len) => {
-            let mut returns = Vec::new();
-            for i in 0..len {
-                let index = ConstUsize::new(i as u64, tcx.sess.target.uint_type).unwrap();
-                let rcvr_field = rcvr.clone().index(
-                    Operand::Constant(box Constant {
-                        span,
-                        ty: tcx.types.usize,
-                        literal: Literal::Value {
-                            value: ConstVal::Integral(ConstInt::Usize(index))
-                        }
-                    })
+            let make_loop = |beg, end, loop_body, loop_end,
+                             blocks: &mut _, local_decls: &mut _, is_cleanup|
+            {
+                let cond = make_lvalue(Mutability::Mut, tcx.types.bool, local_decls);
+                let compute_cond = Statement {
+                    source_info,
+                    kind: StatementKind::Assign(
+                        cond.clone(),
+                        Rvalue::BinaryOp(BinOp::Ne, Operand::Consume(end), Operand::Consume(beg))
+                    )
+                };
+
+                // `if end != beg { goto loop_body; } else { goto loop_end; }`
+                block(
+                    blocks,
+                    vec![compute_cond],
+                    TerminatorKind::if_(tcx, Operand::Consume(cond), loop_body, loop_end),
+                    is_cleanup
                 );
+            };
 
-                // `returns[i] = Clone::clone(&rcvr[i]);`
-                returns.push(call_clone(i, ty, rcvr_field, &mut blocks, &mut local_decls));
-            }
+            let make_usize = |value| {
+                let value = ConstUsize::new(value as u64, tcx.sess.target.uint_type).unwrap();
+                box Constant {
+                    span,
+                    ty: tcx.types.usize,
+                    literal: Literal::Value {
+                        value: ConstVal::Integral(ConstInt::Usize(value))
+                    }
+                }
+            };
 
-            // `return [returns[0], returns[1], ..., returns[len - 1]];`
-            let statement = Statement {
+            let beg = make_lvalue(Mutability::Mut, tcx.types.usize, &mut local_decls);
+            let end = make_lvalue(Mutability::Not, tcx.types.usize, &mut local_decls);
+            let ret = make_lvalue(Mutability::Mut, tcx.mk_array(ty, len), &mut local_decls);
+
+            // BB #0
+            // `let mut beg = 0;`
+            // `let end = len;`
+            // `goto #1;`
+            let inits = vec![
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(
+                        beg.clone(),
+                        Rvalue::Use(Operand::Constant(make_usize(0)))
+                    )
+                },
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(
+                        end.clone(),
+                        Rvalue::Use(Operand::Constant(make_usize(len)))
+                    )
+                }
+            ];
+            block(&mut blocks, inits, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
+
+            // BB #1: loop {
+            //     BB #2;
+            //     BB #3;
+            // }
+            // BB #4;
+            make_loop(
+                beg.clone(),
+                end,
+                BasicBlock::new(2),
+                BasicBlock::new(4),
+                &mut blocks,
+                &mut local_decls,
+                false
+            );
+
+            // BB #2
+            // `let cloned = Clone::clone(rcvr[beg])`;
+            // Goto #3 if ok, #5 if unwinding happens.
+            let rcvr_field = rcvr.clone().index(Operand::Consume(beg.clone()));
+            let cloned = call_clone(
+                ty,
+                rcvr_field,
+                BasicBlock::new(3),
+                BasicBlock::new(5),
+                &mut blocks,
+                &mut local_decls
+            );
+
+            // BB #3
+            // `ret[beg] = cloned;`
+            // `beg = beg + 1;`
+            // `goto #1`;
+            let ret_field = ret.clone().index(Operand::Consume(beg.clone()));
+            let statements = vec![
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(
+                        ret_field,
+                        Rvalue::Use(Operand::Consume(cloned))
+                    )
+                },
+                Statement {
+                    source_info,
+                    kind: StatementKind::Assign(
+                        beg.clone(),
+                        Rvalue::BinaryOp(
+                            BinOp::Add,
+                            Operand::Consume(beg.clone()),
+                            Operand::Constant(make_usize(1))
+                        )
+                    )
+                }
+            ];
+            block(
+                &mut blocks,
+                statements,
+                TerminatorKind::Goto { target: BasicBlock::new(1) },
+                false
+            );
+
+            // BB #4
+            // `return ret;`
+            let ret_statement = Statement {
                 source_info: source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(RETURN_POINTER),
-                    Rvalue::Aggregate(
-                        box AggregateKind::Array(ty),
-                        returns.into_iter().map(Operand::Consume).collect()
+                    Rvalue::Use(Operand::Consume(ret.clone())),
+                )
+            };
+            block(&mut blocks, vec![ret_statement], TerminatorKind::Return, false);
+
+            // BB #5 (cleanup)
+            // `let end = beg;`
+            // `let mut beg = 0;`
+            // goto #6;
+            let end = beg;
+            let beg = make_lvalue(Mutability::Mut, tcx.types.usize, &mut local_decls);
+            let init = Statement {
+                source_info,
+                kind: StatementKind::Assign(
+                    beg.clone(),
+                    Rvalue::Use(Operand::Constant(make_usize(0)))
+                )
+            };
+            block(
+                &mut blocks,
+                vec![init],
+                TerminatorKind::Goto { target: BasicBlock::new(6) },
+                true
+            );
+
+            // BB #6 (cleanup): loop {
+            //     BB #7;
+            //     BB #8;
+            // }
+            // BB #9;
+            make_loop(
+                beg.clone(),
+                end,
+                BasicBlock::new(7),
+                BasicBlock::new(9),
+                &mut blocks,
+                &mut local_decls,
+                true
+            );
+
+            // BB #7 (cleanup)
+            // `drop(ret[beg])`;
+            block(&mut blocks, vec![], TerminatorKind::Drop {
+                location: ret.index(Operand::Consume(beg.clone())),
+                target: BasicBlock::new(8),
+                unwind: None,
+            }, true);
+
+            // BB #8 (cleanup)
+            // `beg = beg + 1;`
+            // `goto #6;`
+            let statement = Statement {
+                source_info,
+                kind: StatementKind::Assign(
+                    beg.clone(),
+                    Rvalue::BinaryOp(
+                        BinOp::Add,
+                        Operand::Consume(beg.clone()),
+                        Operand::Constant(make_usize(1))
                     )
                 )
             };
-            block(&mut blocks, statement, TerminatorKind::Return);
+            block(
+                &mut blocks,
+                vec![statement],
+                TerminatorKind::Goto { target: BasicBlock::new(6) },
+                true
+            );
+
+            // BB #9 (resume)
+            block(&mut blocks, vec![], TerminatorKind::Resume, true);
         }
         ty::TyTuple(tys, _) => {
             let mut returns = Vec::new();
             for (i, ity) in tys.iter().enumerate() {
                 let rcvr_field = rcvr.clone().field(Field::new(i), *ity);
 
+                // BB #(2i)
                 // `returns[i] = Clone::clone(&rcvr.i);`
-                returns.push(call_clone(i, *ity, rcvr_field, &mut blocks, &mut local_decls));
+                // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
+                returns.push(call_clone(
+                    *ity,
+                    rcvr_field,
+                    BasicBlock::new(2 * i + 2),
+                    BasicBlock::new(2 * i + 1),
+                    &mut blocks,
+                    &mut local_decls
+                ));
+
+                // BB #(2i + 1) (cleanup)
+                if i == 0 {
+                    // Nothing to drop, just resume.
+                    block(&mut blocks, vec![], TerminatorKind::Resume, true);
+                } else {
+                    // Drop previous field and goto previous cleanup block.
+                    block(&mut blocks, vec![], TerminatorKind::Drop {
+                        location: returns[i - 1].clone(),
+                        target: BasicBlock::new(2 * i - 1),
+                        unwind: None,
+                    }, true);
+                }
             }
 
             // `return (returns[0], returns[1], ..., returns[tys.len() - 1]);`
-            let statement = Statement {
-                source_info: source_info,
+            let ret_statement = Statement {
+                source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(RETURN_POINTER),
                     Rvalue::Aggregate(
@@ -412,10 +599,10 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                     )
                 )
             };
-            block(&mut blocks, statement, TerminatorKind::Return);
+            block(&mut blocks, vec![ret_statement], TerminatorKind::Return, false);
         }
         _ => {
-            bug!("builtin shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);
+            bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);
         }
     };
 
