@@ -291,6 +291,7 @@ fn generate_test_harness(sess: &ParseSess,
             format: MacroAttribute(Symbol::intern("test")),
             span: None,
             allow_internal_unstable: true,
+            allow_internal_unsafe: false,
         }
     });
 

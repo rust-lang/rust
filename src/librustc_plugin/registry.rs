@@ -102,9 +102,19 @@ impl<'a> Registry<'a> {
             panic!("user-defined macros may not be named `macro_rules`");
         }
         self.syntax_exts.push((name, match extension {
-            NormalTT(ext, _, allow_internal_unstable) => {
+            NormalTT {
+                expander,
+                def_info: _,
+                allow_internal_unstable,
+                allow_internal_unsafe
+            } => {
                 let nid = ast::CRATE_NODE_ID;
-                NormalTT(ext, Some((nid, self.krate_span)), allow_internal_unstable)
+                NormalTT {
+                    expander,
+                    def_info: Some((nid, self.krate_span)),
+                    allow_internal_unstable,
+                    allow_internal_unsafe
+                }
             }
             IdentTT(ext, _, allow_internal_unstable) => {
                 IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
@@ -134,8 +144,12 @@ impl<'a> Registry<'a> {
     /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(Symbol::intern(name),
-                                       NormalTT(Box::new(expander), None, false));
+        self.register_syntax_extension(Symbol::intern(name), NormalTT {
+            expander: Box::new(expander),
+            def_info: None,
+            allow_internal_unstable: false,
+            allow_internal_unsafe: false,
+        });
     }
 
     /// Register a compiler lint pass.

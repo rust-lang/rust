@@ -194,6 +194,14 @@ declare_features! (
     // rustc internal
     (active, allow_internal_unstable, "1.0.0", None),
 
+    // Allows the use of #[allow_internal_unsafe]. This is an
+    // attribute on macro_rules! and can't use the attribute handling
+    // below (it has to be checked before expansion possibly makes
+    // macros disappear).
+    //
+    // rustc internal
+    (active, allow_internal_unsafe, "1.0.0", None),
+
     // #23121. Array patterns have some hazards yet.
     (active, slice_patterns, "1.0.0", Some(23121)),
 
@@ -735,6 +743,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
                                               cfg_fn!(allow_internal_unstable))),
 
+    ("allow_internal_unsafe", Normal, Gated(Stability::Unstable,
+                                            "allow_internal_unsafe",
+                                            EXPLAIN_ALLOW_INTERNAL_UNSAFE,
+                                            cfg_fn!(allow_internal_unsafe))),
+
     ("fundamental", Whitelisted, Gated(Stability::Unstable,
                                        "fundamental",
                                        "the `#[fundamental]` attribute \
@@ -1045,6 +1058,8 @@ pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
     "allow_internal_unstable side-steps feature gating and stability checks";
+pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &'static str =
+    "allow_internal_unsafe side-steps the unsafe_code lint";
 
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
     "`#[derive]` for custom traits is deprecated and will be removed in the future.";

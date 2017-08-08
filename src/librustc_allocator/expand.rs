@@ -79,6 +79,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
                 format: MacroAttribute(Symbol::intern(name)),
                 span: None,
                 allow_internal_unstable: true,
+                allow_internal_unsafe: false,
             }
         });
         let span = Span {
