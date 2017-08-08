@@ -589,7 +589,7 @@ impl<T> RefCell<T> {
     ///
     /// # Panics
     ///
-    /// This function will panic if the `RefCell` has any outstanding borrows,
+    /// This function will panic if either `RefCell` has any outstanding borrows,
     /// whether or not they are full mutable borrows.
     #[inline]
     #[unstable(feature = "refcell_replace_swap", issue="43570")]
