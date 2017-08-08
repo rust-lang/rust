@@ -183,10 +183,15 @@ use boxed::Box;
 /// }
 /// ```
 ///
-/// What would work in this case is changing the line
-/// `example_func(&example_string);` to 
-/// `example_func(example_string.to_str());`. This works because we're doing
-/// the conversion explicitly, rather than relying on the implicit conversion.
+/// There are two options that would work instead. The first would be to
+/// change the line `example_func(&example_string);` to
+/// `example_func(example_string.as_str());`, using the method `as_str()`
+/// to explicitly extract the string slice containing the string. The second
+/// way changes `example_func(&example_string);` to
+/// `example_func(&*example_string);`. In this case we are dereferencing a
+/// `String` to a `str`, then referencing the `str` back to `&str`. The
+/// second way is more idiomatic, however both work to do the conversion
+/// explicitly rather than relying on the implicit conversion.
 ///
 /// # Representation
 ///
