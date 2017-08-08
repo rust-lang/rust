@@ -14,6 +14,16 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
+#[macro_export]
+// This stability attribute is totally useless.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+macro_rules! __rust_unstable_column {
+    () => {
+        column!()
+    }
+}
+
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
@@ -48,7 +58,8 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::rt::begin_panic($msg, {
             // static requires less code at runtime, more constant data
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
+                __rust_unstable_column!());
             &_FILE_LINE_COL
         })
     });
@@ -58,7 +69,8 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
+                __rust_unstable_column!());
             &_FILE_LINE_COL
         })
     });
