@@ -77,11 +77,9 @@ pub trait Index<Idx: ?Sized> {
 /// `container[index]` is actually syntactic sugar for
 /// `*container.index_mut(index)`, but only when used as a mutable value. If
 /// an immutable value is requested, the [`Index`] trait is used instead. This
-/// allows nice things such as `v[index] = value` if the type of `value`
-/// implements [`Copy`].
+/// allows nice things such as `v[index] = value`.
 ///
 /// [`Index`]: ../../std/ops/trait.Index.html
-/// [`Copy`]: ../../std/marker/trait.Copy.html
 ///
 /// # Examples
 ///

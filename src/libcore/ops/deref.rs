@@ -111,7 +111,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///
 /// # More on `Deref` coercion
 ///
-/// If `T` implements `MutDeref<Target = U>`, and `x` is a value of type `T`,
+/// If `T` implements `DerefMut<Target = U>`, and `x` is a value of type `T`,
 /// then:
 /// * In mutable contexts, `*x` on non-pointer types is equivalent to
 ///   `*Deref::deref(&x)`.

@@ -10,8 +10,8 @@
 
 /// The addition operator `+`.
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory. For example,
-/// [`std::time::SystemTime`] implements `Add<Duration>`, which permits
+/// Note that `RHS` is `Self` by default, but this is not mandatory. For
+/// example, [`std::time::SystemTime`] implements `Add<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime + Duration`.
 ///
 /// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
@@ -105,8 +105,8 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The subtraction operator `-`.
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory. For example,
-/// [std::time::SystemTime] implements `Sub<Duration>`, which permits
+/// Note that `RHS` is `Self` by default, but this is not mandatory. For
+/// example, [`std::time::SystemTime`] implements `Sub<Duration>`, which permits
 /// operations of the form `SystemTime = SystemTime - Duration`.
 ///
 /// [`std::time::SystemTime`]: ../../std/time/struct.SystemTime.html
@@ -200,7 +200,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The multiplication operator `*`.
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory.
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -317,7 +317,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
 /// The division operator `/`.
 ///
-/// Note that `RHS = Self` by default, but this is not mandatory.
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -454,6 +454,8 @@ macro_rules! div_impl_float {
 div_impl_float! { f32 f64 }
 
 /// The remainder operator `%`.
+///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///

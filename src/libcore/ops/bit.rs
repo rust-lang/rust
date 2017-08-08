@@ -68,6 +68,8 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise AND operator `&`.
 ///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
 /// An implementation of `BitAnd` for a wrapper around `bool`.
@@ -147,6 +149,8 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise OR operator `|`.
 ///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
 /// An implementation of `BitOr` for a wrapper around `bool`.
@@ -225,6 +229,8 @@ macro_rules! bitor_impl {
 bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise XOR operator `^`.
+///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///

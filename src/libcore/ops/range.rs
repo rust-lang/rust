@@ -12,7 +12,7 @@ use fmt;
 
 /// An unbounded range (`..`).
 ///
-/// `RangeFull` is primarily used as a [slicing index], it's shorthand is `..`.
+/// `RangeFull` is primarily used as a [slicing index], its shorthand is `..`.
 /// It cannot serve as an [`Iterator`] because it doesn't have a starting point.
 ///
 /// # Examples
@@ -101,7 +101,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// # fn main() {
     /// assert!(!(3..5).contains(2));
     /// assert!( (3..5).contains(3));
     /// assert!( (3..5).contains(4));
@@ -109,7 +108,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     ///
     /// assert!(!(3..3).contains(3));
     /// assert!(!(3..2).contains(3));
-    /// # }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
         (self.start <= item) && (item < self.end)
@@ -163,11 +161,9 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// # fn main() {
     /// assert!(!(3..).contains(2));
     /// assert!( (3..).contains(3));
     /// assert!( (3..).contains(1_000_000_000));
-    /// # }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
         (self.start <= item)
@@ -191,6 +187,8 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// a `for` loop directly. This won't compile:
 ///
 /// ```compile_fail,E0277
+/// // error[E0277]: the trait bound `std::ops::RangeTo<{integer}>:
+/// // std::iter::Iterator` is not satisfied
 /// for i in ..5 {
 ///     // ...
 /// }
@@ -234,11 +232,9 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// # fn main() {
     /// assert!( (..5).contains(-1_000_000_000));
     /// assert!( (..5).contains(4));
     /// assert!(!(..5).contains(5));
-    /// # }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
         (item < self.end)
@@ -255,14 +251,12 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 /// #![feature(inclusive_range,inclusive_range_syntax)]
 ///
-/// # fn main() {
 /// assert_eq!((3...5), std::ops::RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, (3...5).sum());
 ///
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ ...2], [0,1,2  ]);
 /// assert_eq!(arr[1...2], [  1,2  ]);  // RangeInclusive
-/// # }
 /// ```
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -295,7 +289,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_contains,inclusive_range_syntax)]
     ///
-    /// # fn main() {
     /// assert!(!(3...5).contains(2));
     /// assert!( (3...5).contains(3));
     /// assert!( (3...5).contains(4));
@@ -304,7 +297,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     ///
     /// assert!( (3...3).contains(3));
     /// assert!(!(3...2).contains(3));
-    /// # }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
         self.start <= item && item <= self.end
@@ -330,6 +322,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 ///
 /// ```compile_fail,E0277
 /// #![feature(inclusive_range_syntax)]
+///
+/// // error[E0277]: the trait bound `std::ops::RangeToInclusive<{integer}>:
+/// // std::iter::Iterator` is not satisfied
 /// for i in ...5 {
 ///     // ...
 /// }
@@ -341,11 +336,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// ```
 /// #![feature(inclusive_range_syntax)]
 ///
-/// # fn main() {
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ ...2], [0,1,2  ]);  // RangeToInclusive
 /// assert_eq!(arr[1...2], [  1,2  ]);
-/// # }
 /// ```
 ///
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
@@ -377,11 +370,9 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// ```
     /// #![feature(range_contains,inclusive_range_syntax)]
     ///
-    /// # fn main() {
     /// assert!( (...5).contains(-1_000_000_000));
     /// assert!( (...5).contains(5));
     /// assert!(!(...5).contains(6));
-    /// # }
     /// ```
     pub fn contains(&self, item: Idx) -> bool {
         (item <= self.end)
