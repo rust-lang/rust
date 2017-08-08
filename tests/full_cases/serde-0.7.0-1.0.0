@@ -1,0 +1,4128 @@
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+       Fresh serde v1.0.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+       Fresh serde v0.7.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+version bump: 0.7.0 -> (breaking) -> 1.0.0
+warning: path changes to `forward_to_deserialize_any`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/macros.rs:128:1
+    |
+128 | / macro_rules! forward_to_deserialize_any {
+129 | |     (<$visitor:ident: Visitor<$lifetime:tt>> $($func:ident)*) => {
+130 | |         $(forward_to_deserialize_any_helper!{$func<$lifetime, $visitor>})*
+131 | |     };
+...   |
+135 | |     };
+136 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `forward_to_deserialize_any_method`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/macros.rs:140:1
+    |
+140 | / macro_rules! forward_to_deserialize_any_method {
+141 | |     ($func:ident<$l:tt, $v:ident>($($arg:ident : $ty:ty),*)) => {
+142 | |         #[inline]
+143 | |         fn $func<$v>(self, $($arg: $ty,)* visitor: $v) -> $crate::export::Result<$v::Value, Self::Error>
+...   |
+152 | |     };
+153 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `forward_to_deserialize_any_helper`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/macros.rs:157:1
+    |
+157 | / macro_rules! forward_to_deserialize_any_helper {
+158 | |     (bool<$l:tt, $v:ident>) => {
+159 | |         forward_to_deserialize_any_method!{deserialize_bool<$l, $v>()}
+160 | |     };
+...   |
+241 | |     };
+242 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `SerializeSeq`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1404:1
+     |
+1404 | / pub trait SerializeSeq {
+1405 | |     /// Must match the `Ok` type of our `Serializer`.
+1406 | |     type Ok;
+1407 | |
+...    |
+1417 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1418 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeTuple`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1491:1
+     |
+1491 | / pub trait SerializeTuple {
+1492 | |     /// Must match the `Ok` type of our `Serializer`.
+1493 | |     type Ok;
+1494 | |
+...    |
+1504 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1505 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeTupleStruct`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1526:1
+     |
+1526 | / pub trait SerializeTupleStruct {
+1527 | |     /// Must match the `Ok` type of our `Serializer`.
+1528 | |     type Ok;
+1529 | |
+...    |
+1539 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1540 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeTupleVariant`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1574:1
+     |
+1574 | / pub trait SerializeTupleVariant {
+1575 | |     /// Must match the `Ok` type of our `Serializer`.
+1576 | |     type Ok;
+1577 | |
+...    |
+1587 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1588 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeMap`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1629:1
+     |
+1629 | / pub trait SerializeMap {
+1630 | |     /// Must match the `Ok` type of our `Serializer`.
+1631 | |     type Ok;
+1632 | |
+...    |
+1687 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1688 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeStruct`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1713:1
+     |
+1713 | / pub trait SerializeStruct {
+1714 | |     /// Must match the `Ok` type of our `Serializer`.
+1715 | |     type Ok;
+1716 | |
+...    |
+1730 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1731 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `SerializeStructVariant`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1758:1
+     |
+1758 | / pub trait SerializeStructVariant {
+1759 | |     /// Must match the `Ok` type of our `Serializer`.
+1760 | |     type Ok;
+1761 | |
+...    |
+1775 | |     fn end(self) -> Result<Self::Ok, Self::Error>;
+1776 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::ffi::CStr>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:73:1
+   |
+73 | / impl Serialize for CStr {
+74 | |     #[inline]
+75 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+76 | |     where
+...  |
+80 | |     }
+81 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::ffi::CString>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:84:1
+   |
+84 | / impl Serialize for CString {
+85 | |     #[inline]
+86 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+87 | |     where
+...  |
+91 | |     }
+92 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for [T; 0]>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:127:1
+    |
+127 | / impl<T> Serialize for [T; 0] {
+128 | |     #[inline]
+129 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+130 | |     where
+...   |
+134 | |     }
+135 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::collections::HashSet<T, H>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:182:9
+    |
+182 | /         impl<T $(, $typaram)*> Serialize for $ty<T $(, $typaram)*>
+183 | |         where
+184 | |             T: Serialize $(+ $tbound1 $(+ $tbound2)*)*,
+185 | |             $($typaram: $bound,)*
+...   |
+193 | |             }
+194 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::ops::Range<Idx>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:219:1
+    |
+219 | / impl<Idx> Serialize for ops::Range<Idx>
+220 | | where
+221 | |     Idx: Serialize,
+222 | | {
+...   |
+232 | |     }
+233 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:252:13
+    |
+252 | /             impl<$($name),+> Serialize for ($($name,)+)
+253 | |             where
+254 | |                 $($name: Serialize,)+
+255 | |             {
+...   |
+266 | |                 }
+267 | |             }
+    | |_____________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::collections::HashMap<K, V, H>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:295:9
+    |
+295 | /         impl<K, V $(, $typaram)*> Serialize for $ty<K, V $(, $typaram)*>
+296 | |         where
+297 | |             K: Serialize $(+ $kbound1 $(+ $kbound2)*)*,
+298 | |             V: Serialize,
+...   |
+307 | |             }
+308 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::cell::Cell<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:354:1
+    |
+354 | / impl<T> Serialize for Cell<T>
+355 | | where
+356 | |     T: Serialize + Copy,
+357 | | {
+...   |
+363 | |     }
+364 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::cell::RefCell<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:366:1
+    |
+366 | / impl<T> Serialize for RefCell<T>
+367 | | where
+368 | |     T: Serialize,
+369 | | {
+...   |
+375 | |     }
+376 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::sync::Mutex<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:379:1
+    |
+379 | / impl<T> Serialize for Mutex<T>
+380 | | where
+381 | |     T: Serialize,
+382 | | {
+...   |
+391 | |     }
+392 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::sync::RwLock<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:395:1
+    |
+395 | / impl<T> Serialize for RwLock<T>
+396 | | where
+397 | |     T: Serialize,
+398 | | {
+...   |
+407 | |     }
+408 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::time::Duration>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:433:1
+    |
+433 | / impl Serialize for Duration {
+434 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+435 | |     where
+436 | |         S: Serializer,
+...   |
+443 | |     }
+444 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::net::IpAddr>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:475:1
+    |
+475 | / impl Serialize for net::IpAddr {
+476 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+477 | |     where
+478 | |         S: Serializer,
+...   |
+484 | |     }
+485 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::ffi::OsStr>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:574:1
+    |
+574 | / impl Serialize for OsStr {
+575 | |     #[cfg(unix)]
+576 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+577 | |     where
+...   |
+592 | |     }
+593 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for std::ffi::OsString>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:596:1
+    |
+596 | / impl Serialize for OsString {
+597 | |     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+598 | |     where
+599 | |         S: Serializer,
+...   |
+602 | |     }
+603 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `Impossible`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impossible.rs:71:1
+   |
+71 | / pub struct Impossible<Ok, Error> {
+72 | |     void: Void,
+73 | |     ok: PhantomData<Ok>,
+74 | |     error: PhantomData<Error>,
+75 | | }
+   | |_^
+   |
+note: added path (technically breaking)
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:121:9
+   |
+121| pub use self::impossible::Impossible;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: path changes to `Error`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:151:9
+    |
+151 | /         pub trait Error: Sized $(+ $($supertrait)::+)* {
+152 | |             /// Raised when there is general error when deserializing a type.
+153 | |             ///
+154 | |             /// The message should not be capitalized and should not end with a period.
+...   |
+268 | |             }
+269 | |         }
+    | |_________^
+    |
+warning: removed path (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/lib.rs:27:41
+    |
+27  | pub use de::{Deserialize, Deserializer, Error};
+    |                                         ^^^^^
+
+warning: path changes to `Unexpected`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:307:1
+    |
+307 | / pub enum Unexpected<'a> {
+308 | |     /// The input contained a boolean value that was not expected.
+309 | |     Bool(bool),
+310 | |
+...   |
+367 | |     Other(&'a str),
+368 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `Expected`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:443:1
+    |
+443 | / pub trait Expected {
+444 | |     /// Format an explanation of what data was being expected. Same signature as
+445 | |     /// the `Display` and `Debug` traits.
+446 | |     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result;
+447 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `DeserializeOwned`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:529:1
+    |
+529 | pub trait DeserializeOwned: for<'de> Deserialize<'de> {}
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `DeserializeSeed`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:679:1
+    |
+679 | / pub trait DeserializeSeed<'de>: Sized {
+680 | |     /// The type produced by using this seed.
+681 | |     type Value;
+682 | |
+...   |
+687 | |         D: Deserializer<'de>;
+688 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `SeqAccess`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1417:1
+     |
+1417 | / pub trait SeqAccess<'de> {
+1418 | |     /// The error type that can be returned if some error occurs during
+1419 | |     /// deserialization.
+1420 | |     type Error: Error;
+...    |
+1448 | |     }
+1449 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `MapAccess`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1484:1
+     |
+1484 | / pub trait MapAccess<'de> {
+1485 | |     /// The error type that can be returned if some error occurs during
+1486 | |     /// deserialization.
+1487 | |     type Error: Error;
+...    |
+1586 | |     }
+1587 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `EnumAccess`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1661:1
+     |
+1661 | / pub trait EnumAccess<'de>: Sized {
+1662 | |     /// The error type that can be returned if some error occurs during
+1663 | |     /// deserialization.
+1664 | |     type Error: Error;
+...    |
+1687 | |     }
+1688 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `VariantAccess`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1693:1
+     |
+1693 | / pub trait VariantAccess<'de>: Sized {
+1694 | |     /// The error type that can be returned if some error occurs during
+1695 | |     /// deserialization. Must match the error type of our `EnumAccess`.
+1696 | |     type Error: Error;
+...    |
+1872 | |         V: Visitor<'de>;
+1873 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: path changes to `IntoDeserializer`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1905:1
+     |
+1905 | / pub trait IntoDeserializer<'de, E: Error = value::Error> {
+1906 | |     /// The type of the deserializer being converted into.
+1907 | |     type Deserializer: Deserializer<'de, Error = E>;
+1908 | |
+1909 | |     /// Convert this value into a deserializer.
+1910 | |     fn into_deserializer(self) -> Self::Deserializer;
+1911 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::Error as new::ser::Error>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:78:1
+   |
+78 | / impl ser::Error for Error {
+79 | |     fn custom<T>(msg: T) -> Self
+80 | |     where
+81 | |         T: Display,
+...  |
+84 | |     }
+85 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::UnitDeserializer<E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:120:10
+    |
+120 | #[derive(Clone, Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::UnitDeserializer<E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:120:17
+    |
+120 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::U64Deserializer<E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:158:18
+    |
+158 |         #[derive(Clone, Debug)]
+    |                  ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::U64Deserializer<E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:158:25
+    |
+158 |         #[derive(Clone, Debug)]
+    |                         ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::U32Deserializer<E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:215:10
+    |
+215 | #[derive(Clone, Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::U32Deserializer<E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:215:17
+    |
+215 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::StrDeserializer<'a, E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:287:10
+    |
+287 | #[derive(Clone, Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::StrDeserializer<'a, E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:287:17
+    |
+287 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::StringDeserializer<E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:360:10
+    |
+360 | #[derive(Clone, Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::StringDeserializer<E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:360:17
+    |
+360 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `CowStrDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:437:1
+    |
+437 | / pub struct CowStrDeserializer<'a, E> {
+438 | |     value: Cow<'a, str>,
+439 | |     marker: PhantomData<E>,
+440 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::CowStrDeserializer<'a, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:458:1
+    |
+458 | / impl<'de, 'a, E> de::Deserializer<'de> for CowStrDeserializer<'a, E>
+459 | | where
+460 | |     E: de::Error,
+461 | | {
+...   |
+492 | |     }
+493 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::SeqDeserializer<I, E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:514:10
+    |
+514 | #[derive(Clone, Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::SeqDeserializer<I, E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:514:17
+    |
+514 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:526:5
+    |
+526 | /     pub fn new(iter: I) -> Self {
+527 | |         SeqDeserializer {
+528 | |             iter: iter.fuse(),
+529 | |             count: 0,
+530 | |             marker: PhantomData,
+531 | |         }
+532 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `end`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:542:5
+    |
+542 | /     pub fn end(mut self) -> Result<(), E> {
+543 | |         let mut remaining = 0;
+544 | |         while self.iter.next().is_some() {
+545 | |             remaining += 1;
+...   |
+553 | |         }
+554 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::SeqDeserializer<I, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:557:1
+    |
+557 | / impl<'de, I, T, E> de::Deserializer<'de> for SeqDeserializer<I, E>
+558 | | where
+559 | |     I: Iterator<Item = T>,
+560 | |     T: IntoDeserializer<'de, E>,
+...   |
+578 | |     }
+579 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `SeqAccessDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:664:1
+    |
+664 | / pub struct SeqAccessDeserializer<A> {
+665 | |     seq: A,
+666 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::SeqAccessDeserializer<A> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:675:1
+    |
+675 | / impl<'de, A> de::Deserializer<'de> for SeqAccessDeserializer<A>
+676 | | where
+677 | |     A: de::SeqAccess<'de>,
+678 | | {
+...   |
+692 | |     }
+693 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:716:5
+    |
+716 | /     pub fn new(iter: I) -> Self {
+717 | |         MapDeserializer {
+718 | |             iter: iter.fuse(),
+719 | |             value: None,
+...   |
+723 | |         }
+724 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `end`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:735:5
+    |
+735 | /     pub fn end(mut self) -> Result<(), E> {
+736 | |         let mut remaining = 0;
+737 | |         while self.iter.next().is_some() {
+738 | |             remaining += 1;
+...   |
+746 | |         }
+747 | |     }
+    | |_____^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::MapDeserializer<'de, I, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:766:1
+    |
+766 | / impl<'de, I, E> de::Deserializer<'de> for MapDeserializer<'de, I, E>
+767 | | where
+768 | |     I: Iterator,
+769 | |     I::Item: private::Pair,
+...   |
+810 | |     }
+811 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::MapDeserializer<'de, I, E> as std::clone::Clone>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:900:1
+    |
+900 | / impl<'de, I, E> Clone for MapDeserializer<'de, I, E>
+901 | | where
+902 | |     I: Iterator + Clone,
+903 | |     I::Item: private::Pair,
+...   |
+914 | |     }
+915 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::MapDeserializer<'de, I, E> as std::fmt::Debug>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:918:1
+    |
+918 | / impl<'de, I, E> Debug for MapDeserializer<'de, I, E>
+919 | | where
+920 | |     I: Iterator + Debug,
+921 | |     I::Item: private::Pair,
+...   |
+933 | |     }
+934 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::PairDeserializer<A, B, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:940:1
+    |
+940 | / impl<'de, A, B, E> de::Deserializer<'de> for PairDeserializer<A, B, E>
+941 | | where
+942 | |     A: IntoDeserializer<'de, E>,
+943 | |     B: IntoDeserializer<'de, E>,
+...   |
+988 | |     }
+989 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `MapAccessDeserializer`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:1071:1
+     |
+1071 | / pub struct MapAccessDeserializer<A> {
+1072 | |     map: A,
+1073 | | }
+     | |_^
+     |
+     = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::MapAccessDeserializer<A> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:1082:1
+     |
+1082 | / impl<'de, A> de::Deserializer<'de> for MapAccessDeserializer<A>
+1083 | | where
+1084 | |     A: de::MapAccess<'de>,
+1085 | | {
+...    |
+1099 | |     }
+1100 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `IgnoredAny`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/ignored_any.rs:107:1
+    |
+107 | pub struct IgnoredAny;
+    | ^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:132:9
+    |
+132 | pub use self::ignored_any::IgnoredAny;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: technically breaking changes in `<new::de::IgnoredAny as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/ignored_any.rs:109:1
+    |
+109 | / impl<'de> Visitor<'de> for IgnoredAny {
+110 | |     type Value = IgnoredAny;
+111 | |
+112 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+204 | |     }
+205 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::IgnoredAny as new::Deserialize<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/ignored_any.rs:207:1
+    |
+207 | / impl<'de> Deserialize<'de> for IgnoredAny {
+208 | |     #[inline]
+209 | |     fn deserialize<D>(deserializer: D) -> Result<IgnoredAny, D::Error>
+210 | |     where
+...   |
+214 | |     }
+215 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for i8>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:117:17
+    |
+117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
+118 | |                     type Value = $ty;
+119 | |
+120 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+126 | |                     )*
+127 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::StrVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:271:1
+    |
+271 | / impl<'a> Visitor<'a> for StrVisitor {
+272 | |     type Value = &'a str;
+273 | |
+274 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+290 | |     }
+291 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for &'a str>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:293:1
+    |
+293 | / impl<'de: 'a, 'a> Deserialize<'de> for &'a str {
+294 | |     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+295 | |     where
+296 | |         D: Deserializer<'de>,
+...   |
+299 | |     }
+300 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::BytesVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:306:1
+    |
+306 | / impl<'a> Visitor<'a> for BytesVisitor {
+307 | |     type Value = &'a [u8];
+308 | |
+309 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+325 | |     }
+326 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for &'a [u8]>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:328:1
+    |
+328 | / impl<'de: 'a, 'a> Deserialize<'de> for &'a [u8] {
+329 | |     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+330 | |     where
+331 | |         D: Deserializer<'de>,
+...   |
+334 | |     }
+335 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::CStringVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:343:1
+    |
+343 | / impl<'de> Visitor<'de> for CStringVisitor {
+344 | |     type Value = CString;
+345 | |
+346 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+390 | |     }
+391 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::ffi::CString>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:394:1
+    |
+394 | / impl<'de> Deserialize<'de> for CString {
+395 | |     fn deserialize<D>(deserializer: D) -> Result<CString, D::Error>
+396 | |     where
+397 | |         D: Deserializer<'de>,
+...   |
+400 | |     }
+401 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::PhantomDataVisitor<T> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:472:1
+    |
+472 | / impl<'de, T> Visitor<'de> for PhantomDataVisitor<T> {
+473 | |     type Value = PhantomData<T>;
+474 | |
+475 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+485 | |     }
+486 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::marker::PhantomData<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:488:1
+    |
+488 | / impl<'de, T> Deserialize<'de> for PhantomData<T> {
+489 | |     fn deserialize<D>(deserializer: D) -> Result<PhantomData<T>, D::Error>
+490 | |     where
+491 | |         D: Deserializer<'de>,
+...   |
+495 | |     }
+496 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::collections::HashSet<T, S>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:509:9
+    |
+509 | /         impl<'de, T $(, $typaram)*> Deserialize<'de> for $ty<T $(, $typaram)*>
+510 | |         where
+511 | |             T: Deserialize<'de> $(+ $tbound1 $(+ $tbound2)*)*,
+512 | |             $($typaram: $bound1 $(+ $bound2)*,)*
+...   |
+550 | |             }
+551 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::BTreeSet<T>>::deserialize::SeqVisitor<T> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:522:17
+    |
+522 | /                 impl<'de, T $(, $typaram)*> Visitor<'de> for SeqVisitor<T $(, $typaram)*>
+523 | |                 where
+524 | |                     T: Deserialize<'de> $(+ $tbound1 $(+ $tbound2)*)*,
+525 | |                     $($typaram: $bound1 $(+ $bound2)*,)*
+...   |
+545 | |                     }
+546 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::ArrayVisitor<[T; 0]> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:615:1
+    |
+615 | / impl<'de, T> Visitor<'de> for ArrayVisitor<[T; 0]> {
+616 | |     type Value = [T; 0];
+617 | |
+618 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+628 | |     }
+629 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for [T; 0]>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:632:1
+    |
+632 | / impl<'de, T> Deserialize<'de> for [T; 0] {
+633 | |     fn deserialize<D>(deserializer: D) -> Result<[T; 0], D::Error>
+634 | |     where
+635 | |         D: Deserializer<'de>,
+...   |
+638 | |     }
+639 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::ArrayVisitor<[T; 2]> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:644:13
+    |
+644 | /             impl<'de, T> Visitor<'de> for ArrayVisitor<[T; $len]>
+645 | |             where
+646 | |                 T: Deserialize<'de>,
+647 | |             {
+...   |
+667 | |                 }
+668 | |             }
+    | |_____________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::TupleVisitor14<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:735:13
+    |
+735 | /             impl<'de, $($name: Deserialize<'de>),+> Visitor<'de> for $visitor<$($name,)+> {
+736 | |                 type Value = ($($name,)+);
+737 | |
+738 | |                 fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+756 | |                 }
+757 | |             }
+    | |_____________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:759:13
+    |
+759 | /             impl<'de, $($name: Deserialize<'de>),+> Deserialize<'de> for ($($name,)+) {
+760 | |                 #[inline]
+761 | |                 fn deserialize<D>(deserializer: D) -> Result<($($name,)+), D::Error>
+762 | |                 where
+...   |
+766 | |                 }
+767 | |             }
+    | |_____________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::collections::HashMap<K, V, S>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:801:9
+    |
+801 | /         impl<'de, K, V $(, $typaram)*> Deserialize<'de> for $ty<K, V $(, $typaram)*>
+802 | |         where
+803 | |             K: Deserialize<'de> $(+ $kbound1 $(+ $kbound2)*)*,
+804 | |             V: Deserialize<'de>,
+...   |
+844 | |             }
+845 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::HashMap<K, V, S>>::deserialize::MapVisitor<K, V, S> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:815:17
+    |
+815 | /                 impl<'de, K, V $(, $typaram)*> Visitor<'de> for MapVisitor<K, V $(, $typaram)*>
+816 | |                 where
+817 | |                     K: Deserialize<'de> $(+ $kbound1 $(+ $kbound2)*)*,
+818 | |                     V: Deserialize<'de>,
+...   |
+839 | |                     }
+840 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::net::IpAddr>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:868:9
+    |
+868 | /         impl<'de> Deserialize<'de> for $ty {
+869 | |             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+870 | |             where
+871 | |                 D: Deserializer<'de>,
+...   |
+875 | |             }
+876 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::OsStringKind as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:952:1
+     |
+952  | / impl<'de> Deserialize<'de> for OsStringKind {
+953  | |     fn deserialize<D>(deserializer: D) -> Result<OsStringKind, D::Error>
+954  | |     where
+955  | |         D: Deserializer<'de>,
+...    |
+1006 | |     }
+1007 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::OsStringKind as new::Deserialize<'de>>::deserialize::KindVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:959:9
+     |
+959  | /         impl<'de> Visitor<'de> for KindVisitor {
+960  | |             type Value = OsStringKind;
+961  | |
+962  | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1002 | |             }
+1003 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::OsStringVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1013:1
+     |
+1013 | / impl<'de> Visitor<'de> for OsStringVisitor {
+1014 | |     type Value = OsString;
+1015 | |
+1016 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1047 | |     }
+1048 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::ffi::OsString>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1051:1
+     |
+1051 | / impl<'de> Deserialize<'de> for OsString {
+1052 | |     fn deserialize<D>(deserializer: D) -> Result<OsString, D::Error>
+1053 | |     where
+1054 | |         D: Deserializer<'de>,
+...    |
+1057 | |     }
+1058 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::boxed::Box<[T]>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1076:1
+     |
+1076 | / impl<'de, T> Deserialize<'de> for Box<[T]>
+1077 | | where
+1078 | |     T: Deserialize<'de>,
+1079 | | {
+...    |
+1085 | |     }
+1086 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::boxed::Box<str>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1089:1
+     |
+1089 | / impl<'de> Deserialize<'de> for Box<str> {
+1090 | |     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+1091 | |     where
+1092 | |         D: Deserializer<'de>,
+...    |
+1095 | |     }
+1096 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::cell::Cell<T>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1141:1
+     |
+1141 | / impl<'de, T> Deserialize<'de> for Cell<T>
+1142 | | where
+1143 | |     T: Deserialize<'de> + Copy,
+1144 | | {
+...    |
+1150 | |     }
+1151 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::cell::RefCell<T>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1153:1
+     |
+1153 | / impl<'de, T> Deserialize<'de> for RefCell<T>
+1154 | | where
+1155 | |     T: Deserialize<'de>,
+1156 | | {
+...    |
+1162 | |     }
+1163 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::sync::Mutex<T>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1166:1
+     |
+1166 | / impl<'de, T> Deserialize<'de> for Mutex<T>
+1167 | | where
+1168 | |     T: Deserialize<'de>,
+1169 | | {
+...    |
+1175 | |     }
+1176 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::sync::RwLock<T>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1179:1
+     |
+1179 | / impl<'de, T> Deserialize<'de> for RwLock<T>
+1180 | | where
+1181 | |     T: Deserialize<'de>,
+1182 | | {
+...    |
+1188 | |     }
+1189 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1202:1
+     |
+1202 | / impl<'de> Deserialize<'de> for Duration {
+1203 | |     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+1204 | |     where
+1205 | |         D: Deserializer<'de>,
+...    |
+1324 | |     }
+1325 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1216:9
+     |
+1216 | /         impl<'de> Deserialize<'de> for Field {
+1217 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1218 | |             where
+1219 | |                 D: Deserializer<'de>,
+...    |
+1257 | |             }
+1258 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1223:17
+     |
+1223 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1224 | |                     type Value = Field;
+1225 | |
+1226 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1253 | |                     }
+1254 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::DurationVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1262:9
+     |
+1262 | /         impl<'de> Visitor<'de> for DurationVisitor {
+1263 | |             type Value = Duration;
+1264 | |
+1265 | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1319 | |             }
+1320 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1338:1
+     |
+1338 | / impl<'de, Idx> Deserialize<'de> for ops::Range<Idx>
+1339 | | where
+1340 | |     Idx: Deserialize<'de>,
+1341 | | {
+...    |
+1468 | |     }
+1469 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1355:9
+     |
+1355 | /         impl<'de> Deserialize<'de> for Field {
+1356 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1357 | |             where
+1358 | |                 D: Deserializer<'de>,
+...    |
+1396 | |             }
+1397 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1362:17
+     |
+1362 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1363 | |                     type Value = Field;
+1364 | |
+1365 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1392 | |                     }
+1393 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::RangeVisitor<Idx> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1403:9
+     |
+1403 | /         impl<'de, Idx> Visitor<'de> for RangeVisitor<Idx>
+1404 | |         where
+1405 | |             Idx: Deserialize<'de>,
+1406 | |         {
+...    |
+1463 | |             }
+1464 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1513:9
+     |
+1513 | /         impl<'de> Deserialize<'de> for Field {
+1514 | |             #[inline]
+1515 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1516 | |             where
+...    |
+1572 | |             }
+1573 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1521:17
+     |
+1521 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1522 | |                     type Value = Field;
+1523 | |
+1524 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1568 | |                     }
+1569 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::ResultVisitor<T, E> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1577:9
+     |
+1577 | /         impl<'de, T, E> Visitor<'de> for ResultVisitor<T, E>
+1578 | |         where
+1579 | |             T: Deserialize<'de>,
+1580 | |             E: Deserialize<'de>,
+...    |
+1596 | |             }
+1597 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `export`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/export.rs:9:1
+   |
+9  | / pub use lib::clone::Clone;
+10 | | pub use lib::convert::{From, Into};
+11 | | pub use lib::default::Default;
+12 | | pub use lib::fmt::{self, Formatter};
+...  |
+40 | |     }
+41 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `private`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/mod.rs:9:1
+   |
+9  | / mod macros;
+10 | |
+11 | | pub mod ser;
+12 | | pub mod de;
+   | |___________^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `__private_serialize`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/macros.rs:11:1
+   |
+11 | / macro_rules! __private_serialize {
+12 | |     () => {
+13 | |         trait Serialize {
+14 | |             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+...  |
+18 | |     };
+19 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `__private_deserialize`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/macros.rs:23:1
+   |
+23 | / macro_rules! __private_deserialize {
+24 | |     () => {
+25 | |         trait Deserialize<'de>: Sized {
+26 | |             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+...  |
+30 | |     };
+31 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `__serialize_unimplemented`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/macros.rs:36:1
+   |
+36 | / macro_rules! __serialize_unimplemented {
+37 | |     ($($func:ident)*) => {
+38 | |         $(
+39 | |             __serialize_unimplemented_helper!($func);
+40 | |         )*
+41 | |     };
+42 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `__serialize_unimplemented_method`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/macros.rs:46:1
+   |
+46 | / macro_rules! __serialize_unimplemented_method {
+47 | |     ($func:ident $(<$t:ident>)* ($($arg:ty),*) -> $ret:ident) => {
+48 | |         fn $func $(<$t: ?Sized + $crate::Serialize>)* (self $(, _: $arg)*) -> $crate::export::Result<Self::$ret, Self::Error> {
+49 | |             unimplemented!()
+50 | |         }
+51 | |     };
+52 | | }
+   | |_^
+   |
+   = note: added definition (technically breaking)
+
+warning: path changes to `__serialize_unimplemented_helper`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/macros.rs:56:1
+    |
+56  | / macro_rules! __serialize_unimplemented_helper {
+57  | |     (bool) => {
+58  | |         __serialize_unimplemented_method!(serialize_bool(bool) -> Ok);
+59  | |     };
+...   |
+147 | |     };
+148 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::private::ser::TaggedSerializer<S> as new::Serializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/ser.rs:107:1
+    |
+107 | / impl<S> Serializer for TaggedSerializer<S>
+108 | | where
+109 | |     S: Serializer,
+110 | | {
+...   |
+336 | |     }
+337 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::ser::Error as new::ser::Error>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/ser.rs:344:1
+    |
+344 | / impl ser::Error for Error {
+345 | |     fn custom<T>(_: T) -> Self
+346 | |     where
+347 | |         T: Display,
+...   |
+350 | |     }
+351 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::ser::content::Content as new::Serialize>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/ser.rs:491:5
+    |
+491 | /     impl Serialize for Content {
+492 | |         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+493 | |         where
+494 | |             S: Serializer,
+...   |
+570 | |         }
+571 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::ser::content::ContentSerializer<E> as new::Serializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/ser.rs:583:5
+    |
+583 | /     impl<E> Serializer for ContentSerializer<E>
+584 | |     where
+585 | |         E: ser::Error,
+586 | |     {
+...   |
+803 | |         }
+804 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::missing_field::MissingFieldDeserializer<E> as new::Deserializer<'de>>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:30:5
+   |
+30 | /     impl<'de, E> Deserializer<'de> for MissingFieldDeserializer<E>
+31 | |     where
+32 | |         E: Error,
+33 | |     {
+...  |
+54 | |         }
+55 | |     }
+   | |_____^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::borrow_cow_str::CowStrVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:68:5
+    |
+68  | /     impl<'a> Visitor<'a> for CowStrVisitor {
+69  | |         type Value = Cow<'a, str>;
+70  | |
+71  | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+124 | |         }
+125 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::borrow_cow_bytes::CowBytesVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:137:5
+    |
+137 | /     impl<'a> Visitor<'a> for CowBytesVisitor {
+138 | |         type Value = Cow<'a, [u8]>;
+139 | |
+140 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+184 | |         }
+185 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::Content as new::Deserialize<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:290:5
+    |
+290 | /     impl<'de> Deserialize<'de> for Content {
+291 | |         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+292 | |         where
+293 | |             D: Deserializer<'de>,
+...   |
+298 | |         }
+299 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::ContentVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:303:5
+    |
+303 | /     impl<'de> Visitor<'de> for ContentVisitor {
+304 | |         type Value = Content;
+305 | |
+306 | |         fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+...   |
+477 | |         }
+478 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::TagOrContentVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:511:5
+    |
+511 | /     impl<'de> Visitor<'de> for TagOrContentVisitor {
+512 | |         type Value = TagOrContent;
+513 | |
+514 | |         fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+...   |
+731 | |         }
+732 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::TaggedContentVisitor<T> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:775:5
+    |
+775 | /     impl<'de, T> Visitor<'de> for TaggedContentVisitor<T>
+776 | |     where
+777 | |         T: Deserialize<'de>,
+778 | |     {
+...   |
+817 | |         }
+818 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::TagOrContentFieldVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:845:5
+    |
+845 | /     impl<'de> Visitor<'de> for TagOrContentFieldVisitor {
+846 | |         type Value = TagOrContentField;
+847 | |
+848 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+863 | |         }
+864 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentDeserializer<E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:874:5
+     |
+874  | /     impl<'de, E> Deserializer<'de> for ContentDeserializer<E>
+875  | |     where
+876  | |         E: de::Error,
+877  | |     {
+...    |
+999  | |         }
+1000 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqDeserializer<E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1125:5
+     |
+1125 | /     impl<'de, E> de::Deserializer<'de> for SeqDeserializer<E>
+1126 | |     where
+1127 | |         E: de::Error,
+1128 | |     {
+...    |
+1154 | |         }
+1155 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapDeserializer<E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1237:5
+     |
+1237 | /     impl<'de, E> de::Deserializer<'de> for MapDeserializer<E>
+1238 | |     where
+1239 | |         E: de::Error,
+1240 | |     {
+...    |
+1255 | |         }
+1256 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentRefDeserializer<'a, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1266:5
+     |
+1266 | /     impl<'de, 'a, E> Deserializer<'de> for ContentRefDeserializer<'a, E>
+1267 | |     where
+1268 | |         E: de::Error,
+1269 | |     {
+...    |
+1391 | |         }
+1392 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqRefDeserializer<'a, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1517:5
+     |
+1517 | /     impl<'de, 'a, E> de::Deserializer<'de> for SeqRefDeserializer<'a, E>
+1518 | |     where
+1519 | |         E: de::Error,
+1520 | |     {
+...    |
+1546 | |         }
+1547 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapRefDeserializer<'a, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1630:5
+     |
+1630 | /     impl<'de, 'a, E> de::Deserializer<'de> for MapRefDeserializer<'a, E>
+1631 | |     where
+1632 | |         E: de::Error,
+1633 | |     {
+...    |
+1648 | |         }
+1649 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::InternallyTaggedUnitVisitor<'a> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1691:5
+     |
+1691 | /     impl<'de, 'a> Visitor<'de> for InternallyTaggedUnitVisitor<'a> {
+1692 | |         type Value = ();
+1693 | |
+1694 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1703 | |         }
+1704 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::UntaggedUnitVisitor<'a> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1724:5
+     |
+1724 | /     impl<'de, 'a> Visitor<'de> for UntaggedUnitVisitor<'a> {
+1725 | |         type Value = ();
+1726 | |
+1727 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1736 | |         }
+1737 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::StrDeserializer<'a, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1788:1
+     |
+1788 | / impl<'de, 'a, E> Deserializer<'de> for StrDeserializer<'a, E>
+1789 | | where
+1790 | |     E: Error,
+1791 | | {
+...    |
+1805 | |     }
+1806 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::BytesDeserializer<'a, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1827:1
+     |
+1827 | / impl<'de, 'a, E> Deserializer<'de> for BytesDeserializer<'a, E>
+1828 | | where
+1829 | |     E: Error,
+1830 | | {
+...    |
+1844 | |     }
+1845 | | }
+     | |_^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+error: path changes to `bytes`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/bytes.rs:1:1
+    |
+1   | / //! Helper module to enable serializing bytes more efficiently
+2   | |
+3   | | use std::ops;
+4   | | use std::fmt;
+...   |
+215 | |     result
+216 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::bytes::Bytes<'a> as old::Serialize>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/bytes.rs:52:1
+   |
+52 | / impl<'a> ser::Serialize for Bytes<'a> {
+53 | |     #[inline]
+54 | |     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+55 | |         where S: ser::Serializer
+...  |
+58 | |     }
+59 | | }
+   | |_^
+   |
+   = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::bytes::ByteBuf as old::Serialize>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/bytes.rs:139:1
+    |
+139 | / impl ser::Serialize for ByteBuf {
+140 | |     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+141 | |         where S: ser::Serializer
+142 | |     {
+143 | |         serializer.serialize_bytes(&self)
+144 | |     }
+145 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::bytes::ByteBufVisitor as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/bytes.rs:150:1
+    |
+150 | / impl de::Visitor for ByteBufVisitor {
+151 | |     type Value = ByteBuf;
+152 | |
+153 | |     #[inline]
+...   |
+194 | |     }
+195 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::bytes::ByteBuf as old::Deserialize>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/bytes.rs:197:1
+    |
+197 | / impl de::Deserialize for ByteBuf {
+198 | |     #[inline]
+199 | |     fn deserialize<D>(deserializer: &mut D) -> Result<ByteBuf, D::Error>
+200 | |         where D: de::Deserializer
+...   |
+203 | |     }
+204 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `Error`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:151:9
+    |
+151 | /         pub trait Error: Sized $(+ $($supertrait)::+)* {
+152 | |             /// Raised when there is general error when deserializing a type.
+153 | |             ///
+154 | |             /// The message should not be capitalized and should not end with a period.
+...   |
+268 | |             }
+269 | |         }
+    | |_________^
+    |
+note: added defaulted item to trait (technically breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:266:13
+    |
+266 | /             fn duplicate_field(field: &'static str) -> Self {
+267 | |                 Error::custom(format_args!("duplicate field `{}`", field))
+268 | |             }
+    | |_____________^
+warning: removed item from trait (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:18:5
+    |
+18  |     fn end_of_stream() -> Self;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: breaking changes in `custom`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:180:13
+    |
+180 | /             fn custom<T>(msg: T) -> Self
+181 | |             where
+182 | |                 T: Display;
+    | |___________________________^
+    |
+    = warning: added bound: `T: std::fmt::Display` (breaking)
+    = note: removed bound: `std::string::String: std::convert::From<T>` (technically breaking)
+
+error: breaking changes in `invalid_type`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:197:13
+    |
+197 | /             fn invalid_type(unexp: Unexpected, exp: &Expected) -> Self {
+198 | |                 Error::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
+199 | |             }
+    | |_____________^
+    |
+    = warning: type error: incorrect number of function parameters (breaking)
+
+error: breaking changes in `invalid_value`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:214:13
+    |
+214 | /             fn invalid_value(unexp: Unexpected, exp: &Expected) -> Self {
+215 | |                 Error::custom(format_args!("invalid value: {}, expected {}", unexp, exp))
+216 | |             }
+    | |_____________^
+    |
+    = warning: type error: incorrect number of function parameters (breaking)
+
+error: breaking changes in `invalid_length`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:227:13
+    |
+227 | /             fn invalid_length(len: usize, exp: &Expected) -> Self {
+228 | |                 Error::custom(format_args!("invalid length {}, expected {}", len, exp))
+229 | |             }
+    | |_____________^
+    |
+    = warning: type error: incorrect number of function parameters (breaking)
+
+error: breaking changes in `unknown_variant`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:233:13
+    |
+233 | /             fn unknown_variant(variant: &str, expected: &'static [&'static str]) -> Self {
+234 | |                 if expected.is_empty() {
+235 | |                     Error::custom(format_args!("unknown variant `{}`, there are no variants",
+236 | |                                                variant))
+...   |
+241 | |                 }
+242 | |             }
+    | |_____________^
+    |
+    = warning: type error: incorrect number of function parameters (breaking)
+
+error: breaking changes in `unknown_field`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:246:13
+    |
+246 | /             fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
+247 | |                 if expected.is_empty() {
+248 | |                     Error::custom(format_args!("unknown field `{}`, there are no fields",
+249 | |                                                field))
+...   |
+254 | |                 }
+255 | |             }
+    | |_____________^
+    |
+    = warning: type error: incorrect number of function parameters (breaking)
+
+error: path changes to `Type`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:54:1
+    |
+54  | / pub enum Type {
+55  | |     /// Represents a `bool` type.
+56  | |     Bool,
+57  | |
+...   |
+149 | |     Bytes,
+150 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `Deserialize`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:496:1
+    |
+496 | / pub trait Deserialize<'de>: Sized {
+497 | |     /// Deserialize this value from the given Serde deserializer.
+498 | |     ///
+499 | |     /// See the [Implementing `Deserialize`][impl-deserialize] section of the
+...   |
+505 | |         D: Deserializer<'de>;
+506 | | }
+    | |_^
+    |
+    = warning: region parameter added (breaking)
+
+error: breaking changes in `deserialize`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:503:5
+    |
+503 | /     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+504 | |     where
+505 | |         D: Deserializer<'de>;
+    | |_____________________________^
+    |
+    = warning: type error: expected old::Deserializer::Error, found new::Deserializer::Error (breaking)
+
+error: breaking changes in `Deserializer`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:795:1
+     |
+795  | / pub trait Deserializer<'de>: Sized {
+796  | |     /// The error type that can be returned if some error occurs during
+797  | |     /// deserialization.
+798  | |     type Error: Error;
+...    |
+1012 | |         V: Visitor<'de>;
+1013 | | }
+     | |_^
+     |
+     = warning: region parameter added (breaking)
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:809:5
+     |
+809  | /     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+810  | |     where
+811  | |         V: Visitor<'de>;
+     | |________________________^
+warning: removed item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:180:5
+     |
+180  | /     fn deserialize<V>(&mut self, visitor: V) -> Result<V::Value, Self::Error>
+181  | |         where V: Visitor;
+     | |_________________________^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:913:5
+     |
+913  | /     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+914  | |     where
+915  | |         V: Visitor<'de>;
+     | |________________________^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1002:5
+     |
+1002 | /     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+1003 | |     where
+1004 | |         V: Visitor<'de>;
+     | |________________________^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:193:5
+     |
+193  | /     fn deserialize_usize<V>(&mut self, visitor: V) -> Result<V::Value, Self::Error>
+194  | |         where V: Visitor,
+195  | |     {
+196  | |         self.deserialize_u64(visitor)
+197  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:233:5
+     |
+233  | /     fn deserialize_isize<V>(&mut self, visitor: V) -> Result<V::Value, Self::Error>
+234  | |         where V: Visitor,
+235  | |     {
+236  | |         self.deserialize_i64(visitor)
+237  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:343:5
+     |
+343  | /     fn deserialize_fixed_size_array<V>(&mut self,
+344  | |                                        _len: usize,
+345  | |                                        visitor: V) -> Result<V::Value, Self::Error>
+346  | |         where V: Visitor,
+347  | |     {
+348  | |         self.deserialize(visitor)
+349  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:420:5
+     |
+420  | /     fn deserialize_struct_field<V>(&mut self, visitor: V) -> Result<V::Value, Self::Error>
+421  | |         where V: Visitor,
+422  | |     {
+423  | |         self.deserialize(visitor)
+424  | |     }
+     | |_____^
+
+error: breaking changes in `deserialize_bool`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:814:5
+    |
+814 | /     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+815 | |     where
+816 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_u8`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:839:5
+    |
+839 | /     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+840 | |     where
+841 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_u16`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:844:5
+    |
+844 | /     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+845 | |     where
+846 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_u32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:849:5
+    |
+849 | /     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+850 | |     where
+851 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_u64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:854:5
+    |
+854 | /     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+855 | |     where
+856 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_i8`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:819:5
+    |
+819 | /     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+820 | |     where
+821 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_i16`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:824:5
+    |
+824 | /     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+825 | |     where
+826 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_i32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:829:5
+    |
+829 | /     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+830 | |     where
+831 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_i64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:834:5
+    |
+834 | /     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+835 | |     where
+836 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_f32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:859:5
+    |
+859 | /     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+860 | |     where
+861 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_f64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:864:5
+    |
+864 | /     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+865 | |     where
+866 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_char`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:869:5
+    |
+869 | /     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+870 | |     where
+871 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_str`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:880:5
+    |
+880 | /     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+881 | |     where
+882 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_string`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:891:5
+    |
+891 | /     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+892 | |     where
+893 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_unit`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:927:5
+    |
+927 | /     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+928 | |     where
+929 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_option`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:922:5
+    |
+922 | /     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+923 | |     where
+924 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_seq`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:952:5
+    |
+952 | /     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+953 | |     where
+954 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_bytes`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:902:5
+    |
+902 | /     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+903 | |     where
+904 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_map`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:974:5
+    |
+974 | /     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+975 | |     where
+976 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_unit_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:933:5
+    |
+933 | /     fn deserialize_unit_struct<V>(
+934 | |         self,
+935 | |         name: &'static str,
+936 | |         visitor: V,
+937 | |     ) -> Result<V::Value, Self::Error>
+938 | |     where
+939 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_newtype_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:943:5
+    |
+943 | /     fn deserialize_newtype_struct<V>(
+944 | |         self,
+945 | |         name: &'static str,
+946 | |         visitor: V,
+947 | |     ) -> Result<V::Value, Self::Error>
+948 | |     where
+949 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_tuple_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:964:5
+    |
+964 | /     fn deserialize_tuple_struct<V>(
+965 | |         self,
+966 | |         name: &'static str,
+967 | |         len: usize,
+...   |
+970 | |     where
+971 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:980:5
+    |
+980 | /     fn deserialize_struct<V>(
+981 | |         self,
+982 | |         name: &'static str,
+983 | |         fields: &'static [&'static str],
+...   |
+986 | |     where
+987 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_tuple`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:958:5
+    |
+958 | /     fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+959 | |     where
+960 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_enum`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:991:5
+    |
+991 | /     fn deserialize_enum<V>(
+992 | |         self,
+993 | |         name: &'static str,
+994 | |         variants: &'static [&'static str],
+...   |
+997 | |     where
+998 | |         V: Visitor<'de>;
+    | |________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `deserialize_ignored_any`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1010:5
+     |
+1010 | /     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+1011 | |     where
+1012 | |         V: Visitor<'de>;
+     | |________________________^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `Visitor`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1048:1
+     |
+1048 | / pub trait Visitor<'de>: Sized {
+1049 | |     /// The value produced by this visitor.
+1050 | |     type Value;
+1051 | |
+...    |
+1408 | |     }
+1409 | | }
+     | |_^
+     |
+     = warning: region parameter added (breaking)
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1074:5
+     |
+1074 |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1242:5
+     |
+1242 | /     fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+1243 | |     where
+1244 | |         E: Error,
+1245 | |     {
+1246 | |         self.visit_str(v)
+1247 | |     }
+     | |_____^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1301:5
+     |
+1301 | /     fn visit_borrowed_bytes<E>(self, v: &'de [u8]) -> Result<Self::Value, E>
+1302 | |     where
+1303 | |         E: Error,
+1304 | |     {
+1305 | |         self.visit_bytes(v)
+1306 | |     }
+     | |_____^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1402:5
+     |
+1402 | /     fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+1403 | |     where
+1404 | |         A: EnumAccess<'de>,
+1405 | |     {
+1406 | |         let _ = data;
+1407 | |         Err(Error::invalid_type(Unexpected::Enum, &self))
+1408 | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:508:5
+     |
+508  | /     fn visit_usize<E>(&mut self, v: usize) -> Result<Self::Value, E>
+509  | |         where E: Error,
+510  | |     {
+511  | |         self.visit_u64(v as u64)
+512  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:473:5
+     |
+473  | /     fn visit_isize<E>(&mut self, v: isize) -> Result<Self::Value, E>
+474  | |         where E: Error,
+475  | |     {
+476  | |         self.visit_i64(v as i64)
+477  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:592:5
+     |
+592  | /     fn visit_unit_struct<E>(&mut self, _name: &'static str) -> Result<Self::Value, E>
+593  | |         where E: Error,
+594  | |     {
+595  | |         self.visit_unit()
+596  | |     }
+     | |_____^
+
+error: breaking changes in `visit_bool`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1079:5
+     |
+1079 | /     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+1080 | |     where
+1081 | |         E: Error,
+1082 | |     {
+1083 | |         Err(Error::invalid_type(Unexpected::Bool(v), &self))
+1084 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_i8`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1091:5
+     |
+1091 | /     fn visit_i8<E>(self, v: i8) -> Result<Self::Value, E>
+1092 | |     where
+1093 | |         E: Error,
+1094 | |     {
+1095 | |         self.visit_i64(v as i64)
+1096 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_i16`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1103:5
+     |
+1103 | /     fn visit_i16<E>(self, v: i16) -> Result<Self::Value, E>
+1104 | |     where
+1105 | |         E: Error,
+1106 | |     {
+1107 | |         self.visit_i64(v as i64)
+1108 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_i32`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1115:5
+     |
+1115 | /     fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
+1116 | |     where
+1117 | |         E: Error,
+1118 | |     {
+1119 | |         self.visit_i64(v as i64)
+1120 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_i64`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1125:5
+     |
+1125 | /     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+1126 | |     where
+1127 | |         E: Error,
+1128 | |     {
+1129 | |         Err(Error::invalid_type(Unexpected::Signed(v), &self))
+1130 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_u8`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1137:5
+     |
+1137 | /     fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+1138 | |     where
+1139 | |         E: Error,
+1140 | |     {
+1141 | |         self.visit_u64(v as u64)
+1142 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_u16`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1149:5
+     |
+1149 | /     fn visit_u16<E>(self, v: u16) -> Result<Self::Value, E>
+1150 | |     where
+1151 | |         E: Error,
+1152 | |     {
+1153 | |         self.visit_u64(v as u64)
+1154 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_u32`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1161:5
+     |
+1161 | /     fn visit_u32<E>(self, v: u32) -> Result<Self::Value, E>
+1162 | |     where
+1163 | |         E: Error,
+1164 | |     {
+1165 | |         self.visit_u64(v as u64)
+1166 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_u64`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1171:5
+     |
+1171 | /     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+1172 | |     where
+1173 | |         E: Error,
+1174 | |     {
+1175 | |         Err(Error::invalid_type(Unexpected::Unsigned(v), &self))
+1176 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_f32`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1183:5
+     |
+1183 | /     fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
+1184 | |     where
+1185 | |         E: Error,
+1186 | |     {
+1187 | |         self.visit_f64(v as f64)
+1188 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_f64`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1193:5
+     |
+1193 | /     fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+1194 | |     where
+1195 | |         E: Error,
+1196 | |     {
+1197 | |         Err(Error::invalid_type(Unexpected::Float(v), &self))
+1198 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_char`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1207:5
+     |
+1207 | /     fn visit_char<E>(self, v: char) -> Result<Self::Value, E>
+1208 | |     where
+1209 | |         E: Error,
+1210 | |     {
+1211 | |         self.visit_str(utf8::encode(v).as_str())
+1212 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_str`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1225:5
+     |
+1225 | /     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+1226 | |     where
+1227 | |         E: Error,
+1228 | |     {
+1229 | |         Err(Error::invalid_type(Unexpected::Str(v), &self))
+1230 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_string`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1266:5
+     |
+1266 | /     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+1267 | |     where
+1268 | |         E: Error,
+1269 | |     {
+1270 | |         self.visit_str(&v)
+1271 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_unit`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1356:5
+     |
+1356 | /     fn visit_unit<E>(self) -> Result<Self::Value, E>
+1357 | |     where
+1358 | |         E: Error,
+1359 | |     {
+1360 | |         Err(Error::invalid_type(Unexpected::Unit, &self))
+1361 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_none`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1335:5
+     |
+1335 | /     fn visit_none<E>(self) -> Result<Self::Value, E>
+1336 | |     where
+1337 | |         E: Error,
+1338 | |     {
+1339 | |         Err(Error::invalid_type(Unexpected::Option, &self))
+1340 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_some`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1345:5
+     |
+1345 | /     fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+1346 | |     where
+1347 | |         D: Deserializer<'de>,
+1348 | |     {
+1349 | |         let _ = deserializer;
+1350 | |         Err(Error::invalid_type(Unexpected::Option, &self))
+1351 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_newtype_struct`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1369:5
+     |
+1369 | /     fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+1370 | |     where
+1371 | |         D: Deserializer<'de>,
+1372 | |     {
+1373 | |         let _ = deserializer;
+1374 | |         Err(Error::invalid_type(Unexpected::NewtypeStruct, &self))
+1375 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_seq`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1380:5
+     |
+1380 | /     fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
+1381 | |     where
+1382 | |         A: SeqAccess<'de>,
+1383 | |     {
+1384 | |         let _ = seq;
+1385 | |         Err(Error::invalid_type(Unexpected::Seq, &self))
+1386 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_map`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1391:5
+     |
+1391 | /     fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+1392 | |     where
+1393 | |         A: MapAccess<'de>,
+1394 | |     {
+1395 | |         let _ = map;
+1396 | |         Err(Error::invalid_type(Unexpected::Map, &self))
+1397 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_bytes`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1284:5
+     |
+1284 | /     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+1285 | |     where
+1286 | |         E: Error,
+1287 | |     {
+1288 | |         let _ = v;
+1289 | |         Err(Error::invalid_type(Unexpected::Bytes(v), &self))
+1290 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `visit_byte_buf`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/mod.rs:1325:5
+     |
+1325 | /     fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+1326 | |     where
+1327 | |         E: Error,
+1328 | |     {
+1329 | |         self.visit_bytes(&v)
+1330 | |     }
+     | |_____^
+     |
+     = warning: type error: expected &mut Self, found Self (breaking)
+
+error: path changes to `SeqVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:654:1
+    |
+654 | / pub trait SeqVisitor {
+655 | |     /// The error type that can be returned if some error occurs during deserialization.
+656 | |     type Error: Error;
+657 | |
+...   |
+670 | |     }
+671 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `MapVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:699:1
+    |
+699 | / pub trait MapVisitor {
+700 | |     /// The error type that can be returned if some error occurs during deserialization.
+701 | |     type Error: Error;
+702 | |
+...   |
+742 | |     }
+743 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `EnumVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:785:1
+    |
+785 | / pub trait EnumVisitor {
+786 | |     /// The value produced by this visitor.
+787 | |     type Value;
+788 | |
+...   |
+791 | |         where V: VariantVisitor;
+792 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `VariantVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/mod.rs:798:1
+    |
+798 | / pub trait VariantVisitor {
+799 | |     /// The error type that can be returned if some error occurs during deserialization.
+800 | |     type Error: Error;
+801 | |
+...   |
+837 | |     }
+838 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `impls`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:9:1
+     |
+9    | / use lib::*;
+10   | |
+11   | | use de::{Deserialize, Deserializer, EnumAccess, Error, SeqAccess, Unexpected, VariantAccess,
+12   | |          Visitor};
+...    |
+1602 | |     }
+1603 | | }
+     | |_^
+     |
+     = warning: item made private (breaking)
+
+error: breaking changes in `UnitVisitor`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:24:1
+   |
+24 | struct UnitVisitor;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: item made private (breaking)
+
+error: breaking changes in `BoolVisitor`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:52:1
+   |
+52 | struct BoolVisitor;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: item made private (breaking)
+
+error: breaking changes in `<old::de::impls::PrimitiveVisitor<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:135:1
+    |
+135 | / impl<T> Visitor for PrimitiveVisitor<T>
+136 | |     where T: Deserialize + FromPrimitive + str::FromStr
+137 | | {
+138 | |     type Value = T;
+...   |
+160 | |     }
+161 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::OptionVisitor<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:281:1
+    |
+281 | / impl<
+282 | |     T: Deserialize,
+283 | | > Visitor for OptionVisitor<T> {
+284 | |     type Value = Option<T>;
+...   |
+305 | |     }
+306 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::option::Option<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:308:1
+    |
+308 | / impl<T> Deserialize for Option<T> where T: Deserialize {
+309 | |     fn deserialize<D>(deserializer: &mut D) -> Result<Option<T>, D::Error>
+310 | |         where D: Deserializer,
+311 | |     {
+312 | |         deserializer.deserialize_option(OptionVisitor { marker: PhantomData })
+313 | |     }
+314 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `PhantomDataVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:468:1
+    |
+468 | / struct PhantomDataVisitor<T> {
+469 | |     marker: PhantomData<T>,
+470 | | }
+    | |_^
+    |
+    = warning: item made private (breaking)
+
+error: breaking changes in `<old::de::impls::PhantomDataVisitor<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:323:1
+    |
+323 | / impl<T> Visitor for PhantomDataVisitor<T> where T: Deserialize {
+324 | |     type Value = PhantomData<T>;
+325 | |
+326 | |     #[inline]
+...   |
+331 | |     }
+332 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::marker::PhantomData<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:334:1
+    |
+334 | / impl<T> Deserialize for PhantomData<T> where T: Deserialize {
+335 | |     fn deserialize<D>(deserializer: &mut D) -> Result<PhantomData<T>, D::Error>
+336 | |         where D: Deserializer,
+337 | |     {
+...   |
+340 | |     }
+341 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `VecDequeVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:356:9
+    |
+356 | /         pub struct $visitor_name<T> {
+357 | |             marker: PhantomData<T>,
+358 | |         }
+    | |_________^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::impls::LinkedListVisitor<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:369:9
+    |
+369 | /         impl<T> Visitor for $visitor_name<T>
+370 | |             where T: $($constraints +)*,
+371 | |         {
+372 | |             type Value = $ty;
+...   |
+394 | |             }
+395 | |         }
+    | |_________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::collections::LinkedList<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:397:9
+    |
+397 | /         impl<T> Deserialize for $ty
+398 | |             where T: $($constraints +)*,
+399 | |         {
+400 | |             fn deserialize<D>(deserializer: &mut D) -> Result<$ty, D::Error>
+...   |
+404 | |             }
+405 | |         }
+    | |_________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::ArrayVisitor0<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:488:1
+    |
+488 | / impl<T> Visitor for ArrayVisitor0<T> where T: Deserialize + Default {
+489 | |     type Value = [T; 0];
+490 | |
+491 | |     #[inline]
+...   |
+504 | |     }
+505 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 0]>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:507:1
+    |
+507 | / impl<T> Deserialize for [T; 0]
+508 | |     where T: Deserialize + Default
+509 | | {
+510 | |     fn deserialize<D>(deserializer: &mut D) -> Result<[T; 0], D::Error>
+...   |
+514 | |     }
+515 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::ArrayVisitor32<T> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:533:13
+    |
+533 | /             impl<T> Visitor for $visitor<T> where T: Deserialize {
+534 | |                 type Value = [T; $len];
+535 | |
+536 | |                 #[inline]
+...   |
+550 | |                 }
+551 | |             }
+    | |_____________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 17]>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:553:13
+    |
+553 | /             impl<T> Deserialize for [T; $len]
+554 | |                 where T: Deserialize,
+555 | |             {
+556 | |                 fn deserialize<D>(deserializer: &mut D) -> Result<[T; $len], D::Error>
+...   |
+560 | |                 }
+561 | |             }
+    | |_____________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `TupleVisitor9`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:725:13
+    |
+725 | /             struct $visitor<$($name,)+> {
+726 | |                 marker: PhantomData<($($name,)+)>,
+727 | |             }
+    | |_____________^
+    |
+    = warning: item made private (breaking)
+
+error: breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:624:17
+    |
+624 | /                 pub fn new() -> Self {
+625 | |                     $visitor { marker: PhantomData }
+626 | |                 }
+    | |_________________^
+    |
+    = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::de::impls::TupleVisitor9<T0, T1, T2, T3, T4, T5, T6, T7, T8> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:630:13
+    |
+630 | /             impl<
+631 | |                 $($name: Deserialize,)+
+632 | |             > Visitor for $visitor<$($name,)+> {
+633 | |                 type Value = ($($name,)+);
+...   |
+650 | |                 }
+651 | |             }
+    | |_____________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for (T0, T1, T2, T3, T4, T5, T6)>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:653:13
+    |
+653 | /             impl<
+654 | |                 $($name: Deserialize),+
+655 | |             > Deserialize for ($($name,)+) {
+656 | |                 #[inline]
+...   |
+661 | |                 }
+662 | |             }
+    | |_____________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `HashMapVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:695:9
+    |
+695 | /         pub struct $visitor_name<K, V> {
+696 | |             marker: PhantomData<$ty>,
+697 | |         }
+    | |_________^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::impls::BTreeMapVisitor<K, V> as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:708:9
+    |
+708 | /         impl<K, V> Visitor for $visitor_name<K, V>
+709 | |             where K: $($constraints +)*,
+710 | |                   V: Deserialize,
+711 | |         {
+...   |
+734 | |             }
+735 | |         }
+    | |_________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::collections::HashMap<K, V>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:737:9
+    |
+737 | /         impl<K, V> Deserialize for $ty
+738 | |             where K: $($constraints +)*,
+739 | |                   V: Deserialize,
+740 | |         {
+...   |
+745 | |             }
+746 | |         }
+    | |_________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::boxed::Box<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:875:1
+    |
+875 | / impl<T: Deserialize> Deserialize for Box<T> {
+876 | |     fn deserialize<D>(deserializer: &mut D) -> Result<Box<T>, D::Error>
+877 | |         where D: Deserializer,
+878 | |     {
+...   |
+881 | |     }
+882 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::sync::Arc<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:884:1
+    |
+884 | / impl<T: Deserialize> Deserialize for Arc<T> {
+885 | |     fn deserialize<D>(deserializer: &mut D) -> Result<Arc<T>, D::Error>
+886 | |         where D: Deserializer,
+887 | |     {
+...   |
+890 | |     }
+891 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::rc::Rc<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:893:1
+    |
+893 | / impl<T: Deserialize> Deserialize for Rc<T> {
+894 | |     fn deserialize<D>(deserializer: &mut D) -> Result<Rc<T>, D::Error>
+895 | |         where D: Deserializer,
+896 | |     {
+...   |
+899 | |     }
+900 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::borrow::Cow<'a, T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:902:1
+    |
+902 | / impl<'a, T: ?Sized> Deserialize for Cow<'a, T> where T: ToOwned, T::Owned: Deserialize, {
+903 | |     #[inline]
+904 | |     fn deserialize<D>(deserializer: &mut D) -> Result<Cow<'a, T>, D::Error>
+905 | |         where D: Deserializer,
+...   |
+909 | |     }
+910 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::result::Result<T, E>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:930:1
+     |
+930  | / impl<T, E> Deserialize for Result<T, E> where T: Deserialize, E: Deserialize {
+931  | |     fn deserialize<D>(deserializer: &mut D) -> Result<Result<T, E>, D::Error>
+932  | |                       where D: Deserializer {
+933  | |         enum Field {
+...    |
+1009 | |     }
+1010 | | }
+     | |_^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize for std::result::Result<T, E>>::deserialize::Field as old::Deserialize>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:938:9
+    |
+938 | /         impl Deserialize for Field {
+939 | |             #[inline]
+940 | |             fn deserialize<D>(deserializer: &mut D) -> Result<Field, D::Error>
+941 | |                 where D: Deserializer
+...   |
+979 | |             }
+980 | |         }
+    | |_________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::<impl old::Deserialize for std::result::Result<T, E>>::deserialize::Field as old::Deserialize>::deserialize::FieldVisitor as old::de::Visitor>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:945:17
+    |
+945 | /                 impl ::de::Visitor for FieldVisitor {
+946 | |                     type Value = Field;
+947 | |
+948 | |                     fn visit_usize<E>(&mut self, value: usize) -> Result<Field, E> where E: Error {
+...   |
+975 | |                     }
+976 | |                 }
+    | |_________________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `IgnoredAny`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:1016:1
+     |
+1016 | pub struct IgnoredAny;
+     | ^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::impls::IgnoredAny as old::Deserialize>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:1018:1
+     |
+1018 | / impl Deserialize for IgnoredAny {
+1019 | |     #[inline]
+1020 | |     fn deserialize<D>(deserializer: &mut D) -> Result<IgnoredAny, D::Error>
+1021 | |         where D: Deserializer,
+...    |
+1113 | |     }
+1114 | | }
+     | |_^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::IgnoredAny as old::Deserialize>::deserialize::IgnoredAnyVisitor as old::de::Visitor>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:1025:9
+     |
+1025 | /         impl Visitor for IgnoredAnyVisitor {
+1026 | |             type Value = IgnoredAny;
+1027 | |
+1028 | |             #[inline]
+...    |
+1108 | |             }
+1109 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `Error`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:50:1
+   |
+50 | / pub struct Error {
+51 | |     err: ErrorImpl,
+52 | | }
+   | |_^
+   |
+   = warning: item kind changed (breaking)
+
+error: path changes to `ValueDeserializer`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:93:1
+   |
+93 | / pub trait ValueDeserializer<E: de::Error = Error> {
+94 | |     /// The actual deserializer type.
+95 | |     type Deserializer: de::Deserializer<Error=E>;
+96 | |
+97 | |     /// Convert this value into a deserializer.
+98 | |     fn into_deserializer(self) -> Self::Deserializer;
+99 | | }
+   | |_^
+   |
+   = warning: removed definition (breaking)
+
+error: breaking changes in `UnitDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:121:1
+    |
+121 | / pub struct UnitDeserializer<E> {
+122 | |     marker: PhantomData<E>,
+123 | | }
+    | |_^
+    |
+warning: variant with no public fields changed to a struct variant (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:121:1
+    |
+121 | / pub struct UnitDeserializer<E> {
+122 | |     marker: PhantomData<E>,
+123 | | }
+    | |_^
+
+error: breaking changes in `U8Deserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:159:9
+    |
+159 | /         pub struct $name<E> {
+160 | |             value: $ty,
+161 | |             marker: PhantomData<E>
+162 | |         }
+    | |_________^
+    |
+warning: variant with no public fields changed to a struct variant (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:159:9
+    |
+159 | /         pub struct $name<E> {
+160 | |             value: $ty,
+161 | |             marker: PhantomData<E>
+162 | |         }
+    | |_________^
+
+error: breaking changes in `StrDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:288:1
+    |
+288 | / pub struct StrDeserializer<'a, E> {
+289 | |     value: &'a str,
+290 | |     marker: PhantomData<E>,
+291 | | }
+    | |_^
+    |
+warning: variant with no public fields changed to a struct variant (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:288:1
+    |
+288 | / pub struct StrDeserializer<'a, E> {
+289 | |     value: &'a str,
+290 | |     marker: PhantomData<E>,
+291 | | }
+    | |_^
+
+error: breaking changes in `StringDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:361:1
+    |
+361 | / pub struct StringDeserializer<E> {
+362 | |     value: String,
+363 | |     marker: PhantomData<E>,
+364 | | }
+    | |_^
+    |
+warning: variant with no public fields changed to a struct variant (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:361:1
+    |
+361 | / pub struct StringDeserializer<E> {
+362 | |     value: String,
+363 | |     marker: PhantomData<E>,
+364 | | }
+    | |_^
+
+error: breaking changes in `SeqDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:515:1
+    |
+515 | / pub struct SeqDeserializer<I, E> {
+516 | |     iter: iter::Fuse<I>,
+517 | |     count: usize,
+518 | |     marker: PhantomData<E>,
+519 | | }
+    | |_^
+    |
+warning: variant field removed from variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:298:5
+    |
+298 |     len: usize,
+    |     ^^^^^^^^^^
+warning: variant field added to variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:517:5
+    |
+517 |     count: usize,
+    |     ^^^^^^^^^^^^
+
+error: breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:306:5
+    |
+306 | /     pub fn new(iter: I, len: usize) -> Self {
+307 | |         SeqDeserializer {
+308 | |             iter: iter,
+309 | |             len: len,
+310 | |             marker: PhantomData,
+311 | |         }
+312 | |     }
+    | |_____^
+    |
+    = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::de::value::SeqDeserializer<I, E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:315:1
+    |
+315 | / impl<I, T, E> de::Deserializer for SeqDeserializer<I, E>
+316 | |     where I: Iterator<Item=T>,
+317 | |           T: ValueDeserializer<E>,
+318 | |           E: de::Error,
+...   |
+326 | |     }
+327 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `SeqVisitorDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:403:1
+    |
+403 | / pub struct SeqVisitorDeserializer<V_, E> {
+404 | |     visitor: V_,
+405 | |     marker: PhantomData<E>,
+406 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::value::SeqVisitorDeserializer<V_, E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:421:1
+    |
+421 | / impl<V_, E> de::Deserializer for SeqVisitorDeserializer<V_, E>
+422 | |     where V_: de::SeqVisitor<Error = E>,
+423 | |           E: de::Error,
+424 | | {
+...   |
+429 | |     }
+430 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `MapDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:698:1
+    |
+698 | / pub struct MapDeserializer<'de, I, E>
+699 | | where
+700 | |     I: Iterator,
+701 | |     I::Item: private::Pair,
+...   |
+707 | |     error: PhantomData<E>,
+708 | | }
+    | |_^
+    |
+    = warning: region parameter added (breaking)
+    = warning: type parameter removed (breaking)
+    = warning: type parameter removed (breaking)
+warning: variant field removed from variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:443:5
+    |
+443 |     len: usize,
+    |     ^^^^^^^^^^
+warning: variant field removed from variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:444:5
+    |
+444 |     marker: PhantomData<E>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^
+warning: variant field added to variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:705:5
+    |
+705 |     count: usize,
+    |     ^^^^^^^^^^^^
+warning: variant field added to variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:707:5
+    |
+707 |     error: PhantomData<E>,
+    |     ^^^^^^^^^^^^^^^^^^^^^
+warning: variant field added to variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:706:5
+    |
+706 |     lifetime: PhantomData<&'de ()>,
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:454:5
+    |
+454 | /     pub fn new(iter: I, len: usize) -> Self {
+455 | |         MapDeserializer {
+456 | |             iter: iter,
+457 | |             value: None,
+...   |
+460 | |         }
+461 | |     }
+    | |_____^
+    |
+    = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::de::value::MapDeserializer<I, K, V, E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:464:1
+    |
+464 | / impl<I, K, V, E> de::Deserializer for MapDeserializer<I, K, V, E>
+465 | |     where I: Iterator<Item=(K, V)>,
+466 | |           K: ValueDeserializer<E>,
+467 | |           V: ValueDeserializer<E>,
+...   |
+476 | |     }
+477 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `MapVisitorDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:559:1
+    |
+559 | / pub struct MapVisitorDeserializer<V_, E> {
+560 | |     visitor: V_,
+561 | |     marker: PhantomData<E>,
+562 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::value::MapVisitorDeserializer<V_, E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:577:1
+    |
+577 | / impl<V_, E> de::Deserializer for MapVisitorDeserializer<V_, E>
+578 | |     where V_: de::MapVisitor<Error = E>,
+579 | |           E: de::Error,
+580 | | {
+...   |
+585 | |     }
+586 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `BytesDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:601:1
+    |
+601 | pub struct BytesDeserializer<'a, E> (Option<&'a [u8]>, PhantomData<E>);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::value::BytesDeserializer<'a, E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:603:1
+    |
+603 | / impl<'a, E> de::Deserializer for BytesDeserializer<'a, E>
+604 | |     where E: de::Error
+605 | | {
+606 | |     type Error = E;
+...   |
+615 | |     }
+616 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `ByteBufDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:632:1
+    |
+632 | pub struct ByteBufDeserializer<E>(Option<Vec<u8>>, PhantomData<E>);
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `<old::de::value::ByteBufDeserializer<E> as old::Deserializer>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/value.rs:634:1
+    |
+634 | / impl<E> de::Deserializer for ByteBufDeserializer<E>
+635 | |     where E: de::Error,
+636 | | {
+637 | |     type Error = E;
+...   |
+646 | |     }
+647 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: path changes to `iter`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/iter.rs:1:1
+   |
+1  | / //! Module that contains helper iterators.
+2  | |
+3  | | use std::io;
+4  | | use std::iter::Peekable;
+...  |
+60 | |     }
+61 | | }
+   | |_^
+   |
+   = warning: removed definition (breaking)
+
+error: breaking changes in `Error`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:130:9
+    |
+130 | /         pub trait Error: Sized $(+ $($supertrait)::+)* {
+131 | |             /// Used when a [`Serialize`] implementation encounters any error
+132 | |             /// while serializing a type.
+133 | |             ///
+...   |
+167 | |                 T: Display;
+168 | |         }
+    | |_________^
+    |
+warning: removed defaulted item from trait (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:16:5
+    |
+16  | /     fn invalid_value(msg: &str) -> Self {
+17  | |         Error::custom(format!("invalid value: {}", msg))
+18  | |     }
+    | |_____^
+
+error: breaking changes in `custom`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:165:13
+    |
+165 | /             fn custom<T>(msg: T) -> Self
+166 | |             where
+167 | |                 T: Display;
+    | |___________________________^
+    |
+    = warning: added bound: `T: std::fmt::Display` (breaking)
+    = note: removed bound: `std::string::String: std::convert::From<T>` (technically breaking)
+
+error: breaking changes in `serialize`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:236:5
+    |
+236 | /     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+237 | |     where
+238 | |         S: Serializer;
+    | |______________________^
+    |
+    = warning: type error: expected (), found associated type (breaking)
+
+error: breaking changes in `Serializer`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:310:1
+     |
+310  | / pub trait Serializer: Sized {
+311  | |     /// The output type produced by this `Serializer` during successful
+312  | |     /// serialization. Most serializers that produce text or binary output
+313  | |     /// should set `Ok = ()` and serialize into an [`io::Write`] or buffer
+...    |
+1364 | |         T: Display;
+1365 | | }
+     | |_^
+     |
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:319:5
+     |
+319  |     type Ok;
+     |     ^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:328:5
+     |
+328  |     type SerializeSeq: SerializeSeq<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:334:5
+     |
+334  |     type SerializeTuple: SerializeTuple<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:340:5
+     |
+340  |     type SerializeTupleStruct: SerializeTupleStruct<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:346:5
+     |
+346  |     type SerializeTupleVariant: SerializeTupleVariant<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:352:5
+     |
+352  |     type SerializeMap: SerializeMap<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:358:5
+     |
+358  |     type SerializeStruct: SerializeStruct<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: added item to trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:364:5
+     |
+364  |     type SerializeStructVariant: SerializeStructVariant<Ok = Self::Ok, Error = Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1243:5
+     |
+1243 | /     fn collect_seq<I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+1244 | |     where
+1245 | |         I: IntoIterator,
+1246 | |         <I as IntoIterator>::Item: Serialize,
+...    |
+1253 | |         serializer.end()
+1254 | |     }
+     | |_____^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1281:5
+     |
+1281 | /     fn collect_map<K, V, I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+1282 | |     where
+1283 | |         K: Serialize,
+1284 | |         V: Serialize,
+...    |
+1292 | |         serializer.end()
+1293 | |     }
+     | |_____^
+note: added defaulted item to trait (technically breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1325:5
+     |
+1325 | /     fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+1326 | |     where
+1327 | |         T: Display,
+1328 | |     {
+...    |
+1332 | |         self.serialize_str(&string)
+1333 | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:43:5
+     |
+43   | /     fn serialize_isize(&mut self, v: isize) -> Result<(), Self::Error> {
+44   | |         self.serialize_i64(v as i64)
+45   | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:75:5
+     |
+75   | /     fn serialize_usize(&mut self, v: usize) -> Result<(), Self::Error> {
+76   | |         self.serialize_u64(v as u64)
+77   | |     }
+     | |_____^
+warning: removed item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:200:5
+     |
+200  | /     fn serialize_seq_elt<T>(&mut self, value: T) -> Result<(), Self::Error>
+201  | |         where T: Serialize;
+     | |___________________________^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:217:5
+     |
+217  | /     fn serialize_tuple_elt<T>(&mut self, value: T) -> Result<(), Self::Error>
+218  | |         where T: Serialize
+219  | |     {
+220  | |         self.serialize_seq_elt(value)
+221  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:227:5
+     |
+227  | /     fn serialize_fixed_size_array<V>(&mut self, visitor: V) -> Result<(), Self::Error>
+228  | |         where V: SeqVisitor,
+229  | |     {
+230  | |         self.serialize_seq(visitor)
+231  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:249:5
+     |
+249  | /     fn serialize_tuple_struct_elt<T>(&mut self, value: T) -> Result<(), Self::Error>
+250  | |         where T: Serialize
+251  | |     {
+252  | |         self.serialize_tuple_elt(value)
+253  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:273:5
+     |
+273  | /     fn serialize_tuple_variant_elt<T>(&mut self, value: T) -> Result<(), Self::Error>
+274  | |         where T: Serialize
+275  | |     {
+276  | |         self.serialize_tuple_struct_elt(value)
+277  | |     }
+     | |_____^
+warning: removed item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:287:5
+     |
+287  | /     fn serialize_map_elt<K, V>(&mut self, key: K, value: V) -> Result<(), Self::Error>
+288  | |         where K: Serialize,
+289  | |               V: Serialize;
+     | |___________________________^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:307:5
+     |
+307  | /     fn serialize_struct_elt<V>(&mut self,
+308  | |                                key: &'static str,
+309  | |                                value: V) -> Result<(), Self::Error>
+310  | |         where V: Serialize,
+311  | |     {
+312  | |         self.serialize_map_elt(key, value)
+313  | |     }
+     | |_____^
+warning: removed defaulted item from trait (breaking)
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:333:5
+     |
+333  | /     fn serialize_struct_variant_elt<V>(&mut self,
+334  | |                                        key: &'static str,
+335  | |                                        value: V) -> Result<(), Self::Error>
+336  | |         where V: Serialize,
+337  | |     {
+338  | |         self.serialize_struct_elt(key, value)
+339  | |     }
+     | |_____^
+
+error: breaking changes in `serialize_bool`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:386:5
+    |
+386 |     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_i8`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:412:5
+    |
+412 |     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_i16`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:438:5
+    |
+438 |     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_i32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:464:5
+    |
+464 |     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_i64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:486:5
+    |
+486 |     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_u8`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:512:5
+    |
+512 |     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_u16`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:538:5
+    |
+538 |     fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_u32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:564:5
+    |
+564 |     fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_u64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:586:5
+    |
+586 |     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_f32`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:612:5
+    |
+612 |     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_f64`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:634:5
+    |
+634 |     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_char`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:659:5
+    |
+659 |     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_str`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:681:5
+    |
+681 |     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_bytes`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:721:5
+    |
+721 |     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_unit`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:811:5
+    |
+811 |     fn serialize_unit(self) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_unit_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:830:5
+    |
+830 |     fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_unit_variant`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:857:5
+    |
+857 | /     fn serialize_unit_variant(
+858 | |         self,
+859 | |         name: &'static str,
+860 | |         variant_index: u32,
+861 | |         variant: &'static str,
+862 | |     ) -> Result<Self::Ok, Self::Error>;
+    | |_______________________________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_newtype_struct`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:883:5
+    |
+883 | /     fn serialize_newtype_struct<T: ?Sized>(
+884 | |         self,
+885 | |         name: &'static str,
+886 | |         value: &T,
+887 | |     ) -> Result<Self::Ok, Self::Error>
+888 | |     where
+889 | |         T: Serialize;
+    | |_____________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_newtype_variant`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:916:5
+    |
+916 | /     fn serialize_newtype_variant<T: ?Sized>(
+917 | |         self,
+918 | |         name: &'static str,
+919 | |         variant_index: u32,
+...   |
+923 | |     where
+924 | |         T: Serialize;
+    | |_____________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_none`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:754:5
+    |
+754 |     fn serialize_none(self) -> Result<Self::Ok, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_some`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:787:5
+    |
+787 | /     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+788 | |     where
+789 | |         T: Serialize;
+    | |_____________________^
+    |
+    = warning: type error: expected &mut Self, found Self (breaking)
+
+error: breaking changes in `serialize_seq`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:970:5
+    |
+970 |     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error>;
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_tuple`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1023:5
+     |
+1023 |     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_tuple_struct`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1049:5
+     |
+1049 | /     fn serialize_tuple_struct(
+1050 | |         self,
+1051 | |         name: &'static str,
+1052 | |         len: usize,
+1053 | |     ) -> Result<Self::SerializeTupleStruct, Self::Error>;
+     | |_________________________________________________________^
+     |
+     = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_tuple_variant`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1093:5
+     |
+1093 | /     fn serialize_tuple_variant(
+1094 | |         self,
+1095 | |         name: &'static str,
+1096 | |         variant_index: u32,
+1097 | |         variant: &'static str,
+1098 | |         len: usize,
+1099 | |     ) -> Result<Self::SerializeTupleVariant, Self::Error>;
+     | |__________________________________________________________^
+     |
+     = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_map`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1145:5
+     |
+1145 |     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error>;
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+     = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_struct`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1175:5
+     |
+1175 | /     fn serialize_struct(
+1176 | |         self,
+1177 | |         name: &'static str,
+1178 | |         len: usize,
+1179 | |     ) -> Result<Self::SerializeStruct, Self::Error>;
+     | |____________________________________________________^
+     |
+     = warning: type parameter removed (breaking)
+
+error: breaking changes in `serialize_struct_variant`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/mod.rs:1212:5
+     |
+1212 | /     fn serialize_struct_variant(
+1213 | |         self,
+1214 | |         name: &'static str,
+1215 | |         variant_index: u32,
+1216 | |         variant: &'static str,
+1217 | |         len: usize,
+1218 | |     ) -> Result<Self::SerializeStructVariant, Self::Error>;
+     | |___________________________________________________________^
+     |
+     = warning: type parameter removed (breaking)
+
+error: path changes to `SeqVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:344:1
+    |
+344 | / pub trait SeqVisitor {
+345 | |     /// Serializes a sequence item in the serializer.
+346 | |     ///
+347 | |     /// This returns `Ok(Some(()))` when there are more items to serialize, or `Ok(None)` when
+...   |
+356 | |     }
+357 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `MapVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/mod.rs:361:1
+    |
+361 | / pub trait MapVisitor {
+362 | |     /// Serializes a map item in the serializer.
+363 | |     ///
+364 | |     /// This returns `Ok(Some(()))` when there are more items to serialize, or `Ok(None)` when
+...   |
+373 | |     }
+374 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `impls`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/ser/impls.rs:9:1
+    |
+9   | / use lib::*;
+10  | |
+11  | | use ser::{Serialize, SerializeTuple, Serializer};
+12  | |
+...   |
+602 | |     }
+603 | | }
+    | |_^
+    |
+    = warning: item made private (breaking)
+
+error: path changes to `SeqIteratorVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:157:1
+    |
+157 | / pub struct SeqIteratorVisitor<Iter> {
+158 | |     iter: Iter,
+159 | |     len: Option<usize>,
+160 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `TupleVisitor10`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:377:13
+    |
+377 | /             pub struct $TupleVisitor<'a, $($T: 'a),+> {
+378 | |                 tuple: &'a ($($T,)+),
+379 | |                 state: u8,
+380 | |             }
+    | |_____________^
+    |
+    = warning: removed definition (breaking)
+
+error: path changes to `MapIteratorVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:557:1
+    |
+557 | / pub struct MapIteratorVisitor<Iter> {
+558 | |     iter: Iter,
+559 | |     len: Option<usize>,
+560 | | }
+    | |_^
+    |
+    = warning: removed definition (breaking)
+
+error: breaking changes in `old::ser::impls::<impl old::Serialize for std::rc::Rc<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:654:1
+    |
+654 | / impl<T> Serialize for Rc<T> where T: Serialize, {
+655 | |     #[inline]
+656 | |     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+657 | |         where S: Serializer,
+...   |
+660 | |     }
+661 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `old::ser::impls::<impl old::Serialize for std::sync::Arc<T>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:663:1
+    |
+663 | / impl<T> Serialize for Arc<T> where T: Serialize, {
+664 | |     #[inline]
+665 | |     fn serialize<S>(&self, serializer: &mut S) -> Result<(), S::Error>
+666 | |         where S: Serializer,
+...   |
+669 | |     }
+670 | | }
+    | |_^
+    |
+    = warning: trait impl specialized or removed (breaking)
+

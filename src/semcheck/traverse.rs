@@ -253,9 +253,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    let o_def_id = o.def.def_id();
-
-                    if old_vis == Public && cstore.visibility(o_def_id) == Public {
+                    if get_vis(cstore, old_vis, o.def.def_id()) == Public {
                         // delay the handling of removals until the id mapping is complete
                         removals.push(o);
                     }
@@ -267,9 +265,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    let n_def_id = n.def.def_id();
-
-                    if new_vis == Public && cstore.visibility(n_def_id) == Public {
+                    if get_vis(cstore, new_vis, n.def.def_id()) == Public {
                         // delay the handling of additions until the id mapping is complete
                         additions.push(n);
                     }
