@@ -36,6 +36,13 @@ fn is_use_item(item: &ast::Item) -> bool {
     }
 }
 
+fn is_extern_crate(item: &ast::Item) -> bool {
+    match item.node {
+        ast::ItemKind::ExternCrate(..) => true,
+        _ => false,
+    }
+}
+
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
@@ -627,6 +634,44 @@ impl<'a> FmtVisitor<'a> {
         false
     }
 
+    fn reorder_items<F>(
+        &mut self,
+        items_left: &[ptr::P<ast::Item>],
+        is_item: &F,
+        in_group: bool,
+    ) -> usize
+    where
+        F: Fn(&ast::Item) -> bool,
+    {
+        let mut last = self.codemap.lookup_line_range(items_left[0].span());
+        let item_length = items_left
+            .iter()
+            .take_while(|ppi| {
+                is_item(&***ppi) && (!in_group || {
+                    let current = self.codemap.lookup_line_range(ppi.span());
+                    let in_same_group = current.lo < last.hi + 2;
+                    last = current;
+                    in_same_group
+                })
+            })
+            .count();
+        let items = &items_left[..item_length];
+
+        let at_least_one_in_file_lines = items
+            .iter()
+            .any(|item| !out_of_file_lines_range!(self, item.span));
+
+        if at_least_one_in_file_lines {
+            self.format_imports(items);
+        } else {
+            for item in items {
+                self.push_rewrite(item.span, None);
+            }
+        }
+
+        item_length
+    }
+
     fn walk_mod_items(&mut self, m: &ast::Mod) {
         let mut items_left: &[ptr::P<ast::Item>] = &m.items;
         while !items_left.is_empty() {
@@ -634,33 +679,20 @@ impl<'a> FmtVisitor<'a> {
             // to be potentially reordered within `format_imports`. Otherwise, just format the
             // next item for output.
             if self.config.reorder_imports() && is_use_item(&*items_left[0]) {
-                let reorder_imports_in_group = self.config.reorder_imports_in_group();
-                let mut last = self.codemap.lookup_line_range(items_left[0].span());
-                let use_item_length = items_left
-                    .iter()
-                    .take_while(|ppi| {
-                        is_use_item(&***ppi) && (!reorder_imports_in_group || {
-                            let current = self.codemap.lookup_line_range(ppi.span());
-                            let in_same_group = current.lo < last.hi + 2;
-                            last = current;
-                            in_same_group
-                        })
-                    })
-                    .count();
-                let (use_items, rest) = items_left.split_at(use_item_length);
-
-                let at_least_one_in_file_lines = use_items
-                    .iter()
-                    .any(|item| !out_of_file_lines_range!(self, item.span));
-
-                if at_least_one_in_file_lines {
-                    self.format_imports(use_items);
-                } else {
-                    for item in use_items {
-                        self.push_rewrite(item.span, None);
-                    }
-                }
-
+                let used_items_len = self.reorder_items(
+                    &items_left,
+                    &is_use_item,
+                    self.config.reorder_imports_in_group(),
+                );
+                let (_, rest) = items_left.split_at(used_items_len);
+                items_left = rest;
+            } else if self.config.reorder_extern_crates() && is_extern_crate(&*items_left[0]) {
+                let used_items_len = self.reorder_items(
+                    &items_left,
+                    &is_extern_crate,
+                    self.config.reorder_extern_crates_in_group(),
+                );
+                let (_, rest) = items_left.split_at(used_items_len);
                 items_left = rest;
             } else {
                 // `unwrap()` is safe here because we know `items_left`

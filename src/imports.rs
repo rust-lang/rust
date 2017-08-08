@@ -113,10 +113,13 @@ fn compare_view_paths(a: &ast::ViewPath_, b: &ast::ViewPath_) -> Ordering {
     }
 }
 
-fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
+fn compare_use_items(context: &RewriteContext, a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
     match (&a.node, &b.node) {
         (&ast::ItemKind::Use(ref a_vp), &ast::ItemKind::Use(ref b_vp)) => {
             Some(compare_view_paths(&a_vp.node, &b_vp.node))
+        }
+        (&ast::ItemKind::ExternCrate(..), &ast::ItemKind::ExternCrate(..)) => {
+            Some(context.snippet(a.span).cmp(&context.snippet(b.span)))
         }
         _ => None,
     }
@@ -214,7 +217,9 @@ impl<'a> FmtVisitor<'a> {
             .collect::<Vec<_>>();
         let pos_after_last_use_item = last_pos_of_prev_use_item;
         // Order the imports by view-path & other import path properties
-        ordered_use_items.sort_by(|a, b| compare_use_items(a.0, b.0).unwrap());
+        ordered_use_items.sort_by(|a, b| {
+            compare_use_items(&self.get_context(), a.0, b.0).unwrap()
+        });
         // First, output the span before the first import
         let prev_span_str = self.snippet(utils::mk_sp(self.last_pos, pos_before_first_use_item));
         // Look for purely trailing space at the start of the prefix snippet before a linefeed, or
