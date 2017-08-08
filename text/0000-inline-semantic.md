@@ -1,4 +1,4 @@
-- Feature Name: `inline_semantic`, `caller_location`
+- Feature Name: `implicit_caller_location`
 - Start Date: 2017-07-31
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -11,19 +11,20 @@
 Enable accurate caller location reporting during panic in `{Option, Result}::{unwrap, expect}` with
 the following changes:
 
-1. Support the `#[inline(semantic)]` function attribute, which guarantees a function is inlined
-    before reaching LLVM.
-2. Adds lang-item consts which retrieves the caller's source location.
+1. Support the `#[implicit_caller_location]` function attribute, which guarantees a function has
+    access to the caller information.
+2. Adds an intrinsic function `caller_location()` (safe wrapper: `Location::caller()`) to retrieve
+    the caller's source location.
 
 Example:
 
 ```rust
-#![feature(inline_semantic, caller_location)]
-use core::caller;
+#![feature(implicit_caller_location)]
+use std::panic::Location;
 
-#[inline(semantic)]
+#[implicit_caller_location]
 fn unwrap(self) -> T {
-    panic!("{}:{}:{}: oh no", caller::FILE, caller::LINE, caller::COLUMN);
+    panic!("{}: oh no", Location::caller());
 }
 
 let n: Option<u32> = None;
@@ -36,26 +37,29 @@ let m = n.unwrap();
 - [Motivation](#motivation)
 - [Guide-level explanation](#guide-level-explanation)
     - [Let's reimplement `unwrap()`](#lets-reimplement-unwrap)
-    - [Semantic-inlining](#semantic-inlining)
-    - [Caller location](#caller-location)
-    - [Why do we use semantic-inlining](#why-do-we-use-semantic-inlining)
+    - [Adding caller location implicitly](#adding-caller-location-implicitly)
+    - [Location type](#location-type)
+    - [Why do we use implicit caller location](#why-do-we-use-implicit-caller-location)
 - [Reference-level explanation](#reference-level-explanation)
     - [Survey of panicking standard functions](#survey-of-panicking-standard-functions)
-    - [Semantic-inlining MIR pass](#semantic-inlining-mir-pass)
-    - [Caller location lang-item](#caller-location-lang-item)
-    - [Source-location-forwarding methods](#source-location-forwarding-methods)
+    - [Procedural attribute macro](#procedural-attribute-macro)
+    - [Redirection (MIR inlining)](#redirection-mir-inlining)
+    - [Standard libraries](#standard-libraries)
     - [Runtime-free backtrace for `?` operator](#runtime-free-backtrace-for--operator)
+    - [Location detail control](#location-detail-control)
 - [Drawbacks](#drawbacks)
     - [Code bloat](#code-bloat)
-    - [Does not support dynamic call](#does-not-support-dynamic-call)
     - [Narrow solution scope](#narrow-solution-scope)
+    - [Confusing scoping rule](#confusing-scoping-rule)
 - [Rationale and alternatives](#rationale-and-alternatives)
     - [Rationale](#rationale)
     - [Alternatives](#alternatives)
         - [🚲 Name of everything 🚲](#-name-of-everything-)
-        - [Avoid introducing new public items](#avoid-introducing-new-public-items)
+        - [Using an ABI instead of an attribute](#using-an-abi-instead-of-an-attribute)
+        - [Repurposing `file!()`, `line!()`, `column!()`](#repurposing-file-line-column)
         - [Inline MIR](#inline-mir)
         - [Default function arguments](#default-function-arguments)
+        - [Semantic inlining](#semantic-inlining)
     - [Non-viable alternatives](#non-viable-alternatives)
         - [Macros](#macros)
         - [Backtrace](#backtrace)
@@ -174,12 +178,16 @@ slightly more ergonomic solution would be changing `my_unwrap` to a macro, thus 
 be automatically provided.
 
 ```rust
+pub fn my_unwrap_at_source_location<T>(input: Option<T>, file: &str, line: u32, column: u32) -> T {
+    match input {
+        Some(t) => t,
+        None => panic!("nothing to see at {}:{}:{}, move along", file, line, column),
+    }
+}
+
 macro_rules! my_unwrap {
     ($input:expr) => {
-        match $input {
-            Some(t) => t,
-            None => panic!("nothing to see at {}:{}:{}, move along", file!(), line!(), column!()),
-        }
+        my_unwrap_at_source_location($input, file!(), line!(), column!())
     }
 }
 println!("args[1] = {}", my_unwrap!(args().nth(1)));
@@ -190,7 +198,7 @@ println!("args[1] = {}", my_unwrap!(args().nth(1)));
 But what if you have already published the `my_unwrap` crate that has thousands of users, and you
 want to maintain API stability? Before Rust 1.XX, the builtin `unwrap()` has the same problem!
 
-## Semantic-inlining
+## Adding caller location implicitly
 
 The reason a `my_unwrap!` macro works is because it copy-and-paste the entire content of its macro
 definition everytime it is used.
@@ -202,89 +210,23 @@ println!("args[2] = {}", my_unwrap!(args().nth(2)));
 
 // is equivalent to:
 
-println!("args[1] = {}", match args().nth(1) {
-    Some(t) => t,
-    None => panic!("nothing to see at {}:{}:{}, move along", file!(), line!(), column!()),
-});
-println!("args[2] = {}", match args().nth(2) {
-    Some(t) => t,
-    None => panic!("nothing to see at {}:{}:{}, move along", file!(), line!(), column!()),
-});
+println!("args[1] = {}", my_unwrap(args().nth(1), file!(), line!(), column!()));
+println!("args[1] = {}", my_unwrap(args().nth(2), file!(), line!(), column!()));
 ...
 ```
 
-What if we allow *normal functions* be able to copy-and-paste its content as well? This is called
-**[inlining]**, which Rust and many other languages have supported this as an optimization step. If
-the function is inlined, the compiler can also tell the inlined function the location it is inlined,
-and thus able to report this to the user.
-
-Rust allows developers to use the `#[inline]` attribute to *hint* the optimizer that a function
-should be inlined. However, if we want the precise caller location, a hint is not enough, it needs
-to be a requirement. Therefore, the `#[inline(semantic)]` attribute is introduced.
+What if we can instruct the compiler to automatically fill in the file-line-column? Rust supported
+this starting from 1.YY with the `#[implicit_caller_location]` attribute:
 
 ```rust
-#![feature(inline_semantic)]
-
-#[inline(semantic)] // <-- new
+// 3.rs
+#![feature(implicit_caller_location)]
+use std::env::args;
+#[implicit_caller_location]  // <-- Just add this!
 pub fn my_unwrap<T>(input: Option<T>) -> T {
     match input {
         Some(t) => t,
         None => panic!("nothing to see here, move along"),
-    }
-}
-
-println!("args[1] = {}", my_unwrap(args().nth(1)));
-println!("args[2] = {}", my_unwrap(args().nth(2)));
-
-// almost equivalent to:
-
-println!("args[1] = {}", match args().nth(1) {
-    Some(t) => t,
-    None => panic!("nothing to see here, move along"),
-});
-println!("args[2] = {}", match args().nth(2) {
-    Some(t) => t,
-    None => panic!("nothing to see here, move along"),
-});
-```
-
-If you try this code above, you will find that the panic still occurs inside `my_unwrap`, not at the
-caller's position. `#[inline(semantic)]` is still only a very-insistent inliner, so its behavior is
-still like a normal function — the syntactic location of the `panic!` is still inside the `my_wrap`.
-The Rust language provides a different way to obtain the caller location after the function is
-inlined.
-
-## Caller location
-
-The core crate provides three magic constants `core::caller::{FILE, LINE, COLUMN}` which resolves to
-the caller's location one the function is inlined.
-
-```rust
-#![feature(inline_semantic, caller_location)]
-
-extern crate core;
-
-#[inline_semantic]
-pub fn get_caller_loc() -> (&'static str, u32) {
-    (core::caller::FILE, core::caller::LINE)
-}
-
-assert_eq!(get_caller_loc(), (file!(), line!()));
-assert_eq!(get_caller_loc(), (file!(), line!()));
-assert_eq!(get_caller_loc(), (file!(), line!()));
-```
-
-There is also a `caller_location!()` macro to return all three information as a single tuple.
-
-```rust
-// 3.rs
-#![feature(inline_semantic)]
-use std::env::args;
-#[inline(semantic)]  // <--
-pub fn my_unwrap<T>(input: Option<T>) -> T {
-    match input {
-        Some(t) => t,
-        None => panic!("nothing to see at {:?}, move along", caller_location!()), // <--
     }
 }
 fn main() {
@@ -294,23 +236,22 @@ fn main() {
 }
 ```
 
-Now we do get the caller locations, but the location in `my_unwrap` is also shown, which looks very
-strange.
+Now we magically have truly reproduced how the built-in `unwrap()` is implemented.
 
 ```text
 $ ./3
-thread 'main' panicked at 'nothing to see at ("3.rs", 12, 29), move along', 3.rs:8:16
+thread 'main' panicked at 'nothing to see here, move along', 3.rs:12:29
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 $ ./3 arg1
 args[1] = arg1
-thread 'main' panicked at 'nothing to see at ("3.rs", 13, 29), move along', 3.rs:8:16
+thread 'main' panicked at 'nothing to see here, move along', 3.rs:13:29
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 $ ./3 arg1 arg2
 args[1] = arg1
 args[2] = arg2
-thread 'main' panicked at 'nothing to see at ("3.rs", 14, 29), move along', 3.rs:8:16
+thread 'main' panicked at 'nothing to see here, move along', 3.rs:14:29
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 
 $ ./3 arg1 arg2 arg3
@@ -319,63 +260,49 @@ args[2] = arg2
 args[3] = arg3
 ```
 
-There is a more specialized macro, `panic_at_source_location!`, which allows you to customize where
-the panic occurs. Now we have truly reproduced how the built-in `unwrap()` is implemented.
+What `#[implicit_caller_location]` does is an automated version of what you've seen last section.
+The attribute will copy `my_unwrap` into a new function `my_unwrap_at_source_location`, which will
+accept the caller's location as an additional argument. The attribute also instructs the compiler
+that, "whenever you see someone calls `my_unwrap(x)`, replace it with
+`my_unwrap_at_source_location(x, file!(), line!(), column!())` instead!". This allows us to maintain
+the stability guarantee, while allowing user to get the new behavior with just one recompile.
+
+## Location type
+
+Let's enhance `my_unwrap`, say, we also log a message to the log file before panicking? We would
+need to get the caller's location as a value. This is supported using the method
+`Location::caller()`:
 
 ```rust
-// 4.rs
-#![feature(inline_semantic)]
-use std::env::args;
-#[inline(semantic)]
+use std::panic::Location;
+#[implicit_caller_location]
 pub fn my_unwrap<T>(input: Option<T>) -> T {
     match input {
         Some(t) => t,
-        None => panic_at_source_location!(caller_location!(), "nothing to see here, move along"), // <--
+        None => {
+            let location = Location::caller();
+            println!("unwrapping a None from {}:{}", location.file(), location.line());
+            panic!("nothing to see here, move along")
+        }
     }
 }
-fn main() {
-    println!("args[1] = {}", my_unwrap(args().nth(1)));
-    println!("args[2] = {}", my_unwrap(args().nth(2)));
-    println!("args[3] = {}", my_unwrap(args().nth(3)));
-}
 ```
 
-```text
-$ ./4
-thread 'main' panicked at 'nothing to see here, move along', 4.rs:12:29
-note: Run with `RUST_BACKTRACE=1` for a backtrace.
-
-$ ./4 arg1
-args[1] = arg1
-thread 'main' panicked at 'nothing to see here, move along', 4.rs:13:29
-note: Run with `RUST_BACKTRACE=1` for a backtrace.
-
-$ ./4 arg1 arg2
-args[1] = arg1
-args[2] = arg2
-thread 'main' panicked at 'nothing to see here, move along', 4.rs:14:29
-note: Run with `RUST_BACKTRACE=1` for a backtrace.
-
-$ ./4 arg1 arg2 arg3
-args[1] = arg1
-args[2] = arg2
-args[3] = arg3
-```
-
-## Why do we use semantic-inlining
+## Why do we use implicit caller location
 
 If you are learning Rust alongside other languages, you may wonder why Rust obtains the caller
 information in such a strange way. There are two restrictions that forces us to adapt this solution:
 
 1. Programmatic access to the stack backtrace is often used in interpreted or runtime-heavy
-    languages like Python and Java. However, the stack backtrace is not suitable for systems
-    languages like Rust, because optimization often collapses multiple levels of function calls, and
-    in some embedded system the backtrace may even be unavailable.
+    languages like Python and Java. However, the stack backtrace is not suitable as the only
+    solution for systems languages like Rust, because optimization often collapses multiple levels
+    of function calls, and in some embedded system the backtrace may even be unavailable.
 
 2. Rust does not (yet) support default function arguments or function overloading, because it badly
-    interferes with type inference. Therefore, solutions that uses default function arguments are
-    also ruled out. Default-function-arguments-based solutions are often used in languages that does
-    not perform inference higher than statement level, e.g. Swift and C#.
+    interferes with type inference. Therefore, solutions that uses default function arguments
+    alongside normal arguments are also ruled out. Default-function-arguments-based solutions are
+    often used in languages that does not perform inference higher than statement level, e.g. Swift
+    and C#.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -520,47 +447,118 @@ are included.)
 
     </details>
 
-This RFC only advocates adding the `#[inline(semantic)]` attribute to the `unwrap` and `expect`
-functions. The `index` and `index_mut` functions should also have it if possible, but currently
-blocked by lack of post-monomorphized MIR pass.
+This RFC only advocates adding the `#[implicit_caller_location]` attribute to the `unwrap` and
+`expect` functions. The `index` and `index_mut` functions should also have it if possible, but
+currently blocked by lack of post-monomorphized MIR pass.
 
-## Semantic-inlining MIR pass
+## Procedural attribute macro
 
-A new inline level `#[inline(semantic)]` is introduced. This is like `#[inline(always)]`, but is
-guaranteed that inlining happens before LLVM kicks in. With this guarantee, Rust can maintain a
-deterministic set of situation where an `#[inline(semantic)]` function can know the information of
-its caller or compile-time call stack.
+The `#[implicit_caller_location]` attribute will modify a function at AST level and MIR level,
+without touching type-checking (HIR level) or the low-level LLVM passes.
 
-`#[inline(semantic)]` functions must not be recursive, as direct inlining is guaranteed as much as
-possible, i.e. the following would be a compile-time error:
+It will first wrap the body of the function in a closure, and then call it:
 
 ```rust
-#[inline(semantic)]
-fn factorial(x: u64) -> u64 {
-    if x <= 1 {
-        1
-    } else {
-        x * factorial(x - 1) //~ ERROR: `#[inline(semantic)]` function cannot call itself.
-    }
+#[implicit_caller_location]
+fn foo<C>(x: A, y: B, z: C) -> R {
+    bar(x, y)
+}
+
+// will become:
+
+#[rustc_implicit_caller_location]
+#[inline]
+fn foo<C>(x: A, y: B, z: C) -> R {
+    std::ops::FnOnce::call_once(move |__location| {
+        bar(x, y)
+    }, (unsafe { std::intrinsics::caller_location() },))
 }
 ```
 
-Currently semantic-inlining is performed as a MIR pass. Since MIR pass are run *before*
-monomorphization, `#[inline(semantic)]` currently **cannot** be used on trait items:
+The reason for this is to split the function into two: the function `foo` itself, and the closure
+`foo::{{closure}}` in it. (Technically: it is the simplest way to create two `DefId` at HIR level as
+far as I know.)
+
+The function signature of `foo` remains unchanged, so typechecking can proceed normally. The
+attribute will be replaced by `#[rustc_implicit_caller_location]` to let the compiler internals
+continue to treat it specially. `#[inline]` is added so external crate can see through `foo` to find
+`foo::{{closure}}`.
+
+The closure `foo::{{closure}}` is a proper function, that the compiler can write calls directly to
+`foo::{{closure}}`, skipping `foo`. Multiple calls to `foo` from different location can be done via
+calling `foo::{{closure}}` directly, instead of copying the function body everytime which will bloat
+the binary size.
+
+The intrinsic `caller_location()` is a placeholder which will be replaced by the actual caller
+location when one calls `foo::{{closure}}` directly.
+
+## Redirection (MIR inlining)
+
+After all type-checking and validation is done, we can now inject the caller location. This is done
+by redirecting all calls to `foo` to `foo::{{closure}}`.
+
+```rust
+_r = call foo(_1, _2, _3) -> 'bb1;
+
+// will become:
+
+_c = call std::intrinsics::caller_location() -> 'bbt;
+'bbt:
+_r = call foo::{{closure}} (&[closure: x: _1, y: _2], _c) -> 'bb1;
+```
+
+Then, we will further replace the `caller_location()` intrinsic according to where `foo` is called.
+If it is called from an ordinary function, it would be replaced by the callsite's location:
+
+```rust
+// for ordinary functions,
+
+_c = call std::intrinsics::caller_location() -> 'bbt;
+
+// will become:
+
+_c = Location { file: file!(), line: line!(), column: column!() };
+goto -> 'bbt;
+```
+
+On the other hand, if it is called from an `#[implicit_caller_location]`'s closure e.g.
+`foo::{{closure}}`, the intrinsic will be replaced by the closure argument `__location` instead, so
+the caller location can propagate directly
+
+```rust
+// for #[implicit_caller_location] closures,
+
+_c = call std::intrinsics::caller_location() -> 'bbt;
+
+// will become:
+
+_c = __location;
+goto -> 'bbt;
+```
+
+These steps are very similar to inlining, and thus the first proof-of-concept is implemented
+directly as a variant of MIR inliner (but a separate pass). This also means the redirection pass
+currently suffers from all disadvantages of the MIR inliner, namely:
+
+* Locations will not be propagated into diverging functions (`fn() -> !`), since inlining them is
+    not supported yet.
+
+* MIR passes are run *before* monomorphization, meaning `#[implicit_caller_location]` currently
+    **cannot** be used on trait items:
 
 ```rust
 trait Trait {
     fn unwrap(&self);
 }
 impl Trait for u64 {
-    #[inline(semantic)] //~ ERROR: `#[inline(semantic)]` is not supported for trait items yet.
+    #[implicit_caller_location] //~ ERROR: `#[implicit_caller_location]` is not supported for trait items yet.
     fn unwrap(&self) {}
 }
 ```
 
-To support trait items, the semantic-inlining pass must be run as post-monomorphized MIR pass (which
-does not exist yet), or a custom LLVM inlining pass which can extract the caller's source location.
-This prevents the `Index` trait from having `#[inline(semantic)]` yet.
+To support trait items, the redirection pass must be run as post-monomorphized MIR pass (which does
+not exist yet), or a custom LLVM inlining pass which can extract the caller's source location. This
+prevents the `Index` trait from having `#[implicit_caller_location]` yet.
 
 We cannot hack the impl resolution method into pre-monomorphization MIR pass because of deeply
 nested functions like
@@ -577,16 +575,17 @@ fn f100<T: Trait>() {
 }
 ```
 
-`rustc` already has a MIR inlining pass, which is disabled by default. The semantic-inlining pass
-should be run before or concurrently with the MIR inlining pass. The semantic-inlining pass is
-currently as a separate pass from the normal MIR inlining pass, so that they can become
-post-monomorphized MIR passes independently. If the semantic-inlining pass is run after the normal
-MIR inlining pass, the normal MIR inliner must treat `#[inline(semantic)]` as `#[inline(never)]`.
+Currently the redirection pass always run before the inlining pass. If the redirection pass is run
+after the normal MIR inlining pass, the normal MIR inliner must treat `#[implicit_caller_location]`
+as `#[inline(never)]`.
 
-`#[inline(semantic)]` functions may stay uninlined. This happens when one takes the address of such
-functions. This must be allowed due to backward compatibility. (If post-monomorphized MIR pass
-exists, methods via trait objects would be another case of calling `#[inline(semantic)]` functions
-without it being inline.)
+The closure `foo::{{closure}}` must never be inlined before the redirection pass.
+
+When `#[implicit_caller_location]` functions are called dynamically, no inlining will occur, and
+thus it cannot take the location of the caller. Currently this will report where the function is
+declared. Taking the address of such functions must be allowed due to backward compatibility. (If
+post-monomorphized MIR pass exists, methods via trait objects would be another case of calling
+`#[implicit_caller_location]` functions without caller location.)
 
 ```rust
 let f: fn(Option<u32>) -> u32 = Option::unwrap;
@@ -596,111 +595,48 @@ f(None);
 g(None); // The effect of these two calls must be the same.
 ```
 
-## Caller location lang-item
+## Standard libraries
 
-Once a function is semantically-inlined, the content of the function will know the span about the
-original call site, which can be used to derive the filename, line, column, mod-path, etc. We would
-define the following lang items to retrieve these information:
+The `caller_location()` intrinsic returns the `Location` structure which encodes the file, line and
+column of the callsite. This shares the same structure as the existing type `std::panic::Location`.
+Therefore, the type is promoted to a lang-item, and moved into `core::panicking::Location`. It is
+re-exported in `libstd`.
 
-```rust
-pub mod caller {
-    #[lang = "caller_file"]
-    pub const FILE: &str = "<dynamic>";
-    #[lang = "caller_line"]
-    pub const LINE: u32 = 0;
-    #[lang = "caller_file"]
-    pub const COLUMN: u32 = 0;
-}
-```
-
-After the semantic-inlining pass, these constants will be replaced by the corresponding call site
-information:
+Thanks to how `#[implicit_caller_location]` is implemented, we could provide a safe wrapper around
+the `caller_location()` intrinsic:
 
 ```rust
-#[inline(semantic)]
-fn line() -> u32 { core::caller::LINE }
-assert_eq!(3, line());
-assert_eq!(4, line());
-assert_eq!(5, line());
-```
-
-These constants only make sense when used directly inside an `#[inline(semantic)]` function. This
-excludes closures and const/static items inside the function, since they are represented as separate
-MIR items.
-
-```rust
-use core::caller::LINE;
-
-const L: u32 = LINE; //~ ERROR: Cannot read caller location outside of `#[inline(semantic)]` function
-
-#[inline(always)]
-fn not_inline_semantic() -> u32 {
-    LINE //~  ERROR: Cannot read caller location outside of `#[inline(semantic)]` function
-}
-
-#[inline(semantic)]
-fn inline_semantic() -> u32 {
-    const L: u32 = LINE; //~  ERROR: Cannot read caller location outside of `#[inline(semantic)]` function
-    let closure = || LINE; //~  ERROR: Cannot read caller location outside of `#[inline(semantic)]` function
-    LINE // (only this one is ok.)
-}
-```
-
-Const-folding pass before the semantic-inliner must recognize these special constants and *not* fold
-them.
-
-These values are provided as `const` lang items to make MIR transformation as simple as possible.
-They could be intrinsic functions, but it would mean changing the `Call` terminator in MIR into an
-`Assign` statement followed by a `Goto`, which is a bit complex.
-
-## Source-location-forwarding methods
-
-`unwrap()`/`expect()` will become `#[inline(semantic)]`. However if they are called deep inside from
-the standard library, the source location would still be useless. Therefore, this RFC also propose
-the following new functions to allow caller information be forwarded:
-
-```rust
-pub macro caller_location() {
-    &($crate::caller::FILE, $crate::caller::LINE, $crate::caller::COLUMN)
-}
-
-pub macro panic_at_source_location {
-    ($location:expr) => { ... },
-    ($location:expr, $fmt:expr) => { ... },
-    ($location:expr, $fmt:expr, $($args:tt)*) => { ... },
-}
-
-impl<T> Option<T> {
-    pub fn unwrap_at_source_location(self, location: &(&'static str, u32, u32)) -> T;
-    pub fn expect_at_source_location(self, location: &(&'static str, u32, u32), msg: &str) -> T;
-}
-
-impl<T, E> Result<T, E> {
-    pub fn unwrap_at_source_location(self, location: &(&'static str, u32, u32)) -> T;
-    pub fn expect_at_source_location(self, location: &(&'static str, u32, u32), msg: &str) -> T;
-    pub fn unwrap_err_at_source_location(self, location: &(&'static str, u32, u32)) -> E;
-    pub fn expect_err_at_source_location(self, location: &(&'static str, u32, u32), msg: &str) -> E;
-}
-```
-
-Example:
-
-```rust
-impl<'a, K, Q, V> Index<&'a Q> for BTreeMap<K, V>
-where
-    K: Ord + Borrow<Q>,
-    Q: Ord + ?Sized,
-{
-    type Output = V;
-
-    #[inline(semantic)]
-    fn index(&self, key: &Q) -> &V {
-        self.get(key).expect_at_source_location(caller_location!(), "no entry found for key")
+impl<'a> Location<'a> {
+    #[implicit_caller_location]
+    pub fn caller() -> Location<'static> {
+        unsafe {
+            ::intrinsics::caller_location()
+        }
     }
 }
 ```
 
-Long names are given since they are considered advanced functions and should not be used normally.
+The `panic!` macro is modified to use `Location::caller()` (or the intrinsic directly) so it can
+report the caller location inside `#[implicit_caller_location]`.
+
+```rust
+macro_rules! panic {
+    ($msg:expr) => {
+        let loc = $crate::panicking::Location::caller();
+        $crate::panicking::panic(&($msg, loc.file(), loc.line(), loc.column()))
+    };
+    ...
+}
+```
+
+Actually this is now more natural for `core::panicking::panic_fmt` to take `Location` directly
+instead of tuples, so one should consider changing their signature. But this is out-of-scope for
+this RFC.
+
+`panic!` is often used about of `#[implicit_caller_location]` functions. In those cases, the
+`caller_location()` intrinsic will pass unchanged through all MIR passes into trans. As a fallback,
+the intrinsic will expand to `Location { file: file!(), line: line!(), col: column!() }` during
+trans.
 
 ## Runtime-free backtrace for `?` operator
 
@@ -722,21 +658,36 @@ impl<T, E> Try for Result<T, E> {
 
 // my_crate:
 impl<T> Try for Result<T, my_crate::error::Error> {
-    #[inline(semantic)]
+    #[implicit_caller_location]
     fn from_error(mut e: Self::Error) -> Self {
-        e.call_stack.push(*caller_location!());
+        e.call_stack.push(Location::caller());
         Err(e)
     }
 }
 ```
+
+## Location detail control
+
+An unstable flag `-Z location-detail` is added to `rustc` to control how much factural detail will
+be emitted when using `caller_location()`. User can toggle `file`, `line` and `column` separately,
+e.g. when compiling with:
+
+```sh
+rustc -Zlocation-detail=line
+```
+
+only the line number will be real, and the file and column will always be dummy value like
+
+    thread 'main' panicked at 'error message', <redacted>:192:0
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 ## Code bloat
 
-Previously, all call to `unwrap()` and `expect()` will refer to the same location. Therefore, the panicking branch will
-only need to reuse a pointer to a single global tuple.
+Previously, all call to `unwrap()` and `expect()` will refer to the same location. Therefore, the
+panicking branch will only need to reuse a pointer to a single global tuple.
 
 After this RFC is implemented, the panicking branch will need to allocate space to store the varying caller location,
 so the number of instructions per `unwrap()`/`expect()` will increase.
@@ -763,18 +714,35 @@ if (b.tag != SOME) {
 a.value_of_some + b.value_of_some
 ```
 
-## Does not support dynamic call
-
-`#[inline(semantic)]` relies on compile-time inlining to resolve the caller information. This makes it impossible to
-work with dynamic function calls (i.e. via a function pointer or trait object v-table).
+(One could use `-Z location-detail` to get the old optimization behavior)
 
 ## Narrow solution scope
 
-`#[inline(semantic)]` is only useful in solving the "get caller location" problem. Introducing an entirely new feature
-just for this problem seems wasteful.
+`#[implicit_caller_location]` is only useful in solving the "get caller location" problem.
+Introducing an entirely new feature just for this problem seems wasteful.
 
-[Default function arguments](#default-function-arguments) is another possible solution for this problem but with much
-wider application.
+[Default function arguments](#default-function-arguments) is another possible solution for this
+problem but with much wider application.
+
+## Confusing scoping rule
+
+Consts, statics and closures are separate MIR items, meaning the following marked places will *not*
+get caller locations:
+
+```rust
+#[implicit_caller_location]
+fn foo() {
+    static S: Location = Location::caller(); // will get actual location instead
+    let f = || Location::caller();   // will get actual location instead
+    Location::caller(); // this one will get caller location
+}
+```
+
+This is confusing, but if we don't support this, we will need two `panic!` macros which is not much
+better.
+
+Clippy could provide a lint against using `Location::caller()` outside of
+`#[implicit_caller_location]`.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -801,43 +769,54 @@ This RFC tries to abide by the following restrictions:
     location.
 
 Restriction 4 "interface independence" is currently not implemented due to lack of
-post-monomorphized MIR pass, but `#[inline(semantic)]` itself as a language feature follows this
-restriction.
+post-monomorphized MIR pass, but `#[implicit_caller_location]` itself as a language feature follows
+this restriction.
 
 ## Alternatives
 
 ### 🚲 Name of everything 🚲
 
-* Is `#[inline(semantic)]` an accurate description? `#[inline(mir)]`? `#[inline(force)]`?
-    `#[inline(with_caller_location)]`?
-* Use a different attribute, instead of piggybacking on `#[inline]`?
-* `***_at_source_location` is too long?
-* Should we move `std::panic::Location` into `core`, and not use a 3-tuple to represent the
-    location? Note that this is also advocated in [RFC 2070].
-* Use intrinsics or static instead of consts for `core::caller::{FILE, LINE, COLUMN}`?
+* Is `#[implicit_caller_location]` an accurate description?
+* Should we move `std::panic::Location` into `core`, or just use a 3-tuple to represent the
+    location? Note that the former is advocated in [RFC 2070].
+* Should caller location propagation be implicit (currently) or explicit?
 
-### Avoid introducing new public items
+### Using an ABI instead of an attribute
 
-* We could change the meaning of `file!()`, `line!()` and `column!()` so they are only converted to
-    real constants after semantic-inlining (a MIR pass) instead of early during macro expansion (an
-    AST pass). Inside `#[inline(semantic)]` functions, these macros behave as this RFC's
-    `core::caller::{FILE, LINE, COLUMN}`. This way, we don't need to introduce
-    `panic_at_source_location!()`. The drawback is losing explicit control of whether we want to
-    report the actual location or the caller's location.
+```rust
+pub extern "implicit-caller-location" fn my_unwrap() {
+    panic!("oh no");
+}
+```
 
-* Same as above, but `file!()` etc are converted to a special literal kind, a kind that only the
-    compiler can create.
+Compared with attributes, an ABI is a more natural way to tell the post-typechecking steps about
+implicit parameters, pioneered by the `extern "rust-call"` ABI. However, creating a new ABI will
+change the type of the function as well, causing the following statement to fail:
 
-* We could make `#[inline(always)]` mean the same as `#[inline(semantic)]` to avoid introducing a
-    new inline level.
+```rust
+let f: fn(Option<u32>) -> u32 = Option::unwrap;
+//~^ ERROR: [E0308]: mismatched types
+```
+
+Making this pass will require supporting implicitly coercing `extern "implicit-caller-location" fn`
+pointer to a normal function pointer. Also, an ABI is not powerful enough to implicitly insert a
+parameter, making it less competitive than just using an attribute.
+
+### Repurposing `file!()`, `line!()`, `column!()`
+
+We could change the meaning of `file!()`, `line!()` and `column!()` so they are only converted to
+real constants after redirection (a MIR or trans pass) instead of early during macro expansion (an
+AST pass). Inside `#[implicit_caller_location]` functions, these macros behave as this RFC's
+`caller_location()`. The drawback is using these macro will have different values in compile time
+(e.g. inside `include!(file!())`) vs. runtime.
 
 ### Inline MIR
 
-Introduced as [alternative to RFC 1669][inline_mir], instead of the `caller::{FILE, LINE, COLUMN}`
-lang-items, we could provide a full-fledged inline MIR macro `mir!` similar to the inline assembler:
+Introduced as [alternative to RFC 1669][inline_mir], instead of the `caller_location()` intrinsic,
+we could provide a full-fledged inline MIR macro `mir!` similar to the inline assembler:
 
 ```rust
-#[inline(semantic)]
+#[implicit_caller_location]
 fn unwrap(self) -> T {
     let file: &'static str;
     let line: u32;
@@ -861,8 +840,8 @@ fn unwrap(self) -> T {
 
 The problem of `mir!` in this context is trying to kill a fly with a sledgehammer. `mir!` is a very
 generic mechanism, which requiring stabilizing the MIR syntax and considering the interaction with
-the surrounding code. Besides, `#[inline(semantic)]` itself still exists and the magic constants
-`$CallerFile` etc are still magic.
+the surrounding code. Besides, `#[implicit_caller_location]` itself still exists and the magic
+constants `$CallerFile` etc are still magic.
 
 ### Default function arguments
 
@@ -908,6 +887,12 @@ where
 
 This can be resolved if the future default argument proposal takes this into account. But again,
 this feature itself is going to be large and controversial.
+
+### Semantic inlining
+
+Treat `#[implicit_caller_location]` as the same as a very forceful `#[inline(always)]`. This
+eliminates the procedural macro pass. However, typical implementation will still need to manually
+implement the two functions, otherwise the code will become very bloated after all the inlining.
 
 ## Non-viable alternatives
 
@@ -972,7 +957,13 @@ stabilized. Methods applying this solution will also lose object-safety.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Semantic-inlining should run after monomorphization, not before.
+* Redirection pass should run after monomorphization, not before.
+
+* Diverging functions should be supported.
+
+* The closure `foo::{{closure}}` should inherit most attributes applied to the function `foo`, in
+    particular `#[inline]`, `#[cold]` and `#[naked]`. Currently a procedural macro won't see any of
+    these, nor would there be anyway to apply these attributes to a closure.
 
 [RFC 1669]: https://github.com/rust-lang/rfcs/pull/1669
 [24346]: https://github.com/rust-lang/rust/issues/24346
