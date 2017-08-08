@@ -438,6 +438,16 @@ a {
 	background: transparent;
 }
 
+.small-section-header:hover > .anchor {
+	display: initial;
+}
+.anchor {
+	display: none;
+}
+.anchor:after {
+	content: '\2002\00a7\2002';
+}
+
 .docblock a:hover, .docblock-short a:hover, .stability a {
 	text-decoration: underline;
 }
