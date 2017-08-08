@@ -387,9 +387,12 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 substs: substs,
                                 fields: field_refs,
                                 base: base.as_ref().map(|base| {
+                                    cx.tables().validate_hir_id(expr.hir_id);
                                     FruInfo {
                                         base: base.to_ref(),
-                                        field_types: cx.tables().fru_field_types[&expr.id].clone(),
+                                        field_types: cx.tables()
+                                                       .fru_field_types[&expr.hir_id.local_id]
+                                                       .clone(),
                                     }
                                 }),
                             }

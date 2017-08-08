@@ -3407,7 +3407,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let fru_field_types = adt.struct_variant().fields.iter().map(|f| {
                         self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
                     }).collect();
-                    self.tables.borrow_mut().fru_field_types.insert(expr.id, fru_field_types);
+
+                    let mut tables = self.tables.borrow_mut();
+                    tables.validate_hir_id(expr.hir_id);
+                    tables.fru_field_types.insert(expr.hir_id.local_id, fru_field_types);
                 }
                 _ => {
                     span_err!(self.tcx.sess, base_expr.span, E0436,

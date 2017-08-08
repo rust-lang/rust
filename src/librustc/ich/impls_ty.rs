@@ -657,7 +657,7 @@ for ty::TypeckTables<'gcx> {
             ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);
             ich::hash_stable_itemlocalmap(hcx, hasher, closure_kinds);
             ich::hash_stable_itemlocalmap(hcx, hasher, liberated_fn_sigs);
-            ich::hash_stable_nodemap(hcx, hasher, fru_field_types);
+            ich::hash_stable_itemlocalmap(hcx, hasher, fru_field_types);
             ich::hash_stable_nodemap(hcx, hasher, cast_kinds);
 
             ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {

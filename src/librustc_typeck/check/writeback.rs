@@ -362,9 +362,16 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_fru_field_types(&mut self) {
-        for (&node_id, ftys) in self.fcx.tables.borrow().fru_field_types.iter() {
-            let ftys = self.resolve(ftys, &node_id);
-            self.tables.fru_field_types.insert(node_id, ftys);
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+
+        for (&local_id, ftys) in fcx_tables.fru_field_types.iter() {
+            let hir_id = hir::HirId {
+                owner: fcx_tables.local_id_root.index,
+                local_id,
+            };
+            let ftys = self.resolve(ftys, &hir_id);
+            self.tables.fru_field_types.insert(local_id, ftys);
         }
     }
 
