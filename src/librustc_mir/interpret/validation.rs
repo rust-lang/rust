@@ -18,7 +18,7 @@ use super::{
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ValidationMode {
     Acquire,
     /// Recover because the given region ended
@@ -142,16 +142,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
     {
         match self.try_validate(query, mode) {
-            // Releasing an uninitalized variable is a NOP.  This is needed because
+            // ReleaseUntil(None) of an uninitalized variable is a NOP.  This is needed because
             // we have to release the return value of a function; due to destination-passing-style
             // the callee may directly write there.
             // TODO: Ideally we would know whether the destination is already initialized, and only
-            // release if it is.
-            res @ Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..}) => {
-                if !mode.acquiring() {
-                    return Ok(());
-                }
-                res
+            // release if it is.  But of course that can't even always be statically determined.
+            Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..})
+                if mode == ValidationMode::ReleaseUntil(None)
+            => {
+                return Ok(());
             }
             res => res,
         }
@@ -212,38 +211,46 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => bug!("I got an incomplete/unnormalized type for validation"),
         };
         if is_owning {
-            match query.lval {
-                Lvalue::Ptr { ptr, extra } => {
-                    // Determine the size
-                    // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
-                    let len = match self.type_size(query.ty)? {
-                        Some(size) => {
-                            assert_eq!(extra, LvalueExtra::None, "Got a fat ptr to a sized type");
-                            size
-                        }
-                        None => {
-                            // The only unsized typ we concider "owning" is TyStr.
-                            assert_eq!(query.ty.sty, TyStr, "Found a surprising unsized owning type");
-                            // The extra must be the length, in bytes.
-                            match extra {
-                                LvalueExtra::Length(len) => len,
-                                _ => bug!("TyStr must have a length as extra"),
-                            }
-                        }
-                    };
-                    // Handle locking
-                    if len > 0 {
-                        let ptr = ptr.to_ptr()?;
-                        let access = match query.mutbl { MutMutable => AccessKind::Write, MutImmutable => AccessKind::Read };
-                        match mode {
-                            ValidationMode::Acquire => self.memory.acquire_lock(ptr, len, query.re, access)?,
-                            ValidationMode::Recover(ending_ce) => self.memory.recover_write_lock(ptr, len, query.re, ending_ce)?,
-                            ValidationMode::ReleaseUntil(suspended_ce) => self.memory.release_write_lock(ptr, len, query.re, suspended_ce)?,
-                        }
+            // We need to lock.  So we need memory.  So we have to force_acquire.
+            // Tracking the same state for locals not backed by memory would just duplicate too
+            // much machinery.
+            // FIXME: We ignore alignment.
+            let (ptr, extra, _aligned) = self.force_allocation(query.lval)?.to_ptr_extra_aligned();
+            // Determine the size
+            // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
+            let len = match self.type_size(query.ty)? {
+                Some(size) => {
+                    assert_eq!(extra, LvalueExtra::None, "Got a fat ptr to a sized type");
+                    size
+                }
+                None => {
+                    // The only unsized typ we concider "owning" is TyStr.
+                    assert_eq!(query.ty.sty, TyStr, "Found a surprising unsized owning type");
+                    // The extra must be the length, in bytes.
+                    match extra {
+                        LvalueExtra::Length(len) => len,
+                        _ => bug!("TyStr must have a length as extra"),
                     }
                 }
-                Lvalue::Local { .. }  => {
-                    // Not backed by memory, so we have nothing to do.
+            };
+            // Handle locking
+            if len > 0 {
+                let ptr = ptr.to_ptr()?;
+                match query.mutbl {
+                    MutImmutable =>
+                        if mode.acquiring() {
+                            self.memory.acquire_lock(ptr, len, query.re, AccessKind::Read)?;
+                        }
+                        // No releasing of read locks, ever.
+                    MutMutable =>
+                        match mode {
+                            ValidationMode::Acquire =>
+                                self.memory.acquire_lock(ptr, len, query.re, AccessKind::Write)?,
+                            ValidationMode::Recover(ending_ce) =>
+                                self.memory.recover_write_lock(ptr, len, query.re, ending_ce)?,
+                            ValidationMode::ReleaseUntil(suspended_ce) =>
+                                self.memory.suspend_write_lock(ptr, len, query.re, suspended_ce)?,
+                        }
                 }
             }
         }

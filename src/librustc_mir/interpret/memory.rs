@@ -29,19 +29,14 @@ pub enum AccessKind {
 /// Information about a lock that is currently held.
 #[derive(Clone, Debug)]
 struct LockInfo {
-    suspended: Vec<SuspendedWriteLock>,
+    /// Stores for which lifetimes (of the original write lock) we got
+    /// which suspensions.
+    suspended: HashMap<DynamicLifetime, Vec<CodeExtent>>,
+    /// The current state of the lock that's actually effective.
     active: Lock,
 }
 
-#[derive(Clone, Debug)]
-struct SuspendedWriteLock  {
-    /// Original lifetime of the lock that is now suspended
-    lft: DynamicLifetime,
-    /// Regions that all have to end to reenable this suspension
-    suspensions: Vec<CodeExtent>,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Lock {
     NoLock,
     WriteLock(DynamicLifetime),
@@ -57,7 +52,7 @@ impl Default for LockInfo {
 
 impl LockInfo {
     fn new(lock: Lock) -> LockInfo {
-        LockInfo { suspended: Vec::new(), active: lock }
+        LockInfo { suspended: HashMap::new(), active: lock }
     }
 
     fn access_permitted(&self, frame: Option<usize>, access: AccessKind) -> bool {
@@ -513,9 +508,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     /// Release or suspend a write lock of the given lifetime prematurely.
-    /// When releasing, if there is no write lock or someone else's write lock, that's an error.
+    /// When releasing, if there is a read lock or someone else's write lock, that's an error.
+    /// We *do* accept relasing a NoLock, as this can happen when a local is first acquired and later force_allocate'd.
     /// When suspending, the same cases are fine; we just register an additional suspension.
-    pub(crate) fn release_write_lock(&mut self, ptr: MemoryPointer, len: u64,
+    pub(crate) fn suspend_write_lock(&mut self, ptr: MemoryPointer, len: u64,
                                      lock_region: Option<CodeExtent>, suspend: Option<CodeExtent>) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
@@ -523,7 +519,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         'locks: for lock in alloc.locks.iter_mut(ptr.offset, len) {
-            trace!("Releasing {:?}", lock);
             let is_our_lock = match lock.active {
                 WriteLock(lft) => {
                     lft == lock_lft
@@ -533,31 +528,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 }
             };
             if is_our_lock {
+                trace!("Releasing {:?} at {:?}", lock.active, lock_lft);
                 // Disable the lock
                 lock.active = NoLock;
             }
             match suspend {
                 Some(suspend_region) => {
-                    if is_our_lock {
-                        // We just released this lock, so add a new suspension
-                        lock.suspended.push(SuspendedWriteLock { lft: lock_lft, suspensions: vec![suspend_region] });
-                    } else {
-                        // Find our lock in the suspended ones
-                        for suspended_lock in lock.suspended.iter_mut().rev() {
-                            if suspended_lock.lft == lock_lft {
-                                // Found it!
-                                suspended_lock.suspensions.push(suspend_region);
-                                continue 'locks;
-                            }
-                        }
-                        // We did not find it.  Someone else had the lock and we have not suspended it, that's just wrong.
-                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
-                    }
+                    // We just released this lock, so add a new suspension.
+                    // FIXME: Really, if there ever already is a suspension when is_our_lock, or if there is no suspension when !is_our_lock, something is amiss.
+                    // But this model is not good enough yet to prevent that.
+                    lock.suspended.entry(lock_lft)
+                        .or_insert_with(|| Vec::new())
+                        .push(suspend_region);
                 }
                 None => {
-                    // If we do not suspend, make sure we actually released something
-                    if !is_our_lock {
-                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
+                    // Make sure we did not try to release someone else's lock.
+                    if !is_our_lock && lock.active != NoLock {
+                        // FIXME: For the same reason that we have to live with suspensions already existing,
+                        // we also cannot be sure here if things really are going wrong.  So accept this for now.
+                        //return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
                     }
                 }
             }
@@ -577,34 +566,33 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         for lock in alloc.locks.iter_mut(ptr.offset, len) {
-            // If we have a suspension here, it will be the topmost one
-            let (got_the_lock, pop_suspension) = match lock.suspended.last_mut() {
-                None => (true, false),
-                Some(suspended_lock) => {
-                    if suspended_lock.lft == lock_lft {
-                        // That's us!  Remove suspension (it should be in there).  The same suspension can
-                        // occur multiple times (when there are multiple shared borrows of this that have the same
-                        // lifetime); only remove one of them.
-                        let idx = match suspended_lock.suspensions.iter().enumerate().find(|&(_, re)| re == &suspended_region) {
-                            None => // TODO: Can the user trigger this?
-                                bug!("We have this lock suspended, but not for the given region."),
-                            Some((idx, _)) => idx
-                        };
-                        suspended_lock.suspensions.remove(idx);
-                        let got_lock = suspended_lock.suspensions.is_empty();
-                        (got_lock, got_lock)
-                    } else {
-                        // Someone else's suspension up top, we should be able to grab the lock
-                        (true, false)
+            // Check if we have a suspension here
+            let (got_the_lock, remove_suspension) = match lock.suspended.get_mut(&lock_lft) {
+                None => {
+                    trace!("No suspension around, we can just acquire");
+                    (true, false)
+                }
+                Some(suspensions) => {
+                    trace!("Found suspension of {:?}, removing it", lock_lft);
+                    // That's us!  Remove suspension (it should be in there).  The same suspension can
+                    // occur multiple times (when there are multiple shared borrows of this that have the same
+                    // lifetime); only remove one of them.
+                    let idx = match suspensions.iter().enumerate().find(|&(_, re)| re == &suspended_region) {
+                        None => // TODO: Can the user trigger this?
+                            bug!("We have this lock suspended, but not for the given region."),
+                        Some((idx, _)) => idx
+                    };
+                    suspensions.remove(idx);
+                    let got_lock = suspensions.is_empty();
+                    if got_lock {
+                        trace!("All suspensions are gone, we can have the lock again");
                     }
+                    (got_lock, got_lock)
                 }
             };
-            if pop_suspension { // with NLL; we could do that up in the match above...
-                lock.suspended.pop();
-            } else {
-                // Sanity check: Our lock should not be in the suspension list
-                let found = lock.suspended.iter().find(|suspended_lock| suspended_lock.lft == lock_lft);
-                assert!(found.is_none());
+            if remove_suspension { // with NLL, we could do that up in the match above...
+                assert!(got_the_lock);
+                lock.suspended.remove(&lock_lft);
             }
             if got_the_lock {
                 match lock.active {
@@ -653,7 +641,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                     lock.active = NoLock;
                 }
                 // Also clean up suspended write locks
-                lock.suspended.retain(|suspended_lock| !has_ended(&suspended_lock.lft));
+                lock.suspended.retain(|lft, _suspensions| !has_ended(lft));
             }
             // Clean up the map
             alloc.locks.retain(|lock| {
