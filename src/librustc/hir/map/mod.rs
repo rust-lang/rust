@@ -401,6 +401,16 @@ impl<'hir> Map<'hir> {
         self.definitions.node_to_hir_id(node_id)
     }
 
+    #[inline]
+    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> HirId {
+        self.definitions.def_index_to_hir_id(def_index)
+    }
+
+    #[inline]
+    pub fn def_index_to_node_id(&self, def_index: DefIndex) -> NodeId {
+        self.definitions.as_local_node_id(DefId::local(def_index)).unwrap()
+    }
+
     fn entry_count(&self) -> usize {
         self.map.len()
     }
