@@ -7,7 +7,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::mir;
 use rustc::traits::Reveal;
-use rustc::ty::layout::{self, Layout, Size, Align};
+use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
 use rustc::ty::subst::{Subst, Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
 use rustc::traits;
@@ -41,7 +41,7 @@ pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     pub(crate) suspended: HashMap<DynamicLifetime, Vec<ValidationQuery<'tcx>>>,
 
     /// Precomputed statics, constants and promoteds.
-    pub globals: HashMap<GlobalId<'tcx>, MemoryPointer>,
+    pub globals: HashMap<GlobalId<'tcx>, PtrAndAlign>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'tcx>>,
@@ -141,6 +141,25 @@ impl Default for ResourceLimits {
 pub struct TyAndPacked<'tcx> {
     pub ty: Ty<'tcx>,
     pub packed: bool,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct PtrAndAlign {
+    pub ptr: Pointer,
+    /// Remember whether this lvalue is *supposed* to be aligned.
+    pub aligned: bool,
+}
+
+impl PtrAndAlign {
+    pub fn to_ptr<'tcx>(self) -> EvalResult<'tcx, MemoryPointer> {
+        self.ptr.to_ptr()
+    }
+    pub fn offset<'tcx, C: HasDataLayout>(self, i: u64, cx: C) -> EvalResult<'tcx, Self> {
+        Ok(PtrAndAlign {
+            ptr: self.ptr.offset(i, cx)?,
+            aligned: self.aligned,
+        })
+    }
 }
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
@@ -503,7 +522,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn deallocate_local(&mut self, local: Option<Value>) -> EvalResult<'tcx> {
-        if let Some(Value::ByRef { ptr, aligned: _ }) = local {
+        if let Some(Value::ByRef(ptr)) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -536,9 +555,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
         let dest = Lvalue::Ptr {
-            ptr: dest_ptr.into(),
+            ptr: PtrAndAlign {
+                ptr: dest_ptr.into(),
+                aligned: true,
+            },
             extra: LvalueExtra::DowncastVariant(variant_idx),
-            aligned: true,
         };
 
         self.assign_fields(dest, dest_ty, operands)
@@ -617,7 +638,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.inc_step_counter_and_check_limit(operands.len() as u64)?;
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
-                    Univariant { .. } | Array { .. } => {
+                    Univariant { ref variant, .. } => {
+                        self.write_maybe_aligned_mut(!variant.packed, |ecx| {
+                            ecx.assign_fields(dest, dest_ty, operands)
+                        })?;
+                    }
+
+                    Array { .. } => {
                         self.assign_fields(dest, dest_ty, operands)?;
                     }
 
@@ -664,10 +691,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref discrfield_source, .. } => {
+                    StructWrappedNullablePointer { nndiscr, ref discrfield_source, ref nonnull, .. } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nndiscr == variant as u64 {
-                                self.assign_fields(dest, dest_ty, operands)?;
+                                self.write_maybe_aligned_mut(!nonnull.packed, |ecx| {
+                                    ecx.assign_fields(dest, dest_ty, operands)
+                                })?;
                             } else {
                                 for operand in operands {
                                     let operand_ty = self.operand_ty(operand);
@@ -682,7 +711,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 let dest = dest.offset(offset.bytes(), &self)?;
                                 let dest_size = self.type_size(ty)?
                                     .expect("bad StructWrappedNullablePointer discrfield");
-                                self.memory.write_int(dest, 0, dest_size)?;
+                                self.memory.write_maybe_aligned_mut(!nonnull.packed, |mem| {
+                                    mem.write_int(dest, 0, dest_size)
+                                })?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -707,12 +738,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         self.assign_fields(dest, dest_ty, operands)?;
                     }
 
-                    UntaggedUnion { .. } => {
+                    UntaggedUnion { ref variants } => {
                         assert_eq!(operands.len(), 1);
                         let operand = &operands[0];
                         let value = self.eval_operand(operand)?;
                         let value_ty = self.operand_ty(operand);
-                        self.write_value(value, dest, value_ty)?;
+                        self.write_maybe_aligned_mut(!variants.packed, |ecx| {
+                            ecx.write_value(value, dest, value_ty)
+                        })?;
                     }
 
                     _ => {
@@ -756,12 +789,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let src = self.eval_lvalue(lvalue)?;
                 // We ignore the alignment of the lvalue here -- special handling for packed structs ends
                 // at the `&` operator.
-                let (ptr, extra, _aligned) = self.force_allocation(src)?.to_ptr_extra_aligned();
+                let (ptr, extra) = self.force_allocation(src)?.to_ptr_extra_aligned();
 
                 let val = match extra {
-                    LvalueExtra::None => ptr.to_value(),
-                    LvalueExtra::Length(len) => ptr.to_value_with_len(len),
-                    LvalueExtra::Vtable(vtable) => ptr.to_value_with_vtable(vtable),
+                    LvalueExtra::None => ptr.ptr.to_value(),
+                    LvalueExtra::Length(len) => ptr.ptr.to_value_with_len(len),
+                    LvalueExtra::Vtable(vtable) => ptr.ptr.to_value_with_vtable(vtable),
                     LvalueExtra::DowncastVariant(..) =>
                         bug!("attempted to take a reference to an enum downcast lvalue"),
                 };
@@ -1024,7 +1057,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Literal::Item { def_id, substs } => {
                         let instance = self.resolve_associated_const(def_id, substs);
                         let cid = GlobalId { instance, promoted: None };
-                        Value::by_ref(self.globals.get(&cid).expect("static/const not cached").into())
+                        Value::ByRef(*self.globals.get(&cid).expect("static/const not cached"))
                     }
 
                     Literal::Promoted { index } => {
@@ -1032,13 +1065,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             instance: self.frame().instance,
                             promoted: Some(index),
                         };
-                        Value::by_ref(self.globals.get(&cid).expect("promoted not cached").into())
+                        Value::ByRef(*self.globals.get(&cid).expect("promoted not cached"))
                     }
                 };
 
                 Ok(value)
             }
         }
+    }
+
+    pub fn read_global_as_value(&self, gid: GlobalId) -> Value {
+        Value::ByRef(*self.globals.get(&gid).expect("global not cached"))
     }
 
     pub fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> Ty<'tcx> {
@@ -1052,6 +1089,21 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
+    pub fn is_packed(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, bool> {
+        let layout = self.type_layout(ty)?;
+        use rustc::ty::layout::Layout::*;
+        Ok(match *layout {
+            Univariant { ref variant, .. } => variant.packed,
+
+            StructWrappedNullablePointer { ref nonnull, .. } => nonnull.packed,
+
+            UntaggedUnion { ref variants } => variants.packed,
+
+            // can only apply #[repr(packed)] to struct and union
+            _ => false,
+        })
+    }
+
     pub fn force_allocation(
         &mut self,
         lvalue: Lvalue,
@@ -1061,8 +1113,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return err!(DeadLocal),
-                    Some(Value::ByRef { ptr, aligned }) => {
-                        Lvalue::Ptr { ptr, aligned, extra: LvalueExtra::None }
+                    Some(Value::ByRef(ptr)) => {
+                        Lvalue::Ptr { ptr, extra: LvalueExtra::None }
                     },
                     Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
@@ -1083,7 +1135,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// ensures this Value is not a ByRef
     pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         match value {
-            Value::ByRef { ptr, aligned } => {
+            Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                 self.read_maybe_aligned(aligned, |ectx| ectx.read_value(ptr, ty))
             }
             other => Ok(other),
@@ -1141,7 +1193,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // correct if we never look at this data with the wrong type.
 
         match dest {
-            Lvalue::Ptr { ptr, extra, aligned } => {
+            Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned }, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
                 self.write_maybe_aligned_mut(aligned,
                     |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
@@ -1167,7 +1219,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        if let Value::ByRef { ptr: dest_ptr, aligned } = old_dest_val {
+        if let Value::ByRef(PtrAndAlign { ptr: dest_ptr, aligned }) = old_dest_val {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
@@ -1178,7 +1230,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             self.write_maybe_aligned_mut(aligned,
                 |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
 
-        } else if let Value::ByRef { ptr: src_ptr, aligned } = src_val {
+        } else if let Value::ByRef(PtrAndAlign { ptr: src_ptr, aligned }) = src_val {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
@@ -1216,7 +1268,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         match value {
-            Value::ByRef { ptr, aligned } => {
+            Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                 self.read_maybe_aligned_mut(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
             },
             Value::ByVal(primval) => {
@@ -1551,7 +1603,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 //let src = adt::MaybeSizedValue::sized(src);
                 //let dst = adt::MaybeSizedValue::sized(dst);
                 let src_ptr = match src {
-                    Value::ByRef { ptr, aligned: true } => ptr,
+                    Value::ByRef(PtrAndAlign { ptr, aligned: true }) => ptr,
                     // TODO: Is it possible for unaligned pointers to occur here?
                     _ => bug!("expected aligned pointer, got {:?}", src),
                 };
@@ -1598,7 +1650,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Err(err) => {
                     panic!("Failed to access local: {:?}", err);
                 }
-                Ok(Value::ByRef { ptr, aligned }) => match ptr.into_inner_primval() {
+                Ok(Value::ByRef(PtrAndAlign{ ptr, aligned })) => match ptr.into_inner_primval() {
                     PrimVal::Ptr(ptr) => {
                         write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
                         allocs.push(ptr.alloc_id);

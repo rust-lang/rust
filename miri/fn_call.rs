@@ -329,8 +329,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     if let Ok(instance) = self.resolve_path(path) {
                         let cid = GlobalId { instance, promoted: None };
                         // compute global if not cached
-                        let val = match self.globals.get(&cid).map(|&ptr| ptr) {
-                            Some(ptr) => self.value_to_primval(Value::by_ref(ptr.into()), usize)?.to_u64()?,
+                        let val = match self.globals.get(&cid).cloned() {
+                            Some(ptr) => self.value_to_primval(Value::ByRef(ptr), usize)?.to_u64()?,
                             None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
                         if val == name {

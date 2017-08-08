@@ -33,6 +33,7 @@ pub use self::eval_context::{
     StackPopCleanup,
     DynamicLifetime,
     TyAndPacked,
+    PtrAndAlign,
 };
 
 pub use self::lvalue::{

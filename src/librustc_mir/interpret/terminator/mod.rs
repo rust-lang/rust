@@ -6,7 +6,7 @@ use syntax::abi::Abi;
 
 use super::{
     EvalError, EvalResult, EvalErrorKind,
-    EvalContext, eval_context, TyAndPacked,
+    EvalContext, eval_context, TyAndPacked, PtrAndAlign,
     Lvalue,
     MemoryPointer,
     PrimVal, Value,
@@ -311,10 +311,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
                                 match arg_val {
-                                    Value::ByRef { ptr, aligned } => {
+                                    Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                                         assert!(aligned, "Unaligned ByRef-values cannot occur as function arguments");
                                         for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                            let arg = Value::ByRef { ptr: ptr.offset(offset, &self)?, aligned: true};
+                                            let arg = Value::by_ref(ptr.offset(offset, &self)?);
                                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                                             trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
                                             self.write_value(arg, dest, ty)?;

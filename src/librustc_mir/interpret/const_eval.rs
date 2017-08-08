@@ -9,7 +9,7 @@ use super::{
     EvalResult, EvalError, EvalErrorKind,
     GlobalId, Lvalue, Value,
     PrimVal,
-    EvalContext, StackPopCleanup,
+    EvalContext, StackPopCleanup, PtrAndAlign,
     Kind,
 };
 
@@ -34,7 +34,8 @@ pub fn eval_body_as_primval<'a, 'tcx>(
         let size = ecx.type_size_with_substs(mir.return_ty, instance.substs)?.expect("unsized global");
         let align = ecx.type_align_with_substs(mir.return_ty, instance.substs)?;
         let ptr = ecx.memory.allocate(size, align, Kind::UninitializedStatic)?;
-        ecx.globals.insert(cid, ptr);
+        let aligned = !ecx.is_packed(mir.return_ty)?;
+        ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let mutable = !mir.return_ty.is_freeze(
                 ecx.tcx,
                 ty::ParamEnv::empty(Reveal::All),
@@ -57,7 +58,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
 
         while ecx.step()? {}
     }
-    let value = Value::by_ref(ecx.globals.get(&cid).expect("global not cached").into());
+    let value = Value::ByRef(*ecx.globals.get(&cid).expect("global not cached"));
     Ok((ecx.value_to_primval(value, mir.return_ty)?, mir.return_ty))
 }
 

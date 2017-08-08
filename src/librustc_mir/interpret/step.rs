@@ -13,7 +13,7 @@ use rustc::ty::subst::Substs;
 
 use super::{
     EvalResult,
-    EvalContext, StackPopCleanup, TyAndPacked,
+    EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign,
     GlobalId, Lvalue,
     HasMemory, Kind,
     Machine,
@@ -182,14 +182,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             let ptr = self.memory.allocate(ptr_size, ptr_size, Kind::UninitializedStatic)?;
             self.memory.write_usize(ptr, 0)?;
             self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
-            self.globals.insert(cid, ptr);
+            self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned: true });
             return Ok(false);
         }
         let mir = self.load_mir(instance.def)?;
         let size = self.type_size_with_substs(mir.return_ty, substs)?.expect("unsized global");
         let align = self.type_align_with_substs(mir.return_ty, substs)?;
         let ptr = self.memory.allocate(size, align, Kind::UninitializedStatic)?;
-        self.globals.insert(cid, ptr);
+        let aligned = !self.is_packed(mir.return_ty)?;
+        self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let internally_mutable = !mir.return_ty.is_freeze(
                 self.tcx,
                 ty::ParamEnv::empty(Reveal::All),
@@ -265,7 +266,8 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                     let size = this.ecx.type_size_with_substs(mir.return_ty, this.instance.substs)?.expect("unsized global");
                     let align = this.ecx.type_align_with_substs(mir.return_ty, this.instance.substs)?;
                     let ptr = this.ecx.memory.allocate(size, align, Kind::UninitializedStatic)?;
-                    this.ecx.globals.insert(cid, ptr);
+                    let aligned = !this.ecx.is_packed(mir.return_ty)?;
+                    this.ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
                     trace!("pushing stack frame for {:?}", index);
                     this.ecx.push_stack_frame(this.instance,
                                               constant.span,

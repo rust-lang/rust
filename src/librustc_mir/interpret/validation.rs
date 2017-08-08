@@ -213,7 +213,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
         if is_owning {
             match query.lval {
-                Lvalue::Ptr { ptr, extra, aligned: _ } => {
+                Lvalue::Ptr { ptr, extra } => {
                     // Determine the size
                     // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
                     let len = match self.type_size(query.ty)? {
