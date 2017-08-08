@@ -788,7 +788,7 @@ impl<'a, T: Clone> Option<&'a mut T> {
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
-    #[unstable(feature = "option_ref_mut_cloned", issue = "0")]
+    #[unstable(feature = "option_ref_mut_cloned", issue = "43738")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())
     }
