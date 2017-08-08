@@ -643,7 +643,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
 
-          Def::Static(_, mutbl) => {
+          Def::Static(def_id, mutbl) => {
+            // `#[thread_local]` statics may not outlive the current function.
+            for attr in &self.tcx.get_attrs(def_id)[..] {
+                if attr.check_name("thread_local") {
+                    return Ok(self.cat_rvalue_node(id, span, expr_ty));
+                }
+            }
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,

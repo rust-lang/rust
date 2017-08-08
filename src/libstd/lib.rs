@@ -243,6 +243,7 @@
 #![feature(allocator_api)]
 #![feature(alloc_system)]
 #![feature(allocator_internals)]
+#![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(box_syntax)]

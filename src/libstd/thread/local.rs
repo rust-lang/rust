@@ -91,13 +91,13 @@ pub struct LocalKey<T: 'static> {
     //
     // Note that the thunk is itself unsafe because the returned lifetime of the
     // slot where data lives, `'static`, is not actually valid. The lifetime
-    // here is actually `'thread`!
+    // here is actually slightly shorter than the currently running thread!
     //
     // Although this is an extra layer of indirection, it should in theory be
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: fn() -> Option<&'static UnsafeCell<Option<T>>>,
+    inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
 
     // initialization routine to invoke to create a value
     init: fn() -> T,
@@ -157,12 +157,13 @@ macro_rules! thread_local {
            issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
+#[cfg_attr(not(stage0), allow_internal_unsafe)]
 macro_rules! __thread_local_inner {
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
         $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
             fn __init() -> $t { $init }
 
-            fn __getit() -> $crate::option::Option<
+            unsafe fn __getit() -> $crate::option::Option<
                 &'static $crate::cell::UnsafeCell<
                     $crate::option::Option<$t>>>
             {
@@ -178,7 +179,9 @@ macro_rules! __thread_local_inner {
                 __KEY.get()
             }
 
-            $crate::thread::LocalKey::new(__getit, __init)
+            unsafe {
+                $crate::thread::LocalKey::new(__getit, __init)
+            }
         };
     }
 }
@@ -252,8 +255,8 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_internals",
                reason = "recently added to create a key",
                issue = "0")]
-    pub const fn new(inner: fn() -> Option<&'static UnsafeCell<Option<T>>>,
-                     init: fn() -> T) -> LocalKey<T> {
+    pub const unsafe fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
+                            init: fn() -> T) -> LocalKey<T> {
         LocalKey {
             inner: inner,
             init: init,
@@ -391,6 +394,7 @@ pub mod fast {
         }
     }
 
+    #[cfg(stage0)]
     unsafe impl<T> ::marker::Sync for Key<T> { }
 
     impl<T> Key<T> {
@@ -402,14 +406,12 @@ pub mod fast {
             }
         }
 
-        pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
-            unsafe {
-                if mem::needs_drop::<T>() && self.dtor_running.get() {
-                    return None
-                }
-                self.register_dtor();
+        pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
+            if mem::needs_drop::<T>() && self.dtor_running.get() {
+                return None
             }
-            Some(&self.inner)
+            self.register_dtor();
+            Some(&*(&self.inner as *const _))
         }
 
         unsafe fn register_dtor(&self) {
@@ -478,26 +480,24 @@ pub mod os {
             }
         }
 
-        pub fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
-            unsafe {
-                let ptr = self.os.get() as *mut Value<T>;
-                if !ptr.is_null() {
-                    if ptr as usize == 1 {
-                        return None
-                    }
-                    return Some(&(*ptr).value);
+        pub unsafe fn get(&'static self) -> Option<&'static UnsafeCell<Option<T>>> {
+            let ptr = self.os.get() as *mut Value<T>;
+            if !ptr.is_null() {
+                if ptr as usize == 1 {
+                    return None
                 }
-
-                // If the lookup returned null, we haven't initialized our own
-                // local copy, so do that now.
-                let ptr: Box<Value<T>> = box Value {
-                    key: self,
-                    value: UnsafeCell::new(None),
-                };
-                let ptr = Box::into_raw(ptr);
-                self.os.set(ptr as *mut u8);
-                Some(&(*ptr).value)
+                return Some(&(*ptr).value);
             }
+
+            // If the lookup returned null, we haven't initialized our own
+            // local copy, so do that now.
+            let ptr: Box<Value<T>> = box Value {
+                key: self,
+                value: UnsafeCell::new(None),
+            };
+            let ptr = Box::into_raw(ptr);
+            self.os.set(ptr as *mut u8);
+            Some(&(*ptr).value)
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(unsafe_code)]
+#![feature(thread_local)]
 
-thread_local!(static FOO: u8 = 1);
+#[thread_local]
+static FOO: u8 = 3;
 
 fn main() {
-}
+    let a = &FOO;
+    //~^ ERROR borrowed value does not live long enough
+    //~| does not live long enough
+    //~| NOTE borrowed value must be valid for the static lifetime
+
+    std::thread::spawn(move || {
+        println!("{}", a);
+    });
+} //~ temporary value only lives until here
