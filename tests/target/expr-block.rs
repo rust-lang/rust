@@ -81,8 +81,7 @@ fn arrays() {
     ];
 
     let y = [
-        /* comment */
-        1,
+        /* comment */ 1,
         2, /* post comment */
         3,
     ];
@@ -92,8 +91,7 @@ fn arrays() {
             test123: value_one_two_three_four,
             turbo: coolio(),
         },
-        /* comment  */
-        1,
+        /* comment  */ 1,
     ];
 
     let a = WeightedChoice::new(&mut [
@@ -322,4 +320,16 @@ fn combine_block() {
             zzz,
         ),
     }
+}
+
+fn issue_1862() {
+    foo(
+        /* bar = */ None,
+        something_something,
+        /* baz = */ None,
+        /* This comment waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay too long to be kept on the same line */
+        None,
+        /* com */
+        this_last_arg_is_tooooooooooooooooooooooooooooooooo_long_to_be_kept_with_the_pre_comment,
+    )
 }

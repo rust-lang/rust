@@ -76,9 +76,20 @@ impl AsRef<ListItem> for ListItem {
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub enum ListItemCommentStyle {
+    // Try to keep the comment on the same line with the item.
+    SameLine,
+    // Put the comment on the previous or the next line of the item.
+    DifferentLine,
+    // No comment available.
+    None,
+}
+
 pub struct ListItem {
     // None for comments mean that they are not present.
     pub pre_comment: Option<String>,
+    pub pre_comment_style: ListItemCommentStyle,
     // Item should include attributes and doc comments. None indicates a failed
     // rewrite.
     pub item: Option<String>,
@@ -111,6 +122,7 @@ impl ListItem {
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
         ListItem {
             pre_comment: None,
+            pre_comment_style: ListItemCommentStyle::None,
             item: Some(s.into()),
             post_comment: None,
             new_lines: false,
@@ -279,8 +291,23 @@ where
             result.push_str(&comment);
 
             if tactic == DefinitiveListTactic::Vertical {
-                result.push('\n');
-                result.push_str(indent_str);
+                // We cannot keep pre-comments on the same line if the comment if normalized.
+                let keep_comment = if formatting.config.normalize_comments() {
+                    false
+                } else if item.pre_comment_style == ListItemCommentStyle::DifferentLine {
+                    false
+                } else {
+                    // We will try to keep the comment on the same line with the item here.
+                    // 1 = ` `
+                    let total_width = total_item_width(item) + item_sep_len + 1;
+                    total_width <= formatting.shape.width
+                };
+                if keep_comment {
+                    result.push(' ');
+                } else {
+                    result.push('\n');
+                    result.push_str(indent_str);
+                }
             } else {
                 result.push(' ');
             }
@@ -448,12 +475,34 @@ where
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                 .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
-            let has_pre_comment =
-                trimmed_pre_snippet.contains("//") || trimmed_pre_snippet.contains("/*");
-            let pre_comment = if has_pre_comment {
-                Some(trimmed_pre_snippet.to_owned())
+            let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
+            let has_block_comment = trimmed_pre_snippet.starts_with("/*");
+            let (pre_comment, pre_comment_style) = if has_single_line_comment {
+                (
+                    Some(trimmed_pre_snippet.to_owned()),
+                    ListItemCommentStyle::DifferentLine,
+                )
+            } else if has_block_comment {
+                let comment_end = pre_snippet.chars().rev().position(|c| c == '/').unwrap();
+                if pre_snippet
+                    .chars()
+                    .rev()
+                    .take(comment_end + 1)
+                    .find(|c| *c == '\n')
+                    .is_some()
+                {
+                    (
+                        Some(trimmed_pre_snippet.to_owned()),
+                        ListItemCommentStyle::DifferentLine,
+                    )
+                } else {
+                    (
+                        Some(trimmed_pre_snippet.to_owned()),
+                        ListItemCommentStyle::SameLine,
+                    )
+                }
             } else {
-                None
+                (None, ListItemCommentStyle::None)
             };
 
             // Post-comment
@@ -542,6 +591,7 @@ where
 
             ListItem {
                 pre_comment: pre_comment,
+                pre_comment_style: pre_comment_style,
                 item: (self.get_item_string)(&item),
                 post_comment: post_comment,
                 new_lines: new_lines,
