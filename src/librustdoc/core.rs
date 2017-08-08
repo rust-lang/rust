@@ -155,7 +155,9 @@ pub fn run_core(search_paths: SearchPaths,
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
-    let krate = panictry!(driver::phase_1_parse_input(&sess, &input));
+    let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
+                                                      &sess,
+                                                      &input));
 
     let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 
