@@ -942,3 +942,14 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
         }
     }
 }
+
+/// Tells LLVM that this point in the code is not reachable, enabling further
+/// optimizations.
+///
+/// NB: This is very different from the `unreachable!()` macro: Unlike the
+/// macro, which panics when it is executed, it is *undefined behavior* to
+/// reach code marked with this function.
+#[unstable(feature = "unreachable", issue = "0")]
+pub unsafe fn unreachable() -> ! {
+    intrinsics::unreachable()
+}

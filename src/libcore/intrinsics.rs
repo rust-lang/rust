@@ -629,10 +629,12 @@ extern "rust-intrinsic" {
     /// Aborts the execution of the process.
     pub fn abort() -> !;
 
-    /// Tells LLVM that this point in the code is not reachable,
-    /// enabling further optimizations.
+    /// Tells LLVM that this point in the code is not reachable, enabling
+    /// further optimizations.
     ///
-    /// NB: This is very different from the `unreachable!()` macro!
+    /// NB: This is very different from the `unreachable!()` macro: Unlike the
+    /// macro, which panics when it is executed, it is *undefined behavior* to
+    /// reach code marked with this function.
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
