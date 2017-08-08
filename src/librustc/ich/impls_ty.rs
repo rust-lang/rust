@@ -11,6 +11,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
+use hir::def_id::DefId;
 use ich::{self, StableHashingContext, NodeIdHashingMode};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -618,7 +619,7 @@ for ty::TypeckTables<'gcx> {
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
-            local_id_root: _,
+            local_id_root,
             ref type_dependent_defs,
             ref node_types,
             ref node_substs,
@@ -649,8 +650,14 @@ for ty::TypeckTables<'gcx> {
                     closure_expr_id
                 } = *up_var_id;
 
-                let var_def_id = hcx.tcx().hir.local_def_id(var_id);
-                let closure_def_id = hcx.tcx().hir.local_def_id(closure_expr_id);
+                let var_def_id = DefId {
+                    krate: local_id_root.krate,
+                    index: var_id,
+                };
+                let closure_def_id = DefId {
+                    krate: local_id_root.krate,
+                    index: closure_expr_id,
+                };
                 (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
             });
 

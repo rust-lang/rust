@@ -684,8 +684,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::VarRef { id: node_id }
         }
 
-        Def::Upvar(def_id, index, closure_expr_id) => {
-            let id_var = cx.tcx.hir.as_local_node_id(def_id).unwrap();
+        Def::Upvar(var_def_id, index, closure_expr_id) => {
+            let id_var = cx.tcx.hir.as_local_node_id(var_def_id).unwrap();
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",
                    id_var,
                    index,
@@ -768,8 +768,8 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
-                var_id: id_var,
-                closure_expr_id: closure_expr_id,
+                var_id: var_def_id.index,
+                closure_expr_id: closure_def_id.index,
             };
             match cx.tables().upvar_capture(upvar_id) {
                 ty::UpvarCapture::ByValue => field_kind,
@@ -880,15 +880,16 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let id_var = cx.tcx.hir.as_local_node_id(freevar.def.def_id()).unwrap();
+    let var_def_id = freevar.def.def_id();
+    let var_node_id = cx.tcx.hir.as_local_node_id(var_def_id).unwrap();
     let upvar_id = ty::UpvarId {
-        var_id: id_var,
-        closure_expr_id: closure_expr.id,
+        var_id: var_def_id.index,
+        closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).index,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_maps.temporary_scope(closure_expr.id);
     let var_ty = cx.tables()
-                   .node_id_to_type(cx.tcx.hir.node_to_hir_id(id_var));
+                   .node_id_to_type(cx.tcx.hir.node_to_hir_id(var_node_id));
     let captured_var = Expr {
         temp_lifetime: temp_lifetime,
         ty: var_ty,

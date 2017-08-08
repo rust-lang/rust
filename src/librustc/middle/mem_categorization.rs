@@ -70,7 +70,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use middle::region::RegionMaps;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex};
 use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
@@ -190,7 +190,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
     ImmLocal(ast::NodeId),
-    ClosureEnv(ast::NodeId),
+    ClosureEnv(DefIndex),
     LocalDeref(ast::NodeId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
@@ -728,8 +728,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             None => span_bug!(span, "missing closure kind")
         };
 
-        let upvar_id = ty::UpvarId { var_id,
-                                     closure_expr_id: fn_node_id };
+        let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
+        let var_def_index = self.tcx.hir.local_def_id(var_id).index;
+
+        let upvar_id = ty::UpvarId {
+            var_id: var_def_index,
+            closure_expr_id: closure_expr_def_index
+        };
         let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
         let var_ty = self.node_ty(var_hir_id)?;
 
@@ -766,8 +771,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // If this is a by-ref capture, then the upvar we loaded is
         // actually a reference, so we have to add an implicit deref
         // for that.
-        let upvar_id = ty::UpvarId { var_id,
-                                     closure_expr_id: fn_node_id };
         let upvar_capture = self.tables.upvar_capture(upvar_id);
         let cmt_result = match upvar_capture {
             ty::UpvarCapture::ByValue => {
@@ -805,7 +808,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx.hir.local_def_id(upvar_id.closure_expr_id),
+            scope: DefId::local(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 

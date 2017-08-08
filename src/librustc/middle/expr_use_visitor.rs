@@ -890,10 +890,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let def_id = freevar.def.def_id();
-                let id_var = self.tcx().hir.as_local_node_id(def_id).unwrap();
-                let upvar_id = ty::UpvarId { var_id: id_var,
-                                             closure_expr_id: closure_expr.id };
+                let var_def_id = freevar.def.def_id();
+                debug_assert!(var_def_id.is_local());
+                let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
+                let upvar_id = ty::UpvarId {
+                    var_id: var_def_id.index,
+                    closure_expr_id: closure_def_id.index
+                };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                    fn_decl_span,

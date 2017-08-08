@@ -14,7 +14,7 @@
 
 use check::FnCtxt;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -399,6 +399,13 @@ impl Locatable for Span {
 
 impl Locatable for ast::NodeId {
     fn to_span(&self, tcx: &TyCtxt) -> Span { tcx.hir.span(*self) }
+}
+
+impl Locatable for DefIndex {
+    fn to_span(&self, tcx: &TyCtxt) -> Span {
+        let node_id = tcx.hir.def_index_to_node_id(*self);
+        tcx.hir.span(node_id)
+    }
 }
 
 impl Locatable for hir::HirId {

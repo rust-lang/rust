@@ -45,8 +45,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.span_note(span,
                               &format!("...so that closure can access `{}`",
                                        self.tcx
-                                           .local_var_name_str(upvar_id.var_id)
-                                           .to_string()));
+                                           .local_var_name_str_def_index(upvar_id.var_id)));
             }
             infer::InfStackClosure(span) => {
                 err.span_note(span, "...so that closure does not outlive its stack frame");
@@ -176,18 +175,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                E0313,
                                                "lifetime of borrowed pointer outlives lifetime \
                                                 of captured variable `{}`...",
-                                               self.tcx.local_var_name_str(upvar_id.var_id));
+                                               self.tcx
+                                                   .local_var_name_str_def_index(upvar_id.var_id));
                 self.tcx.note_and_explain_region(&mut err,
                                                  "...the borrowed pointer is valid for ",
                                                  sub,
                                                  "...");
                 self.tcx
-                    .note_and_explain_region(&mut err,
-                                             &format!("...but `{}` is only valid for ",
-                                                      self.tcx
-                                                          .local_var_name_str(upvar_id.var_id)),
-                                             sup,
-                                             "");
+                    .note_and_explain_region(
+                      &mut err,
+                      &format!("...but `{}` is only valid for ",
+                               self.tcx.local_var_name_str_def_index(upvar_id.var_id)),
+                      sup,
+                      "");
                 err
             }
             infer::InfStackClosure(span) => {
