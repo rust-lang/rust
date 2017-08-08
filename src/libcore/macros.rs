@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_export]
+// This stability attribute is totally useless.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+macro_rules! __rust_unstable_column {
+    () => {
+        column!()
+    }
+}
+
 /// Entry point of thread panic, for details, see std::macros
 #[macro_export]
 #[allow_internal_unstable]
@@ -18,7 +28,7 @@ macro_rules! panic {
     );
     ($msg:expr) => ({
         static _MSG_FILE_LINE_COL: (&'static str, &'static str, u32, u32) =
-            ($msg, file!(), line!(), column!());
+            ($msg, file!(), line!(), __rust_unstable_column!());
         $crate::panicking::panic(&_MSG_FILE_LINE_COL)
     });
     ($fmt:expr, $($arg:tt)*) => ({
@@ -27,7 +37,7 @@ macro_rules! panic {
         // insufficient, since the user may have
         // `#[forbid(dead_code)]` and which cannot be overridden.
         static _MSG_FILE_LINE_COL: (&'static str, u32, u32) =
-            (file!(), line!(), column!());
+            (file!(), line!(), __rust_unstable_column!());
         $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_MSG_FILE_LINE_COL)
     });
 }
