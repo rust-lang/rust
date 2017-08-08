@@ -317,7 +317,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "sysconf" => {
-                let name = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let c_int = self.operand_ty(&arg_operands[0]);
+                let name = self.value_to_primval(args[0], c_int)?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
                 let paths = &[
@@ -330,7 +331,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         let cid = GlobalId { instance, promoted: None };
                         // compute global if not cached
                         let val = match self.globals.get(&cid).cloned() {
-                            Some(ptr) => self.value_to_primval(Value::ByRef(ptr), usize)?.to_u64()?,
+                            Some(ptr) => self.value_to_primval(Value::ByRef(ptr), c_int)?.to_u64()?,
                             None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
                         if val == name {
