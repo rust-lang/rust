@@ -1621,41 +1621,52 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn dump_local(&self, lvalue: Lvalue) {
         // Debug output
-        if let Lvalue::Local { frame, local } = lvalue {
-            let mut allocs = Vec::new();
-            let mut msg = format!("{:?}", local);
-            if frame != self.cur_frame() {
-                write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
-            }
-            write!(msg, ":").unwrap();
+        match lvalue {
+            Lvalue::Local { frame, local } => {
+                let mut allocs = Vec::new();
+                let mut msg = format!("{:?}", local);
+                if frame != self.cur_frame() {
+                    write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
+                }
+                write!(msg, ":").unwrap();
 
-            match self.stack[frame].get_local(local) {
-                Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..} ) => {
-                    write!(msg, " is dead").unwrap();
-                }
-                Err(err) => {
-                    panic!("Failed to access local: {:?}", err);
-                }
-                Ok(Value::ByRef(PtrAndAlign{ ptr, aligned })) => match ptr.into_inner_primval() {
-                    PrimVal::Ptr(ptr) => {
-                        write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
-                        allocs.push(ptr.alloc_id);
+                match self.stack[frame].get_local(local) {
+                    Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..} ) => {
+                        write!(msg, " is dead").unwrap();
+                    }
+                    Err(err) => {
+                        panic!("Failed to access local: {:?}", err);
+                    }
+                    Ok(Value::ByRef(PtrAndAlign{ ptr, aligned })) => match ptr.into_inner_primval() {
+                        PrimVal::Ptr(ptr) => {
+                            write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
+                            allocs.push(ptr.alloc_id);
+                        },
+                        ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
                     },
-                    ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
-                },
-                Ok(Value::ByVal(val)) => {
-                    write!(msg, " {:?}", val).unwrap();
-                    if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
+                    Ok(Value::ByVal(val)) => {
+                        write!(msg, " {:?}", val).unwrap();
+                        if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
+                    }
+                    Ok(Value::ByValPair(val1, val2)) => {
+                        write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
+                        if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
+                    }
                 }
-                Ok(Value::ByValPair(val1, val2)) => {
-                    write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                    if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
-                    if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
+
+                trace!("{}", msg);
+                self.memory.dump_allocs(allocs);
+            }
+            Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned }, .. } => {
+                match ptr.into_inner_primval() {
+                    PrimVal::Ptr(ptr) => {
+                        trace!("by {}ref:", if aligned { "" } else { "unaligned " });
+                        self.memory.dump_alloc(ptr.alloc_id);
+                    },
+                    ptr => trace!(" integral by ref: {:?}", ptr),
                 }
             }
-
-            trace!("{}", msg);
-            self.memory.dump_allocs(allocs);
         }
     }
 
