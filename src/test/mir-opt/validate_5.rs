@@ -26,6 +26,9 @@ fn main() {
     test(&mut 0);
 
     let test_closure = unsafe { |x: &mut i32| write_42(x) };
+    // Note that validation will fail if this is executed: The closure keeps the lock on
+    // x, so the write in write_42 fails.  This test just checks code generation,
+    // so the UB doesn't matter.
     test_closure(&mut 0);
 }
 
