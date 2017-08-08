@@ -164,7 +164,7 @@ use boxed::Box;
 /// reason.
 ///
 /// In certain cases Rust doesn't have enough information to make this
-/// conversion, known as deref coercion. In the following example a string
+/// conversion, known as `Deref` coercion. In the following example a string
 /// slice `&'a str` implements the trait `TraitExample`, and the function
 /// `example_func` takes anything that implements the trait. In this case Rust
 /// would need to make two implicit conversions, which Rust doesn't have the
