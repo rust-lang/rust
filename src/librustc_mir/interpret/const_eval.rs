@@ -47,7 +47,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
         };
         let cleanup = StackPopCleanup::MarkStatic(mutability);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
-        trace!("pushing stack frame for global: {}", name);
+        trace!("const_eval: pushing stack frame for global: {}", name);
         ecx.push_stack_frame(
             instance,
             mir.span,
