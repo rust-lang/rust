@@ -20,7 +20,7 @@ use syntax_pos::symbol::InternedString;
 use ty;
 
 impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for &'tcx ty::Slice<T>
+for &'gcx ty::Slice<T>
     where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -30,7 +30,7 @@ for &'tcx ty::Slice<T>
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::subst::Kind<'tcx> {
+for ty::subst::Kind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -55,6 +55,11 @@ for ty::RegionKind {
                 db.depth.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
+            ty::ReLateBound(db, ty::BrNamed(def_id, name)) => {
+                db.depth.hash_stable(hcx, hasher);
+                def_id.hash_stable(hcx, hasher);
+                name.hash_stable(hcx, hasher);
+            }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
@@ -76,7 +81,7 @@ for ty::RegionKind {
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::adjustment::AutoBorrow<'tcx> {
+for ty::adjustment::AutoBorrow<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -94,7 +99,7 @@ for ty::adjustment::AutoBorrow<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::adjustment::Adjust<'tcx> {
+for ty::adjustment::Adjust<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -128,7 +133,7 @@ impl_stable_hash_for!(enum ty::BorrowKind {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::UpvarCapture<'tcx> {
+for ty::UpvarCapture<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -150,12 +155,13 @@ impl_stable_hash_for!(struct ty::FnSig<'tcx> {
 });
 
 impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Binder<T>
-    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + ty::fold::TypeFoldable<'tcx>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        hcx.tcx().anonymize_late_bound_regions(self).0.hash_stable(hcx, hasher);
+        let ty::Binder(ref inner) = *self;
+        inner.hash_stable(hcx, hasher);
     }
 }
 
@@ -190,7 +196,7 @@ impl_stable_hash_for!(struct ty::ProjectionPredicate<'tcx> { projection_ty, ty }
 impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { substs, item_def_id });
 
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -256,7 +262,7 @@ impl_stable_hash_for!(struct ty::FieldDef {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::middle::const_val::ConstVal<'tcx> {
+for ::middle::const_val::ConstVal<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -483,7 +489,7 @@ impl_stable_hash_for!(enum ty::BoundRegion {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::TypeVariants<'tcx>
+for ty::TypeVariants<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -574,7 +580,7 @@ impl_stable_hash_for!(struct ty::TypeAndMut<'tcx> {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::ExistentialPredicate<'tcx>
+for ty::ExistentialPredicate<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -607,7 +613,7 @@ impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
 
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::TypeckTables<'tcx> {
+for ty::TypeckTables<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -689,7 +695,7 @@ impl_stable_hash_for!(struct ty::Instance<'tcx> {
     substs
 });
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::InstanceDef<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::InstanceDef<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
