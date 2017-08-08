@@ -12,10 +12,10 @@ pub use self::Integer::*;
 pub use self::Layout::*;
 pub use self::Primitive::*;
 
-use session::{self, DataTypeKind, Session};
-use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, ReprFlags};
+use session::Session;
+use ty::{self, item_path, Ty, TyCtxt, TypeFoldable, ReprOptions, ReprFlags, Visibility};
 
-use syntax::ast::{self, FloatTy, IntTy, UintTy};
+use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
 
@@ -1719,15 +1719,14 @@ impl<'a, 'tcx> Layout {
     pub fn record_layout_for_printing(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       ty: Ty<'tcx>,
                                       param_env: ty::ParamEnv<'tcx>,
-                                      layout: &Layout) {
+                                      layout: &'tcx Layout) {
         // If we are running with `-Zprint-type-sizes`, record layouts for
         // dumping later. Ignore layouts that are done with non-empty
         // environments or non-monomorphic layouts, as the user only wants
         // to see the stuff resulting from the final trans session.
         if
             !tcx.sess.opts.debugging_opts.print_type_sizes ||
-            ty.has_param_types() ||
-            ty.has_self_ty() ||
+            !ty.is_normalized_for_trans() ||
             !param_env.caller_bounds.is_empty()
         {
             return;
@@ -1739,197 +1738,142 @@ impl<'a, 'tcx> Layout {
     fn record_layout_for_printing_outlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            ty: Ty<'tcx>,
                                            param_env: ty::ParamEnv<'tcx>,
-                                           layout: &Layout) {
-        // (delay format until we actually need it)
-        let record = |kind, opt_discr_size, variants| {
-            let type_desc = format!("{:?}", ty);
-            let overall_size = layout.size(tcx);
-            let align = layout.align(tcx);
-            tcx.sess.code_stats.borrow_mut().record_type_size(kind,
-                                                              type_desc,
-                                                              align,
-                                                              overall_size,
-                                                              opt_discr_size,
-                                                              variants);
-        };
+                                           layout: &'tcx Layout) {
 
-        let (adt_def, substs) = match ty.sty {
-            ty::TyAdt(ref adt_def, substs) => {
-                debug!("print-type-size t: `{:?}` process adt", ty);
-                (adt_def, substs)
-            }
+        use session::print_type_info::{Type, TypeKind, Field, Case};
 
-            ty::TyClosure(..) => {
-                debug!("print-type-size t: `{:?}` record closure", ty);
-                record(DataTypeKind::Closure, None, vec![]);
-                return;
-            }
+        // Caller should have filtered out all non-monomorphic types, so we
+        // we don't need to worry about finding a generic Vec<T> or Vec<U::Item>
+        match ty.sty {
+            // Concrete types we should consider processing
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(..) |
+            ty::TyUint(..) |
+            ty::TyFloat(..) |
+            ty::TyAdt(..) |
+            ty::TyRawPtr(..) |
+            ty::TyRef(..) |
+            ty::TyNever |
+            ty::TyTuple(..) => { }
 
+            // Anonymous or generic types we should avoid
             _ => {
+                // TODO: `-> impl Trait` means closures can technically end up
+                // in public signatures, so we might want to actually record them?
                 debug!("print-type-size t: `{:?}` skip non-nominal", ty);
                 return;
             }
         };
 
-        let adt_kind = adt_def.adt_kind();
+        let cx = LayoutCx::new(tcx, param_env);
 
-        let build_field_info = |(field_name, field_ty): (ast::Name, Ty<'tcx>), offset: &Size| {
-            let layout = field_ty.layout(tcx, param_env);
-            match layout {
-                Err(_) => bug!("no layout found for field {} type: `{:?}`", field_name, field_ty),
-                Ok(field_layout) => {
-                    session::FieldInfo {
-                        name: field_name.to_string(),
-                        offset: offset.bytes(),
-                        size: field_layout.size(tcx).bytes(),
-                        align: field_layout.align(tcx).abi(),
-                    }
-                }
-            }
+        let layout = TyLayout {
+            ty,
+            layout: layout,
+            variant_index: None
         };
 
-        let build_primitive_info = |name: ast::Name, value: &Primitive| {
-            session::VariantInfo {
-                name: Some(name.to_string()),
-                kind: session::SizeKind::Exact,
-                align: value.align(tcx).abi(),
-                size: value.size(tcx).bytes(),
-                fields: vec![],
-            }
-        };
+        // Common code for structs and unions
+        let fields = || {
+            let field_count = layout.field_count();
+            let mut fields = Vec::with_capacity(field_count);
 
-        enum Fields<'a> {
-            WithDiscrim(&'a Struct),
-            NoDiscrim(&'a Struct),
-        }
+            for i in 0..field_count {
+                let offset = layout.field_offset(cx, i).bytes();
+                let field_ty = layout.field_type(cx, i);
+                let type_name = item_path::with_forced_impl_filename_line(||{
+                    field_ty.to_string()
+                });
+                let (name, public) = layout.field_info(cx, i);
 
-        let build_variant_info = |n: Option<ast::Name>,
-                                  flds: &[(ast::Name, Ty<'tcx>)],
-                                  layout: Fields| {
-            let (s, field_offsets) = match layout {
-                Fields::WithDiscrim(s) => (s, &s.offsets[1..]),
-                Fields::NoDiscrim(s) => (s, &s.offsets[0..]),
-            };
-            let field_info: Vec<_> =
-                flds.iter()
-                    .zip(field_offsets.iter())
-                    .map(|(&field_name_ty, offset)| build_field_info(field_name_ty, offset))
-                    .collect();
-
-            session::VariantInfo {
-                name: n.map(|n|n.to_string()),
-                kind: if s.sized {
-                    session::SizeKind::Exact
-                } else {
-                    session::SizeKind::Min
-                },
-                align: s.align.abi(),
-                size: s.min_size.bytes(),
-                fields: field_info,
-            }
-        };
-
-        match *layout {
-            Layout::StructWrappedNullablePointer { nonnull: ref variant_layout,
-                                                   nndiscr,
-                                                   discrfield: _,
-                                                   discrfield_source: _ } => {
-                debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
-                       ty, nndiscr, variant_layout);
-                let variant_def = &adt_def.variants[nndiscr as usize];
-                let fields: Vec<_> =
-                    variant_def.fields.iter()
-                                      .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
-                                      .collect();
-                record(adt_kind.into(),
-                       None,
-                       vec![build_variant_info(Some(variant_def.name),
-                                               &fields,
-                                               Fields::NoDiscrim(variant_layout))]);
-            }
-            Layout::RawNullablePointer { nndiscr, value } => {
-                debug!("print-type-size t: `{:?}` adt raw nullable nndiscr {} is {:?}",
-                       ty, nndiscr, value);
-                let variant_def = &adt_def.variants[nndiscr as usize];
-                record(adt_kind.into(), None,
-                       vec![build_primitive_info(variant_def.name, &value)]);
-            }
-            Layout::Univariant { variant: ref variant_layout, non_zero: _ } => {
-                let variant_names = || {
-                    adt_def.variants.iter().map(|v|format!("{}", v.name)).collect::<Vec<_>>()
+                let field = Field {
+                    name,
+                    offset,
+                    type_name,
+                    public,
                 };
-                debug!("print-type-size t: `{:?}` adt univariant {:?} variants: {:?}",
-                       ty, variant_layout, variant_names());
-                assert!(adt_def.variants.len() <= 1,
-                        "univariant with variants {:?}", variant_names());
-                if adt_def.variants.len() == 1 {
-                    let variant_def = &adt_def.variants[0];
-                    let fields: Vec<_> =
-                        variant_def.fields.iter()
-                                          .map(|f| (f.name, f.ty(tcx, substs)))
-                                          .collect();
-                    record(adt_kind.into(),
-                           None,
-                           vec![build_variant_info(Some(variant_def.name),
-                                                   &fields,
-                                                   Fields::NoDiscrim(variant_layout))]);
-                } else {
-                    // (This case arises for *empty* enums; so give it
-                    // zero variants.)
-                    record(adt_kind.into(), None, vec![]);
-                }
+
+                fields.push(field);
             }
 
-            Layout::General { ref variants, discr, .. } => {
-                debug!("print-type-size t: `{:?}` adt general variants def {} layouts {} {:?}",
-                       ty, adt_def.variants.len(), variants.len(), variants);
-                let variant_infos: Vec<_> =
-                    adt_def.variants.iter()
-                                    .zip(variants.iter())
-                                    .map(|(variant_def, variant_layout)| {
-                                        let fields: Vec<_> =
-                                            variant_def.fields
-                                                       .iter()
-                                                       .map(|f| (f.name, f.ty(tcx, substs)))
-                                                       .collect();
-                                        build_variant_info(Some(variant_def.name),
-                                                           &fields,
-                                                           Fields::WithDiscrim(variant_layout))
-                                    })
-                                    .collect();
-                record(adt_kind.into(), Some(discr.size()), variant_infos);
+            fields
+        };
+
+        let kind = match *layout {
+            // Basic primitive, nothing interesting to do
+            Layout::Scalar { value: Primitive::Int(..),  .. } => {
+                TypeKind::PrimitiveInt
+            }
+            Layout::Scalar { value: Primitive::F32, .. } |
+            Layout::Scalar { value: Primitive::F64, .. } => {
+                TypeKind::PrimitiveFloat
             }
 
-            Layout::UntaggedUnion { ref variants } => {
-                debug!("print-type-size t: `{:?}` adt union variants {:?}",
-                       ty, variants);
-                // layout does not currently store info about each
-                // variant...
-                record(adt_kind.into(), None, Vec::new());
+            // Thin pointers; don't record these
+            Layout::Scalar { value: Primitive::Pointer, .. } |
+            Layout::RawNullablePointer { .. }  => {
+                // TODO: do we maybe want to actually type RawNullablePointer?
+                // Option<Box>/Option<Rc> aren't quite the same as Option<&>...
+                return;
             }
 
-            Layout::CEnum { discr, .. } => {
-                debug!("print-type-size t: `{:?}` adt c-like enum", ty);
-                let variant_infos: Vec<_> =
-                    adt_def.variants.iter()
-                                    .map(|variant_def| {
-                                        build_primitive_info(variant_def.name,
-                                                             &Primitive::Int(discr))
-                                    })
-                                    .collect();
-                record(adt_kind.into(), Some(discr.size()), variant_infos);
-            }
-
-            // other cases provide little interesting (i.e. adjustable
-            // via representation tweaks) size info beyond total size.
-            Layout::Scalar { .. } |
+            // Structs
             Layout::Vector { .. } |
-            Layout::Array { .. } |
-            Layout::FatPointer { .. } => {
-                debug!("print-type-size t: `{:?}` adt other", ty);
-                record(adt_kind.into(), None, Vec::new())
+            Layout::FatPointer { .. } |
+            Layout::Univariant { .. } => {
+                TypeKind::Struct { fields: fields() }
             }
-        }
+
+            // Union
+            Layout::UntaggedUnion { .. } => {
+                TypeKind::Union { fields: fields() }
+            }
+
+
+            // C-like Enums
+            Layout::CEnum { discr, signed, .. } => {
+                let base_type = item_path::with_forced_impl_filename_line(||{
+                    discr.to_ty(&tcx, signed).to_string()
+                });
+
+                let def = if let ty::TyAdt(def, ..) = ty.sty { def } else { unreachable!() };
+
+                let mut cases = Vec::with_capacity(def.variants.len());
+                for (discr, variant) in def.discriminants(tcx).zip(def.variants.iter()) {
+                    // TODO: i128?
+                    let value = discr.to_u128_unchecked() as i64;
+                    let name = variant.name.to_string();
+                    let case = Case { name, value };
+                    cases.push(case);
+                }
+
+                TypeKind::Enum { base_type, cases }
+            }
+
+            // Don't expose details of tagged unions yet, as we
+            // reserve the right to do pretty extreme optimizations, and don't
+            // want to settle on an abstraction yet.
+            Layout::General { .. } |
+            StructWrappedNullablePointer { .. } => {
+                TypeKind::Opaque
+            }
+
+            Layout::Array { .. } => {
+                bug!("Arrays shouldn't ever make it here")
+            }
+        };
+
+        let size = layout.size(tcx).bytes();
+        let align = layout.align(tcx).abi();
+        let name = item_path::with_forced_impl_filename_line(||{
+            ty.to_string()
+        });
+        let public = true; // TODO
+
+        tcx.sess.code_stats.borrow_mut().insert(Type {
+            name, size, align, public, kind
+        });
     }
 }
 
@@ -2255,6 +2199,91 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             // ADTs.
             ty::TyAdt(def, substs) => {
                 def.variants[self.variant_index.unwrap_or(0)].fields[i].ty(tcx, substs)
+            }
+
+            ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
+            ty::TyInfer(_) | ty::TyError => {
+                bug!("TyLayout::field_type: unexpected type `{}`", self.ty)
+            }
+        }
+    }
+
+    /// Gets the field name, and whether the field is `pub`, for use in print-type-info.
+    ///
+    /// Fields of builtins have synthesized names that are valid C idents.
+    /// e.g. tuple.0 becomes tuple.item0
+    ///
+    /// Note: some of these results aren't ever used by print-type-info, because these types
+    /// have a natural C ABI (i.e. TyArray).
+    fn field_info<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> (String, bool) {
+        let tcx = cx.tcx();
+
+        let ptr_field_info = |pointee: Ty<'tcx>| {
+            assert!(i < 2);
+            match tcx.struct_tail(pointee).sty {
+                ty::TySlice(..) |
+                ty::TyStr => {
+                    if i == 0 {
+                        ("ptr".to_string(), false)
+                    } else {
+                        ("len".to_string(), false)
+                    }
+                }
+                ty::TyDynamic(..) => {
+                    if i == 0 {
+                        ("data".to_string(), false)
+                    } else {
+                        ("vtable".to_string(), false)
+                    }
+                }
+                _ => bug!("TyLayout::field_info({:?}): not applicable", self)
+            }
+        };
+
+        match self.ty.sty {
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(_) |
+            ty::TyUint(_) |
+            ty::TyFloat(_) |
+            ty::TyFnPtr(_) |
+            ty::TyNever |
+            ty::TyFnDef(..) |
+            ty::TyDynamic(..) |
+            ty::TySlice(..) |
+            ty::TyStr => {
+                bug!("TyLayout::field_info({:?}): not applicable", self)
+            }
+
+            // Potentially-fat pointers.
+            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                ptr_field_info(pointee)
+            }
+            ty::TyAdt(def, _) if def.is_box() => {
+                ptr_field_info(self.ty.boxed_ty())
+            }
+
+            // Arrays and slices.
+            ty::TyArray(..) => (format!("idx{}", i), false),
+
+            // Closures.
+            ty::TyClosure(..) => (format!("capture{}", i), false),
+
+            // Tuples
+            ty::TyTuple(..) => (format!("item{}", i), true),
+
+            // SIMD vectors
+            ty::TyAdt(def, ..) if def.repr.simd() => {
+                (format!("idx{}", i), true)
+            }
+
+            // ADTs.
+            ty::TyAdt(def, ..) => {
+                let field = &def.variants[self.variant_index.unwrap_or(0)].fields[i];
+                let public = if let Visibility::Public = field.vis { true } else { false };
+                let name = field.name.to_string();
+                (name, public)
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |

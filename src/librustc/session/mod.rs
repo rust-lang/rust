@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
-pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
+pub use self::print_type_info::{CodeStats};
+// pub use self::code_stats::{CodeStats, DataTypeKind, FieldInfo};
+// pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
 use dep_graph::DepGraph;
 use hir::def_id::{CrateNum, DefIndex};
@@ -51,7 +52,8 @@ use std::rc::Rc;
 use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 
-mod code_stats;
+// mod code_stats;
+pub mod print_type_info;
 pub mod config;
 pub mod filesearch;
 pub mod search_paths;

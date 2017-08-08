@@ -226,7 +226,7 @@ pub fn compile_input(sess: &Session,
     };
 
     if sess.opts.debugging_opts.print_type_sizes {
-        sess.code_stats.borrow().print_type_sizes();
+        sess.code_stats.borrow_mut().print_type_sizes();
     }
 
     let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans);
