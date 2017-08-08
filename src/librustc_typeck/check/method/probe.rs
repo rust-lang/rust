@@ -1015,7 +1015,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         };
 
         if let Some(def) = private_candidate {
-            return Err(MethodError::PrivateMatch(def));
+            return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
