@@ -257,7 +257,7 @@ pub struct TypeckTables<'tcx> {
 
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.
-    pub cast_kinds: NodeMap<ty::cast::CastKind>,
+    pub cast_kinds: ItemLocalMap<ty::cast::CastKind>,
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports.
@@ -287,7 +287,8 @@ impl<'tcx> TypeckTables<'tcx> {
             closure_kinds: ItemLocalMap(),
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
-            cast_kinds: NodeMap(),
+            cast_kinds: ItemLocalMap(),
+            lints: lint::LintTable::new(),
             used_trait_imports: DefIdSet(),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),

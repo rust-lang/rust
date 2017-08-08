@@ -320,7 +320,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprCast(ref from, _) => {
             debug!("Checking const cast(id={})", from.id);
-            match v.tables.cast_kinds.get(&from.id) {
+            v.tables.validate_hir_id(from.hir_id);
+            match v.tables.cast_kinds.get(&from.hir_id.local_id) {
                 None => span_bug!(e.span, "no kind for cast"),
                 Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
                     v.promotable = false;
