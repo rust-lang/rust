@@ -89,7 +89,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     use syntax::ext::source_util::*;
     register! {
         line: expand_line,
-        __rust_unstable_column: expand_column,
+        __rust_unstable_column: expand_column_gated,
         column: expand_column,
         file: expand_file,
         stringify: expand_stringify,
