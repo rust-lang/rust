@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-5500.rs:12:5
    |
 11 | fn main() {
-   |           - expected `()` because of default return type
+   |           - expected () because of default return type
 12 |     &panic!()
    |     ^^^^^^^^^ expected (), found reference
    |

@@ -664,7 +664,7 @@ impl<'hir> Map<'hir> {
             match *node {
                 NodeExpr(ref expr) => {
                     match expr.node {
-                        ExprWhile(..) | ExprLoop(..) | ExprIf(..) => true,
+                        ExprWhile(..) | ExprLoop(..) => true,
                         _ => false,
                     }
                 }

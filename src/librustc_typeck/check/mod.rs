@@ -95,7 +95,7 @@ use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
-use rustc::ty::{self, Ty, TyCtxt, Visibility};
+use rustc::ty::{self, Ty, TyCtxt, Visibility, TypeVariants};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
@@ -4302,7 +4302,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    expected: Ty<'tcx>,
                                    found: Ty<'tcx>,
                                    can_suggest: bool) {
-
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest) {
@@ -4316,13 +4315,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, _) => {
                 // `fn main()` must return `()`, do not suggest changing return type
-                err.span_label(span, "expected `()` because of default return type");
+                err.span_label(span, "expected () because of default return type");
             }
             (&hir::FunctionRetTy::Return(ref ty), _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
-                err.span_label(ty.span,
-                               format!("expected `{}` because of return type", expected));
+                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.node);
+                let sp = ty.span;
+                let ty = AstConv::ast_ty_to_ty(self, ty);
+                debug!("suggest_missing_return_type: return type sty {:?}", ty.sty);
+                debug!("suggest_missing_return_type: expected type sty {:?}", ty.sty);
+                if ty.sty == expected.sty {
+                    let quote = if let TypeVariants::TyTuple(ref slice, _) = expected.sty {
+                        if slice.len() == 0 {  // don't use backtics for ()
+                            ""
+                        } else {
+                            "`"
+                        }
+                    } else {
+                        "`"
+                    };
+                    err.span_label(sp, format!("expected {}{}{} because of return type",
+                                               quote,
+                                               expected,
+                                               quote));
+                }
             }
         }
     }
