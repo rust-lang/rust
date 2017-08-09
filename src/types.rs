@@ -241,6 +241,7 @@ fn rewrite_segment(
                     |seg| seg.rewrite(context, generics_shape),
                     list_lo,
                     span_hi,
+                    false,
                 );
                 let generics_str = try_opt!(format_generics_item_list(
                     context,
@@ -344,6 +345,7 @@ where
         },
         list_lo,
         span.hi,
+        false,
     );
 
     let item_vec: Vec<_> = items.collect();
@@ -553,10 +555,7 @@ impl Rewrite for ast::TyParamBound {
                 let budget = try_opt!(shape.width.checked_sub(1));
                 Some(format!(
                     "?{}",
-                    try_opt!(tref.rewrite(
-                        context,
-                        Shape::legacy(budget, shape.indent + 1),
-                    ))
+                    try_opt!(tref.rewrite(context, Shape::legacy(budget, shape.indent + 1)))
                 ))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => l.rewrite(context, shape),
@@ -609,10 +608,8 @@ impl Rewrite for ast::TyParam {
             };
             result.push_str(eq_str);
             let budget = try_opt!(shape.width.checked_sub(result.len()));
-            let rewrite = try_opt!(def.rewrite(
-                context,
-                Shape::legacy(budget, shape.indent + result.len()),
-            ));
+            let rewrite =
+                try_opt!(def.rewrite(context, Shape::legacy(budget, shape.indent + result.len())));
             result.push_str(&rewrite);
         }
 

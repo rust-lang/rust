@@ -454,6 +454,7 @@ where
     prev_span_end: BytePos,
     next_span_start: BytePos,
     terminator: &'a str,
+    leave_last: bool,
 }
 
 impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
@@ -592,7 +593,11 @@ where
             ListItem {
                 pre_comment: pre_comment,
                 pre_comment_style: pre_comment_style,
-                item: (self.get_item_string)(&item),
+                item: if self.inner.peek().is_none() && self.leave_last {
+                    None
+                } else {
+                    (self.get_item_string)(&item)
+                },
                 post_comment: post_comment,
                 new_lines: new_lines,
             }
@@ -610,6 +615,7 @@ pub fn itemize_list<'a, T, I, F1, F2, F3>(
     get_item_string: F3,
     prev_span_end: BytePos,
     next_span_start: BytePos,
+    leave_last: bool,
 ) -> ListItems<'a, I, F1, F2, F3>
 where
     I: Iterator<Item = T>,
@@ -626,6 +632,7 @@ where
         prev_span_end: prev_span_end,
         next_span_start: next_span_start,
         terminator: terminator,
+        leave_last: leave_last,
     }
 }
 

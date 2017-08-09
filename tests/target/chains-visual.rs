@@ -32,15 +32,14 @@ fn main() {
         x
     });
 
-    some_fuuuuuuuuunction()
-        .method_call_a(aaaaa, bbbbb, |c| {
-            let x = c;
-            x
-        })
-        .method_call_b(aaaaa, bbbbb, |c| {
-            let x = c;
-            x
-        });
+    some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
+        let x = c;
+        x
+    })
+                           .method_call_b(aaaaa, bbbbb, |c| {
+        let x = c;
+        x
+    });
 
     fffffffffffffffffffffffffffffffffff(a, {
         SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
@@ -67,16 +66,14 @@ fn floaters() {
     let x = Foo {
                 field1: val1,
                 field2: val2,
-            }
-            .method_call()
+            }.method_call()
             .method_call();
 
     let y = if cond {
                 val1
             } else {
                 val2
-            }
-            .method_call();
+            }.method_call();
 
     {
         match x {
@@ -86,8 +83,7 @@ fn floaters() {
                     mparams[match cur.to_digit(10) {
                                 Some(d) => d as usize - 1,
                                 None => return Err("bad param number".to_owned()),
-                            }]
-                    .clone(),
+                            }].clone(),
                 );
             }
         }
@@ -97,22 +93,19 @@ fn floaters() {
         some();
     } else {
         none();
-    }
-    .bar()
+    }.bar()
     .baz();
 
-    Foo { x: val }
-        .baz(|| {
-            force();
-            multiline();
-        })
-        .quux();
+    Foo { x: val }.baz(|| {
+        force();
+        multiline();
+    })
+                  .quux();
 
     Foo {
         y: i_am_multi_line,
         z: ok,
-    }
-    .baz(|| {
+    }.baz(|| {
         force();
         multiline();
     })
@@ -121,8 +114,7 @@ fn floaters() {
     a + match x {
             true => "yay!",
             false => "boo!",
-        }
-        .bar()
+        }.bar()
 }
 
 fn is_replaced_content() -> bool {
@@ -137,33 +129,30 @@ fn issue587() {
 }
 
 fn issue_1389() {
-    let names = String::from_utf8(names)?
-        .split('|')
-        .map(str::to_owned)
-        .collect();
+    let names = String::from_utf8(names)?.split('|')
+                                         .map(str::to_owned)
+                                         .collect();
 }
 
 fn issue1217() -> Result<Mnemonic, Error> {
-    let random_chars: String = OsRng::new()?
-        .gen_ascii_chars()
-        .take(self.bit_length)
-        .collect();
+    let random_chars: String = OsRng::new()?.gen_ascii_chars()
+                                            .take(self.bit_length)
+                                            .collect();
 
     Ok(Mnemonic::new(&random_chars))
 }
 
 fn issue1236(options: Vec<String>) -> Result<Option<String>> {
-    let process = Command::new("dmenu")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .chain_err(|| "failed to spawn dmenu")?;
+    let process = Command::new("dmenu").stdin(Stdio::piped())
+                                       .stdout(Stdio::piped())
+                                       .spawn()
+                                       .chain_err(|| "failed to spawn dmenu")?;
 }
 
 fn issue1434() {
     for _ in 0..100 {
-        let prototype_id = PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor)
-            .chain_err(|| {
+        let prototype_id =
+            PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor).chain_err(|| {
                 format!(
                     "could not read prototype ID at offset {:#010x}",
                     current_offset

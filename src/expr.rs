@@ -466,6 +466,7 @@ where
         |item| item.rewrite(context, nested_shape),
         span.lo,
         span.hi,
+        false,
     ).collect::<Vec<_>>();
 
     if items.is_empty() {
@@ -587,6 +588,7 @@ fn rewrite_closure_fn_decl(
         |arg| arg.rewrite(context, arg_shape),
         context.codemap.span_after(span, "|"),
         body.span.lo,
+        false,
     );
     let item_vec = arg_items.collect::<Vec<_>>();
     // 1 = space between arguments and return type.
@@ -1130,10 +1132,7 @@ impl<'a> ControlFlow<'a> {
 
             let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
             let expr = &self.block.stmts[0];
-            let if_str = try_opt!(expr.rewrite(
-                context,
-                Shape::legacy(new_width, Indent::empty()),
-            ));
+            let if_str = try_opt!(expr.rewrite(context, Shape::legacy(new_width, Indent::empty())));
 
             let new_width = try_opt!(new_width.checked_sub(if_str.len()));
             let else_expr = &else_node.stmts[0];
@@ -1246,14 +1245,12 @@ impl<'a> ControlFlow<'a> {
         // for event in event
         let between_kwd_cond = mk_sp(
             context.codemap.span_after(self.span, self.keyword.trim()),
-            self.pat.map_or(
-                cond_span.lo,
-                |p| if self.matcher.is_empty() {
+            self.pat
+                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
                     p.span.lo
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
-                },
-            ),
+                }),
         );
 
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
@@ -2194,6 +2191,7 @@ where
         |item| item.rewrite(context, shape),
         span.lo,
         span.hi,
+        true,
     );
     let mut item_vec: Vec<_> = items.collect();
 
@@ -2245,7 +2243,7 @@ where
 
     // Replace the last item with its first line to see if it fits with
     // first arguments.
-    let (orig_last, placeholder) = if overflow_last {
+    let placeholder = if overflow_last {
         let mut context = context.clone();
         if let Some(expr) = args[args.len() - 1].to_expr() {
             match expr.node {
@@ -2253,20 +2251,14 @@ where
                 _ => (),
             }
         }
-        last_arg_shape(&context, &item_vec, shape, args_max_width)
-            .map_or((None, None), |arg_shape| {
-                rewrite_last_arg_with_overflow(
-                    &context,
-                    args,
-                    &mut item_vec[args.len() - 1],
-                    arg_shape,
-                )
-            })
+        last_arg_shape(&context, &item_vec, shape, args_max_width).and_then(|arg_shape| {
+            rewrite_last_arg_with_overflow(&context, args, &mut item_vec[args.len() - 1], arg_shape)
+        })
     } else {
-        (None, None)
+        None
     };
 
-    let tactic = definitive_tactic(
+    let mut tactic = definitive_tactic(
         &*item_vec,
         ListTactic::LimitedHorizontalVertical(args_max_width),
         Separator::Comma,
@@ -2279,10 +2271,17 @@ where
         (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
             item_vec[args.len() - 1].item = placeholder;
         }
-        (true, _, _) => {
-            item_vec[args.len() - 1].item = orig_last;
+        _ if args.len() >= 1 => {
+            item_vec[args.len() - 1].item = args.last()
+                .and_then(|last_arg| last_arg.rewrite(context, shape));
+            tactic = definitive_tactic(
+                &*item_vec,
+                ListTactic::LimitedHorizontalVertical(args_max_width),
+                Separator::Comma,
+                one_line_width,
+            );
         }
-        (false, _, _) => {}
+        _ => (),
     }
 
     tactic
@@ -2357,7 +2356,7 @@ fn rewrite_last_arg_with_overflow<'a, T>(
     args: &[&T],
     last_item: &mut ListItem,
     shape: Shape,
-) -> (Option<String>, Option<String>)
+) -> Option<String>
 where
     T: Rewrite + Spanned + ToExpr + 'a,
 {
@@ -2388,14 +2387,13 @@ where
     } else {
         last_arg.rewrite(context, shape)
     };
-    let orig_last = last_item.item.clone();
 
     if let Some(rewrite) = rewrite {
         let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
         last_item.item = rewrite_first_line;
-        (orig_last, Some(rewrite))
+        Some(rewrite)
     } else {
-        (orig_last, None)
+        None
     }
 }
 
@@ -2653,6 +2651,7 @@ fn rewrite_struct_lit<'a>(
             rewrite,
             body_lo,
             span.hi,
+            false,
         );
         let item_vec = items.collect::<Vec<_>>();
 
@@ -2805,6 +2804,7 @@ where
         |item| item.rewrite(context, nested_shape),
         list_lo,
         span.hi - BytePos(1),
+        false,
     );
     let item_vec: Vec<_> = items.collect();
     let tactic = definitive_tactic(

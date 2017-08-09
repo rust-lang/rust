@@ -162,6 +162,7 @@ fn rewrite_struct_pat(
         |f| f.node.rewrite(context, v_shape),
         context.codemap.span_after(span, "{"),
         span.hi,
+        false,
     );
     let item_vec = items.collect::<Vec<_>>();
 
@@ -342,6 +343,7 @@ fn count_wildcard_suffix_len(
         |item| item.rewrite(context, shape),
         context.codemap.span_after(span, "("),
         span.hi - BytePos(1),
+        false,
     ).collect();
 
     for item in items.iter().rev().take_while(|i| match i.item {

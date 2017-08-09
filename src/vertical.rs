@@ -174,13 +174,13 @@ fn struct_field_preix_max_min_width<T: AlignedItem>(
     fields
         .iter()
         .map(|field| {
-            field.rewrite_prefix(context, shape).and_then(
-                |field_str| if field_str.contains('\n') {
+            field
+                .rewrite_prefix(context, shape)
+                .and_then(|field_str| if field_str.contains('\n') {
                     None
                 } else {
                     Some(field_str.len())
-                },
-            )
+                })
         })
         .fold(Some((0, ::std::usize::MAX)), |acc, len| match (acc, len) {
             (Some((max_len, min_len)), Some(len)) => {
@@ -219,6 +219,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),
         span.lo,
         span.hi,
+        false,
     ).collect::<Vec<_>>();
 
     let tactic = definitive_tactic(
