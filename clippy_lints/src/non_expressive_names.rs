@@ -104,26 +104,7 @@ fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
 }
 
 fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
-    if list.iter().any(|&name| interned_name == name) {
-        return true;
-    }
-    for name in list {
-        // name_*
-        if interned_name.chars().zip(name.chars()).all(|(l, r)| l == r) {
-            return true;
-        }
-        // *_name
-        if interned_name.chars().rev().zip(name.chars().rev()).all(
-            |(l,
-              r)| {
-                l == r
-            },
-        )
-        {
-            return true;
-        }
-    }
-    false
+    list.iter().any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
 }
 
 impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
@@ -180,19 +161,19 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                 let first_e = existing_chars.next().expect(
                     "we know we have at least one char",
                 );
-                let eq_or_numeric = |a: char, b: char| a == b || a.is_numeric() && b.is_numeric();
+                let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
 
-                if eq_or_numeric(first_i, first_e) {
+                if eq_or_numeric((first_i, first_e)) {
                     let last_i = interned_chars.next_back().expect(
                         "we know we have at least two chars",
                     );
                     let last_e = existing_chars.next_back().expect(
                         "we know we have at least two chars",
                     );
-                    if eq_or_numeric(last_i, last_e) {
+                    if eq_or_numeric((last_i, last_e)) {
                         if interned_chars
                             .zip(existing_chars)
-                            .filter(|&(i, e)| !eq_or_numeric(i, e))
+                            .filter(|&ie| !eq_or_numeric(ie))
                             .count() != 1
                         {
                             continue;
@@ -204,10 +185,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         let second_last_e = existing_chars.next_back().expect(
                             "we know we have at least three chars",
                         );
-                        if !eq_or_numeric(second_last_i, second_last_e) || second_last_i == '_' ||
-                            !interned_chars.zip(existing_chars).all(|(i, e)| {
-                                eq_or_numeric(i, e)
-                            })
+                        if !eq_or_numeric((second_last_i, second_last_e)) || second_last_i == '_' ||
+                            !interned_chars.zip(existing_chars).all(eq_or_numeric)
                         {
                             // allowed similarity foo_x, foo_y
                             // or too many chars differ (foo_x, boo_y) or (foox, booy)
@@ -222,10 +201,8 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                     let second_e = existing_chars.next().expect(
                         "we know we have at least two chars",
                     );
-                    if !eq_or_numeric(second_i, second_e) || second_i == '_' ||
-                        !interned_chars.zip(existing_chars).all(|(i, e)| {
-                            eq_or_numeric(i, e)
-                        })
+                    if !eq_or_numeric((second_i, second_e)) || second_i == '_' ||
+                        !interned_chars.zip(existing_chars).all(eq_or_numeric)
                     {
                         // allowed similarity x_foo, y_foo
                         // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)

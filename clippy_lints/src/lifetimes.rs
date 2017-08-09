@@ -192,10 +192,10 @@ fn could_use_elision<'a, 'tcx: 'a>(
         // no output lifetimes, check distinctness of input lifetimes
 
         // only unnamed and static, ok
-        if input_lts.iter().all(|lt| {
+        let unnamed_and_static = input_lts.iter().all(|lt| {
             *lt == RefLt::Unnamed || *lt == RefLt::Static
-        })
-        {
+        });
+        if unnamed_and_static {
             return false;
         }
         // we have no output reference, so we only need all distinct lifetimes
