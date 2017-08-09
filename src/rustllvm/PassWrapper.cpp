@@ -278,10 +278,12 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
     return Reloc::RWPI;
   case LLVMRustRelocMode::ROPIRWPI:
     return Reloc::ROPI_RWPI;
-#endif
+#else
   default:
-    llvm_unreachable("Bad RelocModel.");
+    break;
+#endif
   }
+  llvm_unreachable("Bad RelocModel.");
 }
 
 #if LLVM_RUSTLLVM
