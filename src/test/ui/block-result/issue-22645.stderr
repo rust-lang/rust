@@ -12,7 +12,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-22645.rs:25:3
    |
 23 | fn main() {
-   |           - expected () because of default return type
+   |           - expected `()` because of default return type
 24 |   let b = Bob + 3.5;
 25 |   b + 3 //~ ERROR E0277
    |   ^^^^^ expected (), found struct `Bob`

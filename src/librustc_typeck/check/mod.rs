@@ -95,7 +95,7 @@ use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
-use rustc::ty::{self, Ty, TyCtxt, Visibility, TypeVariants};
+use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
@@ -4315,7 +4315,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             (&hir::FunctionRetTy::DefaultReturn(span), _, _) => {
                 // `fn main()` must return `()`, do not suggest changing return type
-                err.span_label(span, "expected () because of default return type");
+                err.span_label(span, "expected `()` because of default return type");
             }
             (&hir::FunctionRetTy::Return(ref ty), _, _) => {
                 // Only point to return type if the expected type is the return type, as if they
@@ -4326,19 +4326,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 debug!("suggest_missing_return_type: return type sty {:?}", ty.sty);
                 debug!("suggest_missing_return_type: expected type sty {:?}", ty.sty);
                 if ty.sty == expected.sty {
-                    let quote = if let TypeVariants::TyTuple(ref slice, _) = expected.sty {
-                        if slice.len() == 0 {  // don't use backtics for ()
-                            ""
-                        } else {
-                            "`"
-                        }
-                    } else {
-                        "`"
-                    };
-                    err.span_label(sp, format!("expected {}{}{} because of return type",
-                                               quote,
-                                               expected,
-                                               quote));
+                    err.span_label(sp, format!("expected `{}` because of return type",
+                                               expected));
                 }
             }
         }
