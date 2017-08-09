@@ -558,6 +558,8 @@ create_config! {
                                             exceeds `chain_one_line_max`";
     imports_indent: IndentStyle, IndentStyle::Visual, "Indent of imports";
     imports_layout: ListTactic, ListTactic::Mixed, "Item layout inside a import block";
+    reorder_extern_crates: bool, true, "Reorder extern crate statements alphabetically";
+    reorder_extern_crates_in_group: bool, true, "Reorder extern crate statements in group";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imports_in_group: bool, false, "Reorder import statements in group";
     reorder_imported_names: bool, true,

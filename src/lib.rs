@@ -10,23 +10,19 @@
 
 #![feature(rustc_private)]
 
+extern crate diff;
 #[macro_use]
 extern crate log;
-
+extern crate regex;
+extern crate rustc_errors as errors;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-
-extern crate syntax;
-extern crate rustc_errors as errors;
-
 extern crate strings;
-
-extern crate unicode_segmentation;
-extern crate regex;
-extern crate diff;
+extern crate syntax;
 extern crate term;
+extern crate unicode_segmentation;
 
 use std::collections::HashMap;
 use std::fmt;

@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustfmt_nightly as rustfmt;
 extern crate diff;
 extern crate regex;
+extern crate rustfmt_nightly as rustfmt;
 extern crate term;
 
 use std::collections::HashMap;

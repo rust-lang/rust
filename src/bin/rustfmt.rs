@@ -11,11 +11,11 @@
 #![cfg(not(test))]
 
 
+extern crate env_logger;
+extern crate getopts;
 extern crate log;
 extern crate rustfmt_nightly as rustfmt;
 extern crate toml;
-extern crate env_logger;
-extern crate getopts;
 
 use std::{env, error};
 use std::fs::File;
