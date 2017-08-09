@@ -95,10 +95,8 @@ fn check_hash_peq<'a, 'tcx>(
         match_path_old(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
-        let peq_trait_def = cx.tcx.trait_def(peq_trait_def_id);
-
         // Look for the PartialEq implementations for `ty`
-        peq_trait_def.for_each_relevant_impl(cx.tcx, ty, |impl_id| {
+        cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
             let peq_is_automatically_derived = is_automatically_derived(&cx.tcx.get_attrs(impl_id));
 
             if peq_is_automatically_derived == hash_is_automatically_derived {
