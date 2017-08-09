@@ -491,6 +491,7 @@ impl<'tcx> TyS<'tcx> {
             TypeVariants::TyFnPtr(..) |
             TypeVariants::TyDynamic(..) |
             TypeVariants::TyClosure(..) |
+            TypeVariants::TyInfer(..) |
             TypeVariants::TyProjection(..) => false,
             _ => true,
         }
