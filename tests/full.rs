@@ -63,8 +63,8 @@ macro_rules! full_test {
                 .args(&["semver", "-S", &old_version, "-C", &new_version])
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
-                .stdout(out_pipe)
-                .stderr(err_pipe)
+                // .stdout(out_pipe)
+                // .stderr(err_pipe)
                 .status()
                 .expect("could not run cargo semver")
                 .success();

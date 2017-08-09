@@ -3,6 +3,7 @@
 
 extern crate cargo;
 extern crate crates_io;
+extern crate env_logger;
 extern crate getopts;
 
 use crates_io::{Crate, Registry};
@@ -10,7 +11,6 @@ use crates_io::{Crate, Registry};
 use cargo::exit_with_error;
 use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
 use cargo::ops::{compile, CompileMode, CompileOptions};
-use cargo::sources::registry::RegistrySource;
 use cargo::util::{human, CargoError, CargoResult, CliError};
 use cargo::util::config::Config;
 use cargo::util::important_paths::find_root_manifest_for_wd;
@@ -51,18 +51,18 @@ struct NameAndVersion<'a> {
 struct SourceInfo<'a> {
     /// The source id to be used.
     id: SourceId,
-    /// The registry to be used.
-    registry: RegistrySource<'a>,
+    /// The source to be used.
+    source: Box<Source + 'a>,
 }
 
 impl<'a> SourceInfo<'a> {
     /// Construct a new source info for `crates.io`.
     fn new(config: &'a Config) -> CargoResult<SourceInfo<'a>> {
         let source_id = SourceId::crates_io(config)?;
-        let registry = RegistrySource::remote(&source_id, config);
+        let source = source_id.load(config);
         Ok(SourceInfo {
             id: source_id,
-            registry: registry,
+            source: source,
         })
     }
 }
@@ -98,7 +98,7 @@ impl<'a> WorkInfo<'a> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
-        let package = source.registry.download(&package_id)?;
+        let package = source.source.download(&package_id)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
         Ok(WorkInfo {
@@ -235,6 +235,12 @@ fn version() {
 fn main() {
     fn err(config: &Config, e: Box<CargoError>) -> ! {
         exit_with_error(CliError::new(e, 1), &mut config.shell());
+    }
+
+    ::std::env::set_var("RUST_LOG", "debug");
+
+    if env_logger::init().is_err() {
+        eprintln!("ERROR: could not initialize logger");
     }
 
     let args: Vec<String> = std::env::args().skip(1).collect();
