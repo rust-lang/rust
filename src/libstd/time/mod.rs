@@ -36,7 +36,7 @@ mod duration;
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
 ///
-/// Instants are always guaranteed to no less than any previously measured
+/// Instants are always guaranteed to be no less than any previously measured
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
