@@ -93,9 +93,9 @@ Cargo
 -----
 - [Cargo API token location moved from `~/.cargo/config` to
   `~/cargo/credentials`.][cargo/3978]
-- [Cargo will now build multiple `main.rs` binaries in different
-  directories.][cargo/4214] ie. Having `src/server/main.rs` and
-  `src/client/main.rs` generates `target/debug/server` and `target/debug/client`
+- [Cargo will now build `main.rs` binaries that are in sub-directories of
+  `src/bin`.][cargo/4214] ie. Having `src/bin/server/main.rs` and
+  `src/bin/client/main.rs` generates `target/debug/server` and `target/debug/client`
 - [You can now specify version of a binary when installed through
   `cargo install` using `--vers`.][cargo/4229]
 - [Added `--no-fail-fast` flag to cargo to run all benchmarks regardless of
