@@ -898,7 +898,7 @@ implement the two functions, otherwise the code will become very bloated after a
 
 Many alternatives have been proposed before but failed to satisfy the restrictions laid out in the
 [Rationale](#rationale) subsection, thus should *not* be considered viable alternatives within this
-RFC.
+RFC, at least at the time being.
 
 ### Macros
 
@@ -922,17 +922,33 @@ macros~~.
 
 ### Backtrace
 
-When given debug information (DWARF section on Linux, `*.pdb` file on Windows, `*.dSYM` folder on
-macOS), the program is able to obtain the source code location for each address. This solution is
+When given debug information (DWARF section/file on Linux, `*.pdb` file on Windows, `*.dSYM` folder
+on macOS), the program is able to obtain the source code location for each address. This solution is
 often used in runtime-heavy languages like Python, Java and [Go].
 
 For Rust, however:
 
 * The debug information is usually not provided in release mode.
-* Normal inlining will make the caller information inaccurate.
-* Issues [24346]  (*Backtrace does not include file and line number on non-Linux platforms*) and
-    [42295]  (*Slow backtrace on panic*) and are still not entirely fixed.
-* Backtrace may be disabled in resource-constrained environment.
+
+    In particular, `cargo` defaults to disabling debug symbols in release mode (this default can
+    certainly be changed). `rustc` itself is tested in CI and distributed in release mode, so
+    getting a usable location in release mode is a real concern (see also [RFC 1417] for why it was
+    disabled in the official distribution in the first place).
+
+    Even if this is generated, the debug symbols are generally not distributed to end-users, which
+    means the error reports will only contain numerical addresses. This can be seen as a benefit, as
+    the implementation detail won't be exposed. But how to submit/analyze an error report would be
+    out-of-scope for this RFC.
+
+* There are multiple issues preventing us to rely on debug info nowadays.
+
+    Issues [24346]  (*Backtrace does not include file and line number on non-Linux platforms*) and
+    [42295]  (*Slow backtrace on panic*) and are still not entirely fixed. Even after the debuginfo
+    is properly handled, if we decide not to expose the whole the full stacktrace, we may still need
+    to reopen pull request [40264]  (*Ignore more frames on backtrace unwinding*).
+
+    These signal that debuginfo support is not reliable enough if we want to solve the unwrap/expect
+    issue now.
 
 These drawbacks are the main reason why restriction 3 "debug-info independence" is added to the
 motivation.
@@ -954,6 +970,8 @@ Unfortunately this violates restriction 4 "interface independence". This solutio
 `HashMap::index` as this will require a change of the method signature of `index()` which has been
 stabilized. Methods applying this solution will also lose object-safety.
 
+The same drawback exists if we base the solution on [RFC 2000]  (*const generics*).
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
@@ -972,6 +990,9 @@ stabilized. Methods applying this solution will also lose object-safety.
 [RFC issue 1744]: https://github.com/rust-lang/rfcs/issues/1744
 [RFC issue 323]: https://github.com/rust-lang/rfcs/issues/323
 [RFC 2070]: https://github.com/rust-lang/rfcs/pull/2070
+[RFC 2000]: https://github.com/rust-lang/rfcs/pull/2000
+[40264]: https://github.com/rust-lang/rust/issues/40264
+[RFC 1417]: https://github.com/rust-lang/rfcs/issues/1417
 
 [a]: https://internals.rust-lang.org/t/rfrfc-better-option-result-error-messages/2904
 [b]: https://internals.rust-lang.org/t/line-info-for-unwrap-expect/3753
