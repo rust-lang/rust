@@ -1,0 +1,14 @@
+warning: unused return value of `need_to_use_this_value` which must be used: it's important
+  --> $DIR/fn_must_use.rs:29:5
+   |
+29 |     need_to_use_this_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unused_must_use)] on by default
+
+warning: unused return value of `MyStruct::need_to_use_this_method_value` which must be used
+  --> $DIR/fn_must_use.rs:32:5
+   |
+32 |     m.need_to_use_this_method_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

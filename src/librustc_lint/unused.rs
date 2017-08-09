@@ -145,22 +145,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let t = cx.tables.expr_ty(&expr);
-        let warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
-            ty::TyNever => return,
-            ty::TyBool => return,
-            ty::TyAdt(def, _) => check_must_use(cx, def.did, s.span),
+        let ty_warned = match t.sty {
+            ty::TyAdt(def, _) => check_must_use(cx, def.did, s.span, ""),
             _ => false,
         };
-        if !warned {
+
+        let mut fn_warned = false;
+        let maybe_def = match expr.node {
+            hir::ExprCall(ref callee, _) => {
+                match callee.node {
+                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.id)),
+                    _ => None
+                }
+            },
+            hir::ExprMethodCall(..) => {
+                cx.tables.type_dependent_defs.get(&expr.id).cloned()
+            },
+            _ => { None }
+        };
+        if let Some(def) = maybe_def {
+            let def_id = def.def_id();
+            fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+        }
+
+        if !(ty_warned || fn_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span) -> bool {
+        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span, describe_path: &str) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let mut msg = format!("unused `{}` which must be used",
-                                          cx.tcx.item_path_str(def_id));
+                    let mut msg = format!("unused {}`{}` which must be used",
+                                          describe_path, cx.tcx.item_path_str(def_id));
                     // check for #[must_use="..."]
                     if let Some(s) = attr.value_str() {
                         msg.push_str(": ");
