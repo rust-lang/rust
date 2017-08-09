@@ -296,6 +296,12 @@ able to rely on documentation for the underlying interface. Furthermore,
 binding generators would not have any basis on which to generate a meaningful
 name.
 
+We cannot implement this feature as a macro, because it affects the names used
+to reference the fields contained within an unnamed field. A macro could
+extract and define types for the unnamed fields, but that macro would have to
+give a name to those unnamed fields, and accesses would have to include the
+intermediate name.
+
 Several alternative syntaxes could exist to designate the equivalent of
 `struct` and `union`. Such syntaxes would declare the same underlying types.
 However, inventing a novel syntax for this mechanism would make it less
