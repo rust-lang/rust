@@ -23,4 +23,15 @@ fn main() {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
+
+    let mut foo = xcrate::bar(3);
+
+    match foo.resume() {
+        GeneratorState::Yielded(4) => {}
+        s => panic!("bad state: {:?}", s),
+    }
+    match foo.resume() {
+        GeneratorState::Complete(()) => {}
+        s => panic!("bad state: {:?}", s),
+    }
 }
