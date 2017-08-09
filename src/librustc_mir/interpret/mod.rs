@@ -33,12 +33,12 @@ pub use self::eval_context::{
     StackPopCleanup,
     DynamicLifetime,
     TyAndPacked,
+    PtrAndAlign,
 };
 
 pub use self::lvalue::{
     Lvalue,
     LvalueExtra,
-    Global,
     GlobalId,
 };
 
@@ -46,7 +46,7 @@ pub use self::memory::{
     AllocId,
     Memory,
     MemoryPointer,
-    Kind,
+    MemoryKind,
     HasMemory,
 };
 

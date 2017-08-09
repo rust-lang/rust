@@ -13,10 +13,9 @@ use rustc::ty::subst::Substs;
 
 use super::{
     EvalResult,
-    EvalContext, StackPopCleanup, TyAndPacked,
-    Global, GlobalId, Lvalue,
-    Value, PrimVal,
-    HasMemory,
+    EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign,
+    GlobalId, Lvalue,
+    HasMemory, MemoryKind,
     Machine,
 };
 
@@ -179,11 +178,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         if self.tcx.has_attr(def_id, "linkage") {
             // FIXME: check that it's `#[linkage = "extern_weak"]`
             trace!("Initializing an extern global with NULL");
-            self.globals.insert(cid, Global::initialized(self.tcx.type_of(def_id), Value::ByVal(PrimVal::Bytes(0)), mutability));
+            let ptr_size = self.memory.pointer_size();
+            let ptr = self.memory.allocate(ptr_size, ptr_size, MemoryKind::UninitializedStatic)?;
+            self.memory.write_usize(ptr, 0)?;
+            self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
+            self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned: true });
             return Ok(false);
         }
         let mir = self.load_mir(instance.def)?;
-        self.globals.insert(cid, Global::uninitialized(mir.return_ty));
+        let size = self.type_size_with_substs(mir.return_ty, substs)?.expect("unsized global");
+        let align = self.type_align_with_substs(mir.return_ty, substs)?;
+        let ptr = self.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
+        let aligned = !self.is_packed(mir.return_ty)?;
+        self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let internally_mutable = !mir.return_ty.is_freeze(
                 self.tcx,
                 ty::ParamEnv::empty(Reveal::All),
@@ -200,7 +207,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             instance,
             span,
             mir,
-            Lvalue::Global(cid),
+            Lvalue::from_ptr(ptr),
             cleanup,
         )?;
         Ok(true)
@@ -256,13 +263,16 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                 }
                 let mir = &self.mir.promoted[index];
                 self.try(|this| {
-                    let ty = this.ecx.monomorphize(mir.return_ty, this.instance.substs);
-                    this.ecx.globals.insert(cid, Global::uninitialized(ty));
+                    let size = this.ecx.type_size_with_substs(mir.return_ty, this.instance.substs)?.expect("unsized global");
+                    let align = this.ecx.type_align_with_substs(mir.return_ty, this.instance.substs)?;
+                    let ptr = this.ecx.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
+                    let aligned = !this.ecx.is_packed(mir.return_ty)?;
+                    this.ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
                     trace!("pushing stack frame for {:?}", index);
                     this.ecx.push_stack_frame(this.instance,
                                               constant.span,
                                               mir,
-                                              Lvalue::Global(cid),
+                                              Lvalue::from_ptr(ptr),
                                               StackPopCleanup::MarkStatic(Mutability::Immutable),
                     )?;
                     Ok(true)

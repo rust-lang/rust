@@ -16,7 +16,7 @@ use super::{
     Machine,
 };
 
-pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue<'tcx>>;
+pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
 
 #[derive(Copy, Clone, Debug)]
 enum ValidationMode {
@@ -213,7 +213,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
         if is_owning {
             match query.lval {
-                Lvalue::Ptr { ptr, extra, aligned: _ } => {
+                Lvalue::Ptr { ptr, extra } => {
                     // Determine the size
                     // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
                     let len = match self.type_size(query.ty)? {
@@ -242,8 +242,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
                 }
-                Lvalue::Local { .. } | Lvalue::Global(..) => {
-                    // These are not backed by memory, so we have nothing to do.
+                Lvalue::Local { .. }  => {
+                    // Not backed by memory, so we have nothing to do.
                 }
             }
         }

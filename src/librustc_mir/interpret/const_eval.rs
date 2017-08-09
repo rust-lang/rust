@@ -7,9 +7,10 @@ use syntax::codemap::Span;
 
 use super::{
     EvalResult, EvalError, EvalErrorKind,
-    Global, GlobalId, Lvalue,
+    GlobalId, Lvalue, Value,
     PrimVal,
-    EvalContext, StackPopCleanup,
+    EvalContext, StackPopCleanup, PtrAndAlign,
+    MemoryKind,
 };
 
 use rustc_const_math::ConstInt;
@@ -30,7 +31,11 @@ pub fn eval_body_as_primval<'a, 'tcx>(
     
     let mir = ecx.load_mir(instance.def)?;
     if !ecx.globals.contains_key(&cid) {
-        ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
+        let size = ecx.type_size_with_substs(mir.return_ty, instance.substs)?.expect("unsized global");
+        let align = ecx.type_align_with_substs(mir.return_ty, instance.substs)?;
+        let ptr = ecx.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
+        let aligned = !ecx.is_packed(mir.return_ty)?;
+        ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let mutable = !mir.return_ty.is_freeze(
                 ecx.tcx,
                 ty::ParamEnv::empty(Reveal::All),
@@ -42,18 +47,18 @@ pub fn eval_body_as_primval<'a, 'tcx>(
         };
         let cleanup = StackPopCleanup::MarkStatic(mutability);
         let name = ty::tls::with(|tcx| tcx.item_path_str(instance.def_id()));
-        trace!("pushing stack frame for global: {}", name);
+        trace!("const_eval: pushing stack frame for global: {}", name);
         ecx.push_stack_frame(
             instance,
             mir.span,
             mir,
-            Lvalue::Global(cid),
+            Lvalue::from_ptr(ptr),
             cleanup,
         )?;
 
         while ecx.step()? {}
     }
-    let value = ecx.globals.get(&cid).expect("global not cached").value;
+    let value = Value::ByRef(*ecx.globals.get(&cid).expect("global not cached"));
     Ok((ecx.value_to_primval(value, mir.return_ty)?, mir.return_ty))
 }
 
@@ -132,7 +137,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         _arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         _sig: ty::FnSig<'tcx>,
@@ -168,7 +173,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         _ecx: &mut EvalContext<'a, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[mir::Operand<'tcx>],
-        _dest: Lvalue<'tcx>,
+        _dest: Lvalue,
         _dest_ty: Ty<'tcx>,
         _dest_layout: &'tcx layout::Layout,
         _target: mir::BasicBlock,

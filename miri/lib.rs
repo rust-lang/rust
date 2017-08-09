@@ -71,7 +71,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             // Return value
             let size = ecx.tcx.data_layout.pointer_size.bytes();
             let align = ecx.tcx.data_layout.pointer_align.abi();
-            let ret_ptr = ecx.memory_mut().allocate(size, align, Kind::Stack)?;
+            let ret_ptr = ecx.memory_mut().allocate(size, align, MemoryKind::Stack)?;
             cleanup_ptr = Some(ret_ptr);
 
             // Push our stack frame
@@ -114,7 +114,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
         while ecx.step()? {}
         ecx.run_tls_dtors()?;
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory_mut().deallocate(cleanup_ptr, None, Kind::Stack)?;
+            ecx.memory_mut().deallocate(cleanup_ptr, None, MemoryKind::Stack)?;
         }
         Ok(())
     }
@@ -161,13 +161,13 @@ struct MemoryData<'tcx> {
 impl<'tcx> Machine<'tcx> for Evaluator {
     type Data = EvaluatorData;
     type MemoryData = MemoryData<'tcx>;
-    type MemoryKinds = memory::Kind;
+    type MemoryKinds = memory::MemoryKind;
 
     /// Returns Ok() when the function was handled, fail otherwise
     fn eval_fn_call<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        destination: Option<(Lvalue, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
@@ -179,7 +179,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: ty::Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
@@ -198,8 +198,8 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx.ptr_op(bin_op, left, left_ty, right, right_ty)
     }
 
-    fn mark_static_initialized(m: memory::Kind) -> EvalResult<'tcx> {
-        use memory::Kind::*;
+    fn mark_static_initialized(m: memory::MemoryKind) -> EvalResult<'tcx> {
+        use memory::MemoryKind::*;
         match m {
             // FIXME: This could be allowed, but not for env vars set during miri execution
             Env => err!(Unimplemented("statics can't refer to env vars".to_owned())),
@@ -218,7 +218,7 @@ impl<'tcx> Machine<'tcx> for Evaluator {
             Ok(PrimVal::Bytes(align.into()))
         } else {
             ecx.memory
-                .allocate(size, align, Kind::Machine(memory::Kind::Rust))
+                .allocate(size, align, MemoryKind::Machine(memory::MemoryKind::Rust))
                 .map(PrimVal::Ptr)
         }
     }

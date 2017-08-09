@@ -8,7 +8,7 @@ use rustc_miri::interpret::{
     Lvalue, LvalueExtra,
     PrimVal, PrimValKind, Value, Pointer,
     HasMemory,
-    EvalContext,
+    EvalContext, PtrAndAlign,
 };
 
 use helpers::EvalContextExt as HelperEvalContextExt;
@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
@@ -30,7 +30,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
-        dest: Lvalue<'tcx>,
+        dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_layout: &'tcx Layout,
         target: mir::BasicBlock,
@@ -266,10 +266,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let size = self.type_size(dest_ty)?.expect("cannot zero unsized value");
                 let init = |this: &mut Self, val: Value| {
                     let zero_val = match val {
-                        Value::ByRef { ptr, aligned } => {
+                        Value::ByRef(PtrAndAlign { ptr, .. }) => {
                             // These writes have no alignment restriction anyway.
                             this.memory.write_repeat(ptr, 0, size)?;
-                            Value::ByRef { ptr, aligned }
+                            val
                         },
                         // TODO(solson): Revisit this, it's fishy to check for Undef here.
                         Value::ByVal(PrimVal::Undef) => match this.ty_to_primval_kind(dest_ty) {
@@ -289,9 +289,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, init)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } => self.memory.write_repeat(ptr, 0, size)?,
+                    Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned: true }, extra: LvalueExtra::None } => self.memory.write_repeat(ptr, 0, size)?,
                     Lvalue::Ptr { .. } => bug!("init intrinsic tried to write to fat or unaligned ptr target"),
-                    Lvalue::Global(cid) => self.modify_global(cid, init)?,
                 }
             }
 
@@ -457,19 +456,18 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let size = dest_layout.size(&self.tcx.data_layout).bytes();
                 let uninit = |this: &mut Self, val: Value| {
                     match val {
-                        Value::ByRef { ptr, aligned } => {
+                        Value::ByRef(PtrAndAlign { ptr, .. }) => {
                             this.memory.mark_definedness(ptr, size, false)?;
-                            Ok(Value::ByRef { ptr, aligned })
+                            Ok(val)
                         },
                         _ => Ok(Value::ByVal(PrimVal::Undef)),
                     }
                 };
                 match dest {
                     Lvalue::Local { frame, local } => self.modify_local(frame, local, uninit)?,
-                    Lvalue::Ptr { ptr, extra: LvalueExtra::None, aligned: true } =>
+                    Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned: true }, extra: LvalueExtra::None } =>
                         self.memory.mark_definedness(ptr, size, false)?,
                     Lvalue::Ptr { .. } => bug!("uninit intrinsic tried to write to fat or unaligned ptr target"),
-                    Lvalue::Global(cid) => self.modify_global(cid, uninit)?,
                 }
             }
 

@@ -82,12 +82,55 @@ impl LockInfo {
 // Allocations and pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct AllocId(pub u64);
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct AllocId(u64);
+
+#[derive(Debug)]
+enum AllocIdKind {
+    /// We can't ever have more than `usize::max_value` functions at the same time
+    /// since we never "deallocate" functions
+    Function(usize),
+    /// Locals and heap allocations (also statics for now, but those will get their
+    /// own variant soonish).
+    Runtime(u64),
+}
+
+impl AllocIdKind {
+    fn into_alloc_id(self) -> AllocId {
+        match self {
+            AllocIdKind::Function(n) => AllocId(n as u64),
+            AllocIdKind::Runtime(n) => AllocId((1 << 63) | n),
+        }
+    }
+}
+
+impl AllocId {
+    /// Currently yields the top bit to discriminate the `AllocIdKind`s
+    fn discriminant(self) -> u64 {
+        self.0 >> 63
+    }
+    /// Yields everything but the discriminant bits
+    fn index(self) -> u64 {
+        self.0 & ((1 << 63) - 1)
+    }
+    fn into_alloc_id_kind(self) -> AllocIdKind {
+        match self.discriminant() {
+            0 => AllocIdKind::Function(self.index() as usize),
+            1 => AllocIdKind::Runtime(self.index()),
+            n => bug!("got discriminant {} for AllocId", n),
+        }
+    }
+}
 
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{:?}", self.into_alloc_id_kind())
+    }
+}
+
+impl fmt::Debug for AllocId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.into_alloc_id_kind())
     }
 }
 
@@ -108,7 +151,7 @@ pub struct Allocation<M> {
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
-    pub kind: Kind<M>,
+    pub kind: MemoryKind<M>,
     /// Memory regions that are locked by some function
     locks: RangeMap<LockInfo>,
 }
@@ -129,7 +172,7 @@ impl<M> Allocation<M> {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Kind<T> {
+pub enum MemoryKind<T> {
     /// Error if deallocated except during a stack pop
     Stack,
     /// Static in the process of being initialized.
@@ -186,16 +229,10 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     pub data: M::MemoryData,
 
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
-    alloc_map: HashMap<AllocId, Allocation<M::MemoryKinds>>,
+    alloc_map: HashMap<u64, Allocation<M::MemoryKinds>>,
 
-    /// The AllocId to assign to the next new allocation. Always incremented, never gets smaller.
-    next_id: AllocId,
-
-    /// Set of statics, constants, promoteds, vtables, ... to prevent `mark_static_initalized` from
-    /// stepping out of its own allocations. This set only contains statics backed by an
-    /// allocation. If they are ByVal or ByValPair they are not here, but will be inserted once
-    /// they become ByRef.
-    static_alloc: HashSet<AllocId>,
+    /// The AllocId to assign to the next new regular allocation. Always incremented, never gets smaller.
+    next_alloc_id: u64,
 
     /// Number of virtual bytes allocated.
     memory_usage: u64,
@@ -205,7 +242,7 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
 
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
-    functions: HashMap<AllocId, ty::Instance<'tcx>>,
+    functions: Vec<ty::Instance<'tcx>>,
 
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
     function_alloc_cache: HashMap<ty::Instance<'tcx>, AllocId>,
@@ -231,13 +268,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Memory {
             data,
             alloc_map: HashMap::new(),
-            functions: HashMap::new(),
+            functions: Vec::new(),
             function_alloc_cache: HashMap::new(),
-            next_id: AllocId(0),
+            next_alloc_id: 0,
             layout,
             memory_size: max_memory,
             memory_usage: 0,
-            static_alloc: HashSet::new(),
             literal_alloc_cache: HashMap::new(),
             reads_are_aligned: Cell::new(true),
             writes_are_aligned: Cell::new(true),
@@ -245,20 +281,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation<M::MemoryKinds>> {
-        self.alloc_map.iter()
+    pub fn allocations<'x>(&'x self) -> impl Iterator<Item = (AllocId, &'x Allocation<M::MemoryKinds>)> {
+        self.alloc_map.iter().map(|(&id, alloc)| (AllocIdKind::Runtime(id).into_alloc_id(), alloc))
     }
 
     pub fn create_fn_alloc(&mut self, instance: ty::Instance<'tcx>) -> MemoryPointer {
         if let Some(&alloc_id) = self.function_alloc_cache.get(&instance) {
             return MemoryPointer::new(alloc_id, 0);
         }
-        let id = self.next_id;
+        let id = self.functions.len();
         debug!("creating fn ptr: {}", id);
-        self.next_id.0 += 1;
-        self.functions.insert(id, instance);
-        self.function_alloc_cache.insert(instance, id);
-        MemoryPointer::new(id, 0)
+        self.functions.push(instance);
+        let alloc_id = AllocIdKind::Function(id).into_alloc_id();
+        self.function_alloc_cache.insert(instance, alloc_id);
+        MemoryPointer::new(alloc_id, 0)
     }
 
     pub fn allocate_cached(&mut self, bytes: &[u8]) -> EvalResult<'tcx, MemoryPointer> {
@@ -266,7 +302,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return Ok(MemoryPointer::new(alloc_id, 0));
         }
 
-        let ptr = self.allocate(bytes.len() as u64, 1, Kind::UninitializedStatic)?;
+        let ptr = self.allocate(bytes.len() as u64, 1, MemoryKind::UninitializedStatic)?;
         self.write_bytes(ptr.into(), bytes)?;
         self.mark_static_initalized(ptr.alloc_id, Mutability::Immutable)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
@@ -277,7 +313,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         size: u64,
         align: u64,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MemoryPointer> {
         assert_ne!(align, 0);
         assert!(align.is_power_of_two());
@@ -300,10 +336,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             mutable: Mutability::Mutable,
             locks: RangeMap::new(),
         };
-        let id = self.next_id;
-        self.next_id.0 += 1;
+        let id = self.next_alloc_id;
+        self.next_alloc_id += 1;
         self.alloc_map.insert(id, alloc);
-        Ok(MemoryPointer::new(id, 0))
+        Ok(MemoryPointer::new(AllocIdKind::Runtime(id).into_alloc_id(), 0))
     }
 
     pub fn reallocate(
@@ -313,7 +349,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         old_align: u64,
         new_size: u64,
         new_align: u64,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
@@ -338,13 +374,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         size_and_align: Option<(u64, u64)>,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
             return err!(DeallocateNonBasePtr);
         }
 
-        let alloc = match self.alloc_map.remove(&ptr.alloc_id) {
+        let alloc_id = match ptr.alloc_id.into_alloc_id_kind() {
+            AllocIdKind::Function(_) =>
+                return err!(DeallocatedWrongMemoryKind("function".to_string(), format!("{:?}", kind))),
+            AllocIdKind::Runtime(id) => id,
+        };
+
+        let alloc = match self.alloc_map.remove(&alloc_id) {
             Some(alloc) => alloc,
             None => return err!(DoubleFree),
         };
@@ -624,22 +666,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 /// Allocation accessors
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::MemoryKinds>> {
-        match self.alloc_map.get(&id) {
-            Some(alloc) => Ok(alloc),
-            None => match self.functions.get(&id) {
-                Some(_) => err!(DerefFunctionPointer),
+        match id.into_alloc_id_kind() {
+            AllocIdKind::Function(_) => err!(DerefFunctionPointer),
+            AllocIdKind::Runtime(id) => match self.alloc_map.get(&id) {
+                Some(alloc) => Ok(alloc),
                 None => err!(DanglingPointerDeref),
-            }
+            },
         }
     }
     
     fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
-        match self.alloc_map.get_mut(&id) {
-            Some(alloc) => Ok(alloc),
-            None => match self.functions.get(&id) {
-                Some(_) => err!(DerefFunctionPointer),
+        match id.into_alloc_id_kind() {
+            AllocIdKind::Function(_) => err!(DerefFunctionPointer),
+            AllocIdKind::Runtime(id) => match self.alloc_map.get_mut(&id) {
+                Some(alloc) => Ok(alloc),
                 None => err!(DanglingPointerDeref),
-            }
+            },
         }
     }
 
@@ -657,12 +699,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return err!(InvalidFunctionPointer);
         }
         debug!("reading fn ptr: {}", ptr.alloc_id);
-        match self.functions.get(&ptr.alloc_id) {
-            Some(&fndef) => Ok(fndef),
-            None => match self.alloc_map.get(&ptr.alloc_id) {
-                Some(_) => err!(ExecuteMemory),
-                None => err!(InvalidFunctionPointer),
-            }
+        match ptr.alloc_id.into_alloc_id_kind() {
+            AllocIdKind::Function(id) => Ok(self.functions[id]),
+            AllocIdKind::Runtime(_) => err!(ExecuteMemory),
         }
     }
 
@@ -684,17 +723,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             let prefix_len = msg.len();
             let mut relocations = vec![];
 
-            let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
-                (Some(a), None) => a,
-                (None, Some(instance)) => {
-                    trace!("{} {}", msg, instance);
+            let alloc = match id.into_alloc_id_kind() {
+                AllocIdKind::Function(id) => {
+                    trace!("{} {}", msg, self.functions[id]);
                     continue;
                 },
-                (None, None) => {
-                    trace!("{} (deallocated)", msg);
-                    continue;
+                AllocIdKind::Runtime(id) => match self.alloc_map.get(&id) {
+                    Some(a) => a,
+                    None => {
+                        trace!("{} (deallocated)", msg);
+                        continue;
+                    }
                 },
-                (Some(_), Some(_)) => bug!("miri invariant broken: an allocation id exists that points to both a function and a memory location"),
             };
 
             for i in 0..(alloc.bytes.len() as u64) {
@@ -713,11 +753,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             }
 
             let immutable = match (alloc.kind, alloc.mutable) {
-                (Kind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
-                (Kind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
-                (Kind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
-                (Kind::Machine(m), _) => format!(" ({:?})", m),
-                (Kind::Stack, _) => " (stack)".to_owned(),
+                (MemoryKind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
+                (MemoryKind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
+                (MemoryKind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
+                (MemoryKind::Machine(m), _) => format!(" ({:?})", m),
+                (MemoryKind::Stack, _) => " (stack)".to_owned(),
             };
             trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
@@ -744,8 +784,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let leaks: Vec<_> = self.alloc_map
             .iter()
             .filter_map(|(&key, val)| {
-                if val.kind != Kind::Static {
-                    Some(key)
+                if val.kind != MemoryKind::Static {
+                    Some(AllocIdKind::Runtime(key).into_alloc_id())
                 } else {
                     None
                 }
@@ -812,18 +852,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
 /// Reading and writing
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
-    /// mark an allocation as being the entry point to a static (see `static_alloc` field)
-    pub fn mark_static(&mut self, alloc_id: AllocId) {
-        trace!("mark_static: {:?}", alloc_id);
-        if !self.static_alloc.insert(alloc_id) {
-            bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
-        }
-    }
 
     /// mark an allocation pointed to by a static as static and initialized
     pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
         // relocations into other statics are not "inner allocations"
-        if !self.static_alloc.contains(&alloc) {
+        if self.get(alloc).ok().map_or(false, |alloc| alloc.kind != MemoryKind::UninitializedStatic) {
             self.mark_static_initalized(alloc, mutability)?;
         }
         Ok(())
@@ -834,28 +867,31 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         trace!("mark_static_initalized {:?}, mutability: {:?}", alloc_id, mutability);
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
+        let alloc_id = match alloc_id.into_alloc_id_kind() {
+            AllocIdKind::Function(_) => return Ok(()),
+            AllocIdKind::Runtime(id) => id,
+        };
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
             Some(&mut Allocation { ref mut relocations, ref mut kind, ref mut mutable, .. }) => {
                 match *kind {
                     // const eval results can refer to "locals".
                     // E.g. `const Foo: &u32 = &1;` refers to the temp local that stores the `1`
-                    Kind::Stack |
+                    MemoryKind::Stack |
                     // The entire point of this function
-                    Kind::UninitializedStatic => {},
-                    Kind::Machine(m) => M::mark_static_initialized(m)?,
-                    Kind::Static => {
+                    MemoryKind::UninitializedStatic => {},
+                    MemoryKind::Machine(m) => M::mark_static_initialized(m)?,
+                    MemoryKind::Static => {
                         trace!("mark_static_initalized: skipping already initialized static referred to by static currently being initialized");
                         return Ok(());
                     },
                 }
-                *kind = Kind::Static;
+                *kind = MemoryKind::Static;
                 *mutable = mutability;
                 // take out the relocations vector to free the borrow on self, so we can call
                 // mark recursively
                 mem::replace(relocations, Default::default())
             },
-            None if !self.functions.contains_key(&alloc_id) => return err!(DanglingPointerDeref),
-            _ => return Ok(()),
+            None => return err!(DanglingPointerDeref),
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
