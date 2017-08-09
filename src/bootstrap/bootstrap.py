@@ -400,7 +400,7 @@ class RustBuild(object):
         if ostype != "Linux":
             return
 
-        if not os.path.exists("/etc/NIXOS"):
+        if not os.path.exists("/etc/NIXOS") and not os.path.exists("/etc/guix"):
             return
         if os.path.exists("/lib"):
             return
@@ -421,7 +421,7 @@ class RustBuild(object):
 
         try:
             ldd_output = subprocess.check_output(
-                ['ldd', '/run/current-system/sw/bin/sh'])
+                ['ldd', '/bin/sh'])
             ldd_output = ldd_output.strip().decode(default_encoding)
         except subprocess.CalledProcessError as reason:
             print("warning: unable to call ldd:", reason)
