@@ -531,9 +531,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 trace!("Releasing {:?} at {:?}", lock.active, lock_lft);
                 // Disable the lock
                 lock.active = NoLock;
+            } else {
+                trace!("Not touching {:?} at {:?} as its not our lock", lock.active, lock_lft);
             }
             match suspend {
                 Some(suspend_region) => {
+                    trace!("Adding suspension to {:?} at {:?}", lock.active, lock_lft);
                     // We just released this lock, so add a new suspension.
                     // FIXME: Really, if there ever already is a suspension when is_our_lock, or if there is no suspension when !is_our_lock, something is amiss.
                     // But this model is not good enough yet to prevent that.

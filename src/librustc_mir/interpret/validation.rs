@@ -1,10 +1,11 @@
 use rustc::hir::Mutability;
 use rustc::hir::Mutability::*;
 use rustc::mir::{self, ValidationOp, ValidationOperand};
-use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
+use rustc::ty::subst::{Substs, Subst};
+use rustc::traits;
+use rustc::infer::InferCtxt;
 use rustc::traits::Reveal;
-use rustc::infer::TransNormalize;
 use rustc::middle::region::CodeExtent;
 
 use super::{
@@ -110,6 +111,116 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         Ok(())
     }
 
+    fn normalize_type_unerased(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        return normalize_associated_type(self.tcx, &ty);
+
+        use syntax::codemap::{Span, DUMMY_SP};
+
+        // We copy a bunch of stuff from rustc/infer/mod.rs to be able to tweak its behavior
+        fn normalize_projections_in<'a, 'gcx, 'tcx, T>(
+                self_: &InferCtxt<'a, 'gcx, 'tcx>,
+                param_env: ty::ParamEnv<'tcx>,
+                value: &T)
+                -> T::Lifted
+            where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+        {
+            let mut selcx = traits::SelectionContext::new(self_);
+            let cause = traits::ObligationCause::dummy();
+            let traits::Normalized { value: result, obligations } =
+                traits::normalize(&mut selcx, param_env, cause, value);
+
+            debug!("normalize_projections_in: result={:?} obligations={:?}",
+                    result, obligations);
+
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+
+            for obligation in obligations {
+                fulfill_cx.register_predicate_obligation(self_, obligation);
+            }
+
+            drain_fulfillment_cx_or_panic(self_, DUMMY_SP, &mut fulfill_cx, &result)
+        }
+
+        fn drain_fulfillment_cx_or_panic<'a, 'gcx, 'tcx, T>(
+                                                self_: &InferCtxt<'a, 'gcx, 'tcx>,
+                                                span: Span,
+                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                                result: &T)
+                                                -> T::Lifted
+            where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+        {
+            debug!("drain_fulfillment_cx_or_panic()");
+
+            // In principle, we only need to do this so long as `result`
+            // contains unbound type parameters. It could be a slight
+            // optimization to stop iterating early.
+            match fulfill_cx.select_all_or_error(self_) {
+                Ok(()) => { }
+                Err(errors) => {
+                    span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
+                                errors);
+                }
+            }
+
+            let result = self_.resolve_type_vars_if_possible(result);
+            let result = self_.tcx.fold_regions(&result, &mut false, |r, _| match *r { ty::ReVar(_) => self_.tcx.types.re_erased, _ => r });
+
+            match self_.tcx.lift_to_global(&result) {
+                Some(result) => result,
+                None => {
+                    span_bug!(span, "Uninferred types/regions in `{:?}`", result);
+                }
+            }
+        }
+
+        trait MyTransNormalize<'gcx>: TypeFoldable<'gcx> {
+            fn my_trans_normalize<'a, 'tcx>(&self,
+                                        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                        param_env: ty::ParamEnv<'tcx>)
+                                        -> Self;
+        }
+
+        macro_rules! items { ($($item:item)+) => ($($item)+) }
+        macro_rules! impl_trans_normalize {
+            ($lt_gcx:tt, $($ty:ty),+) => {
+                items!($(impl<$lt_gcx> MyTransNormalize<$lt_gcx> for $ty {
+                    fn my_trans_normalize<'a, 'tcx>(&self,
+                                                infcx: &InferCtxt<'a, $lt_gcx, 'tcx>,
+                                                param_env: ty::ParamEnv<'tcx>)
+                                                -> Self {
+                        normalize_projections_in(infcx, param_env, self)
+                    }
+                })+);
+            }
+        }
+
+        impl_trans_normalize!('gcx,
+            Ty<'gcx>,
+            &'gcx Substs<'gcx>,
+            ty::FnSig<'gcx>,
+            ty::PolyFnSig<'gcx>,
+            ty::ClosureSubsts<'gcx>,
+            ty::PolyTraitRef<'gcx>,
+            ty::ExistentialTraitRef<'gcx>
+        );
+
+        fn normalize_associated_type<'a, 'tcx, T>(self_: TyCtxt<'a, 'tcx, 'tcx>, value: &T) -> T
+            where T: MyTransNormalize<'tcx>
+        {
+            debug!("normalize_associated_type(t={:?})", value);
+
+            let param_env = ty::ParamEnv::empty(Reveal::All);
+
+            if !value.has_projection_types() {
+                return value.clone();
+            }
+
+            self_.infer_ctxt().enter(|infcx| {
+                value.my_trans_normalize(&infcx, param_env)
+            })
+        }
+    }
+
     fn validate_variant(
         &mut self,
         query: ValidationQuery<'tcx>,
@@ -189,14 +300,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             _ => {}
         }
 
-        // This is essentially a copy of normalize_associated_type, but without erasure
-        if query.ty.has_projection_types() {
-            let param_env = ty::ParamEnv::empty(Reveal::All);
-            let old_ty = query.ty;
-            query.ty = self.tcx.infer_ctxt().enter(move |infcx| {
-                old_ty.trans_normalize(&infcx, param_env)
-            })
-        }
+        query.ty = self.normalize_type_unerased(&query.ty);
         trace!("{:?} on {:?}", mode, query);
 
         // Decide whether this type *owns* the memory it covers (like integers), or whether it
@@ -215,7 +319,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Tracking the same state for locals not backed by memory would just duplicate too
             // much machinery.
             // FIXME: We ignore alignment.
-            let (ptr, extra, _aligned) = self.force_allocation(query.lval)?.to_ptr_extra_aligned();
+            let (ptr, extra) = self.force_allocation(query.lval)?.to_ptr_extra_aligned();
             // Determine the size
             // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
             let len = match self.type_size(query.ty)? {
