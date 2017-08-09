@@ -186,11 +186,11 @@ impl<'a, T: Idx> Iterator for Iter<'a, T> {
         let word_bits = mem::size_of::<Word>() * 8;
         loop {
             if let Some((ref mut word, offset)) = self.cur {
-                let bit_pos = word.trailing_zeros();
-                if bit_pos != word_bits as u32 {
+                let bit_pos = word.trailing_zeros() as usize;
+                if bit_pos != word_bits {
                     let bit = 1 << bit_pos;
                     *word ^= bit;
-                    return Some(T::new(bit + offset))
+                    return Some(T::new(bit_pos + offset))
                 }
             }
 
