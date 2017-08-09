@@ -15,9 +15,9 @@ script:
   xargo/build.sh
 - |
   # Test plain miri
-  cargo build --release &&
+  cargo build --release --features "cargo_miri" &&
   cargo test --release &&
-  cargo install
+  cargo install --features "cargo_miri"
 - |
   # Test cargo miri
   cd cargo-miri-test &&
