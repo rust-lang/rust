@@ -272,3 +272,13 @@ fn combine_block() {
         ),
     }
 }
+
+fn issue_1862() {
+    foo(
+        /* bar = */ None ,
+        something_something,
+        /* baz = */ None ,
+        /* This comment waaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaay too long to be kept on the same line */ None ,
+        /* com */ this_last_arg_is_tooooooooooooooooooooooooooooooooo_long_to_be_kept_with_the_pre_comment ,
+    )
+}
