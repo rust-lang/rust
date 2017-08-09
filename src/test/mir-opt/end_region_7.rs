@@ -33,7 +33,6 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _2: ();
 //     let mut _3: [closure@NodeId(22) d:D];
 //     let mut _4: D;
-//     let mut _5: ();
 //
 //     bb0: {
 //         StorageLive(_1);
@@ -77,7 +76,6 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _0: i32;
 //     let _2: &'14_0rce D;
 //     let mut _3: i32;
-//     let mut _4: ();
 //
 //     bb0: {
 //         StorageLive(_2);
