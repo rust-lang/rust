@@ -232,8 +232,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
 impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorInterior<'a> {
     type Lifted = ty::GeneratorInterior<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.witness()).map(|witness| {
-            ty::GeneratorInterior(witness)
+        tcx.lift(&self.witness).map(|witness| {
+            ty::GeneratorInterior { witness }
         })
     }
 }
@@ -737,11 +737,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorInterior<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::GeneratorInterior(self.0.fold_with(folder))
+        ty::GeneratorInterior::new(self.witness.fold_with(folder))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor)
+        self.witness.visit_with(visitor)
     }
 }
 

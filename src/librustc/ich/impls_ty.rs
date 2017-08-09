@@ -320,7 +320,7 @@ for ::middle::const_val::ConstVal<'tcx> {
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 
-impl_stable_hash_for!(tuple_struct ty::GeneratorInterior<'tcx> { ty });
+impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,

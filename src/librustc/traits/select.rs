@@ -2126,7 +2126,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyGenerator(def_id, ref substs, interior) => {
-                let witness = iter::once(interior.witness());
+                let witness = iter::once(interior.witness);
                 substs.upvar_tys(def_id, self.tcx()).chain(witness).collect()
             }
 

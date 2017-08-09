@@ -703,57 +703,57 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let region = cx.tcx.mk_region(region);
 
             let self_expr = if let ty::TyClosure(..) = closure_ty.sty {
-            match cx.tcx.closure_kind(closure_def_id) {
-                ty::ClosureKind::Fn => {
-                    let ref_closure_ty = cx.tcx.mk_ref(region,
-                                                       ty::TypeAndMut {
-                                                           ty: closure_ty,
-                                                           mutbl: hir::MutImmutable,
-                                                       });
-                    Expr {
-                        ty: closure_ty,
-                        temp_lifetime: temp_lifetime,
-                        span: expr.span,
-                        kind: ExprKind::Deref {
-                            arg: Expr {
-                                ty: ref_closure_ty,
-                                temp_lifetime: temp_lifetime,
-                                span: expr.span,
-                                kind: ExprKind::SelfRef,
-                            }
-                            .to_ref(),
-                        },
+                match cx.tcx.closure_kind(closure_def_id) {
+                    ty::ClosureKind::Fn => {
+                        let ref_closure_ty = cx.tcx.mk_ref(region,
+                                                           ty::TypeAndMut {
+                                                               ty: closure_ty,
+                                                               mutbl: hir::MutImmutable,
+                                                           });
+                        Expr {
+                            ty: closure_ty,
+                            temp_lifetime: temp_lifetime,
+                            span: expr.span,
+                            kind: ExprKind::Deref {
+                                arg: Expr {
+                                    ty: ref_closure_ty,
+                                    temp_lifetime: temp_lifetime,
+                                    span: expr.span,
+                                    kind: ExprKind::SelfRef,
+                                }
+                                .to_ref(),
+                            },
+                        }
+                    }
+                    ty::ClosureKind::FnMut => {
+                        let ref_closure_ty = cx.tcx.mk_ref(region,
+                                                           ty::TypeAndMut {
+                                                               ty: closure_ty,
+                                                               mutbl: hir::MutMutable,
+                                                           });
+                        Expr {
+                            ty: closure_ty,
+                            temp_lifetime: temp_lifetime,
+                            span: expr.span,
+                            kind: ExprKind::Deref {
+                                arg: Expr {
+                                    ty: ref_closure_ty,
+                                    temp_lifetime: temp_lifetime,
+                                    span: expr.span,
+                                    kind: ExprKind::SelfRef,
+                                }.to_ref(),
+                            },
+                        }
+                    }
+                    ty::ClosureKind::FnOnce => {
+                        Expr {
+                            ty: closure_ty,
+                            temp_lifetime: temp_lifetime,
+                            span: expr.span,
+                            kind: ExprKind::SelfRef,
+                        }
                     }
                 }
-                ty::ClosureKind::FnMut => {
-                    let ref_closure_ty = cx.tcx.mk_ref(region,
-                                                       ty::TypeAndMut {
-                                                           ty: closure_ty,
-                                                           mutbl: hir::MutMutable,
-                                                       });
-                    Expr {
-                        ty: closure_ty,
-                        temp_lifetime: temp_lifetime,
-                        span: expr.span,
-                        kind: ExprKind::Deref {
-                            arg: Expr {
-                                ty: ref_closure_ty,
-                                temp_lifetime: temp_lifetime,
-                                span: expr.span,
-                                kind: ExprKind::SelfRef,
-                            }.to_ref(),
-                        },
-                    }
-                }
-                ty::ClosureKind::FnOnce => {
-                    Expr {
-                        ty: closure_ty,
-                        temp_lifetime: temp_lifetime,
-                        span: expr.span,
-                        kind: ExprKind::SelfRef,
-                    }
-                }
-            }
             } else {
                 Expr {
                     ty: closure_ty,

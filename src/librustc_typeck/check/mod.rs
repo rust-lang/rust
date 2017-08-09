@@ -892,7 +892,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fcx.closure_analyze(body);
         fcx.select_obligations_where_possible();
         fcx.check_casts();
-        fcx.find_generator_interiors(def_id);
+        fcx.resolve_generator_interiors(def_id);
         fcx.select_all_obligations_or_error();
 
         if fn_decl.is_some() {
@@ -2107,10 +2107,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn find_generator_interiors(&self, def_id: DefId) {
+    fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut deferred_generator_interiors = self.deferred_generator_interiors.borrow_mut();
         for (body_id, witness) in deferred_generator_interiors.drain(..) {
-            generator_interior::find_interior(self, def_id, body_id, witness);
+            generator_interior::resolve_interior(self, def_id, body_id, witness);
         }
     }
 
@@ -2677,8 +2677,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_expr_has_type_or_error(&self,
-                               expr: &'gcx hir::Expr,
-                               expected: Ty<'tcx>) -> Ty<'tcx> {
+                                        expr: &'gcx hir::Expr,
+                                        expected: Ty<'tcx>) -> Ty<'tcx> {
         self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected))
     }
 
@@ -3138,13 +3138,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return field_ty;
         }
 
-                if tuple_like {
+        if tuple_like {
             type_error_struct!(self.tcx().sess, expr.span, expr_t, E0612,
-                               "attempted out-of-bounds tuple index `{}` on type `{}`",
-                               idx.node, expr_t).emit();
-                } else {
+                "attempted out-of-bounds tuple index `{}` on type `{}`",
+                idx.node, expr_t).emit();
+        } else {
             self.no_such_field_err(expr.span, idx.node, expr_t).emit();
-                }
+        }
 
         self.tcx().types.err
     }
@@ -3733,14 +3733,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Only check this if not in an `if` condition, as the
                     // mistyped comparison help is more appropriate.
                     if !self.tcx.expr_is_lval(&lhs) {
-                struct_span_err!(
-                            self.tcx.sess, expr.span, E0070,
-                    "invalid left-hand side expression")
-                .span_label(
-                    expr.span,
-                    "left-hand of expression not valid")
-                .emit();
-            }
+                        struct_span_err!(self.tcx.sess, expr.span, E0070,
+                                         "invalid left-hand side expression")
+                            .span_label(expr.span, "left-hand of expression not valid")
+                            .emit();
+                    }
                 }
             }
 

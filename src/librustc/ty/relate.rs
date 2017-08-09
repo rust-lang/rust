@@ -531,7 +531,7 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
                            -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let interior = relation.relate(&a.witness(), &b.witness())?;
+        let interior = relation.relate(&a.witness, &b.witness)?;
         Ok(ty::GeneratorInterior::new(interior))
     }
 }

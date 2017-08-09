@@ -295,19 +295,17 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
 /// The state transformation MIR pass may only produce layouts which mention types in this tuple.
 /// Upvars are not counted here.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct GeneratorInterior<'tcx>(pub Ty<'tcx>);
+pub struct GeneratorInterior<'tcx> {
+    pub witness: Ty<'tcx>,
+}
 
 impl<'tcx> GeneratorInterior<'tcx> {
     pub fn new(witness: Ty<'tcx>) -> GeneratorInterior<'tcx> {
-        GeneratorInterior(witness)
-    }
-
-    pub fn witness(&self) -> Ty<'tcx> {
-        self.0
+        GeneratorInterior { witness }
     }
 
     pub fn as_slice(&self) -> &'tcx Slice<Ty<'tcx>> {
-        match self.0.sty {
+        match self.witness.sty {
             ty::TyTuple(s, _) => s,
             _ => bug!(),
         }
@@ -638,10 +636,8 @@ pub struct GenSig<'tcx> {
     pub return_ty: Ty<'tcx>,
 }
 
-#[allow(warnings)]
 pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
 
-#[allow(warnings)]
 impl<'tcx> PolyGenSig<'tcx> {
     pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|sig| sig.yield_ty)

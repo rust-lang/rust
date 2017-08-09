@@ -348,7 +348,9 @@ fn write_mir_sig(tcx: TyCtxt, src: MirSource, mir: &Mir, w: &mut Write)
 
             write!(w, ") -> {}", mir.return_ty)
         }
-        _ => {
+        MirSource::Const(..) |
+        MirSource::Static(..) |
+        MirSource::Promoted(..) => {
             assert_eq!(mir.arg_count, 0);
             write!(w, ": {} =", mir.return_ty)
         }

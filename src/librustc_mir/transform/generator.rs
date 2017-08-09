@@ -10,8 +10,6 @@
 
 //! Transforms generators into state machines
 
-#![allow(warnings)]
-
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
@@ -23,11 +21,11 @@ use rustc::ty::subst::{Kind, Substs};
 use util::dump_mir;
 use util::liveness;
 use rustc_const_math::ConstInt;
-use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::Idx;
 use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
+use std::mem;
 use syntax::ast::NodeId;
 use transform::simplify;
 
@@ -150,7 +148,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             }
         });
 
-        ret_val.map(|(state_idx, resume, v, drop)| {
+        if let Some((state_idx, resume, v, drop)) = ret_val {
             let bb_idx = {
                 let bb_targets = &mut self.bb_targets;
                 let bb_target = &mut self.bb_target_count;
@@ -168,51 +166,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     self.make_state(state_idx, v)),
             });
             data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
-        });
+        }
 
         self.super_basic_block_data(block, data);
-    }
-}
-
-fn get_body_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: NodeId) -> (bool, hir::BodyId) {
-    // Figure out what primary body this item has.
-    match tcx.hir.get(node_id) {
-        hir::map::NodeItem(item) => {
-            match item.node {
-                hir::ItemConst(_, body) |
-                hir::ItemStatic(_, _, body) |
-                hir::ItemFn(.., body) => (false, body),
-                _ => bug!(),
-            }
-        }
-        hir::map::NodeTraitItem(item) => {
-            match item.node {
-                hir::TraitItemKind::Const(_, Some(body)) |
-                hir::TraitItemKind::Method(_,
-                    hir::TraitMethod::Provided(body)) => (false, body),
-                _ => bug!(),
-            }
-        }
-        hir::map::NodeImplItem(item) => {
-            match item.node {
-                hir::ImplItemKind::Const(_, body) |
-                hir::ImplItemKind::Method(_, body) => (false, body),
-                _ => bug!(),
-            }
-        }
-        hir::map::NodeExpr(expr) => {
-            // FIXME(eddyb) Closures should have separate
-            // function definition IDs and expression IDs.
-            // Type-checking should not let closures get
-            // this far in a constant position.
-            // Assume that everything other than closures
-            // is a constant "initializer" expression.
-            match expr.node {
-                hir::ExprClosure(_, _, body, _, _) => (true, body),
-                _ => (false, hir::BodyId { node_id: expr.id })
-            }
-        }
-        _ => bug!(),
     }
 }
 
@@ -281,7 +237,6 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
 fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                mir: &Mir<'tcx>,
                                                source: MirSource) -> liveness::LocalSet {
-    use rustc_data_structures::indexed_set::IdxSetBuf;
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
     let result = liveness::liveness_of_locals(mir);
     liveness::dump_mir(tcx, "generator_liveness", source, mir, &result);
@@ -299,18 +254,12 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            def_id: DefId,
                             source: MirSource,
                             interior: GeneratorInterior<'tcx>,
                             mir: &mut Mir<'tcx>)
     -> (HashMap<Local, (Ty<'tcx>, usize)>, GeneratorLayout<'tcx>)
 {
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
-
-    let mut live_locals = locals_live_across_suspend_points(tcx, mir, source);
+    let live_locals = locals_live_across_suspend_points(tcx, mir, source);
 
     let allowed = tcx.erase_regions(&interior.as_slice());
 
@@ -319,34 +268,23 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             continue;
         }
         if !allowed.contains(&decl.ty) {
-            tcx.sess.span_warn(mir.span,
-                &format!("generator contains type {} in MIR, but typeck only knows about {}",
-                    decl.ty,
-                    interior));
+            span_bug!(mir.span,
+                      "Broken MIR: generator contains type {} in MIR, \
+                       but typeck only knows about {}",
+                      decl.ty,
+                      interior);
         }
     }
 
     let upvar_len = mir.upvar_decls.len();
-    let live_decls : Vec<_> = mir.local_decls
-        .iter_enumerated_mut()
-        .filter(|&(local, _)| live_locals.contains(&local))
-        .collect();
-
-    let mut remap = HashMap::new();
-    let unit = tcx.mk_nil();
-    let mut vars: Vec<_> = live_decls.into_iter().enumerate().map(|(idx, (local, decl))| {
-        let var = decl.clone();
-        *decl = LocalDecl {
-            mutability: Mutability::Mut,
-            ty: unit,
-            name: None,
-            source_info,
-            internal: false,
-            is_user_variable: false,
-        };
-        remap.insert(local, (var.ty, upvar_len + 1 + idx));
-        var
-    }).collect();
+    let dummy_local = LocalDecl::new_internal(tcx.mk_nil(), mir.span);
+    let live_decls = live_locals.iter().map(|local| {
+        let var = mem::replace(&mut mir.local_decls[local], dummy_local.clone());
+        (local, var)
+    });
+    let (remap, vars) = live_decls.enumerate().map(|(idx, (local, var))| {
+        ((local, (var.ty, upvar_len + 1 + idx)), var)
+    }).unzip();
 
     let layout = GeneratorLayout {
         fields: vars
@@ -369,7 +307,7 @@ fn insert_entry_point<'tcx>(mir: &mut Mir<'tcx>,
 fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       def_id: DefId,
                                       mir: &mut Mir<'tcx>) {
-    use util::elaborate_drops::{elaborate_drop, Unwind, DropElaborator, DropStyle, DropFlagMode};
+    use util::elaborate_drops::{elaborate_drop, Unwind};
     use util::patch::MirPatch;
     use shim::DropShimElaborator;
 
@@ -418,7 +356,6 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn generate_drop<'a, 'tcx>(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 transform: &TransformVisitor<'a, 'tcx>,
-                node_id: NodeId,
                 def_id: DefId,
                 source: MirSource,
                 gen_ty: Ty<'tcx>,
@@ -439,7 +376,7 @@ fn generate_drop<'a, 'tcx>(
         is_cleanup: false,
     });
 
-    let mut cases: Vec<_> = transform.bb_targets.iter().filter_map(|(&(r, u), &s)| {
+    let mut cases: Vec<_> = transform.bb_targets.iter().filter_map(|(&(_, u), &s)| {
         u.map(|d| (s, d))
     }).collect();
 
@@ -581,10 +518,9 @@ fn insert_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cleanup
 }
 
-fn generate_resume<'a, 'tcx>(
+fn generate_entry_point<'a, 'tcx>(
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mut transform: TransformVisitor<'a, 'tcx>,
-                node_id: NodeId,
                 def_id: DefId,
                 source: MirSource,
                 cleanup: Option<BasicBlock>,
@@ -721,7 +657,7 @@ impl MirPass for StateTransform {
 
         let new_ret_local = replace_result_variable(ret_ty, mir);
 
-        let (remap, layout) = compute_layout(tcx, def_id, source, interior, mir);
+        let (remap, layout) = compute_layout(tcx, source, interior, mir);
 
         let tail_block = BasicBlock::new(mir.basic_blocks().len());
 
@@ -763,7 +699,6 @@ impl MirPass for StateTransform {
 
         generate_drop(tcx,
                       &transform,
-                      node_id,
                       def_id,
                       source,
                       gen_ty,
@@ -772,6 +707,6 @@ impl MirPass for StateTransform {
 
         mir.generator_drop = Some(box drop_impl);
 
-        generate_resume(tcx, transform, node_id, def_id, source, arg_cleanup, mir);
+        generate_entry_point(tcx, transform, def_id, source, arg_cleanup, mir);
     }
 }

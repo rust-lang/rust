@@ -717,7 +717,7 @@ impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
 
 impl<'tcx> fmt::Display for ty::GeneratorInterior<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
+        self.witness.fmt(f)
     }
 }
 

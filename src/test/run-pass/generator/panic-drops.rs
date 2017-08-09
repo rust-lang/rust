@@ -24,10 +24,14 @@ impl Drop for B {
     }
 }
 
+fn bool_true() -> bool {
+    true
+}
+
 fn main() {
     let b = B;
     let mut foo = || {
-        if true {
+        if bool_true() {
             panic!();
         }
         drop(b);
@@ -42,7 +46,7 @@ fn main() {
     assert_eq!(A.load(Ordering::SeqCst), 1);
 
     let mut foo = || {
-        if true {
+        if bool_true() {
             panic!();
         }
         drop(B);

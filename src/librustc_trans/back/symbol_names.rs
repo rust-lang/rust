@@ -287,9 +287,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, Some(def_id), instance_ty, Some(substs));
 
-    let buffer = SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id));
-
-    buffer.finish(hash)
+    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see

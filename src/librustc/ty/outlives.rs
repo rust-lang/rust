@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 // But generators can have additional interior types
-                self.compute_components(interior.witness(), out);
+                self.compute_components(interior.witness, out);
             }
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`

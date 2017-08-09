@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use log;
+use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
-use rustc::hir::def_id::DefId;
-use rustc::ty::Ty;
 use rustc::middle::region::{RegionMaps, CodeExtent};
-use util::nodemap::FxHashSet;
+use rustc::ty::Ty;
 use std::rc::Rc;
 use super::FnCtxt;
+use util::nodemap::FxHashSet;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
@@ -28,36 +29,34 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
         use syntax_pos::DUMMY_SP;
 
         if scope.map(|s| self.fcx.tcx.yield_in_extent(s).is_some()).unwrap_or(true) {
-            if self.fcx.tcx.sess.verbose() {
+            if log_enabled!(log::LogLevel::Debug) {
                 if let Some(s) = scope {
-                    self.fcx.tcx.sess.span_warn(s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP),
-                        &format!("type in generator with scope = {:?}, type = {:?}",
-                                 scope,
-                                 self.fcx.resolve_type_vars_if_possible(&ty)));
+                    let span = s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP);
+                    debug!("type in generator with scope = {:?}, type = {:?}, span = {:?}",
+                           scope,
+                           self.fcx.resolve_type_vars_if_possible(&ty),
+                           span);
                 } else {
-                    self.fcx.tcx.sess.span_warn(DUMMY_SP,
-                        &format!("type in generator WITHOUT scope, type = {:?}",
-                                 self.fcx.resolve_type_vars_if_possible(&ty)));
+                    debug!("type in generator WITHOUT scope, type = {:?}",
+                           self.fcx.resolve_type_vars_if_possible(&ty));
                 }
                 if let Some(e) = expr {
-                    self.fcx.tcx.sess.span_warn(e.span,
-                        &format!("type from expression: {:?}", e));
+                    debug!("type from expression: {:?}, span={:?}", e, e.span);
                 }
             }
             self.types.insert(ty);
-        } else if self.fcx.tcx.sess.verbose() {
+        } else {
             if let Some(e) = expr {
-                self.fcx.tcx.sess.span_warn(e.span,
-                    &format!("NO type from expression: {:?}", e));
+                debug!("NO type from expression: {:?}, span = {:?}", e, e.span);
             }
         }
     }
 }
 
-pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-                                     def_id: DefId,
-                                     body_id: hir::BodyId,
-                                     witness: Ty<'tcx>) {
+pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+                                        def_id: DefId,
+                                        body_id: hir::BodyId,
+                                        witness: Ty<'tcx>) {
     let body = fcx.tcx.hir.body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
@@ -74,10 +73,7 @@ pub fn find_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
     let tuple = fcx.tcx.intern_tup(&types, false);
 
-    if fcx.tcx.sess.verbose() {
-        fcx.tcx.sess.span_warn(body.value.span,
-            &format!("Types in generator {:?}", tuple));
-    }
+    debug!("Types in generator {:?}, span = {:?}", tuple, body.value.span);
 
     // Unify the tuple with the witness
     match fcx.at(&fcx.misc(body.value.span), fcx.param_env).eq(witness, tuple) {

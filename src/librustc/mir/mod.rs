@@ -411,8 +411,13 @@ pub struct LocalDecl<'tcx> {
     /// True if this corresponds to a user-declared local variable.
     pub is_user_variable: bool,
 
-    /// True if this an internal local.
+    /// True if this is an internal local.
     /// Such locals are not checked against the legal types in a generator.
+    ///
+    /// Scalar state variables created by optimizations (e.g. nonzeroing drop
+    /// flags) should not be included in generator OIBIT computations.
+    /// Therefore, we mark them as `internal` so we can ignore them when
+    /// sanity-checking the OIBIT list.
     pub internal: bool,
 
     /// Type of this local.

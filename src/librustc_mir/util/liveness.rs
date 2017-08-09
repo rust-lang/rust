@@ -9,6 +9,29 @@
 // except according to those terms.
 
 //! Liveness analysis which computes liveness of MIR local variables at the boundary of basic blocks
+//!
+//! This analysis considers references as being used only at the point of the
+//! borrow. This means that this does not track uses because of references that
+//! already exist:
+//!
+//! ```Rust
+//!     fn foo() {
+//!         x = 0;
+//!         // `x` is live here
+//!         GLOBAL = &x: *const u32;
+//!         // but not here, even while it can be accessed through `GLOBAL`.
+//!         foo();
+//!         x = 1;
+//!         // `x` is live again here, because it is assigned to `OTHER_GLOBAL`
+//!         OTHER_GLOBAL = &x: *const u32;
+//!         // ...
+//!     }
+//! ```
+//!
+//! This means that users of this analysis still have to check whether
+//! pre-existing references can be used to access the value (e.g. at movable
+//! generator yield points, all pre-existing references are invalidated, so this
+//! doesn't matter).
 
 use rustc::mir::*;
 use rustc::mir::visit::{LvalueContext, Visitor};
@@ -60,7 +83,7 @@ impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
                 // Borrows only consider their local used at the point of the borrow.
                 // This won't affect the results since we use this analysis for generators
                 // and we only care about the result at suspension points. Borrows cannot
-                // cross suspension points so this behavoir is unproblematic.
+                // cross suspension points so this behavior is unproblematic.
                 LvalueContext::Borrow { .. } |
 
                 LvalueContext::Inspect |

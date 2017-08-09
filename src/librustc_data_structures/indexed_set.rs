@@ -9,9 +9,11 @@
 // except according to those terms.
 
 use std::fmt;
+use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut, Range};
+use std::slice;
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
 use indexed_vec::Idx;
@@ -160,5 +162,42 @@ impl<T: Idx> IdxSet<T> {
 
     pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Subtract)
+    }
+
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            cur: None,
+            iter: self.words().iter().enumerate(),
+            _pd: PhantomData,
+        }
+    }
+}
+
+pub struct Iter<'a, T: Idx> {
+    cur: Option<(Word, usize)>,
+    iter: iter::Enumerate<slice::Iter<'a, Word>>,
+    _pd: PhantomData<fn(&T)>,
+}
+
+impl<'a, T: Idx> Iterator for Iter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        let word_bits = mem::size_of::<Word>() * 8;
+        loop {
+            if let Some((ref mut word, offset)) = self.cur {
+                let bit_pos = word.trailing_zeros();
+                if bit_pos != word_bits as u32 {
+                    let bit = 1 << bit_pos;
+                    *word ^= bit;
+                    return Some(T::new(bit + offset))
+                }
+            }
+
+            match self.iter.next() {
+                Some((i, word)) => self.cur = Some((*word, word_bits * i)),
+                None => return None,
+            }
+        }
     }
 }

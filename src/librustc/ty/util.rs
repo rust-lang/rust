@@ -570,7 +570,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             ty::TyGenerator(def_id, substs, interior) => {
-                substs.upvar_tys(def_id, self).chain(iter::once(interior.witness())).map(|ty| {
+                substs.upvar_tys(def_id, self).chain(iter::once(interior.witness)).map(|ty| {
                     self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
                 }).collect()
             }
