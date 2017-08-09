@@ -309,9 +309,9 @@ fields, and would not align as well with the potential future introduction of
 full anonymous structure types. Furthermore, such a mechanism would need to
 allow hiding the underlying paths for portability; for example, the `siginfo_t`
 type on POSIX platforms allows portable access to certain named fields, but
-different platforms overlap those fields differently. Finally, such a mechanism
-would make it harder to create bindings for this common pattern in C
-interfaces.
+different platforms overlap those fields differently using unnamed unions.
+Finally, such a mechanism would make it harder to create bindings for this
+common pattern in C interfaces.
 
 Several alternative syntaxes could exist to designate the equivalent of
 `struct` and `union`. Such syntaxes would declare the same underlying types.
