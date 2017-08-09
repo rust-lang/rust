@@ -99,7 +99,8 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
 
 /// Checks if the expressions matches
 /// ```rust, ignore
-/// { static __STATIC_FMTSTR: &'static[&'static str] = &["a", "b", c]; __STATIC_FMTSTR }
+/// { static __STATIC_FMTSTR: &'static[&'static str] = &["a", "b", c];
+/// __STATIC_FMTSTR }
 /// ```
 fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(expr) = get_argument_fmtstr_parts(cx, expr) {
@@ -112,7 +113,8 @@ fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
 /// Checks if the expressions matches
 /// ```rust,ignore
 /// &match (&42,) {
-///     (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Display::fmt)],
+/// (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0,
+/// ::std::fmt::Display::fmt)],
 /// }
 /// ```
 fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {

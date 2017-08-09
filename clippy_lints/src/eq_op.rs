@@ -23,7 +23,8 @@ declare_lint! {
     "equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)"
 }
 
-/// **What it does:** Checks for arguments to `==` which have their address taken to satisfy a bound
+/// **What it does:** Checks for arguments to `==` which have their address
+/// taken to satisfy a bound
 /// and suggests to dereference the other argument instead
 ///
 /// **Why is this bad?** It is more idiomatic to dereference the other argument.
@@ -40,7 +41,7 @@ declare_lint! {
     "taking a reference to satisfy the type constraints on `==`"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct EqOp;
 
 impl LintPass for EqOp {
@@ -53,10 +54,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
             if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {
-                span_lint(cx,
-                          EQ_OP,
-                          e.span,
-                          &format!("equal expressions as operands to `{}`", op.node.as_str()));
+                span_lint(
+                    cx,
+                    EQ_OP,
+                    e.span,
+                    &format!("equal expressions as operands to `{}`", op.node.as_str()),
+                );
                 return;
             }
             let (trait_id, requires_ref) = match op.node {
@@ -89,31 +92,37 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         let rcpy = is_copy(cx, rty);
                         // either operator autorefs or both args are copyable
                         if (requires_ref || (lcpy && rcpy)) && implements_trait(cx, lty, trait_id, &[rty]) {
-                            span_lint_and_then(cx,
-                                               OP_REF,
-                                               e.span,
-                                               "needlessly taken reference of both operands",
-                                               |db| {
-                                let lsnip = snippet(cx, l.span, "...").to_string();
-                                let rsnip = snippet(cx, r.span, "...").to_string();
-                                multispan_sugg(db,
-                                               "use the values directly".to_string(),
-                                               vec![(left.span, lsnip), (right.span, rsnip)]);
-                            })
+                            span_lint_and_then(
+                                cx,
+                                OP_REF,
+                                e.span,
+                                "needlessly taken reference of both operands",
+                                |db| {
+                                    let lsnip = snippet(cx, l.span, "...").to_string();
+                                    let rsnip = snippet(cx, r.span, "...").to_string();
+                                    multispan_sugg(
+                                        db,
+                                        "use the values directly".to_string(),
+                                        vec![(left.span, lsnip), (right.span, rsnip)],
+                                    );
+                                },
+                            )
                         } else if lcpy && !rcpy && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right)]) {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion(left.span, "use the left value directly", lsnip);
                             })
                         } else if !lcpy && rcpy && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty]) {
-                            span_lint_and_then(cx,
-                                               OP_REF,
-                                               e.span,
-                                               "needlessly taken reference of right operand",
-                                               |db| {
-                                let rsnip = snippet(cx, r.span, "...").to_string();
-                                db.span_suggestion(right.span, "use the right value directly", rsnip);
-                            })
+                            span_lint_and_then(
+                                cx,
+                                OP_REF,
+                                e.span,
+                                "needlessly taken reference of right operand",
+                                |db| {
+                                    let rsnip = snippet(cx, r.span, "...").to_string();
+                                    db.span_suggestion(right.span, "use the right value directly", rsnip);
+                                },
+                            )
                         }
                     },
                     // &foo == bar

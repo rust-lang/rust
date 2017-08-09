@@ -16,7 +16,8 @@ use utils::{match_def_path, paths, span_note_and_lint, is_copy};
 /// **Example:**
 /// ```rust
 /// let mut lock_guard = mutex.lock();
-/// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex still locked
+/// std::mem::drop(&lock_guard) // Should have been drop(lock_guard), mutex
+/// still locked
 /// operation_that_requires_mutex_to_be_unlocked();
 /// ```
 declare_lint! {
@@ -29,7 +30,8 @@ declare_lint! {
 /// instead of an owned value.
 ///
 /// **Why is this bad?** Calling `forget` on a reference will only forget the
-/// reference itself, which is a no-op. It will not forget the underlying referenced
+/// reference itself, which is a no-op. It will not forget the underlying
+/// referenced
 /// value, which is likely what was intended.
 ///
 /// **Known problems:** None.
@@ -57,7 +59,8 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// let x:i32 = 42;   // i32 implements Copy
-/// std::mem::drop(x) // A copy of x is passed to the function, leaving the original unaffected
+/// std::mem::drop(x) // A copy of x is passed to the function, leaving the
+/// original unaffected
 /// ```
 declare_lint! {
     pub DROP_COPY,
@@ -72,8 +75,10 @@ declare_lint! {
 /// implement Copy](https://doc.rust-lang.org/std/mem/fn.drop.html) since the
 /// value will be copied and moved into the function on invocation.
 ///
-/// An alternative, but also valid, explanation is that Copy types do not implement
-/// the Drop trait, which means they have no destructors. Without a destructor, there
+/// An alternative, but also valid, explanation is that Copy types do not
+/// implement
+/// the Drop trait, which means they have no destructors. Without a destructor,
+/// there
 /// is nothing for `std::mem::forget` to ignore.
 ///
 /// **Known problems:** None.
@@ -81,7 +86,8 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// let x:i32 = 42;     // i32 implements Copy
-/// std::mem::forget(x) // A copy of x is passed to the function, leaving the original unaffected
+/// std::mem::forget(x) // A copy of x is passed to the function, leaving the
+/// original unaffected
 /// ```
 declare_lint! {
     pub FORGET_COPY,

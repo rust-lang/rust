@@ -27,12 +27,14 @@ declare_lint! {
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
-/// **What it does:** Checks for diverging calls that are not match arms or statements.
+/// **What it does:** Checks for diverging calls that are not match arms or
+/// statements.
 ///
 /// **Why is this bad?** It is often confusing to read. In addition, the
 /// sub-expression evaluation order for Rust is not well documented.
 ///
-/// **Known problems:** Someone might want to use `some_bool || panic!()` as a shorthand.
+/// **Known problems:** Someone might want to use `some_bool || panic!()` as a
+/// shorthand.
 ///
 /// **Example:**
 /// ```rust
@@ -47,7 +49,7 @@ declare_lint! {
     "whether an expression contains a diverging sub expression"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct EvalOrderDependence;
 
 impl LintPass for EvalOrderDependence {
@@ -144,7 +146,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
                 }
             },
             _ => {
-                // do not lint expressions referencing objects of type `!`, as that required a diverging expression
+                // do not lint expressions referencing objects of type `!`, as that required a
+                // diverging expression
                 // to begin with
             },
         }
@@ -271,8 +274,10 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
                 DeclLocal(ref local) => Some(local),
                 _ => None,
             };
-            local.and_then(|local| local.init.as_ref())
-                .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr))
+            local.and_then(|local| local.init.as_ref()).map_or(
+                StopEarly::KeepGoing,
+                |expr| check_expr(vis, expr),
+            )
         },
     }
 }

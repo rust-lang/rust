@@ -8,7 +8,8 @@ use rustc::hir::print;
 use syntax::ast::Attribute;
 use syntax::attr;
 
-/// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]` attribute
+/// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]`
+/// attribute
 ///
 /// **Example:**
 /// ```rust
@@ -54,8 +55,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             hir::Visibility::Public => println!("public"),
             hir::Visibility::Crate => println!("visible crate wide"),
             hir::Visibility::Restricted { ref path, .. } => {
-                println!("visible in module `{}`",
-                         print::to_string(print::NO_ANN, |s| s.print_path(path, false)))
+                println!(
+                    "visible in module `{}`",
+                    print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+                )
             },
             hir::Visibility::Inherited => println!("visibility inherited from outer item"),
         }
@@ -71,20 +74,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             hir::ImplItemKind::Type(_) => println!("associated type"),
         }
     }
-    // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::TraitItem) {
+    // fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
+    // hir::TraitItem) {
     // if !has_attr(&item.attrs) {
     // return;
     // }
     // }
     //
-    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, _:
+    // fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx
+    // hir::Variant, _:
     // &hir::Generics) {
     // if !has_attr(&var.node.attrs) {
     // return;
     // }
     // }
     //
-    // fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx hir::StructField) {
+    // fn check_struct_field(&mut self, cx: &LateContext<'a, 'tcx>, field: &'tcx
+    // hir::StructField) {
     // if !has_attr(&field.attrs) {
     // return;
     // }
@@ -123,7 +129,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
         }
     }
-    // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::ForeignItem) {
+    // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
+    // hir::ForeignItem) {
     // if !has_attr(&item.attrs) {
     // return;
     // }
@@ -345,8 +352,10 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         hir::Visibility::Public => println!("public"),
         hir::Visibility::Crate => println!("visible crate wide"),
         hir::Visibility::Restricted { ref path, .. } => {
-            println!("visible in module `{}`",
-                     print::to_string(print::NO_ANN, |s| s.print_path(path, false)))
+            println!(
+                "visible in module `{}`",
+                print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+            )
         },
         hir::Visibility::Inherited => println!("visibility inherited from outer item"),
     }
@@ -422,9 +431,11 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
         },
         hir::PatKind::Struct(ref path, ref fields, ignore) => {
             println!("{}Struct", ind);
-            println!("{}name: {}",
-                     ind,
-                     print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
+            println!(
+                "{}name: {}",
+                ind,
+                print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
+            );
             println!("{}ignore leftover fields: {}", ind, ignore);
             println!("{}fields:", ind);
             for field in fields {
@@ -437,9 +448,11 @@ fn print_pat(cx: &LateContext, pat: &hir::Pat, indent: usize) {
         },
         hir::PatKind::TupleStruct(ref path, ref fields, opt_dots_position) => {
             println!("{}TupleStruct", ind);
-            println!("{}path: {}",
-                     ind,
-                     print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
+            println!(
+                "{}path: {}",
+                ind,
+                print::to_string(print::NO_ANN, |s| s.print_qpath(path, false))
+            );
             if let Some(dot_position) = opt_dots_position {
                 println!("{}dot position: {}", ind, dot_position);
             }

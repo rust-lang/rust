@@ -9,7 +9,8 @@ use utils::{span_lint, get_trait_def_id, paths};
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** Implementing `Visitor::visit_string` but not `Visitor::visit_str`.
+/// **Example:** Implementing `Visitor::visit_string` but not
+/// `Visitor::visit_str`.
 declare_lint! {
     pub SERDE_API_MISUSE,
     Warn,
@@ -43,10 +44,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
                     }
                     if let Some(span) = seen_string {
                         if seen_str.is_none() {
-                            span_lint(cx,
-                                      SERDE_API_MISUSE,
-                                      span,
-                                      "you should not implement `visit_string` without also implementing `visit_str`");
+                            span_lint(
+                                cx,
+                                SERDE_API_MISUSE,
+                                span,
+                                "you should not implement `visit_string` without also implementing `visit_str`",
+                            );
                         }
                     }
                 }

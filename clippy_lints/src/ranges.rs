@@ -21,7 +21,8 @@ declare_lint! {
     "using `Iterator::step_by(0)`, which produces an infinite iterator"
 }
 
-/// **What it does:** Checks for zipping a collection with the range of `0.._.len()`.
+/// **What it does:** Checks for zipping a collection with the range of
+/// `0.._.len()`.
 ///
 /// **Why is this bad?** The code is better expressed with `.enumerate()`.
 ///
@@ -37,7 +38,7 @@ declare_lint! {
     "zipping iterator with a range when `enumerate()` would do"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct StepByZero;
 
 impl LintPass for StepByZero {
@@ -57,10 +58,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                 use rustc_const_math::ConstInt::Usize;
                 if let Some((Constant::Int(Usize(us)), _)) = constant(cx, &args[1]) {
                     if us.as_u64(cx.sess().target.uint_type) == 0 {
-                        span_lint(cx,
-                                  ITERATOR_STEP_BY_ZERO,
-                                  expr.span,
-                                  "Iterator::step_by(0) will panic at runtime");
+                        span_lint(
+                            cx,
+                            ITERATOR_STEP_BY_ZERO,
+                            expr.span,
+                            "Iterator::step_by(0) will panic at runtime",
+                        );
                     }
                 }
             } else if name == "zip" && args.len() == 2 {

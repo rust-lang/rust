@@ -68,13 +68,16 @@ declare_lint! {
     "type names prefixed/postfixed with their containing module's name"
 }
 
-/// **What it does:** Checks for modules that have the same name as their parent module
+/// **What it does:** Checks for modules that have the same name as their
+/// parent module
 ///
-/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and again `mod foo { ..
+/// **Why is this bad?** A typical beginner mistake is to have `mod foo;` and
+/// again `mod foo { ..
 /// }` in `foo.rs`.
 /// The expectation is that items inside the inner `mod foo { .. }` are then
 /// available
-///                      through `foo::x`, but they are only available through `foo::foo::x`.
+/// through `foo::x`, but they are only available through
+/// `foo::foo::x`.
 /// If this is done on purpose, it would be better to choose a more
 /// representative module name.
 ///
@@ -123,14 +126,21 @@ fn var2str(var: &Variant) -> InternedString {
 fn partial_match(pre: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next_back(); // make sure the name is never fully matched
-    pre.chars().zip(name_iter).take_while(|&(l, r)| l == r).count()
+    pre.chars()
+        .zip(name_iter)
+        .take_while(|&(l, r)| l == r)
+        .count()
 }
 
 /// Returns the number of chars that match from the end
 fn partial_rmatch(post: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next(); // make sure the name is never fully matched
-    post.chars().rev().zip(name_iter.rev()).take_while(|&(l, r)| l == r).count()
+    post.chars()
+        .rev()
+        .zip(name_iter.rev())
+        .take_while(|&(l, r)| l == r)
+        .count()
 }
 
 // FIXME: #600
@@ -142,7 +152,7 @@ fn check_variant(
     item_name: &str,
     item_name_chars: usize,
     span: Span,
-    lint: &'static Lint
+    lint: &'static Lint,
 ) {
     if (def.variants.len() as u64) < threshold {
         return;
@@ -187,13 +197,17 @@ fn check_variant(
         (false, _) => ("pre", pre),
         (true, false) => ("post", post),
     };
-    span_help_and_lint(cx,
-                       lint,
-                       span,
-                       &format!("All variants have the same {}fix: `{}`", what, value),
-                       &format!("remove the {}fixes and use full paths to \
+    span_help_and_lint(
+        cx,
+        lint,
+        span,
+        &format!("All variants have the same {}fix: `{}`", what, value),
+        &format!(
+            "remove the {}fixes and use full paths to \
                                  the variants instead of glob imports",
-                                what));
+            what
+        ),
+    );
 }
 
 fn to_camel_case(item_name: &str) -> String {
@@ -234,10 +248,12 @@ impl EarlyLintPass for EnumVariantNames {
                 if !mod_camel.is_empty() {
                     if *mod_name == item_name {
                         if let ItemKind::Mod(..) = item.node {
-                            span_lint(cx,
-                                      MODULE_INCEPTION,
-                                      item.span,
-                                      "module has the same name as its containing module");
+                            span_lint(
+                                cx,
+                                MODULE_INCEPTION,
+                                item.span,
+                                "module has the same name as its containing module",
+                            );
                         }
                     }
                     if item.vis == Visibility::Public {

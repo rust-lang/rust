@@ -113,7 +113,13 @@ fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
             return true;
         }
         // *_name
-        if interned_name.chars().rev().zip(name.chars().rev()).all(|(l, r)| l == r) {
+        if interned_name.chars().rev().zip(name.chars().rev()).all(
+            |(l,
+              r)| {
+                l == r
+            },
+        )
+        {
             return true;
         }
     }
@@ -128,10 +134,12 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
         self.0.single_char_names.push(c);
         if self.0.single_char_names.len() as u64 >= self.0.lint.single_char_binding_names_threshold {
-            span_lint(self.0.cx,
-                      MANY_SINGLE_CHAR_NAMES,
-                      span,
-                      &format!("{}th binding whose name is just one char", self.0.single_char_names.len()));
+            span_lint(
+                self.0.cx,
+                MANY_SINGLE_CHAR_NAMES,
+                span,
+                &format!("{}th binding whose name is just one char", self.0.single_char_names.len()),
+            );
         }
     }
     fn check_name(&mut self, span: Span, name: Name) {
@@ -166,22 +174,41 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             } else {
                 let mut interned_chars = interned_name.chars();
                 let mut existing_chars = existing_name.interned.chars();
-                let first_i = interned_chars.next().expect("we know we have at least one char");
-                let first_e = existing_chars.next().expect("we know we have at least one char");
+                let first_i = interned_chars.next().expect(
+                    "we know we have at least one char",
+                );
+                let first_e = existing_chars.next().expect(
+                    "we know we have at least one char",
+                );
                 let eq_or_numeric = |a: char, b: char| a == b || a.is_numeric() && b.is_numeric();
 
                 if eq_or_numeric(first_i, first_e) {
-                    let last_i = interned_chars.next_back().expect("we know we have at least two chars");
-                    let last_e = existing_chars.next_back().expect("we know we have at least two chars");
+                    let last_i = interned_chars.next_back().expect(
+                        "we know we have at least two chars",
+                    );
+                    let last_e = existing_chars.next_back().expect(
+                        "we know we have at least two chars",
+                    );
                     if eq_or_numeric(last_i, last_e) {
-                        if interned_chars.zip(existing_chars).filter(|&(i, e)| !eq_or_numeric(i, e)).count() != 1 {
+                        if interned_chars
+                            .zip(existing_chars)
+                            .filter(|&(i, e)| !eq_or_numeric(i, e))
+                            .count() != 1
+                        {
                             continue;
                         }
                     } else {
-                        let second_last_i = interned_chars.next_back().expect("we know we have at least three chars");
-                        let second_last_e = existing_chars.next_back().expect("we know we have at least three chars");
+                        let second_last_i = interned_chars.next_back().expect(
+                            "we know we have at least three chars",
+                        );
+                        let second_last_e = existing_chars.next_back().expect(
+                            "we know we have at least three chars",
+                        );
                         if !eq_or_numeric(second_last_i, second_last_e) || second_last_i == '_' ||
-                           !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                            !interned_chars.zip(existing_chars).all(|(i, e)| {
+                                eq_or_numeric(i, e)
+                            })
+                        {
                             // allowed similarity foo_x, foo_y
                             // or too many chars differ (foo_x, boo_y) or (foox, booy)
                             continue;
@@ -189,10 +216,17 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
                     }
                 } else {
-                    let second_i = interned_chars.next().expect("we know we have at least two chars");
-                    let second_e = existing_chars.next().expect("we know we have at least two chars");
+                    let second_i = interned_chars.next().expect(
+                        "we know we have at least two chars",
+                    );
+                    let second_e = existing_chars.next().expect(
+                        "we know we have at least two chars",
+                    );
                     if !eq_or_numeric(second_i, second_e) || second_i == '_' ||
-                       !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                        !interned_chars.zip(existing_chars).all(|(i, e)| {
+                            eq_or_numeric(i, e)
+                        })
+                    {
                         // allowed similarity x_foo, y_foo
                         // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
                         continue;
@@ -200,20 +234,26 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                     split_at = interned_name.chars().next().map(|c| c.len_utf8());
                 }
             }
-            span_lint_and_then(self.0.cx,
-                               SIMILAR_NAMES,
-                               span,
-                               "binding's name is too similar to existing binding",
-                               |diag| {
-                diag.span_note(existing_name.span, "existing binding defined here");
-                if let Some(split) = split_at {
-                    diag.span_help(span,
-                                   &format!("separate the discriminating character by an \
+            span_lint_and_then(
+                self.0.cx,
+                SIMILAR_NAMES,
+                span,
+                "binding's name is too similar to existing binding",
+                |diag| {
+                    diag.span_note(existing_name.span, "existing binding defined here");
+                    if let Some(split) = split_at {
+                        diag.span_help(
+                            span,
+                            &format!(
+                                "separate the discriminating character by an \
                                                                 underscore like: `{}_{}`",
-                                            &interned_name[..split],
-                                            &interned_name[split..]));
-                }
-            });
+                                &interned_name[..split],
+                                &interned_name[split..]
+                            ),
+                        );
+                    }
+                },
+            );
             return;
         }
         self.0.names.push(ExistingName {
@@ -241,7 +281,8 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         if let Some(ref init) = local.init {
             self.apply(|this| walk_expr(this, &**init));
         }
-        // add the pattern after the expression because the bindings aren't available yet in the init
+        // add the pattern after the expression because the bindings aren't available
+        // yet in the init
         // expression
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }

@@ -17,7 +17,8 @@ use utils::{span_lint, type_is_unsafe_function, iter_input_pats};
 ///
 /// **Example:**
 /// ```rust
-/// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) { .. }
+/// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b:
+/// f32) { .. }
 /// ```
 declare_lint! {
     pub TOO_MANY_ARGUMENTS,
@@ -35,7 +36,8 @@ declare_lint! {
 /// **Known problems:**
 ///
 /// * It does not check functions recursively so if the pointer is passed to a
-/// private non-`unsafe` function which does the dereferencing, the lint won't trigger.
+/// private non-`unsafe` function which does the dereferencing, the lint won't
+/// trigger.
 /// * It only checks for arguments whose type are raw pointers, not raw pointers
 /// got from an argument in some other way (`fn foo(bar: &[*const u8])` or
 /// `some_argument.get_raw_ptr()`).
@@ -50,7 +52,7 @@ declare_lint! {
     "public functions dereferencing raw pointer arguments but not marked `unsafe`"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct Functions {
     threshold: u64,
 }
@@ -75,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
         span: Span,
-        nodeid: ast::NodeId
+        nodeid: ast::NodeId,
     ) {
         use rustc::hir::map::Node::*;
 
@@ -123,10 +125,12 @@ impl<'a, 'tcx> Functions {
     fn check_arg_number(&self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
-            span_lint(cx,
-                      TOO_MANY_ARGUMENTS,
-                      span,
-                      &format!("this function has too many arguments ({}/{})", args, self.threshold));
+            span_lint(
+                cx,
+                TOO_MANY_ARGUMENTS,
+                span,
+                &format!("this function has too many arguments ({}/{})", args, self.threshold),
+            );
         }
     }
 
@@ -136,7 +140,7 @@ impl<'a, 'tcx> Functions {
         unsafety: hir::Unsafety,
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
-        nodeid: ast::NodeId
+        nodeid: ast::NodeId,
     ) {
         let expr = &body.value;
         if unsafety == hir::Unsafety::Normal && cx.access_levels.is_exported(nodeid) {
@@ -208,10 +212,12 @@ impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
         if let hir::ExprPath(ref qpath) = ptr.node {
             let def = self.cx.tables.qpath_def(qpath, ptr.id);
             if self.ptrs.contains(&def.def_id()) {
-                span_lint(self.cx,
-                          NOT_UNSAFE_PTR_ARG_DEREF,
-                          ptr.span,
-                          "this public function dereferences a raw pointer but is not marked `unsafe`");
+                span_lint(
+                    self.cx,
+                    NOT_UNSAFE_PTR_ARG_DEREF,
+                    ptr.span,
+                    "this public function dereferences a raw pointer but is not marked `unsafe`",
+                );
             }
         }
     }

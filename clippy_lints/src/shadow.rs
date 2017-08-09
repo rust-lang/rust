@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         decl: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId
+        _: NodeId,
     ) {
         if in_external_macro(cx, body.value.span) {
             return;
@@ -129,7 +129,13 @@ fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: 
         return;
     }
     if let DeclLocal(ref local) = decl.node {
-        let Local { ref pat, ref ty, ref init, span, .. } = **local;
+        let Local {
+            ref pat,
+            ref ty,
+            ref init,
+            span,
+            ..
+        } = **local;
         if let Some(ref t) = *ty {
             check_ty(cx, t, bindings)
         }
@@ -155,7 +161,7 @@ fn check_pat<'a, 'tcx>(
     pat: &'tcx Pat,
     init: Option<&'tcx Expr>,
     span: Span,
-    bindings: &mut Vec<(Name, Span)>
+    bindings: &mut Vec<(Name, Span)>,
 ) {
     // TODO: match more stuff / destructuring
     match pat.node {
@@ -184,9 +190,9 @@ fn check_pat<'a, 'tcx>(
                 if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
                         let name = field.node.name;
-                        let efield = efields.iter()
-                            .find(|f| f.name.node == name)
-                            .map(|f| &*f.expr);
+                        let efield = efields.iter().find(|f| f.name.node == name).map(
+                            |f| &*f.expr,
+                        );
                         check_pat(cx, &field.node.pat, efield, span, bindings);
                     }
                 } else {
@@ -240,39 +246,51 @@ fn lint_shadow<'a, 'tcx: 'a>(
     span: Span,
     pattern_span: Span,
     init: Option<&'tcx Expr>,
-    prev_span: Span
+    prev_span: Span,
 ) {
     if let Some(expr) = init {
         if is_self_shadow(name, expr) {
-            span_lint_and_then(cx,
-                               SHADOW_SAME,
-                               span,
-                               &format!("`{}` is shadowed by itself in `{}`",
-                                        snippet(cx, pattern_span, "_"),
-                                        snippet(cx, expr.span, "..")),
-                               |db| { db.span_note(prev_span, "previous binding is here"); });
+            span_lint_and_then(
+                cx,
+                SHADOW_SAME,
+                span,
+                &format!(
+                    "`{}` is shadowed by itself in `{}`",
+                    snippet(cx, pattern_span, "_"),
+                    snippet(cx, expr.span, "..")
+                ),
+                |db| { db.span_note(prev_span, "previous binding is here"); },
+            );
         } else if contains_self(name, expr) {
-            span_lint_and_then(cx,
-                               SHADOW_REUSE,
-                               pattern_span,
-                               &format!("`{}` is shadowed by `{}` which reuses the original value",
-                                        snippet(cx, pattern_span, "_"),
-                                        snippet(cx, expr.span, "..")),
-                               |db| {
-                db.span_note(expr.span, "initialization happens here");
-                db.span_note(prev_span, "previous binding is here");
-            });
+            span_lint_and_then(
+                cx,
+                SHADOW_REUSE,
+                pattern_span,
+                &format!(
+                    "`{}` is shadowed by `{}` which reuses the original value",
+                    snippet(cx, pattern_span, "_"),
+                    snippet(cx, expr.span, "..")
+                ),
+                |db| {
+                    db.span_note(expr.span, "initialization happens here");
+                    db.span_note(prev_span, "previous binding is here");
+                },
+            );
         } else {
-            span_lint_and_then(cx,
-                               SHADOW_UNRELATED,
-                               pattern_span,
-                               &format!("`{}` is shadowed by `{}`",
-                                        snippet(cx, pattern_span, "_"),
-                                        snippet(cx, expr.span, "..")),
-                               |db| {
-                db.span_note(expr.span, "initialization happens here");
-                db.span_note(prev_span, "previous binding is here");
-            });
+            span_lint_and_then(
+                cx,
+                SHADOW_UNRELATED,
+                pattern_span,
+                &format!(
+                    "`{}` is shadowed by `{}`",
+                    snippet(cx, pattern_span, "_"),
+                    snippet(cx, expr.span, "..")
+                ),
+                |db| {
+                    db.span_note(expr.span, "initialization happens here");
+                    db.span_note(prev_span, "previous binding is here");
+                },
+            );
         }
 
     } else {
@@ -357,7 +375,11 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
         ExprBox(ref inner) |
         ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => {
-            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
+            block.stmts.is_empty() &&
+                block.expr.as_ref().map_or(
+                    false,
+                    |e| is_self_shadow(name, e),
+                )
         },
         ExprUnary(op, ref inner) => (UnDeref == op) && is_self_shadow(name, inner),
         ExprPath(QPath::Resolved(_, ref path)) => path_eq_name(name, path),

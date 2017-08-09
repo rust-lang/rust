@@ -63,7 +63,10 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
             let parent_item = cx.tcx.hir.get_parent(len.id);
             let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
             let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-            if ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(len).is_ok() {
+            if ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables)
+                .eval(len)
+                .is_ok()
+            {
                 format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
             } else {
                 return;
@@ -84,12 +87,14 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
         },
     };
 
-    span_lint_and_sugg(cx,
-                       USELESS_VEC,
-                       span,
-                       "useless use of `vec!`",
-                       "you can use a slice directly",
-                       snippet);
+    span_lint_and_sugg(
+        cx,
+        USELESS_VEC,
+        span,
+        "useless use of `vec!`",
+        "you can use a slice directly",
+        snippet,
+    );
 }
 
 /// Return the item type of the vector (ie. the `T` in `Vec<T>`).

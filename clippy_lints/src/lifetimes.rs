@@ -48,7 +48,7 @@ declare_lint! {
     "unused lifetimes in function definitions"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct LifetimePass;
 
 impl LintPass for LifetimePass {
@@ -94,7 +94,7 @@ fn check_fn_inner<'a, 'tcx>(
     decl: &'tcx FnDecl,
     body: Option<BodyId>,
     generics: &'tcx Generics,
-    span: Span
+    span: Span,
 ) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
@@ -104,7 +104,8 @@ fn check_fn_inner<'a, 'tcx>(
     for typ in &generics.ty_params {
         for bound in &typ.bounds {
             if let TraitTyParamBound(ref trait_ref, _) = *bound {
-                let bounds = trait_ref.trait_ref
+                let bounds = trait_ref
+                    .trait_ref
                     .path
                     .segments
                     .last()
@@ -121,10 +122,12 @@ fn check_fn_inner<'a, 'tcx>(
         }
     }
     if could_use_elision(cx, decl, body, &generics.lifetimes, bounds_lts) {
-        span_lint(cx,
-                  NEEDLESS_LIFETIMES,
-                  span,
-                  "explicit lifetimes given in parameter types where they could be elided");
+        span_lint(
+            cx,
+            NEEDLESS_LIFETIMES,
+            span,
+            "explicit lifetimes given in parameter types where they could be elided",
+        );
     }
     report_extra_lifetimes(cx, decl, generics);
 }
@@ -134,7 +137,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
     func: &'tcx FnDecl,
     body: Option<BodyId>,
     named_lts: &'tcx [LifetimeDef],
-    bounds_lts: Vec<&'tcx Lifetime>
+    bounds_lts: Vec<&'tcx Lifetime>,
 ) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -189,7 +192,10 @@ fn could_use_elision<'a, 'tcx: 'a>(
         // no output lifetimes, check distinctness of input lifetimes
 
         // only unnamed and static, ok
-        if input_lts.iter().all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static) {
+        if input_lts.iter().all(|lt| {
+            *lt == RefLt::Unnamed || *lt == RefLt::Static
+        })
+        {
             return false;
         }
         // we have no output reference, so we only need all distinct lifetimes
@@ -406,7 +412,8 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
 }
 
 fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
-    let hs = generics.lifetimes
+    let hs = generics
+        .lifetimes
         .iter()
         .map(|lt| (lt.lifetime.name, lt.lifetime.span))
         .collect();

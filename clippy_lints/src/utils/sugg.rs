@@ -20,7 +20,8 @@ pub enum Sugg<'a> {
     NonParen(Cow<'a, str>),
     /// An expression that does not fit in other variants.
     MaybeParen(Cow<'a, str>),
-    /// A binary operator expression, including `as`-casts and explicit type coercion.
+    /// A binary operator expression, including `as`-casts and explicit type
+    /// coercion.
     BinOp(AssocOp, Cow<'a, str>),
 }
 
@@ -77,7 +78,8 @@ impl<'a> Sugg<'a> {
         })
     }
 
-    /// Convenience function around `hir_opt` for suggestions with a default text.
+    /// Convenience function around `hir_opt` for suggestions with a default
+    /// text.
     pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Sugg<'a> {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
@@ -156,7 +158,8 @@ impl<'a> Sugg<'a> {
         make_unop("*", self)
     }
 
-    /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>` suggestion.
+    /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
+    /// suggestion.
     pub fn range(self, end: Self, limit: ast::RangeLimits) -> Sugg<'static> {
         match limit {
             ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, &end),
@@ -164,7 +167,8 @@ impl<'a> Sugg<'a> {
         }
     }
 
-    /// Add parenthesis to any expression that might need them. Suitable to the `self` argument of
+    /// Add parenthesis to any expression that might need them. Suitable to the
+    /// `self` argument of
     /// a method call (eg. to build `bar.foo()` or `(1 + 2).foo()`).
     pub fn maybe_par(self) -> Self {
         match self {
@@ -233,7 +237,8 @@ impl<T: Display> Display for ParenHelper<T> {
 
 /// Build the string for `<op><expr>` adding parenthesis when necessary.
 ///
-/// For convenience, the operator is taken as a string because all unary operators have the same
+/// For convenience, the operator is taken as a string because all unary
+/// operators have the same
 /// precedence.
 pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
     Sugg::MaybeParen(format!("{}{}", op, expr.maybe_par()).into())
@@ -241,7 +246,8 @@ pub fn make_unop(op: &str, expr: Sugg) -> Sugg<'static> {
 
 /// Build the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
 ///
-/// Precedence of shift operator relative to other arithmetic operation is often confusing so
+/// Precedence of shift operator relative to other arithmetic operation is
+/// often confusing so
 /// parenthesis will always be added for a mix of these.
 pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     /// Whether the operator is a shift operator `<<` or `>>`.
@@ -251,18 +257,21 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
 
     /// Whether the operator is a arithmetic operator (`+`, `-`, `*`, `/`, `%`).
     fn is_arith(op: &AssocOp) -> bool {
-        matches!(*op,
-                 AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus)
+        matches!(
+            *op,
+            AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus
+        )
     }
 
-    /// Whether the operator `op` needs parenthesis with the operator `other` in the direction
+    /// Whether the operator `op` needs parenthesis with the operator `other`
+    /// in the direction
     /// `dir`.
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence() ||
-        (other.precedence() == op.precedence() &&
-         ((op != other && associativity(op) != dir) ||
-          (op == other && associativity(op) != Associativity::Both))) || is_shift(op) && is_arith(other) ||
-        is_shift(other) && is_arith(op)
+            (other.precedence() == op.precedence() &&
+                 ((op != other && associativity(op) != dir) ||
+                      (op == other && associativity(op) != Associativity::Both))) ||
+            is_shift(op) && is_arith(other) || is_shift(other) && is_arith(op)
     }
 
     let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
@@ -316,11 +325,13 @@ enum Associativity {
     Right,
 }
 
-/// Return the associativity/fixity of an operator. The difference with `AssocOp::fixity` is that
+/// Return the associativity/fixity of an operator. The difference with
+/// `AssocOp::fixity` is that
 /// an operator can be both left and right associative (such as `+`:
 /// `a + b + c == (a + b) + c == a + (b + c)`.
 ///
-/// Chained `as` and explicit `:` type coercion never need inner parenthesis so they are considered
+/// Chained `as` and explicit `:` type coercion never need inner parenthesis so
+/// they are considered
 /// associative.
 fn associativity(op: &AssocOp) -> Associativity {
     use syntax::util::parser::AssocOp::*;
@@ -374,10 +385,14 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
     })
 }
 
-/// Return the indentation before `span` if there are nothing but `[ \t]` before it on its line.
+/// Return the indentation before `span` if there are nothing but `[ \t]`
+/// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().codemap().lookup_char_pos(span.lo);
-    if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
+    if let Some(line) = lo.file.get_line(
+        lo.line - 1, /* line numbers in `Loc` are 1-based */
+    )
+    {
         if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
             // we can mix char and byte positions here because we only consider `[ \t]`
             if lo.col == CharPos(pos) {
@@ -424,7 +439,10 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
 impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
     fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D) {
         if let Some(indent) = indentation(cx, item) {
-            let span = Span { hi: item.lo, ..item };
+            let span = Span {
+                hi: item.lo,
+                ..item
+            };
 
             self.span_suggestion(span, msg, format!("{}\n{}", attr, indent));
         }
@@ -432,10 +450,14 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
 
     fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str) {
         if let Some(indent) = indentation(cx, item) {
-            let span = Span { hi: item.lo, ..item };
+            let span = Span {
+                hi: item.lo,
+                ..item
+            };
 
             let mut first = true;
-            let new_item = new_item.lines()
+            let new_item = new_item
+                .lines()
                 .map(|l| if first {
                     first = false;
                     format!("{}\n", l)

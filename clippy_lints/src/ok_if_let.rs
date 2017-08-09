@@ -4,7 +4,8 @@ use utils::{paths, method_chain_args, span_help_and_lint, match_type, snippet};
 
 /// **What it does:*** Checks for unnecessary `ok()` in if let.
 ///
-/// **Why is this bad?** Calling `ok()` in if let is unnecessary, instead match on `Ok(pat)`
+/// **Why is this bad?** Calling `ok()` in if let is unnecessary, instead match
+/// on `Ok(pat)`
 ///
 /// **Known problems:** None.
 ///

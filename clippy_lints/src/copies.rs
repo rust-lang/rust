@@ -138,12 +138,14 @@ fn lint_same_then_else(cx: &LateContext, blocks: &[&Block]) {
     let eq: &Fn(&&Block, &&Block) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).eq_block(lhs, rhs) };
 
     if let Some((i, j)) = search_same(blocks, hash, eq) {
-        span_note_and_lint(cx,
-                           IF_SAME_THEN_ELSE,
-                           j.span,
-                           "this `if` has identical blocks",
-                           i.span,
-                           "same as this");
+        span_note_and_lint(
+            cx,
+            IF_SAME_THEN_ELSE,
+            j.span,
+            "this `if` has identical blocks",
+            i.span,
+            "same as this",
+        );
     }
 }
 
@@ -158,12 +160,14 @@ fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
     let eq: &Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     if let Some((i, j)) = search_same(conds, hash, eq) {
-        span_note_and_lint(cx,
-                           IFS_SAME_COND,
-                           j.span,
-                           "this `if` has the same condition as a previous if",
-                           i.span,
-                           "same as this");
+        span_note_and_lint(
+            cx,
+            IFS_SAME_COND,
+            j.span,
+            "this `if` has the same condition as a previous if",
+            i.span,
+            "same as this",
+        );
     }
 }
 
@@ -185,40 +189,48 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
         if let Some((i, j)) = search_same(arms, hash, eq) {
-            span_lint_and_then(cx,
-                               MATCH_SAME_ARMS,
-                               j.body.span,
-                               "this `match` has identical arm bodies",
-                               |db| {
-                db.span_note(i.body.span, "same as this");
+            span_lint_and_then(
+                cx,
+                MATCH_SAME_ARMS,
+                j.body.span,
+                "this `match` has identical arm bodies",
+                |db| {
+                    db.span_note(i.body.span, "same as this");
 
-                // Note: this does not use `span_suggestion` on purpose: there is no clean way to
-                // remove the other arm. Building a span and suggest to replace it to "" makes an
-                // even more confusing error message. Also in order not to make up a span for the
-                // whole pattern, the suggestion is only shown when there is only one pattern. The
-                // user should know about `|` if they are already using it…
+                    // Note: this does not use `span_suggestion` on purpose: there is no clean way
+                    // to
+                    // remove the other arm. Building a span and suggest to replace it to "" makes
+                    // an
+                    // even more confusing error message. Also in order not to make up a span for
+                    // the
+                    // whole pattern, the suggestion is only shown when there is only one pattern.
+                    // The
+                    // user should know about `|` if they are already using it…
 
-                if i.pats.len() == 1 && j.pats.len() == 1 {
-                    let lhs = snippet(cx, i.pats[0].span, "<pat1>");
-                    let rhs = snippet(cx, j.pats[0].span, "<pat2>");
+                    if i.pats.len() == 1 && j.pats.len() == 1 {
+                        let lhs = snippet(cx, i.pats[0].span, "<pat1>");
+                        let rhs = snippet(cx, j.pats[0].span, "<pat2>");
 
-                    if let PatKind::Wild = j.pats[0].node {
-                        // if the last arm is _, then i could be integrated into _
-                        // note that i.pats[0] cannot be _, because that would mean that we're
-                        // hiding all the subsequent arms, and rust won't compile
-                        db.span_note(i.body.span,
-                                     &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`",
-                                              lhs));
-                    } else {
-                        db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        if let PatKind::Wild = j.pats[0].node {
+                            // if the last arm is _, then i could be integrated into _
+                            // note that i.pats[0] cannot be _, because that would mean that we're
+                            // hiding all the subsequent arms, and rust won't compile
+                            db.span_note(
+                                i.body.span,
+                                &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`", lhs),
+                            );
+                        } else {
+                            db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        }
                     }
-                }
-            });
+                },
+            );
         }
     }
 }
 
-/// Return the list of condition expressions and the list of blocks in a sequence of `if/else`.
+/// Return the list of condition expressions and the list of blocks in a
+/// sequence of `if/else`.
 /// Eg. would return `([a, b], [c, d, e])` for the expression
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
@@ -303,8 +315,9 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
 }
 
 fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
-    where Hash: Fn(&T) -> u64,
-          Eq: Fn(&T, &T) -> bool
+where
+    Hash: Fn(&T) -> u64,
+    Eq: Fn(&T, &T) -> bool,
 {
     // common cases
     if exprs.len() < 2 {

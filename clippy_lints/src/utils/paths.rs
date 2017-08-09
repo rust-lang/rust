@@ -1,4 +1,5 @@
-//! This module contains paths to types and functions Clippy needs to know about.
+//! This module contains paths to types and functions Clippy needs to know
+//! about.
 
 pub const ASMUT_TRAIT: [&'static str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&'static str; 3] = ["core", "convert", "AsRef"];

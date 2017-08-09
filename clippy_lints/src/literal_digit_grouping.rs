@@ -146,7 +146,8 @@ impl<'a> DigitInfo<'a> {
         let group_size = self.radix.suggest_grouping();
         if self.digits.contains('.') {
             let mut parts = self.digits.split('.');
-            let int_part_hint = parts.next()
+            let int_part_hint = parts
+                .next()
                 .expect("split always returns at least one element")
                 .chars()
                 .rev()
@@ -157,7 +158,8 @@ impl<'a> DigitInfo<'a> {
                 .rev()
                 .collect::<Vec<String>>()
                 .join("_");
-            let frac_part_hint = parts.next()
+            let frac_part_hint = parts
+                .next()
                 .expect("already checked that there is a `.`")
                 .chars()
                 .filter(|&c| c != '_')
@@ -194,25 +196,31 @@ impl WarningType {
     pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
         match *self {
             WarningType::UnreadableLiteral => {
-                span_help_and_lint(cx,
-                                   UNREADABLE_LITERAL,
-                                   *span,
-                                   "long literal lacking separators",
-                                   &format!("consider: {}", grouping_hint))
+                span_help_and_lint(
+                    cx,
+                    UNREADABLE_LITERAL,
+                    *span,
+                    "long literal lacking separators",
+                    &format!("consider: {}", grouping_hint),
+                )
             },
             WarningType::LargeDigitGroups => {
-                span_help_and_lint(cx,
-                                   LARGE_DIGIT_GROUPS,
-                                   *span,
-                                   "digit groups should be smaller",
-                                   &format!("consider: {}", grouping_hint))
+                span_help_and_lint(
+                    cx,
+                    LARGE_DIGIT_GROUPS,
+                    *span,
+                    "digit groups should be smaller",
+                    &format!("consider: {}", grouping_hint),
+                )
             },
             WarningType::InconsistentDigitGrouping => {
-                span_help_and_lint(cx,
-                                   INCONSISTENT_DIGIT_GROUPING,
-                                   *span,
-                                   "digits grouped inconsistently by underscores",
-                                   &format!("consider: {}", grouping_hint))
+                span_help_and_lint(
+                    cx,
+                    INCONSISTENT_DIGIT_GROUPING,
+                    *span,
+                    "digits grouped inconsistently by underscores",
+                    &format!("consider: {}", grouping_hint),
+                )
             },
         };
     }
@@ -309,7 +317,8 @@ impl LiteralDigitGrouping {
     /// size on success or `WarningType` when emitting a warning.
     fn do_lint(digits: &str) -> Result<usize, WarningType> {
         // Grab underscore indices with respect to the units digit.
-        let underscore_positions: Vec<usize> = digits.chars()
+        let underscore_positions: Vec<usize> = digits
+            .chars()
             .rev()
             .enumerate()
             .filter_map(|(idx, digit)| if digit == '_' { Some(idx) } else { None })

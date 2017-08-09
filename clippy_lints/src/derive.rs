@@ -89,7 +89,7 @@ fn check_hash_peq<'a, 'tcx>(
     span: Span,
     trait_ref: &TraitRef,
     ty: Ty<'tcx>,
-    hash_is_automatically_derived: bool
+    hash_is_automatically_derived: bool,
 ) {
     if_let_chain! {[
         match_path_old(&trait_ref.path, &paths::HASH),

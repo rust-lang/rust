@@ -19,7 +19,8 @@ use utils::{in_macro, snippet_block, span_lint_and_then, span_lint_and_sugg};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
-/// by `&&`-combining their conditions and for `else { if ... }` expressions that
+/// by `&&`-combining their conditions and for `else { if ... }` expressions
+/// that
 /// can be collapsed to `else if ...`.
 ///
 /// **Why is this bad?** Each `if`-statement adds one level of nesting, which
@@ -67,7 +68,7 @@ declare_lint! {
     "`if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct CollapsibleIf;
 
 impl LintPass for CollapsibleIf {

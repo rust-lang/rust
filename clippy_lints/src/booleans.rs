@@ -44,7 +44,7 @@ declare_lint! {
     "boolean expressions that contain terminals which can be eliminated"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct NonminimalBool;
 
 impl LintPass for NonminimalBool {
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId
+        _: NodeId,
     ) {
         NonminimalBoolVisitor { cx: cx }.visit_body(body)
     }
@@ -115,8 +115,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
         for (n, expr) in self.terminals.iter().enumerate() {
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
-                #[allow(cast_possible_truncation)]
-                return Ok(Bool::Term(n as u8));
+                #[allow(cast_possible_truncation)] return Ok(Bool::Term(n as u8));
             }
             let negated = match e.node {
                 ExprBinary(binop, ref lhs, ref rhs) => {
@@ -141,15 +140,13 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => continue,
             };
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
-                #[allow(cast_possible_truncation)]
-                return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
+                #[allow(cast_possible_truncation)] return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
             }
         }
         let n = self.terminals.len();
         self.terminals.push(e);
         if n < 32 {
-            #[allow(cast_possible_truncation)]
-            Ok(Bool::Term(n as u8))
+            #[allow(cast_possible_truncation)] Ok(Bool::Term(n as u8))
         } else {
             Err("too many literals".to_owned())
         }
@@ -353,44 +350,54 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         continue 'simplified;
                     }
                     if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
-                        span_lint_and_then(self.cx,
-                                           LOGIC_BUG,
-                                           e.span,
-                                           "this boolean expression contains a logic bug",
-                                           |db| {
-                            db.span_help(h2q.terminals[i].span,
-                                         "this expression can be optimized out by applying boolean operations to the \
-                                          outer expression");
-                            db.span_suggestion(e.span,
-                                               "it would look like the following",
-                                               suggest(self.cx, suggestion, &h2q.terminals));
-                        });
+                        span_lint_and_then(
+                            self.cx,
+                            LOGIC_BUG,
+                            e.span,
+                            "this boolean expression contains a logic bug",
+                            |db| {
+                                db.span_help(
+                                    h2q.terminals[i].span,
+                                    "this expression can be optimized out by applying boolean operations to the \
+                                          outer expression",
+                                );
+                                db.span_suggestion(
+                                    e.span,
+                                    "it would look like the following",
+                                    suggest(self.cx, suggestion, &h2q.terminals),
+                                );
+                            },
+                        );
                         // don't also lint `NONMINIMAL_BOOL`
                         return;
                     }
                     // if the number of occurrences of a terminal decreases or any of the stats
                     // decreases while none increases
                     improvement |= (stats.terminals[i] > simplified_stats.terminals[i]) ||
-                                   (stats.negations > simplified_stats.negations &&
-                                    stats.ops == simplified_stats.ops) ||
-                                   (stats.ops > simplified_stats.ops && stats.negations == simplified_stats.negations);
+                        (stats.negations > simplified_stats.negations && stats.ops == simplified_stats.ops) ||
+                        (stats.ops > simplified_stats.ops && stats.negations == simplified_stats.negations);
                 }
                 if improvement {
                     improvements.push(suggestion);
                 }
             }
             if !improvements.is_empty() {
-                span_lint_and_then(self.cx,
-                                   NONMINIMAL_BOOL,
-                                   e.span,
-                                   "this boolean expression can be simplified",
-                                   |db| {
-                    db.span_suggestions(e.span,
-                                        "try",
-                                        improvements.into_iter()
-                                            .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals))
-                                            .collect());
-                });
+                span_lint_and_then(
+                    self.cx,
+                    NONMINIMAL_BOOL,
+                    e.span,
+                    "this boolean expression can be simplified",
+                    |db| {
+                        db.span_suggestions(
+                            e.span,
+                            "try",
+                            improvements
+                                .into_iter()
+                                .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals))
+                                .collect(),
+                        );
+                    },
+                );
             }
         }
     }

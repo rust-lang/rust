@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        node_id: NodeId
+        node_id: NodeId,
     ) {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let mut v = EscapeDelegate {
@@ -74,10 +74,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
 
         for node in v.set {
-            span_lint(cx,
-                      BOXED_LOCAL,
-                      cx.tcx.hir.span(node),
-                      "local variable doesn't need to be boxed here");
+            span_lint(
+                cx,
+                BOXED_LOCAL,
+                cx.tcx.hir.span(node),
+                "local variable doesn't need to be boxed here",
+            );
         }
     }
 }

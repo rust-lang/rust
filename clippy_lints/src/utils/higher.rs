@@ -1,4 +1,5 @@
-//! This module contains functions for retrieve the original AST from lowered `hir`.
+//! This module contains functions for retrieve the original AST from lowered
+//! `hir`.
 
 #![deny(missing_docs_in_private_items)]
 
@@ -44,9 +45,11 @@ pub struct Range<'a> {
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
 pub fn range(expr: &hir::Expr) -> Option<Range> {
-    /// Find the field named `name` in the field. Always return `Some` for convenience.
+    /// Find the field named `name` in the field. Always return `Some` for
+    /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
-        let expr = &fields.iter()
+        let expr = &fields
+            .iter()
             .find(|field| field.name.node == name)
             .unwrap_or_else(|| panic!("missing {} field for range", name))
             .expr;
@@ -54,7 +57,8 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
         Some(expr)
     }
 
-    // The range syntax is expanded to literal paths starting with `core` or `std` depending on
+    // The range syntax is expanded to literal paths starting with `core` or `std`
+    // depending on
     // `#[no_std]`. Testing both instead of resolving the paths.
 
     match expr.node {
@@ -147,7 +151,8 @@ pub enum VecArgs<'a> {
     Vec(&'a [hir::Expr]),
 }
 
-/// Returns the arguments of the `vec!` macro if this expression was expanded from `vec!`.
+/// Returns the arguments of the `vec!` macro if this expression was expanded
+/// from `vec!`.
 pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e>> {
     if_let_chain!{[
         let hir::ExprCall(ref fun, ref args) = expr.node,

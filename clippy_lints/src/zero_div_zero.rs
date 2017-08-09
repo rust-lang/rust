@@ -5,7 +5,8 @@ use utils::span_help_and_lint;
 
 /// **What it does:** Checks for `0.0 / 0.0`.
 ///
-/// **Why is this bad?** It's less readable than `std::f32::NAN` or `std::f64::NAN`.
+/// **Why is this bad?** It's less readable than `std::f32::NAN` or
+/// `std::f64::NAN`.
 ///
 /// **Known problems:** None.
 ///

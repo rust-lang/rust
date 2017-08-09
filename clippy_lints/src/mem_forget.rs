@@ -2,7 +2,8 @@ use rustc::lint::*;
 use rustc::hir::{Expr, ExprCall, ExprPath};
 use utils::{match_def_path, paths, span_lint};
 
-/// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is `Drop`.
+/// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
+/// `Drop`.
 ///
 /// **Why is this bad?** `std::mem::forget(t)` prevents `t` from running its
 /// destructor, possibly causing leaks.
@@ -38,7 +39,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
                     if match forgot_ty.ty_adt_def() {
                         Some(def) => def.has_dtor(cx.tcx),
                         _ => false,
-                    } {
+                    }
+                    {
                         span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget on Drop type");
                     }
                 }

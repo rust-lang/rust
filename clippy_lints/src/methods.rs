@@ -65,7 +65,8 @@ declare_lint! {
 /// information) instead of an inherent implementation.
 ///
 /// **Why is this bad?** Implementing the traits improve ergonomics for users of
-/// the code, often with very little cost. Also people seeing a `mul(...)` method
+/// the code, often with very little cost. Also people seeing a `mul(...)`
+/// method
 /// may expect `*` to work equally, so you should have good reason to disappoint
 /// them.
 ///
@@ -368,7 +369,8 @@ declare_lint! {
      `_.split(\"x\")`"
 }
 
-/// **What it does:** Checks for getting the inner pointer of a temporary `CString`.
+/// **What it does:** Checks for getting the inner pointer of a temporary
+/// `CString`.
 ///
 /// **Why is this bad?** The inner pointer of a `CString` is only valid as long
 /// as the `CString` is alive.
@@ -500,7 +502,8 @@ declare_lint! {
     "using `x.extend(s.chars())` where s is a `&str` or `String`"
 }
 
-/// **What it does:** Checks for the use of `.cloned().collect()` on slice to create a `Vec`.
+/// **What it does:** Checks for the use of `.cloned().collect()` on slice to
+/// create a `Vec`.
 ///
 /// **Why is this bad?** `.to_vec()` is clearer
 ///
@@ -524,29 +527,31 @@ declare_lint! {
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(OPTION_UNWRAP_USED,
-                    RESULT_UNWRAP_USED,
-                    SHOULD_IMPLEMENT_TRAIT,
-                    WRONG_SELF_CONVENTION,
-                    WRONG_PUB_SELF_CONVENTION,
-                    OK_EXPECT,
-                    OPTION_MAP_UNWRAP_OR,
-                    OPTION_MAP_UNWRAP_OR_ELSE,
-                    OR_FUN_CALL,
-                    CHARS_NEXT_CMP,
-                    CLONE_ON_COPY,
-                    CLONE_DOUBLE_REF,
-                    NEW_RET_NO_SELF,
-                    SINGLE_CHAR_PATTERN,
-                    SEARCH_IS_SOME,
-                    TEMPORARY_CSTRING_AS_PTR,
-                    FILTER_NEXT,
-                    FILTER_MAP,
-                    ITER_NTH,
-                    ITER_SKIP_NEXT,
-                    GET_UNWRAP,
-                    STRING_EXTEND_CHARS,
-                    ITER_CLONED_COLLECT)
+        lint_array!(
+            OPTION_UNWRAP_USED,
+            RESULT_UNWRAP_USED,
+            SHOULD_IMPLEMENT_TRAIT,
+            WRONG_SELF_CONVENTION,
+            WRONG_PUB_SELF_CONVENTION,
+            OK_EXPECT,
+            OPTION_MAP_UNWRAP_OR,
+            OPTION_MAP_UNWRAP_OR_ELSE,
+            OR_FUN_CALL,
+            CHARS_NEXT_CMP,
+            CLONE_ON_COPY,
+            CLONE_DOUBLE_REF,
+            NEW_RET_NO_SELF,
+            SINGLE_CHAR_PATTERN,
+            SEARCH_IS_SOME,
+            TEMPORARY_CSTRING_AS_PTR,
+            FILTER_NEXT,
+            FILTER_MAP,
+            ITER_NTH,
+            ITER_SKIP_NEXT,
+            GET_UNWRAP,
+            STRING_EXTEND_CHARS,
+            ITER_CLONED_COLLECT
+        )
     }
 }
 
@@ -706,7 +711,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         self_expr: &hir::Expr,
         arg: &hir::Expr,
         or_has_args: bool,
-        span: Span
+        span: Span,
     ) -> bool {
         if or_has_args {
             return false;
@@ -718,20 +723,22 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) =
-                        get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
-                        default_trait_id
-                    } else {
-                        return false;
-                    };
+                    let default_trait_id =
+                        if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
+                            default_trait_id
+                        } else {
+                            return false;
+                        };
 
                     if implements_trait(cx, arg_ty, default_trait_id, &[]) {
-                        span_lint_and_sugg(cx,
-                                           OR_FUN_CALL,
-                                           span,
-                                           &format!("use of `{}` followed by a call to `{}`", name, path),
-                                           "try this",
-                                           format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")));
+                        span_lint_and_sugg(
+                            cx,
+                            OR_FUN_CALL,
+                            span,
+                            &format!("use of `{}` followed by a call to `{}`", name, path),
+                            "try this",
+                            format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")),
+                        );
                         return true;
                     }
                 }
@@ -749,7 +756,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         self_expr: &hir::Expr,
         arg: &hir::Expr,
         or_has_args: bool,
-        span: Span
+        span: Span,
     ) {
         // don't lint for constant values
         // FIXME: can we `expect` here instead of match?
@@ -765,15 +772,18 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
         // (path, fn_has_argument, methods, suffix)
         let know_types: &[(&[_], _, &[_], _)] =
-            &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-              (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-              (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-              (&paths::RESULT, true, &["or", "unwrap_or"], "else")];
+            &[
+                (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+                (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+                (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+                (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
+            ];
 
         let self_ty = cx.tables.expr_ty(self_expr);
 
         let (fn_has_arguments, poss, suffix) = if let Some(&(_, fn_has_arguments, poss, suffix)) =
-            know_types.iter().find(|&&i| match_type(cx, self_ty, i.0)) {
+            know_types.iter().find(|&&i| match_type(cx, self_ty, i.0))
+        {
             (fn_has_arguments, poss, suffix)
         } else {
             return;
@@ -789,12 +799,14 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
             (false, true) => snippet(cx, fun_span, ".."),
         };
 
-        span_lint_and_sugg(cx,
-                           OR_FUN_CALL,
-                           span,
-                           &format!("use of `{}` followed by a function call", name),
-                           "try this",
-                           format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg));
+        span_lint_and_sugg(
+            cx,
+            OR_FUN_CALL,
+            span,
+            &format!("use of `{}` followed by a function call", name),
+            "try this",
+            format!("{}.{}_{}({})", snippet(cx, self_expr.span, "_"), name, suffix, sugg),
+        );
     }
 
     if args.len() == 2 {
@@ -818,32 +830,30 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
     let ty = cx.tables.expr_ty(expr);
     if let ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) = arg_ty.sty {
         if let ty::TyRef(..) = inner.sty {
-            span_lint_and_then(cx,
-                               CLONE_DOUBLE_REF,
-                               expr.span,
-                               "using `clone` on a double-reference; \
+            span_lint_and_then(
+                cx,
+                CLONE_DOUBLE_REF,
+                expr.span,
+                "using `clone` on a double-reference; \
                                 this will copy the reference instead of cloning the inner type",
-                               |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
-                                   db.span_suggestion(expr.span,
-                                                      "try dereferencing it",
-                                                      format!("({}).clone()", snip.deref()));
-                               });
+                |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
+                    db.span_suggestion(expr.span, "try dereferencing it", format!("({}).clone()", snip.deref()));
+                },
+            );
             return; // don't report clone_on_copy
         }
     }
 
     if is_copy(cx, ty) {
-        span_lint_and_then(cx,
-                           CLONE_ON_COPY,
-                           expr.span,
-                           "using `clone` on a `Copy` type",
-                           |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
-                               if let ty::TyRef(..) = cx.tables.expr_ty(arg).sty {
-                                   db.span_suggestion(expr.span, "try dereferencing it", format!("{}", snip.deref()));
-                               } else {
-                                   db.span_suggestion(expr.span, "try removing the `clone` call", format!("{}", snip));
-                               }
-                           });
+        span_lint_and_then(cx, CLONE_ON_COPY, expr.span, "using `clone` on a `Copy` type", |db| {
+            if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
+                if let ty::TyRef(..) = cx.tables.expr_ty(arg).sty {
+                    db.span_suggestion(expr.span, "try dereferencing it", format!("{}", snip.deref()));
+                } else {
+                    db.span_suggestion(expr.span, "try removing the `clone` call", format!("{}", snip));
+                }
+            }
+        });
     }
 }
 
@@ -860,15 +870,19 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
             return;
         };
 
-        span_lint_and_sugg(cx,
-                           STRING_EXTEND_CHARS,
-                           expr.span,
-                           "calling `.extend(_.chars())`",
-                           "try this",
-                           format!("{}.push_str({}{})",
-                                   snippet(cx, args[0].span, "_"),
-                                   ref_str,
-                                   snippet(cx, target.span, "_")));
+        span_lint_and_sugg(
+            cx,
+            STRING_EXTEND_CHARS,
+            expr.span,
+            "calling `.extend(_.chars())`",
+            "try this",
+            format!(
+                "{}.push_str({}{})",
+                snippet(cx, args[0].span, "_"),
+                ref_str,
+                snippet(cx, target.span, "_")
+            ),
+        );
     }
 }
 
@@ -898,12 +912,15 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 
 fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr]) {
     if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) &&
-       derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
-        span_lint(cx,
-                  ITER_CLONED_COLLECT,
-                  expr.span,
-                  "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                   more readable");
+        derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some()
+    {
+        span_lint(
+            cx,
+            ITER_CLONED_COLLECT,
+            expr.span,
+            "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                   more readable",
+        );
     }
 }
 
@@ -919,12 +936,16 @@ fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is
         return; // caller is not a type that we want to lint
     };
 
-    span_lint(cx,
-              ITER_NTH,
-              expr.span,
-              &format!("called `.iter{0}().nth()` on a {1}. Calling `.get{0}()` is both faster and more readable",
-                       mut_str,
-                       caller_type));
+    span_lint(
+        cx,
+        ITER_NTH,
+        expr.span,
+        &format!(
+            "called `.iter{0}().nth()` on a {1}. Calling `.get{0}()` is both faster and more readable",
+            mut_str,
+            caller_type
+        ),
+    );
 }
 
 fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
@@ -947,26 +968,34 @@ fn lint_get_unwrap(cx: &LateContext, expr: &hir::Expr, get_args: &[hir::Expr], i
 
     let mut_str = if is_mut { "_mut" } else { "" };
     let borrow_str = if is_mut { "&mut " } else { "&" };
-    span_lint_and_sugg(cx,
-                       GET_UNWRAP,
-                       expr.span,
-                       &format!("called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
-                                mut_str,
-                                caller_type),
-                       "try this",
-                       format!("{}{}[{}]",
-                               borrow_str,
-                               snippet(cx, get_args[0].span, "_"),
-                               snippet(cx, get_args[1].span, "_")));
+    span_lint_and_sugg(
+        cx,
+        GET_UNWRAP,
+        expr.span,
+        &format!(
+            "called `.get{0}().unwrap()` on a {1}. Using `[]` is more clear and more concise",
+            mut_str,
+            caller_type
+        ),
+        "try this",
+        format!(
+            "{}{}[{}]",
+            borrow_str,
+            snippet(cx, get_args[0].span, "_"),
+            snippet(cx, get_args[1].span, "_")
+        ),
+    );
 }
 
 fn lint_iter_skip_next(cx: &LateContext, expr: &hir::Expr) {
     // lint if caller of skip is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
-        span_lint(cx,
-                  ITER_SKIP_NEXT,
-                  expr.span,
-                  "called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`");
+        span_lint(
+            cx,
+            ITER_SKIP_NEXT,
+            expr.span,
+            "called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`",
+        );
     }
 }
 
@@ -1017,14 +1046,18 @@ fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
     };
 
     if let Some((lint, kind, none_value)) = mess {
-        span_lint(cx,
-                  lint,
-                  expr.span,
-                  &format!("used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
+        span_lint(
+            cx,
+            lint,
+            expr.span,
+            &format!(
+                "used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
                             using expect() to provide a better panic \
                             message",
-                           kind,
-                           none_value));
+                kind,
+                none_value
+            ),
+        );
     }
 }
 
@@ -1035,10 +1068,12 @@ fn lint_ok_expect(cx: &LateContext, expr: &hir::Expr, ok_args: &[hir::Expr]) {
         let result_type = cx.tables.expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type) {
             if has_debug_impl(error_type, cx) {
-                span_lint(cx,
-                          OK_EXPECT,
-                          expr.span,
-                          "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`");
+                span_lint(
+                    cx,
+                    OK_EXPECT,
+                    expr.span,
+                    "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
+                );
             }
         }
     }
@@ -1059,14 +1094,18 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
         if same_span && !multiline {
-            span_note_and_lint(cx,
-                               OPTION_MAP_UNWRAP_OR,
-                               expr.span,
-                               msg,
-                               expr.span,
-                               &format!("replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`",
-                                        map_snippet,
-                                        unwrap_snippet));
+            span_note_and_lint(
+                cx,
+                OPTION_MAP_UNWRAP_OR,
+                expr.span,
+                msg,
+                expr.span,
+                &format!(
+                    "replace `map({0}).unwrap_or({1})` with `map_or({1}, {0})`",
+                    map_snippet,
+                    unwrap_snippet
+                ),
+            );
         } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR, expr.span, msg);
         };
@@ -1088,14 +1127,18 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
         let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
         if same_span && !multiline {
-            span_note_and_lint(cx,
-                               OPTION_MAP_UNWRAP_OR_ELSE,
-                               expr.span,
-                               msg,
-                               expr.span,
-                               &format!("replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
-                                        map_snippet,
-                                        unwrap_snippet));
+            span_note_and_lint(
+                cx,
+                OPTION_MAP_UNWRAP_OR_ELSE,
+                expr.span,
+                msg,
+                expr.span,
+                &format!(
+                    "replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
+                    map_snippet,
+                    unwrap_snippet
+                ),
+            );
         } else if same_span && multiline {
             span_lint(cx, OPTION_MAP_UNWRAP_OR_ELSE, expr.span, msg);
         };
@@ -1111,12 +1154,14 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &[hir::Expr
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
         if filter_snippet.lines().count() <= 1 {
             // add note if not multi-line
-            span_note_and_lint(cx,
-                               FILTER_NEXT,
-                               expr.span,
-                               msg,
-                               expr.span,
-                               &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet));
+            span_note_and_lint(
+                cx,
+                FILTER_NEXT,
+                expr.span,
+                msg,
+                expr.span,
+                &format!("replace `filter({0}).next()` with `find({0})`", filter_snippet),
+            );
         } else {
             span_lint(cx, FILTER_NEXT, expr.span, msg);
         }
@@ -1171,22 +1216,26 @@ fn lint_search_is_some(
     expr: &hir::Expr,
     search_method: &str,
     search_args: &[hir::Expr],
-    is_some_args: &[hir::Expr]
+    is_some_args: &[hir::Expr],
 ) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
-        let msg = format!("called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
+        let msg = format!(
+            "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
                            expressed by calling `any()`.",
-                          search_method);
+            search_method
+        );
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // add note if not multi-line
-            span_note_and_lint(cx,
-                               SEARCH_IS_SOME,
-                               expr.span,
-                               &msg,
-                               expr.span,
-                               &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method, search_snippet));
+            span_note_and_lint(
+                cx,
+                SEARCH_IS_SOME,
+                expr.span,
+                &msg,
+                expr.span,
+                &format!("replace `{0}({1}).is_some()` with `any({1})`", search_method, search_snippet),
+            );
         } else {
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);
         }
@@ -1233,11 +1282,13 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr)
     if let Ok(ConstVal::Str(r)) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg) {
         if r.len() == 1 {
             let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
-            span_lint_and_then(cx,
-                               SINGLE_CHAR_PATTERN,
-                               arg.span,
-                               "single-character string constant used as pattern",
-                               |db| { db.span_suggestion(expr.span, "try using a char instead", hint); });
+            span_lint_and_then(
+                cx,
+                SINGLE_CHAR_PATTERN,
+                arg.span,
+                "single-character string constant used as pattern",
+                |db| { db.span_suggestion(expr.span, "try using a char instead", hint); },
+            );
         }
     }
 }
@@ -1349,13 +1400,17 @@ impl SelfKind {
         arg: &hir::Arg,
         self_ty: &hir::Ty,
         allow_value_for_ref: bool,
-        generics: &hir::Generics
+        generics: &hir::Generics,
     ) -> bool {
-        // Self types in the HIR are desugared to explicit self types. So it will always be `self:
+        // Self types in the HIR are desugared to explicit self types. So it will
+        // always be `self:
         // SomeType`,
-        // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if the impl is on `Foo`)
-        // Thus, we only need to test equality against the impl self type or if it is an explicit
-        // `Self`. Furthermore, the only possible types for `self: ` are `&Self`, `Self`, `&mut Self`,
+        // where SomeType can be `Self` or an explicit impl self type (e.g. `Foo` if
+        // the impl is on `Foo`)
+        // Thus, we only need to test equality against the impl self type or if it is
+        // an explicit
+        // `Self`. Furthermore, the only possible types for `self: ` are `&Self`,
+        // `Self`, `&mut Self`,
         // and `Box<Self>`, including the equivalent types with `Foo`.
 
         let is_actually_self = |ty| is_self_ty(ty) || ty == self_ty;
@@ -1404,18 +1459,22 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
     single_segment_ty(ty).map_or(false, |seg| {
         generics.ty_params.iter().any(|param| {
             param.name == seg.name &&
-            param.bounds.iter().any(|bound| if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
-                let path = &ptr.trait_ref.path;
-                match_path_old(path, name) &&
-                path.segments.last().map_or(false, |s| if let hir::PathParameters::AngleBracketedParameters(ref data) =
-                    s.parameters {
-                    data.types.len() == 1 && (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
-                } else {
-                    false
+                param.bounds.iter().any(|bound| {
+                    if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
+                        let path = &ptr.trait_ref.path;
+                        match_path_old(path, name) &&
+                            path.segments.last().map_or(false, |s| {
+                                if let hir::PathParameters::AngleBracketedParameters(ref data) = s.parameters {
+                                    data.types.len() == 1 &&
+                                        (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
+                                } else {
+                                    false
+                                }
+                            })
+                    } else {
+                        false
+                    }
                 })
-            } else {
-                false
-            })
         })
     })
 }
@@ -1424,7 +1483,9 @@ fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
     match (&ty.node, &self_ty.node) {
         (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)),
          &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
-            ty_path.segments.iter().map(|seg| seg.name).eq(self_ty_path.segments.iter().map(|seg| seg.name))
+            ty_path.segments.iter().map(|seg| seg.name).eq(
+                self_ty_path.segments.iter().map(|seg| seg.name),
+            )
         },
         _ => false,
     }

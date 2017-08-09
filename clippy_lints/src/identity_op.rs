@@ -22,7 +22,7 @@ declare_lint! {
     "using identity operations, e.g. `x + 0` or `y / 1`"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct IdentityOp;
 
 impl LintPass for IdentityOp {
@@ -71,12 +71,17 @@ fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
             },
             1 => v.to_u128_unchecked() == 1,
             _ => unreachable!(),
-        } {
-            span_lint(cx,
-                      IDENTITY_OP,
-                      span,
-                      &format!("the operation is ineffective. Consider reducing it to `{}`",
-                               snippet(cx, arg, "..")));
+        }
+        {
+            span_lint(
+                cx,
+                IDENTITY_OP,
+                span,
+                &format!(
+                    "the operation is ineffective. Consider reducing it to `{}`",
+                    snippet(cx, arg, "..")
+                ),
+            );
         }
     }
 }
