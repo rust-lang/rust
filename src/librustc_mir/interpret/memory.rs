@@ -113,7 +113,7 @@ impl AllocId {
     fn index(self) -> u64 {
         self.0 & ((1 << 63) - 1)
     }
-    fn destructure(self) -> AllocIdKind {
+    fn into_alloc_id_kind(self) -> AllocIdKind {
         match self.discriminant() {
             0 => AllocIdKind::Function(self.index() as usize),
             1 => AllocIdKind::Runtime(self.index()),
@@ -124,13 +124,13 @@ impl AllocId {
 
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.destructure())
+        write!(f, "{:?}", self.into_alloc_id_kind())
     }
 }
 
 impl fmt::Debug for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.destructure())
+        write!(f, "{:?}", self.into_alloc_id_kind())
     }
 }
 
@@ -380,7 +380,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return err!(DeallocateNonBasePtr);
         }
 
-        let alloc_id = match ptr.alloc_id.destructure() {
+        let alloc_id = match ptr.alloc_id.into_alloc_id_kind() {
             AllocIdKind::Function(_) =>
                 return err!(DeallocatedWrongMemoryKind("function".to_string(), format!("{:?}", kind))),
             AllocIdKind::Runtime(id) => id,
@@ -666,7 +666,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 /// Allocation accessors
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::MemoryKinds>> {
-        match id.destructure() {
+        match id.into_alloc_id_kind() {
             AllocIdKind::Function(_) => err!(DerefFunctionPointer),
             AllocIdKind::Runtime(id) => match self.alloc_map.get(&id) {
                 Some(alloc) => Ok(alloc),
@@ -676,7 +676,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
     
     fn get_mut_unchecked(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
-        match id.destructure() {
+        match id.into_alloc_id_kind() {
             AllocIdKind::Function(_) => err!(DerefFunctionPointer),
             AllocIdKind::Runtime(id) => match self.alloc_map.get_mut(&id) {
                 Some(alloc) => Ok(alloc),
@@ -699,7 +699,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return err!(InvalidFunctionPointer);
         }
         debug!("reading fn ptr: {}", ptr.alloc_id);
-        match ptr.alloc_id.destructure() {
+        match ptr.alloc_id.into_alloc_id_kind() {
             AllocIdKind::Function(id) => Ok(self.functions[id]),
             AllocIdKind::Runtime(_) => err!(ExecuteMemory),
         }
@@ -723,7 +723,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             let prefix_len = msg.len();
             let mut relocations = vec![];
 
-            let alloc = match id.destructure() {
+            let alloc = match id.into_alloc_id_kind() {
                 AllocIdKind::Function(id) => {
                     trace!("{} {}", msg, self.functions[id]);
                     continue;
@@ -867,7 +867,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         trace!("mark_static_initalized {:?}, mutability: {:?}", alloc_id, mutability);
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
-        let alloc_id = match alloc_id.destructure() {
+        let alloc_id = match alloc_id.into_alloc_id_kind() {
             AllocIdKind::Function(_) => return Ok(()),
             AllocIdKind::Runtime(id) => id,
         };
