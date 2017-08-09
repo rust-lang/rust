@@ -1,0 +1,1313 @@
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+    Blocking waiting for file lock on the registry index
+       Fresh serde v1.0.8
+    Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+    Blocking waiting for file lock on the registry index
+       Fresh serde v1.0.0
+    Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+version bump: 1.0.0 -> (breaking) -> 2.0.0
+warning: path changes to `BorrowedStrDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/value.rs:361:1
+    |
+361 | / pub struct BorrowedStrDeserializer<'de, E> {
+362 | |     value: &'de str,
+363 | |     marker: PhantomData<E>,
+364 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::BorrowedStrDeserializer<'de, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/value.rs:376:1
+    |
+376 | / impl<'de, E> de::Deserializer<'de> for BorrowedStrDeserializer<'de, E>
+377 | | where
+378 | |     E: de::Error,
+379 | | {
+...   |
+407 | |     }
+408 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::BorrowedStrDeserializer<'de, E> as new::de::EnumAccess<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/value.rs:410:1
+    |
+410 | / impl<'de, E> de::EnumAccess<'de> for BorrowedStrDeserializer<'de, E>
+411 | | where
+412 | |     E: de::Error,
+413 | | {
+...   |
+422 | |     }
+423 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `BorrowedBytesDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/value.rs:585:1
+    |
+585 | / pub struct BorrowedBytesDeserializer<'de, E> {
+586 | |     value: &'de [u8],
+587 | |     marker: PhantomData<E>,
+588 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: technically breaking changes in `<new::de::value::BorrowedBytesDeserializer<'de, E> as new::Deserializer<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/value.rs:600:1
+    |
+600 | / impl<'de, E> de::Deserializer<'de> for BorrowedBytesDeserializer<'de, E>
+601 | | where
+602 | |     E: de::Error,
+603 | | {
+...   |
+617 | |     }
+618 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for u8>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:117:17
+    |
+117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
+118 | |                     type Value = $ty;
+119 | |
+120 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+126 | |                     )*
+127 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::VecDeque<T>>::deserialize::SeqVisitor<T> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:522:17
+    |
+522 | /                 impl<'de, T $(, $typaram)*> Visitor<'de> for SeqVisitor<T $(, $typaram)*>
+523 | |                 where
+524 | |                     T: Deserialize<'de> $(+ $tbound1 $(+ $tbound2)*)*,
+525 | |                     $($typaram: $bound1 $(+ $bound2)*,)*
+...   |
+545 | |                     }
+546 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::HashMap<K, V, S>>::deserialize::MapVisitor<K, V, S> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:815:17
+    |
+815 | /                 impl<'de, K, V $(, $typaram)*> Visitor<'de> for MapVisitor<K, V $(, $typaram)*>
+816 | |                 where
+817 | |                     K: Deserialize<'de> $(+ $kbound1 $(+ $kbound2)*)*,
+818 | |                     V: Deserialize<'de>,
+...   |
+839 | |                     }
+840 | |                 }
+    | |_________________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::PathVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:904:1
+    |
+904 | / impl<'a> Visitor<'a> for PathVisitor {
+905 | |     type Value = &'a Path;
+906 | |
+907 | |     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+925 | |     }
+926 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for &'a std::path::Path>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:929:1
+    |
+929 | / impl<'de: 'a, 'a> Deserialize<'de> for &'a Path {
+930 | |     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+931 | |     where
+932 | |         D: Deserializer<'de>,
+...   |
+935 | |     }
+936 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::OsStringKind as new::Deserialize<'de>>::deserialize::KindVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:997:9
+     |
+997  | /         impl<'de> Visitor<'de> for KindVisitor {
+998  | |             type Value = OsStringKind;
+999  | |
+1000 | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1040 | |             }
+1041 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1254:9
+     |
+1254 | /         impl<'de> Deserialize<'de> for Field {
+1255 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1256 | |             where
+1257 | |                 D: Deserializer<'de>,
+...    |
+1295 | |             }
+1296 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1261:17
+     |
+1261 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1262 | |                     type Value = Field;
+1263 | |
+1264 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1291 | |                     }
+1292 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::time::Duration>::deserialize::DurationVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1300:9
+     |
+1300 | /         impl<'de> Visitor<'de> for DurationVisitor {
+1301 | |             type Value = Duration;
+1302 | |
+1303 | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1357 | |             }
+1358 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1393:9
+     |
+1393 | /         impl<'de> Deserialize<'de> for Field {
+1394 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1395 | |             where
+1396 | |                 D: Deserializer<'de>,
+...    |
+1434 | |             }
+1435 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1400:17
+     |
+1400 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1401 | |                     type Value = Field;
+1402 | |
+1403 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1430 | |                     }
+1431 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::RangeVisitor<Idx> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1441:9
+     |
+1441 | /         impl<'de, Idx> Visitor<'de> for RangeVisitor<Idx>
+1442 | |         where
+1443 | |             Idx: Deserialize<'de>,
+1444 | |         {
+...    |
+1501 | |             }
+1502 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as new::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1553:9
+     |
+1553 | /         impl<'de> Deserialize<'de> for Field {
+1554 | |             #[inline]
+1555 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1556 | |             where
+...    |
+1612 | |             }
+1613 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as new::Deserialize<'de>>::deserialize::FieldVisitor as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1561:17
+     |
+1561 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1562 | |                     type Value = Field;
+1563 | |
+1564 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1608 | |                     }
+1609 | |                 }
+     | |_________________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::result::Result<T, E>>::deserialize::ResultVisitor<T, E> as new::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/de/impls.rs:1617:9
+     |
+1617 | /         impl<'de, T, E> Visitor<'de> for ResultVisitor<T, E>
+1618 | |         where
+1619 | |             T: Deserialize<'de>,
+1620 | |             E: Deserialize<'de>,
+...    |
+1636 | |             }
+1637 | |         }
+     | |_________^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::missing_field::MissingFieldDeserializer<E> as new::Deserializer<'de>>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:31:5
+   |
+31 | /     impl<'de, E> Deserializer<'de> for MissingFieldDeserializer<E>
+32 | |     where
+33 | |         E: Error,
+34 | |     {
+...  |
+55 | |         }
+56 | |     }
+   | |_____^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::borrow_cow_str::CowStrVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:69:5
+    |
+69  | /     impl<'a> Visitor<'a> for CowStrVisitor {
+70  | |         type Value = Cow<'a, str>;
+71  | |
+72  | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+125 | |         }
+126 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::borrow_cow_bytes::CowBytesVisitor as new::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:138:5
+    |
+138 | /     impl<'a> Visitor<'a> for CowBytesVisitor {
+139 | |         type Value = Cow<'a, [u8]>;
+140 | |
+141 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+185 | |         }
+186 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:806:9
+    |
+806 | /         pub fn new(name: &'static str) -> Self {
+807 | |             TaggedContentVisitor {
+808 | |                 tag_name: name,
+809 | |                 value: PhantomData,
+810 | |             }
+811 | |         }
+    | |_________^
+    |
+    = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::TaggedContentVisitor<'de, T> as new::de::DeserializeSeed<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:814:5
+    |
+814 | /     impl<'de, T> DeserializeSeed<'de> for TaggedContentVisitor<'de, T>
+815 | |     where
+816 | |         T: Deserialize<'de>,
+817 | |     {
+...   |
+827 | |         }
+828 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::TaggedContentVisitor<'de, T> as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:830:5
+    |
+830 | /     impl<'de, T> Visitor<'de> for TaggedContentVisitor<'de, T>
+831 | |     where
+832 | |         T: Deserialize<'de>,
+833 | |     {
+...   |
+872 | |         }
+873 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `TagContentOtherField`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:925:5
+    |
+925 | /     pub enum TagContentOtherField {
+926 | |         Tag,
+927 | |         Content,
+928 | |         Other,
+929 | |     }
+    | |_____^
+    |
+note: added path (technically breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:19:25
+    |
+19  |                         TagContentOtherField, TagContentOtherFieldVisitor,
+    |                         ^^^^^^^^^^^^^^^^^^^^
+
+warning: path changes to `TagContentOtherFieldVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:932:5
+    |
+932 | /     pub struct TagContentOtherFieldVisitor {
+933 | |         pub tag: &'static str,
+934 | |         pub content: &'static str,
+935 | |     }
+    | |_____^
+    |
+note: added path (technically breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:19:47
+    |
+19  |                         TagContentOtherField, TagContentOtherFieldVisitor,
+    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: technically breaking changes in `<new::private::de::TagContentOtherFieldVisitor as new::de::DeserializeSeed<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:937:5
+    |
+937 | /     impl<'de> DeserializeSeed<'de> for TagContentOtherFieldVisitor {
+938 | |         type Value = TagContentOtherField;
+939 | |
+940 | |         fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+...   |
+945 | |         }
+946 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::TagContentOtherFieldVisitor as new::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:948:5
+    |
+948 | /     impl<'de> Visitor<'de> for TagContentOtherFieldVisitor {
+949 | |         type Value = TagContentOtherField;
+950 | |
+951 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+966 | |         }
+967 | |     }
+    | |_____^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentDeserializer<'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:977:5
+     |
+977  | /     impl<'de, E> Deserializer<'de> for ContentDeserializer<'de, E>
+978  | |     where
+979  | |         E: de::Error,
+980  | |     {
+...    |
+1104 | |         }
+1105 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1109:9
+     |
+1109 | /         pub fn new(content: Content<'de>) -> Self {
+1110 | |             ContentDeserializer {
+1111 | |                 content: content,
+1112 | |                 err: PhantomData,
+1113 | |             }
+1114 | |         }
+     | |_________^
+     |
+     = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::EnumDeserializer<'de, E> as new::de::EnumAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1126:5
+     |
+1126 | /     impl<'de, E> de::EnumAccess<'de> for EnumDeserializer<'de, E>
+1127 | |     where
+1128 | |         E: de::Error,
+1129 | |     {
+...    |
+1143 | |         }
+1144 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::VariantDeserializer<'de, E> as new::de::VariantAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1154:5
+     |
+1154 | /     impl<'de, E> de::VariantAccess<'de> for VariantDeserializer<'de, E>
+1155 | |     where
+1156 | |         E: de::Error,
+1157 | |     {
+...    |
+1207 | |         }
+1208 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqDeserializer<'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1230:5
+     |
+1230 | /     impl<'de, E> de::Deserializer<'de> for SeqDeserializer<'de, E>
+1231 | |     where
+1232 | |         E: de::Error,
+1233 | |     {
+...    |
+1259 | |         }
+1260 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqDeserializer<'de, E> as new::de::SeqAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1262:5
+     |
+1262 | /     impl<'de, E> de::SeqAccess<'de> for SeqDeserializer<'de, E>
+1263 | |     where
+1264 | |         E: de::Error,
+1265 | |     {
+...    |
+1283 | |         }
+1284 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapDeserializer<'de, E> as new::de::MapAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1308:5
+     |
+1308 | /     impl<'de, E> de::MapAccess<'de> for MapDeserializer<'de, E>
+1309 | |     where
+1310 | |         E: de::Error,
+1311 | |     {
+...    |
+1339 | |         }
+1340 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapDeserializer<'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1342:5
+     |
+1342 | /     impl<'de, E> de::Deserializer<'de> for MapDeserializer<'de, E>
+1343 | |     where
+1344 | |         E: de::Error,
+1345 | |     {
+...    |
+1360 | |         }
+1361 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentRefDeserializer<'a, 'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1371:5
+     |
+1371 | /     impl<'de, 'a, E> Deserializer<'de> for ContentRefDeserializer<'a, 'de, E>
+1372 | |     where
+1373 | |         E: de::Error,
+1374 | |     {
+...    |
+1498 | |         }
+1499 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1503:9
+     |
+1503 | /         pub fn new(content: &'a Content<'de>) -> Self {
+1504 | |             ContentRefDeserializer {
+1505 | |                 content: content,
+1506 | |                 err: PhantomData,
+1507 | |             }
+1508 | |         }
+     | |_________^
+     |
+     = note: added item in inherent impl (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::EnumRefDeserializer<'a, 'de, E> as new::de::EnumAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1520:5
+     |
+1520 | /     impl<'de, 'a, E> de::EnumAccess<'de> for EnumRefDeserializer<'a, 'de, E>
+1521 | |     where
+1522 | |         E: de::Error,
+1523 | |     {
+...    |
+1537 | |         }
+1538 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::VariantRefDeserializer<'a, 'de, E> as new::de::VariantAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1548:5
+     |
+1548 | /     impl<'de, 'a, E> de::VariantAccess<'de> for VariantRefDeserializer<'a, 'de, E>
+1549 | |     where
+1550 | |         E: de::Error,
+1551 | |     {
+...    |
+1601 | |         }
+1602 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqRefDeserializer<'a, 'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1624:5
+     |
+1624 | /     impl<'de, 'a, E> de::Deserializer<'de> for SeqRefDeserializer<'a, 'de, E>
+1625 | |     where
+1626 | |         E: de::Error,
+1627 | |     {
+...    |
+1653 | |         }
+1654 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::SeqRefDeserializer<'a, 'de, E> as new::de::SeqAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1656:5
+     |
+1656 | /     impl<'de, 'a, E> de::SeqAccess<'de> for SeqRefDeserializer<'a, 'de, E>
+1657 | |     where
+1658 | |         E: de::Error,
+1659 | |     {
+...    |
+1677 | |         }
+1678 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapRefDeserializer<'a, 'de, E> as new::de::MapAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1702:5
+     |
+1702 | /     impl<'de, 'a, E> de::MapAccess<'de> for MapRefDeserializer<'a, 'de, E>
+1703 | |     where
+1704 | |         E: de::Error,
+1705 | |     {
+...    |
+1734 | |         }
+1735 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::content::MapRefDeserializer<'a, 'de, E> as new::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1737:5
+     |
+1737 | /     impl<'de, 'a, E> de::Deserializer<'de> for MapRefDeserializer<'a, 'de, E>
+1738 | |     where
+1739 | |         E: de::Error,
+1740 | |     {
+...    |
+1755 | |         }
+1756 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentDeserializer<'de, E> as new::de::IntoDeserializer<'de, E>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1758:5
+     |
+1758 | /     impl<'de, E> de::IntoDeserializer<'de, E> for ContentDeserializer<'de, E>
+1759 | |     where
+1760 | |         E: de::Error,
+1761 | |     {
+...    |
+1766 | |         }
+1767 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::private::de::ContentRefDeserializer<'a, 'de, E> as new::de::IntoDeserializer<'de, E>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1769:5
+     |
+1769 | /     impl<'de, 'a, E> de::IntoDeserializer<'de, E> for ContentRefDeserializer<'a, 'de, E>
+1770 | |     where
+1771 | |         E: de::Error,
+1772 | |     {
+...    |
+1777 | |         }
+1778 | |     }
+     | |_____^
+     |
+     = note: trait impl generalized or newly added (technically breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for i8>::deserialize::PrimitiveVisitor as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:117:17
+    |
+117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
+118 | |                     type Value = $ty;
+119 | |
+120 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+126 | |                     )*
+127 | |                 }
+    | |_________________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::collections::BTreeSet<T>>::deserialize::SeqVisitor<T> as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:522:17
+    |
+522 | /                 impl<'de, T $(, $typaram)*> Visitor<'de> for SeqVisitor<T $(, $typaram)*>
+523 | |                 where
+524 | |                     T: Deserialize<'de> $(+ $tbound1 $(+ $tbound2)*)*,
+525 | |                     $($typaram: $bound1 $(+ $bound2)*,)*
+...   |
+545 | |                     }
+546 | |                 }
+    | |_________________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::collections::HashMap<K, V, S>>::deserialize::MapVisitor<K, V, S> as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:815:17
+    |
+815 | /                 impl<'de, K, V $(, $typaram)*> Visitor<'de> for MapVisitor<K, V $(, $typaram)*>
+816 | |                 where
+817 | |                     K: Deserialize<'de> $(+ $kbound1 $(+ $kbound2)*)*,
+818 | |                     V: Deserialize<'de>,
+...   |
+839 | |                     }
+840 | |                 }
+    | |_________________^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::OsStringKind as old::Deserialize<'de>>::deserialize::KindVisitor as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:959:9
+     |
+959  | /         impl<'de> Visitor<'de> for KindVisitor {
+960  | |             type Value = OsStringKind;
+961  | |
+962  | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1002 | |             }
+1003 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::time::Duration>::deserialize::Field as old::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1216:9
+     |
+1216 | /         impl<'de> Deserialize<'de> for Field {
+1217 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1218 | |             where
+1219 | |                 D: Deserializer<'de>,
+...    |
+1257 | |             }
+1258 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::<impl old::Deserialize<'de> for std::time::Duration>::deserialize::Field as old::Deserialize<'de>>::deserialize::FieldVisitor as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1223:17
+     |
+1223 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1224 | |                     type Value = Field;
+1225 | |
+1226 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1253 | |                     }
+1254 | |                 }
+     | |_________________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::time::Duration>::deserialize::DurationVisitor as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1262:9
+     |
+1262 | /         impl<'de> Visitor<'de> for DurationVisitor {
+1263 | |             type Value = Duration;
+1264 | |
+1265 | |             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1319 | |             }
+1320 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as old::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1355:9
+     |
+1355 | /         impl<'de> Deserialize<'de> for Field {
+1356 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1357 | |             where
+1358 | |                 D: Deserializer<'de>,
+...    |
+1396 | |             }
+1397 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::<impl old::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::Field as old::Deserialize<'de>>::deserialize::FieldVisitor as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1362:17
+     |
+1362 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1363 | |                     type Value = Field;
+1364 | |
+1365 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1392 | |                     }
+1393 | |                 }
+     | |_________________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::ops::Range<Idx>>::deserialize::RangeVisitor<Idx> as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1403:9
+     |
+1403 | /         impl<'de, Idx> Visitor<'de> for RangeVisitor<Idx>
+1404 | |         where
+1405 | |             Idx: Deserialize<'de>,
+1406 | |         {
+...    |
+1463 | |             }
+1464 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as old::Deserialize<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1513:9
+     |
+1513 | /         impl<'de> Deserialize<'de> for Field {
+1514 | |             #[inline]
+1515 | |             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+1516 | |             where
+...    |
+1572 | |             }
+1573 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<<old::de::impls::<impl old::Deserialize<'de> for std::result::Result<T, E>>::deserialize::Field as old::Deserialize<'de>>::deserialize::FieldVisitor as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1521:17
+     |
+1521 | /                 impl<'de> Visitor<'de> for FieldVisitor {
+1522 | |                     type Value = Field;
+1523 | |
+1524 | |                     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...    |
+1568 | |                     }
+1569 | |                 }
+     | |_________________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::result::Result<T, E>>::deserialize::ResultVisitor<T, E> as old::de::Visitor<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/impls.rs:1577:9
+     |
+1577 | /         impl<'de, T, E> Visitor<'de> for ResultVisitor<T, E>
+1578 | |         where
+1579 | |             T: Deserialize<'de>,
+1580 | |             E: Deserialize<'de>,
+...    |
+1596 | |             }
+1597 | |         }
+     | |_________^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::missing_field::MissingFieldDeserializer<E> as old::Deserializer<'de>>`
+  --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:30:5
+   |
+30 | /     impl<'de, E> Deserializer<'de> for MissingFieldDeserializer<E>
+31 | |     where
+32 | |         E: Error,
+33 | |     {
+...  |
+54 | |         }
+55 | |     }
+   | |_____^
+   |
+   = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::borrow_cow_str::CowStrVisitor as old::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:68:5
+    |
+68  | /     impl<'a> Visitor<'a> for CowStrVisitor {
+69  | |         type Value = Cow<'a, str>;
+70  | |
+71  | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+124 | |         }
+125 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::borrow_cow_bytes::CowBytesVisitor as old::de::Visitor<'a>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:137:5
+    |
+137 | /     impl<'a> Visitor<'a> for CowBytesVisitor {
+138 | |         type Value = Cow<'a, [u8]>;
+139 | |
+140 | |         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+...   |
+184 | |         }
+185 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `Content`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:236:5
+    |
+236 | /     pub enum Content<'de> {
+237 | |         Bool(bool),
+238 | |
+239 | |         U8(u8),
+...   |
+264 | |         Map(Vec<(Content<'de>, Content<'de>)>),
+265 | |     }
+    | |_____^
+    |
+    = warning: region parameter added (breaking)
+warning: enum variant added (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:254:9
+    |
+254 |         Str(&'de str),
+    |         ^^^^^^^^^^^^^
+warning: enum variant added (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:255:9
+    |
+255 |         ByteBuf(Vec<u8>),
+    |         ^^^^^^^^^^^^^^^^
+
+error: breaking changes in `<old::private::de::Content as old::Deserialize<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:290:5
+    |
+290 | /     impl<'de> Deserialize<'de> for Content {
+291 | |         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+292 | |         where
+293 | |             D: Deserializer<'de>,
+...   |
+298 | |         }
+299 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::ContentVisitor as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:303:5
+    |
+303 | /     impl<'de> Visitor<'de> for ContentVisitor {
+304 | |         type Value = Content;
+305 | |
+306 | |         fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+...   |
+477 | |         }
+478 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::TagOrContentVisitor as old::de::DeserializeSeed<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:498:5
+    |
+498 | /     impl<'de> DeserializeSeed<'de> for TagOrContentVisitor {
+499 | |         type Value = TagOrContent;
+500 | |
+501 | |         fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+...   |
+508 | |         }
+509 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::TagOrContentVisitor as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:511:5
+    |
+511 | /     impl<'de> Visitor<'de> for TagOrContentVisitor {
+512 | |         type Value = TagOrContent;
+513 | |
+514 | |         fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+...   |
+731 | |         }
+732 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `TaggedContentVisitor`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:798:5
+    |
+798 | /     pub struct TaggedContentVisitor<'de, T> {
+799 | |         tag_name: &'static str,
+800 | |         value: PhantomData<TaggedContent<'de, T>>,
+801 | |     }
+    | |_____^
+    |
+    = warning: region parameter added (breaking)
+warning: variant field added to variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:800:9
+    |
+800 |         value: PhantomData<TaggedContent<'de, T>>,
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+warning: variant field removed from variant with private fields (breaking)
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:745:9
+    |
+745 |         tag: PhantomData<T>,
+    |         ^^^^^^^^^^^^^^^^^^^
+
+error: breaking changes in `new`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:751:9
+    |
+751 | /         pub fn new(name: &'static str) -> Self {
+752 | |             TaggedContentVisitor {
+753 | |                 tag_name: name,
+754 | |                 tag: PhantomData,
+755 | |             }
+756 | |         }
+    | |_________^
+    |
+    = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::private::de::TaggedContentVisitor<T> as old::de::DeserializeSeed<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:759:5
+    |
+759 | /     impl<'de, T> DeserializeSeed<'de> for TaggedContentVisitor<T>
+760 | |     where
+761 | |         T: Deserialize<'de>,
+762 | |     {
+...   |
+772 | |         }
+773 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::TaggedContentVisitor<T> as old::de::Visitor<'de>>`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:775:5
+    |
+775 | /     impl<'de, T> Visitor<'de> for TaggedContentVisitor<T>
+776 | |     where
+777 | |         T: Deserialize<'de>,
+778 | |     {
+...   |
+817 | |         }
+818 | |     }
+    | |_____^
+    |
+    = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `ContentDeserializer`
+   --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:970:5
+    |
+970 | /     pub struct ContentDeserializer<'de, E> {
+971 | |         content: Content<'de>,
+972 | |         err: PhantomData<E>,
+973 | |     }
+    | |_____^
+    |
+    = warning: region parameter added (breaking)
+
+error: breaking changes in `<old::private::de::ContentDeserializer<E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:874:5
+     |
+874  | /     impl<'de, E> Deserializer<'de> for ContentDeserializer<E>
+875  | |     where
+876  | |         E: de::Error,
+877  | |     {
+...    |
+999  | |         }
+1000 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `new`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1004:9
+     |
+1004 | /         pub fn new(content: Content) -> Self {
+1005 | |             ContentDeserializer {
+1006 | |                 content: content,
+1007 | |                 err: PhantomData,
+1008 | |             }
+1009 | |         }
+     | |_________^
+     |
+     = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::private::de::content::EnumDeserializer<E> as old::de::EnumAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1021:5
+     |
+1021 | /     impl<'de, E> de::EnumAccess<'de> for EnumDeserializer<E>
+1022 | |     where
+1023 | |         E: de::Error,
+1024 | |     {
+...    |
+1038 | |         }
+1039 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::VariantDeserializer<E> as old::de::VariantAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1049:5
+     |
+1049 | /     impl<'de, E> de::VariantAccess<'de> for VariantDeserializer<E>
+1050 | |     where
+1051 | |         E: de::Error,
+1052 | |     {
+...    |
+1102 | |         }
+1103 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::SeqDeserializer<E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1125:5
+     |
+1125 | /     impl<'de, E> de::Deserializer<'de> for SeqDeserializer<E>
+1126 | |     where
+1127 | |         E: de::Error,
+1128 | |     {
+...    |
+1154 | |         }
+1155 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::SeqDeserializer<E> as old::de::SeqAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1157:5
+     |
+1157 | /     impl<'de, E> de::SeqAccess<'de> for SeqDeserializer<E>
+1158 | |     where
+1159 | |         E: de::Error,
+1160 | |     {
+...    |
+1178 | |         }
+1179 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::MapDeserializer<E> as old::de::MapAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1203:5
+     |
+1203 | /     impl<'de, E> de::MapAccess<'de> for MapDeserializer<E>
+1204 | |     where
+1205 | |         E: de::Error,
+1206 | |     {
+...    |
+1234 | |         }
+1235 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::MapDeserializer<E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1237:5
+     |
+1237 | /     impl<'de, E> de::Deserializer<'de> for MapDeserializer<E>
+1238 | |     where
+1239 | |         E: de::Error,
+1240 | |     {
+...    |
+1255 | |         }
+1256 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `ContentRefDeserializer`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.8/src/private/de.rs:1364:5
+     |
+1364 | /     pub struct ContentRefDeserializer<'a, 'de: 'a, E> {
+1365 | |         content: &'a Content<'de>,
+1366 | |         err: PhantomData<E>,
+1367 | |     }
+     | |_____^
+     |
+     = warning: region parameter added (breaking)
+
+error: breaking changes in `<old::private::de::ContentRefDeserializer<'a, E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1266:5
+     |
+1266 | /     impl<'de, 'a, E> Deserializer<'de> for ContentRefDeserializer<'a, E>
+1267 | |     where
+1268 | |         E: de::Error,
+1269 | |     {
+...    |
+1391 | |         }
+1392 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `new`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1396:9
+     |
+1396 | /         pub fn new(content: &'a Content) -> Self {
+1397 | |             ContentRefDeserializer {
+1398 | |                 content: content,
+1399 | |                 err: PhantomData,
+1400 | |             }
+1401 | |         }
+     | |_________^
+     |
+     = warning: removed item in inherent impl (breaking)
+
+error: breaking changes in `<old::private::de::content::EnumRefDeserializer<'a, E> as old::de::EnumAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1413:5
+     |
+1413 | /     impl<'de, 'a, E> de::EnumAccess<'de> for EnumRefDeserializer<'a, E>
+1414 | |     where
+1415 | |         E: de::Error,
+1416 | |     {
+...    |
+1430 | |         }
+1431 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::VariantRefDeserializer<'a, E> as old::de::VariantAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1441:5
+     |
+1441 | /     impl<'de, 'a, E> de::VariantAccess<'de> for VariantRefDeserializer<'a, E>
+1442 | |     where
+1443 | |         E: de::Error,
+1444 | |     {
+...    |
+1494 | |         }
+1495 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::SeqRefDeserializer<'a, E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1517:5
+     |
+1517 | /     impl<'de, 'a, E> de::Deserializer<'de> for SeqRefDeserializer<'a, E>
+1518 | |     where
+1519 | |         E: de::Error,
+1520 | |     {
+...    |
+1546 | |         }
+1547 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::SeqRefDeserializer<'a, E> as old::de::SeqAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1549:5
+     |
+1549 | /     impl<'de, 'a, E> de::SeqAccess<'de> for SeqRefDeserializer<'a, E>
+1550 | |     where
+1551 | |         E: de::Error,
+1552 | |     {
+...    |
+1570 | |         }
+1571 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::MapRefDeserializer<'a, E> as old::de::MapAccess<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1595:5
+     |
+1595 | /     impl<'de, 'a, E> de::MapAccess<'de> for MapRefDeserializer<'a, E>
+1596 | |     where
+1597 | |         E: de::Error,
+1598 | |     {
+...    |
+1627 | |         }
+1628 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::content::MapRefDeserializer<'a, E> as old::Deserializer<'de>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1630:5
+     |
+1630 | /     impl<'de, 'a, E> de::Deserializer<'de> for MapRefDeserializer<'a, E>
+1631 | |     where
+1632 | |         E: de::Error,
+1633 | |     {
+...    |
+1648 | |         }
+1649 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::ContentDeserializer<E> as old::de::IntoDeserializer<'de, E>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1651:5
+     |
+1651 | /     impl<'de, E> de::IntoDeserializer<'de, E> for ContentDeserializer<E>
+1652 | |     where
+1653 | |         E: de::Error,
+1654 | |     {
+...    |
+1659 | |         }
+1660 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+
+error: breaking changes in `<old::private::de::ContentRefDeserializer<'a, E> as old::de::IntoDeserializer<'de, E>>`
+    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/private/de.rs:1662:5
+     |
+1662 | /     impl<'de, 'a, E> de::IntoDeserializer<'de, E> for ContentRefDeserializer<'a, E>
+1663 | |     where
+1664 | |         E: de::Error,
+1665 | |     {
+...    |
+1670 | |         }
+1671 | |     }
+     | |_____^
+     |
+     = warning: trait impl specialized or removed (breaking)
+

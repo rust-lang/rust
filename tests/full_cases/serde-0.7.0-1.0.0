@@ -1,6 +1,9 @@
+    Blocking waiting for file lock on the registry index
+    Blocking waiting for file lock on the registry index
     Updating registry `https://github.com/rust-lang/crates.io-index`
        Fresh serde v1.0.0
-    Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
+    Finished dev [unoptimized + debuginfo] target(s) in 0.1 secs
+    Blocking waiting for file lock on the registry index
     Updating registry `https://github.com/rust-lang/crates.io-index`
        Fresh serde v0.7.0
     Finished dev [unoptimized + debuginfo] target(s) in 0.0 secs
@@ -2914,7 +2917,7 @@ error: breaking changes in `old::de::impls::<impl old::Deserialize for std::mark
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: path changes to `VecDequeVisitor`
+error: path changes to `BTreeSetVisitor`
    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/de/impls.rs:356:9
     |
 356 | /         pub struct $visitor_name<T> {
@@ -3268,7 +3271,7 @@ warning: variant with no public fields changed to a struct variant (breaking)
 123 | | }
     | |_^
 
-error: breaking changes in `U8Deserializer`
+error: breaking changes in `F32Deserializer`
    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-1.0.0/src/de/value.rs:159:9
     |
 159 | /         pub struct $name<E> {
@@ -4076,7 +4079,7 @@ error: path changes to `SeqIteratorVisitor`
     |
     = warning: removed definition (breaking)
 
-error: path changes to `TupleVisitor10`
+error: path changes to `TupleVisitor8`
    --> /home/twk/.cargo/registry/src/github.com-1ecc6299db9ec823/serde-0.7.0/src/ser/impls.rs:377:13
     |
 377 | /             pub struct $TupleVisitor<'a, $($T: 'a),+> {

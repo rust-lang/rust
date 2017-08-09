@@ -97,18 +97,18 @@ macro_rules! test {
 }
 
 macro_rules! full_test {
-    ($name:ident, $old_version:expr, $new_version:expr) => {
+    ($name:ident, $crate_name:expr, $old_version:expr, $new_version:expr) => {
         #[test]
         fn $name() {
             let mut success = true;
 
-            let old_version = concat!(stringify!($name), "-", $old_version);
-            let new_version = concat!(stringify!($name), "-", $new_version);
+            let old_version = concat!($crate_name, "-", $old_version);
+            let new_version = concat!($crate_name, "-", $new_version);
 
             let current_dir = env::current_dir().expect("could not determine current dir");
             let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
             let out_file = Path::new("tests/full_cases")
-                .join(concat!(stringify!($name), "-", $old_version, "-", $new_version));
+                .join(concat!($crate_name, "-", $old_version, "-", $new_version));
 
             if let Some(path) = env::var_os("PATH") {
                 let mut paths = env::split_paths(&path).collect::<Vec<_>>();
@@ -188,6 +188,6 @@ test!(traits);
 test!(trait_impls);
 test!(ty_alias);
 
-full_test!(log, "0.3.4", "0.3.8");
-full_test!(serde, "0.7.0", "1.0.0");
-// full_test!(serde, "1.0.0", "1.0.8");
+full_test!(log, "log", "0.3.4", "0.3.8");
+// full_test!(serde_pre, "serde", "0.7.0", "1.0.0");
+// full_test!(serde_post, "serde", "1.0.0", "1.0.8");
