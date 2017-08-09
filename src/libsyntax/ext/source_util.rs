@@ -52,6 +52,16 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32))
 }
 
+/* __rust_unstable_column!(): expands to the current column number */
+pub fn expand_column_gated(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+                  -> Box<base::MacResult+'static> {
+    if sp.allows_unstable() {
+        expand_column(cx, sp, tts)
+    } else {
+        cx.span_fatal(sp, "the __rust_unstable_column macro is unstable");
+    }
+}
+
 /// file!(): expands to the current filename */
 /// The filemap (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
