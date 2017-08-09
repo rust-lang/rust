@@ -695,7 +695,7 @@ span.since {
 	margin-bottom: 25px;
 }
 
-.enum .variant, .struct .structfield, .union .structfield {
+#main > .variant, #main > .structfield {
 	display: block;
 }
 
