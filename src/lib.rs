@@ -599,6 +599,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
     let mut newline_count = 0;
     let mut errors = vec![];
     let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
+    let mut prev_char: Option<char> = None;
+    let mut is_comment = false;
 
     for (c, b) in text.chars() {
         if c == '\r' {
@@ -626,7 +628,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 }
 
                 // Check for any line width errors we couldn't correct.
-                if config.error_on_line_overflow() && line_len > config.max_width() {
+                let report_error_on_line_overflow = config.error_on_line_overflow() &&
+                    (config.error_on_line_overflow_comments() || !is_comment);
+                if report_error_on_line_overflow && line_len > config.max_width() {
                     errors.push(FormattingError {
                         line: cur_line,
                         kind: ErrorKind::LineOverflow(line_len, config.max_width()),
@@ -638,6 +642,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             cur_line += 1;
             newline_count += 1;
             last_wspace = None;
+            prev_char = None;
+            is_comment = false;
         } else {
             newline_count = 0;
             line_len += 1;
@@ -645,9 +651,16 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 if last_wspace.is_none() {
                     last_wspace = Some(b);
                 }
+            } else if c == '/' {
+                match prev_char {
+                    Some('/') => is_comment = true,
+                    _ => (),
+                }
+                last_wspace = None;
             } else {
                 last_wspace = None;
             }
+            prev_char = Some(c);
         }
     }
 
