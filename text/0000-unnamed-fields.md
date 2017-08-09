@@ -302,6 +302,17 @@ extract and define types for the unnamed fields, but that macro would have to
 give a name to those unnamed fields, and accesses would have to include the
 intermediate name.
 
+Rather than introducing unnamed fields, we could introduce a mechanism to
+define field aliases for a type, such that for `struct S`, `s.b` desugars to
+`s.b_or_c.b`. However, such a mechanism does not seem any simpler than unnamed
+fields, and would not align as well with the potential future introduction of
+full anonymous structure types. Furthermore, such a mechanism would need to
+allow hiding the underlying paths for portability; for example, the `siginfo_t`
+type on POSIX platforms allows portable access to certain named fields, but
+different platforms overlap those fields differently. Finally, such a mechanism
+would make it harder to create bindings for this common pattern in C
+interfaces.
+
 Several alternative syntaxes could exist to designate the equivalent of
 `struct` and `union`. Such syntaxes would declare the same underlying types.
 However, inventing a novel syntax for this mechanism would make it less
