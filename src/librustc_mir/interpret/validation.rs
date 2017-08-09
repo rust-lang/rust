@@ -129,9 +129,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             let traits::Normalized { value: result, obligations } =
                 traits::normalize(&mut selcx, param_env, cause, value);
 
-            debug!("normalize_projections_in: result={:?} obligations={:?}",
-                    result, obligations);
-
             let mut fulfill_cx = traits::FulfillmentContext::new();
 
             for obligation in obligations {
@@ -149,8 +146,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                                 -> T::Lifted
             where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
         {
-            debug!("drain_fulfillment_cx_or_panic()");
-
             // In principle, we only need to do this so long as `result`
             // contains unbound type parameters. It could be a slight
             // optimization to stop iterating early.
@@ -207,8 +202,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         fn normalize_associated_type<'a, 'tcx, T>(self_: TyCtxt<'a, 'tcx, 'tcx>, value: &T) -> T
             where T: MyTransNormalize<'tcx>
         {
-            debug!("normalize_associated_type(t={:?})", value);
-
             let param_env = ty::ParamEnv::empty(Reveal::All);
 
             if !value.has_projection_types() {
