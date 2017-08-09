@@ -16,7 +16,7 @@ use super::{
 
 use tls::MemoryExt;
 
-use super::memory::Kind;
+use super::memory::MemoryKind;
 
 pub trait EvalContextExt<'tcx> {
     fn call_c_abi(
@@ -113,7 +113,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                     self.write_null(dest, dest_ty)?;
                 } else {
                     let align = self.memory.pointer_size();
-                    let ptr = self.memory.allocate(size, align, Kind::C.into())?;
+                    let ptr = self.memory.allocate(size, align, MemoryKind::C.into())?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
             }
@@ -121,7 +121,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "free" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?;
                 if !ptr.is_null()? {
-                    self.memory.deallocate(ptr.to_ptr()?, None, Kind::C.into())?;
+                    self.memory.deallocate(ptr.to_ptr()?, None, MemoryKind::C.into())?;
                 }
             }
 
@@ -251,7 +251,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 }
                 if let Some(old) = success {
                     if let Some(var) = old {
-                        self.memory.deallocate(var, None, Kind::Env.into())?;
+                        self.memory.deallocate(var, None, MemoryKind::Env.into())?;
                     }
                     self.write_null(dest, dest_ty)?;
                 } else {
@@ -274,12 +274,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 }
                 if let Some((name, value)) = new {
                     // +1 for the null terminator
-                    let value_copy = self.memory.allocate((value.len() + 1) as u64, 1, Kind::Env.into())?;
+                    let value_copy = self.memory.allocate((value.len() + 1) as u64, 1, MemoryKind::Env.into())?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(value.len() as u64, &self)?.into();
                     self.memory.write_bytes(trailing_zero_ptr, &[0])?;
                     if let Some(var) = self.machine_data.env_vars.insert(name.to_owned(), value_copy) {
-                        self.memory.deallocate(var, None, Kind::Env.into())?;
+                        self.memory.deallocate(var, None, MemoryKind::Env.into())?;
                     }
                     self.write_null(dest, dest_ty)?;
                 } else {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Kind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_alloc_zeroed" => {
@@ -513,7 +513,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Kind::Rust.into())?;
+                let ptr = self.memory.allocate(size, align, MemoryKind::Rust.into())?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
@@ -527,7 +527,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                self.memory.deallocate(ptr, Some((old_size, align)), Kind::Rust.into())?;
+                self.memory.deallocate(ptr, Some((old_size, align)), MemoryKind::Rust.into())?;
             }
             "alloc::heap::::__rust_realloc" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
@@ -544,7 +544,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if !new_align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(new_align));
                 }
-                let new_ptr = self.memory.reallocate(ptr, old_size, old_align, new_size, new_align, Kind::Rust.into())?;
+                let new_ptr = self.memory.reallocate(ptr, old_size, old_align, new_size, new_align, MemoryKind::Rust.into())?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
             }
 

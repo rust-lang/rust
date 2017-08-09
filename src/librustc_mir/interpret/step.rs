@@ -15,7 +15,7 @@ use super::{
     EvalResult,
     EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign,
     GlobalId, Lvalue,
-    HasMemory, Kind,
+    HasMemory, MemoryKind,
     Machine,
 };
 
@@ -179,7 +179,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // FIXME: check that it's `#[linkage = "extern_weak"]`
             trace!("Initializing an extern global with NULL");
             let ptr_size = self.memory.pointer_size();
-            let ptr = self.memory.allocate(ptr_size, ptr_size, Kind::UninitializedStatic)?;
+            let ptr = self.memory.allocate(ptr_size, ptr_size, MemoryKind::UninitializedStatic)?;
             self.memory.write_usize(ptr, 0)?;
             self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
             self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned: true });
@@ -188,7 +188,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let mir = self.load_mir(instance.def)?;
         let size = self.type_size_with_substs(mir.return_ty, substs)?.expect("unsized global");
         let align = self.type_align_with_substs(mir.return_ty, substs)?;
-        let ptr = self.memory.allocate(size, align, Kind::UninitializedStatic)?;
+        let ptr = self.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
         let aligned = !self.is_packed(mir.return_ty)?;
         self.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let internally_mutable = !mir.return_ty.is_freeze(
@@ -265,7 +265,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                 self.try(|this| {
                     let size = this.ecx.type_size_with_substs(mir.return_ty, this.instance.substs)?.expect("unsized global");
                     let align = this.ecx.type_align_with_substs(mir.return_ty, this.instance.substs)?;
-                    let ptr = this.ecx.memory.allocate(size, align, Kind::UninitializedStatic)?;
+                    let ptr = this.ecx.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
                     let aligned = !this.ecx.is_packed(mir.return_ty)?;
                     this.ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
                     trace!("pushing stack frame for {:?}", index);

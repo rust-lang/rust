@@ -46,7 +46,7 @@ pub use self::memory::{
     AllocId,
     Memory,
     MemoryPointer,
-    Kind,
+    MemoryKind,
     HasMemory,
 };
 

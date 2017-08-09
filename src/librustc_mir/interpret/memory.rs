@@ -151,7 +151,7 @@ pub struct Allocation<M> {
     /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
-    pub kind: Kind<M>,
+    pub kind: MemoryKind<M>,
     /// Memory regions that are locked by some function
     locks: RangeMap<LockInfo>,
 }
@@ -172,7 +172,7 @@ impl<M> Allocation<M> {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Kind<T> {
+pub enum MemoryKind<T> {
     /// Error if deallocated except during a stack pop
     Stack,
     /// Static in the process of being initialized.
@@ -302,7 +302,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return Ok(MemoryPointer::new(alloc_id, 0));
         }
 
-        let ptr = self.allocate(bytes.len() as u64, 1, Kind::UninitializedStatic)?;
+        let ptr = self.allocate(bytes.len() as u64, 1, MemoryKind::UninitializedStatic)?;
         self.write_bytes(ptr.into(), bytes)?;
         self.mark_static_initalized(ptr.alloc_id, Mutability::Immutable)?;
         self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
@@ -313,7 +313,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         size: u64,
         align: u64,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MemoryPointer> {
         assert_ne!(align, 0);
         assert!(align.is_power_of_two());
@@ -349,7 +349,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         old_align: u64,
         new_size: u64,
         new_align: u64,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, MemoryPointer> {
         use std::cmp::min;
 
@@ -374,7 +374,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         size_and_align: Option<(u64, u64)>,
-        kind: Kind<M::MemoryKinds>,
+        kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
         if ptr.offset != 0 {
             return err!(DeallocateNonBasePtr);
@@ -753,11 +753,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             }
 
             let immutable = match (alloc.kind, alloc.mutable) {
-                (Kind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
-                (Kind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
-                (Kind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
-                (Kind::Machine(m), _) => format!(" ({:?})", m),
-                (Kind::Stack, _) => " (stack)".to_owned(),
+                (MemoryKind::UninitializedStatic, _) => " (static in the process of initialization)".to_owned(),
+                (MemoryKind::Static, Mutability::Mutable) => " (static mut)".to_owned(),
+                (MemoryKind::Static, Mutability::Immutable) => " (immutable)".to_owned(),
+                (MemoryKind::Machine(m), _) => format!(" ({:?})", m),
+                (MemoryKind::Stack, _) => " (stack)".to_owned(),
             };
             trace!("{}({} bytes, alignment {}){}", msg, alloc.bytes.len(), alloc.align, immutable);
 
@@ -784,7 +784,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let leaks: Vec<_> = self.alloc_map
             .iter()
             .filter_map(|(&key, val)| {
-                if val.kind != Kind::Static {
+                if val.kind != MemoryKind::Static {
                     Some(AllocIdKind::Runtime(key).into_alloc_id())
                 } else {
                     None
@@ -856,7 +856,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     /// mark an allocation pointed to by a static as static and initialized
     pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutability: Mutability) -> EvalResult<'tcx> {
         // relocations into other statics are not "inner allocations"
-        if self.get(alloc).ok().map_or(false, |alloc| alloc.kind != Kind::UninitializedStatic) {
+        if self.get(alloc).ok().map_or(false, |alloc| alloc.kind != MemoryKind::UninitializedStatic) {
             self.mark_static_initalized(alloc, mutability)?;
         }
         Ok(())
@@ -876,16 +876,16 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 match *kind {
                     // const eval results can refer to "locals".
                     // E.g. `const Foo: &u32 = &1;` refers to the temp local that stores the `1`
-                    Kind::Stack |
+                    MemoryKind::Stack |
                     // The entire point of this function
-                    Kind::UninitializedStatic => {},
-                    Kind::Machine(m) => M::mark_static_initialized(m)?,
-                    Kind::Static => {
+                    MemoryKind::UninitializedStatic => {},
+                    MemoryKind::Machine(m) => M::mark_static_initialized(m)?,
+                    MemoryKind::Static => {
                         trace!("mark_static_initalized: skipping already initialized static referred to by static currently being initialized");
                         return Ok(());
                     },
                 }
-                *kind = Kind::Static;
+                *kind = MemoryKind::Static;
                 *mutable = mutability;
                 // take out the relocations vector to free the borrow on self, so we can call
                 // mark recursively

@@ -1,6 +1,6 @@
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub enum Kind {
+pub enum MemoryKind {
     /// Error if deallocated any other way than `rust_deallocate`
     Rust,
     /// Error if deallocated any other way than `free`
@@ -9,8 +9,8 @@ pub enum Kind {
     Env,
 }
 
-impl Into<::rustc_miri::interpret::Kind<Kind>> for Kind {
-    fn into(self) -> ::rustc_miri::interpret::Kind<Kind> {
-        ::rustc_miri::interpret::Kind::Machine(self)
+impl Into<::rustc_miri::interpret::MemoryKind<MemoryKind>> for MemoryKind {
+    fn into(self) -> ::rustc_miri::interpret::MemoryKind<MemoryKind> {
+        ::rustc_miri::interpret::MemoryKind::Machine(self)
     }
 }

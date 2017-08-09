@@ -20,7 +20,7 @@ use super::{
     EvalError, EvalResult, EvalErrorKind,
     GlobalId, Lvalue, LvalueExtra,
     Memory, MemoryPointer, HasMemory,
-    Kind as MemoryKind,
+    MemoryKind,
     operator,
     PrimVal, PrimValKind, Value, Pointer,
     ValidationQuery,

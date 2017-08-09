@@ -10,7 +10,7 @@ use super::{
     GlobalId, Lvalue, Value,
     PrimVal,
     EvalContext, StackPopCleanup, PtrAndAlign,
-    Kind,
+    MemoryKind,
 };
 
 use rustc_const_math::ConstInt;
@@ -33,7 +33,7 @@ pub fn eval_body_as_primval<'a, 'tcx>(
     if !ecx.globals.contains_key(&cid) {
         let size = ecx.type_size_with_substs(mir.return_ty, instance.substs)?.expect("unsized global");
         let align = ecx.type_align_with_substs(mir.return_ty, instance.substs)?;
-        let ptr = ecx.memory.allocate(size, align, Kind::UninitializedStatic)?;
+        let ptr = ecx.memory.allocate(size, align, MemoryKind::UninitializedStatic)?;
         let aligned = !ecx.is_packed(mir.return_ty)?;
         ecx.globals.insert(cid, PtrAndAlign { ptr: ptr.into(), aligned });
         let mutable = !mir.return_ty.is_freeze(

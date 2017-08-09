@@ -8,7 +8,7 @@ use syntax::ast::{self, Mutability};
 use super::{
     EvalResult,
     EvalContext, eval_context,
-    MemoryPointer, Kind,
+    MemoryPointer, MemoryKind,
     Value, PrimVal,
     Machine,
 };
@@ -51,7 +51,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         let ptr_size = self.memory.pointer_size();
         let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
-        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, Kind::UninitializedStatic)?;
+        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, MemoryKind::UninitializedStatic)?;
 
         let drop = eval_context::resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
