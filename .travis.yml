@@ -18,4 +18,7 @@ addons:
 
 script:
   - cargo build --verbose
-  - cargo test --verbose
+  - RUST_BACKTRACE=full cargo test --verbose
+  - pwd
+  - ls
+  - ls target/debug

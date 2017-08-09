@@ -96,72 +96,6 @@ macro_rules! test {
     }
 }
 
-macro_rules! full_test {
-    ($name:ident, $crate_name:expr, $old_version:expr, $new_version:expr) => {
-        #[test]
-        fn $name() {
-            let mut success = true;
-
-            let old_version = concat!($crate_name, "-", $old_version);
-            let new_version = concat!($crate_name, "-", $new_version);
-
-            let current_dir = env::current_dir().expect("could not determine current dir");
-            let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
-            let out_file = Path::new("tests/full_cases")
-                .join(concat!($crate_name, "-", $old_version, "-", $new_version));
-
-            if let Some(path) = env::var_os("PATH") {
-                let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-                paths.push(current_dir.join("target/debug"));
-                let new_path = env::join_paths(paths).unwrap();
-                env::set_var("PATH", &new_path);
-            }
-
-            let stdout = File::create(&out_file).expect("could not create `stdout` file");
-            let out_file = out_file.to_str().unwrap();
-
-            let mut sed_child = Command::new("sed")
-                .arg(&subst)
-                .stdin(Stdio::piped())
-                .stdout(stdout)
-                .spawn()
-                .expect("could not run sed");
-
-            let (err_pipe, out_pipe) = if let Some(ref stdin) = sed_child.stdin {
-                let fd = stdin.as_raw_fd();
-                unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
-            } else {
-                panic!("could not pipe to sed");
-            };
-
-            success &= Command::new("./target/debug/cargo-semver")
-                .args(&["semver", "-S", &old_version, "-C", &new_version])
-                .env("RUST_BACKTRACE", "full")
-                .stdin(Stdio::null())
-                .stdout(out_pipe)
-                .stderr(err_pipe)
-                .status()
-                .expect("could not run cargo-semver")
-                .success();
-
-            assert!(success, "cargo-semver");
-
-            success &= sed_child.wait().expect("could not wait for sed child").success();
-
-            assert!(success, "sed");
-
-            eprintln!("path: {}", out_file);
-            success &= Command::new("git")
-                .args(&["diff", "--quiet", out_file])
-                .status()
-                .expect("could not run git diff")
-                .success();
-
-            assert!(success, "git");
-        }
-    }
-}
-
 test!(addition);
 test!(addition_path);
 test!(addition_use);
@@ -187,7 +121,3 @@ test!(swap);
 test!(traits);
 test!(trait_impls);
 test!(ty_alias);
-
-full_test!(log, "log", "0.3.4", "0.3.8");
-// full_test!(serde_pre, "serde", "0.7.0", "1.0.0");
-// full_test!(serde_post, "serde", "1.0.0", "1.0.8");

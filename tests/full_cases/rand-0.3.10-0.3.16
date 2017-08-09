@@ -1,0 +1,316 @@
+version bump: 0.3.10 -> (technically breaking) -> 0.4.0
+warning: technically breaking changes in `<new::Generator<'a, T, R> as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:647:10
+    |
+647 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::AsciiGenerator<'a, R> as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:667:10
+    |
+667 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::XorShiftRng as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:727:17
+    |
+727 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::Open01<F> as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:817:10
+    |
+817 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::Closed01<F> as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:835:10
+    |
+835 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::StdRng as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:840:23
+    |
+840 | #[derive(Copy, Clone, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::ThreadRngReseeder as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:903:10
+    |
+903 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::ThreadRng as std::fmt::Debug>`
+   --> rand-0.3.16/src/lib.rs:918:17
+    |
+918 | #[derive(Clone, Debug)]
+    |                 ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::RandSample<Sup> as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/mod.rs:56:10
+   |
+56 | #[derive(Debug)]
+   |          ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::Weighted<T> as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/mod.rs:83:23
+   |
+83 | #[derive(Copy, Clone, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::WeightedChoice<'a, T> as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/mod.rs:116:10
+    |
+116 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::Range<X> as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/range.rs:49:23
+   |
+49 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::Gamma as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/gamma.rs:52:23
+   |
+52 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::gamma::GammaRepr as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/gamma.rs:57:23
+   |
+57 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::gamma::GammaSmallShape as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/gamma.rs:78:23
+   |
+78 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::gamma::GammaLargeShape as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/gamma.rs:88:23
+   |
+88 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::ChiSquared as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/gamma.rs:200:23
+    |
+200 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::gamma::ChiSquaredRepr as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/gamma.rs:205:23
+    |
+205 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::FisherF as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/gamma.rs:258:23
+    |
+258 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::StudentT as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/gamma.rs:302:23
+    |
+302 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::normal::StandardNormal as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/normal.rs:36:23
+   |
+36 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::Normal as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/normal.rs:91:23
+   |
+91 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::LogNormal as std::fmt::Debug>`
+   --> rand-0.3.16/src/distributions/normal.rs:139:23
+    |
+139 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::exponential::Exp1 as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/exponential.rs:37:23
+   |
+37 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::distributions::Exp as std::fmt::Debug>`
+  --> rand-0.3.16/src/distributions/exponential.rs:74:23
+   |
+74 | #[derive(Clone, Copy, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::IsaacRng as std::fmt::Debug>`
+   --> rand-0.3.16/src/isaac.rs:264:1
+    |
+264 | / impl fmt::Debug for IsaacRng {
+265 | |     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+266 | |         write!(f, "IsaacRng {{}}")
+267 | |     }
+268 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::Isaac64Rng as std::fmt::Debug>`
+   --> rand-0.3.16/src/isaac.rs:513:1
+    |
+513 | / impl fmt::Debug for Isaac64Rng {
+514 | |     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+515 | |         write!(f, "Isaac64Rng {{}}")
+516 | |     }
+517 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::ChaChaRng as std::fmt::Debug>`
+  --> rand-0.3.16/src/chacha.rs:29:23
+   |
+29 | #[derive(Copy, Clone, Debug)]
+   |                       ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::reseeding::ReseedingRng<R, Rsdr> as std::fmt::Debug>`
+  --> rand-0.3.16/src/reseeding.rs:24:10
+   |
+24 | #[derive(Debug)]
+   |          ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::reseeding::ReseedWithDefault as std::fmt::Debug>`
+   --> rand-0.3.16/src/reseeding.rs:136:23
+    |
+136 | #[derive(Clone, Copy, Debug)]
+    |                       ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::rand_impls::<impl new::Rand for [T; 8]>`
+   --> rand_impls.rs:223:9
+    |
+223 | /         impl<T> Rand for [T; $n] where T: Rand {
+224 | |             #[inline]
+225 | |             fn rand<R: Rng>(_rng: &mut R) -> [T; $n] {
+226 | |                 [_rng.gen::<$t>(), $(_rng.gen::<$ts>()),*]
+227 | |             }
+228 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `new::rand_impls::<impl new::Rand for [T; 0]>`
+   --> rand_impls.rs:231:9
+    |
+231 | /         impl<T> Rand for [T; $n] {
+232 | |             fn rand<R: Rng>(_rng: &mut R) -> [T; $n] { [] }
+233 | |         }
+    | |_________^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::OsRng as std::fmt::Debug>`
+  --> rand-0.3.16/src/os.rs:50:1
+   |
+50 | / impl fmt::Debug for OsRng {
+51 | |     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+52 | |         write!(f, "OsRng {{}}")
+53 | |     }
+54 | | }
+   | |_^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::read::ReadRng<R> as std::fmt::Debug>`
+  --> rand-0.3.16/src/read.rs:33:10
+   |
+33 | #[derive(Debug)]
+   |          ^^^^^
+   |
+   = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `Rng`
+   --> rand-0.3.16/src/lib.rs:324:1
+    |
+324 | / pub trait Rng {
+325 | |     /// Return the next random u32.
+326 | |     ///
+327 | |     /// This rarely needs to be called directly, prefer `r.gen()` to
+...   |
+594 | |     }
+595 | | }
+    | |_^
+    |
+note: added defaulted item to trait (technically breaking)
+   --> rand-0.3.16/src/lib.rs:560:5
+    |
+560 | /     fn choose_mut<'a, T>(&mut self, values: &'a mut [T]) -> Option<&'a mut T> where Self: Sized {
+561 | |         if values.is_empty() {
+562 | |             None
+563 | |         } else {
+...   |
+566 | |         }
+567 | |     }
+    | |_____^
+
