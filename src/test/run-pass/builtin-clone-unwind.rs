@@ -12,13 +12,13 @@
 // in case of unwinding.
 
 use std::thread;
-use std::sync::Arc;
+use std::rc::Rc;
 
-struct S(Arc<()>);
+struct S(Rc<()>);
 
 impl Clone for S {
     fn clone(&self) -> Self {
-        if Arc::strong_count(&self.0) == 7 {
+        if Rc::strong_count(&self.0) == 7 {
             panic!("oops");
         }
 
@@ -27,11 +27,11 @@ impl Clone for S {
 }
 
 fn main() {
-    let counter = Arc::new(());
+    let counter = Rc::new(());
 
     // Unwinding with tuples...
     let ccounter = counter.clone();
-    let child = thread::spawn(move || {
+    let result = std::panic::catch_unwind(move || {
         let _ = (
             S(ccounter.clone()),
             S(ccounter.clone()),
@@ -40,15 +40,15 @@ fn main() {
         ).clone();
     });
 
-    assert!(child.join().is_err());
+    assert!(result.is_err());
     assert_eq!(
         1,
-        Arc::strong_count(&counter)
+        Rc::strong_count(&counter)
     );
 
     // ... and with arrays.
     let ccounter = counter.clone();
-    let child = thread::spawn(move || {
+    let child = std::panic::catch_unwind(move || {
         let _ = [
             S(ccounter.clone()),
             S(ccounter.clone()),
@@ -57,9 +57,9 @@ fn main() {
         ].clone();
     });
 
-    assert!(child.join().is_err());
+    assert!(result.is_err());
     assert_eq!(
         1,
-        Arc::strong_count(&counter)
+        Rc::strong_count(&counter)
     );
 }
