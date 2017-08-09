@@ -19,9 +19,7 @@ else if input < min {
 }
 ```
 
-Likely locations would be on the Ord trait, and a special version implemented for f32 and f64.
-The f32 and f64 versions could live either in std::cmp or in the primitive types themselves.  There are good arguments for either
-location.
+These would be on the Ord trait, and have a special version implemented for f32 and f64.
 
 # Motivation
 [motivation]: #motivation
@@ -88,7 +86,7 @@ And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
 /// Returns max if self is greater than max, and min if self is less than min.
-/// Otherwise this returns self.  Panics if min > max, min equals NAN, or max equals NAN.
+/// Otherwise this returns self.  Panics if min > max, min equals NaN, or max equals NaN.
 ///
 /// # Examples
 ///
@@ -105,6 +103,8 @@ pub fn clamp(self, min: f32, max: f32) -> f32 {
     x
 }
 ```
+
+This NaN handling behavior was chosen because a range with NaN on either side isn't really a range at all and the function can't be guaranteed to behave correctly if that is the case.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -126,4 +126,4 @@ Additionally there is the option of placing clamp in std::cmp in order to avoid 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Is the proposed handling for NAN inputs ideal?
+None
