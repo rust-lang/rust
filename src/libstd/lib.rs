@@ -319,12 +319,18 @@
 #![default_lib_allocator]
 
 // Always use alloc_system during stage0 since we don't know if the alloc_*
-// crate the stage0 compiler will pick by default is available (most
-// obviously, if the user has disabled jemalloc in `./configure`).
+// crate the stage0 compiler will pick by default is enabled (e.g.
+// if the user has disabled jemalloc in `./configure`).
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
-#![cfg_attr(any(stage0, feature = "force_alloc_system"), feature(global_allocator))]
-#[cfg(any(stage0, feature = "force_alloc_system"))]
+// The not(stage0+msvc) gates will only last until the next stage0 bump
+#![cfg_attr(all(
+        not(all(stage0, target_env = "msvc")),
+        any(stage0, feature = "force_alloc_system")),
+    feature(global_allocator))]
+#[cfg(all(
+    not(all(stage0, target_env = "msvc")),
+    any(stage0, feature = "force_alloc_system")))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 
