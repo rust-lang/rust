@@ -744,7 +744,7 @@ fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           -> ty::ClosureKind {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let hir_id = tcx.hir.node_to_hir_id(node_id);
-    tcx.typeck_tables_of(def_id).closure_kinds[&hir_id.local_id].0
+    tcx.typeck_tables_of(def_id).closure_kinds()[hir_id].0
 }
 
 fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1028,12 +1028,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.hir_id, arg_ty);
     }
 
-    {
-        let mut inh_tables = inherited.tables.borrow_mut();
-        let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
-        inh_tables.validate_hir_id(fn_hir_id);
-        inh_tables.liberated_fn_sigs.insert(fn_hir_id.local_id, fn_sig);
-    }
+    let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
+    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
 
     fcx.check_return_expr(&body.value);
 
@@ -1816,11 +1812,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_ty(&self, id: hir::HirId, ty: Ty<'tcx>) {
         debug!("write_ty({:?}, {:?}) in fcx {}",
                id, self.resolve_type_vars_if_possible(&ty), self.tag());
-        {
-            let mut tables = self.tables.borrow_mut();
-            tables.validate_hir_id(id);
-            tables.node_types.insert(id.local_id, ty);
-        }
+        self.tables.borrow_mut().node_types_mut().insert(id, ty);
 
         if ty.references_error() {
             self.has_errors.set(true);
@@ -1833,11 +1825,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn write_method_call(&self,
                              hir_id: hir::HirId,
                              method: MethodCallee<'tcx>) {
-        {
-            let mut tables = self.tables.borrow_mut();
-            tables.validate_hir_id(hir_id);
-            tables.type_dependent_defs.insert(hir_id.local_id, Def::Method(method.def_id));
-        }
+        self.tables
+            .borrow_mut()
+            .type_dependent_defs_mut()
+            .insert(hir_id, Def::Method(method.def_id));
         self.write_substs(hir_id, method.substs);
     }
 
@@ -1848,9 +1839,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                    substs,
                    self.tag());
 
-            let mut tables = self.tables.borrow_mut();
-            tables.validate_hir_id(node_id);
-            tables.node_substs.insert(node_id.local_id, substs);
+            self.tables.borrow_mut().node_substs_mut().insert(node_id, substs);
         }
     }
 
@@ -1861,9 +1850,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let mut tables = self.tables.borrow_mut();
-        tables.validate_hir_id(expr.hir_id);
-        match tables.adjustments.entry(expr.hir_id.local_id) {
+        match self.tables.borrow_mut().adjustments_mut().entry(expr.hir_id) {
             Entry::Vacant(entry) => { entry.insert(adj); },
             Entry::Occupied(mut entry) => {
                 debug!(" - composing on top of {:?}", entry.get());
@@ -2017,9 +2004,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn node_ty(&self, id: hir::HirId) -> Ty<'tcx> {
-        let tables = self.tables.borrow();
-        tables.validate_hir_id(id);
-        match tables.node_types.get(&id.local_id) {
+        match self.tables.borrow().node_types().get(id) {
             Some(&t) => t,
             None if self.err_count_since_creation() != 0 => self.tcx.types.err,
             None => {
@@ -2682,7 +2667,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
         if ty.is_never() {
-            assert!(!self.tables.borrow().adjustments.contains_key(&expr.hir_id.local_id),
+            assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
                 TypeVariableOrigin::AdjustmentType(expr.span));
@@ -3408,9 +3393,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
                     }).collect();
 
-                    let mut tables = self.tables.borrow_mut();
-                    tables.validate_hir_id(expr.hir_id);
-                    tables.fru_field_types.insert(expr.hir_id.local_id, fru_field_types);
+                    self.tables
+                        .borrow_mut()
+                        .fru_field_types_mut()
+                        .insert(expr.hir_id, fru_field_types);
                 }
                 _ => {
                     span_err!(self.tcx.sess, base_expr.span, E0436,
@@ -4043,9 +4029,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // Write back the new resolution.
                 let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                let mut tables = self.tables.borrow_mut();
-                tables.validate_hir_id(hir_id);
-                tables.type_dependent_defs.insert(hir_id.local_id, def);
+                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
 
                 (def, ty)
             }
@@ -4087,9 +4071,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Write back the new resolution.
         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-        let mut tables = self.tables.borrow_mut();
-        tables.validate_hir_id(hir_id);
-        tables.type_dependent_defs.insert(hir_id.local_id, def);
+        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
         (def, Some(ty), slice::ref_slice(&**item_segment))
     }
 

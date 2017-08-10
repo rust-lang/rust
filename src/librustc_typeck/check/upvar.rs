@@ -103,8 +103,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let infer_kind = match self.tables
                                    .borrow_mut()
-                                   .closure_kinds
-                                   .entry(closure_hir_id.local_id) {
+                                   .closure_kinds_mut()
+                                   .entry(closure_hir_id) {
             Entry::Occupied(_) => false,
             Entry::Vacant(entry) => {
                 debug!("check_closure: adding closure {:?} as Fn", closure_node_id);
@@ -162,8 +162,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .remove(&closure_def_id.index) {
                     self.tables
                         .borrow_mut()
-                        .closure_kinds
-                        .insert(closure_hir_id.local_id, kind);
+                        .closure_kinds_mut()
+                        .insert(closure_hir_id, kind);
                 }
             }
             self.tables.borrow_mut().upvar_capture_map.extend(
@@ -482,9 +482,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
         let closure_kind = self.adjust_closure_kinds.get(&closure_id).cloned()
             .or_else(|| {
                 let closure_id = self.fcx.tcx.hir.def_index_to_hir_id(closure_id);
-                let fcx_tables = self.fcx.tables.borrow();
-                fcx_tables.validate_hir_id(closure_id);
-                fcx_tables.closure_kinds.get(&closure_id.local_id).cloned()
+                self.fcx.tables.borrow().closure_kinds().get(closure_id).cloned()
             });
 
         if let Some((existing_kind, _)) = closure_kind {

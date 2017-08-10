@@ -451,8 +451,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // tables borrowed during (`deref_mut`) method resolution.
             let previous_adjustments = self.tables
                                            .borrow_mut()
-                                           .adjustments
-                                           .remove(&expr.hir_id.local_id);
+                                           .adjustments_mut()
+                                           .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 let pref = LvaluePreference::PreferMutLvalue;
                 for adjustment in &mut adjustments {
@@ -469,7 +469,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     source = adjustment.target;
                 }
-                self.tables.borrow_mut().adjustments.insert(expr.hir_id.local_id, adjustments);
+                self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
             match expr.node {
@@ -529,8 +529,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let base_expr_ty = self.node_ty(base_expr.hir_id);
         if let Some(adjustments) = self.tables
                                        .borrow_mut()
-                                       .adjustments
-                                       .get_mut(&base_expr.hir_id.local_id) {
+                                       .adjustments_mut()
+                                       .get_mut(base_expr.hir_id) {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {

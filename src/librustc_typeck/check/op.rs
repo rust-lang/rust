@@ -210,10 +210,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // some cases applied on the RHS, on top of which we need
                         // to autoref, which is not allowed by apply_adjustments.
                         // self.apply_adjustments(rhs_expr, vec![autoref]);
-                        let mut tables = self.tables.borrow_mut();
-                        tables.validate_hir_id(rhs_expr.hir_id);
-                        tables.adjustments.entry(rhs_expr.hir_id.local_id)
-                            .or_insert(vec![]).push(autoref);
+                        self.tables
+                            .borrow_mut()
+                            .adjustments_mut()
+                            .entry(rhs_expr.hir_id)
+                            .or_insert(vec![])
+                            .push(autoref);
                     }
                 }
                 self.write_method_call(expr.hir_id, method);

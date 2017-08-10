@@ -600,9 +600,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
                         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                        self.tables.validate_hir_id(hir_id);
                         if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                            self.tables.closure_kinds.get(&hir_id.local_id)
+                            self.tables.closure_kinds().get(hir_id)
                         {
                             err.span_note(span, &format!(
                                 "closure cannot be invoked more than once because \
@@ -904,10 +903,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         match pat.node {
             hir::PatKind::Binding(..) => {
-                self.tables.validate_hir_id(pat.hir_id);
                 *self.tables
-                     .pat_binding_modes
-                     .get(&pat.hir_id.local_id)
+                     .pat_binding_modes()
+                     .get(pat.hir_id)
                      .expect("missing binding mode")
             }
             _ => bug!("local is not a binding: {:?}", pat)

@@ -387,11 +387,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 substs: substs,
                                 fields: field_refs,
                                 base: base.as_ref().map(|base| {
-                                    cx.tables().validate_hir_id(expr.hir_id);
                                     FruInfo {
                                         base: base.to_ref(),
                                         field_types: cx.tables()
-                                                       .fru_field_types[&expr.hir_id.local_id]
+                                                       .fru_field_types()[expr.hir_id]
                                                        .clone(),
                                     }
                                 }),
@@ -551,10 +550,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprCast(ref source, _) => {
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
-            cx.tables().validate_hir_id(source.hir_id);
             if let Some(&TyCastKind::CoercionCast) = cx.tables()
-                                                       .cast_kinds
-                                                       .get(&source.hir_id.local_id) {
+                                                       .cast_kinds()
+                                                       .get(source.hir_id) {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
             } else {
@@ -586,8 +584,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  -> Expr<'tcx> {
     let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
-        cx.tables().validate_hir_id(expr.hir_id);
-        (cx.tables().type_dependent_defs[&expr.hir_id.local_id].def_id(),
+        (cx.tables().type_dependent_defs()[expr.hir_id].def_id(),
          cx.tables().node_substs(expr.hir_id))
     });
     Expr {

@@ -550,8 +550,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::MethodCall(..) => {
-                let local_id = self.tcx.hir.definitions().node_to_hir_id(expr.id).local_id;
-                let method_id = self.tables.type_dependent_defs[&local_id].def_id();
+                let expr_hir_id = self.tcx.hir.definitions().node_to_hir_id(expr.id);
+                let method_id = self.tables.type_dependent_defs()[expr_hir_id].def_id();
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),

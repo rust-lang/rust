@@ -269,10 +269,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, name, None) = p.node {
-            cx.tables.validate_hir_id(p.hir_id);
             let bm = *cx.tables
-                        .pat_binding_modes
-                        .get(&p.hir_id.local_id)
+                        .pat_binding_modes()
+                        .get(p.hir_id)
                         .expect("missing binding mode");
 
             if bm != ty::BindByValue(hir::MutImmutable) {
@@ -464,10 +463,9 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.each_binding(|_, id, span, _path| {
             let hir_id = cx.tcx.hir.node_to_hir_id(id);
-            cx.tables.validate_hir_id(hir_id);
             let bm = *cx.tables
-                        .pat_binding_modes
-                        .get(&hir_id.local_id)
+                        .pat_binding_modes()
+                        .get(hir_id)
                         .expect("missing binding mode");
             if let ty::BindByReference(..) = bm {
                 by_ref_span = Some(span);
@@ -501,10 +499,9 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                cx.tables.validate_hir_id(p.hir_id);
                 let bm = *cx.tables
-                            .pat_binding_modes
-                            .get(&p.hir_id.local_id)
+                            .pat_binding_modes()
+                            .get(p.hir_id)
                             .expect("missing binding mode");
                 match bm {
                     ty::BindByValue(..) => {

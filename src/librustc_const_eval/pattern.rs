@@ -381,8 +381,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     ty::TyRef(r, _) => Some(r),
                     _ => None,
                 };
-                let bm = *self.tables.pat_binding_modes.get(&pat.hir_id.local_id)
-                                                       .expect("missing binding mode");
+                let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
+                                                         .expect("missing binding mode");
                 let (mutability, mode) = match bm {
                     ty::BindByValue(hir::MutMutable) =>
                         (Mutability::Mut, BindingMode::ByValue),

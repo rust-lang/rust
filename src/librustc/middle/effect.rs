@@ -166,7 +166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprMethodCall(..) => {
-                let def_id = self.tables.type_dependent_defs[&expr.hir_id.local_id].def_id();
+                let def_id = self.tables.type_dependent_defs()[expr.hir_id].def_id();
                 let sig = self.tcx.fn_sig(def_id);
                 debug!("effect: method call case, signature is {:?}",
                         sig);

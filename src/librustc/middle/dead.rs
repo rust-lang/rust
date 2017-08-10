@@ -94,8 +94,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn lookup_and_handle_method(&mut self, id: hir::ItemLocalId) {
-        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
+    fn lookup_and_handle_method(&mut self, id: hir::HirId) {
+        self.check_def_id(self.tables.type_dependent_defs()[id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
@@ -241,7 +241,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_definition(def);
             }
             hir::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(expr.hir_id.local_id);
+                self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprField(ref lhs, ref name) => {
                 self.handle_field_access(&lhs, name.node);

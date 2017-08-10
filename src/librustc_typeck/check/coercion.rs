@@ -844,7 +844,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // First try to coerce the new expression to the type of the previous ones,
         // but only if the new expression has no coercion already applied to it.
         let mut first_error = None;
-        if !self.tables.borrow().adjustments.contains_key(&new.hir_id.local_id) {
+        if !self.tables.borrow().adjustments().contains_key(new.hir_id) {
             let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
             match result {
                 Ok(ok) => {

@@ -334,10 +334,8 @@ impl MutabilityCategory {
         let ret = match tcx.hir.get(id) {
             hir_map::NodeLocal(p) => match p.node {
                 PatKind::Binding(..) => {
-
-                    tables.validate_hir_id(p.hir_id);
-                    let bm = *tables.pat_binding_modes
-                                    .get(&p.hir_id.local_id)
+                    let bm = *tables.pat_binding_modes()
+                                    .get(p.hir_id)
                                     .expect("missing binding mode");
                     if bm == ty::BindByValue(hir::MutMutable) {
                         McDeclared
@@ -485,10 +483,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
             PatKind::Binding(..) => {
-                self.tables.validate_hir_id(pat.hir_id);
                 let bm = *self.tables
-                              .pat_binding_modes
-                              .get(&pat.hir_id.local_id)
+                              .pat_binding_modes()
+                              .get(pat.hir_id)
                               .expect("missing binding mode");
 
                 if let ty::BindByReference(_) = bm {
@@ -698,7 +695,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  -> McResult<cmt<'tcx>>
     {
         let fn_hir_id = self.tcx.hir.node_to_hir_id(fn_node_id);
-        self.tables.validate_hir_id(fn_hir_id);
 
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
@@ -723,7 +719,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
-        let kind = match self.tables.closure_kinds.get(&fn_hir_id.local_id) {
+        let kind = match self.tables.closure_kinds().get(fn_hir_id) {
             Some(&(kind, _)) => kind,
             None => span_bug!(span, "missing closure kind")
         };

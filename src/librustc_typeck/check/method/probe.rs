@@ -829,9 +829,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             };
 
             let closure_kind = {
-                let tables = self.tables.borrow();
-                tables.validate_hir_id(closure_id);
-                match tables.closure_kinds.get(&closure_id.local_id) {
+                match self.tables.borrow().closure_kinds().get(closure_id) {
                     Some(&(k, _)) => k,
                     None => {
                         return Err(MethodError::ClosureAmbiguity(trait_def_id));

@@ -46,8 +46,7 @@ impl UnusedMut {
         for p in pats {
             p.each_binding(|_, id, span, path1| {
                 let hir_id = cx.tcx.hir.node_to_hir_id(id);
-                cx.tables.validate_hir_id(hir_id);
-                let bm = match cx.tables.pat_binding_modes.get(&hir_id.local_id) {
+                let bm = match cx.tables.pat_binding_modes().get(hir_id) {
                     Some(&bm) => bm,
                     None => span_bug!(span, "missing binding mode"),
                 };

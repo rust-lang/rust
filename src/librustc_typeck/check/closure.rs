@@ -104,11 +104,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         {
             let mut tables = self.tables.borrow_mut();
-            tables.validate_hir_id(expr.hir_id);
-            tables.closure_tys.insert(expr.hir_id.local_id, sig);
+            tables.closure_tys_mut().insert(expr.hir_id, sig);
             match opt_kind {
                 Some(kind) => {
-                    tables.closure_kinds.insert(expr.hir_id.local_id, (kind, None));
+                    tables.closure_kinds_mut().insert(expr.hir_id, (kind, None));
                 }
                 None => {}
             }

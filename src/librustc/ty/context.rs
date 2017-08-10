@@ -20,6 +20,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
+use ich::{self, StableHashingContext, NodeIdHashingMode};
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime;
@@ -45,19 +46,22 @@ use ty::BindingMode;
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 
 use arena::{TypedArena, DroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
+use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast::{self, Name};
+use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::codemap::MultiSpan;
 use syntax::symbol::{Symbol, keywords};
@@ -207,6 +211,91 @@ pub struct CommonTypes<'tcx> {
     pub re_erased: Region<'tcx>,
 }
 
+pub struct LocalTableInContext<'a, V: 'a> {
+    local_id_root: DefId,
+    data: &'a ItemLocalMap<V>
+}
+
+/// Validate that the given HirId (respectively its `local_id` part) can be
+/// safely used as a key in the tables of a TypeckTable. For that to be
+/// the case, the HirId must have the same `owner` as all the other IDs in
+/// this table (signified by `local_id_root`). Otherwise the HirId
+/// would be in a different frame of reference and using its `local_id`
+/// would result in lookup errors, or worse, in silently wrong data being
+/// stored/returned.
+fn validate_hir_id_for_typeck_tables(table_id_root: DefId, hir_id: hir::HirId) {
+    #[cfg(debug_assertions)]
+    {
+        if table_id_root.is_local() {
+            if hir_id.owner != table_id_root.index {
+                ty::tls::with(|tcx| {
+                    let node_id = tcx.hir
+                                     .definitions()
+                                     .find_node_for_hir_id(hir_id);
+
+                    bug!("node {} with HirId::owner {:?} cannot be placed in \
+                          TypeckTables with local_id_root {:?}",
+                          tcx.hir.node_to_string(node_id),
+                          DefId::local(hir_id.owner),
+                          table_id_root)
+                });
+            }
+        }
+    }
+}
+
+impl<'a, V> LocalTableInContext<'a, V> {
+    pub fn contains_key(&self, id: hir::HirId) -> bool {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.contains_key(&id.local_id)
+    }
+
+    pub fn get(&self, id: hir::HirId) -> Option<&V> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.get(&id.local_id)
+    }
+
+    pub fn iter(&self) -> hash_map::Iter<hir::ItemLocalId, V> {
+        self.data.iter()
+    }
+}
+
+impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
+    type Output = V;
+
+    fn index(&self, key: hir::HirId) -> &V {
+        self.get(key).expect("LocalTableInContext: key not found")
+    }
+}
+
+pub struct LocalTableInContextMut<'a, V: 'a> {
+    local_id_root: DefId,
+    data: &'a mut ItemLocalMap<V>
+}
+
+impl<'a, V> LocalTableInContextMut<'a, V> {
+
+    pub fn get_mut(&mut self, id: hir::HirId) -> Option<&mut V> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.get_mut(&id.local_id)
+    }
+
+    pub fn entry(&mut self, id: hir::HirId) -> Entry<hir::ItemLocalId, V> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.entry(id.local_id)
+    }
+
+    pub fn insert(&mut self, id: hir::HirId, val: V) -> Option<V> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.insert(id.local_id, val)
+    }
+
+    pub fn remove(&mut self, id: hir::HirId) -> Option<V> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.data.remove(&id.local_id)
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
@@ -214,50 +303,50 @@ pub struct TypeckTables<'tcx> {
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
-    pub type_dependent_defs: ItemLocalMap<Def>,
+    type_dependent_defs: ItemLocalMap<Def>,
 
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
     /// typeck::check::fn_ctxt for details.
-    pub node_types: ItemLocalMap<Ty<'tcx>>,
+    node_types: ItemLocalMap<Ty<'tcx>>,
 
     /// Stores the type parameters which were substituted to obtain the type
     /// of this node.  This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    pub node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
+    node_substs: ItemLocalMap<&'tcx Substs<'tcx>>,
 
-    pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
+    adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
     // Stores the actual binding mode for all instances of hir::BindingAnnotation.
-    pub pat_binding_modes: ItemLocalMap<BindingMode>,
+    pat_binding_modes: ItemLocalMap<BindingMode>,
 
     /// Borrows
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
     /// Records the type of each closure.
-    pub closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
+    closure_tys: ItemLocalMap<ty::PolyFnSig<'tcx>>,
 
     /// Records the kind of each closure and the span and name of the variable
     /// that caused the closure to be this kind.
-    pub closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
+    closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
     /// (including late-bound regions) are replaced with free
     /// equivalents. This table is not used in trans (since regions
     /// are erased there) and hence is not serialized to metadata.
-    pub liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
+    liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
     /// For each FRU expression, record the normalized types of the fields
     /// of the struct - this is needed because it is non-trivial to
     /// normalize while preserving regions. This table is used only in
     /// MIR construction and hence is not serialized to metadata.
-    pub fru_field_types: ItemLocalMap<Vec<Ty<'tcx>>>,
+    fru_field_types: ItemLocalMap<Vec<Ty<'tcx>>>,
 
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.
-    pub cast_kinds: ItemLocalMap<ty::cast::CastKind>,
+    cast_kinds: ItemLocalMap<ty::cast::CastKind>,
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports.
@@ -288,7 +377,6 @@ impl<'tcx> TypeckTables<'tcx> {
             liberated_fn_sigs: ItemLocalMap(),
             fru_field_types: ItemLocalMap(),
             cast_kinds: ItemLocalMap(),
-            lints: lint::LintTable::new(),
             used_trait_imports: DefIdSet(),
             tainted_by_errors: false,
             free_region_map: FreeRegionMap::new(),
@@ -300,9 +388,37 @@ impl<'tcx> TypeckTables<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.def,
             hir::QPath::TypeRelative(..) => {
-                self.validate_hir_id(id);
+                validate_hir_id_for_typeck_tables(self.local_id_root, id);
                 self.type_dependent_defs.get(&id.local_id).cloned().unwrap_or(Def::Err)
             }
+        }
+    }
+
+    pub fn type_dependent_defs(&self) -> LocalTableInContext<Def> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.type_dependent_defs
+        }
+    }
+
+    pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<Def> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.type_dependent_defs
+        }
+    }
+
+    pub fn node_types(&self) -> LocalTableInContext<Ty<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.node_types
+        }
+    }
+
+    pub fn node_types_mut(&mut self) -> LocalTableInContextMut<Ty<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.node_types
         }
     }
 
@@ -320,13 +436,25 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
-        self.validate_hir_id(id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
         self.node_types.get(&id.local_id).cloned()
     }
 
+    pub fn node_substs_mut(&mut self) -> LocalTableInContextMut<&'tcx Substs<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.node_substs
+        }
+    }
+
     pub fn node_substs(&self, id: hir::HirId) -> &'tcx Substs<'tcx> {
-        self.validate_hir_id(id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
         self.node_substs.get(&id.local_id).cloned().unwrap_or(Substs::empty())
+    }
+
+    pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {
+        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        self.node_substs.get(&id.local_id).cloned()
     }
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
@@ -357,9 +485,24 @@ impl<'tcx> TypeckTables<'tcx> {
         self.node_id_to_type_opt(expr.hir_id)
     }
 
+    pub fn adjustments(&self) -> LocalTableInContext<Vec<ty::adjustment::Adjustment<'tcx>>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.adjustments
+        }
+    }
+
+    pub fn adjustments_mut(&mut self)
+                           -> LocalTableInContextMut<Vec<ty::adjustment::Adjustment<'tcx>>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.adjustments
+        }
+    }
+
     pub fn expr_adjustments(&self, expr: &hir::Expr)
                             -> &[ty::adjustment::Adjustment<'tcx>] {
-        self.validate_hir_id(expr.hir_id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, expr.hir_id);
         self.adjustments.get(&expr.hir_id.local_id).map_or(&[], |a| &a[..])
     }
 
@@ -385,10 +528,24 @@ impl<'tcx> TypeckTables<'tcx> {
             return false;
         }
 
-        self.validate_hir_id(expr.hir_id);
-        match self.type_dependent_defs.get(&expr.hir_id.local_id) {
+        match self.type_dependent_defs().get(expr.hir_id) {
             Some(&Def::Method(_)) => true,
             _ => false
+        }
+    }
+
+    pub fn pat_binding_modes(&self) -> LocalTableInContext<BindingMode> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.pat_binding_modes
+        }
+    }
+
+    pub fn pat_binding_modes_mut(&mut self)
+                           -> LocalTableInContextMut<BindingMode> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.pat_binding_modes
         }
     }
 
@@ -396,36 +553,140 @@ impl<'tcx> TypeckTables<'tcx> {
         self.upvar_capture_map[&upvar_id]
     }
 
-    /// Validate that the given HirId (respectively its `local_id` part) can be
-    /// safely used as a key in the tables of this TypeckTable. For that to be
-    /// the case, the HirId must have the same `owner` as all the other IDs in
-    /// this table (signified by the `local_id_root` field). Otherwise the HirId
-    /// would be in a different frame of reference and using its `local_id`
-    /// would result in lookup errors, or worse, in silently wrong data being
-    /// stored/returned.
-    ///
-    /// Therefore it is advised to call this method anytime before using a given
-    /// HirId::local_id as a key.
-    #[inline]
-    pub fn validate_hir_id(&self, hir_id: hir::HirId) {
-        #[cfg(debug_assertions)]
-        {
-            if self.local_id_root.is_local() {
-                if hir_id.owner != self.local_id_root.index {
-                    ty::tls::with(|tcx| {
-                        let node_id = tcx.hir
-                                         .definitions()
-                                         .find_node_for_hir_id(hir_id);
-
-                        bug!("node {} with HirId::owner {:?} cannot be placed in \
-                              TypeckTables with local_id_root {:?}",
-                              tcx.hir.node_to_string(node_id),
-                              DefId::local(hir_id.owner),
-                              self.local_id_root)
-                    });
-                }
-            }
+    pub fn closure_tys(&self) -> LocalTableInContext<ty::PolyFnSig<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.closure_tys
         }
+    }
+
+    pub fn closure_tys_mut(&mut self)
+                           -> LocalTableInContextMut<ty::PolyFnSig<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.closure_tys
+        }
+    }
+
+    pub fn closure_kinds(&self) -> LocalTableInContext<(ty::ClosureKind,
+                                                        Option<(Span, ast::Name)>)> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.closure_kinds
+        }
+    }
+
+    pub fn closure_kinds_mut(&mut self)
+            -> LocalTableInContextMut<(ty::ClosureKind, Option<(Span, ast::Name)>)> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.closure_kinds
+        }
+    }
+
+    pub fn liberated_fn_sigs(&self) -> LocalTableInContext<ty::FnSig<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.liberated_fn_sigs
+        }
+    }
+
+    pub fn liberated_fn_sigs_mut(&mut self) -> LocalTableInContextMut<ty::FnSig<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.liberated_fn_sigs
+        }
+    }
+
+    pub fn fru_field_types(&self) -> LocalTableInContext<Vec<Ty<'tcx>>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.fru_field_types
+        }
+    }
+
+    pub fn fru_field_types_mut(&mut self) -> LocalTableInContextMut<Vec<Ty<'tcx>>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.fru_field_types
+        }
+    }
+
+    pub fn cast_kinds(&self) -> LocalTableInContext<ty::cast::CastKind> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.cast_kinds
+        }
+    }
+
+    pub fn cast_kinds_mut(&mut self) -> LocalTableInContextMut<ty::cast::CastKind> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.cast_kinds
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TypeckTables<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::TypeckTables {
+            local_id_root,
+            ref type_dependent_defs,
+            ref node_types,
+            ref node_substs,
+            ref adjustments,
+            ref pat_binding_modes,
+            ref upvar_capture_map,
+            ref closure_tys,
+            ref closure_kinds,
+            ref liberated_fn_sigs,
+            ref fru_field_types,
+
+            ref cast_kinds,
+
+            ref used_trait_imports,
+            tainted_by_errors,
+            ref free_region_map,
+        } = *self;
+
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            ich::hash_stable_itemlocalmap(hcx, hasher, type_dependent_defs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, node_types);
+            ich::hash_stable_itemlocalmap(hcx, hasher, node_substs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, adjustments);
+            ich::hash_stable_itemlocalmap(hcx, hasher, pat_binding_modes);
+            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
+                let ty::UpvarId {
+                    var_id,
+                    closure_expr_id
+                } = *up_var_id;
+
+                let var_def_id = DefId {
+                    krate: local_id_root.krate,
+                    index: var_id,
+                };
+                let closure_def_id = DefId {
+                    krate: local_id_root.krate,
+                    index: closure_expr_id,
+                };
+                (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
+            });
+
+            ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);
+            ich::hash_stable_itemlocalmap(hcx, hasher, closure_kinds);
+            ich::hash_stable_itemlocalmap(hcx, hasher, liberated_fn_sigs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, fru_field_types);
+            ich::hash_stable_itemlocalmap(hcx, hasher, cast_kinds);
+
+            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
+                hcx.def_path_hash(*def_id)
+            });
+
+            tainted_by_errors.hash_stable(hcx, hasher);
+            free_region_map.hash_stable(hcx, hasher);
+        })
     }
 }
 

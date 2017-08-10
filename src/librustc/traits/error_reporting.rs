@@ -684,8 +684,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         if let Some(tables) = self.in_progress_tables {
                             let tables = tables.borrow();
                             let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
-                            tables.validate_hir_id(closure_hir_id);
-                            match tables.closure_kinds.get(&closure_hir_id.local_id) {
+                            match tables.closure_kinds().get(closure_hir_id) {
                                 Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
                                     err.span_note(span, &format!(
                                         "closure is `FnOnce` because it moves the \

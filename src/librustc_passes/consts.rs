@@ -320,8 +320,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         }
         hir::ExprCast(ref from, _) => {
             debug!("Checking const cast(id={})", from.id);
-            v.tables.validate_hir_id(from.hir_id);
-            match v.tables.cast_kinds.get(&from.hir_id.local_id) {
+            match v.tables.cast_kinds().get(from.hir_id) {
                 None => span_bug!(e.span, "no kind for cast"),
                 Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
                     v.promotable = false;
@@ -388,8 +387,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            v.tables.validate_hir_id(e.hir_id);
-            let def_id = v.tables.type_dependent_defs[&e.hir_id.local_id].def_id();
+            let def_id = v.tables.type_dependent_defs()[e.hir_id].def_id();
             match v.tcx.associated_item(def_id).container {
                 ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
                 ty::TraitContainer(_) => v.promotable = false

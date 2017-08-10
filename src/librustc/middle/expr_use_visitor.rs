@@ -537,7 +537,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let def_id = self.mc.tables.type_dependent_defs[&call.hir_id.local_id].def_id();
+                let def_id = self.mc.tables.type_dependent_defs()[call.hir_id].def_id();
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
@@ -797,8 +797,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                pat);
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
             if let PatKind::Binding(..) = pat.node {
-                self.mc.tables.validate_hir_id(pat.hir_id);
-                let bm = *self.mc.tables.pat_binding_modes.get(&pat.hir_id.local_id)
+                let bm = *self.mc.tables.pat_binding_modes().get(pat.hir_id)
                                                           .expect("missing binding mode");
                 match bm {
                     ty::BindByReference(..) =>
@@ -824,8 +823,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(_, def_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
-                mc.tables.validate_hir_id(pat.hir_id);
-                let bm = *mc.tables.pat_binding_modes.get(&pat.hir_id.local_id)
+                let bm = *mc.tables.pat_binding_modes().get(pat.hir_id)
                                                      .expect("missing binding mode");
 
                 // pat_ty: the type of the binding being produced.

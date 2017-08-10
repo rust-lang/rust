@@ -118,11 +118,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // identical to what could be scraped from the HIR, but this will change with
                 // default binding modes (#42640).
                 let bm = ty::BindingMode::convert(ba);
-                {
-                    let mut inh_tables = self.inh.tables.borrow_mut();
-                    inh_tables.validate_hir_id(pat.hir_id);
-                    inh_tables.pat_binding_modes.insert(pat.hir_id.local_id, bm);
-                }
+                self.inh
+                    .tables
+                    .borrow_mut()
+                    .pat_binding_modes_mut()
+                    .insert(pat.hir_id, bm);
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     ty::BindByReference(mutbl) => {

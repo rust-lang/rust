@@ -309,10 +309,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
-            let tables = self.tables.borrow();
             let fn_hir_id = self.tcx.hir.node_to_hir_id(id);
-            tables.validate_hir_id(fn_hir_id);
-            match tables.liberated_fn_sigs.get(&fn_hir_id.local_id) {
+            match self.tables.borrow().liberated_fn_sigs().get(fn_hir_id) {
                 Some(f) => f.clone(),
                 None => {
                     bug!("No fn-sig entry for id={}", id);
@@ -1121,14 +1119,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // report errors later on in the writeback phase.
         let ty0 = self.resolve_node_type(hir_id);
 
-        let ty = {
-            let tables = self.tables.borrow();
-            tables.validate_hir_id(hir_id);
-            tables.adjustments
-                  .get(&hir_id.local_id)
-                  .and_then(|adj| adj.last())
-                  .map_or(ty0, |adj| adj.target)
-        };
+        let ty = self.tables
+                     .borrow()
+                     .adjustments()
+                     .get(hir_id)
+                     .and_then(|adj| adj.last())
+                     .map_or(ty0, |adj| adj.target);
         let ty = self.resolve_type(ty);
         debug!("constrain_regions_in_type_of_node(\
                 ty={}, ty0={}, id={:?}, minimum_lifetime={:?})",
@@ -1207,9 +1203,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(..) => {
-                        mc.tables.validate_hir_id(sub_pat.hir_id);
-                        let bm = *mc.tables.pat_binding_modes.get(&sub_pat.hir_id.local_id)
-                                                             .expect("missing binding mode");
+                        let bm = *mc.tables.pat_binding_modes().get(sub_pat.hir_id)
+                                                               .expect("missing binding mode");
                         if let ty::BindByReference(mutbl) = bm {
                             self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
                                                             mutbl, sub_cmt);

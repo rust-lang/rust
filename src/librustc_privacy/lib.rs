@@ -649,7 +649,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         if self.tables.node_substs(id).visit_with(self) {
             return true;
         }
-        if let Some(adjustments) = self.tables.adjustments.get(&id.local_id) {
+        if let Some(adjustments) = self.tables.adjustments().get(id) {
             for adjustment in adjustments {
                 if adjustment.target.visit_with(self) {
                     return true;
@@ -748,8 +748,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             }
             hir::ExprMethodCall(_, span, _) => {
                 // Method calls have to be checked specially.
-                self.tables.validate_hir_id(expr.hir_id);
-                let def_id = self.tables.type_dependent_defs[&expr.hir_id.local_id].def_id();
+                let def_id = self.tables.type_dependent_defs()[expr.hir_id].def_id();
                 self.span = span;
                 if self.tcx.type_of(def_id).visit_with(self) {
                     return;
@@ -766,8 +765,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         // we have to check it additionally.
         if let hir::QPath::TypeRelative(..) = *qpath {
             let hir_id = self.tcx.hir.node_to_hir_id(id);
-            self.tables.validate_hir_id(hir_id);
-            if let Some(def) = self.tables.type_dependent_defs.get(&hir_id.local_id).cloned() {
+            if let Some(def) = self.tables.type_dependent_defs().get(hir_id).cloned() {
                 if let Some(assoc_item) = self.tcx.opt_associated_item(def.def_id()) {
                     if let ty::ImplContainer(impl_def_id) = assoc_item.container {
                         if self.tcx.type_of(impl_def_id).visit_with(self) {

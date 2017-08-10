@@ -935,7 +935,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             // Check for method calls and overloaded operators.
             if cx.tables.is_method_call(expr) {
                 let hir_id = cx.tcx.hir.definitions().node_to_hir_id(id);
-                let def_id = cx.tables.type_dependent_defs[&hir_id.local_id].def_id();
+                let def_id = cx.tables.type_dependent_defs()[hir_id].def_id();
                 let substs = cx.tables.node_substs(hir_id);
                 if method_call_refers_to_method(cx, method, def_id, substs, id) {
                     return true;
