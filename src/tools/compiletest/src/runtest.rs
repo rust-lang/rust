@@ -335,14 +335,13 @@ impl<'test> TestCx<'test> {
             .args(&["--target", &self.config.target])
             .arg("-L").arg(&aux_dir)
             .args(self.split_maybe_args(&self.config.target_rustcflags))
-            .args(&self.props.compile_flags);
+            .args(&self.props.compile_flags)
+            .envs(self.props.exec_env.clone());
 
         self.compose_and_run(rustc,
-                             self.props.exec_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
-                             Some(src),
-                             None)
+                             Some(src))
     }
 
     fn compare_source(&self,
@@ -642,15 +641,12 @@ actual:\n\
                          format!("-command={}", debugger_script.to_str().unwrap())];
 
                 let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
-                gdb.args(&debugger_opts);
-
-                let environment = vec![("PYTHONPATH".to_owned(), rust_pp_module_abs_path)];
+                gdb.args(&debugger_opts)
+                    .env("PYTHONPATH", rust_pp_module_abs_path);
 
                 debugger_run_result =
                     self.compose_and_run(gdb,
-                                         environment,
                                          self.config.run_lib_path.to_str().unwrap(),
-                                         None,
                                          None,
                                          None);
             }
@@ -1203,30 +1199,26 @@ actual:\n\
                 }
                 let mut test_client = Command::new(
                     self.config.remote_test_client.as_ref().unwrap());
-                test_client.args(&["run", &prog]);
-                test_client.args(args);
+                test_client
+                    .args(&["run", &prog])
+                    .args(args)
+                    .envs(env.clone());
                 self.compose_and_run(test_client,
-                                     env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
-                                     None,
                                      None)
             }
             _ => {
                 let aux_dir = self.aux_output_dir_name();
-                let working_dir =
-                    Some(self.output_base_name()
-                             .parent().unwrap()
-                             .to_str().unwrap().to_owned());
                 let ProcArgs { prog, args } = self.make_run_args();
                 let mut program = Command::new(&prog);
-                program.args(args);
+                program.args(args)
+                    .current_dir(&self.output_base_name().parent().unwrap())
+                    .envs(env.clone());
                 self.compose_and_run(program,
-                                     env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
-                                     None,
-                                     working_dir)
+                                     None)
             }
         }
     }
@@ -1304,10 +1296,8 @@ actual:\n\
             let mut rustc = Command::new(prog);
             rustc.args(&args);
             let auxres = aux_cx.compose_and_run(rustc,
-                                                Vec::new(),
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
-                                                None,
                                                 None);
             if !auxres.status.success() {
                 self.fatal_proc_rec(
@@ -1319,23 +1309,20 @@ actual:\n\
 
         let ProcArgs { prog, args } = args;
         let mut rustc = Command::new(prog);
-        rustc.args(args);
+        rustc.args(args)
+            .envs(self.props.rustc_env.clone());
 
         self.compose_and_run(rustc,
-                             self.props.rustc_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
-                             input,
-                             None)
+                             input)
     }
 
     fn compose_and_run(&self,
                        mut command: Command,
-                       procenv: Vec<(String, String)> ,
                        lib_path: &str,
                        aux_path: Option<&str>,
-                       input: Option<String>,
-                       working_dir: Option<String>) -> ProcRes {
+                       input: Option<String>) -> ProcRes {
         let cmdline =
         {
             let cmdline = self.make_cmdline(&command, lib_path);
@@ -1349,12 +1336,6 @@ actual:\n\
             .stdin(Stdio::piped());
 
         procsrv::add_target_env(&mut command, lib_path, aux_path);
-        for (key, val) in procenv {
-            command.env(&key, &val);
-        }
-        if let Some(cwd) = working_dir {
-            command.current_dir(cwd);
-        }
 
         let mut child = command.spawn().expect(&format!("failed to exec `{:?}`", &command));
         if let Some(input) = input {
@@ -1706,10 +1687,9 @@ actual:\n\
     fn check_ir_with_filecheck(&self) -> ProcRes {
         let irfile = self.output_base_name().with_extension("ll");
         let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        filecheck.arg(&format!("-input-file={}", irfile.to_str().unwrap()));
-        filecheck.arg(&self.testpaths.file);
-        self.compose_and_run(filecheck, Vec::new(), "", None, None, None)
+        filecheck.arg("--input-file").arg(irfile)
+            .arg(&self.testpaths.file);
+        self.compose_and_run(filecheck, "", None, None)
     }
 
     fn run_codegen_test(&self) {
