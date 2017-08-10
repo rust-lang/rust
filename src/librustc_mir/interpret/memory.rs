@@ -547,9 +547,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 None => {
                     // Make sure we did not try to release someone else's lock.
                     if !is_our_lock && lock.active != NoLock {
-                        // FIXME: For the same reason that we have to live with suspensions already existing,
-                        // we also cannot be sure here if things really are going wrong.  So accept this for now.
-                        //return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
+                        return err!(InvalidMemoryLockRelease { ptr, len, frame: cur_frame, lock: lock.active.clone() });
                     }
                 }
             }
