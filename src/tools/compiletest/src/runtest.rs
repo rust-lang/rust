@@ -325,37 +325,24 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn print_source(&self,
-                    src: String,
-                    pretty_type: &str)
-                    -> ProcRes {
+    fn print_source(&self, src: String, pretty_type: &str) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
-        self.compose_and_run(self.make_pp_args(pretty_type.to_owned()),
+
+        let mut rustc = Command::new(&self.config.rustc_path);
+        rustc.arg("-")
+            .arg("-Zunstable-options")
+            .args(&["--unpretty", &pretty_type])
+            .args(&["--target", &self.config.target])
+            .arg("-L").arg(&aux_dir)
+            .args(self.split_maybe_args(&self.config.target_rustcflags))
+            .args(&self.props.compile_flags);
+
+        self.compose_and_run(rustc,
                              self.props.exec_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
                              Some(src),
                              None)
-    }
-
-    fn make_pp_args(&self,
-                    pretty_type: String)
-                    -> ProcArgs {
-        let aux_dir = self.aux_output_dir_name();
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec!["-".to_owned(),
-                            "-Zunstable-options".to_owned(),
-                            "--unpretty".to_owned(),
-                            pretty_type,
-                            format!("--target={}", self.config.target),
-                            "-L".to_owned(),
-                            aux_dir.to_str().unwrap().to_owned()];
-        args.extend(self.split_maybe_args(&self.config.target_rustcflags));
-        args.extend(self.props.compile_flags.iter().cloned());
-        ProcArgs {
-            prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args,
-        }
     }
 
     fn compare_source(&self,
@@ -562,9 +549,9 @@ actual:\n\
                     .output()
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
-                    let cmdline = self.make_cmdline("",
-                                                    &format!("{}-gdb", self.config.target),
-                                                    &debugger_opts);
+                    let mut gdb = Command::new(&format!("{}-gdb", self.config.target));
+                    gdb.args(&debugger_opts);
+                    let cmdline = self.make_cmdline(&gdb, "");
                     logv(self.config, format!("executing {}", cmdline));
                     cmdline
                 };
@@ -654,15 +641,13 @@ actual:\n\
                          "-nx".to_owned(),
                          format!("-command={}", debugger_script.to_str().unwrap())];
 
-                let proc_args = ProcArgs {
-                    prog: self.config.gdb.as_ref().unwrap().to_owned(),
-                    args: debugger_opts,
-                };
+                let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
+                gdb.args(&debugger_opts);
 
                 let environment = vec![("PYTHONPATH".to_owned(), rust_pp_module_abs_path)];
 
                 debugger_run_result =
-                    self.compose_and_run(proc_args,
+                    self.compose_and_run(gdb,
                                          environment,
                                          self.config.run_lib_path.to_str().unwrap(),
                                          None,
@@ -1205,23 +1190,22 @@ actual:\n\
             // the process) and then report back the same result.
             _ if self.config.remote_test_client.is_some() => {
                 let aux_dir = self.aux_output_dir_name();
-                let mut args = self.make_run_args();
-                let mut program = args.prog.clone();
+                let ProcArgs { mut prog, args } = self.make_run_args();
                 if let Ok(entries) = aux_dir.read_dir() {
                     for entry in entries {
                         let entry = entry.unwrap();
                         if !entry.path().is_file() {
                             continue
                         }
-                        program.push_str(":");
-                        program.push_str(entry.path().to_str().unwrap());
+                        prog.push_str(":");
+                        prog.push_str(entry.path().to_str().unwrap());
                     }
                 }
-                args.args.insert(0, program);
-                args.args.insert(0, "run".to_string());
-                args.prog = self.config.remote_test_client.clone().unwrap()
-                                .into_os_string().into_string().unwrap();
-                self.compose_and_run(args,
+                let mut test_client = Command::new(
+                    self.config.remote_test_client.as_ref().unwrap());
+                test_client.args(&["run", &prog]);
+                test_client.args(args);
+                self.compose_and_run(test_client,
                                      env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
@@ -1234,7 +1218,10 @@ actual:\n\
                     Some(self.output_base_name()
                              .parent().unwrap()
                              .to_str().unwrap().to_owned());
-                self.compose_and_run(self.make_run_args(),
+                let ProcArgs { prog, args } = self.make_run_args();
+                let mut program = Command::new(&prog);
+                program.args(args);
+                self.compose_and_run(program,
                                      env,
                                      self.config.run_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
@@ -1312,8 +1299,11 @@ actual:\n\
                 testpaths: &aux_testpaths,
                 revision: self.revision
             };
-            let aux_args = aux_cx.make_compile_args(crate_type, &aux_testpaths.file, aux_output);
-            let auxres = aux_cx.compose_and_run(aux_args,
+            let ProcArgs { prog, args } =
+                aux_cx.make_compile_args(crate_type, &aux_testpaths.file, aux_output);
+            let mut rustc = Command::new(prog);
+            rustc.args(&args);
+            let auxres = aux_cx.compose_and_run(rustc,
                                                 Vec::new(),
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
@@ -1327,7 +1317,11 @@ actual:\n\
             }
         }
 
-        self.compose_and_run(args,
+        let ProcArgs { prog, args } = args;
+        let mut rustc = Command::new(prog);
+        rustc.args(args);
+
+        self.compose_and_run(rustc,
                              self.props.rustc_env.clone(),
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
@@ -1336,7 +1330,7 @@ actual:\n\
     }
 
     fn compose_and_run(&self,
-                       ProcArgs{ args, prog }: ProcArgs,
+                       mut command: Command,
                        procenv: Vec<(String, String)> ,
                        lib_path: &str,
                        aux_path: Option<&str>,
@@ -1344,29 +1338,25 @@ actual:\n\
                        working_dir: Option<String>) -> ProcRes {
         let cmdline =
         {
-            let cmdline = self.make_cmdline(lib_path,
-                                            &prog,
-                                            &args);
+            let cmdline = self.make_cmdline(&command, lib_path);
             logv(self.config, format!("executing {}", cmdline));
             cmdline
         };
 
-        let mut process = Command::new(&prog);
-        process
-            .args(&args)
+        command
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped());
 
-        procsrv::add_target_env(&mut process, lib_path, aux_path);
+        procsrv::add_target_env(&mut command, lib_path, aux_path);
         for (key, val) in procenv {
-            process.env(&key, &val);
+            command.env(&key, &val);
         }
         if let Some(cwd) = working_dir {
-            process.current_dir(cwd);
+            command.current_dir(cwd);
         }
 
-        let mut child = process.spawn().expect(&format!("failed to exec `{}`", prog));
+        let mut child = command.spawn().expect(&format!("failed to exec `{:?}`", &command));
         if let Some(input) = input {
             child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
         }
@@ -1568,12 +1558,12 @@ actual:\n\
         }
     }
 
-    fn make_cmdline(&self, libpath: &str, prog: &str, args: &[String]) -> String {
+    fn make_cmdline(&self, command: &Command, libpath: &str) -> String {
         use util;
 
         // Linux and mac don't require adjusting the library search path
         if cfg!(unix) {
-            format!("{} {}", prog, args.join(" "))
+            format!("{:?}", command)
         } else {
             // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
             // for diagnostic purposes
@@ -1581,7 +1571,7 @@ actual:\n\
                 format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
             }
 
-            format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.join(" "))
+            format!("{} {:?}", lib_path_cmd_prefix(libpath), command)
         }
     }
 
@@ -1715,14 +1705,11 @@ actual:\n\
 
     fn check_ir_with_filecheck(&self) -> ProcRes {
         let irfile = self.output_base_name().with_extension("ll");
-        let prog = self.config.llvm_filecheck.as_ref().unwrap();
-        let proc_args = ProcArgs {
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            prog: prog.to_str().unwrap().to_owned(),
-            args: vec![format!("-input-file={}", irfile.to_str().unwrap()),
-                       self.testpaths.file.to_str().unwrap().to_owned()]
-        };
-        self.compose_and_run(proc_args, Vec::new(), "", None, None, None)
+        let mut filecheck = Command::new(self.config.llvm_filecheck.as_ref().unwrap());
+        // FIXME (#9639): This needs to handle non-utf8 paths
+        filecheck.arg(&format!("-input-file={}", irfile.to_str().unwrap()));
+        filecheck.arg(&self.testpaths.file);
+        self.compose_and_run(filecheck, Vec::new(), "", None, None, None)
     }
 
     fn run_codegen_test(&self) {
