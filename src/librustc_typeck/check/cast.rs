@@ -291,25 +291,25 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
         if t_cast.is_numeric() && t_expr.is_numeric() {
-            fcx.tables.borrow_mut().lints.add_lint(
+            fcx.tcx.lint_node(
                 lint::builtin::TRIVIAL_NUMERIC_CASTS,
                 self.expr.id,
                 self.span,
-                format!("trivial numeric cast: `{}` as `{}`. Cast can be \
-                         replaced by coercion, this might require type \
-                         ascription or a temporary variable",
-                        fcx.ty_to_string(t_expr),
-                        fcx.ty_to_string(t_cast)));
+                &format!("trivial numeric cast: `{}` as `{}`. Cast can be \
+                          replaced by coercion, this might require type \
+                          ascription or a temporary variable",
+                         fcx.ty_to_string(t_expr),
+                         fcx.ty_to_string(t_cast)));
         } else {
-            fcx.tables.borrow_mut().lints.add_lint(
+            fcx.tcx.lint_node(
                 lint::builtin::TRIVIAL_CASTS,
                 self.expr.id,
                 self.span,
-                format!("trivial cast: `{}` as `{}`. Cast can be \
-                         replaced by coercion, this might require type \
-                         ascription or a temporary variable",
-                        fcx.ty_to_string(t_expr),
-                        fcx.ty_to_string(t_cast)));
+                &format!("trivial cast: `{}` as `{}`. Cast can be \
+                          replaced by coercion, this might require type \
+                          ascription or a temporary variable",
+                         fcx.ty_to_string(t_expr),
+                         fcx.ty_to_string(t_cast)));
         }
 
     }

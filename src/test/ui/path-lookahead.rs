@@ -10,6 +10,8 @@
 
 // run-pass
 
+#![warn(unused)]
+
 // Parser test for #37765
 
 fn with_parens<T: ToString>(arg: T) -> String { //~WARN function is never used: `with_parens`

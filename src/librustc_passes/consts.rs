@@ -76,12 +76,12 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
                 ErroneousReferencedConstant(_) => {}
                 TypeckError => {}
                 _ => {
-                    self.tcx.sess.add_lint(CONST_ERR,
-                                           expr.id,
-                                           expr.span,
-                                           format!("constant evaluation error: {}. This will \
-                                                    become a HARD ERROR in the future",
-                                                   err.description().into_oneline()))
+                    self.tcx.lint_node(CONST_ERR,
+                                       expr.id,
+                                       expr.span,
+                                       &format!("constant evaluation error: {}. This will \
+                                                 become a HARD ERROR in the future",
+                                                err.description().into_oneline()));
                 }
             }
         }
@@ -260,10 +260,10 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                     kind: LayoutError(ty::layout::LayoutError::Unknown(_)), ..
                 }) => {}
                 Err(msg) => {
-                    self.tcx.sess.add_lint(CONST_ERR,
-                                           ex.id,
-                                           msg.span,
-                                           msg.description().into_oneline().into_owned())
+                    self.tcx.lint_node(CONST_ERR,
+                                       ex.id,
+                                       msg.span,
+                                       &msg.description().into_oneline().into_owned());
                 }
             }
         }

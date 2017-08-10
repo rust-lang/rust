@@ -122,13 +122,13 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                  directive.span.source_equal(&DUMMY_SP) => {}
             ImportDirectiveSubclass::ExternCrate => {
                 let lint = lint::builtin::UNUSED_EXTERN_CRATES;
-                let msg = "unused extern crate".to_string();
-                resolver.session.add_lint(lint, directive.id, directive.span, msg);
+                let msg = "unused extern crate";
+             ;   resolver.session.buffer_lint(lint, directive.id, directive.span, msg)
             }
             ImportDirectiveSubclass::MacroUse => {
                 let lint = lint::builtin::UNUSED_IMPORTS;
-                let msg = "unused `#[macro_use]` import".to_string();
-                resolver.session.add_lint(lint, directive.id, directive.span, msg);
+                let msg = "unused `#[macro_use]` import";
+                resolver.session.buffer_lint(lint, directive.id, directive.span, msg);
             }
             _ => {}
         }
@@ -160,9 +160,6 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                           } else {
                               String::new()
                           });
-        visitor.session.add_lint(lint::builtin::UNUSED_IMPORTS,
-                                 *id,
-                                 ms,
-                                 msg);
+        visitor.session.buffer_lint(lint::builtin::UNUSED_IMPORTS, *id, ms, &msg);
     }
 }

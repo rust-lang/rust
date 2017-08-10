@@ -119,7 +119,9 @@ fn test_env<F>(source_string: &str,
         name: driver::anon_src(),
         input: source_string.to_string(),
     };
-    let krate = driver::phase_1_parse_input(&sess, &input).unwrap();
+    let krate = driver::phase_1_parse_input(&driver::CompileController::basic(),
+                                            &sess,
+                                            &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(&sess,
                                              &cstore,

@@ -11,6 +11,7 @@
 // aux-build:attributes-included.rs
 
 #![feature(proc_macro, rustc_attrs)]
+#![warn(unused)]
 
 extern crate attributes_included;
 

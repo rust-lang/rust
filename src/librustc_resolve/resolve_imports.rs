@@ -379,7 +379,7 @@ impl<'a> Resolver<'a> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
-            let mut resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
+            let resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -745,8 +745,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                    (error E0365), consider declaring with `pub`",
                                    ident);
-                self.session.add_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-                                      directive.id, directive.span, msg);
+                self.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                                         directive.id,
+                                         directive.span,
+                                         &msg);
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)

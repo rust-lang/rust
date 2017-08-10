@@ -39,7 +39,7 @@ impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
         } else {
             "unused import".to_string()
         };
-        self.tcx.sess.add_lint(lint::builtin::UNUSED_IMPORTS, id, span, msg);
+        self.tcx.lint_node(lint::builtin::UNUSED_IMPORTS, id, span, &msg);
     }
 }
 

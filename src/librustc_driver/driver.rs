@@ -89,7 +89,7 @@ pub fn compile_input(sess: &Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
-        let krate = match phase_1_parse_input(sess, input) {
+        let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
                 parse_error.emit();
@@ -296,9 +296,13 @@ pub struct CompileController<'a> {
     pub after_llvm: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
+    // FIXME we probably want to group the below options together and offer a
+    // better API, rather than this ad-hoc approach.
     pub make_glob_map: MakeGlobMap,
     // Whether the compiler should keep the ast beyond parsing.
     pub keep_ast: bool,
+    // -Zcontinue-parse-after-error
+    pub continue_parse_after_error: bool,
 }
 
 impl<'a> CompileController<'a> {
@@ -312,6 +316,7 @@ impl<'a> CompileController<'a> {
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
+            continue_parse_after_error: false,
         }
     }
 }
@@ -484,10 +489,10 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     }
 
     fn state_when_compilation_done(input: &'a Input,
-                                    session: &'tcx Session,
-                                    out_dir: &'a Option<PathBuf>,
-                                    out_file: &'a Option<PathBuf>)
-                                    -> Self {
+                                   session: &'tcx Session,
+                                   out_dir: &'a Option<PathBuf>,
+                                   out_file: &'a Option<PathBuf>)
+                                   -> Self {
         CompileState {
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
@@ -495,9 +500,11 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     }
 }
 
-pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let continue_after_error = sess.opts.debugging_opts.continue_parse_after_error;
-    sess.diagnostic().set_continue_after_error(continue_after_error);
+pub fn phase_1_parse_input<'a>(control: &CompileController,
+                               sess: &'a Session,
+                               input: &Input)
+                               -> PResult<'a, ast::Crate> {
+    sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
@@ -638,7 +645,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         super::describe_lints(&sess.lint_store.borrow(), true);
         return Err(CompileIncomplete::Stopped);
     }
-    sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
@@ -708,8 +714,8 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         missing_fragment_specifiers.sort();
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
-            let msg = "missing fragment specifier".to_string();
-            sess.add_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            let msg = "missing fragment specifier";
+            sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
         }
         if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
             ecx.parse_sess.span_diagnostic.abort_if_errors();
@@ -773,10 +779,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
          || no_asm::check_crate(sess, &krate));
 
     time(time_passes,
-         "early lint checks",
-         || lint::check_ast_crate(sess, &krate));
-
-    time(time_passes,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
@@ -799,6 +801,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                               sess.opts.unstable_features);
         })
     })?;
+
+    time(time_passes,
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
 
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
@@ -908,6 +914,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     rustc_const_eval::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
     cstore::provide_local(&mut local_providers);
+    lint::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
@@ -1198,10 +1205,10 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {
-                             session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
-                                              ast::CRATE_NODE_ID,
-                                              a.span,
-                                              "invalid `crate_type` value".to_string());
+                             session.buffer_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
+                                                 ast::CRATE_NODE_ID,
+                                                 a.span,
+                                                 "invalid `crate_type` value");
                              None
                          }
                          _ => {

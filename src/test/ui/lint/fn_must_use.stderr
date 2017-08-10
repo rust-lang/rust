@@ -1,0 +1,18 @@
+warning: unused return value of `need_to_use_this_value` which must be used: it's important
+  --> $DIR/fn_must_use.rs:30:5
+   |
+30 |     need_to_use_this_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/fn_must_use.rs:11:9
+   |
+11 | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+warning: unused return value of `MyStruct::need_to_use_this_method_value` which must be used
+  --> $DIR/fn_must_use.rs:33:5
+   |
+33 |     m.need_to_use_this_method_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+

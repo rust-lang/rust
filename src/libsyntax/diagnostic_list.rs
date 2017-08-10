@@ -162,6 +162,63 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0552: r##"
+A unrecognized representation attribute was used.
+
+Erroneous code example:
+
+```compile_fail,E0552
+#[repr(D)] // error: unrecognized representation hint
+struct MyStruct {
+    my_field: usize
+}
+```
+
+You can use a `repr` attribute to tell the compiler how you want a struct or
+enum to be laid out in memory.
+
+Make sure you're using one of the supported options:
+
+```
+#[repr(C)] // ok!
+struct MyStruct {
+    my_field: usize
+}
+```
+
+For more information about specifying representations, see the ["Alternative
+Representations" section] of the Rustonomicon.
+
+["Alternative Representations" section]: https://doc.rust-lang.org/nomicon/other-reprs.html
+"##,
+
+E0554: r##"
+Feature attributes are only allowed on the nightly release channel. Stable or
+beta compilers will not comply.
+
+Example of erroneous code (on a stable compiler):
+
+```ignore (depends on release channel)
+#![feature(non_ascii_idents)] // error: #![feature] may not be used on the
+                              //        stable release channel
+```
+
+If you need the feature, make sure to use a nightly release of the compiler
+(but be warned that the feature may be removed or altered in the future).
+"##,
+
+E0557: r##"
+A feature attribute named a feature that has been removed.
+
+Erroneous code example:
+
+```compile_fail,E0557
+#![feature(managed_boxes)] // error: feature has been removed
+```
+
+Delete the offending feature attribute.
+"##,
+
 E0558: r##"
 The `export_name` attribute was malformed.
 
@@ -300,11 +357,8 @@ register_diagnostics! {
     E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
-    E0552, // unrecognized representation hint
-    E0554, // #[feature] may not be used on the [] release channel
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
-    E0557, // feature has been removed
     E0584, // file for module `..` found at both .. and ..
     E0589, // invalid `repr(align)` attribute
 }

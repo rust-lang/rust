@@ -237,10 +237,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.check_trait_fn_not_const(sig.constness);
                         if block.is_none() {
                             self.check_decl_no_pat(&sig.decl, |span, _| {
-                                self.session.add_lint(lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                                      trait_item.id, span,
-                                                      "patterns aren't allowed in methods \
-                                                       without bodies".to_string());
+                                self.session.buffer_lint(
+                                    lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                                    trait_item.id, span,
+                                    "patterns aren't allowed in methods \
+                                     without bodies");
                             });
                         }
                     }
@@ -252,7 +253,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
-                    self.session.add_lint(lint, item.id, item.span, msg.to_string());
+                    self.session.buffer_lint(lint, item.id, item.span, msg);
                 }
             }
             ItemKind::Union(ref vdata, _) => {

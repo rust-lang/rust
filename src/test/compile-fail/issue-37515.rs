@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![warn(unused)]
 
 type Z = for<'x> Send;
 //~^ WARN type alias is never used

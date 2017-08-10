@@ -1754,10 +1754,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-            self.tables.borrow_mut().lints.add_lint(
+            self.tcx().lint_node(
                 lint::builtin::UNREACHABLE_CODE,
                 id, span,
-                format!("unreachable {}", kind));
+                &format!("unreachable {}", kind));
         }
     }
 
@@ -4073,7 +4073,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(def) => def,
             Err(error) => {
                 let def = match error {
-                    method::MethodError::PrivateMatch(def) => def,
+                    method::MethodError::PrivateMatch(def, _) => def,
                     _ => Def::Err,
                 };
                 if item_name != keywords::Invalid.name() {
@@ -4240,8 +4240,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
 
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-            let mut ctxt = enclosing_breakables.find_breakable(blk.id);
-            let mut coerce = ctxt.coerce.as_mut().unwrap();
+            let ctxt = enclosing_breakables.find_breakable(blk.id);
+            let coerce = ctxt.coerce.as_mut().unwrap();
             if let Some(tail_expr_ty) = tail_expr_ty {
                 let tail_expr = tail_expr.unwrap();
                 let cause = self.cause(tail_expr.span,
@@ -4286,8 +4286,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether it is
-    /// `fn main` if it is a method, `None` otherwise.
+    /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether a
+    /// suggetion can be made, `None` otherwise.
     pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
@@ -4298,12 +4298,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 name, node: hir::ItemFn(ref decl, ..), ..
             }) = parent {
                 decl.clone().and_then(|decl| {
-                    // This is less than ideal, it will not present the return type span on any
-                    // method called `main`, regardless of whether it is actually the entry point.
-                    Some((decl, name == Symbol::intern("main")))
+                    // This is less than ideal, it will not suggest a return type span on any
+                    // method called `main`, regardless of whether it is actually the entry point,
+                    // but it will still present it as the reason for the expected type.
+                    Some((decl, name != Symbol::intern("main")))
                 })
             } else if let Node::NodeTraitItem(&hir::TraitItem {
                 node: hir::TraitItemKind::Method(hir::MethodSig {
+                    ref decl, ..
+                }, ..), ..
+            }) = parent {
+                decl.clone().and_then(|decl| {
+                    Some((decl, true))
+                })
+            } else if let Node::NodeImplItem(&hir::ImplItem {
+                node: hir::ImplItemKind::Method(hir::MethodSig {
                     ref decl, ..
                 }, ..), ..
             }) = parent {
@@ -4332,11 +4341,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             blk_id: ast::NodeId) {
         self.suggest_missing_semicolon(err, expression, expected, cause_span);
 
-        if let Some((fn_decl, is_main)) = self.get_fn_decl(blk_id) {
-            // `fn main()` must return `()`, do not suggest changing return type
-            if !is_main {
-                self.suggest_missing_return_type(err, &fn_decl, found);
-            }
+        if let Some((fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
+            self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
         }
     }
 
@@ -4392,19 +4398,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn suggest_missing_return_type(&self,
                                    err: &mut DiagnosticBuilder<'tcx>,
                                    fn_decl: &hir::FnDecl,
-                                   ty: Ty<'tcx>) {
-
-        // Only recommend changing the return type for methods that
+                                   expected: Ty<'tcx>,
+                                   found: Ty<'tcx>,
+                                   can_suggest: bool) {
+        // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
-        if let &hir::FnDecl {
-            output: hir::FunctionRetTy::DefaultReturn(span), ..
-        } = fn_decl {
-            if ty.is_suggestable() {
+        match (&fn_decl.output, found.is_suggestable(), can_suggest) {
+            (&hir::FunctionRetTy::DefaultReturn(span), true, true) => {
                 err.span_suggestion(span,
                                     "try adding a return type",
-                                    format!("-> {} ", ty));
-            } else {
+                                    format!("-> {} ", found));
+            }
+            (&hir::FunctionRetTy::DefaultReturn(span), false, true) => {
                 err.span_label(span, "possibly return type missing here?");
+            }
+            (&hir::FunctionRetTy::DefaultReturn(span), _, _) => {
+                // `fn main()` must return `()`, do not suggest changing return type
+                err.span_label(span, "expected `()` because of default return type");
+            }
+            (&hir::FunctionRetTy::Return(ref ty), _, _) => {
+                // Only point to return type if the expected type is the return type, as if they
+                // are not, the expectation must have been caused by something else.
+                debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.node);
+                let sp = ty.span;
+                let ty = AstConv::ast_ty_to_ty(self, ty);
+                debug!("suggest_missing_return_type: return type sty {:?}", ty.sty);
+                debug!("suggest_missing_return_type: expected type sty {:?}", ty.sty);
+                if ty.sty == expected.sty {
+                    err.span_label(sp, format!("expected `{}` because of return type",
+                                               expected));
+                }
             }
         }
     }
@@ -4803,8 +4826,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 let mut multispan = MultiSpan::from_span(lifetimes[0].span);
                 multispan.push_span_label(span_late, note_msg.to_string());
-                self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                       lifetimes[0].id, multispan, primary_msg.to_string());
+                self.tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                   lifetimes[0].id, multispan, primary_msg);
             }
             return;
         }

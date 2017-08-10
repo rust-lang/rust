@@ -422,7 +422,7 @@ fn show_content_with_pager(content: &String) {
 
     match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
         Ok(mut pager) => {
-            if let Some(mut pipe) = pager.stdin.as_mut() {
+            if let Some(pipe) = pager.stdin.as_mut() {
                 if pipe.write_all(content.as_bytes()).is_err() {
                     fallback_to_println = true;
                 }
@@ -518,7 +518,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         -> CompileController<'a> {
         let mut control = CompileController::basic();
 
-        control.keep_ast = sess.opts.debugging_opts.keep_ast || save_analysis(sess);
+        control.keep_ast = sess.opts.debugging_opts.keep_ast;
+        control.continue_parse_after_error = sess.opts.debugging_opts.continue_parse_after_error;
 
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
@@ -574,19 +575,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if save_analysis(sess) {
-            control.after_analysis.callback = box |state| {
-                time(state.session.time_passes(), "save analysis", || {
-                    save::process_crate(state.tcx.unwrap(),
-                                        state.expanded_crate.unwrap(),
-                                        state.analysis.unwrap(),
-                                        state.crate_name.unwrap(),
-                                        None,
-                                        DumpHandler::new(state.out_dir,
-                                                         state.crate_name.unwrap()))
-                });
-            };
-            control.after_analysis.run_callback_on_error = true;
-            control.make_glob_map = resolve::MakeGlobMap::Yes;
+            enable_save_analysis(&mut control);
         }
 
         if sess.print_fuel_crate.is_some() {
@@ -601,6 +590,23 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
         control
     }
+}
+
+pub fn enable_save_analysis(control: &mut CompileController) {
+    control.keep_ast = true;
+    control.after_analysis.callback = box |state| {
+        time(state.session.time_passes(), "save analysis", || {
+            save::process_crate(state.tcx.unwrap(),
+                                state.expanded_crate.unwrap(),
+                                state.analysis.unwrap(),
+                                state.crate_name.unwrap(),
+                                None,
+                                DumpHandler::new(state.out_dir,
+                                                 state.crate_name.unwrap()))
+        });
+    };
+    control.after_analysis.run_callback_on_error = true;
+    control.make_glob_map = resolve::MakeGlobMap::Yes;
 }
 
 fn save_analysis(sess: &Session) -> bool {
@@ -1215,7 +1221,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
-fn get_args() -> Vec<String> {
+pub fn get_args() -> Vec<String> {
     env::args_os().enumerate()
         .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
              early_error(ErrorOutputType::default(),

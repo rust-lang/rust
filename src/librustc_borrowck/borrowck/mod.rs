@@ -99,7 +99,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
     let body = tcx.hir.body(body_id);
-    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
+    let bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
 
     // Eventually, borrowck will always read the MIR, but at the
     // moment we do not. So, for now, we always force MIR to be

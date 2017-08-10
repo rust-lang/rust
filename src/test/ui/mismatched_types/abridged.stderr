@@ -1,6 +1,8 @@
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:26:5
    |
+25 | fn a() -> Foo {
+   |           --- expected `Foo` because of return type
 26 |     Some(Foo { bar: 1 })
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
    |
@@ -10,6 +12,8 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:30:5
    |
+29 | fn a2() -> Foo {
+   |            --- expected `Foo` because of return type
 30 |     Ok(Foo { bar: 1})
    |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
    |
@@ -19,6 +23,8 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:34:5
    |
+33 | fn b() -> Option<Foo> {
+   |           ----------- expected `std::option::Option<Foo>` because of return type
 34 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
    |
@@ -28,6 +34,8 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:38:5
    |
+37 | fn c() -> Result<Foo, Bar> {
+   |           ---------------- expected `std::result::Result<Foo, Bar>` because of return type
 38 |     Foo { bar: 1 }
    |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
    |
@@ -37,6 +45,9 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:49:5
    |
+41 | fn d() -> X<X<String, String>, String> {
+   |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
+...
 49 |     x
    |     ^ expected struct `std::string::String`, found integral variable
    |
@@ -46,6 +57,9 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:60:5
    |
+52 | fn e() -> X<X<String, String>, String> {
+   |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
+...
 60 |     x
    |     ^ expected struct `std::string::String`, found integral variable
    |

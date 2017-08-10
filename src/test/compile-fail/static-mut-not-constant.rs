@@ -14,6 +14,7 @@
 
 static mut a: Box<isize> = box 3;
 //~^ ERROR allocations are not allowed in statics
-//~^^ ERROR destructors in statics are an unstable feature
+//~| ERROR destructors in statics are an unstable feature
+//~| WARN: constant evaluation error
 
 fn main() {}

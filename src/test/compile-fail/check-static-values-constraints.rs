@@ -12,6 +12,7 @@
 
 // gate-test-drop_types_in_const
 
+#![allow(warnings)]
 #![feature(box_syntax)]
 
 use std::marker;
