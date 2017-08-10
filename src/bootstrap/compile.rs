@@ -32,6 +32,7 @@ use serde_json;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 use native;
+use tool;
 
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
@@ -198,6 +199,12 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
         }
+
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Libstd,
+        });
     }
 }
 
@@ -389,6 +396,11 @@ impl Step for TestLink {
                 target);
         add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(build, compiler, target));
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Libtest,
+        });
     }
 }
 
@@ -567,6 +579,11 @@ impl Step for RustcLink {
                  target);
         add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(build, compiler, target));
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Librustc,
+        });
     }
 }
 

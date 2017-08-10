@@ -23,10 +23,10 @@ use channel::GitInfo;
 use cache::Interned;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-struct CleanTools {
-    compiler: Compiler,
-    target: Interned<String>,
-    mode: Mode,
+pub struct CleanTools {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+    pub mode: Mode,
 }
 
 impl Step for CleanTools {
@@ -82,7 +82,6 @@ impl Step for ToolBuild {
         let target = self.target;
         let tool = self.tool;
 
-        builder.ensure(CleanTools { compiler, target, mode: self.mode });
         match self.mode {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
             Mode::Libtest => builder.ensure(compile::Test { compiler, target }),
@@ -271,7 +270,6 @@ impl Step for Rustdoc {
             builder.compiler(target_compiler.stage - 1, builder.build.build)
         };
 
-        builder.ensure(CleanTools { compiler: build_compiler, target, mode: Mode::Librustc });
         builder.ensure(compile::Rustc { compiler: build_compiler, target });
 
         let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
