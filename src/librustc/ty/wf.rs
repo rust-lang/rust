@@ -137,20 +137,19 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>) {
         let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
-        self.out.extend(obligations);
 
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
 
-        let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, vec![
-            ty::Predicate::Trait(ty::Binder(
-                ty::TraitPredicate { trait_ref: *trait_ref }
-            ))
-        ]);
+        let predicates = obligations.iter()
+                                    .map(|obligation| obligation.predicate.clone())
+                                    .collect();
+        let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, predicates);
         let implied_obligations = implied_obligations.map(|pred| {
             traits::Obligation::new(cause.clone(), param_env, pred)
         });
-        self.out.extend(implied_obligations);
+
+        self.out.extend(implied_obligations.chain(obligations));
 
         self.out.extend(
             trait_ref.substs.types()
