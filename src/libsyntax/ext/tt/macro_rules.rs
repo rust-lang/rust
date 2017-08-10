@@ -86,7 +86,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 
 fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
     let sp = sp.macro_backtrace().last().map(|trace| trace.call_site).unwrap_or(sp);
-    let mut values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
+    let values: &mut Vec<String> = cx.expansions.entry(sp).or_insert_with(Vec::new);
     values.push(message);
 }
 

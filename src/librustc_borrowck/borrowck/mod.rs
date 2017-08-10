@@ -98,7 +98,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let body_id = tcx.hir.body_owned_by(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
     let region_maps = tcx.region_maps(owner_def_id);
-    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
+    let bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 

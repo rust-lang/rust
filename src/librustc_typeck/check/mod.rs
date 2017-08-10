@@ -4183,8 +4183,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
 
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-            let mut ctxt = enclosing_breakables.find_breakable(blk.id);
-            let mut coerce = ctxt.coerce.as_mut().unwrap();
+            let ctxt = enclosing_breakables.find_breakable(blk.id);
+            let coerce = ctxt.coerce.as_mut().unwrap();
             if let Some(tail_expr_ty) = tail_expr_ty {
                 let tail_expr = tail_expr.unwrap();
                 let cause = self.cause(tail_expr.span,

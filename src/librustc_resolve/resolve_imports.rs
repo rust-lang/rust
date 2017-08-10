@@ -379,7 +379,7 @@ impl<'a> Resolver<'a> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
-            let mut resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
+            let resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);

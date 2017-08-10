@@ -479,7 +479,7 @@ impl CrateStore for cstore::CStore {
                 _ => {},
             }
 
-            let mut bfs_queue = &mut VecDeque::new();
+            let bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
                 let child = child.def.def_id();
 

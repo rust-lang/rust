@@ -12,13 +12,13 @@ pub use self::imp::OsRng;
 
 use mem;
 
-fn next_u32(mut fill_buf: &mut FnMut(&mut [u8])) -> u32 {
+fn next_u32(fill_buf: &mut FnMut(&mut [u8])) -> u32 {
     let mut buf: [u8; 4] = [0; 4];
     fill_buf(&mut buf);
     unsafe { mem::transmute::<[u8; 4], u32>(buf) }
 }
 
-fn next_u64(mut fill_buf: &mut FnMut(&mut [u8])) -> u64 {
+fn next_u64(fill_buf: &mut FnMut(&mut [u8])) -> u64 {
     let mut buf: [u8; 8] = [0; 8];
     fill_buf(&mut buf);
     unsafe { mem::transmute::<[u8; 8], u64>(buf) }

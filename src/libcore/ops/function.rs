@@ -187,7 +187,7 @@ mod impls {
         where F : FnMut<A>
     {
         type Output = F::Output;
-        extern "rust-call" fn call_once(mut self, args: A) -> F::Output {
+        extern "rust-call" fn call_once(self, args: A) -> F::Output {
             (*self).call_mut(args)
         }
     }

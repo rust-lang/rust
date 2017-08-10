@@ -415,8 +415,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// -------- this type is the same as a type argument in the other type, not highlighted
     /// ```
     fn highlight_outer(&self,
-                       mut value: &mut DiagnosticStyledString,
-                       mut other_value: &mut DiagnosticStyledString,
+                       value: &mut DiagnosticStyledString,
+                       other_value: &mut DiagnosticStyledString,
                        name: String,
                        sub: &ty::subst::Substs<'tcx>,
                        pos: usize,

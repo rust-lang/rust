@@ -781,7 +781,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             hir::ItemTrait(.., ref trait_item_refs) => {
                 self.check_item(item.id).generics().predicates();
                 for trait_item_ref in trait_item_refs {
-                    let mut check = self.check_item(trait_item_ref.id.node_id);
+                    let check = self.check_item(trait_item_ref.id.node_id);
                     check.generics().predicates();
                     if trait_item_ref.kind != hir::AssociatedItemKind::Type ||
                        trait_item_ref.defaultness.has_value() {
@@ -814,7 +814,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             }
             hir::ItemImpl(.., ref trait_ref, _, ref impl_item_refs) => {
                 {
-                    let mut check = self.check_item(item.id);
+                    let check = self.check_item(item.id);
                     check.ty().generics().predicates();
                     if trait_ref.is_some() {
                         check.impl_trait_ref();

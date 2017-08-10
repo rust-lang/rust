@@ -1037,7 +1037,7 @@ impl<'a, K: 'a, V: 'a, NodeType>
         Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
 
     pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
-        let (mut keys, mut vals) = self.node.into_slices_mut();
+        let (keys, vals) = self.node.into_slices_mut();
         unsafe {
             (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
         }
@@ -1047,7 +1047,7 @@ impl<'a, K: 'a, V: 'a, NodeType>
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
-            let (mut keys, mut vals) = self.node.reborrow_mut().into_slices_mut();
+            let (keys, vals) = self.node.reborrow_mut().into_slices_mut();
             (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
         }
     }

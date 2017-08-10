@@ -267,7 +267,7 @@ impl Once {
     #[cold]
     fn call_inner(&'static self,
                   ignore_poisoning: bool,
-                  mut init: &mut FnMut(bool)) {
+                  init: &mut FnMut(bool)) {
         let mut state = self.state.load(Ordering::SeqCst);
 
         'outer: loop {

@@ -188,7 +188,7 @@ impl<'a> AllocFnFactory<'a> {
     fn arg_ty(&self,
               ty: &AllocatorTy,
               args: &mut Vec<Arg>,
-              mut ident: &mut FnMut() -> Ident) -> P<Expr> {
+              ident: &mut FnMut() -> Ident) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {
                 let usize = self.cx.path_ident(self.span, Ident::from_str("usize"));
@@ -263,7 +263,7 @@ impl<'a> AllocFnFactory<'a> {
     fn ret_ty(&self,
               ty: &AllocatorTy,
               args: &mut Vec<Arg>,
-              mut ident: &mut FnMut() -> Ident,
+              ident: &mut FnMut() -> Ident,
               expr: P<Expr>) -> (P<Ty>, P<Expr>)
     {
         match *ty {

@@ -529,7 +529,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     /// Actually builds the expression which the format_args! block will be
     /// expanded to
-    fn into_expr(mut self) -> P<ast::Expr> {
+    fn into_expr(self) -> P<ast::Expr> {
         let mut locals = Vec::new();
         let mut counts = Vec::new();
         let mut pats = Vec::new();
