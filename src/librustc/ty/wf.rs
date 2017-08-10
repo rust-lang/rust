@@ -141,6 +141,17 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
         let cause = self.cause(traits::MiscObligation);
         let param_env = self.param_env;
+
+        let implied_obligations = traits::elaborate_predicates(self.infcx.tcx, vec![
+            ty::Predicate::Trait(ty::Binder(
+                ty::TraitPredicate { trait_ref: *trait_ref }
+            ))
+        ]);
+        let implied_obligations = implied_obligations.map(|pred| {
+            traits::Obligation::new(cause.clone(), param_env, pred)
+        });
+        self.out.extend(implied_obligations);
+
         self.out.extend(
             trait_ref.substs.types()
                             .filter(|ty| !ty.has_escaping_regions())
