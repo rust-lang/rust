@@ -167,16 +167,16 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     opts
 }
 
-fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
-           externs: Externs,
-           should_panic: bool, no_run: bool, as_test_harness: bool,
-           compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-           maybe_sysroot: Option<PathBuf>) {
+fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs: SearchPaths,
+            externs: Externs,
+            should_panic: bool, no_run: bool, as_test_harness: bool,
+            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
+            maybe_sysroot: Option<PathBuf>) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), as_test_harness, opts);
+    let test = make_test(test, Some(cratename), as_test_harness, opts);
     let input = config::Input::Str {
-        name: driver::anon_src(),
+        name: filename.to_owned(),
         input: test.to_owned(),
     };
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
@@ -313,8 +313,11 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
-                opts: &TestOptions) -> String {
+pub fn make_test(s: &str,
+                 cratename: Option<&str>,
+                 dont_insert_main: bool,
+                 opts: &TestOptions)
+                 -> String {
     let (crate_attrs, everything_else) = partition_source(s);
 
     let mut prog = String::new();
@@ -498,18 +501,19 @@ impl Collector {
                     rustc_driver::in_rustc_thread(move || {
                         io::set_panic(panic);
                         io::set_print(print);
-                        runtest(&test,
-                                &cratename,
-                                cfgs,
-                                libs,
-                                externs,
-                                should_panic,
-                                no_run,
-                                as_test_harness,
-                                compile_fail,
-                                error_codes,
-                                &opts,
-                                maybe_sysroot)
+                        run_test(&test,
+                                 &cratename,
+                                 &filename,
+                                 cfgs,
+                                 libs,
+                                 externs,
+                                 should_panic,
+                                 no_run,
+                                 as_test_harness,
+                                 compile_fail,
+                                 error_codes,
+                                 &opts,
+                                 maybe_sysroot)
                     })
                 } {
                     Ok(()) => (),
