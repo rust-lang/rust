@@ -1116,10 +1116,9 @@ actual:\n\
             }
             _ => {}
         }
-        let ProcArgs { prog, args } = self.make_compile_args(
+
+        let rustc = self.make_compile_args(
             extra_args, &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()));
-        let mut rustc = Command::new(prog);
-        rustc.args(args);
         self.compose_and_run_compiler(rustc, None)
     }
 
@@ -1280,11 +1279,9 @@ actual:\n\
                 testpaths: &aux_testpaths,
                 revision: self.revision
             };
-            let ProcArgs { prog, args } =
+            let aux_rustc =
                 aux_cx.make_compile_args(crate_type, &aux_testpaths.file, aux_output);
-            let mut rustc = Command::new(prog);
-            rustc.args(&args);
-            let auxres = aux_cx.compose_and_run(rustc,
+            let auxres = aux_cx.compose_and_run(aux_rustc,
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
                                                 None);
@@ -1341,21 +1338,14 @@ actual:\n\
     }
 
     fn make_compile_args(&self,
-                         extras: Vec<String> ,
+                         extra_args: Vec<String>,
                          input_file: &Path,
                          output_file: TargetLocation)
-                         -> ProcArgs
+                         -> Command
     {
-        let target = if self.props.force_host {
-            &*self.config.host
-        } else {
-            &*self.config.target
-        };
-
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec![input_file.to_str().unwrap().to_owned(),
-                            "-L".to_owned(),
-                            self.config.build_base.to_str().unwrap().to_owned()];
+        let mut rustc = Command::new(&self.config.rustc_path);
+        rustc.arg(input_file)
+            .arg("-L").arg(&self.config.build_base);
 
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props.compile_flags
@@ -1363,25 +1353,22 @@ actual:\n\
             .fold(false, |acc, x| acc || x.starts_with("--target"));
 
         if !custom_target {
-            args.extend(vec![
-                format!("--target={}", target),
-            ]);
+            let target = if self.props.force_host {
+                &*self.config.host
+            } else {
+                &*self.config.target
+            };
+
+            rustc.arg(&format!("--target={}", target));
         }
 
         if let Some(revision) = self.revision {
-            args.extend(vec![
-                "--cfg".to_string(),
-                revision.to_string(),
-            ]);
+            rustc.args(&["--cfg", revision]);
         }
 
         if let Some(ref incremental_dir) = self.props.incremental_dir {
-            args.extend(vec![
-                "-Z".to_string(),
-                format!("incremental={}", incremental_dir.display()),
-            ]);
+            rustc.args(&["-Z", &format!("incremental={}", incremental_dir.display())]);
         }
-
 
         match self.config.mode {
             CompileFail |
@@ -1391,19 +1378,14 @@ actual:\n\
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
                 if self.props.error_patterns.is_empty() {
-                    args.extend(["--error-format",
-                                 "json"]
-                                .iter()
-                                .map(|s| s.to_string()));
+                    rustc.args(&["--error-format", "json"]);
                 }
             }
             MirOpt => {
-                args.extend(["-Zdump-mir=all",
-                             "-Zmir-opt-level=3",
-                             "-Zdump-mir-exclude-pass-number"]
-                            .iter()
-                            .map(|s| s.to_string()));
-
+                rustc.args(&[
+                    "-Zdump-mir=all",
+                    "-Zmir-opt-level=3",
+                    "-Zdump-mir-exclude-pass-number"]);
 
                 let mir_dump_dir = self.get_mir_dump_dir();
                 create_dir_all(mir_dump_dir.as_path()).unwrap();
@@ -1411,7 +1393,7 @@ actual:\n\
                 dir_opt.push_str(mir_dump_dir.to_str().unwrap());
                 debug!("dir_opt: {:?}", dir_opt);
 
-                args.push(dir_opt);
+                rustc.arg(dir_opt);
             }
             RunPass |
             RunFail |
@@ -1428,32 +1410,30 @@ actual:\n\
             }
         }
 
-        args.extend_from_slice(&extras);
+        rustc.args(&extra_args);
+
         if !self.props.no_prefer_dynamic {
-            args.push("-C".to_owned());
-            args.push("prefer-dynamic".to_owned());
+            rustc.args(&["-C", "prefer-dynamic"]);
         }
-        let path = match output_file {
+
+        match output_file {
             TargetLocation::ThisFile(path) => {
-                args.push("-o".to_owned());
-                path
+                rustc.arg("-o").arg(path);
             }
             TargetLocation::ThisDirectory(path) => {
-                args.push("--out-dir".to_owned());
-                path
+                rustc.arg("--out-dir").arg(path);
             }
-        };
-        args.push(path.to_str().unwrap().to_owned());
+        }
+
         if self.props.force_host {
-            args.extend(self.split_maybe_args(&self.config.host_rustcflags));
+            rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
-            args.extend(self.split_maybe_args(&self.config.target_rustcflags));
+            rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
         }
-        args.extend(self.props.compile_flags.iter().cloned());
-        ProcArgs {
-            prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args,
-        }
+
+        rustc.args(&self.props.compile_flags);
+
+        rustc
     }
 
     fn make_lib_name(&self, auxfile: &Path) -> PathBuf {
@@ -1660,15 +1640,12 @@ actual:\n\
                                  aux_dir.to_str().unwrap().to_owned()];
         let llvm_args = vec!["--emit=llvm-ir".to_owned(),];
         link_args.extend(llvm_args);
-        let args = self.make_compile_args(link_args,
-                                          &self.testpaths.file,
-                                          TargetLocation::ThisDirectory(
-                                              self.output_base_name().parent()
-                                                                     .unwrap()
-                                                                     .to_path_buf()));
-        let ProcArgs { prog, args } = args;
-        let mut rustc = Command::new(prog);
-        rustc.args(args);
+        let rustc = self.make_compile_args(link_args,
+                                           &self.testpaths.file,
+                                           TargetLocation::ThisDirectory(
+                                               self.output_base_name().parent()
+                                                                      .unwrap()
+                                                                      .to_path_buf()));
         self.compose_and_run_compiler(rustc, None)
     }
 
