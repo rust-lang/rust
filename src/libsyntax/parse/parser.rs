@@ -5518,12 +5518,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parse a static item from a foreign module
+    /// Parse a static item from a foreign module.
+    /// Assumes that the `static` keyword is already parsed.
     fn parse_item_foreign_static(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
                                  -> PResult<'a, ForeignItem> {
-        self.expect_keyword(keywords::Static)?;
         let mutbl = self.eat_keyword(keywords::Mut);
-
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
@@ -5997,17 +5996,21 @@ impl<'a> Parser<'a> {
         let lo = self.span;
         let visibility = self.parse_visibility(false)?;
 
-        if self.check_keyword(keywords::Static) {
-            // FOREIGN STATIC ITEM
+        // FOREIGN STATIC ITEM
+        // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
+        if self.check_keyword(keywords::Static) || self.token.is_keyword(keywords::Const) {
+            if self.token.is_keyword(keywords::Const) {
+                self.diagnostic()
+                    .struct_span_err(self.span, "extern items cannot be `const`")
+                    .span_suggestion(self.span, "instead try using", "static".to_owned())
+                    .emit();
+            }
+            self.bump(); // `static` or `const`
             return Ok(Some(self.parse_item_foreign_static(visibility, lo, attrs)?));
         }
+        // FOREIGN FUNCTION ITEM
         if self.check_keyword(keywords::Fn) {
-            // FOREIGN FUNCTION ITEM
             return Ok(Some(self.parse_item_foreign_fn(visibility, lo, attrs)?));
-        }
-
-        if self.check_keyword(keywords::Const) {
-            return Err(self.span_fatal(self.span, "extern items cannot be `const`"));
         }
 
         // FIXME #5668: this will occur for a macro invocation:
