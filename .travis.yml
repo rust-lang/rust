@@ -4,6 +4,10 @@ dist: trusty
 services:
   - docker
 
+branches:
+  except:
+  - master
+
 git:
   depth: 1
   submodules: false
