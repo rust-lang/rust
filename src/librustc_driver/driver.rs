@@ -89,7 +89,7 @@ pub fn compile_input(sess: &Session,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
-        let krate = match phase_1_parse_input(sess, input) {
+        let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
                 parse_error.emit();
@@ -296,9 +296,13 @@ pub struct CompileController<'a> {
     pub after_llvm: PhaseController<'a>,
     pub compilation_done: PhaseController<'a>,
 
+    // FIXME we probably want to group the below options together and offer a
+    // better API, rather than this ad-hoc approach.
     pub make_glob_map: MakeGlobMap,
     // Whether the compiler should keep the ast beyond parsing.
     pub keep_ast: bool,
+    // -Zcontinue-parse-after-error
+    pub continue_parse_after_error: bool,
 }
 
 impl<'a> CompileController<'a> {
@@ -312,6 +316,7 @@ impl<'a> CompileController<'a> {
             compilation_done: PhaseController::basic(),
             make_glob_map: MakeGlobMap::No,
             keep_ast: false,
+            continue_parse_after_error: false,
         }
     }
 }
@@ -484,10 +489,10 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     }
 
     fn state_when_compilation_done(input: &'a Input,
-                                    session: &'tcx Session,
-                                    out_dir: &'a Option<PathBuf>,
-                                    out_file: &'a Option<PathBuf>)
-                                    -> Self {
+                                   session: &'tcx Session,
+                                   out_dir: &'a Option<PathBuf>,
+                                   out_file: &'a Option<PathBuf>)
+                                   -> Self {
         CompileState {
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
@@ -495,9 +500,11 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     }
 }
 
-pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
-    let continue_after_error = sess.opts.debugging_opts.continue_parse_after_error;
-    sess.diagnostic().set_continue_after_error(continue_after_error);
+pub fn phase_1_parse_input<'a>(control: &CompileController,
+                               sess: &'a Session,
+                               input: &Input)
+                               -> PResult<'a, ast::Crate> {
+    sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
