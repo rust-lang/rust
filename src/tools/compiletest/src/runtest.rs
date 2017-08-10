@@ -1100,10 +1100,11 @@ actual:\n\
     }
 
     fn compile_test(&self) -> ProcRes {
-        let aux_dir = self.aux_output_dir_name();
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut extra_args = vec!["-L".to_owned(),
-                                  aux_dir.to_str().unwrap().to_owned()];
+        let mut rustc = self.make_compile_args(
+            &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()));
+
+        rustc.arg("-L").arg(&self.aux_output_dir_name());
+
         match self.config.mode {
             CompileFail | Ui => {
                 // compile-fail and ui tests tend to have tons of unused code as
@@ -1111,14 +1112,11 @@ actual:\n\
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                extra_args.push("-A".to_owned());
-                extra_args.push("unused".to_owned());
+                rustc.args(&["-A", "unused"]);
             }
             _ => {}
         }
 
-        let rustc = self.make_compile_args(
-            extra_args, &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()));
         self.compose_and_run_compiler(rustc, None)
     }
 
@@ -1241,33 +1239,12 @@ actual:\n\
         }
 
         let aux_dir = self.aux_output_dir_name();
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let extra_link_args = vec!["-L".to_owned(),
-                                   aux_dir.to_str().unwrap().to_owned()];
 
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
             let aux_props = self.props.from_aux_file(&aux_testpaths.file,
                                                      self.revision,
                                                      self.config);
-            let mut crate_type = if aux_props.no_prefer_dynamic {
-                Vec::new()
-            } else if (self.config.target.contains("musl") && !aux_props.force_host) ||
-                      self.config.target.contains("emscripten") {
-                // We primarily compile all auxiliary libraries as dynamic libraries
-                // to avoid code size bloat and large binaries as much as possible
-                // for the test suite (otherwise including libstd statically in all
-                // executables takes up quite a bit of space).
-                //
-                // For targets like MUSL or Emscripten, however, there is no support for
-                // dynamic libraries so we just go back to building a normal library. Note,
-                // however, that for MUSL if the library is built with `force_host` then
-                // it's ok to be a dylib as the host should always support dylibs.
-                vec!["--crate-type=lib".to_owned()]
-            } else {
-                vec!["--crate-type=dylib".to_owned()]
-            };
-            crate_type.extend(extra_link_args.clone());
             let aux_output = {
                 let f = self.make_lib_name(&self.testpaths.file);
                 let parent = f.parent().unwrap();
@@ -1279,8 +1256,32 @@ actual:\n\
                 testpaths: &aux_testpaths,
                 revision: self.revision
             };
-            let aux_rustc =
-                aux_cx.make_compile_args(crate_type, &aux_testpaths.file, aux_output);
+            let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
+
+            let crate_type = if aux_props.no_prefer_dynamic {
+                None
+            } else if (self.config.target.contains("musl") && !aux_props.force_host) ||
+                      self.config.target.contains("emscripten") {
+                // We primarily compile all auxiliary libraries as dynamic libraries
+                // to avoid code size bloat and large binaries as much as possible
+                // for the test suite (otherwise including libstd statically in all
+                // executables takes up quite a bit of space).
+                //
+                // For targets like MUSL or Emscripten, however, there is no support for
+                // dynamic libraries so we just go back to building a normal library. Note,
+                // however, that for MUSL if the library is built with `force_host` then
+                // it's ok to be a dylib as the host should always support dylibs.
+                Some("lib")
+            } else {
+                Some("dylib")
+            };
+
+            if let Some(crate_type) = crate_type {
+                aux_rustc.args(&["--crate-type", crate_type]);
+            }
+
+            aux_rustc.arg("-L").arg(&aux_dir);
+
             let auxres = aux_cx.compose_and_run(aux_rustc,
                                                 aux_cx.config.compile_lib_path.to_str().unwrap(),
                                                 Some(aux_dir.to_str().unwrap()),
@@ -1337,12 +1338,7 @@ actual:\n\
         result
     }
 
-    fn make_compile_args(&self,
-                         extra_args: Vec<String>,
-                         input_file: &Path,
-                         output_file: TargetLocation)
-                         -> Command
-    {
+    fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
         let mut rustc = Command::new(&self.config.rustc_path);
         rustc.arg(input_file)
             .arg("-L").arg(&self.config.build_base);
@@ -1409,8 +1405,6 @@ actual:\n\
                 // do not use JSON output
             }
         }
-
-        rustc.args(&extra_args);
 
         if !self.props.no_prefer_dynamic {
             rustc.args(&["-C", "prefer-dynamic"]);
@@ -1635,17 +1629,13 @@ actual:\n\
 
     fn compile_test_and_save_ir(&self) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut link_args = vec!["-L".to_owned(),
-                                 aux_dir.to_str().unwrap().to_owned()];
-        let llvm_args = vec!["--emit=llvm-ir".to_owned(),];
-        link_args.extend(llvm_args);
-        let rustc = self.make_compile_args(link_args,
-                                           &self.testpaths.file,
-                                           TargetLocation::ThisDirectory(
-                                               self.output_base_name().parent()
-                                                                      .unwrap()
-                                                                      .to_path_buf()));
+
+        let output_file = TargetLocation::ThisDirectory(
+            self.output_base_name().parent().unwrap().to_path_buf());
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
+        rustc.arg("-L").arg(aux_dir)
+            .arg("--emit=llvm-ir");
+
         self.compose_and_run_compiler(rustc, None)
     }
 
