@@ -51,13 +51,16 @@ use convert::From;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the `Read`, `Write`, `Seek`, and
+/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
 /// associated traits.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
+/// [`Read`]: ../io/trait.Read.html
+/// [`Write`]: ../io/trait.Write.html
+/// [`Seek`]: ../io/trait.Seek.html
 /// [`ErrorKind`]: enum.ErrorKind.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
