@@ -28,7 +28,7 @@ use time::SystemTime;
 /// A reference to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
-/// it was opened with. Files also implement `Seek` to alter the logical cursor
+/// it was opened with. Files also implement [`Seek`] to alter the logical cursor
 /// that the file contains internally.
 ///
 /// Files are automatically closed when they go out of scope.
@@ -48,7 +48,7 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
-/// Read the contents of a file into a `String`:
+/// Read the contents of a file into a [`String`]:
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -81,6 +81,8 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
+/// [`Seek`]: ../io/trait.Seek.html
+/// [`String`]: ../string/struct.String.html
 /// [`Read`]: ../io/trait.Read.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
