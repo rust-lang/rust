@@ -328,6 +328,14 @@ declare_lint! {
     "any loop that will always `break` or `return`"
 }
 
+/// TODO: add documentation
+
+declare_lint! {
+    pub MUT_RANGE_BOUND,
+    Warn,
+    "for loop over a range where one of the bounds is a mutable variable"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -348,7 +356,8 @@ impl LintPass for Pass {
             EMPTY_LOOP,
             WHILE_LET_ON_ITERATOR,
             FOR_KV_MAP,
-            NEVER_LOOP
+            NEVER_LOOP, 
+            MUT_RANGE_BOUND
         )
     }
 }
