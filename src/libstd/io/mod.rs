@@ -22,7 +22,7 @@
 //! you'll see a few different types of I/O throughout the documentation in
 //! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
 //! example, [`Read`] adds a [`read`][`Read::read`] method, which we can use on
-//! `File`s:
+//! [`File`]s:
 //!
 //! ```
 //! use std::io;
@@ -146,9 +146,9 @@
 //! # }
 //! ```
 //!
-//! Note that you cannot use the `?` operator in functions that do not return
-//! a `Result<T, E>` (e.g. `main`). Instead, you can call `.unwrap()` or `match`
-//! on the return value to catch any possible errors:
+//! Note that you cannot use the [`?` operator] in functions that do not return
+//! a [`Result<T, E>`][`Result`] (e.g. `main`). Instead, you can call [`.unwrap()`]
+//! or `match` on the return value to catch any possible errors:
 //!
 //! ```
 //! use std::io;
@@ -265,6 +265,8 @@
 //! [`io::Result`]: type.Result.html
 //! [`?` operator]: ../../book/first-edition/syntax-index.html
 //! [`Read::read`]: trait.Read.html#tymethod.read
+//! [`Result`]: ../result/enum.Result.html
+//! [`.unwrap()`]: ../result/enum.Result.html#method.unwrap
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
