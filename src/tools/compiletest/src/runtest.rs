@@ -17,21 +17,34 @@ use errors::{self, ErrorKind, Error};
 use filetime::FileTime;
 use json;
 use header::TestProps;
-use procsrv;
 use test::TestPaths;
 use util::logv;
 
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsString;
 use std::fs::{self, File, create_dir_all};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus, Stdio};
 use std::str;
-use std::collections::HashMap;
 
 use extract_gdb_version;
+
+/// The name of the environment variable that holds dynamic library locations.
+pub fn dylib_env_var() -> &'static str {
+    if cfg!(windows) {
+        "PATH"
+    } else if cfg!(target_os = "macos") {
+        "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "haiku") {
+        "LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    }
+}
 
 pub fn run(config: Config, testpaths: &TestPaths) {
     match &*config.target {
@@ -1318,7 +1331,18 @@ actual:\n\
             .stderr(Stdio::piped())
             .stdin(Stdio::piped());
 
-        procsrv::add_target_env(&mut command, lib_path, aux_path);
+        // Need to be sure to put both the lib_path and the aux path in the dylib
+        // search path for the child.
+        let mut path = env::split_paths(&env::var_os(dylib_env_var()).unwrap_or(OsString::new()))
+            .collect::<Vec<_>>();
+        if let Some(p) = aux_path {
+            path.insert(0, PathBuf::from(p))
+        }
+        path.insert(0, PathBuf::from(lib_path));
+
+        // Add the new dylib search path var
+        let newpath = env::join_paths(&path).unwrap();
+        command.env(dylib_env_var(), newpath);
 
         let mut child = command.spawn().expect(&format!("failed to exec `{:?}`", &command));
         if let Some(input) = input {
@@ -2077,7 +2101,7 @@ actual:\n\
            .env("RUSTDOC",
                cwd.join(&self.config.rustdoc_path.as_ref().expect("--rustdoc-path passed")))
            .env("TMPDIR", &tmpdir)
-           .env("LD_LIB_PATH_ENVVAR", procsrv::dylib_env_var())
+           .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
            .env("LLVM_COMPONENTS", &self.config.llvm_components)
