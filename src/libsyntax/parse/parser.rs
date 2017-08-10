@@ -6002,7 +6002,8 @@ impl<'a> Parser<'a> {
             if self.token.is_keyword(keywords::Const) {
                 self.diagnostic()
                     .struct_span_err(self.span, "extern items cannot be `const`")
-                    .span_label(self.span, "use `static` instead").emit();
+                    .span_suggestion(self.span, "instead try using", "static".to_owned())
+                    .emit();
             }
             self.bump(); // `static` or `const`
             return Ok(Some(self.parse_item_foreign_static(visibility, lo, attrs)?));
