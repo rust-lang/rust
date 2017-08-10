@@ -56,6 +56,8 @@ pub struct Config {
     pub profiler: bool,
     pub ignore_git: bool,
 
+    pub run_host_only: bool,
+
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
@@ -305,6 +307,9 @@ impl Config {
         config.incremental = flags.incremental;
         config.keep_stage = flags.keep_stage;
 
+        // If --target was specified but --host wasn't specified, don't run any host-only tests.
+        config.run_host_only = flags.host.is_empty() && !flags.target.is_empty();
+
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
             let mut contents = String::new();
@@ -350,6 +355,7 @@ impl Config {
         } else {
             config.targets
         };
+
 
         config.nodejs = build.nodejs.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);

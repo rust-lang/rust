@@ -127,9 +127,7 @@ impl StepDescription {
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            // If --target was specified but --host wasn't specified, don't run
-            // any host-only tests.
-            if build.config.hosts.is_empty() && !build.config.targets.is_empty() {
+            if build.config.run_host_only {
                 &[]
             } else if self.only_build {
                 build.build_triple()
