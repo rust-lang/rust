@@ -73,8 +73,10 @@ fn run_pass(path: &str) {
         config.rustc_path = rustc_path;
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
+        config.target_rustcflags = Some(format!("-Dwarnings --sysroot {}", get_sysroot().display()));
+    } else {
+        config.target_rustcflags = Some("-Dwarnings".to_owned());
     }
-    config.target_rustcflags = Some(format!("-Dwarnings --sysroot {}", get_sysroot().display()));
     config.host_rustcflags = Some("-Dwarnings".to_string());
     compiletest::run_tests(&config);
 }
