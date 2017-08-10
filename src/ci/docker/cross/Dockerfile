@@ -19,9 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bzip2 \
   patch \
   libssl-dev \
-  pkg-config \
-  software-properties-common \
-  apt-transport-https
+  pkg-config
 
 COPY scripts/dumb-init.sh /scripts/
 RUN sh /scripts/dumb-init.sh
