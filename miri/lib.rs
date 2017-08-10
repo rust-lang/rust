@@ -20,10 +20,7 @@ use rustc::mir;
 
 use syntax::codemap::Span;
 
-use std::collections::{
-    HashMap,
-    BTreeMap,
-};
+use std::collections::{HashMap, BTreeMap};
 
 #[macro_use]
 extern crate rustc_miri;
@@ -57,7 +54,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
         let mut cleanup_ptr = None; // Pointer to be deallocated when we are done
 
         if !main_mir.return_ty.is_nil() || main_mir.arg_count != 0 {
-            return err!(Unimplemented("miri does not support main functions without `fn()` type signatures".to_owned()));
+            return err!(Unimplemented(
+                "miri does not support main functions without `fn()` type signatures"
+                    .to_owned(),
+            ));
         }
 
         if let Some(start_id) = start_wrapper {
@@ -65,7 +65,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let start_mir = ecx.load_mir(start_instance.def)?;
 
             if start_mir.arg_count != 3 {
-                return err!(AbiViolation(format!("'start' lang item should have three arguments, but has {}", start_mir.arg_count)));
+                return err!(AbiViolation(format!(
+                    "'start' lang item should have three arguments, but has {}",
+                    start_mir.arg_count
+                )));
             }
 
             // Return value
@@ -90,7 +93,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let main_ty = main_instance.def.def_ty(ecx.tcx);
             let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
-            ecx.write_value(Value::ByVal(PrimVal::Ptr(main_ptr)), dest, main_ptr_ty)?;
+            ecx.write_value(
+                Value::ByVal(PrimVal::Ptr(main_ptr)),
+                dest,
+                main_ptr_ty,
+            )?;
 
             // Second argument (argc): 0
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
@@ -114,7 +121,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
         while ecx.step()? {}
         ecx.run_tls_dtors()?;
         if let Some(cleanup_ptr) = cleanup_ptr {
-            ecx.memory_mut().deallocate(cleanup_ptr, None, MemoryKind::Stack)?;
+            ecx.memory_mut().deallocate(
+                cleanup_ptr,
+                None,
+                MemoryKind::Stack,
+            )?;
         }
         Ok(())
     }

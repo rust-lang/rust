@@ -1,21 +1,17 @@
 use rustc::{ty, mir};
 
-use super::{
-    TlsKey, TlsEntry,
-    EvalResult, EvalErrorKind,
-    Pointer,
-    Memory,
-    Evaluator,
-    Lvalue,
-    StackPopCleanup, EvalContext,
-};
+use super::{TlsKey, TlsEntry, EvalResult, EvalErrorKind, Pointer, Memory, Evaluator, Lvalue,
+            StackPopCleanup, EvalContext};
 
 pub trait MemoryExt<'tcx> {
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey;
     fn delete_tls_key(&mut self, key: TlsKey) -> EvalResult<'tcx>;
     fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer>;
     fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx>;
-    fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>>;
+    fn fetch_tls_dtor(
+        &mut self,
+        key: Option<TlsKey>,
+    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>>;
 }
 
 pub trait EvalContextExt<'tcx> {
@@ -26,7 +22,13 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.data.next_thread_local;
         self.data.next_thread_local += 1;
-        self.data.thread_local.insert(new_key, TlsEntry { data: Pointer::null(), dtor });
+        self.data.thread_local.insert(
+            new_key,
+            TlsEntry {
+                data: Pointer::null(),
+                dtor,
+            },
+        );
         trace!("New TLS key allocated: {} with dtor {:?}", new_key, dtor);
         return new_key;
     }
@@ -36,9 +38,9 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
             Some(_) => {
                 trace!("TLS key {} removed", key);
                 Ok(())
-            },
-            None => err!(TlsOutOfBounds)
-        }
+            }
+            None => err!(TlsOutOfBounds),
+        };
     }
 
     fn load_tls(&mut self, key: TlsKey) -> EvalResult<'tcx, Pointer> {
@@ -46,9 +48,9 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
             Some(&TlsEntry { data, .. }) => {
                 trace!("TLS key {} loaded: {:?}", key, data);
                 Ok(data)
-            },
-            None => err!(TlsOutOfBounds)
-        }
+            }
+            None => err!(TlsOutOfBounds),
+        };
     }
 
     fn store_tls(&mut self, key: TlsKey, new_data: Pointer) -> EvalResult<'tcx> {
@@ -57,11 +59,11 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
                 trace!("TLS key {} stored: {:?}", key, new_data);
                 *data = new_data;
                 Ok(())
-            },
-            None => err!(TlsOutOfBounds)
-        }
+            }
+            None => err!(TlsOutOfBounds),
+        };
     }
-    
+
     /// Returns a dtor, its argument and its index, if one is supposed to run
     ///
     /// An optional destructor function may be associated with each key value.
@@ -80,13 +82,18 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-    fn fetch_tls_dtor(&mut self, key: Option<TlsKey>) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
+    fn fetch_tls_dtor(
+        &mut self,
+        key: Option<TlsKey>,
+    ) -> EvalResult<'tcx, Option<(ty::Instance<'tcx>, Pointer, TlsKey)>> {
         use std::collections::Bound::*;
         let start = match key {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
-        for (&key, &mut TlsEntry { ref mut data, dtor }) in self.data.thread_local.range_mut((start, Unbounded)) {
+        for (&key, &mut TlsEntry { ref mut data, dtor }) in
+            self.data.thread_local.range_mut((start, Unbounded))
+        {
             if !data.is_null()? {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
@@ -115,7 +122,9 @@ impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator> {
                 Lvalue::undef(),
                 StackPopCleanup::None,
             )?;
-            let arg_local = self.frame().mir.args_iter().next().ok_or(EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()))?;
+            let arg_local = self.frame().mir.args_iter().next().ok_or(
+                EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
+            )?;
             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
             let ty = self.tcx.mk_mut_ptr(self.tcx.types.u8);
             self.write_ptr(dest, ptr, ty)?;

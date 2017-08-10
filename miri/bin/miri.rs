@@ -16,7 +16,7 @@ use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
-use syntax::ast::{MetaItemKind, NestedMetaItemKind, self};
+use syntax::ast::{self, MetaItemKind, NestedMetaItemKind};
 use std::path::PathBuf;
 
 struct MiriCompilerCalls(RustcDefaultCalls);
@@ -28,9 +28,15 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         sopts: &config::Options,
         cfg: &ast::CrateConfig,
         descriptions: &rustc_errors::registry::Registry,
-        output: ErrorOutputType
+        output: ErrorOutputType,
     ) -> Compilation {
-        self.0.early_callback(matches, sopts, cfg, descriptions, output)
+        self.0.early_callback(
+            matches,
+            sopts,
+            cfg,
+            descriptions,
+            output,
+        )
     }
     fn no_input(
         &mut self,
@@ -39,9 +45,16 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         cfg: &ast::CrateConfig,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
-        descriptions: &rustc_errors::registry::Registry
+        descriptions: &rustc_errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.0.no_input(matches, sopts, cfg, odir, ofile, descriptions)
+        self.0.no_input(
+            matches,
+            sopts,
+            cfg,
+            odir,
+            ofile,
+            descriptions,
+        )
     }
     fn late_callback(
         &mut self,
@@ -49,11 +62,15 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         sess: &Session,
         input: &Input,
         odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>
+        ofile: &Option<PathBuf>,
     ) -> Compilation {
         self.0.late_callback(matches, sess, input, odir, ofile)
     }
-    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
+    fn build_controller(
+        &mut self,
+        sess: &Session,
+        matches: &getopts::Matches,
+    ) -> CompileController<'a> {
         let mut control = self.0.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
@@ -66,7 +83,10 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
 }
 
 fn after_hir_lowering(state: &mut CompileState) {
-    let attr = (String::from("miri"), syntax::feature_gate::AttributeType::Whitelisted);
+    let attr = (
+        String::from("miri"),
+        syntax::feature_gate::AttributeType::Whitelisted,
+    );
     state.session.plugin_attributes.borrow_mut().push(attr);
 }
 
@@ -77,13 +97,23 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     let limits = resource_limits_from_attributes(state);
 
     if std::env::args().any(|arg| arg == "--test") {
-        struct Visitor<'a, 'tcx: 'a>(miri::ResourceLimits, TyCtxt<'a, 'tcx, 'tcx>, &'a CompileState<'a, 'tcx>);
+        struct Visitor<'a, 'tcx: 'a>(
+            miri::ResourceLimits,
+            TyCtxt<'a, 'tcx, 'tcx>,
+            &'a CompileState<'a, 'tcx>
+        );
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
                 if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
-                    if i.attrs.iter().any(|attr| attr.name().map_or(false, |n| n == "test")) {
+                    if i.attrs.iter().any(|attr| {
+                        attr.name().map_or(false, |n| n == "test")
+                    })
+                    {
                         let did = self.1.hir.body_owner_def_id(body_id);
-                        println!("running test: {}", self.1.hir.def_path(did).to_string(self.1));
+                        println!(
+                            "running test: {}",
+                            self.1.hir.def_path(did).to_string(self.1)
+                        );
                         miri::eval_main(self.1, did, None, self.0);
                         self.2.session.abort_if_errors();
                     }
@@ -92,11 +122,18 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
             fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
             fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
         }
-        state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(limits, tcx, state));
+        state.hir_crate.unwrap().visit_all_item_likes(
+            &mut Visitor(limits, tcx, state),
+        );
     } else if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        let start_wrapper = tcx.lang_items.start_fn().and_then(|start_fn|
-                                if tcx.is_mir_available(start_fn) { Some(start_fn) } else { None });
+        let start_wrapper = tcx.lang_items.start_fn().and_then(|start_fn| {
+            if tcx.is_mir_available(start_fn) {
+                Some(start_fn)
+            } else {
+                None
+            }
+        });
         miri::eval_main(tcx, entry_def_id, start_wrapper, limits);
 
         state.session.abort_if_errors();
@@ -112,11 +149,19 @@ fn resource_limits_from_attributes(state: &CompileState) -> miri::ResourceLimits
     let extract_int = |lit: &syntax::ast::Lit| -> u128 {
         match lit.node {
             syntax::ast::LitKind::Int(i, _) => i,
-            _ => state.session.span_fatal(lit.span, "expected an integer literal"),
+            _ => {
+                state.session.span_fatal(
+                    lit.span,
+                    "expected an integer literal",
+                )
+            }
         }
     };
 
-    for attr in krate.attrs.iter().filter(|a| a.name().map_or(false, |n| n == "miri")) {
+    for attr in krate.attrs.iter().filter(|a| {
+        a.name().map_or(false, |n| n == "miri")
+    })
+    {
         if let Some(items) = attr.meta_item_list() {
             for item in items {
                 if let NestedMetaItemKind::MetaItem(ref inner) = item.node {
@@ -165,7 +210,10 @@ fn init_logger() {
     };
 
     let mut builder = env_logger::LogBuilder::new();
-    builder.format(format).filter(None, log::LogLevelFilter::Info);
+    builder.format(format).filter(
+        None,
+        log::LogLevelFilter::Info,
+    );
 
     if std::env::var("MIRI_LOG").is_ok() {
         builder.parse(&std::env::var("MIRI_LOG").unwrap());
@@ -184,9 +232,13 @@ fn find_sysroot() -> String {
     let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
     match (home, toolchain) {
         (Some(home), Some(toolchain)) => format!("{}/toolchains/{}", home, toolchain),
-        _ => option_env!("RUST_SYSROOT")
-            .expect("need to specify RUST_SYSROOT env var or use rustup or multirust")
-            .to_owned(),
+        _ => {
+            option_env!("RUST_SYSROOT")
+                .expect(
+                    "need to specify RUST_SYSROOT env var or use rustup or multirust",
+                )
+                .to_owned()
+        }
     }
 }
 

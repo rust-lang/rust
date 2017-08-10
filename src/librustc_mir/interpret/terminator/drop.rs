@@ -2,29 +2,45 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
-use interpret::{
-    EvalResult,
-    EvalContext, StackPopCleanup,
-    Lvalue, LvalueExtra,
-    PrimVal, Value,
-    Machine,
-};
+use interpret::{EvalResult, EvalContext, StackPopCleanup, Lvalue, LvalueExtra, PrimVal, Value,
+                Machine};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(crate) fn drop_lvalue(&mut self, lval: Lvalue, instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
+    pub(crate) fn drop_lvalue(
+        &mut self,
+        lval: Lvalue,
+        instance: ty::Instance<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.
         // However, unaligned accesses will probably make the actual drop implementation fail -- a problem shared
         // by rustc.
         let val = match self.force_allocation(lval)? {
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => ptr.ptr.to_value_with_vtable(vtable),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => ptr.ptr.to_value_with_len(len),
-            Lvalue::Ptr { ptr, extra: LvalueExtra::None } => ptr.ptr.to_value(),
+            Lvalue::Ptr {
+                ptr,
+                extra: LvalueExtra::Vtable(vtable),
+            } => ptr.ptr.to_value_with_vtable(vtable),
+            Lvalue::Ptr {
+                ptr,
+                extra: LvalueExtra::Length(len),
+            } => ptr.ptr.to_value_with_len(len),
+            Lvalue::Ptr {
+                ptr,
+                extra: LvalueExtra::None,
+            } => ptr.ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
         self.drop(val, instance, ty, span)
     }
-    pub(crate) fn drop(&mut self, arg: Value, mut instance: ty::Instance<'tcx>, ty: Ty<'tcx>, span: Span) -> EvalResult<'tcx> {
+    pub(crate) fn drop(
+        &mut self,
+        arg: Value,
+        mut instance: ty::Instance<'tcx>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> EvalResult<'tcx> {
         trace!("drop: {:#?}, {:?}, {:?}", arg, ty.sty, instance.def);
 
         if let ty::InstanceDef::DropGlue(_, None) = instance.def {
@@ -42,11 +58,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Some(func) => {
                         instance = func;
                         self.load_mir(func.def)?
-                    },
+                    }
                     // no drop fn -> bail out
                     None => return Ok(()),
                 }
-            },
+            }
             _ => self.load_mir(instance.def)?,
         };
 

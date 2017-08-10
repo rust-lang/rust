@@ -3,14 +3,7 @@ use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{
-    EvalResult,
-    EvalContext,
-    MemoryPointer,
-    PrimVal, Value, Pointer,
-    Machine,
-    PtrAndAlign,
-};
+use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue {
@@ -25,10 +18,7 @@ pub enum Lvalue {
 
     /// An lvalue referring to a value on the stack. Represented by a stack frame index paired with
     /// a Mir local index.
-    Local {
-        frame: usize,
-        local: mir::Local,
-    },
+    Local { frame: usize, local: mir::Local },
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -57,7 +47,10 @@ impl<'tcx> Lvalue {
     }
 
     pub fn from_primval_ptr(ptr: Pointer) -> Self {
-        Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned: true }, extra: LvalueExtra::None }
+        Lvalue::Ptr {
+            ptr: PtrAndAlign { ptr, aligned: true },
+            extra: LvalueExtra::None,
+        }
     }
 
     pub fn from_ptr(ptr: MemoryPointer) -> Self {
@@ -87,7 +80,12 @@ impl<'tcx> Lvalue {
             ty::TySlice(elem) => {
                 match self {
                     Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => (elem, len),
-                    _ => bug!("elem_ty_and_len of a TySlice given non-slice lvalue: {:?}", self),
+                    _ => {
+                        bug!(
+                            "elem_ty_and_len of a TySlice given non-slice lvalue: {:?}",
+                            self
+                        )
+                    }
                 }
             }
 
@@ -99,7 +97,10 @@ impl<'tcx> Lvalue {
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// Reads a value from the lvalue without going through the intermediate step of obtaining
     /// a `miri::Lvalue`
-    pub fn try_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    pub fn try_read_lvalue(
+        &mut self,
+        lvalue: &mir::Lvalue<'tcx>,
+    ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::Lvalue::*;
         match *lvalue {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
@@ -109,14 +110,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Directly reading a static will always succeed
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                let cid = GlobalId { instance, promoted: None };
-                Ok(Some(Value::ByRef(*self.globals.get(&cid).expect("global not cached"))))
-            },
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                Ok(Some(Value::ByRef(
+                    *self.globals.get(&cid).expect("global not cached"),
+                )))
+            }
             Projection(ref proj) => self.try_read_lvalue_projection(proj),
         }
     }
 
-    fn try_read_lvalue_projection(&mut self, proj: &mir::LvalueProjection<'tcx>) -> EvalResult<'tcx, Option<Value>> {
+    fn try_read_lvalue_projection(
+        &mut self,
+        proj: &mir::LvalueProjection<'tcx>,
+    ) -> EvalResult<'tcx, Option<Value>> {
         use rustc::mir::ProjectionElem::*;
         let base = match self.try_read_lvalue(&proj.base)? {
             Some(base) => base,
@@ -147,7 +156,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// Returns a value and (in case of a ByRef) if we are supposed to use aligned accesses.
-    pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn eval_and_read_lvalue(
+        &mut self,
+        lvalue: &mir::Lvalue<'tcx>,
+    ) -> EvalResult<'tcx, Value> {
         // Shortcut for things like accessing a fat pointer's field,
         // which would otherwise (in the `eval_lvalue` path) require moving a `ByValPair` to memory
         // and returning an `Lvalue::Ptr` to it
@@ -164,9 +176,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 assert_eq!(extra, LvalueExtra::None);
                 Ok(Value::ByRef(ptr))
             }
-            Lvalue::Local { frame, local } => {
-                self.stack[frame].get_local(local)
-            }
+            Lvalue::Local { frame, local } => self.stack[frame].get_local(local),
         }
     }
 
@@ -174,11 +184,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-            Local(local) => Lvalue::Local { frame: self.cur_frame(), local },
+            Local(local) => Lvalue::Local {
+                frame: self.cur_frame(),
+                local,
+            },
 
             Static(ref static_) => {
                 let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                let gid = GlobalId { instance, promoted: None };
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
                 Lvalue::Ptr {
                     ptr: *self.globals.get(&gid).expect("uncached global"),
                     extra: LvalueExtra::None,
@@ -209,9 +225,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let base_layout = self.type_layout(base_ty)?;
         use rustc::ty::layout::Layout::*;
         let (offset, packed) = match *base_layout {
-            Univariant { ref variant, .. } => {
-                (variant.offsets[field_index], variant.packed)
-            },
+            Univariant { ref variant, .. } => (variant.offsets[field_index], variant.packed),
 
             General { ref variants, .. } => {
                 let (_, base_extra) = base.to_ptr_extra_aligned();
@@ -249,8 +263,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     ty::TyArray(elem_ty, n) => {
                         assert!(field < n as u64);
                         self.type_size(elem_ty)?.expect("array elements are sized") as u64
-                    },
-                    _ => bug!("lvalue_field: got Array layout but non-array type {:?}", base_ty),
+                    }
+                    _ => {
+                        bug!(
+                            "lvalue_field: got Array layout but non-array type {:?}",
+                            base_ty
+                        )
+                    }
                 };
                 (Size::from_bytes(field * elem_size), false)
             }
@@ -267,22 +286,36 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // Do not allocate in trivial cases
         let (base_ptr, base_extra) = match base {
             Lvalue::Ptr { ptr, extra } => (ptr, extra),
-            Lvalue::Local { frame, local } => match self.stack[frame].get_local(local)? {
-                // in case the type has a single field, just return the value
-                Value::ByVal(_) if self.get_field_count(base_ty).map(|c| c == 1).unwrap_or(false) => {
-                    assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
-                    return Ok(base);
-                },
-                Value::ByRef{..} |
-                Value::ByValPair(..) |
-                Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
-            },
+            Lvalue::Local { frame, local } => {
+                match self.stack[frame].get_local(local)? {
+                    // in case the type has a single field, just return the value
+                    Value::ByVal(_)
+                        if self.get_field_count(base_ty).map(|c| c == 1).unwrap_or(
+                            false,
+                        ) => {
+                        assert_eq!(
+                            offset.bytes(),
+                            0,
+                            "ByVal can only have 1 non zst field with offset 0"
+                        );
+                        return Ok(base);
+                    }
+                    Value::ByRef { .. } |
+                    Value::ByValPair(..) |
+                    Value::ByVal(_) => self.force_allocation(base)?.to_ptr_extra_aligned(),
+                }
+            }
         };
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
-                let (_, align) = self.size_and_align_of_dst(base_ty, base_ptr.ptr.to_value_with_vtable(tab))?;
-                offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
+                let (_, align) = self.size_and_align_of_dst(
+                    base_ty,
+                    base_ptr.ptr.to_value_with_vtable(tab),
+                )?;
+                offset
+                    .abi_align(Align::from_bytes(align, align).unwrap())
+                    .bytes()
             }
             _ => offset.bytes(),
         };
@@ -299,41 +332,63 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         } else {
             match base_extra {
                 LvalueExtra::None => bug!("expected fat pointer"),
-                LvalueExtra::DowncastVariant(..) =>
-                    bug!("Rust doesn't support unsized fields in enum variants"),
+                LvalueExtra::DowncastVariant(..) => {
+                    bug!("Rust doesn't support unsized fields in enum variants")
+                }
                 LvalueExtra::Vtable(_) |
-                LvalueExtra::Length(_) => {},
+                LvalueExtra::Length(_) => {}
             }
             base_extra
         };
 
-        Ok(Lvalue::Ptr { ptr, extra } )
+        Ok(Lvalue::Ptr { ptr, extra })
     }
 
     pub(super) fn val_to_lvalue(&self, val: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Lvalue> {
         Ok(match self.tcx.struct_tail(ty).sty {
             ty::TyDynamic(..) => {
                 let (ptr, vtable) = val.into_ptr_vtable_pair(&self.memory)?;
-                Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned: true }, extra: LvalueExtra::Vtable(vtable) }
-            },
+                Lvalue::Ptr {
+                    ptr: PtrAndAlign { ptr, aligned: true },
+                    extra: LvalueExtra::Vtable(vtable),
+                }
+            }
             ty::TyStr | ty::TySlice(_) => {
                 let (ptr, len) = val.into_slice(&self.memory)?;
-                Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned: true }, extra: LvalueExtra::Length(len) }
-            },
+                Lvalue::Ptr {
+                    ptr: PtrAndAlign { ptr, aligned: true },
+                    extra: LvalueExtra::Length(len),
+                }
+            }
             _ => Lvalue::from_primval_ptr(val.into_ptr(&self.memory)?),
         })
     }
 
-    pub(super) fn lvalue_index(&mut self, base: Lvalue, outer_ty: Ty<'tcx>, n: u64) -> EvalResult<'tcx, Lvalue> {
+    pub(super) fn lvalue_index(
+        &mut self,
+        base: Lvalue,
+        outer_ty: Ty<'tcx>,
+        n: u64,
+    ) -> EvalResult<'tcx, Lvalue> {
         // Taking the outer type here may seem odd; it's needed because for array types, the outer type gives away the length.
         let base = self.force_allocation(base)?;
         let (base_ptr, _) = base.to_ptr_extra_aligned();
 
         let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
-        let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
-        assert!(n < len, "Tried to access element {} of array/slice with length {}", n, len);
+        let elem_size = self.type_size(elem_ty)?.expect(
+            "slice element must be sized",
+        );
+        assert!(
+            n < len,
+            "Tried to access element {} of array/slice with length {}",
+            n,
+            len
+        );
         let ptr = base_ptr.offset(n * elem_size, self.memory.layout)?;
-        Ok(Lvalue::Ptr { ptr, extra: LvalueExtra::None })
+        Ok(Lvalue::Ptr {
+            ptr,
+            extra: LvalueExtra::None,
+        })
     }
 
     pub(super) fn eval_lvalue_projection(
@@ -357,7 +412,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 use rustc::ty::layout::Layout::*;
                 let extra = match *base_layout {
                     General { .. } => LvalueExtra::DowncastVariant(variant),
-                    RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => base_extra,
+                    RawNullablePointer { .. } |
+                    StructWrappedNullablePointer { .. } => base_extra,
                     _ => bug!("variant downcast on non-aggregate: {:?}", base_layout),
                 };
                 (base_ptr, extra)
@@ -386,13 +442,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 return self.lvalue_index(base, base_ty, n);
             }
 
-            ConstantIndex { offset, min_length, from_end } => {
+            ConstantIndex {
+                offset,
+                min_length,
+                from_end,
+            } => {
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_extra_aligned();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect("sequence element must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect(
+                    "sequence element must be sized",
+                );
                 assert!(n >= min_length as u64);
 
                 let index = if from_end {
@@ -411,7 +473,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let (base_ptr, _) = base.to_ptr_extra_aligned();
 
                 let (elem_ty, n) = base.elem_ty_and_len(base_ty);
-                let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect(
+                    "slice element must be sized",
+                );
                 assert!(u64::from(from) <= n - u64::from(to));
                 let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;
                 let extra = LvalueExtra::Length(n - u64::from(to) - u64::from(from));
@@ -423,6 +487,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> Ty<'tcx> {
-        self.monomorphize(lvalue.ty(self.mir(), self.tcx).to_ty(self.tcx), self.substs())
+        self.monomorphize(
+            lvalue.ty(self.mir(), self.tcx).to_ty(self.tcx),
+            self.substs(),
+        )
     }
 }

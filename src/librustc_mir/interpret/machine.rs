@@ -2,12 +2,7 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use super::{
-    EvalResult,
-    EvalContext,
-    Lvalue,
-    PrimVal
-};
+use super::{EvalResult, EvalContext, Lvalue, PrimVal};
 
 use rustc::{mir, ty};
 use syntax::codemap::Span;
@@ -76,4 +71,3 @@ pub trait Machine<'tcx>: Sized {
         ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, PrimVal>;
 }
-

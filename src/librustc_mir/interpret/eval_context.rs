@@ -16,16 +16,9 @@ use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast::{self, Mutability};
 use syntax::abi::Abi;
 
-use super::{
-    EvalError, EvalResult, EvalErrorKind,
-    GlobalId, Lvalue, LvalueExtra,
-    Memory, MemoryPointer, HasMemory,
-    MemoryKind,
-    operator,
-    PrimVal, PrimValKind, Value, Pointer,
-    ValidationQuery,
-    Machine,
-};
+use super::{EvalError, EvalResult, EvalErrorKind, GlobalId, Lvalue, LvalueExtra, Memory,
+            MemoryPointer, HasMemory, MemoryKind, operator, PrimVal, PrimValKind, Value, Pointer,
+            ValidationQuery, Machine};
 
 pub struct EvalContext<'a, 'tcx: 'a, M: Machine<'tcx>> {
     /// Stores data required by the `Machine`
@@ -60,7 +53,6 @@ pub struct Frame<'tcx> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
-
     /// The MIR for the function called on this frame.
     pub mir: &'tcx mir::Mir<'tcx>,
 
@@ -73,7 +65,6 @@ pub struct Frame<'tcx> {
     ////////////////////////////////////////////////////////////////////////////////
     // Return lvalue and locals
     ////////////////////////////////////////////////////////////////////////////////
-
     /// The block to return to when returning from the current stack frame
     pub return_to_block: StackPopCleanup,
 
@@ -91,7 +82,6 @@ pub struct Frame<'tcx> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
     pub block: mir::BasicBlock,
@@ -189,9 +179,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn alloc_ptr_with_substs(
         &mut self,
         ty: Ty<'tcx>,
-        substs: &'tcx Substs<'tcx>
+        substs: &'tcx Substs<'tcx>,
     ) -> EvalResult<'tcx, MemoryPointer> {
-        let size = self.type_size_with_substs(ty, substs)?.expect("cannot alloc memory for unsized type");
+        let size = self.type_size_with_substs(ty, substs)?.expect(
+            "cannot alloc memory for unsized type",
+        );
         let align = self.type_align_with_substs(ty, substs)?;
         self.memory.allocate(size, align, MemoryKind::Stack)
     }
@@ -216,7 +208,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
         let ptr = self.memory.allocate_cached(s.as_bytes())?;
-        Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
+        Ok(Value::ByValPair(
+            PrimVal::Ptr(ptr),
+            PrimVal::from_u128(s.len() as u128),
+        ))
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>) -> EvalResult<'tcx, Value> {
@@ -237,12 +232,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 PrimVal::Ptr(ptr)
             }
 
-            Variant(_)   => unimplemented!(),
-            Struct(_)    => unimplemented!(),
-            Tuple(_)     => unimplemented!(),
+            Variant(_) => unimplemented!(),
+            Struct(_) => unimplemented!(),
+            Tuple(_) => unimplemented!(),
             // function items are zero sized and thus have no readable value
-            Function(..)  => PrimVal::Undef,
-            Array(_)     => unimplemented!(),
+            Function(..) => PrimVal::Undef,
+            Array(_) => unimplemented!(),
             Repeat(_, _) => unimplemented!(),
         };
 
@@ -255,10 +250,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ty.is_sized(self.tcx, ty::ParamEnv::empty(Reveal::All), DUMMY_SP)
     }
 
-    pub fn load_mir(&self, instance: ty::InstanceDef<'tcx>) -> EvalResult<'tcx, &'tcx mir::Mir<'tcx>> {
+    pub fn load_mir(
+        &self,
+        instance: ty::InstanceDef<'tcx>,
+    ) -> EvalResult<'tcx, &'tcx mir::Mir<'tcx>> {
         trace!("load mir {:?}", instance);
         match instance {
-            ty::InstanceDef::Item(def_id) => self.tcx.maybe_optimized_mir(def_id).ok_or_else(|| EvalErrorKind::NoMirFor(self.tcx.item_path_str(def_id)).into()),
+            ty::InstanceDef::Item(def_id) => {
+                self.tcx.maybe_optimized_mir(def_id).ok_or_else(|| {
+                    EvalErrorKind::NoMirFor(self.tcx.item_path_str(def_id)).into()
+                })
+            }
             _ => Ok(self.tcx.instance_mir(instance)),
         }
     }
@@ -272,7 +274,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn erase_lifetimes<T>(&self, value: &Binder<T>) -> T
-        where T : TypeFoldable<'tcx>
+    where
+        T: TypeFoldable<'tcx>,
     {
         let value = self.tcx.erase_late_bound_regions(value);
         self.tcx.erase_regions(&value)
@@ -301,15 +304,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     let (sized_size, sized_align) = match *layout {
                         ty::layout::Layout::Univariant { ref variant, .. } => {
-                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align)
+                            (
+                                variant.offsets.last().map_or(0, |o| o.bytes()),
+                                variant.align,
+                            )
                         }
                         _ => {
-                            bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
-                                 ty, layout);
+                            bug!(
+                                "size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
+                                ty,
+                                layout
+                            );
                         }
                     };
-                    debug!("DST {} statically sized prefix size: {} align: {:?}",
-                           ty, sized_size, sized_align);
+                    debug!(
+                        "DST {} statically sized prefix size: {} align: {:?}",
+                        ty,
+                        sized_size,
+                        sized_align
+                    );
 
                     // Recurse to get the size of the dynamically sized field (must be
                     // the last field).
@@ -339,7 +352,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     // Choose max of two known alignments (combined value must
                     // be aligned according to more restrictive of the two).
-                    let align = sized_align.max(Align::from_bytes(unsized_align, unsized_align).unwrap());
+                    let align =
+                        sized_align.max(Align::from_bytes(unsized_align, unsized_align).unwrap());
 
                     // Issue #27023: must add any necessary padding to `size`
                     // (to make it a multiple of `align`) before returning it.
@@ -363,7 +377,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                 ty::TySlice(_) | ty::TyStr => {
                     let elem_ty = ty.sequence_element_type(self.tcx);
-                    let elem_size = self.type_size(elem_ty)?.expect("slice element must be sized") as u64;
+                    let elem_size = self.type_size(elem_ty)?.expect(
+                        "slice element must be sized",
+                    ) as u64;
                     let (_, len) = value.into_slice(&mut self.memory)?;
                     let align = self.type_align(elem_ty)?;
                     Ok((len * elem_size, align as u64))
@@ -375,12 +391,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// Returns the normalized type of a struct field
-    fn field_ty(
-        &self,
-        param_substs: &Substs<'tcx>,
-        f: &ty::FieldDef,
-    ) -> ty::Ty<'tcx> {
-        self.tcx.normalize_associated_type(&f.ty(self.tcx, param_substs))
+    fn field_ty(&self, param_substs: &Substs<'tcx>, f: &ty::FieldDef) -> ty::Ty<'tcx> {
+        self.tcx.normalize_associated_type(
+            &f.ty(self.tcx, param_substs),
+        )
     }
 
     pub fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {
@@ -404,19 +418,30 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub fn type_align_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, u64> {
-        self.type_layout_with_substs(ty, substs).map(|layout| layout.align(&self.tcx.data_layout).abi())
+    pub fn type_align_with_substs(
+        &self,
+        ty: Ty<'tcx>,
+        substs: &'tcx Substs<'tcx>,
+    ) -> EvalResult<'tcx, u64> {
+        self.type_layout_with_substs(ty, substs).map(|layout| {
+            layout.align(&self.tcx.data_layout).abi()
+        })
     }
 
     pub fn type_layout(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
         self.type_layout_with_substs(ty, self.substs())
     }
 
-    fn type_layout_with_substs(&self, ty: Ty<'tcx>, substs: &'tcx Substs<'tcx>) -> EvalResult<'tcx, &'tcx Layout> {
+    fn type_layout_with_substs(
+        &self,
+        ty: Ty<'tcx>,
+        substs: &'tcx Substs<'tcx>,
+    ) -> EvalResult<'tcx, &'tcx Layout> {
         // TODO(solson): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty, substs);
 
-        ty.layout(self.tcx, ty::ParamEnv::empty(Reveal::All)).map_err(|layout| EvalErrorKind::Layout(layout).into())
+        ty.layout(self.tcx, ty::ParamEnv::empty(Reveal::All))
+            .map_err(|layout| EvalErrorKind::Layout(layout).into())
     }
 
     pub fn push_stack_frame(
@@ -437,13 +462,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             for block in mir.basic_blocks() {
                 for stmt in block.statements.iter() {
                     match stmt.kind {
-                        StorageLive(mir::Lvalue::Local(local)) | StorageDead(mir::Lvalue::Local(local)) => {
+                        StorageLive(mir::Lvalue::Local(local)) |
+                        StorageDead(mir::Lvalue::Local(local)) => {
                             set.insert(local);
                         }
                         _ => {}
                     }
                 }
-            };
+            }
             set
         }
 
@@ -453,7 +479,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let num_locals = mir.local_decls.len() - 1;
         let mut locals = vec![None; num_locals];
         for i in 0..num_locals {
-            let local = mir::Local::new(i+1);
+            let local = mir::Local::new(i + 1);
             if !annotated_locals.contains(&local) {
                 locals[i] = Some(Value::ByVal(PrimVal::Undef));
             }
@@ -483,21 +509,28 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
         self.memory.locks_lifetime_ended(None);
-        let frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
+        let frame = self.stack.pop().expect(
+            "tried to pop a stack frame, but there were none",
+        );
         if !self.stack.is_empty() {
             // TODO: IS this the correct time to start considering these accesses as originating from the returned-to stack frame?
             let cur_frame = self.cur_frame();
             self.memory.set_cur_frame(cur_frame);
         }
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => if let Lvalue::Ptr{ ptr, .. } = frame.return_lvalue {
-                // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
-                self.memory.mark_static_initalized(ptr.to_ptr()?.alloc_id, mutable)?
-            } else {
-                bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_lvalue);
-            },
+            StackPopCleanup::MarkStatic(mutable) => {
+                if let Lvalue::Ptr { ptr, .. } = frame.return_lvalue {
+                    // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
+                    self.memory.mark_static_initalized(
+                        ptr.to_ptr()?.alloc_id,
+                        mutable,
+                    )?
+                } else {
+                    bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_lvalue);
+                }
+            }
             StackPopCleanup::Goto(target) => self.goto_block(target),
-            StackPopCleanup::None => {},
+            StackPopCleanup::None => {}
         }
         // deallocate all locals that are backed by an allocation
         for local in frame.locals {
@@ -597,7 +630,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                if self.intrinsic_overflowing(bin_op, left, right, dest, dest_ty)? {
+                if self.intrinsic_overflowing(
+                    bin_op,
+                    left,
+                    right,
+                    dest,
+                    dest_ty,
+                )?
+                {
                     // There was an overflow in an unchecked binop.  Right now, we consider this an error and bail out.
                     // The rationale is that the reason rustc emits unchecked binops in release mode (vs. the checked binops
                     // it emits in debug mode) is performance, but it doesn't cost us any performance in miri.
@@ -608,13 +648,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
-                self.intrinsic_with_overflow(bin_op, left, right, dest, dest_ty)?;
+                self.intrinsic_with_overflow(
+                    bin_op,
+                    left,
+                    right,
+                    dest,
+                    dest_ty,
+                )?;
             }
 
             UnaryOp(un_op, ref operand) => {
                 let val = self.eval_operand_to_primval(operand)?;
                 let kind = self.ty_to_primval_kind(dest_ty)?;
-                self.write_primval(dest, operator::unary_op(un_op, val, kind)?, dest_ty)?;
+                self.write_primval(
+                    dest,
+                    operator::unary_op(un_op, val, kind)?,
+                    dest_ty,
+                )?;
             }
 
             // Skip everything for zsts
@@ -634,9 +684,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         self.assign_fields(dest, dest_ty, operands)?;
                     }
 
-                    General { discr, ref variants, .. } => {
+                    General {
+                        discr,
+                        ref variants,
+                        ..
+                    } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = **kind {
-                            let discr_val = adt_def.discriminants(self.tcx)
+                            let discr_val = adt_def
+                                .discriminants(self.tcx)
                                 .nth(variant)
                                 .expect("broken mir: Adt variant id invalid")
                                 .to_u128_unchecked();
@@ -677,7 +732,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
 
-                    StructWrappedNullablePointer { nndiscr, ref discrfield_source, ref nonnull, .. } => {
+                    StructWrappedNullablePointer {
+                        nndiscr,
+                        ref discrfield_source,
+                        ref nonnull,
+                        ..
+                    } => {
                         if let mir::AggregateKind::Adt(_, variant, _, _) = **kind {
                             if nndiscr == variant as u64 {
                                 self.write_maybe_aligned_mut(!nonnull.packed, |ecx| {
@@ -688,18 +748,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let (offset, TyAndPacked { ty, packed: _}) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield_source)?;
+                                let (offset, TyAndPacked { ty, packed: _ }) =
+                                    self.nonnull_offset_and_ty(
+                                        dest_ty,
+                                        nndiscr,
+                                        discrfield_source,
+                                    )?;
                                 // TODO: The packed flag is ignored
 
                                 // FIXME(solson)
                                 let dest = self.force_allocation(dest)?.to_ptr()?;
 
                                 let dest = dest.offset(offset.bytes(), &self)?;
-                                let dest_size = self.type_size(ty)?
-                                    .expect("bad StructWrappedNullablePointer discrfield");
-                                self.memory.write_maybe_aligned_mut(!nonnull.packed, |mem| {
-                                    mem.write_int(dest, 0, dest_size)
-                                })?;
+                                let dest_size = self.type_size(ty)?.expect(
+                                    "bad StructWrappedNullablePointer discrfield",
+                                );
+                                self.memory.write_maybe_aligned_mut(
+                                    !nonnull.packed,
+                                    |mem| mem.write_int(dest, 0, dest_size),
+                                )?;
                             }
                         } else {
                             bug!("tried to assign {:?} to Layout::RawNullablePointer", kind);
@@ -709,7 +776,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = **kind {
-                            let n = adt_def.discriminants(self.tcx)
+                            let n = adt_def
+                                .discriminants(self.tcx)
                                 .nth(variant)
                                 .expect("broken mir: Adt variant index invalid")
                                 .to_u128_unchecked();
@@ -747,11 +815,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
                     ty::TyArray(elem_ty, n) => (elem_ty, n as u64),
-                    _ => bug!("tried to assign array-repeat to non-array type {:?}", dest_ty),
+                    _ => {
+                        bug!(
+                            "tried to assign array-repeat to non-array type {:?}",
+                            dest_ty
+                        )
+                    }
                 };
                 self.inc_step_counter_and_check_limit(length)?;
-                let elem_size = self.type_size(elem_ty)?
-                    .expect("repeat element type must be sized");
+                let elem_size = self.type_size(elem_ty)?.expect(
+                    "repeat element type must be sized",
+                );
                 let value = self.eval_operand(operand)?;
 
                 // FIXME(solson)
@@ -768,7 +842,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let src = self.eval_lvalue(lvalue)?;
                 let ty = self.lvalue_ty(lvalue);
                 let (_, len) = src.elem_ty_and_len(ty);
-                self.write_primval(dest, PrimVal::from_u128(len as u128), dest_ty)?;
+                self.write_primval(
+                    dest,
+                    PrimVal::from_u128(len as u128),
+                    dest_ty,
+                )?;
             }
 
             Ref(_, _, ref lvalue) => {
@@ -781,8 +859,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     LvalueExtra::None => ptr.ptr.to_value(),
                     LvalueExtra::Length(len) => ptr.ptr.to_value_with_len(len),
                     LvalueExtra::Vtable(vtable) => ptr.ptr.to_value_with_vtable(vtable),
-                    LvalueExtra::DowncastVariant(..) =>
-                        bug!("attempted to take a reference to an enum downcast lvalue"),
+                    LvalueExtra::DowncastVariant(..) => {
+                        bug!("attempted to take a reference to an enum downcast lvalue")
+                    }
                 };
                 self.write_value(val, dest, dest_ty)?;
             }
@@ -793,8 +872,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let size = self.type_size(ty)?.expect("SizeOf nullary MIR operator called for unsized type");
-                self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
+                let size = self.type_size(ty)?.expect(
+                    "SizeOf nullary MIR operator called for unsized type",
+                );
+                self.write_primval(
+                    dest,
+                    PrimVal::from_u128(size as u128),
+                    dest_ty,
+                )?;
             }
 
             Cast(kind, ref operand, cast_ty) => {
@@ -812,13 +897,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         let src_ty = self.operand_ty(operand);
                         if self.type_is_fat_ptr(src_ty) {
                             match (src, self.type_is_fat_ptr(dest_ty)) {
-                                (Value::ByRef{..}, _) |
+                                (Value::ByRef { .. }, _) |
                                 (Value::ByValPair(..), true) => {
                                     self.write_value(src, dest, dest_ty)?;
-                                },
+                                }
                                 (Value::ByValPair(data, _), false) => {
                                     self.write_value(Value::ByVal(data), dest, dest_ty)?;
-                                },
+                                }
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
@@ -828,31 +913,50 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         }
                     }
 
-                    ReifyFnPointer => match self.operand_ty(operand).sty {
-                        ty::TyFnDef(def_id, substs) => {
-                            let instance = resolve(self.tcx, def_id, substs);
-                            let fn_ptr = self.memory.create_fn_alloc(instance);
-                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
-                        },
-                        ref other => bug!("reify fn pointer on {:?}", other),
-                    },
+                    ReifyFnPointer => {
+                        match self.operand_ty(operand).sty {
+                            ty::TyFnDef(def_id, substs) => {
+                                let instance = resolve(self.tcx, def_id, substs);
+                                let fn_ptr = self.memory.create_fn_alloc(instance);
+                                self.write_value(
+                                    Value::ByVal(PrimVal::Ptr(fn_ptr)),
+                                    dest,
+                                    dest_ty,
+                                )?;
+                            }
+                            ref other => bug!("reify fn pointer on {:?}", other),
+                        }
+                    }
 
-                    UnsafeFnPointer => match dest_ty.sty {
-                        ty::TyFnPtr(_) => {
-                            let src = self.eval_operand(operand)?;
-                            self.write_value(src, dest, dest_ty)?;
-                        },
-                        ref other => bug!("fn to unsafe fn cast on {:?}", other),
-                    },
+                    UnsafeFnPointer => {
+                        match dest_ty.sty {
+                            ty::TyFnPtr(_) => {
+                                let src = self.eval_operand(operand)?;
+                                self.write_value(src, dest, dest_ty)?;
+                            }
+                            ref other => bug!("fn to unsafe fn cast on {:?}", other),
+                        }
+                    }
 
-                    ClosureFnPointer => match self.operand_ty(operand).sty {
-                        ty::TyClosure(def_id, substs) => {
-                            let instance = resolve_closure(self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
-                            let fn_ptr = self.memory.create_fn_alloc(instance);
-                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
-                        },
-                        ref other => bug!("closure fn pointer on {:?}", other),
-                    },
+                    ClosureFnPointer => {
+                        match self.operand_ty(operand).sty {
+                            ty::TyClosure(def_id, substs) => {
+                                let instance = resolve_closure(
+                                    self.tcx,
+                                    def_id,
+                                    substs,
+                                    ty::ClosureKind::FnOnce,
+                                );
+                                let fn_ptr = self.memory.create_fn_alloc(instance);
+                                self.write_value(
+                                    Value::ByVal(PrimVal::Ptr(fn_ptr)),
+                                    dest,
+                                    dest_ty,
+                                )?;
+                            }
+                            ref other => bug!("closure fn pointer on {:?}", other),
+                        }
+                    }
                 }
             }
 
@@ -862,14 +966,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr = self.force_allocation(lval)?.to_ptr()?;
                 let discr_val = self.read_discriminant_value(ptr, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
-                    if adt_def.discriminants(self.tcx).all(|v| discr_val != v.to_u128_unchecked()) {
+                    if adt_def.discriminants(self.tcx).all(|v| {
+                        discr_val != v.to_u128_unchecked()
+                    })
+                    {
                         return err!(InvalidDiscriminant);
                     }
                 } else {
                     bug!("rustc only generates Rvalue::Discriminant for enums");
                 }
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
-            },
+            }
         }
 
         if log_enabled!(::log::LogLevel::Trace) {
@@ -903,7 +1010,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let variant = &adt_def.variants[nndiscr as usize];
                 let index = discrfield[1];
                 let field = &variant.fields[index as usize];
-                (self.get_field_offset(ty, index as usize)?, field.ty(self.tcx, substs))
+                (
+                    self.get_field_offset(ty, index as usize)?,
+                    field.ty(self.tcx, substs),
+                )
             }
             _ => bug!("non-enum for StructWrappedNullablePointer: {}", ty),
         };
@@ -921,16 +1031,28 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let mut packed = false;
         for field_index in path {
             let field_offset = self.get_field_offset(ty, field_index)?;
-            trace!("field_path_offset_and_ty: {}, {}, {:?}, {:?}", field_index, ty, field_offset, offset);
+            trace!(
+                "field_path_offset_and_ty: {}, {}, {:?}, {:?}",
+                field_index,
+                ty,
+                field_offset,
+                offset
+            );
             let field_ty = self.get_field_ty(ty, field_index)?;
             ty = field_ty.ty;
             packed = packed || field_ty.packed;
-            offset = offset.checked_add(field_offset, &self.tcx.data_layout).unwrap();
+            offset = offset
+                .checked_add(field_offset, &self.tcx.data_layout)
+                .unwrap();
         }
 
         Ok((offset, TyAndPacked { ty, packed }))
     }
-    fn get_fat_field(&self, pointee_ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, Ty<'tcx>> {
+    fn get_fat_field(
+        &self,
+        pointee_ty: Ty<'tcx>,
+        field_index: usize,
+    ) -> EvalResult<'tcx, Ty<'tcx>> {
         match (field_index, &self.tcx.struct_tail(pointee_ty).sty) {
             (1, &ty::TyStr) |
             (1, &ty::TySlice(_)) => Ok(self.tcx.types.usize),
@@ -941,42 +1063,92 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// Returns the field type and whether the field is packed
-    pub fn get_field_ty(&self, ty: Ty<'tcx>, field_index: usize) -> EvalResult<'tcx, TyAndPacked<'tcx>> {
+    pub fn get_field_ty(
+        &self,
+        ty: Ty<'tcx>,
+        field_index: usize,
+    ) -> EvalResult<'tcx, TyAndPacked<'tcx>> {
         match ty.sty {
-            ty::TyAdt(adt_def, _) if adt_def.is_box() =>
-                Ok(TyAndPacked { ty: self.get_fat_field(ty.boxed_ty(), field_index)?, packed: false }),
+            ty::TyAdt(adt_def, _) if adt_def.is_box() => Ok(TyAndPacked {
+                ty: self.get_fat_field(ty.boxed_ty(), field_index)?,
+                packed: false,
+            }),
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
-                    RawNullablePointer { nndiscr, .. } =>
-                        Ok(TyAndPacked { ty: adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs), packed: false }),
-                    StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
-                        let ty = adt_def.variants[nndiscr as usize].fields[field_index].ty(self.tcx, substs);
-                        Ok(TyAndPacked { ty, packed: nonnull.packed })
-                    },
-                    _ => err!(Unimplemented(format!("get_field_ty can't handle enum type: {:?}, {:?}", ty, ty.sty))),
+                    RawNullablePointer { nndiscr, .. } => Ok(TyAndPacked {
+                        ty: adt_def.variants[nndiscr as usize].fields[field_index].ty(
+                            self.tcx,
+                            substs,
+                        ),
+                        packed: false,
+                    }),
+                    StructWrappedNullablePointer {
+                        nndiscr,
+                        ref nonnull,
+                        ..
+                    } => {
+                        let ty = adt_def.variants[nndiscr as usize].fields[field_index].ty(
+                            self.tcx,
+                            substs,
+                        );
+                        Ok(TyAndPacked {
+                            ty,
+                            packed: nonnull.packed,
+                        })
+                    }
+                    _ => {
+                        err!(Unimplemented(format!(
+                            "get_field_ty can't handle enum type: {:?}, {:?}",
+                            ty,
+                            ty.sty
+                        )))
+                    }
                 }
             }
             ty::TyAdt(adt_def, substs) => {
                 let variant_def = adt_def.struct_variant();
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
-                    UntaggedUnion { ref variants } => 
-                        Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variants.packed }),
-                    Univariant { ref variant, .. } =>
-                        Ok(TyAndPacked { ty: variant_def.fields[field_index].ty(self.tcx, substs), packed: variant.packed }),
-                    _ => err!(Unimplemented(format!("get_field_ty can't handle struct type: {:?}, {:?}", ty, ty.sty))),
+                    UntaggedUnion { ref variants } => Ok(TyAndPacked {
+                        ty: variant_def.fields[field_index].ty(self.tcx, substs),
+                        packed: variants.packed,
+                    }),
+                    Univariant { ref variant, .. } => Ok(TyAndPacked {
+                        ty: variant_def.fields[field_index].ty(self.tcx, substs),
+                        packed: variant.packed,
+                    }),
+                    _ => {
+                        err!(Unimplemented(format!(
+                            "get_field_ty can't handle struct type: {:?}, {:?}",
+                            ty,
+                            ty.sty
+                        )))
+                    }
                 }
             }
 
-            ty::TyTuple(fields, _) => Ok(TyAndPacked { ty: fields[field_index], packed: false }),
+            ty::TyTuple(fields, _) => Ok(TyAndPacked {
+                ty: fields[field_index],
+                packed: false,
+            }),
 
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => Ok(TyAndPacked { ty: self.get_fat_field(tam.ty, field_index)?, packed: false }),
+            ty::TyRawPtr(ref tam) => Ok(TyAndPacked {
+                ty: self.get_fat_field(tam.ty, field_index)?,
+                packed: false,
+            }),
 
-            ty::TyArray(ref inner, _) => Ok(TyAndPacked { ty: inner, packed: false }),
+            ty::TyArray(ref inner, _) => Ok(TyAndPacked {
+                ty: inner,
+                packed: false,
+            }),
 
-            _ => err!(Unimplemented(format!("can't handle type: {:?}, {:?}", ty, ty.sty))),
+            _ => {
+                err!(Unimplemented(
+                    format!("can't handle type: {:?}, {:?}", ty, ty.sty),
+                ))
+            }
         }
     }
 
@@ -986,19 +1158,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         use rustc::ty::layout::Layout::*;
         match *layout {
-            Univariant { ref variant, .. } => {
-                Ok(variant.offsets[field_index])
-            }
+            Univariant { ref variant, .. } => Ok(variant.offsets[field_index]),
             FatPointer { .. } => {
                 let bytes = field_index as u64 * self.memory.pointer_size();
                 Ok(Size::from_bytes(bytes))
             }
-            StructWrappedNullablePointer { ref nonnull, .. } => {
-                Ok(nonnull.offsets[field_index])
-            }
+            StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets[field_index]),
             UntaggedUnion { .. } => Ok(Size::from_bytes(0)),
             _ => {
-                let msg = format!("get_field_offset: can't handle type: {:?}, with layout: {:?}", ty, layout);
+                let msg = format!(
+                    "get_field_offset: can't handle type: {:?}, with layout: {:?}",
+                    ty,
+                    layout
+                );
                 err!(Unimplemented(msg))
             }
         }
@@ -1012,18 +1184,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Univariant { ref variant, .. } => Ok(variant.offsets.len() as u64),
             FatPointer { .. } => Ok(2),
             StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets.len() as u64),
-            Vector { count , .. } |
+            Vector { count, .. } |
             Array { count, .. } => Ok(count),
             Scalar { .. } => Ok(0),
             UntaggedUnion { .. } => Ok(1),
             _ => {
-                let msg = format!("get_field_count: can't handle type: {:?}, with layout: {:?}", ty, layout);
+                let msg = format!(
+                    "get_field_count: can't handle type: {:?}, with layout: {:?}",
+                    ty,
+                    layout
+                );
                 err!(Unimplemented(msg))
             }
         }
     }
 
-    pub(super) fn eval_operand_to_primval(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, PrimVal> {
+    pub(super) fn eval_operand_to_primval(
+        &mut self,
+        op: &mir::Operand<'tcx>,
+    ) -> EvalResult<'tcx, PrimVal> {
         let value = self.eval_operand(op)?;
         let ty = self.operand_ty(op);
         self.value_to_primval(value, ty)
@@ -1042,7 +1221,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
                     Literal::Item { def_id, substs } => {
                         let instance = self.resolve_associated_const(def_id, substs);
-                        let cid = GlobalId { instance, promoted: None };
+                        let cid = GlobalId {
+                            instance,
+                            promoted: None,
+                        };
                         Value::ByRef(*self.globals.get(&cid).expect("static/const not cached"))
                     }
 
@@ -1069,7 +1251,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     fn copy(&mut self, src: Pointer, dest: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx> {
-        let size = self.type_size(ty)?.expect("cannot copy from an unsized type");
+        let size = self.type_size(ty)?.expect(
+            "cannot copy from an unsized type",
+        );
         let align = self.type_align(ty)?;
         self.memory.copy(src, dest, size, align, false)?;
         Ok(())
@@ -1090,24 +1274,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         })
     }
 
-    pub fn force_allocation(
-        &mut self,
-        lvalue: Lvalue,
-    ) -> EvalResult<'tcx, Lvalue> {
+    pub fn force_allocation(&mut self, lvalue: Lvalue) -> EvalResult<'tcx, Lvalue> {
         let new_lvalue = match lvalue {
             Lvalue::Local { frame, local } => {
                 // -1 since we don't store the return value
                 match self.stack[frame].locals[local.index() - 1] {
                     None => return err!(DeadLocal),
                     Some(Value::ByRef(ptr)) => {
-                        Lvalue::Ptr { ptr, extra: LvalueExtra::None }
-                    },
+                        Lvalue::Ptr {
+                            ptr,
+                            extra: LvalueExtra::None,
+                        }
+                    }
                     Some(val) => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
-                        self.stack[frame].locals[local.index() - 1] = Some(Value::by_ref(ptr.into())); // it stays live
+                        self.stack[frame].locals[local.index() - 1] =
+                            Some(Value::by_ref(ptr.into())); // it stays live
                         self.write_value_to_ptr(val, ptr.into(), ty)?;
                         Lvalue::from_ptr(ptr)
                     }
@@ -1119,7 +1304,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// ensures this Value is not a ByRef
-    pub(super) fn follow_by_ref_value(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(super) fn follow_by_ref_value(
+        &mut self,
+        value: Value,
+        ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Value> {
         match value {
             Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                 self.read_maybe_aligned(aligned, |ectx| ectx.read_value(ptr, ty))
@@ -1130,7 +1319,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn value_to_primval(&mut self, value: Value, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {
-            Value::ByRef{..} => bug!("follow_by_ref_value can't result in `ByRef`"),
+            Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
                 self.ensure_valid_value(primval, ty)?;
@@ -1141,20 +1330,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub fn write_null(
-        &mut self,
-        dest: Lvalue,
-        dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx> {
+    pub fn write_null(&mut self, dest: Lvalue, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
         self.write_primval(dest, PrimVal::Bytes(0), dest_ty)
     }
 
-    pub fn write_ptr(
-        &mut self,
-        dest: Lvalue,
-        val: Pointer,
-        dest_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx> {
+    pub fn write_ptr(&mut self, dest: Lvalue, val: Pointer, dest_ty: Ty<'tcx>) -> EvalResult<'tcx> {
         self.write_value(val.to_value(), dest, dest_ty)
     }
 
@@ -1179,10 +1359,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // correct if we never look at this data with the wrong type.
 
         match dest {
-            Lvalue::Ptr { ptr: PtrAndAlign { ptr, aligned }, extra } => {
+            Lvalue::Ptr {
+                ptr: PtrAndAlign { ptr, aligned },
+                extra,
+            } => {
                 assert_eq!(extra, LvalueExtra::None);
-                self.write_maybe_aligned_mut(aligned,
-                    |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty))
+                self.write_maybe_aligned_mut(
+                    aligned,
+                    |ectx| ectx.write_value_to_ptr(src_val, ptr, dest_ty),
+                )
             }
 
             Lvalue::Local { frame, local } => {
@@ -1205,7 +1390,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         old_dest_val: Value,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        if let Value::ByRef(PtrAndAlign { ptr: dest_ptr, aligned }) = old_dest_val {
+        if let Value::ByRef(PtrAndAlign {
+                                ptr: dest_ptr,
+                                aligned,
+                            }) = old_dest_val
+        {
             // If the value is already `ByRef` (that is, backed by an `Allocation`),
             // then we must write the new value into this allocation, because there may be
             // other pointers into the allocation. These other pointers are logically
@@ -1213,10 +1402,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             //
             // Thus, it would be an error to replace the `ByRef` with a `ByVal`, unless we
             // knew for certain that there were no outstanding pointers to this allocation.
-            self.write_maybe_aligned_mut(aligned,
-                |ectx| ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty))?;
+            self.write_maybe_aligned_mut(aligned, |ectx| {
+                ectx.write_value_to_ptr(src_val, dest_ptr, dest_ty)
+            })?;
 
-        } else if let Value::ByRef(PtrAndAlign { ptr: src_ptr, aligned }) = src_val {
+        } else if let Value::ByRef(PtrAndAlign {
+                                       ptr: src_ptr,
+                                       aligned,
+                                   }) = src_val
+        {
             // If the value is not `ByRef`, then we know there are no pointers to it
             // and we can simply overwrite the `Value` in the locals array directly.
             //
@@ -1256,7 +1450,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match value {
             Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                 self.read_maybe_aligned_mut(aligned, |ectx| ectx.copy(ptr, dest, dest_ty))
-            },
+            }
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
                 self.memory.write_primval(dest, primval, size)
@@ -1270,7 +1464,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         a: PrimVal,
         b: PrimVal,
         ptr: MemoryPointer,
-        mut ty: Ty<'tcx>
+        mut ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let mut packed = false;
         while self.get_field_count(ty)? == 1 {
@@ -1283,16 +1477,26 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let field_1 = self.get_field_offset(ty, 1)?;
         let field_0_ty = self.get_field_ty(ty, 0)?;
         let field_1_ty = self.get_field_ty(ty, 1)?;
-        assert_eq!(field_0_ty.packed, field_1_ty.packed, "the two fields must agree on being packed");
+        assert_eq!(
+            field_0_ty.packed,
+            field_1_ty.packed,
+            "the two fields must agree on being packed"
+        );
         packed = packed || field_0_ty.packed;
-        let field_0_size = self.type_size(field_0_ty.ty)?.expect("pair element type must be sized");
-        let field_1_size = self.type_size(field_1_ty.ty)?.expect("pair element type must be sized");
+        let field_0_size = self.type_size(field_0_ty.ty)?.expect(
+            "pair element type must be sized",
+        );
+        let field_1_size = self.type_size(field_1_ty.ty)?.expect(
+            "pair element type must be sized",
+        );
         let field_0_ptr = ptr.offset(field_0.bytes(), &self)?.into();
         let field_1_ptr = ptr.offset(field_1.bytes(), &self)?.into();
-        self.write_maybe_aligned_mut(!packed,
-            |ectx| ectx.memory.write_primval(field_0_ptr, a, field_0_size))?;
-        self.write_maybe_aligned_mut(!packed,
-            |ectx| ectx.memory.write_primval(field_1_ptr, b, field_1_size))?;
+        self.write_maybe_aligned_mut(!packed, |ectx| {
+            ectx.memory.write_primval(field_0_ptr, a, field_0_size)
+        })?;
+        self.write_maybe_aligned_mut(!packed, |ectx| {
+            ectx.memory.write_primval(field_1_ptr, b, field_1_size)
+        })?;
         Ok(())
     }
 
@@ -1388,8 +1592,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match ty.sty {
             ty::TyBool if val.to_bytes()? > 1 => err!(InvalidBool),
 
-            ty::TyChar if ::std::char::from_u32(val.to_bytes()? as u32).is_none()
-                => err!(InvalidChar(val.to_bytes()? as u32 as u128)),
+            ty::TyChar if ::std::char::from_u32(val.to_bytes()? as u32).is_none() => {
+                err!(InvalidChar(val.to_bytes()? as u32 as u128))
+            }
 
             _ => Ok(()),
         }
@@ -1403,7 +1608,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub(crate) fn read_ptr(&self, ptr: MemoryPointer, pointee_ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub(crate) fn read_ptr(
+        &self,
+        ptr: MemoryPointer,
+        pointee_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Value> {
         let p = self.memory.read_ptr(ptr)?;
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
@@ -1411,9 +1620,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             trace!("reading fat pointer extra of type {}", pointee_ty);
             let extra = ptr.offset(self.memory.pointer_size(), self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
-                ty::TyDynamic(..) => Ok(p.to_value_with_vtable(self.memory.read_ptr(extra)?.to_ptr()?)),
-                ty::TySlice(..) |
-                ty::TyStr => Ok(p.to_value_with_len(self.memory.read_usize(extra)?)),
+                ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
+                    self.memory.read_ptr(extra)?.to_ptr()?,
+                )),
+                ty::TySlice(..) | ty::TyStr => Ok(
+                    p.to_value_with_len(self.memory.read_usize(extra)?),
+                ),
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             }
         }
@@ -1466,7 +1678,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
                 // for consistency's sake, we use the same code as above
                 match self.memory.read_uint(ptr.to_ptr()?, size) {
-                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) if size == self.memory.pointer_size() => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
+                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. })
+                        if size == self.memory.pointer_size() => {
+                        self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval()
+                    }
                     other => PrimVal::from_u128(other?),
                 }
             }
@@ -1493,7 +1708,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 } else {
                     return Ok(None);
                 }
-            },
+            }
 
             _ => return Ok(None),
         };
@@ -1540,14 +1755,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // traits, and hence never actually require an actual
                 // change to the vtable.
                 self.write_value(src, dest, dest_ty)
-            },
+            }
             (_, &ty::TyDynamic(ref data, _)) => {
-                let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
+                let trait_ref = data.principal().unwrap().with_self_ty(
+                    self.tcx,
+                    src_pointee_ty,
+                );
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
                 let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
                 let ptr = src.into_ptr(&self.memory)?;
                 self.write_value(ptr.to_value_with_vtable(vtable), dest, dest_ty)
-            },
+            }
 
             _ => bug!("invalid unsizing {:?} -> {:?}", src_ty, dest_ty),
         }
@@ -1563,13 +1781,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         match (&src_ty.sty, &dest_ty.sty) {
             (&ty::TyRef(_, ref s), &ty::TyRef(_, ref d)) |
             (&ty::TyRef(_, ref s), &ty::TyRawPtr(ref d)) |
-            (&ty::TyRawPtr(ref s), &ty::TyRawPtr(ref d)) => self.unsize_into_ptr(src, src_ty, dest, dest_ty, s.ty, d.ty),
+            (&ty::TyRawPtr(ref s), &ty::TyRawPtr(ref d)) => {
+                self.unsize_into_ptr(src, src_ty, dest, dest_ty, s.ty, d.ty)
+            }
             (&ty::TyAdt(def_a, substs_a), &ty::TyAdt(def_b, substs_b)) => {
                 if def_a.is_box() || def_b.is_box() {
                     if !def_a.is_box() || !def_b.is_box() {
                         panic!("invalid unsizing between {:?} -> {:?}", src_ty, dest_ty);
                     }
-                    return self.unsize_into_ptr(src, src_ty, dest, dest_ty, src_ty.boxed_ty(), dest_ty.boxed_ty());
+                    return self.unsize_into_ptr(
+                        src,
+                        src_ty,
+                        dest,
+                        dest_ty,
+                        src_ty.boxed_ty(),
+                        dest_ty.boxed_ty(),
+                    );
                 }
                 if self.ty_to_primval_kind(src_ty).is_ok() {
                     // TODO: We ignore the packed flag here
@@ -1610,12 +1837,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     if src_fty == dst_fty {
                         self.copy(src_f_ptr, dst_f_ptr.into(), src_fty)?;
                     } else {
-                        self.unsize_into(Value::by_ref(src_f_ptr), src_fty, Lvalue::from_ptr(dst_f_ptr), dst_fty)?;
+                        self.unsize_into(
+                            Value::by_ref(src_f_ptr),
+                            src_fty,
+                            Lvalue::from_ptr(dst_f_ptr),
+                            dst_fty,
+                        )?;
                     }
                 }
                 Ok(())
             }
-            _ => bug!("unsize_into: invalid conversion: {:?} -> {:?}", src_ty, dest_ty),
+            _ => {
+                bug!(
+                    "unsize_into: invalid conversion: {:?} -> {:?}",
+                    src_ty,
+                    dest_ty
+                )
+            }
         }
     }
 
@@ -1631,27 +1869,36 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 write!(msg, ":").unwrap();
 
                 match self.stack[frame].get_local(local) {
-                    Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..} ) => {
+                    Err(EvalError { kind: EvalErrorKind::DeadLocal, .. }) => {
                         write!(msg, " is dead").unwrap();
                     }
                     Err(err) => {
                         panic!("Failed to access local: {:?}", err);
                     }
-                    Ok(Value::ByRef(PtrAndAlign{ ptr, aligned })) => match ptr.into_inner_primval() {
-                        PrimVal::Ptr(ptr) => {
-                            write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " }).unwrap();
-                            allocs.push(ptr.alloc_id);
-                        },
-                        ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
-                    },
+                    Ok(Value::ByRef(PtrAndAlign { ptr, aligned })) => {
+                        match ptr.into_inner_primval() {
+                            PrimVal::Ptr(ptr) => {
+                                write!(msg, " by {}ref:", if aligned { "" } else { "unaligned " })
+                                    .unwrap();
+                                allocs.push(ptr.alloc_id);
+                            }
+                            ptr => write!(msg, " integral by ref: {:?}", ptr).unwrap(),
+                        }
+                    }
                     Ok(Value::ByVal(val)) => {
                         write!(msg, " {:?}", val).unwrap();
-                        if let PrimVal::Ptr(ptr) = val { allocs.push(ptr.alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val {
+                            allocs.push(ptr.alloc_id);
+                        }
                     }
                     Ok(Value::ByValPair(val1, val2)) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                        if let PrimVal::Ptr(ptr) = val1 { allocs.push(ptr.alloc_id); }
-                        if let PrimVal::Ptr(ptr) = val2 { allocs.push(ptr.alloc_id); }
+                        if let PrimVal::Ptr(ptr) = val1 {
+                            allocs.push(ptr.alloc_id);
+                        }
+                        if let PrimVal::Ptr(ptr) = val2 {
+                            allocs.push(ptr.alloc_id);
+                        }
                     }
                 }
 
@@ -1663,7 +1910,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     PrimVal::Ptr(ptr) => {
                         trace!("by {}ref:", if aligned { "" } else { "unaligned " });
                         self.memory.dump_alloc(ptr.alloc_id);
-                    },
+                    }
                     ptr => trace!(" integral by ref: {:?}", ptr),
                 }
             }
@@ -1671,13 +1918,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// Convenience function to ensure correct usage of locals
-    pub fn modify_local<F>(
-        &mut self,
-        frame: usize,
-        local: mir::Local,
-        f: F,
-    ) -> EvalResult<'tcx>
-        where F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
+    pub fn modify_local<F>(&mut self, frame: usize, local: mir::Local, f: F) -> EvalResult<'tcx>
+    where
+        F: FnOnce(&mut Self, Value) -> EvalResult<'tcx, Value>,
     {
         let val = self.stack[frame].get_local(local)?;
         let new_val = f(self, val)?;
@@ -1704,7 +1947,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             break 'frames;
                         } else if name.starts_with("backtrace::capture::Backtrace::new")
                             // debug mode produces funky symbol names
-                            || name.starts_with("backtrace::capture::{{impl}}::new") {
+                            || name.starts_with("backtrace::capture::{{impl}}::new")
+                        {
                             // don't report backtrace internals
                             skip_init = false;
                             continue 'frames;
@@ -1715,7 +1959,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     continue;
                 }
                 for symbol in frame.symbols() {
-                    write!(trace_text, "{}: " , i).unwrap();
+                    write!(trace_text, "{}: ", i).unwrap();
                     if let Some(name) = symbol.name() {
                         write!(trace_text, "{}\n", name).unwrap();
                     } else {
@@ -1745,7 +1989,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             };
             let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
             for &Frame { instance, span, .. } in self.stack().iter().rev() {
-                if self.tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+                if self.tcx.def_key(instance.def_id()).disambiguated_data.data ==
+                    DefPathData::ClosureExpr
+                {
                     err.span_note(span, "inside call to closure");
                     continue;
                 }
@@ -1817,7 +2063,7 @@ pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> 
 }
 
 /// FIXME: expose trans::monomorphize::resolve_closure
-pub fn resolve_closure<'a, 'tcx> (
+pub fn resolve_closure<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
@@ -1826,7 +2072,7 @@ pub fn resolve_closure<'a, 'tcx> (
     let actual_kind = tcx.closure_kind(def_id);
     match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
         Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
-        _ => ty::Instance::new(def_id, substs.substs)
+        _ => ty::Instance::new(def_id, substs.substs),
     }
 }
 
@@ -1835,40 +2081,39 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     closure_did: DefId,
     substs: ty::ClosureSubsts<'tcx>,
 ) -> ty::Instance<'tcx> {
-    debug!("fn_once_adapter_shim({:?}, {:?})",
-           closure_did,
-           substs);
+    debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
     let fn_once = tcx.lang_items.fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)
-        .unwrap().def_id;
+        .unwrap()
+        .def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
-    let self_ty = tcx.mk_closure_from_closure_substs(
-        closure_did, substs);
+    let self_ty = tcx.mk_closure_from_closure_substs(closure_did, substs);
 
     let sig = tcx.fn_sig(closure_did).subst(tcx, substs.substs);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs([
-        Kind::from(self_ty),
-        Kind::from(sig.inputs()[0]),
-    ].iter().cloned());
+    let substs = tcx.mk_substs(
+        [Kind::from(self_ty), Kind::from(sig.inputs()[0])]
+            .iter()
+            .cloned(),
+    );
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     ty::Instance { def, substs }
 }
 
-fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
-                              trait_closure_kind: ty::ClosureKind)
-                              -> Result<bool, ()>
-{
+fn needs_fn_once_adapter_shim(
+    actual_closure_kind: ty::ClosureKind,
+    trait_closure_kind: ty::ClosureKind,
+) -> Result<bool, ()> {
     match (actual_closure_kind, trait_closure_kind) {
         (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
         (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
         (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
             // No adapter needed.
-           Ok(false)
+            Ok(false)
         }
         (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
@@ -1897,10 +2142,9 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
 pub fn resolve<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    substs: &'tcx Substs<'tcx>
+    substs: &'tcx Substs<'tcx>,
 ) -> ty::Instance<'tcx> {
-    debug!("resolve(def_id={:?}, substs={:?})",
-           def_id, substs);
+    debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl");
         let item = tcx.associated_item(def_id);
@@ -1908,12 +2152,11 @@ pub fn resolve<'a, 'tcx>(
     } else {
         let item_type = def_ty(tcx, def_id, substs);
         let def = match item_type.sty {
-            ty::TyFnDef(..) if {
-                    let f = item_type.fn_sig(tcx);
-                    f.abi() == Abi::RustIntrinsic ||
-                    f.abi() == Abi::PlatformIntrinsic
-                } =>
-            {
+            ty::TyFnDef(..)
+                if {
+                       let f = item_type.fn_sig(tcx);
+                       f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic
+                   } => {
                 debug!(" => intrinsic");
                 ty::InstanceDef::Intrinsic(def_id)
             }
@@ -1935,8 +2178,12 @@ pub fn resolve<'a, 'tcx>(
         };
         ty::Instance { def, substs }
     };
-    debug!("resolve(def_id={:?}, substs={:?}) = {}",
-           def_id, substs, result);
+    debug!(
+        "resolve(def_id={:?}, substs={:?}) = {}",
+        def_id,
+        substs,
+        result
+    );
     result
 }
 
@@ -1969,7 +2216,7 @@ pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bo
                 true
             }
         }
-        _ => true
+        _ => true,
     }
 }
 
@@ -1977,13 +2224,17 @@ fn resolve_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_item: &ty::AssociatedItem,
     trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>
+    rcvr_substs: &'tcx Substs<'tcx>,
 ) -> ty::Instance<'tcx> {
     let def_id = trait_item.def_id;
-    debug!("resolve_associated_item(trait_item={:?}, \
+    debug!(
+        "resolve_associated_item(trait_item={:?}, \
                                     trait_id={:?}, \
                                     rcvr_substs={:?})",
-           def_id, trait_id, rcvr_substs);
+        def_id,
+        trait_id,
+        rcvr_substs
+    );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
     let vtbl = fulfill_obligation(tcx, DUMMY_SP, ty::Binder(trait_ref));
@@ -1992,56 +2243,64 @@ fn resolve_associated_item<'a, 'tcx>(
     // the actual function:
     match vtbl {
         ::rustc::traits::VtableImpl(impl_data) => {
-            let (def_id, substs) = ::rustc::traits::find_associated_item(
-                tcx, trait_item, rcvr_substs, &impl_data);
+            let (def_id, substs) =
+                ::rustc::traits::find_associated_item(tcx, trait_item, rcvr_substs, &impl_data);
             let substs = tcx.erase_regions(&substs);
             ty::Instance::new(def_id, substs)
         }
         ::rustc::traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-            resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
-                            trait_closure_kind)
+            resolve_closure(
+                tcx,
+                closure_data.closure_def_id,
+                closure_data.substs,
+                trait_closure_kind,
+            )
         }
         ::rustc::traits::VtableFnPointer(ref data) => {
             ty::Instance {
                 def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
-                substs: rcvr_substs
+                substs: rcvr_substs,
             }
         }
         ::rustc::traits::VtableObject(ref data) => {
             let index = tcx.get_vtable_index_of_object_method(data, def_id);
             ty::Instance {
                 def: ty::InstanceDef::Virtual(def_id, index),
-                substs: rcvr_substs
+                substs: rcvr_substs,
             }
         }
-        _ => {
-            bug!("static call to invalid vtable: {:?}", vtbl)
-        }
+        _ => bug!("static call to invalid vtable: {:?}", vtbl),
     }
 }
 
-pub fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        def_id: DefId,
-                        substs: &'tcx Substs<'tcx>)
-                        -> Ty<'tcx>
-{
+pub fn def_ty<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+) -> Ty<'tcx> {
     let ty = tcx.type_of(def_id);
     apply_param_substs(tcx, substs, &ty)
 }
 
 /// Monomorphizes a type from the AST by first applying the in-scope
 /// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       param_substs: &Substs<'tcx>,
-                                       value: &T)
-                                       -> T
-    where T: ::rustc::infer::TransNormalize<'tcx>
+pub fn apply_param_substs<'a, 'tcx, T>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_substs: &Substs<'tcx>,
+    value: &T,
+) -> T
+where
+    T: ::rustc::infer::TransNormalize<'tcx>,
 {
-    debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
+    debug!(
+        "apply_param_substs(param_substs={:?}, value={:?})",
+        param_substs,
+        value
+    );
     let substituted = value.subst(tcx, param_substs);
     let substituted = tcx.erase_regions(&substituted);
-    AssociatedTypeNormalizer{ tcx }.fold(&substituted)
+    AssociatedTypeNormalizer { tcx }.fold(&substituted)
 }
 
 
@@ -2082,27 +2341,31 @@ fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
 /// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
 /// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                span: Span,
-                                trait_ref: ty::PolyTraitRef<'tcx>)
-                                -> traits::Vtable<'tcx, ()>
-{
+fn fulfill_obligation<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    span: Span,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+) -> traits::Vtable<'tcx, ()> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(&trait_ref);
 
-    debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-            trait_ref, trait_ref.def_id());
+    debug!(
+        "trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
+        trait_ref,
+        trait_ref.def_id()
+    );
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
     tcx.infer_ctxt().enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
 
-        let obligation_cause = traits::ObligationCause::misc(span,
-                                                            ast::DUMMY_NODE_ID);
-        let obligation = traits::Obligation::new(obligation_cause,
-                                                 ty::ParamEnv::empty(Reveal::All),
-                                                 trait_ref.to_poly_trait_predicate());
+        let obligation_cause = traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID);
+        let obligation = traits::Obligation::new(
+            obligation_cause,
+            ty::ParamEnv::empty(Reveal::All),
+            trait_ref.to_poly_trait_predicate(),
+        );
 
         let selection = match selcx.select(&obligation) {
             Ok(Some(selection)) => selection,
@@ -2113,16 +2376,24 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
-                debug!("Encountered ambiguity selecting `{:?}` during trans, \
+                debug!(
+                    "Encountered ambiguity selecting `{:?}` during trans, \
                         presuming due to overflow",
-                        trait_ref);
-                tcx.sess.span_fatal(span,
+                    trait_ref
+                );
+                tcx.sess.span_fatal(
+                    span,
                     "reached the recursion limit during monomorphization \
-                        (selection ambiguity)");
+                        (selection ambiguity)",
+                );
             }
             Err(e) => {
-                span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
-                            e, trait_ref)
+                span_bug!(
+                    span,
+                    "Encountered error `{:?}` selecting `{:?}` during trans",
+                    e,
+                    trait_ref
+                )
             }
         };
 
@@ -2133,7 +2404,10 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // inference of the impl's type parameters.
         let mut fulfill_cx = traits::FulfillmentContext::new();
         let vtable = selection.map(|predicate| {
-            debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
+            debug!(
+                "fulfill_obligation: register_predicate_obligation {:?}",
+                predicate
+            );
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
         let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
@@ -2146,8 +2420,7 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub fn resolve_drop_in_place<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
-) -> ty::Instance<'tcx>
-{
+) -> ty::Instance<'tcx> {
     let def_id = tcx.require_lang_item(::rustc::middle::lang_items::DropInPlaceFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(ty)]);
     resolve(tcx, def_id, substs)

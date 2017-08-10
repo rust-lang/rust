@@ -4,9 +4,5 @@ pub fn main() {
 }
 
 fn fib(n: usize) -> usize {
-    if n <= 2 {
-        1
-    } else {
-        fib(n - 1) + fib(n - 2)
-    }
+    if n <= 2 { 1 } else { fib(n - 1) + fib(n - 2) }
 }

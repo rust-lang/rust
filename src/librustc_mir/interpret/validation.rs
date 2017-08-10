@@ -8,14 +8,8 @@ use rustc::infer::InferCtxt;
 use rustc::traits::Reveal;
 use rustc::middle::region::CodeExtent;
 
-use super::{
-    EvalError, EvalResult, EvalErrorKind,
-    EvalContext, DynamicLifetime,
-    AccessKind,
-    Value,
-    Lvalue, LvalueExtra,
-    Machine,
-};
+use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
+            Lvalue, LvalueExtra, Machine};
 
 pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
 
@@ -39,7 +33,11 @@ impl ValidationMode {
 
 // Validity checks
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(crate) fn validation_op(&mut self, op: ValidationOp, operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>) -> EvalResult<'tcx> {
+    pub(crate) fn validation_op(
+        &mut self,
+        op: ValidationOp,
+        operand: &ValidationOperand<'tcx, mir::Lvalue<'tcx>>,
+    ) -> EvalResult<'tcx> {
         // If mir-emit-validate is set to 0 (i.e., disabled), we may still see validation commands
         // because other crates may have been compiled with mir-emit-validate > 0.  Ignore those
         // commands.  This makes mir-emit-validate also a flag to control whether miri will do
@@ -73,14 +71,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Now test
             let name = self.stack[self.cur_frame()].instance.to_string();
             if RE.is_match(&name) {
-                return Ok(())
+                return Ok(());
             }
         }
 
         // We need to monomorphize ty *without* erasing lifetimes
         let ty = operand.ty.subst(self.tcx, self.substs());
         let lval = self.eval_lvalue(&operand.lval)?;
-        let query = ValidationQuery { lval, ty, re: operand.re, mutbl: operand.mutbl };
+        let query = ValidationQuery {
+            lval,
+            ty,
+            re: operand.re,
+            mutbl: operand.mutbl,
+        };
 
         // Check the mode, and also perform mode-specific operations
         let mode = match op {
@@ -88,9 +91,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ValidationOp::Release => ValidationMode::ReleaseUntil(None),
             ValidationOp::Suspend(ce) => {
                 if query.mutbl == MutMutable {
-                    let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
+                    let lft = DynamicLifetime {
+                        frame: self.cur_frame(),
+                        region: Some(ce),
+                    };
                     trace!("Suspending {:?} until {:?}", query, ce);
-                    self.suspended.entry(lft).or_insert_with(Vec::new).push(query.clone());
+                    self.suspended.entry(lft).or_insert_with(Vec::new).push(
+                        query.clone(),
+                    );
                 }
                 ValidationMode::ReleaseUntil(Some(ce))
             }
@@ -101,7 +109,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn end_region(&mut self, ce: CodeExtent) -> EvalResult<'tcx> {
         self.memory.locks_lifetime_ended(Some(ce));
         // Recover suspended lvals
-        let lft = DynamicLifetime { frame: self.cur_frame(), region: Some(ce) };
+        let lft = DynamicLifetime {
+            frame: self.cur_frame(),
+            region: Some(ce),
+        };
         if let Some(queries) = self.suspended.remove(&lft) {
             for query in queries {
                 trace!("Recovering {:?} from suspension", query);
@@ -118,16 +129,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         // We copy a bunch of stuff from rustc/infer/mod.rs to be able to tweak its behavior
         fn normalize_projections_in<'a, 'gcx, 'tcx, T>(
-                self_: &InferCtxt<'a, 'gcx, 'tcx>,
-                param_env: ty::ParamEnv<'tcx>,
-                value: &T)
-                -> T::Lifted
-            where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+            self_: &InferCtxt<'a, 'gcx, 'tcx>,
+            param_env: ty::ParamEnv<'tcx>,
+            value: &T,
+        ) -> T::Lifted
+        where
+            T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
         {
             let mut selcx = traits::SelectionContext::new(self_);
             let cause = traits::ObligationCause::dummy();
-            let traits::Normalized { value: result, obligations } =
-                traits::normalize(&mut selcx, param_env, cause, value);
+            let traits::Normalized {
+                value: result,
+                obligations,
+            } = traits::normalize(&mut selcx, param_env, cause, value);
 
             let mut fulfill_cx = traits::FulfillmentContext::new();
 
@@ -139,12 +153,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
 
         fn drain_fulfillment_cx_or_panic<'a, 'gcx, 'tcx, T>(
-                                                self_: &InferCtxt<'a, 'gcx, 'tcx>,
-                                                span: Span,
-                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                                result: &T)
-                                                -> T::Lifted
-            where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+            self_: &InferCtxt<'a, 'gcx, 'tcx>,
+            span: Span,
+            fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+            result: &T,
+        ) -> T::Lifted
+        where
+            T: TypeFoldable<'tcx> + ty::Lift<'gcx>,
         {
             // In principle, we only need to do this so long as `result`
             // contains unbound type parameters. It could be a slight
@@ -152,13 +167,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             match fulfill_cx.select_all_or_error(self_) {
                 Ok(()) => { }
                 Err(errors) => {
-                    span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
-                                errors);
+                    span_bug!(
+                        span,
+                        "Encountered errors `{:?}` resolving bounds after type-checking",
+                        errors
+                    );
                 }
             }
 
             let result = self_.resolve_type_vars_if_possible(result);
-            let result = self_.tcx.fold_regions(&result, &mut false, |r, _| match *r { ty::ReVar(_) => self_.tcx.types.re_erased, _ => r });
+            let result = self_.tcx.fold_regions(
+                &result,
+                &mut false,
+                |r, _| match *r {
+                    ty::ReVar(_) => self_.tcx.types.re_erased,
+                    _ => r,
+                },
+            );
 
             match self_.tcx.lift_to_global(&result) {
                 Some(result) => result,
@@ -169,10 +194,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
 
         trait MyTransNormalize<'gcx>: TypeFoldable<'gcx> {
-            fn my_trans_normalize<'a, 'tcx>(&self,
-                                        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                        param_env: ty::ParamEnv<'tcx>)
-                                        -> Self;
+            fn my_trans_normalize<'a, 'tcx>(
+                &self,
+                infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                param_env: ty::ParamEnv<'tcx>,
+            ) -> Self;
         }
 
         macro_rules! items { ($($item:item)+) => ($($item)+) }
@@ -200,7 +226,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         );
 
         fn normalize_associated_type<'a, 'tcx, T>(self_: TyCtxt<'a, 'tcx, 'tcx>, value: &T) -> T
-            where T: MyTransNormalize<'tcx>
+        where
+            T: MyTransNormalize<'tcx>,
         {
             let param_env = ty::ParamEnv::empty(Reveal::All);
 
@@ -225,12 +252,26 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         for (idx, field) in variant.fields.iter().enumerate() {
             let field_ty = field.ty(self.tcx, subst);
             let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
-            self.validate(ValidationQuery { lval: field_lvalue, ty: field_ty, ..query }, mode)?;
+            self.validate(
+                ValidationQuery {
+                    lval: field_lvalue,
+                    ty: field_ty,
+                    ..query
+                },
+                mode,
+            )?;
         }
         Ok(())
     }
 
-    fn validate_ptr(&mut self, val: Value, pointee_ty: Ty<'tcx>, re: Option<CodeExtent>, mutbl: Mutability, mode: ValidationMode) -> EvalResult<'tcx> {
+    fn validate_ptr(
+        &mut self,
+        val: Value,
+        pointee_ty: Ty<'tcx>,
+        re: Option<CodeExtent>,
+        mutbl: Mutability,
+        mode: ValidationMode,
+    ) -> EvalResult<'tcx> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&self.memory)?;
@@ -238,30 +279,39 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         // Recurse
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
-        self.validate(ValidationQuery { lval: pointee_lvalue, ty: pointee_ty, re, mutbl }, mode)
+        self.validate(
+            ValidationQuery {
+                lval: pointee_lvalue,
+                ty: pointee_ty,
+                re,
+                mutbl,
+            },
+            mode,
+        )
     }
 
     /// Validate the lvalue at the given type. If `acquire` is false, just do a release of all write locks
     #[inline]
-    fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
-    {
+    fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx> {
         match self.try_validate(query, mode) {
             // ReleaseUntil(None) of an uninitalized variable is a NOP.  This is needed because
             // we have to release the return value of a function; due to destination-passing-style
             // the callee may directly write there.
             // TODO: Ideally we would know whether the destination is already initialized, and only
             // release if it is.  But of course that can't even always be statically determined.
-            Err(EvalError{ kind: EvalErrorKind::ReadUndefBytes, ..})
-                if mode == ValidationMode::ReleaseUntil(None)
-            => {
+            Err(EvalError { kind: EvalErrorKind::ReadUndefBytes, .. })
+                if mode == ValidationMode::ReleaseUntil(None) => {
                 return Ok(());
             }
             res => res,
         }
     }
 
-    fn try_validate(&mut self, mut query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx>
-    {
+    fn try_validate(
+        &mut self,
+        mut query: ValidationQuery<'tcx>,
+        mode: ValidationMode,
+    ) -> EvalResult<'tcx> {
         use rustc::ty::TypeVariants::*;
         use rustc::ty::RegionKind::*;
         use rustc::ty::AdtKind;
@@ -284,12 +334,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
-                    (Err(EvalError{ kind: EvalErrorKind::DeadLocal, ..}), ValidationMode::Recover(_)) => {
+                    (Err(EvalError { kind: EvalErrorKind::DeadLocal, .. }),
+                     ValidationMode::Recover(_)) => {
                         return Ok(());
                     }
-                    _ => {},
+                    _ => {}
                 }
-            },
+            }
             _ => {}
         }
 
@@ -300,12 +351,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // just assembles pieces (that each own their memory) together to a larger whole.
         // TODO: Currently, we don't acquire locks for padding and discriminants. We should.
         let is_owning = match query.ty.sty {
-            TyInt(_) | TyUint(_) | TyRawPtr(_) |
-            TyBool | TyFloat(_) | TyChar | TyStr |
+            TyInt(_) | TyUint(_) | TyRawPtr(_) | TyBool | TyFloat(_) | TyChar | TyStr |
             TyRef(..) | TyFnPtr(..) | TyFnDef(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
-            TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) | TyDynamic(..) => false,
-            TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => bug!("I got an incomplete/unnormalized type for validation"),
+            TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) |
+            TyDynamic(..) => false,
+            TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => {
+                bug!("I got an incomplete/unnormalized type for validation")
+            }
         };
         if is_owning {
             // We need to lock.  So we need memory.  So we have to force_acquire.
@@ -322,7 +375,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 None => {
                     // The only unsized typ we concider "owning" is TyStr.
-                    assert_eq!(query.ty.sty, TyStr, "Found a surprising unsized owning type");
+                    assert_eq!(
+                        query.ty.sty,
+                        TyStr,
+                        "Found a surprising unsized owning type"
+                    );
                     // The extra must be the length, in bytes.
                     match extra {
                         LvalueExtra::Length(len) => len,
@@ -334,20 +391,45 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             if len > 0 {
                 let ptr = ptr.to_ptr()?;
                 match query.mutbl {
-                    MutImmutable =>
+                    MutImmutable => {
                         if mode.acquiring() {
-                            self.memory.acquire_lock(ptr, len, query.re, AccessKind::Read)?;
+                            self.memory.acquire_lock(
+                                ptr,
+                                len,
+                                query.re,
+                                AccessKind::Read,
+                            )?;
                         }
-                        // No releasing of read locks, ever.
-                    MutMutable =>
+                    }
+                    // No releasing of read locks, ever.
+                    MutMutable => {
                         match mode {
-                            ValidationMode::Acquire =>
-                                self.memory.acquire_lock(ptr, len, query.re, AccessKind::Write)?,
-                            ValidationMode::Recover(ending_ce) =>
-                                self.memory.recover_write_lock(ptr, len, query.re, ending_ce)?,
-                            ValidationMode::ReleaseUntil(suspended_ce) =>
-                                self.memory.suspend_write_lock(ptr, len, query.re, suspended_ce)?,
+                            ValidationMode::Acquire => {
+                                self.memory.acquire_lock(
+                                    ptr,
+                                    len,
+                                    query.re,
+                                    AccessKind::Write,
+                                )?
+                            }
+                            ValidationMode::Recover(ending_ce) => {
+                                self.memory.recover_write_lock(
+                                    ptr,
+                                    len,
+                                    query.re,
+                                    ending_ce,
+                                )?
+                            }
+                            ValidationMode::ReleaseUntil(suspended_ce) => {
+                                self.memory.suspend_write_lock(
+                                    ptr,
+                                    len,
+                                    query.re,
+                                    suspended_ce,
+                                )?
+                            }
                         }
+                    }
                 }
             }
         }
@@ -362,10 +444,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
                 Ok(())
             }
-            TyNever => {
-                err!(ValidationFailure(format!("The empty type is never valid.")))
-            }
-            TyRef(region, ty::TypeAndMut { ty: pointee_ty, mutbl }) => {
+            TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
+            TyRef(region,
+                  ty::TypeAndMut {
+                      ty: pointee_ty,
+                      mutbl,
+                  }) => {
                 let val = self.read_lvalue(query.lval)?;
                 // Sharing restricts our context
                 if mutbl == MutImmutable {
@@ -378,7 +462,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         ReScope(ce) => query.re = Some(ce),
                         // It is possible for us to encounter erased lifetimes here because the lifetimes in
                         // this functions' Subst will be erased.
-                        _ => {},
+                        _ => {}
                     }
                 }
                 self.validate_ptr(val, pointee_ty, query.re, query.mutbl, mode)
@@ -388,7 +472,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.validate_ptr(val, query.ty.boxed_ty(), query.re, query.mutbl, mode)
             }
             TyFnPtr(_sig) => {
-                let ptr = self.read_lvalue(query.lval)?.into_ptr(&self.memory)?.to_ptr()?;
+                let ptr = self.read_lvalue(query.lval)?
+                    .into_ptr(&self.memory)?
+                    .to_ptr()?;
                 self.memory.get_fn(ptr)?;
                 // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 Ok(())
@@ -403,18 +489,37 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TySlice(elem_ty) => {
                 let len = match query.lval {
                     Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
-                    _ => bug!("acquire_valid of a TySlice given non-slice lvalue: {:?}", query.lval),
+                    _ => {
+                        bug!(
+                            "acquire_valid of a TySlice given non-slice lvalue: {:?}",
+                            query.lval
+                        )
+                    }
                 };
                 for i in 0..len {
                     let inner_lvalue = self.lvalue_index(query.lval, query.ty, i)?;
-                    self.validate(ValidationQuery { lval: inner_lvalue, ty: elem_ty, ..query }, mode)?;
+                    self.validate(
+                        ValidationQuery {
+                            lval: inner_lvalue,
+                            ty: elem_ty,
+                            ..query
+                        },
+                        mode,
+                    )?;
                 }
                 Ok(())
             }
             TyArray(elem_ty, len) => {
                 for i in 0..len {
                     let inner_lvalue = self.lvalue_index(query.lval, query.ty, i as u64)?;
-                    self.validate(ValidationQuery { lval: inner_lvalue, ty: elem_ty, ..query }, mode)?;
+                    self.validate(
+                        ValidationQuery {
+                            lval: inner_lvalue,
+                            ty: elem_ty,
+                            ..query
+                        },
+                        mode,
+                    )?;
                 }
                 Ok(())
             }
@@ -422,7 +527,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // Check that this is a valid vtable
                 let vtable = match query.lval {
                     Lvalue::Ptr { extra: LvalueExtra::Vtable(vtable), .. } => vtable,
-                    _ => bug!("acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}", query.lval),
+                    _ => {
+                        bug!(
+                            "acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}",
+                            query.lval
+                        )
+                    }
                 };
                 self.read_size_and_align_from_vtable(vtable)?;
                 // TODO: Check that the vtable contains all the function pointers we expect it to have.
@@ -433,7 +543,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Ok(())
             }
             TyAdt(adt, subst) => {
-                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() && query.mutbl == MutImmutable {
+                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() &&
+                    query.mutbl == MutImmutable
+                {
                     // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
                     return Ok(());
                 }
@@ -445,8 +557,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         let discr = self.read_discriminant_value(ptr, query.ty)?;
 
                         // Get variant index for discriminant
-                        let variant_idx = adt.discriminants(self.tcx)
-                            .position(|variant_discr| variant_discr.to_u128_unchecked() == discr);
+                        let variant_idx = adt.discriminants(self.tcx).position(|variant_discr| {
+                            variant_discr.to_u128_unchecked() == discr
+                        });
                         let variant_idx = match variant_idx {
                             Some(val) => val,
                             None => return err!(InvalidDiscriminant),
@@ -456,13 +569,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         if variant.fields.len() > 0 {
                             // Downcast to this variant, if needed
                             let lval = if adt.variants.len() > 1 {
-                                self.eval_lvalue_projection(query.lval, query.ty, &mir::ProjectionElem::Downcast(adt, variant_idx))?
+                                self.eval_lvalue_projection(
+                                    query.lval,
+                                    query.ty,
+                                    &mir::ProjectionElem::Downcast(adt, variant_idx),
+                                )?
                             } else {
                                 query.lval
                             };
 
                             // Recursively validate the fields
-                            self.validate_variant(ValidationQuery { lval, ..query} , variant, subst, mode)
+                            self.validate_variant(
+                                ValidationQuery { lval, ..query },
+                                variant,
+                                subst,
+                                mode,
+                            )
                         } else {
                             // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
                             Ok(())
@@ -481,20 +603,34 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyTuple(ref types, _) => {
                 for (idx, field_ty) in types.iter().enumerate() {
                     let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
-                    self.validate(ValidationQuery { lval: field_lvalue, ty: field_ty, ..query }, mode)?;
+                    self.validate(
+                        ValidationQuery {
+                            lval: field_lvalue,
+                            ty: field_ty,
+                            ..query
+                        },
+                        mode,
+                    )?;
                 }
                 Ok(())
             }
             TyClosure(def_id, ref closure_substs) => {
                 for (idx, field_ty) in closure_substs.upvar_tys(def_id, self.tcx).enumerate() {
                     let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
-                    self.validate(ValidationQuery { lval: field_lvalue, ty: field_ty, ..query }, mode)?;
+                    self.validate(
+                        ValidationQuery {
+                            lval: field_lvalue,
+                            ty: field_ty,
+                            ..query
+                        },
+                        mode,
+                    )?;
                 }
                 // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
                 // Is there other things we can/should check?  Like vtable pointers?
                 Ok(())
             }
-            _ => bug!("We already establishd that this is a type we support.")
+            _ => bug!("We already establishd that this is a type we support."),
         }
     }
 }

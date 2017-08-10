@@ -1,3 +1,2 @@
 #[inline(never)]
-pub fn main() {
-}
+pub fn main() {}
