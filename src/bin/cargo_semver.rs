@@ -5,13 +5,15 @@ extern crate cargo;
 extern crate crates_io;
 extern crate env_logger;
 extern crate getopts;
+#[macro_use]
+extern crate log;
 
 use crates_io::{Crate, Registry};
 
 use cargo::exit_with_error;
 use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
 use cargo::ops::{compile, CompileMode, CompileOptions};
-use cargo::util::{human, CargoError, CargoResult, CliError};
+use cargo::util::{CargoError, CargoResult, CliError};
 use cargo::util::config::Config;
 use cargo::util::important_paths::find_root_manifest_for_wd;
 
@@ -30,12 +32,12 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
     registry
         .search(query, 1)
         .map_err(|e|
-                 human(format!("failed to retrieve search results from the registry: {}", e)))
+                 format!("failed to retrieve search results from the registry: {}", e).into())
         .and_then(|(mut crates, _)| {
             crates
                 .drain(..)
                 .find(|krate| krate.name == query)
-                .ok_or_else(|| human(format!("failed to find a matching crate `{}`", query)))
+                .ok_or_else(|| format!("failed to find a matching crate `{}`", query).into())
         })
 }
 
@@ -60,6 +62,10 @@ impl<'a> SourceInfo<'a> {
     fn new(config: &'a Config) -> CargoResult<SourceInfo<'a>> {
         let source_id = SourceId::crates_io(config)?;
         let source = source_id.load(config);
+
+        debug!("source id: {:?}", source_id);
+        // TODO: debug!("source: {:?}", source);
+
         Ok(SourceInfo {
             id: source_id,
             source: source,
@@ -98,8 +104,11 @@ impl<'a> WorkInfo<'a> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
+        debug!("package_id: {:?}", package_id);
         let package = source.source.download(&package_id)?;
+        // TODO: debug!("package: {:?}", package);
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
+        // TODO: debug!("workspace: {:?}", workspace);
 
         Ok(WorkInfo {
             package: package,
@@ -116,7 +125,7 @@ impl<'a> WorkInfo<'a> {
         let rlib = compilation.libraries[self.package.package_id()]
             .iter()
             .find(|t| t.0.name() == name)
-            .ok_or_else(|| human("lost a build artifact"))?;
+            .ok_or_else(|| "lost a build artifact".to_owned())?;
 
         Ok((rlib.1.clone(), compilation.deps_output))
     }
@@ -134,16 +143,16 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         let name = if let Some(n) = split.next() {
             n
         } else {
-            return Err(human("spec has to be of form `name-version`".to_owned()));
+            return Err("spec has to be of form `name-version`".to_owned().into());
         };
         let version = if let Some(v) = split.next() {
             v
         } else {
-            return Err(human("spec has to be of form `name-version`".to_owned()));
+            return Err("spec has to be of form `name-version`".to_owned().into());
         };
 
         if split.next().is_some() {
-            return Err(human("spec has to be of form `name-version`".to_owned()));
+            return Err("spec has to be of form `name-version`".to_owned().into());
         }
 
         Ok((name, version))
@@ -203,17 +212,17 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
         .spawn()
-        .map_err(|e| human(format!("could not spawn rustc: {}", e)))?;
+        .map_err(|e| format!("could not spawn rustc: {}", e))?;
 
     if let Some(ref mut stdin) = child.stdin {
         stdin.write_fmt(format_args!("extern crate new; extern crate old;"))?;
     } else {
-        return Err(human("could not pipe to rustc (wtf?)"));
+        return Err("could not pipe to rustc (wtf?)".to_owned().into());
     }
 
     child
         .wait()
-        .map_err(|e| human(format!("failed to wait for rustc: {}", e)))?;
+        .map_err(|e| format!("failed to wait for rustc: {}", e))?;
 
     Ok(())
 }
@@ -233,11 +242,11 @@ fn version() {
 ///
 /// Parse CLI arguments, handle their semantics, and provide for proper error handling.
 fn main() {
-    fn err(config: &Config, e: Box<CargoError>) -> ! {
+    fn err(config: &Config, e: CargoError) -> ! {
         exit_with_error(CliError::new(e, 1), &mut config.shell());
     }
 
-    ::std::env::set_var("RUST_LOG", "debug");
+    std::env::set_var("RUST_LOG", "debug");
 
     if env_logger::init().is_err() {
         eprintln!("ERROR: could not initialize logger");
@@ -262,7 +271,7 @@ fn main() {
 
     let matches = match opts.parse(&args) {
         Ok(m) => m,
-        Err(f) => err(&config, human(f.to_string())),
+        Err(f) => err(&config, f.to_string().into()),
     };
 
     if matches.opt_present("h") {
@@ -279,14 +288,14 @@ fn main() {
         matches.opt_count("s") > 1 || matches.opt_count("S") > 1
     {
         let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed".to_owned();
-        err(&config, human(msg));
+        err(&config, msg.to_owned().into());
     }
 
     if (matches.opt_present("c") && matches.opt_present("C")) ||
         matches.opt_count("c") > 1 || matches.opt_count("C") > 1
     {
         let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed".to_owned();
-        err(&config, human(msg));
+        err(&config, msg.to_owned().into());
     }
 
     if let Err(e) = do_main(&config, &matches) {
