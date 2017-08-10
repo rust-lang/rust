@@ -3,14 +3,16 @@
 The `#[doc]` attribute lets you control various aspects of how `rustdoc` does
 its job. 
 
-The most basic job of `#[doc]` is to be the way that the text of the documentation
-is handled. That is, `///` is syntax sugar for `#[doc]`. This means that these two
+The most basic function of `#[doc]` is to handle the actual documentation
+text. That is, `///` is syntax sugar for `#[doc]`. This means that these two
 are the same:
 
 ```rust,ignore
 /// This is a doc comment.
-#[doc = "This is a doc comment."]
+#[doc = " This is a doc comment."]
 ```
+
+(Note the leading space in the attribute version.)
 
 In most cases, `///` is easier to use than `#[doc]`. One case where the latter is easier is
 when generating documentation in macros; the `collapse-docs` pass will combine multiple
@@ -22,7 +24,13 @@ when generating documentation in macros; the `collapse-docs` pass will combine m
 #[doc = "doc comment"]
 ```
 
-Which can feel more flexible.
+Which can feel more flexible. Note that this would generate this:
+
+```rust,ignore
+#[doc = "This is\n a \ndoc comment"]
+```
+
+but given that docs are rendered via Markdown, it will remove these newlines.
 
 The `doc` attribute has more options though! These don't involve the text of
 the output, but instead, various aspects of the presentation of the output.
