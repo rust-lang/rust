@@ -63,7 +63,7 @@ warning: technically breaking changes in `<new::de::value::BorrowedBytesDeserial
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for u8>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for i8>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
    --> serde-1.0.8/src/de/impls.rs:117:17
     |
 117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
@@ -91,7 +91,7 @@ warning: technically breaking changes in `<new::de::impls::<impl new::Deserializ
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::HashMap<K, V, S>>::deserialize::MapVisitor<K, V, S> as new::de::Visitor<'de>>`
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::BTreeMap<K, V>>::deserialize::MapVisitor<K, V> as new::de::Visitor<'de>>`
    --> serde-1.0.8/src/de/impls.rs:815:17
     |
 815 | /                 impl<'de, K, V $(, $typaram)*> Visitor<'de> for MapVisitor<K, V $(, $typaram)*>
@@ -665,7 +665,7 @@ warning: technically breaking changes in `<new::private::de::ContentRefDeseriali
      |
      = note: trait impl generalized or newly added (technically breaking)
 
-error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for i8>::deserialize::PrimitiveVisitor as old::de::Visitor<'de>>`
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for f32>::deserialize::PrimitiveVisitor as old::de::Visitor<'de>>`
    --> serde-1.0.0/src/de/impls.rs:117:17
     |
 117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
@@ -679,7 +679,7 @@ error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for i8>
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::collections::BTreeSet<T>>::deserialize::SeqVisitor<T> as old::de::Visitor<'de>>`
+error: breaking changes in `<old::de::impls::<impl old::Deserialize<'de> for std::collections::VecDeque<T>>::deserialize::SeqVisitor<T> as old::de::Visitor<'de>>`
    --> serde-1.0.0/src/de/impls.rs:522:17
     |
 522 | /                 impl<'de, T $(, $typaram)*> Visitor<'de> for SeqVisitor<T $(, $typaram)*>

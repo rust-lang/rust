@@ -63,8 +63,8 @@ macro_rules! full_test {
                 .args(&["semver", "-S", &old_version, "-C", &new_version])
                 .env("RUST_BACKTRACE", "full")
                 .stdin(Stdio::null())
-                // .stdout(out_pipe)
-                // .stderr(err_pipe)
+                .stdout(out_pipe)
+                .stderr(err_pipe)
                 .status()
                 .expect("could not run cargo semver")
                 .success();
@@ -77,7 +77,7 @@ macro_rules! full_test {
 
             eprintln!("path: {}", out_file);
             success &= Command::new("git")
-                .args(&["diff", "--quiet", out_file])
+                .args(&["diff", /*"--quiet",*/ out_file])
                 .status()
                 .expect("could not run git diff")
                 .success();

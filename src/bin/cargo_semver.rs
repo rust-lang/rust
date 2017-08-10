@@ -5,8 +5,6 @@ extern crate cargo;
 extern crate crates_io;
 extern crate env_logger;
 extern crate getopts;
-#[macro_use]
-extern crate log;
 
 use crates_io::{Crate, Registry};
 
@@ -63,9 +61,6 @@ impl<'a> SourceInfo<'a> {
         let source_id = SourceId::crates_io(config)?;
         let source = source_id.load(config);
 
-        debug!("source id: {:?}", source_id);
-        // TODO: debug!("source: {:?}", source);
-
         Ok(SourceInfo {
             id: source_id,
             source: source,
@@ -104,11 +99,8 @@ impl<'a> WorkInfo<'a> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
-        debug!("package_id: {:?}", package_id);
         let package = source.source.download(&package_id)?;
-        // TODO: debug!("package: {:?}", package);
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
-        // TODO: debug!("workspace: {:?}", workspace);
 
         Ok(WorkInfo {
             package: package,
@@ -125,7 +117,7 @@ impl<'a> WorkInfo<'a> {
         let rlib = compilation.libraries[self.package.package_id()]
             .iter()
             .find(|t| t.0.name() == name)
-            .ok_or_else(|| "lost a build artifact".to_owned())?;
+            .ok_or_else(|| "lost a build artifact")?;
 
         Ok((rlib.1.clone(), compilation.deps_output))
     }
@@ -143,16 +135,16 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         let name = if let Some(n) = split.next() {
             n
         } else {
-            return Err("spec has to be of form `name-version`".to_owned().into());
+            return Err("spec has to be of form `name-version`".into());
         };
         let version = if let Some(v) = split.next() {
             v
         } else {
-            return Err("spec has to be of form `name-version`".to_owned().into());
+            return Err("spec has to be of form `name-version`".into());
         };
 
         if split.next().is_some() {
-            return Err("spec has to be of form `name-version`".to_owned().into());
+            return Err("spec has to be of form `name-version`".into());
         }
 
         Ok((name, version))
@@ -217,7 +209,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     if let Some(ref mut stdin) = child.stdin {
         stdin.write_fmt(format_args!("extern crate new; extern crate old;"))?;
     } else {
-        return Err("could not pipe to rustc (wtf?)".to_owned().into());
+        return Err("could not pipe to rustc (wtf?)".into());
     }
 
     child
@@ -246,8 +238,6 @@ fn main() {
         exit_with_error(CliError::new(e, 1), &mut config.shell());
     }
 
-    std::env::set_var("RUST_LOG", "debug");
-
     if env_logger::init().is_err() {
         eprintln!("ERROR: could not initialize logger");
     }
@@ -261,8 +251,10 @@ fn main() {
     opts.optflag("d", "debug", "print command to debug and exit");
     opts.optopt("s", "stable-path", "use local path as stable/old crate", "PATH");
     opts.optopt("c", "current-path", "use local path as current/new crate", "PATH");
-    opts.optopt("S", "stable-pkg", "use a name-version string as stable/old crate", "SPEC");
-    opts.optopt("C", "current-pkg", "use a name-version string as current/new crate", "SPEC");
+    opts.optopt("S", "stable-pkg", "use a name-version string as stable/old crate",
+                "SPEC");
+    opts.optopt("C", "current-pkg", "use a name-version string as current/new crate",
+                "SPEC");
 
     let config = match Config::default() {
         Ok(cfg) => cfg,
@@ -287,15 +279,15 @@ fn main() {
     if (matches.opt_present("s") && matches.opt_present("S")) ||
         matches.opt_count("s") > 1 || matches.opt_count("S") > 1
     {
-        let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed".to_owned();
-        err(&config, msg.to_owned().into());
+        let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed";
+        err(&config, msg.into());
     }
 
     if (matches.opt_present("c") && matches.opt_present("C")) ||
         matches.opt_count("c") > 1 || matches.opt_count("C") > 1
     {
-        let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed".to_owned();
-        err(&config, msg.to_owned().into());
+        let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed";
+        err(&config, msg.into());
     }
 
     if let Err(e) = do_main(&config, &matches) {

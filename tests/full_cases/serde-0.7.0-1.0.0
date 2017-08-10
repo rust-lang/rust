@@ -209,7 +209,7 @@ warning: technically breaking changes in `new::ser::impls::<impl new::Serialize 
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15)>`
+warning: technically breaking changes in `new::ser::impls::<impl new::Serialize for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13)>`
    --> serde-1.0.0/src/ser/impls.rs:252:13
     |
 252 | /             impl<$($name),+> Serialize for ($($name,)+)
@@ -531,7 +531,7 @@ warning: technically breaking changes in `<new::de::value::UnitDeserializer<E> a
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::value::U64Deserializer<E> as std::clone::Clone>`
+warning: technically breaking changes in `<new::de::value::U8Deserializer<E> as std::clone::Clone>`
    --> serde-1.0.0/src/de/value.rs:158:18
     |
 158 |         #[derive(Clone, Debug)]
@@ -539,7 +539,7 @@ warning: technically breaking changes in `<new::de::value::U64Deserializer<E> as
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::value::U64Deserializer<E> as std::fmt::Debug>`
+warning: technically breaking changes in `<new::de::value::I8Deserializer<E> as std::fmt::Debug>`
    --> serde-1.0.0/src/de/value.rs:158:25
     |
 158 |         #[derive(Clone, Debug)]
@@ -850,7 +850,7 @@ warning: technically breaking changes in `<new::de::IgnoredAny as new::Deseriali
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for i8>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for f32>::deserialize::PrimitiveVisitor as new::de::Visitor<'de>>`
    --> serde-1.0.0/src/de/impls.rs:117:17
     |
 117 | /                 impl<'de> Visitor<'de> for PrimitiveVisitor {
@@ -990,7 +990,7 @@ warning: technically breaking changes in `new::de::impls::<impl new::Deserialize
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::BTreeSet<T>>::deserialize::SeqVisitor<T> as new::de::Visitor<'de>>`
+warning: technically breaking changes in `<new::de::impls::<impl new::Deserialize<'de> for std::collections::VecDeque<T>>::deserialize::SeqVisitor<T> as new::de::Visitor<'de>>`
    --> serde-1.0.0/src/de/impls.rs:522:17
     |
 522 | /                 impl<'de, T $(, $typaram)*> Visitor<'de> for SeqVisitor<T $(, $typaram)*>
@@ -1032,7 +1032,7 @@ warning: technically breaking changes in `new::de::impls::<impl new::Deserialize
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `<new::de::impls::ArrayVisitor<[T; 2]> as new::de::Visitor<'de>>`
+warning: technically breaking changes in `<new::de::impls::ArrayVisitor<[T; 32]> as new::de::Visitor<'de>>`
    --> serde-1.0.0/src/de/impls.rs:644:13
     |
 644 | /             impl<'de, T> Visitor<'de> for ArrayVisitor<[T; $len]>
@@ -1060,7 +1060,7 @@ warning: technically breaking changes in `<new::de::impls::TupleVisitor14<T0, T1
     |
     = note: trait impl generalized or newly added (technically breaking)
 
-warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14)>`
+warning: technically breaking changes in `new::de::impls::<impl new::Deserialize<'de> for (T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12)>`
    --> serde-1.0.0/src/de/impls.rs:759:13
     |
 759 | /             impl<'de, $($name: Deserialize<'de>),+> Deserialize<'de> for ($($name,)+) {
@@ -2908,7 +2908,7 @@ error: breaking changes in `old::de::impls::<impl old::Deserialize for std::mark
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: path changes to `BTreeSetVisitor`
+error: path changes to `LinkedListVisitor`
    --> serde-0.7.0/src/de/impls.rs:356:9
     |
 356 | /         pub struct $visitor_name<T> {
@@ -2918,7 +2918,7 @@ error: path changes to `BTreeSetVisitor`
     |
     = warning: removed definition (breaking)
 
-error: breaking changes in `<old::de::impls::LinkedListVisitor<T> as old::de::Visitor>`
+error: breaking changes in `<old::de::impls::VecDequeVisitor<T> as old::de::Visitor>`
    --> serde-0.7.0/src/de/impls.rs:369:9
     |
 369 | /         impl<T> Visitor for $visitor_name<T>
@@ -2974,7 +2974,7 @@ error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 0]>`
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `<old::de::impls::ArrayVisitor32<T> as old::de::Visitor>`
+error: breaking changes in `<old::de::impls::ArrayVisitor27<T> as old::de::Visitor>`
    --> serde-0.7.0/src/de/impls.rs:533:13
     |
 533 | /             impl<T> Visitor for $visitor<T> where T: Deserialize {
@@ -2988,7 +2988,7 @@ error: breaking changes in `<old::de::impls::ArrayVisitor32<T> as old::de::Visit
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 17]>`
+error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 7]>`
    --> serde-0.7.0/src/de/impls.rs:553:13
     |
 553 | /             impl<T> Deserialize for [T; $len]
@@ -3002,7 +3002,7 @@ error: breaking changes in `old::de::impls::<impl old::Deserialize for [T; 17]>`
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `TupleVisitor1`
+error: breaking changes in `TupleVisitor10`
    --> serde-1.0.0/src/de/impls.rs:725:13
     |
 725 | /             struct $visitor<$($name,)+> {
@@ -3022,7 +3022,7 @@ error: breaking changes in `new`
     |
     = warning: removed item in inherent impl (breaking)
 
-error: breaking changes in `<old::de::impls::TupleVisitor9<T0, T1, T2, T3, T4, T5, T6, T7, T8> as old::de::Visitor>`
+error: breaking changes in `<old::de::impls::TupleVisitor12<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> as old::de::Visitor>`
    --> serde-0.7.0/src/de/impls.rs:630:13
     |
 630 | /             impl<
@@ -3036,7 +3036,7 @@ error: breaking changes in `<old::de::impls::TupleVisitor9<T0, T1, T2, T3, T4, T
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `old::de::impls::<impl old::Deserialize for (T0, T1, T2, T3, T4, T5, T6)>`
+error: breaking changes in `old::de::impls::<impl old::Deserialize for (T0, T1, T2, T3, T4, T5, T6, T7)>`
    --> serde-0.7.0/src/de/impls.rs:653:13
     |
 653 | /             impl<
@@ -3050,7 +3050,7 @@ error: breaking changes in `old::de::impls::<impl old::Deserialize for (T0, T1, 
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: path changes to `BTreeMapVisitor`
+error: path changes to `HashMapVisitor`
    --> serde-0.7.0/src/de/impls.rs:695:9
     |
 695 | /         pub struct $visitor_name<K, V> {
@@ -3060,7 +3060,7 @@ error: path changes to `BTreeMapVisitor`
     |
     = warning: removed definition (breaking)
 
-error: breaking changes in `<old::de::impls::BTreeMapVisitor<K, V> as old::de::Visitor>`
+error: breaking changes in `<old::de::impls::HashMapVisitor<K, V> as old::de::Visitor>`
    --> serde-0.7.0/src/de/impls.rs:708:9
     |
 708 | /         impl<K, V> Visitor for $visitor_name<K, V>
@@ -3074,7 +3074,7 @@ error: breaking changes in `<old::de::impls::BTreeMapVisitor<K, V> as old::de::V
     |
     = warning: trait impl specialized or removed (breaking)
 
-error: breaking changes in `old::de::impls::<impl old::Deserialize for std::collections::HashMap<K, V>>`
+error: breaking changes in `old::de::impls::<impl old::Deserialize for std::collections::BTreeMap<K, V>>`
    --> serde-0.7.0/src/de/impls.rs:737:9
     |
 737 | /         impl<K, V> Deserialize for $ty
@@ -3262,7 +3262,7 @@ warning: variant with no public fields changed to a struct variant (breaking)
 123 | | }
     | |_^
 
-error: breaking changes in `F32Deserializer`
+error: breaking changes in `I8Deserializer`
    --> serde-1.0.0/src/de/value.rs:159:9
     |
 159 | /         pub struct $name<E> {
@@ -4070,7 +4070,7 @@ error: path changes to `SeqIteratorVisitor`
     |
     = warning: removed definition (breaking)
 
-error: path changes to `TupleVisitor8`
+error: path changes to `TupleVisitor2`
    --> serde-0.7.0/src/ser/impls.rs:377:13
     |
 377 | /             pub struct $TupleVisitor<'a, $($T: 'a),+> {

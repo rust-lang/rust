@@ -1,0 +1,171 @@
+version bump: 0.3.4 -> (technically breaking) -> 0.4.0
+warning: technically breaking changes in `<new::LogLevel as std::hash::Hash>`
+   --> log-0.3.8/src/lib.rs:266:27
+    |
+266 | #[derive(Copy, Eq, Debug, Hash)]
+    |                           ^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLevelFilter as std::hash::Hash>`
+   --> log-0.3.8/src/lib.rs:410:27
+    |
+410 | #[derive(Copy, Eq, Debug, Hash)]
+    |                           ^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogRecord<'a> as std::fmt::Debug>`
+   --> log-0.3.8/src/lib.rs:517:10
+    |
+517 | #[derive(Debug)]
+    |          ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::Eq>`
+   --> log-0.3.8/src/lib.rs:552:10
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |          ^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::PartialEq>`
+   --> log-0.3.8/src/lib.rs:552:14
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |              ^^^^^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::Ord>`
+   --> log-0.3.8/src/lib.rs:552:25
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |                         ^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::cmp::PartialOrd>`
+   --> log-0.3.8/src/lib.rs:552:30
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |                              ^^^^^^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::hash::Hash>`
+   --> log-0.3.8/src/lib.rs:552:42
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |                                          ^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogMetadata<'a> as std::fmt::Debug>`
+   --> log-0.3.8/src/lib.rs:552:48
+    |
+552 | #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+    |                                                ^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::NopLogger as new::Log>`
+   --> log-0.3.8/src/lib.rs:591:1
+    |
+591 | / impl Log for NopLogger {
+592 | |     fn enabled(&self, _: &LogMetadata) -> bool { false }
+593 | |
+594 | |     fn log(&self, _: &LogRecord) {}
+595 | | }
+    | |_^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLocation as std::cmp::Eq>`
+   --> log-0.3.8/src/lib.rs:604:30
+    |
+604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    |                              ^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLocation as std::cmp::PartialEq>`
+   --> log-0.3.8/src/lib.rs:604:34
+    |
+604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    |                                  ^^^^^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLocation as std::cmp::Ord>`
+   --> log-0.3.8/src/lib.rs:604:45
+    |
+604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    |                                             ^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLocation as std::cmp::PartialOrd>`
+   --> log-0.3.8/src/lib.rs:604:50
+    |
+604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    |                                                  ^^^^^^^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: technically breaking changes in `<new::LogLocation as std::hash::Hash>`
+   --> log-0.3.8/src/lib.rs:604:62
+    |
+604 | #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    |                                                              ^^^^
+    |
+    = note: trait impl generalized or newly added (technically breaking)
+
+warning: path changes to `set_logger_raw`
+   --> log-0.3.8/src/lib.rs:713:1
+    |
+713 | / pub unsafe fn set_logger_raw<M>(make_logger: M) -> Result<(), SetLoggerError>
+714 | |         where M: FnOnce(MaxLogLevelFilter) -> *const Log {
+715 | |     if STATE.compare_and_swap(UNINITIALIZED, INITIALIZING,
+716 | |                               Ordering::SeqCst) != UNINITIALIZED {
+...   |
+722 | |     Ok(())
+723 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `shutdown_logger`
+   --> log-0.3.8/src/lib.rs:736:1
+    |
+736 | / pub fn shutdown_logger() -> Result<Box<Log>, ShutdownLoggerError> {
+737 | |     shutdown_logger_raw().map(|l| unsafe { mem::transmute(l) })
+738 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `shutdown_logger_raw`
+   --> log-0.3.8/src/lib.rs:754:1
+    |
+754 | / pub fn shutdown_logger_raw() -> Result<*const Log, ShutdownLoggerError> {
+755 | |     // Set the global log level to stop other thread from logging
+756 | |     MAX_LOG_LEVEL_FILTER.store(0, Ordering::SeqCst);
+757 | |
+...   |
+772 | |     }
+773 | | }
+    | |_^
+    |
+    = note: added definition (technically breaking)
+
+warning: path changes to `ShutdownLoggerError`
+   --> log-0.3.8/src/lib.rs:797:1
+    |
+797 | pub struct ShutdownLoggerError(());
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: added definition (technically breaking)
+
