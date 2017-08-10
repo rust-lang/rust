@@ -37,20 +37,28 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         use rustc::mir::BinOp::*;
         let usize = PrimValKind::from_uint_size(self.memory.pointer_size());
         let isize = PrimValKind::from_int_size(self.memory.pointer_size());
-        let left_kind  = self.ty_to_primval_kind(left_ty)?;
+        let left_kind = self.ty_to_primval_kind(left_ty)?;
         let right_kind = self.ty_to_primval_kind(right_ty)?;
         match bin_op {
             Offset if left_kind == Ptr && right_kind == usize => {
-                let pointee_ty = left_ty.builtin_deref(true, ty::LvaluePreference::NoPreference).expect("Offset called on non-ptr type").ty;
-                let ptr = self.pointer_offset(left.into(), pointee_ty, right.to_bytes()? as i64)?;
+                let pointee_ty = left_ty
+                    .builtin_deref(true, ty::LvaluePreference::NoPreference)
+                    .expect("Offset called on non-ptr type")
+                    .ty;
+                let ptr = self.pointer_offset(
+                    left.into(),
+                    pointee_ty,
+                    right.to_bytes()? as i64,
+                )?;
                 Ok(Some((ptr.into_inner_primval(), false)))
-            },
+            }
             // These work on anything
             Eq if left_kind == right_kind => {
                 let result = match (left, right) {
                     (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left == right,
                     (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left == right,
-                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return err!(ReadUndefBytes),
+                    (PrimVal::Undef, _) |
+                    (_, PrimVal::Undef) => return err!(ReadUndefBytes),
                     _ => false,
                 };
                 Ok(Some((PrimVal::from_bool(result), false)))
@@ -59,16 +67,17 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let result = match (left, right) {
                     (PrimVal::Bytes(left), PrimVal::Bytes(right)) => left != right,
                     (PrimVal::Ptr(left), PrimVal::Ptr(right)) => left != right,
-                    (PrimVal::Undef, _) | (_, PrimVal::Undef) => return err!(ReadUndefBytes),
+                    (PrimVal::Undef, _) |
+                    (_, PrimVal::Undef) => return err!(ReadUndefBytes),
                     _ => true,
                 };
                 Ok(Some((PrimVal::from_bool(result), false)))
             }
             // These need both pointers to be in the same allocation
             Lt | Le | Gt | Ge | Sub
-            if left_kind == right_kind
-            && (left_kind == Ptr || left_kind == usize || left_kind == isize)
-            && left.is_ptr() && right.is_ptr() => {
+                if left_kind == right_kind &&
+                       (left_kind == Ptr || left_kind == usize || left_kind == isize) &&
+                       left.is_ptr() && right.is_ptr() => {
                 let left = left.to_ptr()?;
                 let right = right.to_ptr()?;
                 if left.alloc_id == right.alloc_id {
@@ -77,13 +86,15 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         Le => left.offset <= right.offset,
                         Gt => left.offset > right.offset,
                         Ge => left.offset >= right.offset,
-                        Sub => return self.binary_op(
-                            Sub,
-                            PrimVal::Bytes(left.offset as u128),
-                            self.tcx.types.usize,
-                            PrimVal::Bytes(right.offset as u128),
-                            self.tcx.types.usize,
-                        ).map(Some),
+                        Sub => {
+                            return self.binary_op(
+                                Sub,
+                                PrimVal::Bytes(left.offset as u128),
+                                self.tcx.types.usize,
+                                PrimVal::Bytes(right.offset as u128),
+                                self.tcx.types.usize,
+                            ).map(Some)
+                        }
                         _ => bug!("We already established it has to be one of these operators."),
                     };
                     Ok(Some((PrimVal::from_bool(res), false)))
@@ -94,18 +105,28 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
             // These work if one operand is a pointer, the other an integer
             Add | BitAnd | Sub
-            if left_kind == right_kind && (left_kind == usize || left_kind == isize)
-            && left.is_ptr() && right.is_bytes() => {
+                if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
+                       left.is_ptr() && right.is_bytes() => {
                 // Cast to i128 is fine as we checked the kind to be ptr-sized
-                self.ptr_int_arithmetic(bin_op, left.to_ptr()?, right.to_bytes()? as i128, left_kind == isize).map(Some)
+                self.ptr_int_arithmetic(
+                    bin_op,
+                    left.to_ptr()?,
+                    right.to_bytes()? as i128,
+                    left_kind == isize,
+                ).map(Some)
             }
             Add | BitAnd
-            if left_kind == right_kind && (left_kind == usize || left_kind == isize)
-            && left.is_bytes() && right.is_ptr() => {
+                if left_kind == right_kind && (left_kind == usize || left_kind == isize) &&
+                       left.is_bytes() && right.is_ptr() => {
                 // This is a commutative operation, just swap the operands
-                self.ptr_int_arithmetic(bin_op, right.to_ptr()?, left.to_bytes()? as i128, left_kind == isize).map(Some)
+                self.ptr_int_arithmetic(
+                    bin_op,
+                    right.to_ptr()?,
+                    left.to_bytes()? as i128,
+                    left_kind == isize,
+                ).map(Some)
             }
-            _ => Ok(None)
+            _ => Ok(None),
         }
     }
 
@@ -118,7 +139,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
         use rustc::mir::BinOp::*;
 
-        fn map_to_primval((res, over) : (MemoryPointer, bool)) -> (PrimVal, bool) {
+        fn map_to_primval((res, over): (MemoryPointer, bool)) -> (PrimVal, bool) {
             (PrimVal::Ptr(res), over)
         }
 

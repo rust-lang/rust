@@ -3,12 +3,7 @@
 
 use rustc::ty::layout::HasDataLayout;
 
-use super::{
-    EvalResult,
-    Memory, MemoryPointer, HasMemory, PointerArithmetic,
-    Machine,
-    PtrAndAlign,
-};
+use super::{EvalResult, Memory, MemoryPointer, HasMemory, PointerArithmetic, Machine, PtrAndAlign};
 
 pub(super) fn bytes_to_f32(bytes: u128) -> f32 {
     f32::from_bits(bytes as u32)
@@ -70,8 +65,10 @@ impl<'tcx> Pointer {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(layout.signed_offset(b as u64, i)? as u128)))
-            },
+                Ok(Pointer::from(
+                    PrimVal::Bytes(layout.signed_offset(b as u64, i)? as u128),
+                ))
+            }
             PrimVal::Ptr(ptr) => ptr.signed_offset(i, layout).map(Pointer::from),
             PrimVal::Undef => err!(ReadUndefBytes),
         }
@@ -82,8 +79,10 @@ impl<'tcx> Pointer {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(layout.offset(b as u64, i)? as u128)))
-            },
+                Ok(Pointer::from(
+                    PrimVal::Bytes(layout.offset(b as u64, i)? as u128),
+                ))
+            }
             PrimVal::Ptr(ptr) => ptr.offset(i, layout).map(Pointer::from),
             PrimVal::Undef => err!(ReadUndefBytes),
         }
@@ -94,8 +93,10 @@ impl<'tcx> Pointer {
         match self.primval {
             PrimVal::Bytes(b) => {
                 assert_eq!(b as u64 as u128, b);
-                Ok(Pointer::from(PrimVal::Bytes(layout.wrapping_signed_offset(b as u64, i) as u128)))
-            },
+                Ok(Pointer::from(PrimVal::Bytes(
+                    layout.wrapping_signed_offset(b as u64, i) as u128,
+                )))
+            }
             PrimVal::Ptr(ptr) => Ok(Pointer::from(ptr.wrapping_signed_offset(i, layout))),
             PrimVal::Undef => err!(ReadUndefBytes),
         }
@@ -158,10 +159,9 @@ pub enum PrimValKind {
     I8, I16, I32, I64, I128,
     U8, U16, U32, U64, U128,
     F32, F64,
+    Ptr, FnPtr,
     Bool,
     Char,
-    Ptr,
-    FnPtr,
 }
 
 impl<'a, 'tcx: 'a> Value {
@@ -172,26 +172,35 @@ impl<'a, 'tcx: 'a> Value {
 
     /// Convert the value into a pointer (or a pointer-sized integer).  If the value is a ByRef,
     /// this may have to perform a load.
-    pub fn into_ptr<M: Machine<'tcx>>(&self, mem: &Memory<'a, 'tcx, M>) -> EvalResult<'tcx, Pointer> {
+    pub fn into_ptr<M: Machine<'tcx>>(
+        &self,
+        mem: &Memory<'a, 'tcx, M>,
+    ) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
         match *self {
             ByRef(PtrAndAlign { ptr, aligned }) => {
-                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr(ptr.to_ptr()?) )
-            },
-            ByVal(ptr) | ByValPair(ptr, _) => Ok(ptr.into()),
+                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr(ptr.to_ptr()?))
+            }
+            ByVal(ptr) |
+            ByValPair(ptr, _) => Ok(ptr.into()),
         }
     }
 
     pub(super) fn into_ptr_vtable_pair<M: Machine<'tcx>>(
         &self,
-        mem: &Memory<'a, 'tcx, M>
+        mem: &Memory<'a, 'tcx, M>,
     ) -> EvalResult<'tcx, (Pointer, MemoryPointer)> {
         use self::Value::*;
         match *self {
-            ByRef(PtrAndAlign { ptr: ref_ptr, aligned }) => {
+            ByRef(PtrAndAlign {
+                      ptr: ref_ptr,
+                      aligned,
+                  }) => {
                 mem.read_maybe_aligned(aligned, |mem| {
                     let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                    let vtable = mem.read_ptr(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                    let vtable = mem.read_ptr(
+                        ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?,
+                    )?;
                     Ok((ptr, vtable.to_ptr()?))
                 })
             }
@@ -203,21 +212,29 @@ impl<'a, 'tcx: 'a> Value {
         }
     }
 
-    pub(super) fn into_slice<M: Machine<'tcx>>(&self, mem: &Memory<'a, 'tcx, M>) -> EvalResult<'tcx, (Pointer, u64)> {
+    pub(super) fn into_slice<M: Machine<'tcx>>(
+        &self,
+        mem: &Memory<'a, 'tcx, M>,
+    ) -> EvalResult<'tcx, (Pointer, u64)> {
         use self::Value::*;
         match *self {
-            ByRef(PtrAndAlign { ptr: ref_ptr, aligned } ) => {
+            ByRef(PtrAndAlign {
+                      ptr: ref_ptr,
+                      aligned,
+                  }) => {
                 mem.read_maybe_aligned(aligned, |mem| {
                     let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                    let len = mem.read_usize(ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?)?;
+                    let len = mem.read_usize(
+                        ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?,
+                    )?;
                     Ok((ptr, len))
                 })
-            },
+            }
             ByValPair(ptr, val) => {
                 let len = val.to_u128()?;
                 assert_eq!(len as u64 as u128, len);
                 Ok((ptr.into(), len as u64))
-            },
+            }
             ByVal(PrimVal::Undef) => err!(ReadUndefBytes),
             ByVal(_) => bug!("expected ptr and length, got {:?}", self),
         }
@@ -349,7 +366,7 @@ impl PrimValKind {
         }
     }
 
-     pub fn is_float(self) -> bool {
+    pub fn is_float(self) -> bool {
         use self::PrimValKind::*;
         match self {
             F32 | F64 => true,

@@ -50,29 +50,42 @@ fn main() {
         let test = std::env::args().nth(2).map_or(false, |text| text == "test");
         let skip = if test { 3 } else { 2 };
 
-        let manifest_path_arg = std::env::args().skip(skip).find(|val| val.starts_with("--manifest-path="));
+        let manifest_path_arg = std::env::args().skip(skip).find(|val| {
+            val.starts_with("--manifest-path=")
+        });
 
-        let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
+        let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
+            manifest_path_arg.as_ref().map(AsRef::as_ref),
+        )
+        {
             metadata
         } else {
-            let _ = std::io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata."));
+            let _ = std::io::stderr().write_fmt(format_args!(
+                "error: Could not obtain cargo metadata."
+            ));
             std::process::exit(101);
         };
 
-        let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
+        let manifest_path = manifest_path_arg.map(|arg| {
+            PathBuf::from(Path::new(&arg["--manifest-path=".len()..]))
+        });
 
         let current_dir = std::env::current_dir();
 
-        let package_index = metadata.packages
+        let package_index = metadata
+            .packages
             .iter()
             .position(|package| {
                 let package_manifest_path = Path::new(&package.manifest_path);
                 if let Some(ref manifest_path) = manifest_path {
                     package_manifest_path == manifest_path
                 } else {
-                    let current_dir = current_dir.as_ref().expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path.parent()
-                        .expect("could not find parent directory of package manifest");
+                    let current_dir = current_dir.as_ref().expect(
+                        "could not read current directory",
+                    );
+                    let package_manifest_directory = package_manifest_path.parent().expect(
+                        "could not find parent directory of package manifest",
+                    );
                     package_manifest_directory == current_dir
                 }
             })
@@ -80,13 +93,25 @@ fn main() {
         let package = metadata.packages.remove(package_index);
         for target in package.targets {
             let args = std::env::args().skip(skip);
-            let kind = target.kind.get(0).expect("badly formatted cargo metadata: target::kind is an empty array");
+            let kind = target.kind.get(0).expect(
+                "badly formatted cargo metadata: target::kind is an empty array",
+            );
             if test && kind == "test" {
-                if let Err(code) = process(vec!["--test".to_string(), target.name].into_iter().chain(args)) {
+                if let Err(code) = process(
+                    vec!["--test".to_string(), target.name].into_iter().chain(
+                        args,
+                    ),
+                )
+                {
                     std::process::exit(code);
                 }
             } else if !test && kind == "bin" {
-                if let Err(code) = process(vec!["--bin".to_string(), target.name].into_iter().chain(args)) {
+                if let Err(code) = process(
+                    vec!["--bin".to_string(), target.name].into_iter().chain(
+                        args,
+                    ),
+                )
+                {
                     std::process::exit(code);
                 }
             }
@@ -118,7 +143,11 @@ fn main() {
         let mut args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
             std::env::args().skip(1).collect()
         } else {
-            std::env::args().skip(1).chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
+            std::env::args()
+                .skip(1)
+                .chain(Some("--sysroot".to_owned()))
+                .chain(Some(sys_root))
+                .collect()
         };
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
@@ -137,9 +166,11 @@ fn main() {
         args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
 
         match command.args(&args).status() {
-            Ok(exit) => if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            },
+            Ok(exit) => {
+                if !exit.success() {
+                    std::process::exit(exit.code().unwrap_or(42));
+                }
+            }
             Err(ref e) if miri_enabled => panic!("error during miri run: {:?}", e),
             Err(ref e) => panic!("error during rustc call: {:?}", e),
         }
@@ -147,7 +178,8 @@ fn main() {
 }
 
 fn process<I>(old_args: I) -> Result<(), i32>
-    where I: Iterator<Item = String>
+where
+    I: Iterator<Item = String>,
 {
     let mut args = vec!["rustc".to_owned()];
 

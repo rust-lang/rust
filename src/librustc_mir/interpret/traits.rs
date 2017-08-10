@@ -5,16 +5,14 @@ use rustc::ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
 use syntax::ast::{self, Mutability};
 
-use super::{
-    EvalResult,
-    EvalContext, eval_context,
-    MemoryPointer, MemoryKind,
-    Value, PrimVal,
-    Machine,
-};
+use super::{EvalResult, EvalContext, eval_context, MemoryPointer, MemoryKind, Value, PrimVal,
+            Machine};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
-    pub(crate) fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+    pub(crate) fn fulfill_obligation(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
         self.tcx.infer_ctxt().enter(|infcx| {
@@ -43,15 +41,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// The `trait_ref` encodes the erased self type. Hence if we are
     /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
     /// `trait_ref` would map `T:Trait`.
-    pub fn get_vtable(&mut self, ty: Ty<'tcx>, trait_ref: ty::PolyTraitRef<'tcx>) -> EvalResult<'tcx, MemoryPointer> {
+    pub fn get_vtable(
+        &mut self,
+        ty: Ty<'tcx>,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
         debug!("get_vtable(trait_ref={:?})", trait_ref);
 
-        let size = self.type_size(trait_ref.self_ty())?.expect("can't create a vtable for an unsized type");
+        let size = self.type_size(trait_ref.self_ty())?.expect(
+            "can't create a vtable for an unsized type",
+        );
         let align = self.type_align(trait_ref.self_ty())?;
 
         let ptr_size = self.memory.pointer_size();
         let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
-        let vtable = self.memory.allocate(ptr_size * (3 + methods.count() as u64), ptr_size, MemoryKind::UninitializedStatic)?;
+        let vtable = self.memory.allocate(
+            ptr_size * (3 + methods.count() as u64),
+            ptr_size,
+            MemoryKind::UninitializedStatic,
+        )?;
 
         let drop = eval_context::resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
@@ -71,12 +79,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         }
 
-        self.memory.mark_static_initalized(vtable.alloc_id, Mutability::Mutable)?;
+        self.memory.mark_static_initalized(
+            vtable.alloc_id,
+            Mutability::Mutable,
+        )?;
 
         Ok(vtable)
     }
 
-    pub fn read_drop_type_from_vtable(&self, vtable: MemoryPointer) -> EvalResult<'tcx, Option<ty::Instance<'tcx>>> {
+    pub fn read_drop_type_from_vtable(
+        &self,
+        vtable: MemoryPointer,
+    ) -> EvalResult<'tcx, Option<ty::Instance<'tcx>>> {
         // we don't care about the pointee type, we just want a pointer
         match self.read_ptr(vtable, self.tcx.mk_nil_ptr())? {
             // some values don't need to call a drop impl, so the value is null
@@ -86,10 +100,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
     }
 
-    pub fn read_size_and_align_from_vtable(&self, vtable: MemoryPointer) -> EvalResult<'tcx, (u64, u64)> {
+    pub fn read_size_and_align_from_vtable(
+        &self,
+        vtable: MemoryPointer,
+    ) -> EvalResult<'tcx, (u64, u64)> {
         let pointer_size = self.memory.pointer_size();
         let size = self.memory.read_usize(vtable.offset(pointer_size, self)?)?;
-        let align = self.memory.read_usize(vtable.offset(pointer_size * 2, self)?)?;
+        let align = self.memory.read_usize(
+            vtable.offset(pointer_size * 2, self)?,
+        )?;
         Ok((size, align))
     }
 
@@ -103,8 +122,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             let vtable = self.fulfill_obligation(trait_ref);
             if let traits::VtableImpl(vtable_impl) = vtable {
                 let name = self.tcx.item_name(def_id);
-                let assoc_const_opt = self.tcx.associated_items(vtable_impl.impl_def_id)
-                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
+                let assoc_const_opt = self.tcx.associated_items(vtable_impl.impl_def_id).find(
+                    |item| {
+                        item.kind == ty::AssociatedKind::Const && item.name == name
+                    },
+                );
                 if let Some(assoc_const) = assoc_const_opt {
                     return ty::Instance::new(assoc_const.def_id, vtable_impl.substs);
                 }

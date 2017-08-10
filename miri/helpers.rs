@@ -1,9 +1,4 @@
-use rustc_miri::interpret::{
-    Pointer,
-    EvalResult,
-    PrimVal,
-    EvalContext,
-};
+use rustc_miri::interpret::{Pointer, EvalResult, PrimVal, EvalContext};
 
 use rustc::ty::Ty;
 
@@ -31,7 +26,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         offset: i64,
     ) -> EvalResult<'tcx, Pointer> {
         // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
+        let pointee_size = self.type_size(pointee_ty)?.expect(
+            "cannot offset a pointer to an unsized type",
+        ) as i64;
         let offset = offset.overflowing_mul(pointee_size).0;
         ptr.wrapping_signed_offset(offset, self)
     }
@@ -47,11 +44,18 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         // We also consider the NULL pointer its own separate allocation, and all the remaining integers pointers their own
         // allocation.
 
-        if ptr.is_null()? { // NULL pointers must only be offset by 0
-            return if offset == 0 { Ok(ptr) } else { err!(InvalidNullPointerUsage) };
+        if ptr.is_null()? {
+            // NULL pointers must only be offset by 0
+            return if offset == 0 {
+                Ok(ptr)
+            } else {
+                err!(InvalidNullPointerUsage)
+            };
         }
         // FIXME: assuming here that type size is < i64::max_value()
-        let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
+        let pointee_size = self.type_size(pointee_ty)?.expect(
+            "cannot offset a pointer to an unsized type",
+        ) as i64;
         return if let Some(offset) = offset.checked_mul(pointee_size) {
             let ptr = ptr.signed_offset(offset, self)?;
             // Do not do bounds-checking for integers; they can never alias a normal pointer anyway.
@@ -64,6 +68,6 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             Ok(ptr)
         } else {
             err!(OverflowingMath)
-        }
+        };
     }
 }

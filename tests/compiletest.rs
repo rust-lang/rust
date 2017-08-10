@@ -16,7 +16,11 @@ macro_rules! eprintln {
 const MIRI_PATH: &'static str = concat!("target/", env!("PROFILE"), "/miri");
 
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
-    eprintln!("## Running compile-fail tests in {} against miri for target {}", path, target);
+    eprintln!(
+        "## Running compile-fail tests in {} against miri for target {}",
+        path,
+        target
+    );
     let mut config = compiletest::default_config();
     config.mode = "compile-fail".parse().expect("Invalid mode");
     config.rustc_path = MIRI_PATH.into();
@@ -26,7 +30,9 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
+        let sysroot = Path::new(&std::env::var("HOME").unwrap())
+            .join(".xargo")
+            .join("HOST");
         config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
         config.src_base = PathBuf::from(path.to_string());
     } else {
@@ -50,12 +56,13 @@ fn run_pass(path: &str) {
 }
 
 fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
-    let opt_str = if opt {
-        " with optimizations"
-    } else {
-        ""
-    };
-    eprintln!("## Running run-pass tests in {} against miri for target {}{}", path, target, opt_str);
+    let opt_str = if opt { " with optimizations" } else { "" };
+    eprintln!(
+        "## Running run-pass tests in {} against miri for target {}{}",
+        path,
+        target,
+        opt_str
+    );
     let mut config = compiletest::default_config();
     config.mode = "mir-opt".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
@@ -68,7 +75,9 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST");
+        let sysroot = Path::new(&std::env::var("HOME").unwrap())
+            .join(".xargo")
+            .join("HOST");
         flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
     }
     if opt {
@@ -99,7 +108,9 @@ fn for_all_targets<F: FnMut(String)>(sysroot: &Path, mut f: F) {
     let target_dir = sysroot.join("lib").join("rustlib");
     for entry in std::fs::read_dir(target_dir).expect("invalid sysroot") {
         let entry = entry.unwrap();
-        if !is_target_dir(entry.path()) { continue; }
+        if !is_target_dir(entry.path()) {
+            continue;
+        }
         let target = entry.file_name().into_string().unwrap();
         f(target);
     }
@@ -125,7 +136,9 @@ fn get_host() -> String {
         .expect("rustc not found for -vV")
         .stdout;
     let host = std::str::from_utf8(&host).expect("sysroot is not utf8");
-    let host = host.split("\nhost: ").nth(1).expect("no host: part in rustc -vV");
+    let host = host.split("\nhost: ").nth(1).expect(
+        "no host: part in rustc -vV",
+    );
     let host = host.split('\n').next().expect("no \n after host");
     String::from(host)
 }

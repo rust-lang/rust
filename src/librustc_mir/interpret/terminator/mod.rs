@@ -4,15 +4,8 @@ use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
-use super::{
-    EvalError, EvalResult, EvalErrorKind,
-    EvalContext, eval_context, TyAndPacked, PtrAndAlign,
-    Lvalue,
-    MemoryPointer,
-    PrimVal, Value,
-    Machine,
-    HasMemory,
-};
+use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, eval_context, TyAndPacked,
+            PtrAndAlign, Lvalue, MemoryPointer, PrimVal, Value, Machine, HasMemory};
 use super::eval_context::IntegerExt;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -38,7 +31,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Goto { target } => self.goto_block(target),
 
-            SwitchInt { ref discr, ref values, ref targets, .. } => {
+            SwitchInt {
+                ref discr,
+                ref values,
+                ref targets,
+                ..
+            } => {
                 // FIXME(CTFE): forbid branching
                 let discr_val = self.eval_operand(discr)?;
                 let discr_ty = self.operand_ty(discr);
@@ -58,7 +56,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.goto_block(target_block);
             }
 
-            Call { ref func, ref args, ref destination, .. } => {
+            Call {
+                ref func,
+                ref args,
+                ref destination,
+                ..
+            } => {
                 let destination = match *destination {
                     Some((ref lv, target)) => Some((self.eval_lvalue(lv)?, target)),
                     None => None,
@@ -80,22 +83,35 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 if !self.check_sig_compat(sig, real_sig)? {
                                     return err!(FunctionPointerTyMismatch(real_sig, sig));
                                 }
-                            },
+                            }
                             ref other => bug!("instance def ty: {:?}", other),
                         }
                         (instance, sig)
-                    },
-                    ty::TyFnDef(def_id, substs) => (eval_context::resolve(self.tcx, def_id, substs), func_ty.fn_sig(self.tcx)),
+                    }
+                    ty::TyFnDef(def_id, substs) => (
+                        eval_context::resolve(self.tcx, def_id, substs),
+                        func_ty.fn_sig(self.tcx),
+                    ),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return err!(Unimplemented(msg));
                     }
                 };
                 let sig = self.erase_lifetimes(&sig);
-                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span, sig)?;
+                self.eval_fn_call(
+                    fn_def,
+                    destination,
+                    args,
+                    terminator.source_info.span,
+                    sig,
+                )?;
             }
 
-            Drop { ref location, target, .. } => {
+            Drop {
+                ref location,
+                target,
+                ..
+            } => {
                 trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
                 // FIXME(CTFE): forbid drop in const eval
                 let lval = self.eval_lvalue(location)?;
@@ -104,10 +120,21 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ty = eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
 
                 let instance = eval_context::resolve_drop_in_place(self.tcx, ty);
-                self.drop_lvalue(lval, instance, ty, terminator.source_info.span)?;
+                self.drop_lvalue(
+                    lval,
+                    instance,
+                    ty,
+                    terminator.source_info.span,
+                )?;
             }
 
-            Assert { ref cond, expected, ref msg, target, .. } => {
+            Assert {
+                ref cond,
+                expected,
+                ref msg,
+                target,
+                ..
+            } => {
                 let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(target);
@@ -122,12 +149,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 .expect("can't eval index")
                                 .to_u64()?;
                             err!(ArrayIndexOutOfBounds(span, len, index))
-                        },
-                        mir::AssertMessage::Math(ref err) =>
-                            err!(Math(terminator.source_info.span, err.clone())),
-                    }
+                        }
+                        mir::AssertMessage::Math(ref err) => {
+                            err!(Math(terminator.source_info.span, err.clone()))
+                        }
+                    };
                 }
-            },
+            }
 
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
@@ -144,27 +172,30 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         sig: ty::FnSig<'tcx>,
         real_sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
-        fn check_ty_compat<'tcx>(
-            ty: ty::Ty<'tcx>,
-            real_ty: ty::Ty<'tcx>,
-        ) -> bool {
-            if ty == real_ty { return true; } // This is actually a fast pointer comparison
+        fn check_ty_compat<'tcx>(ty: ty::Ty<'tcx>, real_ty: ty::Ty<'tcx>) -> bool {
+            if ty == real_ty {
+                return true;
+            } // This is actually a fast pointer comparison
             return match (&ty.sty, &real_ty.sty) {
                 // Permit changing the pointer type of raw pointers and references as well as
                 // mutability of raw pointers.
                 // TODO: Should not be allowed when fat pointers are involved.
                 (&TypeVariants::TyRawPtr(_), &TypeVariants::TyRawPtr(_)) => true,
-                (&TypeVariants::TyRef(_, _), &TypeVariants::TyRef(_, _)) =>
-                    ty.is_mutable_pointer() == real_ty.is_mutable_pointer(),
+                (&TypeVariants::TyRef(_, _), &TypeVariants::TyRef(_, _)) => {
+                    ty.is_mutable_pointer() == real_ty.is_mutable_pointer()
+                }
                 // rule out everything else
-                _ => false
-            }
+                _ => false,
+            };
         }
 
-        if sig.abi == real_sig.abi &&
-            sig.variadic == real_sig.variadic &&
+        if sig.abi == real_sig.abi && sig.variadic == real_sig.variadic &&
             sig.inputs_and_output.len() == real_sig.inputs_and_output.len() &&
-            sig.inputs_and_output.iter().zip(real_sig.inputs_and_output).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
+            sig.inputs_and_output
+                .iter()
+                .zip(real_sig.inputs_and_output)
+                .all(|(ty, real_ty)| check_ty_compat(ty, real_ty))
+        {
             // Definitely good.
             return Ok(true);
         }
@@ -224,22 +255,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 M::call_intrinsic(self, instance, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
-            },
-            ty::InstanceDef::ClosureOnceShim{..} => {
+            }
+            ty::InstanceDef::ClosureOnceShim { .. } => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                if M::eval_fn_call(
-                    self,
-                    instance,
-                    destination,
-                    arg_operands,
-                    span,
-                    sig,
-                )? {
+                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
                     return Ok(());
                 }
                 let mut arg_locals = self.frame().mir.args_iter();
@@ -250,19 +274,25 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                             self.write_value(arg_val, dest, arg_ty)?;
                         }
-                    },
+                    }
                     // non capture closure as fn ptr
                     // need to inject zst ptr for closure object (aka do nothing)
                     // and need to pack arguments
                     Abi::Rust => {
-                        trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
+                        trace!(
+                            "arg_locals: {:?}",
+                            self.frame().mir.args_iter().collect::<Vec<_>>()
+                        );
                         trace!("arg_operands: {:?}", arg_operands);
                         let local = arg_locals.nth(1).unwrap();
                         for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
-                            let dest = self.eval_lvalue(&mir::Lvalue::Local(local).field(mir::Field::new(i), arg_ty))?;
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(local).field(
+                                mir::Field::new(i),
+                                arg_ty,
+                            ))?;
                             self.write_value(arg_val, dest, arg_ty)?;
                         }
-                    },
+                    }
                     _ => bug!("bad ABI for ClosureOnceShim: {:?}", sig.abi),
                 }
                 Ok(())
@@ -276,27 +306,24 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
 
                 // Push the stack frame, and potentially be entirely done if the call got hooked
-                if M::eval_fn_call(
-                    self,
-                    instance,
-                    destination,
-                    arg_operands,
-                    span,
-                    sig,
-                )? {
+                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
                     return Ok(());
                 }
 
                 // Pass the arguments
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
-                trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
+                trace!(
+                    "arg_locals: {:?}",
+                    self.frame().mir.args_iter().collect::<Vec<_>>()
+                );
                 trace!("arg_operands: {:?}", arg_operands);
                 match sig.abi {
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);
 
-                        {   // write first argument
+                        {
+                            // write first argument
                             let first_local = arg_locals.next().unwrap();
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(first_local))?;
                             let (arg_val, arg_ty) = args.remove(0);
@@ -306,37 +333,58 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         // unpack and write all other args
                         let (arg_val, arg_ty) = args.remove(0);
                         let layout = self.type_layout(arg_ty)?;
-                        if let (&ty::TyTuple(fields, _), &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout) {
+                        if let (&ty::TyTuple(fields, _),
+                                &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout)
+                        {
                             trace!("fields: {:?}", fields);
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
                                 match arg_val {
                                     Value::ByRef(PtrAndAlign { ptr, aligned }) => {
-                                        assert!(aligned, "Unaligned ByRef-values cannot occur as function arguments");
-                                        for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
+                                        assert!(
+                                            aligned,
+                                            "Unaligned ByRef-values cannot occur as function arguments"
+                                        );
+                                        for ((offset, ty), arg_local) in
+                                            offsets.zip(fields).zip(arg_locals)
+                                        {
                                             let arg = Value::by_ref(ptr.offset(offset, &self)?);
-                                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                                            trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
+                                            let dest =
+                                                self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                                            trace!(
+                                                "writing arg {:?} to {:?} (type: {})",
+                                                arg,
+                                                dest,
+                                                ty
+                                            );
                                             self.write_value(arg, dest, ty)?;
                                         }
-                                    },
-                                    Value::ByVal(PrimVal::Undef) => {},
+                                    }
+                                    Value::ByVal(PrimVal::Undef) => {}
                                     other => {
                                         assert_eq!(fields.len(), 1);
-                                        let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_locals.next().unwrap()))?;
+                                        let dest = self.eval_lvalue(&mir::Lvalue::Local(
+                                            arg_locals.next().unwrap(),
+                                        ))?;
                                         self.write_value(other, dest, fields[0])?;
                                     }
                                 }
                             } else {
                                 trace!("manual impl of rust-call ABI");
                                 // called a manual impl of a rust-call function
-                                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_locals.next().unwrap()))?;
+                                let dest = self.eval_lvalue(
+                                    &mir::Lvalue::Local(arg_locals.next().unwrap()),
+                                )?;
                                 self.write_value(arg_val, dest, arg_ty)?;
                             }
                         } else {
-                            bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
+                            bug!(
+                                "rust-call ABI tuple argument was {:?}, {:?}",
+                                arg_ty,
+                                layout
+                            );
                         }
-                    },
+                    }
                     _ => {
                         for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
@@ -345,7 +393,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
                 }
                 Ok(())
-            },
+            }
             ty::InstanceDef::DropGlue(..) => {
                 assert_eq!(arg_operands.len(), 1);
                 assert_eq!(sig.abi, Abi::Rust);
@@ -361,7 +409,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     _ => bug!("can only deref pointer types"),
                 };
                 self.drop(val, instance, pointee_type, span)
-            },
+            }
             ty::InstanceDef::FnPtrShim(..) => {
                 trace!("ABI: {}", sig.abi);
                 let mut args = Vec::new();
@@ -370,22 +418,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                if M::eval_fn_call(
-                    self,
-                    instance,
-                    destination,
-                    arg_operands,
-                    span,
-                    sig,
-                )? {
+                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
                     return Ok(());
                 }
                 let arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     Abi::Rust => {
                         args.remove(0);
-                    },
-                    Abi::RustCall => {},
+                    }
+                    Abi::RustCall => {}
                     _ => unimplemented!(),
                 };
                 for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
@@ -393,43 +434,56 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     self.write_value(arg_val, dest, arg_ty)?;
                 }
                 Ok(())
-            },
+            }
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
-                let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(&self.memory)?;
-                let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3), &self)?)?;
+                let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(
+                    &self.memory,
+                )?;
+                let fn_ptr = self.memory.read_ptr(
+                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
+                )?;
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
                 let mut arg_operands = arg_operands.to_vec();
                 let ty = self.operand_ty(&arg_operands[0]);
                 let ty = self.get_field_ty(ty, 0)?.ty; // TODO: packed flag is ignored
                 match arg_operands[0] {
-                    mir::Operand::Consume(ref mut lval) => *lval = lval.clone().field(mir::Field::new(0), ty),
+                    mir::Operand::Consume(ref mut lval) => {
+                        *lval = lval.clone().field(mir::Field::new(0), ty)
+                    }
                     _ => bug!("virtual call first arg cannot be a constant"),
                 }
                 // recurse with concrete function
-                self.eval_fn_call(
-                    instance,
-                    destination,
-                    &arg_operands,
-                    span,
-                    sig,
-                )
-            },
+                self.eval_fn_call(instance, destination, &arg_operands, span, sig)
+            }
         }
     }
 
-    pub fn read_discriminant_value(&self, adt_ptr: MemoryPointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+    pub fn read_discriminant_value(
+        &self,
+        adt_ptr: MemoryPointer,
+        adt_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         //trace!("read_discriminant_value {:#?}", adt_layout);
 
         let discr_val = match *adt_layout {
-            General { discr, .. } | CEnum { discr, signed: false, .. } => {
+            General { discr, .. } |
+            CEnum {
+                discr,
+                signed: false,
+                ..
+            } => {
                 let discr_size = discr.size().bytes();
                 self.memory.read_uint(adt_ptr, discr_size)?
             }
 
-            CEnum { discr, signed: true, .. } => {
+            CEnum {
+                discr,
+                signed: true,
+                ..
+            } => {
                 let discr_size = discr.size().bytes();
                 self.memory.read_int(adt_ptr, discr_size)? as u128
             }
@@ -437,32 +491,62 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             RawNullablePointer { nndiscr, value } => {
                 let discr_size = value.size(&self.tcx.data_layout).bytes();
                 trace!("rawnullablepointer with size {}", discr_size);
-                self.read_nonnull_discriminant_value(adt_ptr, nndiscr as u128, discr_size)?
+                self.read_nonnull_discriminant_value(
+                    adt_ptr,
+                    nndiscr as u128,
+                    discr_size,
+                )?
             }
 
-            StructWrappedNullablePointer { nndiscr, ref discrfield_source, .. } => {
-                let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(adt_ty, nndiscr, discrfield_source)?;
+            StructWrappedNullablePointer {
+                nndiscr,
+                ref discrfield_source,
+                ..
+            } => {
+                let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
+                    adt_ty,
+                    nndiscr,
+                    discrfield_source,
+                )?;
                 let nonnull = adt_ptr.offset(offset.bytes(), &*self)?;
                 trace!("struct wrapped nullable pointer type: {}", ty);
                 // only the pointer part of a fat pointer is used for this space optimization
-                let discr_size = self.type_size(ty)?.expect("bad StructWrappedNullablePointer discrfield");
-                self.read_maybe_aligned(!packed,
-                    |ectx| ectx.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size))?
+                let discr_size = self.type_size(ty)?.expect(
+                    "bad StructWrappedNullablePointer discrfield",
+                );
+                self.read_maybe_aligned(!packed, |ectx| {
+                    ectx.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size)
+                })?
             }
 
             // The discriminant_value intrinsic returns 0 for non-sum types.
-            Array { .. } | FatPointer { .. } | Scalar { .. } | Univariant { .. } |
-            Vector { .. } | UntaggedUnion { .. } => 0,
+            Array { .. } |
+            FatPointer { .. } |
+            Scalar { .. } |
+            Univariant { .. } |
+            Vector { .. } |
+            UntaggedUnion { .. } => 0,
         };
 
         Ok(discr_val)
     }
 
-    fn read_nonnull_discriminant_value(&self, ptr: MemoryPointer, nndiscr: u128, discr_size: u64) -> EvalResult<'tcx, u128> {
-        trace!("read_nonnull_discriminant_value: {:?}, {}, {}", ptr, nndiscr, discr_size);
+    fn read_nonnull_discriminant_value(
+        &self,
+        ptr: MemoryPointer,
+        nndiscr: u128,
+        discr_size: u64,
+    ) -> EvalResult<'tcx, u128> {
+        trace!(
+            "read_nonnull_discriminant_value: {:?}, {}, {}",
+            ptr,
+            nndiscr,
+            discr_size
+        );
         let not_null = match self.memory.read_uint(ptr, discr_size) {
             Ok(0) => false,
-            Ok(_) | Err(EvalError{ kind: EvalErrorKind::ReadPointerAsBytes, .. }) => true,
+            Ok(_) |
+            Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) => true,
             Err(e) => return Err(e),
         };
         assert!(nndiscr == 0 || nndiscr == 1);

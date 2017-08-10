@@ -7,9 +7,7 @@ use helpers::*;
 
 #[bench]
 fn noop(bencher: &mut Bencher) {
-    bencher.iter(|| {
-        smoke_helper::main();
-    })
+    bencher.iter(|| { smoke_helper::main(); })
 }
 
 /*
