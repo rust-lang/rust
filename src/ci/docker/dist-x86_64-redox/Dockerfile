@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys AA12E97F0881517F && \
     add-apt-repository -y 'deb https://static.redox-os.org/toolchain/apt /' && \
     apt-get update && \
-    apt-get install -y x86-64-elf-redox-gcc
+    apt-get install -y x86-64-unknown-redox-gcc
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
@@ -34,9 +34,9 @@ RUN curl -o /usr/local/bin/sccache \
       chmod +x /usr/local/bin/sccache
 
 ENV \
-    AR_x86_64_unknown_redox=x86_64-elf-redox-ar \
-    CC_x86_64_unknown_redox=x86_64-elf-redox-gcc \
-    CXX_x86_64_unknown_redox=x86_64-elf-redox-g++
+    AR_x86_64_unknown_redox=x86_64-unknown-redox-ar \
+    CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
+    CXX_x86_64_unknown_redox=x86_64-unknown-redox-g++
 
 ENV RUST_CONFIGURE_ARGS --target=x86_64-unknown-redox --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --target x86_64-unknown-redox
