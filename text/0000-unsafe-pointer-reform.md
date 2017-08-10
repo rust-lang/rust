@@ -103,10 +103,10 @@ impl<T> *(const|mut) T {
   unsafe fn read_volatile(self) -> T;
   unsafe fn read_unaligned(self) -> T;
 
-  // NOTE: name changed from the original static fn to make it
-  // easier to remember argument order
   unsafe fn copy_to(self, dest: *mut T, count: usize);
   unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize);
+  unsafe fn copy_from(self, src: *mut T, count: usize);
+  unsafe fn copy_from_nonoverlapping(self, src: *mut T, count: usize);
 }
 ```
 
@@ -125,7 +125,7 @@ impl<T> *mut T {
 }
 ```
 
-
+(see the alternatives for why we provide both copy_to and copy_from)
 
 
 ## Unsigned Offset
@@ -188,13 +188,19 @@ We could make `offset` generic so it accepts `usize` and `isize`. However we wou
 
 
 
-## `copy_from`
+## Only one of `copy_to` or `copy_from`
 
 `copy` is the only mutating `ptr` operation that doesn't write to the *first* argument. In fact, it's clearly backwards compared to C's memcpy. Instead it's ordered in analogy to `fs::copy`.
 
-Methodization could be an opportunity to "fix" this, and reorder the arguments. I don't have any strong feelings for which order is better, but I am concerned that doing this reordering will lead to developer errors. Either in translating to the new methods, or in using the method order when deciding to use the old functions.
+Methodization could be an opportunity to "fix" this, and reorder the arguments, providing only `copy_from`. However there is concern that this will lead to users doing a blind migration without checking argument order.
 
-This option should only be considered in tandem with a deprecation of `ptr::copy`. But as discussed in the following section, immediately deprecating an API along with the introduction of its replacement tends to cause a mess in the broader ecosystem.
+One possibly solution would be deprecating `ptr::copy` along with this as a "signal" that something strange has happened. But as discussed in the following section, immediately deprecating an API along with the introduction of its replacement tends to cause a mess in the broader ecosystem.
+
+On the other hand, `copy_to` isn't as idiomatic (see: `clone_from`), and there was disastisfaction in reinforcing this API design quirk.
+
+As a compromise, we opted to provide both, forcing users of `copy` to decided which they want. Ideally this will be copy_from with reversed arguments, as this is more idiomatic. Longterm we can look to deprecating `copy_to` and `ptr::copy` if desirable. Otherwise having these duplicate methods isn't a big deal (and is *technically* a bit more convenient for users with a reference and a raw pointer).
+
+
 
 
 
