@@ -27,7 +27,7 @@ use std::fs::{self, File, create_dir_all};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, ExitStatus};
+use std::process::{Command, Output, ExitStatus, Stdio};
 use std::str;
 use std::collections::HashMap;
 
@@ -500,32 +500,19 @@ actual:\n\
                 debug!("script_str = {}", script_str);
                 self.dump_output_file(&script_str, "debugger.script");
 
+                let adb_path = &self.config.adb_path;
 
-                procsrv::run("",
-                             &self.config.adb_path,
-                             None,
-                             &[
-                                 "push".to_owned(),
-                                 exe_file.to_str().unwrap().to_owned(),
-                                 self.config.adb_test_dir.clone()
-                             ],
-                             Vec::new(),
-                             None,
-                             None)
-                    .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
+                Command::new(adb_path)
+                    .arg("push")
+                    .arg(&exe_file)
+                    .arg(&self.config.adb_test_dir)
+                    .status()
+                    .expect(&format!("failed to exec `{:?}`", adb_path));
 
-                procsrv::run("",
-                             &self.config.adb_path,
-                             None,
-                             &[
-                                 "forward".to_owned(),
-                                 "tcp:5039".to_owned(),
-                                 "tcp:5039".to_owned()
-                             ],
-                             Vec::new(),
-                             None,
-                             None)
-                    .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
+                Command::new(adb_path)
+                    .args(&["forward", "tcp:5039", "tcp:5039"])
+                    .status()
+                    .expect(&format!("failed to exec `{:?}`", adb_path));
 
                 let adb_arg = format!("export LD_LIBRARY_PATH={}; \
                                        gdbserver{} :5039 {}/{}",
@@ -537,23 +524,15 @@ actual:\n\
                                       .unwrap());
 
                 debug!("adb arg: {}", adb_arg);
-                let mut process = procsrv::run_background("",
-                                                          &self.config.adb_path
-                                                          ,
-                                                          None,
-                                                          &[
-                                                              "shell".to_owned(),
-                                                              adb_arg.clone()
-                                                          ],
-                                                          Vec::new(),
-                                                          None,
-                                                          None)
-                    .expect(&format!("failed to exec `{:?}`", self.config.adb_path));
+                let mut adb = Command::new(adb_path)
+                    .args(&["shell", &adb_arg])
+                    .spawn()
+                    .expect(&format!("failed to exec `{:?}`", adb_path));
 
                 // Wait for the gdbserver to print out "Listening on port ..."
                 // at which point we know that it's started and then we can
                 // execute the debugger below.
-                let mut stdout = BufReader::new(process.stdout.take().unwrap());
+                let mut stdout = BufReader::new(adb.stdout.take().unwrap());
                 let mut line = String::new();
                 loop {
                     line.truncate(0);
@@ -574,17 +553,13 @@ actual:\n\
 
                 let mut gdb_path = tool_path;
                 gdb_path.push_str("/bin/gdb");
-                let procsrv::Result {
-                    out,
-                    err,
-                    status
-                } = procsrv::run("",
-                                 &gdb_path,
-                                 None,
-                                 &debugger_opts,
-                                 Vec::new(),
-                                 None,
-                                 None)
+                let Output {
+                    status,
+                    stdout,
+                    stderr
+                } = Command::new(&gdb_path)
+                    .args(&debugger_opts)
+                    .output()
                     .expect(&format!("failed to exec `{:?}`", gdb_path));
                 let cmdline = {
                     let cmdline = self.make_cmdline("",
@@ -596,11 +571,11 @@ actual:\n\
 
                 debugger_run_result = ProcRes {
                     status,
-                    stdout: out,
-                    stderr: err,
+                    stdout: String::from_utf8(stdout).unwrap(),
+                    stderr: String::from_utf8(stderr).unwrap(),
                     cmdline,
                 };
-                if process.kill().is_err() {
+                if adb.kill().is_err() {
                     println!("Adb process is already finished.");
                 }
             }
@@ -1367,7 +1342,46 @@ actual:\n\
                        aux_path: Option<&str>,
                        input: Option<String>,
                        working_dir: Option<String>) -> ProcRes {
-        self.program_output(lib_path, prog, aux_path, args, procenv, input, working_dir)
+        let cmdline =
+        {
+            let cmdline = self.make_cmdline(lib_path,
+                                            &prog,
+                                            &args);
+            logv(self.config, format!("executing {}", cmdline));
+            cmdline
+        };
+
+        let mut process = Command::new(&prog);
+        process
+            .args(&args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::piped());
+
+        procsrv::add_target_env(&mut process, lib_path, aux_path);
+        for (key, val) in procenv {
+            process.env(&key, &val);
+        }
+        if let Some(cwd) = working_dir {
+            process.current_dir(cwd);
+        }
+
+        let mut child = process.spawn().expect(&format!("failed to exec `{}`", prog));
+        if let Some(input) = input {
+            child.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
+        }
+        let Output { status, stdout, stderr } = child.wait_with_output().unwrap();
+
+        let result = ProcRes {
+            status,
+            stdout: String::from_utf8(stdout).unwrap(),
+            stderr: String::from_utf8(stderr).unwrap(),
+            cmdline,
+        };
+
+        self.dump_output(&result.stdout, &result.stderr);
+
+        result
     }
 
     fn make_compile_args(&self,
@@ -1551,44 +1565,6 @@ actual:\n\
                     }).collect()
             }
             None => Vec::new()
-        }
-    }
-
-    fn program_output(&self,
-                      lib_path: &str,
-                      prog: String,
-                      aux_path: Option<&str>,
-                      args: Vec<String>,
-                      env: Vec<(String, String)>,
-                      input: Option<String>,
-                      working_dir: Option<String>)
-                      -> ProcRes {
-        let cmdline =
-        {
-            let cmdline = self.make_cmdline(lib_path,
-                                            &prog,
-                                            &args);
-            logv(self.config, format!("executing {}", cmdline));
-            cmdline
-        };
-
-        let procsrv::Result {
-            out,
-            err,
-            status
-        } = procsrv::run(lib_path,
-                         &prog,
-                         aux_path,
-                         &args,
-                         env,
-                         input,
-                         working_dir).expect(&format!("failed to exec `{}`", prog));
-        self.dump_output(&out, &err);
-        ProcRes {
-            status,
-            stdout: out,
-            stderr: err,
-            cmdline,
         }
     }
 
