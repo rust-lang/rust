@@ -531,7 +531,7 @@ pub fn current() -> Thread {
 ///
 /// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
 /// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
-/// thinking about thread schedulling.
+/// thinking about thread scheduling.
 ///
 /// Note that [`channel`]s for example are implemented using this primitive.
 /// Indeed when you call `send` or `recv`, which are blocking, they will yield

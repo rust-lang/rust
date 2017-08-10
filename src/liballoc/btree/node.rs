@@ -132,7 +132,7 @@ impl<K, V> InternalNode<K, V> {
 
 /// An owned pointer to a node. This basically is either `Box<LeafNode<K, V>>` or
 /// `Box<InternalNode<K, V>>`. However, it contains no information as to which of the two types
-/// of nodes is acutally behind the box, and, partially due to this lack of information, has no
+/// of nodes is actually behind the box, and, partially due to this lack of information, has no
 /// destructor.
 struct BoxedNode<K, V> {
     ptr: Unique<LeafNode<K, V>>
@@ -264,7 +264,7 @@ impl<K, V> Root<K, V> {
 // correct variance.
 /// A reference to a node.
 ///
-/// This type has a number of paramaters that controls how it acts:
+/// This type has a number of parameters that controls how it acts:
 /// - `BorrowType`: This can be `Immut<'a>` or `Mut<'a>` for some `'a` or `Owned`.
 ///    When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`,
 ///    when this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,

@@ -31,7 +31,7 @@ use util::nodemap::{DefIdMap, FxHashMap};
 ///
 /// - Parent extraction. In particular, the graph can give you the *immediate*
 ///   parents of a given specializing impl, which is needed for extracting
-///   default items amongst other thigns. In the simple "chain" rule, every impl
+///   default items amongst other things. In the simple "chain" rule, every impl
 ///   has at most one parent.
 pub struct Graph {
     // all impls have a parent; the "root" impls have as their parent the def_id
