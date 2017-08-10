@@ -5,6 +5,8 @@ extern crate cargo;
 extern crate crates_io;
 extern crate env_logger;
 extern crate getopts;
+#[macro_use]
+extern crate log;
 
 use crates_io::{Crate, Registry};
 
@@ -61,6 +63,8 @@ impl<'a> SourceInfo<'a> {
         let source_id = SourceId::crates_io(config)?;
         let source = source_id.load(config);
 
+        debug!("source id loaded: {:?}", source_id);
+
         Ok(SourceInfo {
             id: source_id,
             source: source,
@@ -99,6 +103,7 @@ impl<'a> WorkInfo<'a> {
         // TODO: fall back to locally cached package instance, or better yet, search for it
         // first.
         let package_id = PackageId::new(info.name, info.version, &source.id)?;
+        debug!("(remote) package id: {:?}", package_id);
         let package = source.source.download(&package_id)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
@@ -130,7 +135,7 @@ impl<'a> WorkInfo<'a> {
 /// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
-    fn parse_arg(opt: &str) -> CargoResult<(&str, &str)> {
+    fn parse_arg(opt: &str) -> CargoResult<NameAndVersion> {
         let mut split = opt.split('-');
         let name = if let Some(n) = split.next() {
             n
@@ -147,16 +152,13 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
             return Err("spec has to be of form `name-version`".into());
         }
 
-        Ok((name, version))
+        Ok(NameAndVersion { name: name, version: version })
     }
 
     let mut source = SourceInfo::new(config)?;
 
     let current = if let Some(opt) = matches.opt_str("C") {
-        let (name, version) = parse_arg(&opt)?;
-
-        let info = NameAndVersion { name: name, version: version };
-        WorkInfo::remote(config, &mut source, info)?
+        WorkInfo::remote(config, &mut source, parse_arg(&opt)?)?
     } else {
         WorkInfo::local(config, matches.opt_str("c").map(PathBuf::from))?
     };
@@ -164,12 +166,12 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
     let name = current.package.name().to_owned();
 
     let (stable, stable_version) = if let Some(opt) = matches.opt_str("S") {
-        let (name, version) = parse_arg(&opt)?;
+        let info = parse_arg(&opt)?;
+        let version = info.version.to_owned();
 
-        let info = NameAndVersion { name: name, version: version };
         let work_info = WorkInfo::remote(config, &mut source, info)?;
 
-        (work_info, version.to_owned())
+        (work_info, version)
     } else if let Some(path) = matches.opt_str("s") {
         let work_info = WorkInfo::local(config, Some(PathBuf::from(path)))?;
         let version = format!("{}", work_info.package.version());
