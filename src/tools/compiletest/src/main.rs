@@ -39,7 +39,6 @@ use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod procsrv;
 pub mod util;
 mod json;
 pub mod header;
