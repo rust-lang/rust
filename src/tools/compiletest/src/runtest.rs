@@ -365,45 +365,35 @@ actual:\n\
     }
 
     fn typecheck_source(&self, src: String) -> ProcRes {
-        let args = self.make_typecheck_args();
-        self.compose_and_run_compiler(args, Some(src))
-    }
+        let mut rustc = Command::new(&self.config.rustc_path);
 
-    fn make_typecheck_args(&self) -> ProcArgs {
-        let aux_dir = self.aux_output_dir_name();
+        let out_dir = self.output_base_name().with_extension("pretty-out");
+        let _ = fs::remove_dir_all(&out_dir);
+        create_dir_all(&out_dir).unwrap();
+
         let target = if self.props.force_host {
             &*self.config.host
         } else {
             &*self.config.target
         };
 
-        let out_dir = self.output_base_name().with_extension("pretty-out");
-        let _ = fs::remove_dir_all(&out_dir);
-        create_dir_all(&out_dir).unwrap();
+        let aux_dir = self.aux_output_dir_name();
 
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let mut args = vec!["-".to_owned(),
-                            "-Zno-trans".to_owned(),
-                            "--out-dir".to_owned(),
-                            out_dir.to_str().unwrap().to_owned(),
-                            format!("--target={}", target),
-                            "-L".to_owned(),
-                            self.config.build_base.to_str().unwrap().to_owned(),
-                            "-L".to_owned(),
-                            aux_dir.to_str().unwrap().to_owned()];
+        rustc.arg("-")
+            .arg("-Zno-trans")
+            .arg("--out-dir").arg(&out_dir)
+            .arg(&format!("--target={}", target))
+            .arg("-L").arg(&self.config.build_base)
+            .arg("-L").arg(aux_dir);
+
         if let Some(revision) = self.revision {
-            args.extend(vec![
-                "--cfg".to_string(),
-                revision.to_string(),
-            ]);
+            rustc.args(&["--cfg", revision]);
         }
-        args.extend(self.split_maybe_args(&self.config.target_rustcflags));
-        args.extend(self.props.compile_flags.iter().cloned());
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        ProcArgs {
-            prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args,
-        }
+
+        rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+        rustc.args(&self.props.compile_flags);
+
+        self.compose_and_run_compiler(rustc, Some(src))
     }
 
     fn run_debuginfo_gdb_test(&self) {
@@ -1126,10 +1116,11 @@ actual:\n\
             }
             _ => {}
         }
-        let args = self.make_compile_args(extra_args,
-                                          &self.testpaths.file,
-                                          TargetLocation::ThisFile(self.make_exe_name()));
-        self.compose_and_run_compiler(args, None)
+        let ProcArgs { prog, args } = self.make_compile_args(
+            extra_args, &self.testpaths.file, TargetLocation::ThisFile(self.make_exe_name()));
+        let mut rustc = Command::new(prog);
+        rustc.args(args);
+        self.compose_and_run_compiler(rustc, None)
     }
 
     fn document(&self, out_dir: &Path) -> ProcRes {
@@ -1153,18 +1144,16 @@ actual:\n\
         }
 
         let aux_dir = self.aux_output_dir_name();
-        let mut args = vec!["-L".to_owned(),
-                            aux_dir.to_str().unwrap().to_owned(),
-                            "-o".to_owned(),
-                            out_dir.to_str().unwrap().to_owned(),
-                            self.testpaths.file.to_str().unwrap().to_owned()];
-        args.extend(self.props.compile_flags.iter().cloned());
-        let args = ProcArgs {
-            prog: self.config.rustdoc_path
-                .as_ref().expect("--rustdoc-path passed").to_str().unwrap().to_owned(),
-            args,
-        };
-        self.compose_and_run_compiler(args, None)
+
+        let rustdoc_path = self.config.rustdoc_path.as_ref().expect("--rustdoc-path passed");
+        let mut rustdoc = Command::new(rustdoc_path);
+
+        rustdoc.arg("-L").arg(aux_dir)
+            .arg("-o").arg(out_dir)
+            .arg(&self.testpaths.file)
+            .args(&self.props.compile_flags);
+
+        self.compose_and_run_compiler(rustdoc, None)
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
@@ -1247,7 +1236,7 @@ actual:\n\
         }
     }
 
-    fn compose_and_run_compiler(&self, args: ProcArgs, input: Option<String>) -> ProcRes {
+    fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         if !self.props.aux_builds.is_empty() {
             create_dir_all(&self.aux_output_dir_name()).unwrap();
         }
@@ -1307,11 +1296,7 @@ actual:\n\
             }
         }
 
-        let ProcArgs { prog, args } = args;
-        let mut rustc = Command::new(prog);
-        rustc.args(args)
-            .envs(self.props.rustc_env.clone());
-
+        rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(rustc,
                              self.config.compile_lib_path.to_str().unwrap(),
                              Some(aux_dir.to_str().unwrap()),
@@ -1681,7 +1666,10 @@ actual:\n\
                                               self.output_base_name().parent()
                                                                      .unwrap()
                                                                      .to_path_buf()));
-        self.compose_and_run_compiler(args, None)
+        let ProcArgs { prog, args } = args;
+        let mut rustc = Command::new(prog);
+        rustc.args(args);
+        self.compose_and_run_compiler(rustc, None)
     }
 
     fn check_ir_with_filecheck(&self) -> ProcRes {
