@@ -104,28 +104,15 @@ pub mod gnu {
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
     pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
-        use ptr;
-        use slice;
-        use ffi::OsStr;
+        use env;
         use os::unix::ffi::OsStrExt;
-        use libc::c_int;
 
-        extern {
-            fn _NSGetExecutablePath(buf: *mut c_char,
-                                    bufsize: *mut u32) -> c_int;
-        }
-        unsafe {
-            let mut bufsize: u32 = 0;
-            _NSGetExecutablePath(ptr::null_mut(), &mut bufsize);
-            if bufsize == 0 { return Err(io::Error::last_os_error()); }
-            let mut buffer: Vec<c_char> = Vec::with_capacity(bufsize as usize);
-            let ret = _NSGetExecutablePath(buffer.as_mut_ptr(), &mut bufsize);
-            if ret != 0 { return Err(io::Error::last_os_error()); }
-            buffer.set_len(bufsize as usize);
-            let file = fs::File::open(OsStr::from_bytes(
-                    slice::from_raw_parts(buffer.as_ptr() as *const u8, buffer.len()-1)))?;
-            Ok((buffer, file))
-        }
+        let filename = env::current_exe()?;
+        let file = fs::File::open(&filename)?;
+        let mut filename_cstr: Vec<_> = filename.as_os_str().as_bytes().iter()
+            .map(|&x| x as c_char).collect();
+        filename_cstr.push(0); // Null terminate
+        Ok((filename_cstr, file))
     }
 }
 
