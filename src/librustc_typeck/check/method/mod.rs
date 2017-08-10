@@ -58,8 +58,9 @@ pub enum MethodError<'tcx> {
     ClosureAmbiguity(// DefId of fn trait
                      DefId),
 
-    // Found an applicable method, but it is not visible.
-    PrivateMatch(Def),
+    // Found an applicable method, but it is not visible. The second argument contains a list of
+    // not-in-scope traits which may work.
+    PrivateMatch(Def, Vec<DefId>),
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.

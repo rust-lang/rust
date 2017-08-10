@@ -4016,7 +4016,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(def) => def,
             Err(error) => {
                 let def = match error {
-                    method::MethodError::PrivateMatch(def) => def,
+                    method::MethodError::PrivateMatch(def, _) => def,
                     _ => Def::Err,
                 };
                 if item_name != keywords::Invalid.name() {
