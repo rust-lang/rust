@@ -94,7 +94,63 @@ it will not.
 These forms of the `#[doc]` attribute are used on individual items, to control how
 they are documented.
 
-## `#[doc(no_inline)]`
+## `#[doc(no_inline)]`/`#[doc(inline)]`
+
+These attributes are used on `use` statements, and control where the documentation shows
+up. For example, consider this Rust code:
+
+```rust
+pub use bar::Bar;
+
+/// bar docs
+pub mod bar {
+    /// the docs for Bar
+    pub struct Bar;
+}
+```
+
+The documentation will generate a "Reexports" section, and say `pub use bar::Bar;`, where
+`Bar` is a link to its page.
+
+If we change the `use` line like this:
+
+```rust,ignore
+#[doc(inline)]
+pub use bar::Bar;
+```
+
+Instead, `Bar` will appear in a `Structs` section, just like `Bar` was defined at the
+top level, rather than `pub use`'d.
+
+Let's change our original example, by making `bar` private:
+
+```rust
+pub use bar::Bar;
+
+/// bar docs
+mod bar {
+    /// the docs for Bar
+    pub struct Bar;
+}
+```
+
+Here, because `bar` is not public, `Bar` wouldn't have its own page, so there's nowhere
+to link to. `rustdoc` will inline these definitions, and so we end up in the same case
+as the `#[doc(inline)]` above; `Bar` is in a `Structs` section, as if it were defined at
+the top level. If we add the `no_inline` form of the attribute:
+
+```rust
+#[doc(no_inline)]
+pub use bar::Bar;
+
+/// bar docs
+mod bar {
+    /// the docs for Bar
+    pub struct Bar;
+}
+```
+
+Now we'll have a `Reexports` line, and `Bar` will not link to anywhere.
 
 ## `#[doc(hidden)]`
 
