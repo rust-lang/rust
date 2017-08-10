@@ -303,6 +303,12 @@ impl Handler {
         self.continue_after_error.set(continue_after_error);
     }
 
+    // NOTE: DO NOT call this function from rustc, as it relies on `err_count` being non-zero
+    // if an error happened to avoid ICEs. This function should only be called from tools.
+    pub fn reset_err_count(&self) {
+        self.err_count.set(0);
+    }
+
     pub fn struct_dummy<'a>(&'a self) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, Level::Cancelled, "")
     }
