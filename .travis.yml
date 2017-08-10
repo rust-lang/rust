@@ -16,7 +16,7 @@ script:
 - |
   # Test plain miri
   cargo build --release --features "cargo_miri" &&
-  cargo test --release &&
+  cargo test --release --all &&
   cargo install --features "cargo_miri"
 - |
   # Test cargo miri

@@ -8,7 +8,6 @@ version = "0.1.0"
 workspace = "../.."
 
 [lib]
-test = false
 path = "lib.rs"
 
 [dependencies]

@@ -1,3 +1,5 @@
+// Validation forces more allocation; disable it.
+// compile-flags: -Zmir-emit-validate=0
 #![feature(box_syntax, custom_attribute, attr_literals)]
 #![miri(memory_size=2048)]
 
