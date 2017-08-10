@@ -499,11 +499,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // weird effect -- the diagnostic is reported as a lint, and
         // the builder which is returned is marked as canceled.
 
-        let mut err =
-            struct_span_err!(self.tcx.sess,
-                             error_span,
-                             E0276,
-                             "impl has stricter requirements than trait");
+        let msg = "impl has stricter requirements than trait";
+        let mut err = match lint_id {
+            Some(node_id) => {
+                self.tcx.struct_span_lint_node(EXTRA_REQUIREMENT_IN_IMPL,
+                                               node_id,
+                                               error_span,
+                                               msg)
+            }
+            None => {
+                struct_span_err!(self.tcx.sess,
+                                 error_span,
+                                 E0276,
+                                 "{}", msg)
+            }
+        };
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
             let span = self.tcx.sess.codemap().def_span(trait_item_span);
@@ -513,13 +523,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         err.span_label(
             error_span,
             format!("impl has extra requirement {}", requirement));
-
-        if let Some(node_id) = lint_id {
-            self.tcx.sess.add_lint_diagnostic(EXTRA_REQUIREMENT_IN_IMPL,
-                                              node_id,
-                                              (*err).clone());
-            err.cancel();
-        }
 
         err
     }

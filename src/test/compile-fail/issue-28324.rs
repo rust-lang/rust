@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(safe_extern_statics)]
+
 extern {
     static error_message_count: u32;
 }

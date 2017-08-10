@@ -79,7 +79,7 @@ pub struct Session {
     // if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<lint::LintTable>,
+    pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
     /// Set of (LintId, Option<Span>, message) tuples tracking lint
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690).
@@ -307,22 +307,15 @@ impl Session {
         self.diagnostic().unimpl(msg)
     }
 
-    pub fn add_lint<S: Into<MultiSpan>>(&self,
-                                        lint: &'static lint::Lint,
-                                        id: ast::NodeId,
-                                        sp: S,
-                                        msg: String)
-    {
-        self.lints.borrow_mut().add_lint(lint, id, sp, msg);
-    }
-
-    pub fn add_lint_diagnostic<M>(&self,
-                                  lint: &'static lint::Lint,
-                                  id: ast::NodeId,
-                                  msg: M)
-        where M: lint::IntoEarlyLint,
-    {
-        self.lints.borrow_mut().add_lint_diagnostic(lint, id, msg);
+    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
+                                           lint: &'static lint::Lint,
+                                           id: ast::NodeId,
+                                           sp: S,
+                                           msg: &str) {
+        match *self.buffered_lints.borrow_mut() {
+            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg),
+            None => bug!("can't buffer lints after HIR lowering"),
+        }
     }
 
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
@@ -708,7 +701,7 @@ pub fn build_session_(sopts: config::Options,
         local_crate_source_file,
         working_dir,
         lint_store: RefCell::new(lint::LintStore::new()),
-        lints: RefCell::new(lint::LintTable::new()),
+        buffered_lints: RefCell::new(Some(lint::LintBuffer::new())),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         plugin_attributes: RefCell::new(Vec::new()),

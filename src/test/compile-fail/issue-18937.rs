@@ -26,7 +26,7 @@ trait A<'a> {
 }
 
 impl<'a> A<'a> for B {
-    fn foo<F>(&mut self, f: F) //~ ERROR E0276
+    fn foo<F>(&mut self, f: F) //~ ERROR impl has stricter
         //~^ WARNING future release
         where F: fmt::Debug + 'static,
     {

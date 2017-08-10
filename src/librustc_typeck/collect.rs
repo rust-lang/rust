@@ -999,12 +999,12 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         if !allow_defaults && p.default.is_some() {
             if !tcx.sess.features.borrow().default_type_parameter_fallback {
-                tcx.sess.add_lint(
+                tcx.lint_node(
                     lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                     p.id,
                     p.span,
-                    format!("defaults for type parameters are only allowed in `struct`, \
-                             `enum`, `type`, or `trait` definitions."));
+                    &format!("defaults for type parameters are only allowed in `struct`, \
+                              `enum`, `type`, or `trait` definitions."));
             }
         }
 

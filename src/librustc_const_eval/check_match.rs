@@ -23,7 +23,7 @@ use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::lint;
-use rustc_errors::{Diagnostic, Level, DiagnosticBuilder};
+use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
@@ -351,12 +351,10 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
-                                    let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                         "unreachable pattern");
-                                    diagnostic.set_span(pat.span);
-                                    cx.tcx.sess.add_lint_diagnostic(
+                                    cx.tcx.lint_node(
                                             lint::builtin::UNREACHABLE_PATTERNS,
-                                            hir_pat.id, diagnostic);
+                                        hir_pat.id, pat.span,
+                                        "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
@@ -371,16 +369,18 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                 "unreachable pattern");
-                            diagnostic.set_span(pat.span);
+                            let mut err = cx.tcx.struct_span_lint_node(
+                                lint::builtin::UNREACHABLE_PATTERNS,
+                                hir_pat.id,
+                                pat.span,
+                                "unreachable pattern",
+                            );
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                diagnostic.span_label(pat.span, "this is an unreachable pattern");
-                                diagnostic.span_note(catchall, "this pattern matches any value");
+                                err.span_label(pat.span, "this is an unreachable pattern");
+                                err.span_note(catchall, "this pattern matches any value");
                             }
-                            cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
-                                                            hir_pat.id, diagnostic);
+                            err.emit();
                         },
 
                         // Unreachable patterns in try expressions occur when one of the arms

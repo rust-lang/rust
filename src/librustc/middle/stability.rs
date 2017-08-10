@@ -493,7 +493,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 format!("use of deprecated item")
             };
 
-            self.sess.add_lint(lint::builtin::DEPRECATED, id, span, msg);
+            self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
         };
 
         // Deprecated attributes apply in-crate and cross-crate.
@@ -737,10 +737,10 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
         let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
             .expect("unexpectedly couldn't find version feature was stabilized");
-        sess.add_lint(lint::builtin::STABLE_FEATURES,
+        tcx.lint_node(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      format_stable_since_msg(version));
+                      &format_stable_since_msg(version));
     }
 
     let index = tcx.stability.borrow();
@@ -748,10 +748,10 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
                 if let &attr::StabilityLevel::Stable { since: ref version } = level {
-                    sess.add_lint(lint::builtin::STABLE_FEATURES,
+                    tcx.lint_node(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,
-                                  format_stable_since_msg(&version.as_str()));
+                                  &format_stable_since_msg(&version.as_str()));
                 }
             }
             None => ( /* used but undeclared, handled during the previous ast visit */ )
@@ -759,9 +759,9 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     for &span in remaining_lib_features.values() {
-        sess.add_lint(lint::builtin::UNUSED_FEATURES,
+        tcx.lint_node(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      "unused or unknown feature".to_string());
+                      "unused or unknown feature");
     }
 }

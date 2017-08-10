@@ -1156,9 +1156,21 @@ actual:\n\
     fn compile_test(&self) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let link_args = vec!["-L".to_owned(),
-                             aux_dir.to_str().unwrap().to_owned()];
-        let args = self.make_compile_args(link_args,
+        let mut extra_args = vec!["-L".to_owned(),
+                                  aux_dir.to_str().unwrap().to_owned()];
+        match self.config.mode {
+            CompileFail | Ui => {
+                // compile-fail and ui tests tend to have tons of unused code as
+                // it's just testing various pieces of the compile, but we don't
+                // want to actually assert warnings about all this code. Instead
+                // let's just ignore unused code warnings by defaults and tests
+                // can turn it back on if needed.
+                extra_args.push("-A".to_owned());
+                extra_args.push("unused".to_owned());
+            }
+            _ => {}
+        }
+        let args = self.make_compile_args(extra_args,
                                           &self.testpaths.file,
                                           TargetLocation::ThisFile(self.make_exe_name()));
         self.compose_and_run_compiler(args, None)

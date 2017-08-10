@@ -56,11 +56,11 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
         match self.unsafe_context.root {
             SafeContext => {
                 if is_lint {
-                    self.tcx.sess.add_lint(lint::builtin::SAFE_EXTERN_STATICS,
-                                           node_id,
-                                           span,
-                                           format!("{} requires unsafe function or \
-                                                    block (error E0133)", description));
+                    self.tcx.lint_node(lint::builtin::SAFE_EXTERN_STATICS,
+                                       node_id,
+                                       span,
+                                       &format!("{} requires unsafe function or \
+                                                 block (error E0133)", description));
                 } else {
                     // Report an error.
                     struct_span_err!(

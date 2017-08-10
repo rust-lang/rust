@@ -985,9 +985,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     .span_label(data.span, "only traits may use parentheses")
                     .emit();
             } else {
-                let msg = "parenthesized parameters may only be used with a trait".to_string();
-                self.tcx().sess.add_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-                                         ast::CRATE_NODE_ID, data.span, msg);
+                let msg = "parenthesized parameters may only be used with a trait";
+                self.tcx().lint_node(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+                                     ast::CRATE_NODE_ID, data.span, msg);
             }
         }
     }

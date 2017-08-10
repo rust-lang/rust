@@ -645,7 +645,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         super::describe_lints(&sess.lint_store.borrow(), true);
         return Err(CompileIncomplete::Stopped);
     }
-    sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
@@ -715,8 +714,8 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         missing_fragment_specifiers.sort();
         for span in missing_fragment_specifiers {
             let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
-            let msg = "missing fragment specifier".to_string();
-            sess.add_lint(lint, ast::CRATE_NODE_ID, span, msg);
+            let msg = "missing fragment specifier";
+            sess.buffer_lint(lint, ast::CRATE_NODE_ID, span, msg);
         }
         if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
             ecx.parse_sess.span_diagnostic.abort_if_errors();
@@ -780,10 +779,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
          || no_asm::check_crate(sess, &krate));
 
     time(time_passes,
-         "early lint checks",
-         || lint::check_ast_crate(sess, &krate));
-
-    time(time_passes,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
@@ -806,6 +801,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                                               sess.opts.unstable_features);
         })
     })?;
+
+    time(time_passes,
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
 
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
@@ -915,6 +914,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     rustc_const_eval::provide(&mut local_providers);
     middle::region::provide(&mut local_providers);
     cstore::provide_local(&mut local_providers);
+    lint::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
@@ -1201,10 +1201,10 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
                          }
                          Some(ref n) if *n == "bin" => Some(config::CrateTypeExecutable),
                          Some(_) => {
-                             session.add_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
-                                              ast::CRATE_NODE_ID,
-                                              a.span,
-                                              "invalid `crate_type` value".to_string());
+                             session.buffer_lint(lint::builtin::UNKNOWN_CRATE_TYPES,
+                                                 ast::CRATE_NODE_ID,
+                                                 a.span,
+                                                 "invalid `crate_type` value");
                              None
                          }
                          _ => {

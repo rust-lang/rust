@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(unused_must_use)]
 
 struct MyStruct {
     n: usize

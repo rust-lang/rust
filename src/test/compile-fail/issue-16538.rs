@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(safe_extern_statics)]
+
 mod Y {
     pub type X = usize;
     extern {

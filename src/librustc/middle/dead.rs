@@ -17,11 +17,11 @@ use hir::{self, Item_, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
-use middle::privacy;
-use ty::{self, TyCtxt};
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use lint;
+use middle::privacy;
+use ty::{self, TyCtxt};
 use util::nodemap::FxHashSet;
 
 use syntax::{ast, codemap};
@@ -299,7 +299,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
+fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt,
+                                    id: ast::NodeId,
+                                    attrs: &[ast::Attribute]) -> bool {
     if attr::contains_name(attrs, "lang") {
         return true;
     }
@@ -315,14 +317,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
-    let dead_code = lint::builtin::DEAD_CODE.name_lower();
-    for attr in lint::gather_attrs(attrs) {
-        match attr {
-            Ok((name, lint::Allow, _)) if name == &*dead_code => return true,
-            _ => (),
-        }
-    }
-    false
+    tcx.lint_level_at_node(lint::builtin::DEAD_CODE, id).0 == lint::Allow
 }
 
 // This visitor seeds items that
@@ -338,14 +333,17 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   or
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
-struct LifeSeeder<'k> {
+struct LifeSeeder<'k, 'tcx: 'k> {
     worklist: Vec<ast::NodeId>,
     krate: &'k hir::Crate,
+    tcx: TyCtxt<'k, 'tcx, 'tcx>,
 }
 
-impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
+impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
+        let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx,
+                                                               item.id,
+                                                               &item.attrs);
         if allow_dead_code {
             self.worklist.push(item.id);
         }
@@ -360,7 +358,9 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                     match trait_item.node {
                         hir::TraitItemKind::Const(_, Some(_)) |
                         hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
-                            if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
+                            if has_allow_dead_code_or_lang_attr(self.tcx,
+                                                                trait_item.id,
+                                                                &trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
                             }
                         }
@@ -372,7 +372,9 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
-                            has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
+                            has_allow_dead_code_or_lang_attr(self.tcx,
+                                                             impl_item.id,
+                                                             &impl_item.attrs) {
                         self.worklist.push(impl_item_ref.id.node_id);
                     }
                 }
@@ -408,6 +410,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut life_seeder = LifeSeeder {
         worklist,
         krate,
+        tcx,
     };
     krate.visit_all_item_likes(&mut life_seeder);
 
@@ -472,17 +475,19 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         !field.is_positional()
             && !self.symbol_is_live(field.id, None)
             && !is_marker_field
-            && !has_allow_dead_code_or_lang_attr(&field.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, field.id, &field.attrs)
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
         !self.symbol_is_live(variant.data.id(), None)
-            && !has_allow_dead_code_or_lang_attr(&variant.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx,
+                                                 variant.data.id(),
+                                                 &variant.attrs)
     }
 
     fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem) -> bool {
         !self.symbol_is_live(fi.id, None)
-            && !has_allow_dead_code_or_lang_attr(&fi.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.id, &fi.attrs)
     }
 
     // id := node id of an item's definition.
@@ -528,11 +533,10 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       node_type: &str) {
         if !name.as_str().starts_with("_") {
             self.tcx
-                .sess
-                .add_lint(lint::builtin::DEAD_CODE,
-                          id,
-                          span,
-                          format!("{} is never used: `{}`", node_type, name));
+                .lint_node(lint::builtin::DEAD_CODE,
+                           id,
+                           span,
+                           &format!("{} is never used: `{}`", node_type, name));
         }
     }
 }

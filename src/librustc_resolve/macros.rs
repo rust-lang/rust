@@ -319,8 +319,8 @@ impl<'a> base::Resolver for Resolver<'a> {
             };
             if let Some((id, span)) = id_span {
                 let lint = lint::builtin::UNUSED_MACROS;
-                let msg = "unused macro definition".to_string();
-                self.session.add_lint(lint, id, span, msg);
+                let msg = "unused macro definition";
+                self.session.buffer_lint(lint, id, span, msg);
             } else {
                 bug!("attempted to create unused macro error, but span not available");
             }

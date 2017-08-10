@@ -1,34 +1,37 @@
-error: variable `theTwo` should have a snake case name such as `the_two`
-  --> $DIR/issue-24690.rs:19:9
+warning: unused variable: `theOtherTwo`
+  --> $DIR/issue-24690.rs:23:9
    |
-19 |     let theTwo = 2;
+23 |     let theOtherTwo = 2;
+   |         ^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-24690.rs:18:9
+   |
+18 | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+
+warning: variable `theTwo` should have a snake case name such as `the_two`
+  --> $DIR/issue-24690.rs:22:9
+   |
+22 |     let theTwo = 2;
    |         ^^^^^^
    |
-note: lint level defined here
-  --> $DIR/issue-24690.rs:16:9
-   |
-16 | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: #[deny(non_snake_case)] implied by #[deny(warnings)]
+   = note: #[warn(non_snake_case)] on by default
 
-error: variable `theOtherTwo` should have a snake case name such as `the_other_two`
-  --> $DIR/issue-24690.rs:20:9
+warning: variable `theOtherTwo` should have a snake case name such as `the_other_two`
+  --> $DIR/issue-24690.rs:23:9
    |
-20 |     let theOtherTwo = 2;
+23 |     let theOtherTwo = 2;
    |         ^^^^^^^^^^^
 
-error: unused variable: `theOtherTwo`
-  --> $DIR/issue-24690.rs:20:9
+error: compilation successful
+  --> $DIR/issue-24690.rs:21:1
    |
-20 |     let theOtherTwo = 2;
-   |         ^^^^^^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/issue-24690.rs:16:9
-   |
-16 | #![deny(warnings)]
-   |         ^^^^^^^^
-   = note: #[deny(unused_variables)] implied by #[deny(warnings)]
-
-error: aborting due to 3 previous errors
+21 | / fn main() {
+22 | |     let theTwo = 2;
+23 | |     let theOtherTwo = 2;
+24 | |     println!("{}", theTwo);
+25 | | }
+   | |_^
 

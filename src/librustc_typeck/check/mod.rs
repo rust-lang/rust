@@ -1713,10 +1713,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-            self.tables.borrow_mut().lints.add_lint(
+            self.tcx().lint_node(
                 lint::builtin::UNREACHABLE_CODE,
                 id, span,
-                format!("unreachable {}", kind));
+                &format!("unreachable {}", kind));
         }
     }
 
@@ -4769,8 +4769,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 let mut multispan = MultiSpan::from_span(lifetimes[0].span);
                 multispan.push_span_label(span_late, note_msg.to_string());
-                self.tcx.sess.add_lint(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
-                                       lifetimes[0].id, multispan, primary_msg.to_string());
+                self.tcx.lint_node(lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS,
+                                   lifetimes[0].id, multispan, primary_msg);
             }
             return;
         }
