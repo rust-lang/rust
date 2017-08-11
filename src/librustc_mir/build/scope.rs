@@ -875,15 +875,13 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                 // for us to diverge into in case the drop panics.
                 let on_diverge = iter.peek().iter().filter_map(|dd| {
                     match dd.kind {
-                        DropKind::Value {
-                            cached_block: CachedBlock {
-                                unwind: None,
-                                generator_drop: None,
+                        DropKind::Value { cached_block } => {
+                            let result = cached_block.get(generator_drop);
+                            if result.is_none() {
+                                span_bug!(drop_data.span, "cached block not present?")
                             }
-                        } => {
-                            span_bug!(drop_data.span, "cached block not present?")
-                        }
-                        DropKind::Value { cached_block } => cached_block.get(generator_drop),
+                            result
+                        },
                         DropKind::Storage => None
                     }
                 }).next();
@@ -901,6 +899,11 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                 block = next;
             }
             DropKind::Storage => {}
+        }
+
+        // We do not need to emit StorageDead for generator drops
+        if generator_drop {
+            continue
         }
 
         // Drop the storage for both value and storage drops.
