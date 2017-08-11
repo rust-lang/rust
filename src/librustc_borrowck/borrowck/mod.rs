@@ -36,7 +36,7 @@ use rustc::middle::region::{self, RegionMaps};
 use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-
+use rustc::util::nodemap::FxHashMap;
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -827,7 +827,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 // block remainder that starts with
                                 // `let a`) for a yield. We can cite
                                 // that for the user.
-                                self.tcx.yield_in_extent(value_extent)
+                                self.tcx.yield_in_extent(value_extent, &mut FxHashMap())
                             } else {
                                 None
                             }

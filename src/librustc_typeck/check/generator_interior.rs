@@ -14,12 +14,16 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
 use rustc::middle::region::{RegionMaps, CodeExtent};
 use rustc::ty::Ty;
+use syntax::ast::NodeId;
+use syntax::codemap::Span;
 use std::rc::Rc;
 use super::FnCtxt;
 use util::nodemap::FxHashSet;
+use util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
+    cache: FxHashMap<NodeId, Option<Span>>,
     types: FxHashSet<Ty<'tcx>>,
     region_maps: Rc<RegionMaps>,
 }
@@ -28,7 +32,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        if scope.map(|s| self.fcx.tcx.yield_in_extent(s).is_some()).unwrap_or(true) {
+        if scope.map(|s| self.fcx.tcx.yield_in_extent(s, &mut self.cache).is_some()).unwrap_or(true) {
             if log_enabled!(log::LogLevel::Debug) {
                 if let Some(s) = scope {
                     let span = s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP);
@@ -61,6 +65,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxHashSet(),
+        cache: FxHashMap(),
         region_maps: fcx.tcx.region_maps(def_id),
     };
     intravisit::walk_body(&mut visitor, body);
