@@ -112,7 +112,7 @@ pub struct Session {
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
-    /// macro name and defintion span in the source crate.
+    /// macro name and definition span in the source crate.
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RefCell<IncrCompSession>,
@@ -828,7 +828,7 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
 #[inline(never)]
 pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
     // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro defintion
+    // qualified path of None::<Span> inside the bug!() macro definition
     opt_span_bug_fmt(file, line, None::<Span>, args);
 }
 

@@ -255,7 +255,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         // We want to ensure:
         //
         // 1) that there are no items contained within
-        // the trait defintion
+        // the trait definition
         //
         // 2) that the definition doesn't violate the no-super trait rule
         // for auto traits.

@@ -128,7 +128,7 @@ pub enum UndoLogEntry<'tcx> {
     /// We added the given `given`
     AddGiven(Region<'tcx>, ty::RegionVid),
 
-    /// We added a GLB/LUB "combinaton variable"
+    /// We added a GLB/LUB "combination variable"
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 
     /// During skolemization, we sometimes purge entries from the undo

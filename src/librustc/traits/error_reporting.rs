@@ -111,8 +111,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // returns if `cond` not occuring implies that `error` does not occur - i.e. that
-    // `error` occuring implies that `cond` occurs.
+    // returns if `cond` not occurring implies that `error` does not occur - i.e. that
+    // `error` occurring implies that `cond` occurs.
     fn error_implies(&self,
                      cond: &ty::Predicate<'tcx>,
                      error: &ty::Predicate<'tcx>)

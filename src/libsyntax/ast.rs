@@ -563,8 +563,8 @@ pub enum PatKind {
     TupleStruct(Path, Vec<P<Pat>>, Option<usize>),
 
     /// A possibly qualified path pattern.
-    /// Unquailfied path patterns `A::B::C` can legally refer to variants, structs, constants
-    /// or associated constants. Quailfied path patterns `<A>::B::C`/`<A as Trait>::B::C` can
+    /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants
+    /// or associated constants. Qualified path patterns `<A>::B::C`/`<A as Trait>::B::C` can
     /// only legally refer to associated constants.
     Path(Option<QSelf>, Path),
 
@@ -1838,7 +1838,7 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ItemKind {
-    /// An`extern crate` item, with optional original crate name.
+    /// An `extern crate` item, with optional original crate name.
     ///
     /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
     ExternCrate(Option<Name>),

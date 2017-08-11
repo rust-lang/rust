@@ -219,7 +219,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
-    /// an obligation for aparticular trait with the given self-type and checks
+    /// an obligation for a particular trait with the given self-type and checks
     /// whether that trait is implemented.
     ///
     /// FIXME(#18741) -- It seems likely that we can consolidate some of this

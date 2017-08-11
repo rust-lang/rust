@@ -351,7 +351,7 @@ impl TcpStream {
         self.0.write_timeout()
     }
 
-    /// Receives data on the socket from the remote adress to which it is
+    /// Receives data on the socket from the remote address to which it is
     /// connected, without removing that data from the queue. On success,
     /// returns the number of bytes peeked.
     ///

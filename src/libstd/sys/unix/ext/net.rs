@@ -327,7 +327,7 @@ impl UnixStream {
     ///
     /// The returned `UnixStream` is a reference to the same stream that this
     /// object references. Both handles will read and write the same stream of
-    /// data, and options set on one stream will be propogated to the other
+    /// data, and options set on one stream will be propagated to the other
     /// stream.
     ///
     /// # Examples

@@ -1364,7 +1364,7 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     /// Try to start normalize `key`; returns an error if
-    /// normalization already occured (this error corresponds to a
+    /// normalization already occurred (this error corresponds to a
     /// cache hit, so it's actually a good thing).
     fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
                  -> Result<(), ProjectionCacheEntry<'tcx>> {

@@ -24,7 +24,7 @@ use ty::{DefId, DefIdTree};
 #[derive(Clone)]
 pub struct DefIdForest {
     /// The minimal set of DefIds required to represent the whole set.
-    /// If A and B are DefIds in the DefIdForest, and A is a desecendant
+    /// If A and B are DefIds in the DefIdForest, and A is a descendant
     /// of B, then only B will be in root_ids.
     /// We use a SmallVec here because (for its use for cacheing inhabitedness)
     /// its rare that this will contain even two ids.
@@ -61,7 +61,7 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         self.root_ids.is_empty()
     }
 
-    /// Test whether the forest conains a given DefId.
+    /// Test whether the forest contains a given DefId.
     pub fn contains(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     id: DefId) -> bool

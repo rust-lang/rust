@@ -224,7 +224,7 @@ pub trait MemoizationMap {
     type Key: Clone;
     type Value: Clone;
 
-    /// If `key` is present in the map, return the valuee,
+    /// If `key` is present in the map, return the value,
     /// otherwise invoke `op` and store the value in the map.
     ///
     /// NB: if the receiver is a `DepTrackingMap`, special care is

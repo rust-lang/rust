@@ -761,7 +761,7 @@ mod tests {
     }
 
     /// Given a string like " ~~~~~~~~~~~~ ", produces a span
-    /// coverting that range. The idea is that the string has the same
+    /// converting that range. The idea is that the string has the same
     /// length as the input, and we uncover the byte positions.  Note
     /// that this can span lines and so on.
     fn span_from_selection(input: &str, selection: &str) -> Span {
@@ -771,7 +771,7 @@ mod tests {
         Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), ctxt: NO_EXPANSION }
     }
 
-    /// Test span_to_snippet and span_to_lines for a span coverting 3
+    /// Test span_to_snippet and span_to_lines for a span converting 3
     /// lines in the middle of a file.
     #[test]
     fn span_to_snippet_and_lines_spanning_multiple_lines() {

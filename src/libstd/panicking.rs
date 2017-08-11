@@ -171,7 +171,7 @@ pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
 /// use std::panic;
 ///
 /// panic::set_hook(Box::new(|panic_info| {
-///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+///     println!("panic occurred: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
 /// }));
 ///
 /// panic!("Normal panic");
@@ -196,7 +196,7 @@ impl<'a> PanicInfo<'a> {
     /// use std::panic;
     ///
     /// panic::set_hook(Box::new(|panic_info| {
-    ///     println!("panic occured: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
+    ///     println!("panic occurred: {:?}", panic_info.payload().downcast_ref::<&str>().unwrap());
     /// }));
     ///
     /// panic!("Normal panic");
@@ -221,9 +221,10 @@ impl<'a> PanicInfo<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
+    ///         println!("panic occurred in file '{}' at line {}", location.file(),
+    ///             location.line());
     ///     } else {
-    ///         println!("panic occured but can't get location information...");
+    ///         println!("panic occurred but can't get location information...");
     ///     }
     /// }));
     ///
@@ -249,9 +250,9 @@ impl<'a> PanicInfo<'a> {
 ///
 /// panic::set_hook(Box::new(|panic_info| {
 ///     if let Some(location) = panic_info.location() {
-///         println!("panic occured in file '{}' at line {}", location.file(), location.line());
+///         println!("panic occurred in file '{}' at line {}", location.file(), location.line());
 ///     } else {
-///         println!("panic occured but can't get location information...");
+///         println!("panic occurred but can't get location information...");
 ///     }
 /// }));
 ///
@@ -275,9 +276,9 @@ impl<'a> Location<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured in file '{}'", location.file());
+    ///         println!("panic occurred in file '{}'", location.file());
     ///     } else {
-    ///         println!("panic occured but can't get location information...");
+    ///         println!("panic occurred but can't get location information...");
     ///     }
     /// }));
     ///
@@ -297,9 +298,9 @@ impl<'a> Location<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured at line {}", location.line());
+    ///         println!("panic occurred at line {}", location.line());
     ///     } else {
-    ///         println!("panic occured but can't get location information...");
+    ///         println!("panic occurred but can't get location information...");
     ///     }
     /// }));
     ///
@@ -320,9 +321,9 @@ impl<'a> Location<'a> {
     ///
     /// panic::set_hook(Box::new(|panic_info| {
     ///     if let Some(location) = panic_info.location() {
-    ///         println!("panic occured at column {}", location.column());
+    ///         println!("panic occurred at column {}", location.column());
     ///     } else {
-    ///         println!("panic occured but can't get location information...");
+    ///         println!("panic occurred but can't get location information...");
     ///     }
     /// }));
     ///

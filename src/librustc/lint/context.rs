@@ -69,7 +69,7 @@ pub struct LintStore {
     /// is true if the lint group was added by a plugin.
     lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool)>,
 
-    /// Extra info for future incompatibility lints, descibing the
+    /// Extra info for future incompatibility lints, describing the
     /// issue or RFC that caused the incompatibility.
     future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
 }

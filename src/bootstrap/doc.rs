@@ -306,7 +306,7 @@ impl Step for Standalone {
     ///
     /// This will list all of `src/doc` looking for markdown files and appropriately
     /// perform transformations like substituting `VERSION`, `SHORT_HASH`, and
-    /// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
+    /// `STAMP` along with providing the various header/footer HTML we've customized.
     ///
     /// In the end, this is just a glorified wrapper around rustdoc!
     fn run(self, builder: &Builder) {
