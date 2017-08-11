@@ -891,8 +891,18 @@ this feature itself is going to be large and controversial.
 ### Semantic inlining
 
 Treat `#[implicit_caller_location]` as the same as a very forceful `#[inline(always)]`. This
-eliminates the procedural macro pass. However, typical implementation will still need to manually
-implement the two functions, otherwise the code will become very bloated after all the inlining.
+eliminates the procedural macro pass. This was the approach suggested in the first edition of this
+RFC, since the target functions (`unwrap`, `expect`, `index`) are just a few lines long. However, it
+experienced push-back from the community as:
+
+1. Inlining causes debugging to be difficult.
+2. It does not work with recursive functions.
+3. People do want to apply the attribute to long functions.
+4. The expected usage of "semantic inlining" and traditional inlining differ a lot, continue calling
+    it inlining may confuse beginners.
+
+Therefore the RFC is changed to the current form, and the inlining pass is now described as just an
+implementation detail.
 
 ## Non-viable alternatives
 
