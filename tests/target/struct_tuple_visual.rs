@@ -3,7 +3,6 @@
 // rustfmt-error_on_line_overflow: false
 // rustfmt-struct_lit_style: Visual
 fn foo() {
-
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(f(), b());
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(
@@ -45,5 +44,4 @@ fn foo() {
         //             o o o   o
         G,
     )
-
 }

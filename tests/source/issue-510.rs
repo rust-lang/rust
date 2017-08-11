@@ -3,7 +3,6 @@ fn solve_inline_size_constraints(&self,
 block: &mut BlockFlow,
 input: &ISizeConstraintInput)
 -> ISizeConstraintSolution {
-
 let (inline_start,inline_size,margin_inline_start,margin_inline_end) =
 match (inline_startssssssxxxxxxsssssxxxxxxxxxssssssxxx,inline_startssssssxxxxxxsssssxxxxxxxxxssssssxxx) {
 (MaybeAuto::Auto, MaybeAuto::Auto, MaybeAuto::Auto) => {

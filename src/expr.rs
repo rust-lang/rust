@@ -2985,7 +2985,6 @@ fn choose_rhs(
 }
 
 fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
-
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()
     }

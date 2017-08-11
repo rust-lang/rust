@@ -90,7 +90,6 @@ pub fn write_file<T>(
 where
     T: Write,
 {
-
     fn source_and_formatted_text(
         text: &StringBuffer,
         filename: &str,

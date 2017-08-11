@@ -51,5 +51,4 @@ pub fn waltz(cwd: &Path) -> CliAssert {
             formatted_comment = rewrite_comment(comment, block_style, width, offset, formatting_fig);
         }
     }
-
 }
