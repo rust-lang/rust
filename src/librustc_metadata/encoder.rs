@@ -563,7 +563,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         Entry {
             kind: EntryKind::Mod(self.lazy(&data)),
             visibility: self.lazy(&ty::Visibility::from_hir(vis, id, tcx)),
-            span: self.lazy(&md.inner),
+            span: self.lazy(&tcx.def_span(def_id)),
             attributes: self.encode_attributes(attrs),
             children: self.lazy_seq(md.item_ids.iter().map(|item_id| {
                 tcx.hir.local_def_id(item_id.id).index
