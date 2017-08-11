@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:count_compound_ops.rs
+// ignore-stage1
 
 #![feature(proc_macro)]
 

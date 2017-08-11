@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:append-impl.rs
+// ignore-stage1
 
 #![allow(warnings)]
 
