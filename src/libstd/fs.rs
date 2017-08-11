@@ -41,11 +41,11 @@ use time::SystemTime;
 /// use std::fs::File;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::create("foo.txt")?;
-/// file.write_all(b"Hello, world!")?;
-/// # Ok(())
-/// # }
+/// fn foo() -> std::io::Result<()> {
+///     let mut file = File::create("foo.txt")?;
+///     file.write_all(b"Hello, world!")?;
+///     Ok(())
+/// }
 /// ```
 ///
 /// Read the contents of a file into a [`String`]:
@@ -54,13 +54,13 @@ use time::SystemTime;
 /// use std::fs::File;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::open("foo.txt")?;
-/// let mut contents = String::new();
-/// file.read_to_string(&mut contents)?;
-/// assert_eq!(contents, "Hello, world!");
-/// # Ok(())
-/// # }
+/// fn foo() -> std::io::Result<()> {
+///     let mut file = File::open("foo.txt")?;
+///     let mut contents = String::new();
+///     file.read_to_string(&mut contents)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
 /// ```
 ///
 /// It can be more efficient to read the contents of a file with a buffered
@@ -71,14 +71,14 @@ use time::SystemTime;
 /// use std::io::BufReader;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let file = File::open("foo.txt")?;
-/// let mut buf_reader = BufReader::new(file);
-/// let mut contents = String::new();
-/// buf_reader.read_to_string(&mut contents)?;
-/// assert_eq!(contents, "Hello, world!");
-/// # Ok(())
-/// # }
+/// fn foo() -> std::io::Result<()> {
+///     let file = File::open("foo.txt")?;
+///     let mut buf_reader = BufReader::new(file);
+///     let mut contents = String::new();
+///     buf_reader.read_to_string(&mut contents)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
 /// ```
 ///
 /// [`Seek`]: ../io/trait.Seek.html
