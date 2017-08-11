@@ -448,16 +448,7 @@ fn generate_drop<'a, 'tcx>(
 }
 
 fn insert_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        def_id: DefId,
-                                        mir: &mut Mir<'tcx>) -> Option<BasicBlock> {
-    let drop_arg = mir.local_decls.raw[2].ty.needs_drop(tcx, tcx.param_env(def_id));
-
-    let cleanup = if drop_arg {
-        Some(BasicBlock::new(mir.basic_blocks().len() + 1))
-    } else {
-        None
-    };
-
+                                        mir: &mut Mir<'tcx>) {
     let assert_block = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
@@ -470,7 +461,7 @@ fn insert_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         expected: true,
         msg: AssertMessage::GeneratorResumedAfterReturn,
         target: assert_block,
-        cleanup: cleanup,
+        cleanup: None,
     };
 
     let source_info = SourceInfo {
@@ -486,36 +477,6 @@ fn insert_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }),
         is_cleanup: false,
     });
-
-    if drop_arg {
-        let resume_block = BasicBlock::new(mir.basic_blocks().len() + 1);
-
-        let term = TerminatorKind::Drop {
-            location: Lvalue::Local(Local::new(2)),
-            target: resume_block,
-            unwind: None,
-        };
-
-        mir.basic_blocks_mut().push(BasicBlockData {
-            statements: Vec::new(),
-            terminator: Some(Terminator {
-                source_info,
-                kind: term,
-            }),
-            is_cleanup: true,
-        });
-
-        mir.basic_blocks_mut().push(BasicBlockData {
-            statements: Vec::new(),
-            terminator: Some(Terminator {
-                source_info,
-                kind: TerminatorKind::Resume,
-            }),
-            is_cleanup: true,
-        });
-    }
-
-    cleanup
 }
 
 fn generate_entry_point<'a, 'tcx>(
@@ -523,7 +484,6 @@ fn generate_entry_point<'a, 'tcx>(
                 mut transform: TransformVisitor<'a, 'tcx>,
                 def_id: DefId,
                 source: MirSource,
-                cleanup: Option<BasicBlock>,
                 mir: &mut Mir<'tcx>) {
     // Poison the generator when it unwinds
     for block in mir.basic_blocks_mut() {
@@ -551,7 +511,7 @@ fn generate_entry_point<'a, 'tcx>(
         expected: true,
         msg: AssertMessage::GeneratorResumedAfterPanic,
         target: transform.return_block,
-        cleanup: cleanup,
+        cleanup: None,
     };
 
     mir.basic_blocks_mut().push(BasicBlockData {
@@ -685,7 +645,7 @@ impl MirPass for StateTransform {
         mir.spread_arg = None;
         mir.generator_layout = Some(layout);
 
-        let arg_cleanup = insert_resume_after_return(tcx, def_id, mir);
+        insert_resume_after_return(tcx, mir);
 
         let (_return_block, drop_clean) = insert_clean_drop(mir);
 
@@ -707,6 +667,6 @@ impl MirPass for StateTransform {
 
         mir.generator_drop = Some(box drop_impl);
 
-        generate_entry_point(tcx, transform, def_id, source, arg_cleanup, mir);
+        generate_entry_point(tcx, transform, def_id, source, mir);
     }
 }
