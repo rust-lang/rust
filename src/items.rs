@@ -18,7 +18,8 @@ use syntax::codemap::{BytePos, Span};
 
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
+use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
+              rewrite_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
@@ -28,8 +29,9 @@ use rewrite::{Rewrite, RewriteContext};
 use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
             format_constness, format_defaultness, format_mutability, format_unsafety,
-            format_visibility, last_line_used_width, last_line_width, mk_sp, semicolon_for_expr,
-            stmt_expr, trim_newlines, trimmed_last_line_width, wrap_str};
+            format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
+            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, stmt_expr,
+            trim_newlines, trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -501,32 +503,19 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let indent = self.block_indent;
-        let mut result = try_opt!(
-            field
-                .node
-                .attrs
-                .rewrite(&context, Shape::indented(indent, self.config))
-        );
-        if !result.is_empty() {
-            let shape = Shape {
-                width: context.config.max_width(),
-                indent: self.block_indent,
-                offset: self.block_indent.alignment,
-            };
-            let missing_comment = rewrite_missing_comment_on_field(
-                &context,
-                shape,
-                field.node.attrs[field.node.attrs.len() - 1].span.hi,
-                field.span.lo,
-                &mut result,
-            ).unwrap_or(String::new());
-            result.push_str(&missing_comment);
-        }
+        let shape = Shape::indented(indent, self.config);
+        let attrs_str = try_opt!(field.node.attrs.rewrite(&context, shape));
+        let lo = field
+            .node
+            .attrs
+            .last()
+            .map_or(field.span.lo, |attr| attr.span.hi);
+        let span = mk_sp(lo, field.span.lo);
 
         let variant_body = match field.node.data {
             ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => {
                 // FIXME: Should limit the width, as we have a trailing comma
-                format_struct(
+                try_opt!(format_struct(
                     &context,
                     "",
                     field.node.name,
@@ -536,29 +525,37 @@ impl<'a> FmtVisitor<'a> {
                     field.span,
                     indent,
                     Some(self.config.struct_variant_width()),
-                )
+                ))
             }
-            ast::VariantData::Unit(..) => {
-                let tag = if let Some(ref expr) = field.node.disr_expr {
+            ast::VariantData::Unit(..) => if let Some(ref expr) = field.node.disr_expr {
+                let one_line_width =
+                    field.node.name.to_string().len() + self.snippet(expr.span).len() + 3;
+                if one_line_width <= shape.width {
                     format!("{} = {}", field.node.name, self.snippet(expr.span))
                 } else {
-                    field.node.name.to_string()
-                };
-
-                wrap_str(
-                    tag,
-                    self.config.max_width(),
-                    Shape::indented(indent, self.config),
-                )
-            }
+                    format!(
+                        "{}\n{}{}",
+                        field.node.name,
+                        shape
+                            .indent
+                            .block_indent(self.config)
+                            .to_string(self.config),
+                        self.snippet(expr.span)
+                    )
+                }
+            } else {
+                String::from(field.node.name.to_string())
+            },
         };
 
-        if let Some(variant_str) = variant_body {
-            result.push_str(&variant_str);
-            Some(result)
-        } else {
-            None
-        }
+        combine_strs_with_missing_comments(
+            &context,
+            &attrs_str,
+            &variant_body,
+            span,
+            shape,
+            is_attributes_extendable(&attrs_str),
+        )
     }
 }
 
@@ -1369,68 +1366,15 @@ fn type_annotation_spacing(config: &Config) -> (&str, &str) {
     )
 }
 
-fn rewrite_missing_comment_on_field(
-    context: &RewriteContext,
-    shape: Shape,
-    lo: BytePos,
-    hi: BytePos,
-    result: &mut String,
-) -> Option<String> {
-    let possibly_comment_snippet = context.snippet(mk_sp(lo, hi));
-    let newline_index = possibly_comment_snippet.find('\n');
-    let comment_index = possibly_comment_snippet.find('/');
-    match (newline_index, comment_index) {
-        (Some(i), Some(j)) if i > j => result.push(' '),
-        _ => {
-            result.push('\n');
-            result.push_str(&shape.indent.to_string(context.config));
-        }
-    }
-    let trimmed = possibly_comment_snippet.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        rewrite_comment(trimmed, false, shape, context.config).map(|s| {
-            format!("{}\n{}", s, shape.indent.to_string(context.config))
-        })
-    }
-}
-
 pub fn rewrite_struct_field_prefix(
     context: &RewriteContext,
     field: &ast::StructField,
-    shape: Shape,
 ) -> Option<String> {
     let vis = format_visibility(&field.vis);
-    let mut attr_str = try_opt!(
-        field
-            .attrs
-            .rewrite(context, Shape::indented(shape.indent, context.config))
-    );
-    // Try format missing comments after attributes
-    let missing_comment = if !field.attrs.is_empty() {
-        rewrite_missing_comment_on_field(
-            context,
-            shape,
-            field.attrs[field.attrs.len() - 1].span.hi,
-            field.span.lo,
-            &mut attr_str,
-        ).unwrap_or(String::new())
-    } else {
-        String::new()
-    };
-
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Some(match field.ident {
-        Some(name) => format!(
-            "{}{}{}{}{}:",
-            attr_str,
-            missing_comment,
-            vis,
-            name,
-            type_annotation_spacing.0
-        ),
-        None => format!("{}{}{}", attr_str, missing_comment, vis),
+        Some(name) => format!("{}{}{}:", vis, name, type_annotation_spacing.0),
+        None => format!("{}", vis),
     })
 }
 
@@ -1466,27 +1410,50 @@ pub fn rewrite_struct_field(
     }
 
     let type_annotation_spacing = type_annotation_spacing(context.config);
-    let prefix = try_opt!(rewrite_struct_field_prefix(context, field, shape));
+    let prefix = try_opt!(rewrite_struct_field_prefix(context, field));
 
-    // Try to put everything on a single line.
-    let last_line_width = last_line_width(&prefix);
+    let attrs_str = try_opt!(field.attrs.rewrite(context, shape));
+    let missing_span = if field.attrs.is_empty() {
+        mk_sp(field.span.lo, field.span.lo)
+    } else {
+        mk_sp(field.attrs.last().unwrap().span.hi, field.span.lo)
+    };
     let mut spacing = String::from(if field.ident.is_some() {
         type_annotation_spacing.1
     } else {
         ""
     });
-    let lhs_offset = lhs_max_width.checked_sub(last_line_width).unwrap_or(0);
+    // Try to put everything on a single line.
+    let attr_prefix = try_opt!(combine_strs_with_missing_comments(
+        context,
+        &attrs_str,
+        &prefix,
+        missing_span,
+        shape,
+        is_attributes_extendable(&attrs_str),
+    ));
+    let overhead = last_line_width(&attr_prefix);
+    let lhs_offset = lhs_max_width.checked_sub(overhead).unwrap_or(0);
     for _ in 0..lhs_offset {
         spacing.push(' ');
     }
-    let ty_rewritten = rewrite_struct_field_type(context, last_line_width, field, &spacing, shape);
+    // In this extreme case we will be missing a space betweeen an attribute and a field.
+    if prefix.is_empty() && !attrs_str.is_empty() && is_attributes_extendable(&attrs_str) &&
+        spacing.is_empty()
+    {
+        spacing.push(' ');
+    }
+    let ty_rewritten = rewrite_struct_field_type(context, overhead, field, &spacing, shape);
     if let Some(ref ty) = ty_rewritten {
         if !ty.contains('\n') {
-            return Some(prefix + &ty);
+            return Some(attr_prefix + &ty);
         }
     }
 
     // We must use multiline.
+    let last_line_width = last_line_width(&prefix);
+    let ty_rewritten = rewrite_struct_field_type(context, last_line_width, field, &spacing, shape);
+
     let type_offset = shape.indent.block_indent(context.config);
     let rewrite_type_in_next_line = || {
         field
@@ -1494,27 +1461,35 @@ pub fn rewrite_struct_field(
             .rewrite(context, Shape::indented(type_offset, context.config))
     };
 
-    match ty_rewritten {
+    let field_str = match ty_rewritten {
         // If we start from the next line and type fits in a single line, then do so.
         Some(ref ty) => match rewrite_type_in_next_line() {
-            Some(ref new_ty) if !new_ty.contains('\n') => Some(format!(
+            Some(ref new_ty) if !new_ty.contains('\n') => format!(
                 "{}\n{}{}",
                 prefix,
                 type_offset.to_string(&context.config),
                 &new_ty
-            )),
-            _ => Some(prefix + &ty),
+            ),
+            _ => prefix + &ty,
         },
         _ => {
             let ty = try_opt!(rewrite_type_in_next_line());
-            Some(format!(
+            format!(
                 "{}\n{}{}",
                 prefix,
                 type_offset.to_string(&context.config),
                 &ty
-            ))
+            )
         }
-    }
+    };
+    combine_strs_with_missing_comments(
+        context,
+        &attrs_str,
+        &field_str,
+        missing_span,
+        shape,
+        is_attributes_extendable(&attrs_str),
+    )
 }
 
 pub fn rewrite_static(
@@ -2146,10 +2121,6 @@ impl WhereClauseOption {
             compress_where: false,
         }
     }
-}
-
-fn last_line_contains_single_line_comment(s: &str) -> bool {
-    s.lines().last().map_or(false, |l| l.contains("//"))
 }
 
 fn rewrite_args(
