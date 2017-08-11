@@ -189,7 +189,7 @@ install!((self, builder, _config),
         builder.ensure(dist::Rls { stage: self.stage, target: self.target });
         install_rls(builder, self.stage, self.target);
     };
-    Analysis, "analysis", _config.extended, only_hosts: false, {
+    Analysis, "analysis", false, only_hosts: false, {
         builder.ensure(dist::Analysis {
             compiler: builder.compiler(self.stage, self.host),
             target: self.target
