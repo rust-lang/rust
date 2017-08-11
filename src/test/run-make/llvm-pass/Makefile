@@ -1,5 +1,10 @@
 -include ../tools.mk
 
+ifeq ($(findstring stage1,$(RUST_BUILD_STAGE)),stage1)
+# ignore stage1
+all:
+
+else
 # Windows doesn't correctly handle include statements with escaping paths,
 # so this test will not get run on Windows.
 ifdef IS_WINDOWS
@@ -14,4 +19,6 @@ $(TMPDIR)/libllvm-function-pass.o:
 
 $(TMPDIR)/libllvm-module-pass.o:
 	$(CXX) $(CFLAGS) $(LLVM_CXXFLAGS) -c llvm-module-pass.so.cc -o $(TMPDIR)/libllvm-module-pass.o
+endif
+
 endif
