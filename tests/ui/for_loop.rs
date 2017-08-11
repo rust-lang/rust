@@ -75,7 +75,7 @@ impl Unrelated {
 #[warn(needless_range_loop, explicit_iter_loop, explicit_into_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop, for_kv_map)]
 #[warn(unused_collect)]
 #[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity, similar_names)]
-#[allow(many_single_char_names)]
+#[allow(many_single_char_names, unused_variables)]
 fn main() {
     const MAX_LEN: usize = 42;
 

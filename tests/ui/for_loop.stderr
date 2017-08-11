@@ -84,14 +84,6 @@ help: consider using an iterator
 84 |     for <item> in &vec {
    |         ^^^^^^
 
-error: unused variable: `i`
-  --> $DIR/for_loop.rs:88:9
-   |
-88 |     for i in 0..vec.len() {
-   |         ^
-   |
-   = note: `-D unused-variables` implied by `-D warnings`
-
 error: the loop variable `i` is only used to index `vec`.
   --> $DIR/for_loop.rs:93:5
    |
@@ -506,5 +498,5 @@ help: use the corresponding method
 344 |     for k in rm.keys() {
     |         ^
 
-error: aborting due to 51 previous errors
+error: aborting due to 50 previous errors
 

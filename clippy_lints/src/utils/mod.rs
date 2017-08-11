@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
 use rustc::hir::map::Node;
-use rustc::lint::{LintContext, LateContext, Level, Lint};
+use rustc::lint::{LintContext, Level, LateContext, Lint};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, Ty};
@@ -545,10 +545,7 @@ impl<'a> DiagnosticWrapper<'a> {
 }
 
 pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
-    if cx.current_level(lint) != Level::Allow {
-        db.wiki_link(lint);
-    }
+    DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).wiki_link(lint);
 }
 
 pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -559,10 +556,8 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     help: &str,
 ) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    if cx.current_level(lint) != Level::Allow {
-        db.0.help(help);
-        db.wiki_link(lint);
-    }
+    db.0.help(help);
+    db.wiki_link(lint);
 }
 
 pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -574,14 +569,12 @@ pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     note: &str,
 ) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    if cx.current_level(lint) != Level::Allow {
-        if note_span == span {
-            db.0.note(note);
-        } else {
-            db.0.span_note(note_span, note);
-        }
-        db.wiki_link(lint);
+    if note_span == span {
+        db.0.note(note);
+    } else {
+        db.0.span_note(note_span, note);
     }
+    db.wiki_link(lint);
 }
 
 pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
@@ -594,10 +587,8 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
-    if cx.current_level(lint) != Level::Allow {
-        f(&mut db.0);
-        db.wiki_link(lint);
-    }
+    f(&mut db.0);
+    db.wiki_link(lint);
 }
 
 pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -1011,4 +1002,11 @@ pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u
     ty.layout(cx.tcx, cx.param_env).ok().map(|layout| {
         layout.size(cx.tcx).bytes()
     })
+}
+
+/// Returns true if the lint is allowed in the current context
+///
+/// Useful for skipping long running code when it's unnecessary
+pub fn is_allowed(cx: &LateContext, lint: &'static Lint, id: NodeId) -> bool {
+    cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }

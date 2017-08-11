@@ -104,7 +104,9 @@ fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
 }
 
 fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
-    list.iter().any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
+    list.iter().any(|&name| {
+        interned_name.starts_with(name) || interned_name.ends_with(name)
+    })
 }
 
 impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {

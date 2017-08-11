@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Spanned;
 use utils::SpanlessEq;
-use utils::{match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty, get_parent_expr, is_allowed};
 
 /// **What it does:** Checks for string appends of the form `x = x + y` (without
 /// `let`!).
@@ -83,9 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
-                if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
-                    // the string_add_assign is allow, so no duplicates
-                } else {
+                if !is_allowed(cx, STRING_ADD_ASSIGN, e.id) {
                     let parent = get_parent_expr(cx, e);
                     if let Some(p) = parent {
                         if let ExprAssign(ref target, _) = p.node {

@@ -12,7 +12,7 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, span_lint_and_sugg, in_external_macro,
-            expr_block, walk_ptrs_ty, is_expn_of, remove_blocks};
+            expr_block, walk_ptrs_ty, is_expn_of, remove_blocks, is_allowed};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -194,7 +194,7 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
             return;
         };
         let ty = cx.tables.expr_ty(ex);
-        if ty.sty != ty::TyBool || cx.current_level(MATCH_BOOL) == Allow {
+        if ty.sty != ty::TyBool || is_allowed(cx, MATCH_BOOL, ex.id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
             check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }

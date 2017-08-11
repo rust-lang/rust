@@ -8,7 +8,7 @@ use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use syntax::ast::{Attribute, NodeId};
 use syntax::codemap::Span;
 
-use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
+use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type, is_allowed};
 
 /// **What it does:** Checks for methods with high cyclomatic complexity.
 ///
@@ -79,7 +79,16 @@ impl CyclomaticComplexity {
         };
 
         if cc + divergence < match_arms + short_circuits {
-            report_cc_bug(cx, cc, match_arms, divergence, short_circuits, ret_adjust, span);
+            report_cc_bug(
+                cx,
+                cc,
+                match_arms,
+                divergence,
+                short_circuits,
+                ret_adjust,
+                span,
+                body.id().node_id,
+            );
         } else {
             let mut rust_cc = cc + divergence - match_arms - short_circuits;
             // prevent degenerate cases where unreachable code contains `return` statements
@@ -180,7 +189,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
 }
 
 #[cfg(feature = "debugging")]
-fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
+#[allow(too_many_arguments)]
+fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
     span_bug!(
         span,
         "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
@@ -193,8 +203,9 @@ fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, re
     );
 }
 #[cfg(not(feature = "debugging"))]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
-    if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
+#[allow(too_many_arguments)]
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
+    if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
         cx.sess().span_note_without_error(
             span,
             &format!(
