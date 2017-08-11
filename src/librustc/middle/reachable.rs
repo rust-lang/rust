@@ -375,7 +375,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     });
     let mut reachable_context = ReachableContext {
         tcx,
-        tables: &ty::TypeckTables::empty(DefId::invalid()),
+        tables: &ty::TypeckTables::empty(None),
         reachable_symbols: NodeSet(),
         worklist: Vec::new(),
         any_library,

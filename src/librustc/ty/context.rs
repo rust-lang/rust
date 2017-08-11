@@ -212,7 +212,7 @@ pub struct CommonTypes<'tcx> {
 }
 
 pub struct LocalTableInContext<'a, V: 'a> {
-    local_id_root: DefId,
+    local_id_root: Option<DefId>,
     data: &'a ItemLocalMap<V>
 }
 
@@ -223,11 +223,13 @@ pub struct LocalTableInContext<'a, V: 'a> {
 /// would be in a different frame of reference and using its `local_id`
 /// would result in lookup errors, or worse, in silently wrong data being
 /// stored/returned.
-fn validate_hir_id_for_typeck_tables(table_id_root: DefId, hir_id: hir::HirId) {
+fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
+                                     hir_id: hir::HirId,
+                                     mut_access: bool) {
     #[cfg(debug_assertions)]
     {
-        if table_id_root.is_local() {
-            if hir_id.owner != table_id_root.index {
+        if let Some(local_id_root) = local_id_root {
+            if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
                     let node_id = tcx.hir
                                      .definitions()
@@ -237,8 +239,17 @@ fn validate_hir_id_for_typeck_tables(table_id_root: DefId, hir_id: hir::HirId) {
                           TypeckTables with local_id_root {:?}",
                           tcx.hir.node_to_string(node_id),
                           DefId::local(hir_id.owner),
-                          table_id_root)
+                          local_id_root)
                 });
+            }
+        } else {
+            // We use "Null Object" TypeckTables in some of the analysis passes.
+            // These are just expected to be empty and their `local_id_root` is
+            // `None`. Therefore we cannot verify whether a given `HirId` would
+            // be a valid key for the given table. Instead we make sure that
+            // nobody tries to write to such a Null Object table.
+            if mut_access {
+                bug!("access to invalid TypeckTables")
             }
         }
     }
@@ -246,12 +257,12 @@ fn validate_hir_id_for_typeck_tables(table_id_root: DefId, hir_id: hir::HirId) {
 
 impl<'a, V> LocalTableInContext<'a, V> {
     pub fn contains_key(&self, id: hir::HirId) -> bool {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.data.contains_key(&id.local_id)
     }
 
     pub fn get(&self, id: hir::HirId) -> Option<&V> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.data.get(&id.local_id)
     }
 
@@ -269,29 +280,29 @@ impl<'a, V> ::std::ops::Index<hir::HirId> for LocalTableInContext<'a, V> {
 }
 
 pub struct LocalTableInContextMut<'a, V: 'a> {
-    local_id_root: DefId,
+    local_id_root: Option<DefId>,
     data: &'a mut ItemLocalMap<V>
 }
 
 impl<'a, V> LocalTableInContextMut<'a, V> {
 
     pub fn get_mut(&mut self, id: hir::HirId) -> Option<&mut V> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.get_mut(&id.local_id)
     }
 
     pub fn entry(&mut self, id: hir::HirId) -> Entry<hir::ItemLocalId, V> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.entry(id.local_id)
     }
 
     pub fn insert(&mut self, id: hir::HirId, val: V) -> Option<V> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.insert(id.local_id, val)
     }
 
     pub fn remove(&mut self, id: hir::HirId) -> Option<V> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.remove(&id.local_id)
     }
 }
@@ -299,7 +310,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TypeckTables<'tcx> {
     /// The HirId::owner all ItemLocalIds in this table are relative to.
-    pub local_id_root: DefId,
+    pub local_id_root: Option<DefId>,
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
@@ -363,7 +374,7 @@ pub struct TypeckTables<'tcx> {
 }
 
 impl<'tcx> TypeckTables<'tcx> {
-    pub fn empty(local_id_root: DefId) -> TypeckTables<'tcx> {
+    pub fn empty(local_id_root: Option<DefId>) -> TypeckTables<'tcx> {
         TypeckTables {
             local_id_root,
             type_dependent_defs: ItemLocalMap(),
@@ -388,7 +399,7 @@ impl<'tcx> TypeckTables<'tcx> {
         match *qpath {
             hir::QPath::Resolved(_, ref path) => path.def,
             hir::QPath::TypeRelative(..) => {
-                validate_hir_id_for_typeck_tables(self.local_id_root, id);
+                validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
                 self.type_dependent_defs.get(&id.local_id).cloned().unwrap_or(Def::Err)
             }
         }
@@ -436,7 +447,7 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn node_id_to_type_opt(&self, id: hir::HirId) -> Option<Ty<'tcx>> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_types.get(&id.local_id).cloned()
     }
 
@@ -448,12 +459,12 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     pub fn node_substs(&self, id: hir::HirId) -> &'tcx Substs<'tcx> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned().unwrap_or(Substs::empty())
     }
 
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {
-        validate_hir_id_for_typeck_tables(self.local_id_root, id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned()
     }
 
@@ -502,7 +513,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn expr_adjustments(&self, expr: &hir::Expr)
                             -> &[ty::adjustment::Adjustment<'tcx>] {
-        validate_hir_id_for_typeck_tables(self.local_id_root, expr.hir_id);
+        validate_hir_id_for_typeck_tables(self.local_id_root, expr.hir_id, false);
         self.adjustments.get(&expr.hir_id.local_id).map_or(&[], |a| &a[..])
     }
 
@@ -662,6 +673,9 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
                     var_id,
                     closure_expr_id
                 } = *up_var_id;
+
+                let local_id_root =
+                    local_id_root.expect("trying to hash invalid TypeckTables");
 
                 let var_def_id = DefId {
                     krate: local_id_root.krate,

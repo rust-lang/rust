@@ -1656,7 +1656,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let krate = tcx.hir.krate();
 
-    let empty_tables = ty::TypeckTables::empty(DefId::invalid());
+    let empty_tables = ty::TypeckTables::empty(None);
 
 
     // Check privacy of names not checked in previous compilation stages.

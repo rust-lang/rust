@@ -45,7 +45,6 @@ use std::option;
 use std::path::Path;
 use std::str::FromStr;
 
-use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
 use rustc::hir;
@@ -233,7 +232,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let empty_tables = ty::TypeckTables::empty(DefId::invalid());
+                    let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                         tables: Cell::new(&empty_tables)

@@ -359,7 +359,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
-        self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(table_owner)));
+        self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
         self
     }
 

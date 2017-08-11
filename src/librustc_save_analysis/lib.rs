@@ -977,7 +977,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
 
     let save_ctxt = SaveContext {
         tcx: tcx,
-        tables: &ty::TypeckTables::empty(DefId::invalid()),
+        tables: &ty::TypeckTables::empty(None),
         analysis: analysis,
         span_utils: SpanUtils::new(&tcx.sess),
         config: find_config(config),

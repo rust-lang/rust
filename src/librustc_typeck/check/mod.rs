@@ -901,7 +901,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Consistency check our TypeckTables instance can hold all ItemLocalIds
     // it will need to hold.
     assert_eq!(tables.local_id_root,
-               DefId::local(tcx.hir.definitions().node_to_hir_id(id).owner));
+               Some(DefId::local(tcx.hir.definitions().node_to_hir_id(id).owner)));
     tables
 }
 

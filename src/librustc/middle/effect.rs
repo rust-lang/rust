@@ -19,7 +19,6 @@ use syntax::ast;
 use syntax_pos::Span;
 use hir::{self, PatKind};
 use hir::def::Def;
-use hir::def_id::DefId;
 use hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
 
 #[derive(Copy, Clone)]
@@ -263,7 +262,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = EffectCheckVisitor {
         tcx,
-        tables: &ty::TypeckTables::empty(DefId::invalid()),
+        tables: &ty::TypeckTables::empty(None),
         body_id: hir::BodyId { node_id: ast::CRATE_NODE_ID },
         unsafe_context: UnsafeContext::new(SafeContext),
     };

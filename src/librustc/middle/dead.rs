@@ -427,7 +427,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
-        tables: &ty::TypeckTables::empty(DefId::invalid()),
+        tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,
         ignore_non_const_paths: false,

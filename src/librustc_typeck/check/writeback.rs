@@ -81,7 +81,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         WritebackCx {
             fcx: fcx,
-            tables: ty::TypeckTables::empty(DefId::local(owner.owner)),
+            tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
             body: body
         }
     }
@@ -229,10 +229,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_closures(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&id, closure_ty) in fcx_tables.closure_tys().iter() {
             let hir_id = hir::HirId {
-                owner: fcx_tables.local_id_root.index,
+                owner: common_local_id_root.index,
                 local_id: id,
             };
             let closure_ty = self.resolve(closure_ty, &hir_id);
@@ -241,7 +242,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         for (&id, &closure_kind) in fcx_tables.closure_kinds().iter() {
             let hir_id = hir::HirId {
-                owner: fcx_tables.local_id_root.index,
+                owner: common_local_id_root.index,
                 local_id: id,
             };
             self.tables.closure_kinds_mut().insert(hir_id, closure_kind);
@@ -251,11 +252,13 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_cast_types(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         let fcx_cast_kinds = fcx_tables.cast_kinds();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
         let mut self_cast_kinds = self.tables.cast_kinds_mut();
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, &cast_kind) in fcx_cast_kinds.iter() {
             let hir_id = hir::HirId {
-                owner: fcx_tables.local_id_root.index,
+                owner: common_local_id_root.index,
                 local_id,
             };
             self_cast_kinds.insert(hir_id, cast_kind);
@@ -357,10 +360,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_liberated_fn_sigs(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
             let hir_id = hir::HirId {
-                owner: fcx_tables.local_id_root.index,
+                owner: common_local_id_root.index,
                 local_id,
             };
             let fn_sig = self.resolve(fn_sig, &hir_id);
@@ -371,10 +375,11 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_fru_field_types(&mut self) {
         let fcx_tables = self.fcx.tables.borrow();
         debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
 
         for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
             let hir_id = hir::HirId {
-                owner: fcx_tables.local_id_root.index,
+                owner: common_local_id_root.index,
                 local_id,
             };
             let ftys = self.resolve(ftys, &hir_id);
