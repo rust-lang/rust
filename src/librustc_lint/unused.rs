@@ -155,12 +155,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         let maybe_def = match expr.node {
             hir::ExprCall(ref callee, _) => {
                 match callee.node {
-                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.id)),
+                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.hir_id)),
                     _ => None
                 }
             },
             hir::ExprMethodCall(..) => {
-                cx.tables.type_dependent_defs.get(&expr.id).cloned()
+                cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
             },
             _ => { None }
         };

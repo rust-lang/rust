@@ -1655,9 +1655,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
-
     let empty_tables = ty::TypeckTables::empty(None);
-
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {

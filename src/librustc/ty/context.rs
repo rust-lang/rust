@@ -285,7 +285,6 @@ pub struct LocalTableInContextMut<'a, V: 'a> {
 }
 
 impl<'a, V> LocalTableInContextMut<'a, V> {
-
     pub fn get_mut(&mut self, id: hir::HirId) -> Option<&mut V> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, true);
         self.data.get_mut(&id.local_id)
