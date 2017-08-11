@@ -17,17 +17,21 @@ use convert::From;
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
 ///
-/// This type is broadly used across `std::io` for any operation which may
+/// This type is broadly used across [`std::io`] for any operation which may
 /// produce an error.
 ///
-/// This typedef is generally used to avoid writing out `io::Error` directly and
-/// is otherwise a direct mapping to `Result`.
+/// This typedef is generally used to avoid writing out [`io::Error`] directly and
+/// is otherwise a direct mapping to [`Result`].
 ///
-/// While usual Rust style is to import types directly, aliases of `Result`
-/// often are not, to make it easier to distinguish between them. `Result` is
-/// generally assumed to be `std::result::Result`, and so users of this alias
+/// While usual Rust style is to import types directly, aliases of [`Result`]
+/// often are not, to make it easier to distinguish between them. [`Result`] is
+/// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
 /// will generally use `io::Result` instead of shadowing the prelude's import
-/// of `std::result::Result`.
+/// of [`std::result::Result`][`Result`].
+///
+/// [`std::io`]: ../io/index.html
+/// [`io::Error`]: ../io/struct.Error.html
+/// [`Result`]: ../result/enum.Result.html
 ///
 /// # Examples
 ///
@@ -47,13 +51,16 @@ use convert::From;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the `Read`, `Write`, `Seek`, and
+/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
 /// associated traits.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
+/// [`Read`]: ../io/trait.Read.html
+/// [`Write`]: ../io/trait.Write.html
+/// [`Seek`]: ../io/trait.Seek.html
 /// [`ErrorKind`]: enum.ErrorKind.html
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
