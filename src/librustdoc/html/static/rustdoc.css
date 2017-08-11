@@ -687,6 +687,10 @@ span.since {
 	left: 0;
 }
 
+.variant + .toggle-wrapper + .docblock > p {
+	margin-top: 5px;
+}
+
 .variant + .toggle-wrapper > a {
 	margin-top: 5px;
 }
