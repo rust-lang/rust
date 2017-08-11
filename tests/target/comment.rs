@@ -63,3 +63,26 @@ fn issue_1086() {
 fn main() {
     // Test
 }
+
+// #1643
+fn some_fn() // some comment
+{
+}
+
+fn some_fn1()
+// some comment
+{
+}
+
+fn some_fn2() // some comment
+{
+}
+
+fn some_fn3() // some comment some comment some comment some comment some comment some comment so
+{
+}
+
+fn some_fn4()
+// some comment some comment some comment some comment some comment some comment some comment
+{
+}

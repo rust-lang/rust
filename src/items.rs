@@ -2075,6 +2075,40 @@ fn rewrite_fn_base(
         pos_before_where,
         option,
     ));
+    // If there are neither where clause nor return type, we may be missing comments between
+    // args and `{`.
+    if where_clause_str.is_empty() {
+        if let ast::FunctionRetTy::Default(ret_span) = fd.output {
+            let sp = mk_sp(args_span.hi, ret_span.hi);
+            let missing_snippet = context.snippet(sp);
+            let trimmed_snippet = missing_snippet.trim();
+            let missing_comment = if trimmed_snippet.is_empty() {
+                String::new()
+            } else {
+                try_opt!(rewrite_comment(
+                    trimmed_snippet,
+                    false,
+                    Shape::indented(indent, context.config),
+                    context.config,
+                ))
+            };
+            if !missing_comment.is_empty() {
+                let pos = missing_snippet.chars().position(|c| c == '/').unwrap_or(0);
+                // 1 = ` `
+                let total_width = missing_comment.len() + last_line_width(&result) + 1;
+                let force_new_line_before_comment = missing_snippet[..pos].contains('\n') ||
+                    total_width > context.config.max_width();
+                let sep = if force_new_line_before_comment {
+                    format!("\n{}", indent.to_string(context.config))
+                } else {
+                    String::from(" ")
+                };
+                result.push_str(&sep);
+                result.push_str(&missing_comment);
+                force_new_line_for_brace = true;
+            }
+        }
+    }
 
     result.push_str(&where_clause_str);
 
