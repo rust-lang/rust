@@ -95,7 +95,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// # Cloning references
 ///
 /// Creating a new reference from an existing reference counted pointer is done using the
-/// `Clone` trait implemented for [`Arc<T>`][`arc`] and [`Weak<T>`][`weak`].
+/// `Clone` trait implemented for [`Arc<T>`][arc] and [`Weak<T>`][weak].
 ///
 /// ```
 /// use std::sync::Arc;
