@@ -18,7 +18,7 @@ use {Indent, Shape};
 use config::Config;
 use rewrite::RewriteContext;
 use string::{rewrite_string, StringFormat};
-use utils::wrap_str;
+use utils::{first_line_width, last_line_width, wrap_str};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -134,6 +134,93 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
     } else {
         CommentStyle::DoubleSlash
     }
+}
+
+pub fn combine_strs_with_missing_comments(
+    context: &RewriteContext,
+    prev_str: &str,
+    next_str: &str,
+    span: Span,
+    shape: Shape,
+    allow_extend: bool,
+) -> Option<String> {
+    let mut allow_one_line = !prev_str.contains('\n') && !next_str.contains('\n');
+    let first_sep = if prev_str.is_empty() || next_str.is_empty() {
+        ""
+    } else {
+        " "
+    };
+    let mut one_line_width =
+        last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
+
+    let original_snippet = context.snippet(span);
+    let trimmed_snippet = original_snippet.trim();
+    let indent_str = shape.indent.to_string(context.config);
+
+    if trimmed_snippet.is_empty() {
+        if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
+            return Some(format!("{}{}{}", prev_str, first_sep, next_str));
+        } else {
+            let sep = if prev_str.is_empty() {
+                String::new()
+            } else {
+                String::from("\n") + &indent_str
+            };
+            return Some(format!("{}{}{}", prev_str, sep, next_str));
+        }
+    }
+
+    // We have a missing comment between the first expression and the second expression.
+
+    // Peek the the original source code and find out whether there is a newline between the first
+    // expression and the second expression or the missing comment. We will preserve the orginal
+    // layout whenever possible.
+    let prefer_same_line = if let Some(pos) = original_snippet.chars().position(|c| c == '/') {
+        !original_snippet[..pos].contains('\n')
+    } else {
+        !original_snippet.contains('\n')
+    };
+
+    let missing_comment = try_opt!(rewrite_comment(
+        trimmed_snippet,
+        false,
+        shape,
+        context.config
+    ));
+    one_line_width -= first_sep.len();
+    let first_sep = if prev_str.is_empty() || missing_comment.is_empty() {
+        String::new()
+    } else {
+        let one_line_width = last_line_width(prev_str) + first_line_width(&missing_comment) + 1;
+        if prefer_same_line && one_line_width <= shape.width {
+            String::from(" ")
+        } else {
+            format!("\n{}", indent_str)
+        }
+    };
+    let second_sep = if missing_comment.is_empty() || next_str.is_empty() {
+        String::new()
+    } else {
+        if missing_comment.starts_with("//") {
+            format!("\n{}", indent_str)
+        } else {
+            one_line_width += missing_comment.len() + first_sep.len() + 1;
+            allow_one_line &= !missing_comment.starts_with("//") && !missing_comment.contains('\n');
+            if prefer_same_line && allow_one_line && one_line_width <= shape.width {
+                String::from(" ")
+            } else {
+                format!("\n{}", indent_str)
+            }
+        }
+    };
+    Some(format!(
+        "{}{}{}{}{}",
+        prev_str,
+        first_sep,
+        missing_comment,
+        second_sep,
+        next_str,
+    ))
 }
 
 pub fn rewrite_comment(

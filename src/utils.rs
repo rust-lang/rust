@@ -116,6 +116,16 @@ pub fn outer_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
     filter_attributes(attrs, ast::AttrStyle::Outer)
 }
 
+#[inline]
+pub fn last_line_contains_single_line_comment(s: &str) -> bool {
+    s.lines().last().map_or(false, |l| l.contains("//"))
+}
+
+#[inline]
+pub fn is_attributes_extendable(attrs_str: &str) -> bool {
+    !attrs_str.contains('\n') && !last_line_contains_single_line_comment(&attrs_str)
+}
+
 // The width of the first line in s.
 #[inline]
 pub fn first_line_width(s: &str) -> usize {
