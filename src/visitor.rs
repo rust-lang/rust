@@ -12,7 +12,8 @@ use std::cmp;
 
 use strings::string_buffer::StringBuffer;
 use syntax::{ast, ptr, visit};
-use syntax::codemap::{self, BytePos, CodeMap, Span};
+use syntax::attr::HasAttrs;
+use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
 use {Indent, Shape, Spanned};
@@ -132,22 +133,45 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str("{");
 
         if self.config.remove_blank_lines_at_start_or_end_of_block() {
-            if let Some(stmt) = b.stmts.first() {
-                let snippet = self.snippet(mk_sp(self.last_pos, stmt.span.lo));
-                let len = CommentCodeSlices::new(&snippet)
-                    .nth(0)
-                    .and_then(|(kind, _, s)| {
-                        if kind == CodeCharKind::Normal {
-                            // There may be inner attributes
-                            let s = &s[..s.len() -
-                                           s.trim_left_matches(&[' ', '\t', '\r', '\n'][..]).len()];
-                            s.rfind('\n')
+            if let Some(first_stmt) = b.stmts.first() {
+                let attr_lo = inner_attrs
+                    .and_then(|attrs| {
+                        attrs
+                            .iter()
+                            .filter(|a| a.style == ast::AttrStyle::Inner)
+                            .nth(0)
+                            .map(|attr| attr.span.lo)
+                    })
+                    .or_else(|| {
+                        // Attributes for an item in a statement position
+                        // do not belong to the statement. (rust-lang/rust#34459)
+                        if let ast::StmtKind::Item(ref item) = first_stmt.node {
+                            item.attrs.first()
                         } else {
-                            None
-                        }
+                            first_stmt.attrs().first()
+                        }.and_then(|attr| {
+                            // Some stmts can have embedded attributes.
+                            // e.g. `match { #![attr] ... }`
+                            let attr_lo = attr.span.lo;
+                            if attr_lo < first_stmt.span.lo {
+                                Some(attr_lo)
+                            } else {
+                                None
+                            }
+                        })
                     });
+
+                let snippet =
+                    self.snippet(mk_sp(self.last_pos, attr_lo.unwrap_or(first_stmt.span.lo)));
+                let len = CommentCodeSlices::new(&snippet).nth(0).and_then(
+                    |(kind, _, s)| if kind == CodeCharKind::Normal {
+                        s.rfind('\n')
+                    } else {
+                        None
+                    },
+                );
                 if let Some(len) = len {
-                    self.last_pos = self.last_pos + BytePos(len as u32);
+                    self.last_pos = self.last_pos + BytePos::from_usize(len);
                 }
             }
         }
@@ -186,7 +210,7 @@ impl<'a> FmtVisitor<'a> {
                         }
                     });
                 if let Some(len) = len {
-                    remove_len = BytePos(len as u32);
+                    remove_len = BytePos::from_usize(len);
                 }
             }
         }
