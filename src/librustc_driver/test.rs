@@ -14,6 +14,7 @@ use driver;
 use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
+#[cfg(feature="llvm")]
 use rustc_trans;
 use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
@@ -106,13 +107,14 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
     let sess = session::build_session_(options,
                                        &dep_graph,
                                        None,
                                        diagnostic_handler,
                                        Rc::new(CodeMap::new(FilePathMapping::empty())),
                                        cstore.clone());
+    #[cfg(feature="llvm")]
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {

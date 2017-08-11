@@ -18,7 +18,9 @@ use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::middle::{self, dependency_format, stability, reachable};
+use rustc::middle::{self, stability, reachable};
+#[cfg(feature="llvm")]
+use rustc::middle::dependency_format;
 use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
@@ -31,7 +33,9 @@ use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
+#[cfg(feature="llvm")]
 use rustc_trans::back::{link, write};
+#[cfg(feature="llvm")]
 use rustc_trans as trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -69,6 +73,11 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
+    #[cfg(feature="llvm")]
+    use rustc_trans::back::write::OngoingCrateTranslation;
+    #[cfg(not(feature="llvm"))]
+    type OngoingCrateTranslation = ();
+
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -88,7 +97,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans) = {
+    let (outputs, trans): (OutputFilenames, OngoingCrateTranslation) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -113,7 +122,8 @@ pub fn compile_input(sess: &Session,
         };
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
-        let crate_name = link::find_crate_name(Some(sess), &krate.attrs, input);
+        let crate_name =
+            ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
@@ -206,6 +216,8 @@ pub fn compile_input(sess: &Session,
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
+
+            #[cfg(feature="llvm")]
             let trans = phase_4_translate_to_llvm(tcx, analysis, incremental_hashes_map,
                                                   &outputs);
 
@@ -221,38 +233,59 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
+            #[cfg(not(feature="llvm"))]
+            {
+                let _ = incremental_hashes_map;
+                sess.err(&format!("LLVM is not supported by this rustc"));
+                sess.abort_if_errors();
+                unreachable!();
+            }
+
+            #[cfg(feature="llvm")]
             Ok((outputs, trans))
         })??
     };
 
-    if sess.opts.debugging_opts.print_type_sizes {
-        sess.code_stats.borrow().print_type_sizes();
+    #[cfg(not(feature="llvm"))]
+    {
+        let _ = outputs;
+        let _ = trans;
+        unreachable!();
     }
 
-    let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans);
+    #[cfg(feature="llvm")]
+    {
+        if sess.opts.debugging_opts.print_type_sizes {
+            sess.code_stats.borrow().print_type_sizes();
+        }
 
-    controller_entry_point!(after_llvm,
-                            sess,
-                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                            phase5_result);
-    phase5_result?;
+        let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans);
 
-    phase_6_link_output(sess, &trans, &outputs);
+        controller_entry_point!(after_llvm,
+                                sess,
+                                CompileState::state_after_llvm(input, sess, outdir, output, &trans),
+                                phase5_result);
+        phase5_result?;
 
-    // Now that we won't touch anything in the incremental compilation directory
-    // any more, we can finalize it (which involves renaming it)
-    rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
+        phase_6_link_output(sess, &trans, &outputs);
 
-    if sess.opts.debugging_opts.perf_stats {
-        sess.print_perf_stats();
+        // Now that we won't touch anything in the incremental compilation directory
+        // any more, we can finalize it (which involves renaming it)
+        rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
+
+        if sess.opts.debugging_opts.perf_stats {
+            sess.print_perf_stats();
+        }
+
+        controller_entry_point!(
+            compilation_done,
+            sess,
+            CompileState::state_when_compilation_done(input, sess, outdir, output),
+            Ok(())
+        );
+
+        Ok(())
     }
-
-    controller_entry_point!(compilation_done,
-                            sess,
-                            CompileState::state_when_compilation_done(input, sess, outdir, output),
-                            Ok(()));
-
-    Ok(())
 }
 
 fn keep_hygiene_data(sess: &Session) -> bool {
@@ -360,6 +393,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
+    #[cfg(feature="llvm")]
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -386,6 +420,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: None,
             analysis: None,
             tcx: None,
+            #[cfg(feature="llvm")]
             trans: None,
         }
     }
@@ -474,7 +509,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         }
     }
 
-
+    #[cfg(feature="llvm")]
     fn state_after_llvm(input: &'a Input,
                         session: &'tcx Session,
                         out_dir: &'a Option<PathBuf>,
@@ -488,6 +523,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         }
     }
 
+    #[cfg(feature="llvm")]
     fn state_when_compilation_done(input: &'a Input,
                                    session: &'tcx Session,
                                    out_dir: &'a Option<PathBuf>,
@@ -906,6 +942,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
+    #[cfg(feature="llvm")]
     trans::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
@@ -918,6 +955,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
+    #[cfg(feature="llvm")]
     trans::provide(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
@@ -1064,6 +1102,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
+#[cfg(feature="llvm")]
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: IncrementalHashesMap,
@@ -1085,6 +1124,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
+#[cfg(feature="llvm")]
 pub fn phase_5_run_llvm_passes(sess: &Session,
                                trans: write::OngoingCrateTranslation)
                                -> (CompileResult, trans::CrateTranslation) {
@@ -1103,6 +1143,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
+#[cfg(feature="llvm")]
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
@@ -1124,7 +1165,12 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
         match *output_type {
             OutputType::Exe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output, crate_name, outputs);
+                    let p = ::rustc_trans_utils::link::filename_for_input(
+                        sess,
+                        *output,
+                        crate_name,
+                        outputs
+                    );
                     out_filenames.push(p);
                 }
             }
@@ -1234,7 +1280,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     if base.is_empty() {
         base.extend(attr_types);
         if base.is_empty() {
-            base.push(link::default_output_for_target(session));
+            base.push(::rustc_trans_utils::link::default_output_for_target(session));
         }
         base.sort();
         base.dedup();
@@ -1242,7 +1288,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 
     base.into_iter()
         .filter(|crate_type| {
-            let res = !link::invalid_output_for_target(session, *crate_type);
+            let res = !::rustc_trans_utils::link::invalid_output_for_target(session, *crate_type);
 
             if !res {
                 session.warn(&format!("dropping unsupported crate type `{}` for target `{}`",

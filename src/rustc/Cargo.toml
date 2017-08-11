@@ -15,3 +15,4 @@ rustc_driver = { path = "../librustc_driver" }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]
+llvm = ["rustc_driver/llvm"]

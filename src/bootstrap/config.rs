@@ -53,6 +53,7 @@ pub struct Config {
     pub profiler: bool,
 
     // llvm codegen options
+    pub llvm_enabled: bool,
     pub llvm_assertions: bool,
     pub llvm_optimize: bool,
     pub llvm_release_debuginfo: bool,
@@ -192,6 +193,7 @@ struct Install {
 #[derive(Deserialize, Default)]
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Llvm {
+    enabled: Option<bool>,
     ccache: Option<StringOrBool>,
     ninja: Option<bool>,
     assertions: Option<bool>,
@@ -265,6 +267,7 @@ struct TomlTarget {
 impl Config {
     pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
         let mut config = Config::default();
+        config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.use_jemalloc = true;
         config.backtrace = true;
@@ -345,6 +348,7 @@ impl Config {
                 Some(StringOrBool::Bool(false)) | None => {}
             }
             set(&mut config.ninja, llvm.ninja);
+            set(&mut config.llvm_enabled, llvm.enabled);
             set(&mut config.llvm_assertions, llvm.assertions);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
