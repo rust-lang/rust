@@ -46,11 +46,13 @@ These options control how the docs look at a macro level.
 This form of the `doc` attribute lets you control the favicon of your docs.
 
 ```rust,ignore
-#![doc(html_favicon_url = "https://foo.com/favicon.ico")]
+#![doc(html_favicon_url = "https://example.com/favicon.ico")]
 ```
 
 This will put `<link rel="shortcut icon" href="{}">` into your docs, where
 the string for the attribute goes into the `{}`.
+
+If you don't use this attribute, there will be no favicon.
 
 ### `html_logo_url`
 
@@ -58,11 +60,13 @@ This form of the `doc` attribute lets you control the logo in the upper
 left hand side of the docs.
 
 ```rust,ignore
-#![doc(html_logo_url = "https://foo.com/logo.jpg")]
+#![doc(html_logo_url = "https://example.com/logo.jpg")]
 ```
 
 This will put `<a href='index.html'><img src='{}' alt='logo' width='100'></a>` into
 your docs, where the string for the attribute goes into the `{}`.
+
+If you don't use this attribute, there will be no logo.
 
 ### `html_playground_url`
 
@@ -70,10 +74,12 @@ This form of the `doc` attribute lets you control where the "run" buttons
 on your documentation examples make requests to.
 
 ```rust,ignore
-#![doc(html_playground_url = "https://playground.foo.com/")]
+#![doc(html_playground_url = "https://playground.example.com/")]
 ```
 
 Now, when you press "run", the button will make a request to this domain.
+
+If you don't use this attribute, there will be no run buttons.
 
 ### `issue_tracker_base_url`
 
@@ -83,7 +89,7 @@ given. `rustdoc` uses this number, plus the base URL given here, to link to
 the tracking issue.
 
 ```rust,ignore
-#![doc(issue_tracker_base_url = "https://github.com/foo/foo/issues/")]
+#![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 ```
 
 ### `html_no_source`
