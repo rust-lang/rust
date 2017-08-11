@@ -354,15 +354,19 @@ pub enum AllocErr {
 }
 
 impl AllocErr {
+    #[inline]
     pub fn invalid_input(details: &'static str) -> Self {
         AllocErr::Unsupported { details: details }
     }
+    #[inline]
     pub fn is_memory_exhausted(&self) -> bool {
         if let AllocErr::Exhausted { .. } = *self { true } else { false }
     }
+    #[inline]
     pub fn is_request_unsupported(&self) -> bool {
         if let AllocErr::Unsupported { .. } = *self { true } else { false }
     }
+    #[inline]
     pub fn description(&self) -> &str {
         match *self {
             AllocErr::Exhausted { .. } => "allocator memory exhausted",
