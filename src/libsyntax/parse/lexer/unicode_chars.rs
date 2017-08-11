@@ -82,7 +82,7 @@ const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
     ('։', "Armenian Full Stop", ':'),
     ('܃', "Syriac Supralinear Colon", ':'),
     ('܄', "Syriac Sublinear Colon", ':'),
-    ('᛬', "Runic Multiple Ponctuation", ':'),
+    ('᛬', "Runic Multiple Punctuation", ':'),
     ('︰', "Presentation Form For Vertical Two Dot Leader", ':'),
     ('᠃', "Mongolian Full Stop", ':'),
     ('᠉', "Mongolian Manchu Full Stop", ':'),
