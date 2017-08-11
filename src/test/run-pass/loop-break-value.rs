@@ -137,4 +137,10 @@ pub fn main() {
         panic!("from outer");
     };
     assert_eq!(break_from_while_to_outer, 567);
+
+    let rust = true;
+    let value = loop {
+        break rust;
+    };
+    assert!(value);
 }
