@@ -18,7 +18,9 @@ use rustc::session::CompileIncomplete;
 use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
-use rustc::middle::{self, dependency_format, stability, reachable};
+use rustc::middle::{self, stability, reachable};
+#[cfg(feature="llvm")]
+use rustc::middle::dependency_format;
 use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
@@ -71,6 +73,11 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
+    #[cfg(feature="llvm")]
+    use rustc_trans::back::write::OngoingCrateTranslation;
+    #[cfg(not(feature="llvm"))]
+    type OngoingCrateTranslation = ();
+
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -90,7 +97,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans) = {
+    let (outputs, trans): (OutputFilenames, OngoingCrateTranslation) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -213,8 +220,6 @@ pub fn compile_input(sess: &Session,
             #[cfg(feature="llvm")]
             let trans = phase_4_translate_to_llvm(tcx, analysis, incremental_hashes_map,
                                                   &outputs);
-            #[cfg(not(feature="llvm"))]
-            let trans = { panic!("LLVM not supported by this rustc."); () };
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -228,12 +233,25 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
+            #[cfg(not(feature="llvm"))]
+            {
+                let _ = incremental_hashes_map;
+                sess.err(&format!("LLVM is not supported by this rustc"));
+                sess.abort_if_errors();
+                unreachable!();
+            }
+
+            #[cfg(feature="llvm")]
             Ok((outputs, trans))
         })??
     };
 
     #[cfg(not(feature="llvm"))]
-    unreachable!();
+    {
+        let _ = outputs;
+        let _ = trans;
+        unreachable!();
+    }
 
     #[cfg(feature="llvm")]
     {
@@ -505,6 +523,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         }
     }
 
+    #[cfg(feature="llvm")]
     fn state_when_compilation_done(input: &'a Input,
                                    session: &'tcx Session,
                                    out_dir: &'a Option<PathBuf>,
@@ -1145,7 +1164,12 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, crate_name: &str) {
         match *output_type {
             OutputType::Exe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = ::rustc_trans_utils::link::filename_for_input(sess, *output, crate_name, outputs);
+                    let p = ::rustc_trans_utils::link::filename_for_input(
+                        sess,
+                        *output,
+                        crate_name,
+                        outputs
+                    );
                     out_filenames.push(p);
                 }
             }
@@ -1263,7 +1287,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 
     base.into_iter()
         .filter(|crate_type| {
-            let res = !rustc_trans_utils::link::invalid_output_for_target(session, *crate_type);
+            let res = !::rustc_trans_utils::link::invalid_output_for_target(session, *crate_type);
 
             if !res {
                 session.warn(&format!("dropping unsupported crate type `{}` for target `{}`",

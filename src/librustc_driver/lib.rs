@@ -35,6 +35,8 @@ extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
+#[cfg(not(feature="llvm"))]
+extern crate owning_ref;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;
@@ -70,8 +72,6 @@ use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 #[cfg(feature="llvm")]
-use rustc_trans::back::link;
-#[cfg(feature="llvm")]
 use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
@@ -82,7 +82,7 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 #[cfg(not(feature="llvm"))]
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
@@ -113,6 +113,9 @@ use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
+
+#[cfg(not(feature="llvm"))]
+use owning_ref::{OwningRef, ErasedBoxRef};
 
 #[cfg(test)]
 pub mod test;
@@ -174,7 +177,7 @@ pub use NoLLvmMetadataLoader as MetadataLoader;
 pub use rustc_trans::LlvmMetadataLoader as MetadataLoader;
 
 #[cfg(not(feature="llvm"))]
-impl MetadataLoader for NoLLvmMetadataLoader {
+impl MetadataLoaderTrait for NoLLvmMetadataLoader {
     fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
         use std::fs::File;
         use std::io;
@@ -185,11 +188,11 @@ impl MetadataLoader for NoLLvmMetadataLoader {
 
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e|format!("metadata section read err: {:?}", e))?;
-            if entry.header().identifier() == METADATA_FILENAME {
+            if entry.header().identifier() == "rust.metadata.bin" {
                 let mut buf = Vec::new();
                 io::copy(&mut entry, &mut buf).unwrap();
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(buf.erase_owner());
+                return Ok(buf.map_owner_box().erase_owner());
             }
         }
 
@@ -197,8 +200,8 @@ impl MetadataLoader for NoLLvmMetadataLoader {
     }
 
     fn get_dylib_metadata(&self,
-                          target: &Target,
-                          filename: &Path)
+                          _target: &Target,
+                          _filename: &Path)
                           -> Result<ErasedBoxRef<[u8]>, String> {
         panic!("Dylib metadata loading not supported without LLVM")
     }
@@ -207,6 +210,7 @@ impl MetadataLoader for NoLLvmMetadataLoader {
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
+#[cfg_attr(not(feature="llvm"), allow(unused_mut))]
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
                         file_loader: Option<Box<FileLoader + 'static>>,
@@ -516,6 +520,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         Compilation::Continue
     }
 
+    #[cfg_attr(not(feature="llvm"), allow(unused_mut))]
     fn no_input(&mut self,
                 matches: &getopts::Matches,
                 sopts: &config::Options,
@@ -743,7 +748,12 @@ impl RustcDefaultCalls {
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
                     for &style in &crate_types {
-                        let fname = rustc_trans_utils::link::filename_for_input(sess, style, &id, &t_outputs);
+                        let fname = rustc_trans_utils::link::filename_for_input(
+                            sess,
+                            style,
+                            &id,
+                            &t_outputs
+                        );
                         println!("{}",
                                  fname.file_name()
                                       .unwrap()
@@ -792,7 +802,7 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
-                    #[cfg(features="llvm")]
+                    #[cfg(feature="llvm")]
                     for &(name, _) in RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
@@ -800,7 +810,7 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
-                    #[cfg(features="llvm")]
+                    #[cfg(feature="llvm")]
                     for &(name, _) in CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }

@@ -88,7 +88,8 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
 pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
-pub use self::rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target, invalid_output_for_target};
+pub use self::rustc_trans_utils::link::{find_crate_name, filename_for_input,
+                                        default_output_for_target, invalid_output_for_target};
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
     let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
