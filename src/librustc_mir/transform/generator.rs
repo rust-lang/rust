@@ -76,8 +76,8 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     // The number of generator states. 0 is unresumed, 1 is poisoned. So this is initialized to 2
     bb_target_count: u32,
 
-    // Map from a (which block to resume execution at, which block to use to drop the generator) to a 
-    // genrator state
+    // Map from a (which block to resume execution at, which block to use to drop the generator)
+    // to a generator state
     bb_targets: HashMap<(BasicBlock, Option<BasicBlock>), u32>,
 
     // The original RETURN_POINTER local

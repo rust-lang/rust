@@ -428,11 +428,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprClosure(.., is_generator) => {
+        hir::ExprClosure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
-            let (def_id, substs) = match closure_ty.sty {
-                ty::TyClosure(def_id, substs) |
-                ty::TyGenerator(def_id, substs, _) => (def_id, substs),
+            let (def_id, substs, interior) = match closure_ty.sty {
+                ty::TyClosure(def_id, substs) => (def_id, substs, None),
+                ty::TyGenerator(def_id, substs, interior) => (def_id, substs, Some(interior)),
                 _ => {
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
@@ -447,7 +447,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 closure_id: def_id,
                 substs: substs,
                 upvars: upvars,
-                generator: is_generator,
+                interior,
             }
         }
 

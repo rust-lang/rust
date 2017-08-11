@@ -442,10 +442,14 @@ for mir::AggregateKind<'tcx> {
                 substs.hash_stable(hcx, hasher);
                 active_field.hash_stable(hcx, hasher);
             }
-            mir::AggregateKind::Closure(def_id, ref substs) |
-            mir::AggregateKind::Generator(def_id, ref substs) => {
+            mir::AggregateKind::Closure(def_id, ref substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
+            }
+            mir::AggregateKind::Generator(def_id, ref substs, ref interior) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+                interior.hash_stable(hcx, hasher);
             }
         }
     }

@@ -179,12 +179,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, generator } => { // see (*) above
+            ExprKind::Closure { closure_id, substs, upvars, interior } => { // see (*) above
                 let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                let result = if generator {
+                let result = if let Some(interior) = interior {
                     // Add the state operand
                     operands.push(Operand::Constant(box Constant {
                         span: expr_span,
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             value: ConstVal::Integral(ConstInt::U32(0)),
                         },
                     }));
-                    box AggregateKind::Generator(closure_id, substs)
+                    box AggregateKind::Generator(closure_id, substs, interior)
                 } else {
                     box AggregateKind::Closure(closure_id, substs)
                 };

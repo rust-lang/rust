@@ -11,7 +11,7 @@
 use middle::const_val::ConstVal;
 use hir::def_id::DefId;
 use ty::subst::Substs;
-use ty::{ClosureSubsts, Region, Ty};
+use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
 use mir::*;
 use rustc_const_math::ConstUsize;
 use syntax_pos::Span;
@@ -224,6 +224,12 @@ macro_rules! make_mir_visitor {
                                     substs: & $($mutability)* ClosureSubsts<'tcx>,
                                     _: Location) {
                 self.super_closure_substs(substs);
+            }
+
+            fn visit_generator_interior(&mut self,
+                                    interior: & $($mutability)* GeneratorInterior<'tcx>,
+                                    _: Location) {
+                self.super_generator_interior(interior);
             }
 
             fn visit_const_val(&mut self,
@@ -570,9 +576,11 @@ macro_rules! make_mir_visitor {
                                 self.visit_closure_substs(closure_substs, location);
                             }
                             AggregateKind::Generator(ref $($mutability)* def_id,
-                                                   ref $($mutability)* closure_substs) => {
+                                                   ref $($mutability)* closure_substs,
+                                                   ref $($mutability)* interior) => {
                                 self.visit_def_id(def_id, location);
                                 self.visit_closure_substs(closure_substs, location);
+                                self.visit_generator_interior(interior, location);
                             }
                         }
 
@@ -740,6 +748,10 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_substs(&mut self, _substs: & $($mutability)* &'tcx Substs<'tcx>) {
+            }
+
+            fn super_generator_interior(&mut self,
+                                    _interior: & $($mutability)* GeneratorInterior<'tcx>) {
             }
 
             fn super_closure_substs(&mut self,
