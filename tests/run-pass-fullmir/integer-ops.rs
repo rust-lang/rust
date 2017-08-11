@@ -9,8 +9,7 @@
 // except according to those terms.
 
 // FIXME: remove -Zmir-opt-level once https://github.com/rust-lang/rust/issues/43359 is fixed
-// FIXME: remove -Zmir-emit-validate=0 once https://github.com/rust-lang/rust/pull/43748 is merged
-// compile-flags: -Zmir-opt-level=0 -Zmir-emit-validate=0
+// compile-flags: -Zmir-opt-level=0
 
 use std::i32;
 
