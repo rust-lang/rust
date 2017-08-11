@@ -264,7 +264,7 @@ const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
     ('ꝸ', "Latin Small Letter Um", '&'),
     ('＆', "Fullwidth Ampersand", '&'),
 
-    ('᛭', "Runic Cros Punctuation", '+'),
+    ('᛭', "Runic Cross Punctuation", '+'),
     ('➕', "Heavy Plus Sign", '+'),
     ('𐊛', "Lycian Letter H", '+'),
     ('﬩', "Hebrew Letter Alternative Plus Sign", '+'),
