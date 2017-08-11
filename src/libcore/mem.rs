@@ -949,6 +949,7 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
 /// NB: This is very different from the `unreachable!()` macro: Unlike the
 /// macro, which panics when it is executed, it is *undefined behavior* to
 /// reach code marked with this function.
+#[inline]
 #[unstable(feature = "unreachable", issue = "43751")]
 pub unsafe fn unreachable() -> ! {
     intrinsics::unreachable()
