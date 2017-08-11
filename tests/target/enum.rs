@@ -24,8 +24,7 @@ enum EmtpyWithComment {
 // C-style enum
 enum Bar {
     A = 1,
-    #[someAttr(test)]
-    B = 2, // comment
+    #[someAttr(test)] B = 2, // comment
     C,
 }
 
@@ -43,8 +42,7 @@ enum StructLikeVariants {
     StructLike {
         x: i32, // Test comment
         // Pre-comment
-        #[Attr50]
-        y: SomeType, // Aanother Comment
+        #[Attr50] y: SomeType, // Aanother Comment
     },
     SL { a: A },
 }
@@ -98,7 +96,7 @@ enum EmtpyWithComment {
 }
 
 enum TestFormatFails {
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
 }
 
 fn nested_enum_test() {
@@ -127,7 +125,7 @@ fn nested_enum_test() {
                   * AAAAAAAAAAAAAAAAAA */
         }
         enum TestNestedFormatFail {
-            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+            AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
         }
     }
 }
@@ -168,4 +166,16 @@ enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
 {
     Foo,
+}
+
+// #1046
+pub enum Entry<'a, K: 'a, V: 'a> {
+    // This attribute should stay on the same line.
+    Vacant(
+        #[stable(feature = "rust1", since = "1.0.0")] VacantEntry<'a, K, V>,
+    ),
+    // This attribute should be kept on the previous line.
+    Occupied(
+        #[stable(feature = "rust1", since = "1.0.0")] OccupiedEntry<'a, K, V>,
+    ),
 }

@@ -8,8 +8,7 @@ pub union Foo {
     f :   SomeType, // Comment beside a field
     f: SomeType, // Comment beside a field
     // Comment on a field
-    #[AnAttribute]
-    g: SomeOtherType,
+    #[AnAttribute] g: SomeOtherType,
     /// A doc comment on a field
     h: AThirdType,
     pub i: TypeForPublicField,

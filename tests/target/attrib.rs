@@ -45,8 +45,7 @@ impl Bar {
 
 // #984
 struct Foo {
-    #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
-    foo: usize,
+    #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)] foo: usize,
 }
 
 // #1668

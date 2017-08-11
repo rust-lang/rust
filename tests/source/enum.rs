@@ -125,3 +125,16 @@ enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 enum Looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong {}
 enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong {}
 enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong { Foo }
+
+// #1046
+pub enum Entry<'a, K: 'a, V: 'a> {
+    // This attribute should stay on the same line.
+    Vacant(
+        #[ stable( feature = "rust1", since = "1.0.0" ) ]   VacantEntry<'a, K, V>,
+    ),
+    // This attribute should be kept on the previous line.
+    Occupied(
+        #[ stable( feature = "rust1", since = "1.0.0" ) ]
+         OccupiedEntry<'a, K, V>,
+    ),
+}

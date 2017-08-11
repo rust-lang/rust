@@ -141,7 +141,10 @@ fn issue1178() {
         (#[$attr:meta] $name:ident) => {}
     }
 
-    foo!(#[doc = "bar"] baz);
+    foo!(
+        #[doc = "bar"]
+        baz
+    );
 }
 fn issue1739() {
     sql_function!(
