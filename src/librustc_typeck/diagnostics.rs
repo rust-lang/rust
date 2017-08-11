@@ -4649,7 +4649,7 @@ A private item was used outside of its scope.
 
 Erroneous code example:
 
-```compile_fail,E0627
+```compile_fail,E0624
 mod inner {
     pub struct Foo;
 
