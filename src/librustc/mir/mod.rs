@@ -412,12 +412,13 @@ pub struct LocalDecl<'tcx> {
     pub is_user_variable: bool,
 
     /// True if this is an internal local.
-    /// Such locals are not checked against the legal types in a generator.
-    ///
-    /// Scalar state variables created by optimizations (e.g. nonzeroing drop
-    /// flags) should not be included in generator OIBIT computations.
-    /// Therefore, we mark them as `internal` so we can ignore them when
-    /// sanity-checking the OIBIT list.
+    /// These locals are not based on types in the source code and are only used
+    /// for drop flags at the moment.
+    /// The generator transformation will sanity check the locals which are live across
+    /// a suspension point against the type components of the generator which
+    /// type checking knows are live across a suspension point.
+    /// We need to flag drop flags to avoid triggering this check as they are introduced
+    /// after typeck.
     pub internal: bool,
 
     /// Type of this local.
