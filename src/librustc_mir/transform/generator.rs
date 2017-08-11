@@ -716,7 +716,7 @@ impl MirPass for StateTransform {
 
         mir.generator_drop = Some(box drop_shim);
 
-        // Create the Genreator::resume function
+        // Create the Generator::resume function
         creator_generator_resume_function(tcx, transform, def_id, source, mir);
     }
 }
