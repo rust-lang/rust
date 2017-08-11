@@ -10,16 +10,16 @@
 
 //! Utilities for formatting and printing `String`s
 //!
-//! This module contains the runtime support for the `format!` syntax extension.
+//! This module contains the runtime support for the [`format!`] syntax extension.
 //! This macro is implemented in the compiler to emit calls to this module in
 //! order to format arguments at runtime into strings.
 //!
 //! # Usage
 //!
-//! The `format!` macro is intended to be familiar to those coming from C's
-//! printf/fprintf functions or Python's `str.format` function.
+//! The [`format!`] macro is intended to be familiar to those coming from C's
+//! `printf`/`fprintf` functions or Python's `str.format` function.
 //!
-//! Some examples of the `format!` extension are:
+//! Some examples of the [`format!`] extension are:
 //!
 //! ```
 //! format!("Hello");                 // => "Hello"
@@ -67,7 +67,7 @@
 //! ## Named parameters
 //!
 //! Rust itself does not have a Python-like equivalent of named parameters to a
-//! function, but the `format!` macro is a syntax extension which allows it to
+//! function, but the [`format!`] macro is a syntax extension which allows it to
 //! leverage named parameters. Named parameters are listed at the end of the
 //! argument list and have the syntax:
 //!
@@ -75,7 +75,7 @@
 //! identifier '=' expression
 //! ```
 //!
-//! For example, the following `format!` expressions all use named argument:
+//! For example, the following [`format!`] expressions all use named argument:
 //!
 //! ```
 //! format!("{argument}", argument = "test");   // => "test"
@@ -102,30 +102,30 @@
 //!
 //! If this syntax is used, then the number of characters to print precedes the
 //! actual object being formatted, and the number of characters must have the
-//! type `usize`.
+//! type [`usize`].
 //!
 //! ## Formatting traits
 //!
 //! When requesting that an argument be formatted with a particular type, you
 //! are actually requesting that an argument ascribes to a particular trait.
-//! This allows multiple actual types to be formatted via `{:x}` (like `i8` as
-//! well as `isize`).  The current mapping of types to traits is:
+//! This allows multiple actual types to be formatted via `{:x}` (like [`i8`] as
+//! well as [`isize`]).  The current mapping of types to traits is:
 //!
-//! * *nothing* ⇒ [`Display`](trait.Display.html)
-//! * `?` ⇒ [`Debug`](trait.Debug.html)
+//! * *nothing* ⇒ [`Display`]
+//! * `?` ⇒ [`Debug`]
 //! * `o` ⇒ [`Octal`](trait.Octal.html)
 //! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
 //! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
 //! * `p` ⇒ [`Pointer`](trait.Pointer.html)
-//! * `b` ⇒ [`Binary`](trait.Binary.html)
+//! * `b` ⇒ [`Binary`]
 //! * `e` ⇒ [`LowerExp`](trait.LowerExp.html)
 //! * `E` ⇒ [`UpperExp`](trait.UpperExp.html)
 //!
 //! What this means is that any type of argument which implements the
-//! `fmt::Binary` trait can then be formatted with `{:b}`. Implementations
+//! [`fmt::Binary`][`Binary`] trait can then be formatted with `{:b}`. Implementations
 //! are provided for these traits for a number of primitive types by the
 //! standard library as well. If no format is specified (as in `{}` or `{:6}`),
-//! then the format trait used is the `Display` trait.
+//! then the format trait used is the [`Display`] trait.
 //!
 //! When implementing a format trait for your own type, you will have to
 //! implement a method of the signature:
@@ -144,15 +144,15 @@
 //! should emit output into the `f.buf` stream. It is up to each format trait
 //! implementation to correctly adhere to the requested formatting parameters.
 //! The values of these parameters will be listed in the fields of the
-//! `Formatter` struct. In order to help with this, the `Formatter` struct also
+//! [`Formatter`] struct. In order to help with this, the [`Formatter`] struct also
 //! provides some helper methods.
 //!
-//! Additionally, the return value of this function is `fmt::Result` which is a
-//! type alias of `Result<(), std::fmt::Error>`. Formatting implementations
-//! should ensure that they propagate errors from the `Formatter` (e.g., when
-//! calling `write!`) however, they should never return errors spuriously. That
+//! Additionally, the return value of this function is [`fmt::Result`] which is a
+//! type alias of [`Result`]`<(), `[`std::fmt::Error`]`>`. Formatting implementations
+//! should ensure that they propagate errors from the [`Formatter`] (e.g., when
+//! calling [`write!`]) however, they should never return errors spuriously. That
 //! is, a formatting implementation must and may only return an error if the
-//! passed-in `Formatter` returns an error. This is because, contrary to what
+//! passed-in [`Formatter`] returns an error. This is because, contrary to what
 //! the function signature might suggest, string formatting is an infallible
 //! operation. This function only returns a result because writing to the
 //! underlying stream might fail and it must provide a way to propagate the fact
@@ -209,12 +209,12 @@
 //!
 //! These two formatting traits have distinct purposes:
 //!
-//! - `fmt::Display` implementations assert that the type can be faithfully
+//! - [`fmt::Display`][`Display] implementations assert that the type can be faithfully
 //!   represented as a UTF-8 string at all times. It is **not** expected that
 //!   all types implement the `Display` trait.
-//! - `fmt::Debug` implementations should be implemented for **all** public types.
+//! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
 //!   Output will typically represent the internal state as faithfully as possible.
-//!   The purpose of the `Debug` trait is to facilitate debugging Rust code. In
+//!   The purpose of the [`Debug`] trait is to facilitate debugging Rust code. In
 //!   most cases, using `#[derive(Debug)]` is sufficient and recommended.
 //!
 //! Some examples of the output from both traits:
@@ -227,7 +227,7 @@
 //!
 //! ## Related macros
 //!
-//! There are a number of related macros in the `format!` family. The ones that
+//! There are a number of related macros in the [`format!`] family. The ones that
 //! are currently implemented are:
 //!
 //! ```ignore (only-for-syntax-highlight)
@@ -241,11 +241,11 @@
 //!
 //! ### `write!`
 //!
-//! This and `writeln` are two macros which are used to emit the format string
+//! This and [`writeln!`] are two macros which are used to emit the format string
 //! to a specified stream. This is used to prevent intermediate allocations of
 //! format strings and instead directly write the output. Under the hood, this
-//! function is actually invoking the `write_fmt` function defined on the
-//! `std::io::Write` trait. Example usage is:
+//! function is actually invoking the [`write_fmt`] function defined on the
+//! [`std::io::Write`] trait. Example usage is:
 //!
 //! ```
 //! # #![allow(unused_must_use)]
@@ -256,7 +256,7 @@
 //!
 //! ### `print!`
 //!
-//! This and `println` emit their output to stdout. Similarly to the `write!`
+//! This and [`println!`] emit their output to stdout. Similarly to the [`write!`]
 //! macro, the goal of these macros is to avoid intermediate allocations when
 //! printing output. Example usage is:
 //!
@@ -288,8 +288,8 @@
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```
 //!
-//! The result of the `format_args!` macro is a value of type `fmt::Arguments`.
-//! This structure can then be passed to the `write` and `format` functions
+//! The result of the [`format_args!`] macro is a value of type [`fmt::Arguments`].
+//! This structure can then be passed to the [`write`] and [`format`] functions
 //! inside this module in order to process the format string.
 //! The goal of this macro is to even further prevent intermediate allocations
 //! when dealing formatting strings.
@@ -384,9 +384,9 @@
 //! the `0` flag is specified for numerics, then the implicit fill character is
 //! `0`.
 //!
-//! The value for the width can also be provided as a `usize` in the list of
+//! The value for the width can also be provided as a [`usize`] in the list of
 //! parameters by using the dollar syntax indicating that the second argument is
-//! a `usize` specifying the width, for example:
+//! a [`usize`] specifying the width, for example:
 //!
 //! ```
 //! // All of these print "Hello x    !"
@@ -474,6 +474,29 @@
 //! The literal characters `{` and `}` may be included in a string by preceding
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
+//!
+//! [`format!`]: ../macro.format.html
+//! [`usize`]: ../primitive.usize.html
+//! [`isize`]: ../primitive.isize.html
+//! [`i8`]: ../primitive.i8.html
+//! [`Display`]: trait.Display.html
+//! [`Binary`]: trait.Binary.html
+//! [`fmt::Result`]: type.Result.html
+//! [`Result`]: ../result/enum.Result.html
+//! [`std::fmt::Error`]: struct.Error.html
+//! [`Formatter`]: struct.Formatter.html
+//! [`write!`]: ../macro.write.html
+//! [`Debug`]: trait.Debug.html
+//! [`format!`]: ../macro.format.html
+//! [`writeln!`]: ../macro.writeln.html
+//! [`write_fmt`]: ../io/trait.Write.html#method.write_fmt
+//! [`std::io::Write`]: ../io/trait.Write.html
+//! [`println!`]: ../macro.println.html
+//! [`write!`]: ../macro.write.html
+//! [`format_args!`]: ../macro.format_args.html
+//! [`fmt::Arguments`]: struct.Arguments.html
+//! [`write`]: fn.write.html
+//! [`format`]: fn.format.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
