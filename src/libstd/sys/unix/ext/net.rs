@@ -12,7 +12,18 @@
 
 //! Unix-specific networking functionality
 
+#[cfg(unix)]
 use libc;
+
+// FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
+#[cfg(not(unix))]
+mod libc {
+    pub use libc::c_int;
+    pub type socklen_t = u32;
+    pub struct sockaddr;
+    #[derive(Clone)]
+    pub struct sockaddr_un;
+}
 
 use ascii;
 use ffi::OsStr;
