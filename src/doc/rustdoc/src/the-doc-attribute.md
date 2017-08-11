@@ -107,7 +107,7 @@ they are documented.
 These attributes are used on `use` statements, and control where the documentation shows
 up. For example, consider this Rust code:
 
-```rust
+```rust,ignore
 pub use bar::Bar;
 
 /// bar docs
@@ -132,7 +132,7 @@ top level, rather than `pub use`'d.
 
 Let's change our original example, by making `bar` private:
 
-```rust
+```rust,ignore
 pub use bar::Bar;
 
 /// bar docs
@@ -147,7 +147,7 @@ to link to. `rustdoc` will inline these definitions, and so we end up in the sam
 as the `#[doc(inline)]` above; `Bar` is in a `Structs` section, as if it were defined at
 the top level. If we add the `no_inline` form of the attribute:
 
-```rust
+```rust,ignore
 #[doc(no_inline)]
 pub use bar::Bar;
 
