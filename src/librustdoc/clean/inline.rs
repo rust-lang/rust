@@ -495,7 +495,7 @@ fn build_static(cx: &DocContext, did: DefId, mutable: bool) -> clean::Static {
 
 /// A trait's generics clause actually contains all of the predicates for all of
 /// its associated types as well. We specifically move these clauses to the
-/// associated types instead when displaying, so when we're genering the
+/// associated types instead when displaying, so when we're generating the
 /// generics for the trait itself we need to be sure to remove them.
 /// We also need to remove the implied "recursive" Self: Trait bound.
 ///

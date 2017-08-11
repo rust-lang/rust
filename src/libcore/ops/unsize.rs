@@ -24,7 +24,7 @@ use marker::Unsize;
 /// Such an impl can only be written if `Foo<T>` has only a single non-phantomdata
 /// field involving `T`. If the type of that field is `Bar<T>`, an implementation
 /// of `CoerceUnsized<Bar<U>> for Bar<T>` must exist. The coercion will work by
-/// by coercing the `Bar<T>` field into `Bar<U>` and filling in the rest of the fields
+/// coercing the `Bar<T>` field into `Bar<U>` and filling in the rest of the fields
 /// from `Foo<T>` to create a `Foo<U>`. This will effectively drill down to a pointer
 /// field and coerce that.
 ///

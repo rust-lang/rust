@@ -124,7 +124,7 @@ pub fn parse_expr_from_source_str(name: String, source: String, sess: &ParseSess
 
 /// Parses an item.
 ///
-/// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and`Err`
+/// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
 /// when a syntax error occurred.
 pub fn parse_item_from_source_str(name: String, source: String, sess: &ParseSess)
                                       -> PResult<Option<P<ast::Item>>> {

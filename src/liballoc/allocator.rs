@@ -40,7 +40,7 @@ fn size_align<T>() -> (usize, usize) {
 ///
 /// (Note however that layouts are *not* required to have positive
 /// size, even though many allocators require that all memory
-/// requeusts have positive size. A caller to the `Alloc::alloc`
+/// requests have positive size. A caller to the `Alloc::alloc`
 /// method must either ensure that conditions like this are met, or
 /// use specific allocators with looser requirements.)
 #[derive(Clone, Debug, PartialEq, Eq)]
