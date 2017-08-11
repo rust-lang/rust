@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: -Z verbose -Z mir-emit-validate=1
+// compile-flags: -Z verbose -Z mir-emit-validate=1 -Z span_free_formats
 
 // Make sure unsafe fns and fns with an unsafe block only get restricted validation.
 
@@ -45,6 +45,19 @@ fn main() {
 //     }
 // }
 // END rustc.node4.EraseRegions.after.mir
+// START rustc.node22.EraseRegions.after.mir
+// fn write_42::{{closure}}(_1: &ReErased [closure@NodeId(22)], _2: *mut i32) -> () {
+//     bb0: {
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483659) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483659) => validate_4/8cd878b::write_42[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(22)], _2: *mut i32]);
+//         StorageLive(_3);
+//         _3 = _2;
+//         (*_3) = const 23i32;
+//         StorageDead(_3);
+//         return;
+//     }
+// }
+// END rustc.node22.EraseRegions.after.mir
 // START rustc.node31.EraseRegions.after.mir
 // fn test(_1: &ReErased mut i32) -> () {
 //     bb0: {
@@ -58,3 +71,13 @@ fn main() {
 //     }
 // }
 // END rustc.node31.EraseRegions.after.mir
+// START rustc.node60.EraseRegions.after.mir
+// fn main::{{closure}}(_1: &ReErased [closure@NodeId(60)], _2: &ReErased mut i32) -> bool {
+//     bb0: {
+//         Validate(Acquire, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483663) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483663) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         Validate(Release, [_1: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483663) => validate_4/8cd878b::main[0]::{{closure}}[0] }, "BrEnv") [closure@NodeId(60)], _2: &ReFree(DefId { krate: CrateNum(0), node: DefIndex(2147483663) => validate_4/8cd878b::main[0]::{{closure}}[0] }, BrAnon(1)) mut i32]);
+//         StorageLive(_3);
+//         _0 = const write_42(_4) -> bb1;
+//     }
+// }
+// END rustc.node60.EraseRegions.after.mir
