@@ -270,22 +270,20 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
     /// It is calculated in rustc_mir::transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
     pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
+        impl Iterator<Item=Ty<'tcx>> + 'a
     {
         let state = tcx.generator_layout(def_id).fields.iter();
-        let state: Vec<_> = state.map(|d| d.ty.subst(tcx, self.substs)).collect();
-        state.into_iter()
+        state.map(move |d| d.ty.subst(tcx, self.substs))
     }
 
     /// This is the types of all the fields stored in a generator.
     /// It includes the upvars, state types and the state discriminant which is u32.
     pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + 'tcx
+        impl Iterator<Item=Ty<'tcx>> + 'a
     {
         let upvars = self.upvar_tys(def_id, tcx);
         let state = self.state_tys(def_id, tcx);
-        let tys: Vec<_> = upvars.chain(iter::once(tcx.types.u32)).chain(state).collect();
-        tys.into_iter()
+        upvars.chain(iter::once(tcx.types.u32)).chain(state)
     }
 }
 
