@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue_38586.rs
+// ignore-stage1
 
 #![feature(proc_macro)]
 

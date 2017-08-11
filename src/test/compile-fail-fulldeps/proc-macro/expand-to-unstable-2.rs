@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:derive-unstable-2.rs
+// ignore-stage1
 
 #![allow(warnings)]
 

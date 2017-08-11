@@ -3700,6 +3700,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   // inside a loop at all, which is caught by the
                   // loop-checking pass.
                   assert!(self.tcx.sess.err_count() > 0);
+
+                  // We still need to assign a type to the inner expression to
+                  // prevent the ICE in #43162.
+                  if let Some(ref e) = *expr_opt {
+                      self.check_expr_with_hint(e, tcx.types.err);
+
+                      // ... except when we try to 'break rust;'.
+                      // ICE this expression in particular (see #43162).
+                      if let hir::ExprPath(hir::QPath::Resolved(_, ref path)) = e.node {
+                          if path.segments.len() == 1 && path.segments[0].name == "rust" {
+                              fatally_break_rust(self.tcx.sess);
+                          }
+                      }
+                  }
               }
 
               // the type of a `break` is always `!`, since it diverges
@@ -4936,4 +4950,21 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 .emit();
         }
     }
+}
+
+fn fatally_break_rust(sess: &Session) {
+    let handler = sess.diagnostic();
+    handler.span_bug_no_panic(
+        MultiSpan::new(),
+        "It looks like you're trying to break rust; would you like some ICE?",
+    );
+    handler.note_without_error("the compiler expectedly panicked. this is a feature.");
+    handler.note_without_error(
+        "we would appreciate a joke overview: \
+        https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675"
+    );
+    handler.note_without_error(&format!("rustc {} running on {}",
+        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+        ::session::config::host_triple(),
+    ));
 }

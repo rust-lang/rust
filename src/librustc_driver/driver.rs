@@ -949,14 +949,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
+    // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
+    // an AllCallEdges pass right before it.
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AllCallEdges);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_validation::AddValidation);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
     // No lifetime analysis based on borrowing can be done from here on out.
-
-    // AddValidation needs to run after ElaborateDrops and before EraseRegions.
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_validation::AddValidation);
 
     // From here on out, regions are gone.
     passes.push_pass(MIR_OPTIMIZED, mir::transform::erase_regions::EraseRegions);
@@ -969,9 +970,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyLocals);
 
     passes.push_pass(MIR_OPTIMIZED, mir::transform::generator::StateTransform);
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
-
-    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::AddCallGuards);
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
 
     TyCtxt::create_and_enter(sess,

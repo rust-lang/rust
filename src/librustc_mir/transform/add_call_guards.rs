@@ -13,7 +13,12 @@ use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-pub struct AddCallGuards;
+#[derive(PartialEq)]
+pub enum AddCallGuards {
+    AllCallEdges,
+    CriticalCallEdges,
+}
+pub use self::AddCallGuards::*;
 
 /**
  * Breaks outgoing critical edges for call terminators in the MIR.
@@ -40,48 +45,52 @@ impl MirPass for AddCallGuards {
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource,
                           mir: &mut Mir<'tcx>) {
-        add_call_guards(mir);
+        self.add_call_guards(mir);
     }
 }
 
-pub fn add_call_guards(mir: &mut Mir) {
-    let pred_count: IndexVec<_, _> =
-        mir.predecessors().iter().map(|ps| ps.len()).collect();
+impl AddCallGuards {
+    pub fn add_call_guards(&self, mir: &mut Mir) {
+        let pred_count: IndexVec<_, _> =
+            mir.predecessors().iter().map(|ps| ps.len()).collect();
 
-    // We need a place to store the new blocks generated
-    let mut new_blocks = Vec::new();
+        // We need a place to store the new blocks generated
+        let mut new_blocks = Vec::new();
 
-    let cur_len = mir.basic_blocks().len();
+        let cur_len = mir.basic_blocks().len();
 
-    for block in mir.basic_blocks_mut() {
-        match block.terminator {
-            Some(Terminator {
-                kind: TerminatorKind::Call {
-                    destination: Some((_, ref mut destination)),
-                    cleanup: Some(_),
-                    ..
-                }, source_info
-            }) if pred_count[*destination] > 1 => {
-                // It's a critical edge, break it
-                let call_guard = BasicBlockData {
-                    statements: vec![],
-                    is_cleanup: block.is_cleanup,
-                    terminator: Some(Terminator {
-                        source_info: source_info,
-                        kind: TerminatorKind::Goto { target: *destination }
-                    })
-                };
+        for block in mir.basic_blocks_mut() {
+            match block.terminator {
+                Some(Terminator {
+                    kind: TerminatorKind::Call {
+                        destination: Some((_, ref mut destination)),
+                        cleanup,
+                        ..
+                    }, source_info
+                }) if pred_count[*destination] > 1 &&
+                      (cleanup.is_some() || self == &AllCallEdges) =>
+                {
+                    // It's a critical edge, break it
+                    let call_guard = BasicBlockData {
+                        statements: vec![],
+                        is_cleanup: block.is_cleanup,
+                        terminator: Some(Terminator {
+                            source_info: source_info,
+                            kind: TerminatorKind::Goto { target: *destination }
+                        })
+                    };
 
-                // Get the index it will be when inserted into the MIR
-                let idx = cur_len + new_blocks.len();
-                new_blocks.push(call_guard);
-                *destination = BasicBlock::new(idx);
+                    // Get the index it will be when inserted into the MIR
+                    let idx = cur_len + new_blocks.len();
+                    new_blocks.push(call_guard);
+                    *destination = BasicBlock::new(idx);
+                }
+                _ => {}
             }
-            _ => {}
         }
+
+        debug!("Broke {} N edges", new_blocks.len());
+
+        mir.basic_blocks_mut().extend(new_blocks);
     }
-
-    debug!("Broke {} N edges", new_blocks.len());
-
-    mir.basic_blocks_mut().extend(new_blocks);
 }

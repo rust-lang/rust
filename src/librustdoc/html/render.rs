@@ -2141,8 +2141,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     if !types.is_empty() {
         write!(w, "
-            <h2 id='associated-types' class='section-header'>
-              <a href='#associated-types'>Associated Types</a>
+            <h2 id='associated-types' class='small-section-header'>
+              Associated Types<a href='#associated-types' class='anchor'></a>
             </h2>
             <div class='methods'>
         ")?;
@@ -2154,8 +2154,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     if !consts.is_empty() {
         write!(w, "
-            <h2 id='associated-const' class='section-header'>
-              <a href='#associated-const'>Associated Constants</a>
+            <h2 id='associated-const' class='small-section-header'>
+              Associated Constants<a href='#associated-const' class='anchor'></a>
             </h2>
             <div class='methods'>
         ")?;
@@ -2168,8 +2168,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the documentation for each function individually
     if !required.is_empty() {
         write!(w, "
-            <h2 id='required-methods' class='section-header'>
-              <a href='#required-methods'>Required Methods</a>
+            <h2 id='required-methods' class='small-section-header'>
+              Required Methods<a href='#required-methods' class='anchor'></a>
             </h2>
             <div class='methods'>
         ")?;
@@ -2180,8 +2180,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
     if !provided.is_empty() {
         write!(w, "
-            <h2 id='provided-methods' class='section-header'>
-              <a href='#provided-methods'>Provided Methods</a>
+            <h2 id='provided-methods' class='small-section-header'>
+              Provided Methods<a href='#provided-methods' class='anchor'></a>
             </h2>
             <div class='methods'>
         ")?;
@@ -2196,8 +2196,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     let cache = cache();
     write!(w, "
-        <h2 id='implementors' class='section-header'>
-          <a href='#implementors'>Implementors</a>
+        <h2 id='implementors' class='small-section-header'>
+          Implementors<a href='#implementors' class='anchor'></a>
         </h2>
         <ul class='item-list' id='implementors-list'>
     ")?;
@@ -2436,8 +2436,8 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }).peekable();
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
-            write!(w, "<h2 id='fields' class='fields section-header'>
-                       <a href='#fields'>Fields</a></h2>")?;
+            write!(w, "<h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2>")?;
             for (field, ty) in fields {
                 let id = derive_id(format!("{}.{}",
                                            ItemType::StructField,
@@ -2485,8 +2485,8 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
     }).peekable();
     if fields.peek().is_some() {
-        write!(w, "<h2 id='fields' class='fields section-header'>
-                   <a href='#fields'>Fields</a></h2>")?;
+        write!(w, "<h2 id='fields' class='fields small-section-header'>
+                   Fields<a href='#fields' class='anchor'></a></h2>")?;
         for (field, ty) in fields {
             write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
                        </span>",
@@ -2558,8 +2558,8 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
-        write!(w, "<h2 id='variants' class='variants section-header'>
-                   <a href='#variants'>Variants</a></h2>\n")?;
+        write!(w, "<h2 id='variants' class='variants small-section-header'>
+                   Variants<a href='#variants' class='anchor'></a></h2>\n")?;
         for variant in &e.variants {
             let id = derive_id(format!("{}.{}",
                                        ItemType::Variant,
@@ -2831,16 +2831,16 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         let render_mode = match what {
             AssocItemRender::All => {
                 write!(w, "
-                    <h2 id='methods' class='section-header'>
-                      <a href='#methods'>Methods</a>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
                     </h2>
                 ")?;
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(w, "
-                    <h2 id='deref-methods' class='section-header'>
-                      <a href='#deref-methods'>Methods from {}&lt;Target = {}&gt;</a>
+                    <h2 id='deref-methods' class='small-section-header'>
+                      Methods from {}&lt;Target = {}&gt;<a href='#deref-methods' class='anchor'></a>
                     </h2>
                 ", trait_, type_)?;
                 RenderMode::ForDeref { mut_: deref_mut_ }
@@ -2865,8 +2865,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut)?;
         }
         write!(w, "
-            <h2 id='implementations' class='section-header'>
-              <a href='#implementations'>Trait Implementations</a>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
             </h2>
         ")?;
         for i in &traits {

@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:count_compound_ops.rs
-// ignore-stage1
-
-#![feature(proc_macro)]
-
-extern crate count_compound_ops;
-use count_compound_ops::count_compound_ops;
+fn foo() -> bool {
+    break true; //~ ERROR E0268
+}
 
 fn main() {
-    assert_eq!(count_compound_ops!(foo<=>bar <<<! -baz ++), 4);
+    break {}; //~ ERROR E0268
 }

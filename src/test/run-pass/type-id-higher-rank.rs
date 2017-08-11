@@ -45,6 +45,11 @@ fn main() {
         assert!(g != h);
         assert!(g != i);
         assert!(h != i);
+
+        // Make sure lifetime anonymization handles nesting correctly
+        let j = TypeId::of::<fn(for<'a> fn(&'a isize) -> &'a usize)>();
+        let k = TypeId::of::<fn(for<'b> fn(&'b isize) -> &'b usize)>();
+        assert_eq!(j, k);
     }
     // Boxed unboxed closures
     {

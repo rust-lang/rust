@@ -73,10 +73,10 @@ macro_rules! __impl_stable_hash_field {
 #[macro_export]
 macro_rules! impl_stable_hash_for {
     (enum $enum_name:path { $( $variant:ident $( ( $($arg:ident),* ) )* ),* }) => {
-        impl<'a, 'gcx, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'gcx, 'tcx>> for $enum_name {
+        impl<'a, 'tcx, 'lcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'tcx, 'lcx>> for $enum_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'gcx, 'tcx>,
+                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'tcx, 'lcx>,
                                                   __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
                 use $enum_name::*;
                 ::std::mem::discriminant(self).hash_stable(__ctx, __hasher);
@@ -92,10 +92,10 @@ macro_rules! impl_stable_hash_for {
         }
     };
     (struct $struct_name:path { $($field:ident),* }) => {
-        impl<'a, 'gcx, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'gcx, 'tcx>> for $struct_name {
+        impl<'a, 'tcx, 'lcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'tcx, 'lcx>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'gcx, 'tcx>,
+                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'tcx, 'lcx>,
                                                   __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
                 let $struct_name {
                     $(ref $field),*
@@ -106,10 +106,10 @@ macro_rules! impl_stable_hash_for {
         }
     };
     (tuple_struct $struct_name:path { $($field:ident),* }) => {
-        impl<'a, 'gcx, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'gcx, 'tcx>> for $struct_name {
+        impl<'a, 'tcx, 'lcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a, 'tcx, 'lcx>> for $struct_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'gcx, 'tcx>,
+                                                  __ctx: &mut $crate::ich::StableHashingContext<'a, 'tcx, 'lcx>,
                                                   __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
                 let $struct_name (
                     $(ref $field),*
@@ -125,11 +125,11 @@ macro_rules! impl_stable_hash_for {
 macro_rules! impl_stable_hash_for_spanned {
     ($T:path) => (
 
-        impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ::syntax::codemap::Spanned<$T>
+        impl<'a, 'tcx, 'lcx> HashStable<StableHashingContext<'a, 'tcx, 'lcx>> for ::syntax::codemap::Spanned<$T>
         {
             #[inline]
             fn hash_stable<W: StableHasherResult>(&self,
-                                                  hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                                  hcx: &mut StableHashingContext<'a, 'tcx, 'lcx>,
                                                   hasher: &mut StableHasher<W>) {
                 self.node.hash_stable(hcx, hasher);
                 self.span.hash_stable(hcx, hasher);

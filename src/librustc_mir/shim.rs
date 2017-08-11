@@ -105,7 +105,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         debug!("make_shim({:?}) = untransformed {:?}", instance, result);
         no_landing_pads::no_landing_pads(tcx, &mut result);
         simplify::simplify_cfg(&mut result);
-        add_call_guards::add_call_guards(&mut result);
+        add_call_guards::CriticalCallEdges.add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     tcx.alloc_mir(result)
