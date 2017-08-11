@@ -17,7 +17,7 @@ use syntax::parse::ParseSess;
 
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, FindUncommented};
+use comment::{contains_comment, CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use expr::{format_expr, ExprType};
@@ -131,6 +131,27 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = self.block_indent.block_indent(self.config);
         self.buffer.push_str("{");
 
+        if self.config.remove_blank_lines_at_start_or_end_of_block() {
+            if let Some(stmt) = b.stmts.first() {
+                let snippet = self.snippet(mk_sp(self.last_pos, stmt.span.lo));
+                let len = CommentCodeSlices::new(&snippet)
+                    .nth(0)
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal {
+                            // There may be inner attributes
+                            let s = &s[..s.len() -
+                                           s.trim_left_matches(&[' ', '\t', '\r', '\n'][..]).len()];
+                            s.rfind('\n')
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(len) = len {
+                    self.last_pos = self.last_pos + BytePos(len as u32);
+                }
+            }
+        }
+
         // Format inner attributes if available.
         if let Some(attrs) = inner_attrs {
             self.visit_attrs(attrs, ast::AttrStyle::Inner);
@@ -148,9 +169,31 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
+        let mut remove_len = BytePos(0);
+        if self.config.remove_blank_lines_at_start_or_end_of_block() {
+            if let Some(stmt) = b.stmts.last() {
+                let snippet = self.snippet(mk_sp(
+                    stmt.span.hi,
+                    source!(self, b.span).hi - brace_compensation,
+                ));
+                let len = CommentCodeSlices::new(&snippet)
+                    .last()
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
+                            Some(s.len())
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(len) = len {
+                    remove_len = BytePos(len as u32);
+                }
+            }
+        }
+
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
-            let end_pos = source!(self, b.span).hi - brace_compensation;
+            let end_pos = source!(self, b.span).hi - brace_compensation - remove_len;
             let snippet = self.get_context().snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
@@ -158,7 +201,7 @@ impl<'a> FmtVisitor<'a> {
         if unindent_comment {
             self.block_indent = self.block_indent.block_unindent(self.config);
         }
-        self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation);
+        self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation - remove_len);
         if unindent_comment {
             self.block_indent = self.block_indent.block_indent(self.config);
         }
