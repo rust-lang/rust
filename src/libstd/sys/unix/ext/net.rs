@@ -655,7 +655,7 @@ impl UnixListener {
     /// Accepts a new incoming connection to this listener.
     ///
     /// This function will block the calling thread until a new Unix connection
-    /// is established. When established, the corersponding [`UnixStream`] and
+    /// is established. When established, the corresponding [`UnixStream`] and
     /// the remote peer's address will be returned.
     ///
     /// [`UnixStream`]: ../../../../std/os/unix/net/struct.UnixStream.html
