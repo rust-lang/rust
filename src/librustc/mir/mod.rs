@@ -1893,7 +1893,9 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                     AggregateKind::Closure(id, substs) =>
                         AggregateKind::Closure(id, substs.fold_with(folder)),
                     AggregateKind::Generator(id, substs, interior) =>
-                        AggregateKind::Generator(id, substs.fold_with(folder), interior.fold_with(folder)),
+                        AggregateKind::Generator(id,
+                                                 substs.fold_with(folder),
+                                                 interior.fold_with(folder)),
                 };
                 Aggregate(kind, fields.fold_with(folder))
             }

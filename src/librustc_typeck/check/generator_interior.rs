@@ -32,7 +32,11 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        if scope.map(|s| self.fcx.tcx.yield_in_extent(s, &mut self.cache).is_some()).unwrap_or(true) {
+        let live_across_yield = scope.map(|s| {
+            self.fcx.tcx.yield_in_extent(s, &mut self.cache).is_some()
+        }).unwrap_or(true);
+
+        if live_across_yield {
             if log_enabled!(log::LogLevel::Debug) {
                 if let Some(s) = scope {
                     let span = s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP);

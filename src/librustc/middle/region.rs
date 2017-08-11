@@ -1213,7 +1213,9 @@ impl<'a, 'tcx> Visitor<'tcx> for YieldFinder<'a> {
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Checks whether the given code extent contains a `yield`. If so,
     /// returns `Some(span)` with the span of a yield we found.
-    pub fn yield_in_extent(self, extent: CodeExtent, cache: &mut FxHashMap<NodeId, Option<Span>>) -> Option<Span> {
+    pub fn yield_in_extent(self,
+                          extent: CodeExtent,
+                          cache: &mut FxHashMap<NodeId, Option<Span>>) -> Option<Span> {
         let mut finder = YieldFinder {
             cache,
             result: None,
