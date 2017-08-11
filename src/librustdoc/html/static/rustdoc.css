@@ -438,6 +438,16 @@ a {
 	background: transparent;
 }
 
+.small-section-header:hover > .anchor {
+	display: initial;
+}
+.anchor {
+	display: none;
+}
+.anchor:after {
+	content: '\2002\00a7\2002';
+}
+
 .docblock a:hover, .docblock-short a:hover, .stability a {
 	text-decoration: underline;
 }
@@ -677,6 +687,10 @@ span.since {
 	left: 0;
 }
 
+.variant + .toggle-wrapper + .docblock > p {
+	margin-top: 5px;
+}
+
 .variant + .toggle-wrapper > a {
 	margin-top: 5px;
 }
@@ -695,7 +709,7 @@ span.since {
 	margin-bottom: 25px;
 }
 
-.enum .variant, .struct .structfield, .union .structfield {
+#main > .variant, #main > .structfield {
 	display: block;
 }
 

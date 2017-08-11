@@ -2197,8 +2197,8 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         let tcx = cx.tcx();
 
         let ptr_field_type = |pointee: Ty<'tcx>| {
+            assert!(i < 2);
             let slice = |element: Ty<'tcx>| {
-                assert!(i < 2);
                 if i == 0 {
                     tcx.mk_mut_ptr(element)
                 } else {

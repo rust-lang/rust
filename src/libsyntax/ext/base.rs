@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
+pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
