@@ -27,7 +27,7 @@ fn main() {
     let mut foo = xcrate::bar(3);
 
     match foo.resume() {
-        GeneratorState::Yielded(4) => {}
+        GeneratorState::Yielded(3) => {}
         s => panic!("bad state: {:?}", s),
     }
     match foo.resume() {
