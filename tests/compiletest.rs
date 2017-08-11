@@ -13,7 +13,21 @@ macro_rules! eprintln {
     }
 }
 
-const MIRI_PATH: &'static str = concat!("target/", env!("PROFILE"), "/miri");
+fn miri_path() -> PathBuf {
+    if rustc_test_suite().is_some() {
+        PathBuf::from(option_env!("MIRI_PATH").unwrap())
+    } else {
+        PathBuf::from(concat!("target/", env!("PROFILE"), "/miri"))
+    }
+}
+
+fn rustc_test_suite() -> Option<PathBuf> {
+    option_env!("RUSTC_TEST_SUITE").map(PathBuf::from)
+}
+
+fn rustc_lib_path() -> PathBuf {
+    option_env!("RUSTC_LIB_PATH").unwrap().into()
+}
 
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: bool) {
     eprintln!(
@@ -23,9 +37,14 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
     );
     let mut config = compiletest::default_config();
     config.mode = "compile-fail".parse().expect("Invalid mode");
-    config.rustc_path = MIRI_PATH.into();
+    config.rustc_path = miri_path();
     let mut flags = Vec::new();
-    if fullmir {
+    if rustc_test_suite().is_some() {
+        config.run_lib_path = rustc_lib_path();
+        config.compile_lib_path = rustc_lib_path();
+    }
+    // if we are building as part of the rustc test suite, we already have fullmir for everything
+    if fullmir && rustc_test_suite().is_none() {
         if host != target {
             // skip fullmir on nonhost
             return;
@@ -50,7 +69,14 @@ fn run_pass(path: &str) {
     let mut config = compiletest::default_config();
     config.mode = "run-pass".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
-    config.target_rustcflags = Some("-Dwarnings".to_string());
+    if let Some(rustc_path) = rustc_test_suite() {
+        config.rustc_path = rustc_path;
+        config.run_lib_path = rustc_lib_path();
+        config.compile_lib_path = rustc_lib_path();
+        config.target_rustcflags = Some(format!("-Dwarnings --sysroot {}", get_sysroot().display()));
+    } else {
+        config.target_rustcflags = Some("-Dwarnings".to_owned());
+    }
     config.host_rustcflags = Some("-Dwarnings".to_string());
     compiletest::run_tests(&config);
 }
@@ -68,9 +94,14 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
-    config.rustc_path = MIRI_PATH.into();
+    config.rustc_path = miri_path();
+    if rustc_test_suite().is_some() {
+        config.run_lib_path = rustc_lib_path();
+        config.compile_lib_path = rustc_lib_path();
+    }
     let mut flags = Vec::new();
-    if fullmir {
+    // if we are building as part of the rustc test suite, we already have fullmir for everything
+    if fullmir && rustc_test_suite().is_none() {
         if host != target {
             // skip fullmir on nonhost
             return;
