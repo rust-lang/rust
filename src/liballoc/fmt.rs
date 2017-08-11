@@ -149,7 +149,7 @@
 //!
 //! Additionally, the return value of this function is [`fmt::Result`] which is a
 //! type alias of [`Result`]`<(), `[`std::fmt::Error`]`>`. Formatting implementations
-//! should ensure that they propagate errors from the [`Formatter`] (e.g., when
+//! should ensure that they propagate errors from the [`Formatter`][`Formatter`] (e.g., when
 //! calling [`write!`]) however, they should never return errors spuriously. That
 //! is, a formatting implementation must and may only return an error if the
 //! passed-in [`Formatter`] returns an error. This is because, contrary to what
@@ -209,7 +209,7 @@
 //!
 //! These two formatting traits have distinct purposes:
 //!
-//! - [`fmt::Display`][`Display] implementations assert that the type can be faithfully
+//! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully
 //!   represented as a UTF-8 string at all times. It is **not** expected that
 //!   all types implement the `Display` trait.
 //! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
@@ -357,7 +357,7 @@
 //! * `-` - Currently not used
 //! * `#` - This flag is indicates that the "alternate" form of printing should
 //!         be used. The alternate forms are:
-//!     * `#?` - pretty-print the `Debug` formatting
+//!     * `#?` - pretty-print the [`Debug`] formatting
 //!     * `#x` - precedes the argument with a `0x`
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
@@ -475,25 +475,25 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 //!
-//! [`format!`]: ../macro.format.html
-//! [`usize`]: ../primitive.usize.html
-//! [`isize`]: ../primitive.isize.html
-//! [`i8`]: ../primitive.i8.html
+//! [`format!`]: ../../macro.format.html
+//! [`usize`]: ../../std/primitive.usize.html
+//! [`isize`]: ../../std/primitive.isize.html
+//! [`i8`]: ../../std/primitive.i8.html
 //! [`Display`]: trait.Display.html
 //! [`Binary`]: trait.Binary.html
 //! [`fmt::Result`]: type.Result.html
-//! [`Result`]: ../result/enum.Result.html
+//! [`Result`]: ../../std/result/enum.Result.html
 //! [`std::fmt::Error`]: struct.Error.html
 //! [`Formatter`]: struct.Formatter.html
-//! [`write!`]: ../macro.write.html
+//! [`write!`]: ../../std/macro.write.html
 //! [`Debug`]: trait.Debug.html
-//! [`format!`]: ../macro.format.html
-//! [`writeln!`]: ../macro.writeln.html
-//! [`write_fmt`]: ../io/trait.Write.html#method.write_fmt
-//! [`std::io::Write`]: ../io/trait.Write.html
-//! [`println!`]: ../macro.println.html
-//! [`write!`]: ../macro.write.html
-//! [`format_args!`]: ../macro.format_args.html
+//! [`format!`]: ../../std/macro.format.html
+//! [`writeln!`]: ../../std/macro.writeln.html
+//! [`write_fmt`]: ../../std/io/trait.Write.html#method.write_fmt
+//! [`std::io::Write`]: ../../std/io/trait.Write.html
+//! [`println!`]: ../../std/macro.println.html
+//! [`write!`]: ../../std/macro.write.html
+//! [`format_args!`]: ../../std/macro.format_args.html
 //! [`fmt::Arguments`]: struct.Arguments.html
 //! [`write`]: fn.write.html
 //! [`format`]: fn.format.html
@@ -521,10 +521,10 @@ pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
 use string;
 
-/// The `format` function takes an `Arguments` struct and returns the resulting
+/// The `format` function takes an [`Arguments`] struct and returns the resulting
 /// formatted string.
 ///
-/// The `Arguments` instance can be created with the `format_args!` macro.
+/// The [`Arguments`] instance can be created with the [`format_args!`] macro.
 ///
 /// # Examples
 ///
@@ -537,7 +537,7 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// Please note that using [`format!`][format!] might be preferrable.
+/// Please note that using [`format!`] might be preferrable.
 /// Example:
 ///
 /// ```
@@ -545,7 +545,9 @@ use string;
 /// assert_eq!(s, "Hello, world!");
 /// ```
 ///
-/// [format!]: ../macro.format.html
+/// [`Arguments`]: struct.Arguments.html
+/// [`format_args!`]: ../../std/macro.format_args.html
+/// [`format!`]: ../../std/macro.format.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
     let capacity = args.estimated_capacity();
