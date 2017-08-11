@@ -191,7 +191,7 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// adjustment.
 ///
 /// The `old_info` argument is a bit funny. It is intended for use
-/// in an upcast, where the new vtable for an object will be drived
+/// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
 pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 source: Ty<'tcx>,

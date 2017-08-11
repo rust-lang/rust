@@ -336,7 +336,7 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
     round_by_remainder(v, rem, q, z)
 }
 
-/// Skip over most AlgorithmM iterations by checking the bit length.
+/// Skip over most Algorithm M iterations by checking the bit length.
 fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The bit length is an estimate of the base two logarithm, and log(u / v) = log(u) - log(v).
     // The estimate is off by at most 1, but always an under-estimate, so the error on log(u)
