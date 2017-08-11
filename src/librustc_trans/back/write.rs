@@ -1356,6 +1356,16 @@ fn start_executing_work(sess: &Session,
                             maybe_start_llvm_timer(&item, &mut llvm_start_time);
                             main_thread_worker_state = MainThreadWorkerState::LLVMing;
                             spawn_work(cgcx, item);
+                        } else {
+                            // There is no unstarted work, so let the main thread
+                            // take over for a running worker. Otherwise the
+                            // implicit token would just go to waste.
+                            // We reduce the `running` counter by one. The
+                            // `tokens.truncate()` below will take care of
+                            // giving the Token back.
+                            debug_assert!(running > 0);
+                            running -= 1;
+                            main_thread_worker_state = MainThreadWorkerState::LLVMing;
                         }
                     }
                     MainThreadWorkerState::Translating => {
