@@ -107,6 +107,10 @@ fn fishy() {
                String::<>::from::<>("><>").chars::<>().rev::<>().collect::<String>());
 }
 
+fn union() {
+    union union<'union> { union: &'union union<'union>, }
+}
+
 pub fn main() {
     strange();
     funny();
@@ -119,4 +123,5 @@ pub fn main() {
     dots();
     you_eight();
     fishy();
+    union();
 }
