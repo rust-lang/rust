@@ -73,10 +73,7 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
-    #[cfg(feature="llvm")]
     use rustc_trans::back::write::OngoingCrateTranslation;
-    #[cfg(not(feature="llvm"))]
-    type OngoingCrateTranslation = ();
 
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
@@ -393,7 +390,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    #[cfg(feature="llvm")]
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -420,7 +416,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: None,
             analysis: None,
             tcx: None,
-            #[cfg(feature="llvm")]
             trans: None,
         }
     }
@@ -942,7 +937,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    #[cfg(feature="llvm")]
     trans::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
@@ -955,7 +949,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    #[cfg(feature="llvm")]
     trans::provide(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);

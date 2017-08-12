@@ -71,8 +71,6 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-#[cfg(feature="llvm")]
-use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
@@ -207,6 +205,25 @@ impl MetadataLoaderTrait for NoLLvmMetadataLoader {
     }
 }
 
+#[cfg(feature="llvm")]
+mod rustc_trans {
+    use rustc::ty::maps::Providers;
+    pub fn init(_sess: &Session) {}
+    pub fn enable_llvm_debug() {}
+    pub fn provide(_providers: &mut Providers) {}
+    pub struct CrateTranslation(());
+    pub mod back {
+        pub mod write {
+            pub struct OngoingCrateTranslation(());
+        }
+    }
+    mod diagnostics {
+        register_long_diagnostics! {}
+    }
+
+    pub use diagnostics::DIAGNOSTICS;
+}
+
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
@@ -232,7 +249,6 @@ pub fn run_compiler<'a>(args: &[String],
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     if sopts.debugging_opts.debug_llvm {
-        #[cfg(feature="llvm")]
         rustc_trans::enable_llvm_debug();
     }
 
@@ -262,7 +278,6 @@ pub fn run_compiler<'a>(args: &[String],
     let mut sess = session::build_session_with_codemap(
         sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
     );
-    #[cfg(feature="llvm")]
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
@@ -544,7 +559,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     None,
                     descriptions.clone(),
                     cstore.clone());
-                #[cfg(feature="llvm")]
                 rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
@@ -803,7 +817,7 @@ impl RustcDefaultCalls {
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
                     #[cfg(feature="llvm")]
-                    for &(name, _) in RELOC_MODEL_ARGS.iter() {
+                    for &(name, _) in rustc_trans::back::write::RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
                     println!("");
@@ -811,7 +825,7 @@ impl RustcDefaultCalls {
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
                     #[cfg(feature="llvm")]
-                    for &(name, _) in CODE_GEN_MODEL_ARGS.iter(){
+                    for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
@@ -1285,7 +1299,6 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_borrowck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
-    #[cfg(feature="llvm")]
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
