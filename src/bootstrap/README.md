@@ -80,7 +80,7 @@ handled naturally.
 
 Next, rustbuild offers a TOML-based configuration system with a `config.toml`
 file in the same location as `config.mk`. An example of this configuration can
-be found at `src/bootstrap/config.toml.example`, and the configuration file
+be found at `config.toml.example`, and the configuration file
 can also be passed as `--config path/to/config.toml` if the build system is
 being invoked manually (via the python script).
 
