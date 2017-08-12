@@ -3953,4 +3953,10 @@ mod tests {
         assert_eq!(path, path_buf);
         assert!(path_buf.into_os_string().capacity() >= 15);
     }
+
+    #[test]
+    fn display_format_flags() {
+        assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
+        assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    }
 }

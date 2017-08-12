@@ -452,10 +452,14 @@ impl fmt::Display for Wtf8 {
                     pos = surrogate_pos + 3;
                 },
                 None => {
-                    formatter.write_str(unsafe {
+                    let s = unsafe {
                         str::from_utf8_unchecked(&wtf8_bytes[pos..])
-                    })?;
-                    return Ok(());
+                    };
+                    if pos == 0 {
+                        return s.fmt(formatter)
+                    } else {
+                        return formatter.write_str(s)
+                    }
                 }
             }
         }

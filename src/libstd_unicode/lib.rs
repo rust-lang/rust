@@ -34,7 +34,6 @@
 
 #![feature(core_char_ext)]
 #![feature(str_internals)]
-#![feature(core_intrinsics)]
 #![feature(decode_utf8)]
 #![feature(fused)]
 #![feature(fn_traits)]
