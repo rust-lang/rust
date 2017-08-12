@@ -22,10 +22,12 @@ note: added path (technically breaking)
   |         ^^^^^^^^^^^^
 
 warning: path changes to `d`
-  --> $REPO_PATH/tests/cases/addition_path/new.rs:17:1
+  --> $REPO_PATH/tests/cases/addition_path/new.rs:15:1
    |
-17 | }
-   | ^
+15 | / pub mod d {
+16 | |
+17 | | }
+   | |_^
    |
    = note: added definition (technically breaking)
 

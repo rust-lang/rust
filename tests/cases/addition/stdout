@@ -8,9 +8,10 @@ warning: technically breaking changes in `Bcd`
   = note: item made public (technically breaking)
 
 warning: technically breaking changes in `b`
-  --> $REPO_PATH/tests/cases/addition/new.rs:10:5
+  --> $REPO_PATH/tests/cases/addition/new.rs:9:1
    |
-10 | /     #[allow(dead_code)]
+9  | / pub mod b {
+10 | |     #[allow(dead_code)]
 11 | |     pub struct Cde;
 12 | | }
    | |_^
@@ -18,10 +19,12 @@ warning: technically breaking changes in `b`
    = note: item made public (technically breaking)
 
 warning: technically breaking changes in `d`
-  --> $REPO_PATH/tests/cases/addition/new.rs:21:1
+  --> $REPO_PATH/tests/cases/addition/new.rs:19:1
    |
-21 | }
-   | ^
+19 | / pub mod d {
+20 | |
+21 | | }
+   | |_^
    |
    = note: item made public (technically breaking)
 
@@ -34,10 +37,12 @@ warning: path changes to `Abc`
   = note: added definition (technically breaking)
 
 warning: path changes to `a`
- --> $REPO_PATH/tests/cases/addition/new.rs:7:1
+ --> $REPO_PATH/tests/cases/addition/new.rs:5:1
   |
-7 | }
-  | ^
+5 | / pub mod a {
+6 | |
+7 | | }
+  | |_^
   |
   = note: added definition (technically breaking)
 

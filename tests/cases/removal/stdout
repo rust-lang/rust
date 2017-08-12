@@ -16,18 +16,22 @@ error: breaking changes in `Bcd`
   = warning: item made private (breaking)
 
 error: path changes to `a`
- --> $REPO_PATH/tests/cases/removal/old.rs:7:1
+ --> $REPO_PATH/tests/cases/removal/old.rs:5:1
   |
-7 | }
-  | ^
+5 | / pub mod a {
+6 | |
+7 | | }
+  | |_^
   |
   = warning: removed definition (breaking)
 
 error: breaking changes in `b`
- --> $REPO_PATH/tests/cases/removal/new.rs:6:1
+ --> $REPO_PATH/tests/cases/removal/new.rs:4:1
   |
-6 | }
-  | ^
+4 | / mod b {
+5 | |
+6 | | }
+  | |_^
   |
   = warning: item made private (breaking)
 
@@ -40,10 +44,12 @@ error: path changes to `Cde`
    = warning: removed definition (breaking)
 
 error: breaking changes in `d`
-  --> $REPO_PATH/tests/cases/removal/new.rs:14:1
+  --> $REPO_PATH/tests/cases/removal/new.rs:12:1
    |
-14 | }
-   | ^
+12 | / mod d {
+13 | |
+14 | | }
+   | |_^
    |
    = warning: item made private (breaking)
 
