@@ -461,9 +461,26 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```ignore (cannot-doctest-external-file-dependency)
-    /// let secret_key = include_str!("secret-key.ascii");
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'spanish.in':
+    ///
+    /// ```text
+    /// adiós
     /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let my_str = include_str!("spanish.in");
+    ///     assert_eq!(my_str, "adiós\n");
+    ///     print!("{}", my_str);
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
