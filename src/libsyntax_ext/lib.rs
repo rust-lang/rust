@@ -64,7 +64,12 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     macro_rules! register {
         ($( $name:ident: $f:expr, )*) => { $(
             register(Symbol::intern(stringify!($name)),
-                     NormalTT(Box::new($f as MacroExpanderFn), None, false));
+                     NormalTT {
+                        expander: Box::new($f as MacroExpanderFn),
+                        def_info: None,
+                        allow_internal_unstable: false,
+                        allow_internal_unsafe: false,
+                    });
         )* }
     }
 
@@ -112,7 +117,12 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
 
     // format_args uses `unstable` things internally.
     register(Symbol::intern("format_args"),
-             NormalTT(Box::new(format::expand_format_args), None, true));
+             NormalTT {
+                expander: Box::new(format::expand_format_args),
+                def_info: None,
+                allow_internal_unstable: true,
+                allow_internal_unsafe: false,
+            });
 
     for (name, ext) in user_exts {
         register(name, ext);

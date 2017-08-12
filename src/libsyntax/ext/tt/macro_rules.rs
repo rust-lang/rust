@@ -269,7 +269,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         valid &= check_lhs_no_empty_seq(sess, &[lhs.clone()])
     }
 
-    let exp: Box<_> = Box::new(MacroRulesMacroExpander {
+    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
         name: def.ident,
         lhses: lhses,
         rhses: rhses,
@@ -278,9 +278,15 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
 
     if body.legacy {
         let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
-        NormalTT(exp, Some((def.id, def.span)), allow_internal_unstable)
+        let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+        NormalTT {
+            expander,
+            def_info: Some((def.id, def.span)),
+            allow_internal_unstable,
+            allow_internal_unsafe
+        }
     } else {
-        SyntaxExtension::DeclMacro(exp, Some((def.id, def.span)))
+        SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)))
     }
 }
 

@@ -153,6 +153,16 @@ impl Span {
         }
     }
 
+    /// Check if a span is "internal" to a macro in which `unsafe`
+    /// can be used without triggering the `unsafe_code` lint
+    //  (that is, a macro marked with `#[allow_internal_unsafe]`).
+    pub fn allows_unsafe(&self) -> bool {
+        match self.ctxt.outer().expn_info() {
+            Some(info) => info.callee.allow_internal_unsafe,
+            None => false,
+        }
+    }
+
     pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];

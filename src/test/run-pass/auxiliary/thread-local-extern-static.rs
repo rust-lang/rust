@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(thread_local)]
-#![feature(cfg_target_thread_local)]
+#![feature(cfg_target_thread_local, const_fn, thread_local)]
 #![crate_type = "lib"]
 
+#[cfg(target_thread_local)]
+use std::cell::Cell;
+
 #[no_mangle]
-#[cfg_attr(target_thread_local, thread_local)]
-pub static FOO: u32 = 3;
+#[cfg(target_thread_local)]
+#[thread_local]
+pub static FOO: Cell<u32> = Cell::new(3);

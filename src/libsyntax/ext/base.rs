@@ -532,10 +532,16 @@ pub enum SyntaxExtension {
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
-    ///
-    /// The `bool` dictates whether the contents of the macro can
-    /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>, bool),
+    NormalTT {
+        expander: Box<TTMacroExpander>,
+        def_info: Option<(ast::NodeId, Span)>,
+        /// Whether the contents of the macro can
+        /// directly use `#[unstable]` things (true == yes).
+        allow_internal_unstable: bool,
+        /// Whether the contents of the macro can use `unsafe`
+        /// without triggering the `unsafe_code` lint.
+        allow_internal_unsafe: bool,
+    },
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
@@ -562,7 +568,7 @@ impl SyntaxExtension {
     pub fn kind(&self) -> MacroKind {
         match *self {
             SyntaxExtension::DeclMacro(..) |
-            SyntaxExtension::NormalTT(..) |
+            SyntaxExtension::NormalTT { .. } |
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::ProcMacro(..) =>
                 MacroKind::Bang,

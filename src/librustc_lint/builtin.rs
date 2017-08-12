@@ -195,12 +195,23 @@ impl LintPass for UnsafeCode {
     }
 }
 
+impl UnsafeCode {
+    fn report_unsafe(&self, cx: &LateContext, span: Span, desc: &'static str) {
+        // This comes from a macro that has #[allow_internal_unsafe].
+        if span.allows_unsafe() {
+            return;
+        }
+
+        cx.span_lint(UNSAFE_CODE, span, desc);
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
-                cx.span_lint(UNSAFE_CODE, blk.span, "usage of an `unsafe` block");
+                self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
             }
         }
     }
@@ -208,11 +219,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemTrait(hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait")
+                self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
             hir::ItemImpl(hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait")
+                self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
             _ => return,
@@ -228,12 +239,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
                 _: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function")
+                self.report_unsafe(cx, span, "declaration of an `unsafe` function")
             }
 
             FnKind::Method(_, sig, ..) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
-                    cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
+                    self.report_unsafe(cx, span, "implementation of an `unsafe` method")
                 }
             }
 
@@ -244,9 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
             if sig.unsafety == hir::Unsafety::Unsafe {
-                cx.span_lint(UNSAFE_CODE,
-                             item.span,
-                             "declaration of an `unsafe` method")
+                self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
         }
     }

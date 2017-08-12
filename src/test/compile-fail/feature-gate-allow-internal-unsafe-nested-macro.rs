@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(unsafe_code)]
+// gate-test-allow_internal_unsafe
 
-thread_local!(static FOO: u8 = 1);
+#![allow(unused_macros)]
 
-fn main() {
+macro_rules! bar {
+    () => {
+        // more layers don't help:
+        #[allow_internal_unsafe] //~ ERROR allow_internal_unsafe side-steps
+        macro_rules! baz {
+            () => {}
+        }
+    }
 }
+
+bar!();
+
+fn main() {}

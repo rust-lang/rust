@@ -404,6 +404,7 @@ impl<'a> LoweringContext<'a> {
                 format: codemap::CompilerDesugaring(Symbol::intern(reason)),
                 span: Some(span),
                 allow_internal_unstable: true,
+                allow_internal_unsafe: false,
             },
         });
         span.ctxt = SyntaxContext::empty().apply_mark(mark);

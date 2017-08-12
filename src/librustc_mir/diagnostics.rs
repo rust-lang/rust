@@ -442,4 +442,5 @@ static A : &'static u32 = &S.a; // ok!
 
 register_diagnostics! {
     E0526, // shuffle indices are not constant
+    E0625, // thread-local statics cannot be accessed at compile-time
 }

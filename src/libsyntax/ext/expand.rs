@@ -411,6 +411,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
                 span: None,
                 allow_internal_unstable: false,
+                allow_internal_unsafe: false,
             }
         });
 
@@ -458,7 +459,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let path = &mac.node.path;
 
         let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
-        let validate_and_set_expn_info = |def_site_span, allow_internal_unstable| {
+        let validate_and_set_expn_info = |def_site_span,
+                                          allow_internal_unstable,
+                                          allow_internal_unsafe| {
             if ident.name != keywords::Invalid.name() {
                 return Err(format!("macro {}! expects no ident argument, given '{}'", path, ident));
             }
@@ -467,7 +470,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 callee: NameAndSpan {
                     format: MacroBang(Symbol::intern(&format!("{}", path))),
                     span: def_site_span,
-                    allow_internal_unstable: allow_internal_unstable,
+                    allow_internal_unstable,
+                    allow_internal_unsafe,
                 },
             });
             Ok(())
@@ -476,20 +480,26 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let opt_expanded = match *ext {
             DeclMacro(ref expand, def_span) => {
                 if let Err(msg) = validate_and_set_expn_info(def_span.map(|(_, s)| s),
-                                                             false) {
+                                                             false, false) {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
                 kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
             }
 
-            NormalTT(ref expandfun, def_info, allow_internal_unstable) => {
+            NormalTT {
+                ref expander,
+                def_info,
+                allow_internal_unstable,
+                allow_internal_unsafe
+            } => {
                 if let Err(msg) = validate_and_set_expn_info(def_info.map(|(_, s)| s),
-                                                             allow_internal_unstable) {
+                                                             allow_internal_unstable,
+                                                             allow_internal_unsafe) {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
-                kind.make_from(expandfun.expand(self.cx, span, mac.node.stream()))
+                kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
             }
 
             IdentTT(ref expander, tt_span, allow_internal_unstable) => {
@@ -504,7 +514,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     callee: NameAndSpan {
                         format: MacroBang(Symbol::intern(&format!("{}", path))),
                         span: tt_span,
-                        allow_internal_unstable: allow_internal_unstable,
+                        allow_internal_unstable,
+                        allow_internal_unsafe: false,
                     }
                 });
 
@@ -540,6 +551,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         span: None,
                         // FIXME probably want to follow macro_rules macros here.
                         allow_internal_unstable: false,
+                        allow_internal_unsafe: false,
                     },
                 });
 
@@ -578,6 +590,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 format: MacroAttribute(pretty_name),
                 span: None,
                 allow_internal_unstable: false,
+                allow_internal_unsafe: false,
             }
         };
 

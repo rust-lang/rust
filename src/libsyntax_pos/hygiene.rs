@@ -310,6 +310,9 @@ pub struct NameAndSpan {
     /// features internally without forcing the whole crate to opt-in
     /// to them.
     pub allow_internal_unstable: bool,
+    /// Whether the macro is allowed to use `unsafe` internally
+    /// even if the user crate has `#![forbid(unsafe_code)]`.
+    pub allow_internal_unsafe: bool,
     /// The span of the macro definition itself. The macro may not
     /// have a sensible definition span (e.g. something defined
     /// completely inside libsyntax) in which case this is None.
