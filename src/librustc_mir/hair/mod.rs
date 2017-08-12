@@ -80,7 +80,7 @@ pub enum StmtKind<'tcx> {
 
 /// The Hair trait implementor translates their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This translation can be done
-/// basically as lazilly or as eagerly as desired: every recursive
+/// basically as lazily or as eagerly as desired: every recursive
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// untranslated `&'tcx H::Expr`. Note that instances of `Expr` are very

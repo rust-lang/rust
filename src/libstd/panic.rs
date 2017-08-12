@@ -37,7 +37,7 @@ pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 /// In Rust a function can "return" early if it either panics or calls a
 /// function which transitively panics. This sort of control flow is not always
 /// anticipated, and has the possibility of causing subtle bugs through a
-/// combination of two cricial components:
+/// combination of two criticial components:
 ///
 /// 1. A data structure is in a temporarily invalid state when the thread
 ///    panics.

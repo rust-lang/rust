@@ -315,7 +315,7 @@ pub fn source_name(input: &Input) -> String {
 /// This is a somewhat higher level controller than a Session - the Session
 /// controls what happens in each phase, whereas the CompileController controls
 /// whether a phase is run at all and whether other code (from outside the
-/// the compiler) is run between phases.
+/// compiler) is run between phases.
 ///
 /// Note that if compilation is set to stop and a callback is provided for a
 /// given entry point, the callback is called before compilation is stopped.
