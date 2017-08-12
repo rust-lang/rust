@@ -576,7 +576,7 @@ fn creator_generator_resume_function<'a, 'tcx>(
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
 
-    no_landing_pads(tcx, &mut mir);
+    no_landing_pads(tcx, mir);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function

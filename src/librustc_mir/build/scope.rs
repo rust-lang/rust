@@ -433,7 +433,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.diverge_cleanup_gen(true);
 
         let src_info = self.scopes[0].source_info(self.fn_span);
-        let tmp = self.get_unit_temp();
         let mut block = self.cfg.start_new_block();
         let result = block;
         let mut rest = &mut self.scopes[..];
@@ -463,13 +462,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // End all regions for scopes out of which we are breaking.
             self.cfg.push_end_region(block, src_info, scope.extent);
-
-            if let Some(ref free_data) = scope.free {
-                let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.source_info(free_data.span), free);
-                block = next;
-            }
         }
 
         self.cfg.terminate(block, src_info, TerminatorKind::GeneratorDrop);
