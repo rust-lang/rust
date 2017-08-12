@@ -29,10 +29,10 @@ pub fn record(r: usize) {
     unsafe { RECORD = RECORD*10 + r };
 }
 
-unsafe extern fn dtor(mut ptr: *mut u64) {
+unsafe extern fn dtor(ptr: *mut u64) {
     assert!(CANNARY != 0 as *mut _); // make sure we do not get run too often
     let val = *ptr;
-    
+
     let which_key = GLOBALS.iter().position(|global| global as *const _ == ptr).expect("Should find my global");
     record(which_key);
 

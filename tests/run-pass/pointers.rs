@@ -34,7 +34,7 @@ fn tuple_ref_mut() -> (i8, i8) {
 fn match_ref_mut() -> i8 {
     let mut t = (20, 22);
     {
-        let mut opt = Some(&mut t);
+        let opt = Some(&mut t);
         match opt {
             Some(&mut (ref mut x, ref mut y)) => *x += *y,
             None => {},
