@@ -237,10 +237,13 @@ Some common invocations of `x.py` are:
 ## Pull Requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][pull-requests] on using the Pull Request
-feature. We use the 'fork and pull' model described there.
+has some [great documentation][pull-requests] on using the Pull Request feature.
+We use the "fork and pull" model [described here][development-models], where
+contributors push changes to their personal fork and create pull requests to
+bring those changes into the source repository.
 
-[pull-requests]: https://help.github.com/articles/using-pull-requests/
+[pull-requests]: https://help.github.com/articles/about-pull-requests/
+[development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
 Please make pull requests against the `master` branch.
 
