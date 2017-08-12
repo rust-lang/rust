@@ -35,7 +35,7 @@ use cache::{INTERNER, Interned};
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
 /// each field, see the corresponding fields in
-/// `src/bootstrap/config.toml.example`.
+/// `config.toml.example`.
 #[derive(Default)]
 pub struct Config {
     pub ccache: Option<String>,

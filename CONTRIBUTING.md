@@ -99,7 +99,7 @@ Before you can start building the compiler you need to configure the build for
 your system. In most cases, that will just mean using the defaults provided
 for Rust.
 
-To change configuration, you must copy the file `src/bootstrap/config.toml.example`
+To change configuration, you must copy the file `config.toml.example`
 to `config.toml` in the directory from which you will be running the build, and
 change the settings provided.
 
