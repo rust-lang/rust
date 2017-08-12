@@ -1454,7 +1454,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             return Ok(());
         }
         let ptr = ptr.to_ptr()?;
-        let mut alloc = self.get_mut(ptr.alloc_id)?;
+        let alloc = self.get_mut(ptr.alloc_id)?;
         alloc.undef_mask.set_range(
             ptr.offset,
             ptr.offset + size,

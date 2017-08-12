@@ -1,5 +1,4 @@
 #![allow(unknown_lints)]
-#![allow(float_cmp)]
 
 use rustc::ty::layout::HasDataLayout;
 
