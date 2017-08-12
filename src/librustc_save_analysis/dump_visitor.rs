@@ -27,7 +27,6 @@
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Node;
-use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
@@ -62,7 +61,6 @@ macro_rules! down_cast_data {
 
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
-    sess: &'l Session,
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     dumper: &'ll mut JsonDumper<O>,
 
@@ -84,7 +82,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                -> DumpVisitor<'l, 'tcx, 'll, O> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
-            sess: &save_ctxt.tcx.sess,
             tcx: save_ctxt.tcx,
             save_ctxt: save_ctxt,
             dumper: dumper,
@@ -147,39 +144,15 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     // For each prefix, we return the span for the last segment in the prefix and
     // a str representation of the entire prefix.
     fn process_path_prefixes(&self, path: &ast::Path) -> Vec<(Span, String)> {
-        let spans = self.span.spans_for_path_segments(path);
         let segments = &path.segments[if path.is_global() { 1 } else { 0 }..];
 
-        // Paths to enums seem to not match their spans - the span includes all the
-        // variants too. But they seem to always be at the end, so I hope we can cope with
-        // always using the first ones. So, only error out if we don't have enough spans.
-        // What could go wrong...?
-        if spans.len() < segments.len() {
-            if generated_code(path.span) {
-                return vec![];
-            }
-            error!("Mis-calculated spans for path '{}'. Found {} spans, expected {}. Found spans:",
-                   path_to_string(path),
-                   spans.len(),
-                   segments.len());
-            for s in &spans {
-                let loc = self.sess.codemap().lookup_char_pos(s.lo);
-                error!("    '{}' in {}, line {}",
-                       self.span.snippet(*s),
-                       loc.file.name,
-                       loc.line);
-            }
-            error!("    master span: {:?}: `{}`", path.span, self.span.snippet(path.span));
-            return vec![];
-        }
-
-        let mut result: Vec<(Span, String)> = vec![];
+        let mut result = Vec::with_capacity(segments.len());
 
         let mut segs = vec![];
-        for (i, (seg, span)) in segments.iter().zip(&spans).enumerate() {
+        for (i, seg) in segments.iter().enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path {
-                span: *span, // span for the last segment
+                span: seg.span, // span for the last segment
                 segments: segs,
             };
             let qualname = if i == 0 && path.is_global() {
@@ -187,7 +160,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             } else {
                 path_to_string(&sub_path)
             };
-            result.push((*span, qualname));
+            result.push((seg.span, qualname));
             segs = sub_path.segments;
         }
 
@@ -436,13 +409,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                               full_span: Span,
                               prefix: &str,
                               id: NodeId) {
-        // We can't only use visit_generics since we don't have spans for param
-        // bindings, so we reparse the full_span to get those sub spans.
-        // However full span is the entire enum/fn/struct block, so we only want
-        // the first few to match the number of generics we're looking for.
-        let param_sub_spans = self.span.spans_for_ty_params(full_span,
-                                                            (generics.ty_params.len() as isize));
-        for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans) {
+        for param in &generics.ty_params {
+            let param_ss = param.span;
             let name = escape(self.span.snippet(param_ss));
             // Append $id to name to make sure each one is unique
             let qualname = format!("{}::{}${}",
