@@ -545,23 +545,28 @@ pub mod builtin {
     /// Assume there are two files in the same directory with the following
     /// contents:
     ///
-    /// File 'my_str.in':
+    /// File 'monkeys.in':
     ///
     /// ```ignore (only-for-syntax-highlight)
-    /// "Hello World!"
+    /// ['🙈', '🙊', '🙉']
+    ///     .iter()
+    ///     .cycle()
+    ///     .take(6)
+    ///     .collect::<String>()
     /// ```
     ///
     /// File 'main.rs':
     ///
     /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
-    ///     let my_str = include!("my_str.in");
-    ///     println!("{}", my_str);
+    ///     let my_string = include!("monkeys.in");
+    ///     assert_eq!("🙈🙊🙉🙈🙊🙉", my_string);
+    ///     println!("{}", my_string);
     /// }
     /// ```
     ///
-    /// Compiling 'main.rs' and running the resulting binary will print "Hello
-    /// World!".
+    /// Compiling 'main.rs' and running the resulting binary will print
+    /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
