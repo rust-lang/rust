@@ -8,26 +8,51 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A version of the call operator that takes an immutable receiver.
+/// The version of the call operator that takes an immutable receiver.
+///
+/// Instances of `Fn` can be called repeatedly without mutating state.
+///
+/// *This trait (`Fn`) is not to be confused with [function pointers][]
+/// (`fn`).*
+///
+/// `Fn` is implemented automatically by closures which only take immutable
+/// references to captured variables or don't capture anything at all, as well
+/// as (safe) [function pointers][] (with some caveats, see their documentation
+/// for more details). Additionally, for any type `F` that implements `Fn`, `&F`
+/// implements `Fn`, too.
+///
+/// Since both [`FnMut`] and [`FnOnce`] are supertraits of `Fn`, any
+/// instance of `Fn` can be used as a parameter where a [`FnMut`] or [`FnOnce`]
+/// is expected.
+///
+/// Use `Fn` as a bound when you want to accept a parameter of function-like
+/// type and need to call it repeatedly and without mutating state (e.g. when
+/// calling it concurrently). If you do not need such strict requirements, use
+/// [`FnMut`] or [`FnOnce`] as bounds.
+///
+/// See the [chapter on closures in *The Rust Programming Language*][book] for
+/// some more information on this topic.
+///
+/// Also of note is the special syntax for `Fn` traits (e.g.
+/// `Fn(usize, bool) -> usize`). Those interested in the technical details of
+/// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
+///
+/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [`FnMut`]: trait.FnMut.html
+/// [`FnOnce`]: trait.FnOnce.html
+/// [function pointers]: ../../std/primitive.fn.html
+/// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
-/// Closures automatically implement this trait, which allows them to be
-/// invoked. Note, however, that `Fn` takes an immutable reference to any
-/// captured variables. To take a mutable capture, implement [`FnMut`], and to
-/// consume the capture, implement [`FnOnce`].
-///
-/// [`FnMut`]: trait.FnMut.html
-/// [`FnOnce`]: trait.FnOnce.html
+/// ## Calling a closure
 ///
 /// ```
 /// let square = |x| x * x;
 /// assert_eq!(square(5), 25);
 /// ```
 ///
-/// Closures can also be passed to higher-level functions through a `Fn`
-/// parameter (or a `FnMut` or `FnOnce` parameter, which are supertraits of
-/// `Fn`).
+/// ## Using a `Fn` parameter
 ///
 /// ```
 /// fn call_with_one<F>(func: F) -> usize
@@ -43,17 +68,46 @@
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait Fn<Args> : FnMut<Args> {
-    /// This is called when the call operator is used.
+    /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
-/// A version of the call operator that takes a mutable receiver.
+/// The version of the call operator that takes a mutable receiver.
+///
+/// Instances of `FnMut` can be called repeatedly and may mutate state.
+///
+/// `FnMut` is implemented automatically by closures which take mutable
+/// references to captured variables, as well as all types that implement
+/// [`Fn`], e.g. (safe) [function pointers][] (since `FnMut` is a supertrait of
+/// [`Fn`]). Additionally, for any type `F` that implements `FnMut`, `&mut F`
+/// implements `FnMut`, too.
+///
+/// Since [`FnOnce`] is a supertrait of `FnMut`, any instance of `FnMut` can be
+/// used where a [`FnOnce`] is expected, and since [`Fn`] is a subtrait of
+/// `FnMut`, any instance of [`Fn`] can be used where `FnMut` is expected.
+///
+/// Use `FnMut` as a bound when you want to accept a parameter of function-like
+/// type and need to call it repeatedly, while allowing it to mutate state.
+/// If you don't want the parameter to mutate state, use [`Fn`] as a
+/// bound; if you don't need to call it repeatedly, use [`FnOnce`].
+///
+/// See the [chapter on closures in *The Rust Programming Language*][book] for
+/// some more information on this topic.
+///
+/// Also of note is the special syntax for `Fn` traits (e.g.
+/// `Fn(usize, bool) -> usize`). Those interested in the technical details of
+/// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
+///
+/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [`Fn`]: trait.Fn.html
+/// [`FnOnce`]: trait.FnOnce.html
+/// [function pointers]: ../../std/primitive.fn.html
+/// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
-/// Closures that mutably capture variables automatically implement this trait,
-/// which allows them to be invoked.
+/// ## Calling a mutably capturing closure
 ///
 /// ```
 /// let mut x = 5;
@@ -64,8 +118,7 @@ pub trait Fn<Args> : FnMut<Args> {
 /// assert_eq!(x, 25);
 /// ```
 ///
-/// Closures can also be passed to higher-level functions through a `FnMut`
-/// parameter (or a `FnOnce` parameter, which is a supertrait of `FnMut`).
+/// ## Using a `FnMut` parameter
 ///
 /// ```
 /// fn do_twice<F>(mut func: F)
@@ -88,17 +141,45 @@ pub trait Fn<Args> : FnMut<Args> {
 #[rustc_paren_sugar]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 pub trait FnMut<Args> : FnOnce<Args> {
-    /// This is called when the call operator is used.
+    /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
-/// A version of the call operator that takes a by-value receiver.
+/// The version of the call operator that takes a by-value receiver.
+///
+/// Instances of `FnOnce` can be called, but might not be callable multiple
+/// times. Because of this, if the only thing known about a type is that it
+/// implements `FnOnce`, it can only be called once.
+///
+/// `FnOnce` is implemented automatically by closure that might consume captured
+/// variables, as well as all types that implement [`FnMut`], e.g. (safe)
+/// [function pointers][] (since `FnOnce` is a supertrait of [`FnMut`]).
+///
+/// Since both [`Fn`] and [`FnMut`] are subtraits of `FnOnce`, any instance of
+/// [`Fn`] or [`FnMut`] can be used where a `FnOnce` is expected.
+///
+/// Use `FnOnce` as a bound when you want to accept a parameter of function-like
+/// type and only need to call it once. If you need to call the parameter
+/// repeatedly, use [`FnMut`] as a bound; if you also need it to not mutate
+/// state, use [`Fn`].
+///
+/// See the [chapter on closures in *The Rust Programming Language*][book] for
+/// some more information on this topic.
+///
+/// Also of note is the special syntax for `Fn` traits (e.g.
+/// `Fn(usize, bool) -> usize`). Those interested in the technical details of
+/// this can refer to [the relevant section in the *Rustonomicon*][nomicon].
+///
+/// [book]: ../../book/second-edition/ch13-01-closures.html
+/// [`Fn`]: trait.Fn.html
+/// [`FnMut`]: trait.FnMut.html
+/// [function pointers]: ../../std/primitive.fn.html
+/// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
 ///
-/// By-value closures automatically implement this trait, which allows them to
-/// be invoked.
+/// ## Calling a by-value closure
 ///
 /// ```
 /// let x = 5;
@@ -106,21 +187,20 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// assert_eq!(square_x(), 25);
 /// ```
 ///
-/// By-value Closures can also be passed to higher-level functions through a
-/// `FnOnce` parameter.
+/// ## Using a `FnOnce` parameter
 ///
 /// ```
 /// fn consume_with_relish<F>(func: F)
 ///     where F: FnOnce() -> String
 /// {
 ///     // `func` consumes its captured variables, so it cannot be run more
-///     // than once
+///     // than once.
 ///     println!("Consumed: {}", func());
 ///
 ///     println!("Delicious!");
 ///
 ///     // Attempting to invoke `func()` again will throw a `use of moved
-///     // value` error for `func`
+///     // value` error for `func`.
 /// }
 ///
 /// let x = String::from("x");
@@ -138,7 +218,7 @@ pub trait FnOnce<Args> {
     #[stable(feature = "fn_once_output", since = "1.12.0")]
     type Output;
 
-    /// This is called when the call operator is used.
+    /// Performs the call operation.
     #[unstable(feature = "fn_traits", issue = "29625")]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }

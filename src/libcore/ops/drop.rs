@@ -8,20 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// The `Drop` trait is used to run some code when a value goes out of scope.
+/// Used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
 ///
-/// When a value goes out of scope, if it implements this trait, it will have
-/// its `drop` method called. Then any fields the value contains will also
+/// When a value goes out of scope, it will have its `drop` method called if
+/// its type implements `Drop`. Then, any fields the value contains will also
 /// be dropped recursively.
 ///
-/// Because of the recursive dropping, you do not need to implement this trait
+/// Because of this recursive dropping, you do not need to implement this trait
 /// unless your type needs its own destructor logic.
+///
+/// Refer to [the chapter on `Drop` in *The Rust Programming Language*][book]
+/// for some more elaboration.
+///
+/// [book]: ../../book/second-edition/ch15-03-drop.html
 ///
 /// # Examples
 ///
-/// A trivial implementation of `Drop`. The `drop` method is called when `_x`
-/// goes out of scope, and therefore `main` prints `Dropping!`.
+/// ## Implementing `Drop`
+///
+/// The `drop` method is called when `_x` goes out of scope, and therefore
+/// `main` prints `Dropping!`.
 ///
 /// ```
 /// struct HasDrop;
@@ -37,9 +44,11 @@
 /// }
 /// ```
 ///
-/// Showing the recursive nature of `Drop`. When `outer` goes out of scope, the
-/// `drop` method will be called first for `Outer`, then for `Inner`. Therefore
-/// `main` prints `Dropping Outer!` and then `Dropping Inner!`.
+/// ## Dropping is done recursively
+///
+/// When `outer` goes out of scope, the `drop` method will be called first for
+/// `Outer`, then for `Inner`. Therefore, `main` prints `Dropping Outer!` and
+/// then `Dropping Inner!`.
 ///
 /// ```
 /// struct Inner;
@@ -62,11 +71,19 @@
 /// }
 /// ```
 ///
-/// Because variables are dropped in the reverse order they are declared,
-/// `main` will print `Declared second!` and then `Declared first!`.
+/// ## Variables are dropped in reverse order of declaration
+///
+/// `_first` is declared first and `_second` is declared second, so `main` will
+/// print `Declared second!` and then `Declared first!`.
 ///
 /// ```
 /// struct PrintOnDrop(&'static str);
+///
+/// impl Drop for PrintOnDrop {
+///     fn drop(&mut self) {
+///         println!("{}", self.0);
+///     }
+/// }
 ///
 /// fn main() {
 ///     let _first = PrintOnDrop("Declared first!");
@@ -76,24 +93,25 @@
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
-    /// A method called when the value goes out of scope.
+    /// Executes the destructor for this type.
     ///
-    /// When this method has been called, `self` has not yet been deallocated.
-    /// If it were, `self` would be a dangling reference.
-    ///
-    /// After this function is over, the memory of `self` will be deallocated.
-    ///
-    /// This function cannot be called explicitly. This is compiler error
-    /// [E0040]. However, the [`std::mem::drop`] function in the prelude can be
+    /// This method is called implilcitly when the value goes out of scope,
+    /// and cannot be called explicitly (this is compiler error [E0040]).
+    /// However, the [`std::mem::drop`] function in the prelude can be
     /// used to call the argument's `Drop` implementation.
     ///
-    /// [E0040]: ../../error-index.html#E0040
-    /// [`std::mem::drop`]: ../../std/mem/fn.drop.html
+    /// When this method has been called, `self` has not yet been deallocated.
+    /// That only happens after the method is over.
+    /// If this wasn't the case, `self` would be a dangling reference.
     ///
     /// # Panics
     ///
-    /// Given that a `panic!` will call `drop()` as it unwinds, any `panic!` in
-    /// a `drop()` implementation will likely abort.
+    /// Given that a [`panic!`] will call `drop` as it unwinds, any [`panic!`]
+    /// in a `drop` implementation will likely abort.
+    ///
+    /// [E0040]: ../../error-index.html#E0040
+    /// [`panic!`]: ../macro.panic.html
+    /// [`std::mem::drop`]: ../../std/mem/fn.drop.html
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }
