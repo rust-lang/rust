@@ -136,10 +136,8 @@ impl<'a> FmtVisitor<'a> {
             if let Some(first_stmt) = b.stmts.first() {
                 let attr_lo = inner_attrs
                     .and_then(|attrs| {
-                        attrs
-                            .iter()
-                            .filter(|a| a.style == ast::AttrStyle::Inner)
-                            .nth(0)
+                        utils::inner_attributes(attrs)
+                            .first()
                             .map(|attr| attr.span.lo)
                     })
                     .or_else(|| {
