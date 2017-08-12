@@ -89,9 +89,6 @@ should go to.
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
-use rustc::middle::lang_items;
-use rustc::middle::const_val::ConstVal;
-use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
@@ -127,21 +124,6 @@ pub struct Scope<'tcx> {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData<'tcx>>,
 
-    /// A scope may only have one associated free, because:
-    ///
-    /// 1. We require a `free` to only be scheduled in the scope of
-    ///    `EXPR` in `box EXPR`;
-    /// 2. It only makes sense to have it translated into the diverge-path.
-    ///
-    /// This kind of drop will be run *after* all the regular drops
-    /// scheduled onto this scope, because drops may have dependencies
-    /// on the allocated memory.
-    ///
-    /// This is expected to go away once `box EXPR` becomes a sugar
-    /// for placement protocol and gets desugared in some earlier
-    /// stage.
-    free: Option<FreeData<'tcx>>,
-
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
     cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
 }
@@ -168,22 +150,6 @@ enum DropKind {
         cached_block: Option<BasicBlock>
     },
     Storage
-}
-
-#[derive(Debug)]
-struct FreeData<'tcx> {
-    /// span where free obligation was incurred
-    span: Span,
-
-    /// Lvalue containing the allocated box.
-    value: Lvalue<'tcx>,
-
-    /// type of item for which the box was allocated for (i.e. the T in Box<T>).
-    item_ty: Ty<'tcx>,
-
-    /// The cached block containing code to run the free. The block will also execute all the drops
-    /// in the scope.
-    cached_block: Option<BasicBlock>
 }
 
 #[derive(Clone, Debug)]
@@ -224,9 +190,6 @@ impl<'tcx> Scope<'tcx> {
                 *cached_block = None;
             }
         }
-        if let Some(ref mut freedata) = self.free {
-            freedata.cached_block = None;
-        }
     }
 
     /// Returns the cached entrypoint for diverging exit from this scope.
@@ -242,8 +205,6 @@ impl<'tcx> Scope<'tcx> {
         });
         if let Some(cached_block) = drops.next() {
             Some(cached_block.expect("drop cache is not filled"))
-        } else if let Some(ref data) = self.free {
-            Some(data.cached_block.expect("free cache is not filled"))
         } else {
             None
         }
@@ -333,7 +294,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             extent_span: extent.1.span,
             needs_cleanup: false,
             drops: vec![],
-            free: None,
             cached_exits: FxHashMap()
         });
     }
@@ -382,7 +342,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         });
         let len = self.scopes.len();
         assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
-        let tmp = self.get_unit_temp();
 
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -415,13 +374,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // End all regions for scopes out of which we are breaking.
             self.cfg.push_end_region(block, extent.1, scope.extent);
-
-            if let Some(ref free_data) = scope.free {
-                let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.source_info(span), free);
-                block = next;
-            }
         }
         }
         let scope = &self.scopes[len - scope_count];
@@ -607,36 +559,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
     }
 
-    /// Schedule dropping of a not-yet-fully-initialised box.
-    ///
-    /// This cleanup will only be translated into unwind branch.
-    /// The extent should be for the `EXPR` inside `box EXPR`.
-    /// There may only be one “free” scheduled in any given scope.
-    pub fn schedule_box_free(&mut self,
-                             span: Span,
-                             extent: CodeExtent,
-                             value: &Lvalue<'tcx>,
-                             item_ty: Ty<'tcx>) {
-        for scope in self.scopes.iter_mut().rev() {
-            // See the comment in schedule_drop above. The primary difference is that we invalidate
-            // the unwind blocks unconditionally. That’s because the box free may be considered
-            // outer-most cleanup within the scope.
-            scope.invalidate_cache(true);
-            if scope.extent == extent {
-                assert!(scope.free.is_none(), "scope already has a scheduled free!");
-                scope.needs_cleanup = true;
-                scope.free = Some(FreeData {
-                    span: span,
-                    value: value.clone(),
-                    item_ty: item_ty,
-                    cached_block: None
-                });
-                return;
-            }
-        }
-        span_bug!(span, "extent {:?} not in scope to free {:?}", extent, value);
-    }
-
     // Other
     // =====
     /// Creates a path that performs all required cleanup for unwinding.
@@ -650,7 +572,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         assert!(!self.scopes.is_empty()); // or `any` above would be false
 
-        let unit_temp = self.get_unit_temp();
         let Builder { ref mut hir, ref mut cfg, ref mut scopes,
                       ref mut cached_resume_block, .. } = *self;
 
@@ -679,7 +600,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         for scope in scopes.iter_mut() {
             target = build_diverge_scope(
-                hir.tcx(), cfg, &unit_temp, scope.extent_span, scope, target);
+                hir.tcx(), cfg, scope.extent_span, scope, target);
         }
         Some(target)
     }
@@ -805,9 +726,8 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn build_diverge_scope<'a, 'gcx, 'tcx>(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        cfg: &mut CFG<'tcx>,
-                                       unit_temp: &Lvalue<'tcx>,
                                        span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock)
@@ -831,19 +751,6 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         span: span,
         scope: visibility_scope
     };
-
-    // Next, build up any free.
-    if let Some(ref mut free_data) = scope.free {
-        target = if let Some(cached_block) = free_data.cached_block {
-            cached_block
-        } else {
-            let into = cfg.start_new_cleanup_block();
-            cfg.terminate(into, source_info(free_data.span),
-                          build_free(tcx, unit_temp, free_data, target));
-            free_data.cached_block = Some(into);
-            into
-        };
-    }
 
     // Next, build up the drops. Here we iterate the vector in
     // *forward* order, so that we generate drops[0] first (right to
@@ -887,25 +794,4 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 
     target
-}
-
-fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                              unit_temp: &Lvalue<'tcx>,
-                              data: &FreeData<'tcx>,
-                              target: BasicBlock)
-                              -> TerminatorKind<'tcx> {
-    let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
-    let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
-    TerminatorKind::Call {
-        func: Operand::Constant(box Constant {
-            span: data.span,
-            ty: tcx.type_of(free_func).subst(tcx, substs),
-            literal: Literal::Value {
-                value: ConstVal::Function(free_func, substs),
-            }
-        }),
-        args: vec![Operand::Consume(data.value.clone())],
-        destination: Some((unit_temp.clone(), target)),
-        cleanup: None
-    }
 }

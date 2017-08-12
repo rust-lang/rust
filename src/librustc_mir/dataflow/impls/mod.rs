@@ -23,6 +23,7 @@ use super::MoveDataParamEnv;
 use util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
+use super::move_paths::LookupResult;
 use super::{BitDenotation, BlockSets, DataflowOperator};
 
 use super::drop_flag_effects_for_function_entry;
@@ -469,18 +470,30 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
             mir::StatementKind::SetDiscriminant { .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscriminant should not exist in borrowck");
             }
-            mir::StatementKind::Assign(ref lvalue, _) => {
+            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
                 // assigning into this `lvalue` kills all
                 // MoveOuts from it, and *also* all MoveOuts
                 // for children and associated fragment sets.
-                on_lookup_result_bits(tcx,
-                                     mir,
-                                     move_data,
-                                     rev_lookup.find(lvalue),
-                                     |mpi| for moi in &path_map[mpi] {
-                                         assert!(moi.index() < bits_per_block);
-                                         sets.kill_set.add(&moi);
-                                     });
+                match rvalue.initialization_state() {
+                    mir::tcx::RvalueInitializationState::Shallow => {
+                        if let LookupResult::Exact(mpi) = rev_lookup.find(lvalue) {
+                             for moi in &path_map[mpi] {
+                                 assert!(moi.index() < bits_per_block);
+                                 sets.kill_set.add(&moi);
+                             }
+                        }
+                    }
+                    mir::tcx::RvalueInitializationState::Deep => {
+                        on_lookup_result_bits(tcx,
+                                              mir,
+                                              move_data,
+                                              rev_lookup.find(lvalue),
+                                              |mpi| for moi in &path_map[mpi] {
+                                                  assert!(moi.index() < bits_per_block);
+                                                  sets.kill_set.add(&moi);
+                                              });
+                    }
+                }
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |

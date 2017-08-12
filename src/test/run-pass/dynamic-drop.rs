@@ -161,6 +161,11 @@ fn vec_simple(a: &Allocator) {
     let _x = vec![a.alloc(), a.alloc(), a.alloc(), a.alloc()];
 }
 
+#[allow(unreachable_code)]
+fn vec_unreachable(a: &Allocator) {
+    let _x = vec![a.alloc(), a.alloc(), a.alloc(), return];
+}
+
 fn run_test<F>(mut f: F)
     where F: FnMut(&Allocator)
 {
@@ -209,6 +214,7 @@ fn main() {
 
     run_test(|a| array_simple(a));
     run_test(|a| vec_simple(a));
+    run_test(|a| vec_unreachable(a));
 
     run_test(|a| struct_dynamic_drop(a, false, false, false));
     run_test(|a| struct_dynamic_drop(a, false, false, true));

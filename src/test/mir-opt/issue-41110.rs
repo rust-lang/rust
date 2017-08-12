@@ -39,8 +39,7 @@ impl S {
 //    let mut _2: S;
 //    let mut _3: S;
 //    let mut _4: S;
-//    let mut _5: ();
-//    let mut _6: bool;
+//    let mut _5: bool;
 //
 //    bb0: {
 // END rustc.node4.ElaborateDrops.after.mir
@@ -50,9 +49,8 @@ impl S {
 //    let mut _2: S;
 //    let mut _3: ();
 //    let mut _4: S;
-//    let mut _5: ();
-//    let mut _6: S;
-//    let mut _7: bool;
+//    let mut _5: S;
+//    let mut _6: bool;
 //
 //    bb0: {
 // END rustc.node13.ElaborateDrops.after.mir

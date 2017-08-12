@@ -94,19 +94,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
-            ExprKind::Box { value, value_extents } => {
+            ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty, expr_span);
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, &result, box_);
-                this.in_scope((value_extents, source_info), block, |this| {
+                if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_box_free(expr_span, value_extents, &result, value.ty);
-                    // initialize the box contents:
-                    unpack!(block = this.into(&result.clone().deref(), block, value));
-                    block.and(Rvalue::Use(Operand::Consume(result)))
-                })
+                    this.schedule_drop(expr_span, scope, &result, value.ty);
+                }
+                // initialize the box contents:
+                unpack!(block = this.into(&result.clone().deref(), block, value));
+                block.and(Rvalue::Use(Operand::Consume(result)))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);

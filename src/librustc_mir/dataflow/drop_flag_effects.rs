@@ -240,7 +240,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
         let lookup_result = move_data.rev_lookup.find(&lvalue);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
-                              |moi| callback(moi, DropFlagState::Present));
+                              |mpi| callback(mpi, DropFlagState::Present));
     }
 }
 
@@ -270,7 +270,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
 
         on_all_children_bits(tcx, mir, move_data,
                              path,
-                             |moi| callback(moi, DropFlagState::Absent))
+                             |mpi| callback(mpi, DropFlagState::Absent))
     }
 
     let block = &mir[loc.block];
@@ -279,11 +279,21 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
             }
-            mir::StatementKind::Assign(ref lvalue, _) => {
-                debug!("drop_flag_effects: assignment {:?}", stmt);
-                 on_lookup_result_bits(tcx, mir, move_data,
-                                       move_data.rev_lookup.find(lvalue),
-                                       |moi| callback(moi, DropFlagState::Present))
+            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
+                match rvalue.initialization_state() {
+                    mir::tcx::RvalueInitializationState::Shallow => {
+                        debug!("drop_flag_effects: box assignment {:?}", stmt);
+                        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(lvalue) {
+                            callback(mpi, DropFlagState::Present);
+                        }
+                    }
+                    mir::tcx::RvalueInitializationState::Deep => {
+                        debug!("drop_flag_effects: assignment {:?}", stmt);
+                        on_lookup_result_bits(tcx, mir, move_data,
+                                              move_data.rev_lookup.find(lvalue),
+                                              |mpi| callback(mpi, DropFlagState::Present))
+                    }
+                }
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
@@ -298,7 +308,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
                 mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                     on_lookup_result_bits(tcx, mir, move_data,
                                           move_data.rev_lookup.find(location),
-                                          |moi| callback(moi, DropFlagState::Present))
+                                          |mpi| callback(mpi, DropFlagState::Present))
                 }
                 _ => {
                     // other terminators do not contain move-ins
