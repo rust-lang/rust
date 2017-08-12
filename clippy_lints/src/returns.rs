@@ -10,7 +10,8 @@ use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast,
 /// **Why is this bad?** Removing the `return` and semicolon will make the code
 /// more rusty.
 ///
-/// **Known problems:** None.
+/// **Known problems:** If the computation returning the value borrows a local
+/// variable, removing the `return` may run afoul of the borrow checker.
 ///
 /// **Example:**
 /// ```rust
