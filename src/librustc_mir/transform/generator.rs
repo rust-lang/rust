@@ -27,6 +27,7 @@ use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
 use transform::simplify;
+use transform::no_landing_pads::no_landing_pads;
 
 pub struct StateTransform;
 
@@ -463,6 +464,8 @@ fn create_generator_drop_shim<'a, 'tcx>(
         is_user_variable: false,
     };
 
+    no_landing_pads(tcx, &mut mir);
+
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(&mut mir);
@@ -572,6 +575,8 @@ fn creator_generator_resume_function<'a, 'tcx>(
     });
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
+
+    no_landing_pads(tcx, &mut mir);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
