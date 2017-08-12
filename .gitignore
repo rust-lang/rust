@@ -102,4 +102,6 @@ version.ml
 version.texi
 .cargo
 !src/vendor/**
+/src/compiler-rt/
+/src/rust-installer/
 /src/target/
