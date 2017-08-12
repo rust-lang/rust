@@ -135,6 +135,11 @@ impl<'tcx> Lvalue<'tcx> {
     }
 }
 
+pub enum RvalueInitializationState {
+    Shallow,
+    Deep
+}
+
 impl<'tcx> Rvalue<'tcx> {
     pub fn ty<'a, 'gcx, D>(&self, local_decls: &D, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>
         where D: HasLocalDecls<'tcx>
@@ -207,6 +212,16 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    #[inline]
+    /// Returns whether this rvalue is deeply initialized (most rvalues) or
+    /// whether its only shallowly initialized (`Rvalue::Box`).
+    pub fn initialization_state(&self) -> RvalueInitializationState {
+        match *self {
+            Rvalue::NullaryOp(NullOp::Box, _) => RvalueInitializationState::Shallow,
+            _ => RvalueInitializationState::Deep
         }
     }
 }

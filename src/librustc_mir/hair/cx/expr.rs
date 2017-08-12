@@ -561,7 +561,6 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprBox(ref value) => {
             ExprKind::Box {
                 value: value.to_ref(),
-                value_extents: CodeExtent::Misc(value.id),
             }
         }
         hir::ExprArray(ref fields) => ExprKind::Array { fields: fields.to_ref() },

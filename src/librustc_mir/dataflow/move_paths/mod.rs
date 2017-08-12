@@ -11,6 +11,7 @@
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
+use rustc::mir::tcx::RvalueInitializationState;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
@@ -406,6 +407,12 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         match stmt.kind {
             StatementKind::Assign(ref lval, ref rval) => {
                 self.create_move_path(lval);
+                if let RvalueInitializationState::Shallow = rval.initialization_state() {
+                    // Box starts out uninitialized - need to create a separate
+                    // move-path for the interior so it will be separate from
+                    // the exterior.
+                    self.create_move_path(&lval.clone().deref());
+                }
                 self.gather_rvalue(loc, rval);
             }
             StatementKind::StorageLive(_) |
