@@ -936,10 +936,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         self.need_type_info(body_id, span, self_ty);
                     } else {
                         let mut err = struct_span_err!(self.tcx.sess,
-                                                        span, E0283,
-                                                        "type annotations required: \
+                                                       span, E0283,
+                                                       "type annotations required: \
                                                         cannot resolve `{}`",
-                                                        predicate);
+                                                       predicate);
                         self.note_obligation_cause(&mut err, obligation);
                         err.emit();
                     }

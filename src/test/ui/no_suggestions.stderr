@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/no_suggestions.rs:22:9
+   |
+22 |     foo(&a);
+   |         ^^ expected slice, found struct `std::vec::Vec`
+   |
+   = note: expected type `&[u16]`
+              found type `&std::vec::Vec<u8>`
+
+error[E0308]: mismatched types
+  --> $DIR/no_suggestions.rs:24:9
+   |
+24 |     hey(foo);
+   |         ^^^ expected struct `Bar`, found struct `Foo`
+   |
+   = note: expected type `std::vec::Vec<Bar>`
+              found type `std::vec::Vec<Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/no_suggestions.rs:25:13
+   |
+25 |     another("salutations")
+   |             ^^^^^^^^^^^^^ expected struct `std::string::String`, found reference
+   |
+   = note: expected type `std::string::String`
+              found type `&'static str`
+   = help: here are some functions which might fulfill your needs:
+           - .escape_debug()
+           - .escape_default()
+           - .escape_unicode()
+           - .to_lowercase()
+           - .to_uppercase()
+
+error: aborting due to 3 previous errors
+

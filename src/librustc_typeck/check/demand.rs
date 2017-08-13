@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Checks that the type of `expr` can be coerced to `expected`.
     //
-    // NB: This code relies on `self.diverges` to be accurate.  In
+    // NB: This code relies on `self.diverges` to be accurate. In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
     pub fn demand_coerce_diag(&self,
@@ -128,16 +128,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      expected) {
                 err.help(&suggestion);
             } else {
-                let mode = probe::Mode::MethodCall;
-                let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
-                                                             mode,
-                                                             expected,
-                                                             checked_ty,
-                                                             ast::DUMMY_NODE_ID);
-                if suggestions.len() > 0 {
-                    err.help(&format!("here are some functions which \
-                                       might fulfill your needs:\n{}",
-                                      self.get_best_match(&suggestions).join("\n")));
+                // Before getting potentially matching method, we make a first filter.
+                if self.is_really_a_match(checked_ty, expected) {
+                    let mode = probe::Mode::MethodCall;
+                    let suggestions = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+                                                                 mode,
+                                                                 expected,
+                                                                 checked_ty,
+                                                                 ast::DUMMY_NODE_ID);
+                    if suggestions.len() > 0 {
+                        err.help(&format!("here are some functions which \
+                                           might fulfill your needs:\n{}",
+                                          self.get_best_match(&suggestions).join("\n")));
+                    }
                 }
             }
             return Some(err);
@@ -172,6 +175,61 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.display_suggested_methods(&no_argument_methods)
         } else {
             self.display_suggested_methods(&methods)
+        }
+    }
+
+    // In cases such as:
+    //
+    // ```
+    // struct Foo {}
+    // struct Bar {}
+    //
+    // fn hey(pouet: Vec<Bar>){}
+    //
+    // fn main() {
+    //     let foo = vec![Foo {}];
+    //     hey(foo); // shouldn't suggest ".to_vec()"
+    // }
+    // ```
+    //
+    // Or in here:
+    //
+    // ```
+    // fn foo(b: &[u16]) {}
+    //
+    // fn main() {
+    //     let a: Vec<u8> = Vec::new();
+    //     foo(&a); // shouldn't suggest ".as_slice()"
+    // }
+    // ```
+    //
+    // The primitive type is considered the same even though it shouldn't. It fixes it a bit.
+    fn is_really_a_match(&self, ty_: Ty<'tcx>, expected: Ty<'tcx>) -> bool {
+        match (self.get_ty(expected), self.get_ty(ty_)) {
+            (Some(expected), Some(ty_)) => expected == ty_,
+            _ => true,
+        }
+    }
+
+    // For now it only checks slices, arrays and Vecs.
+    fn get_ty(&self, ty_: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        match ty_.sty {
+            ty::TypeVariants::TyRawPtr(t) | ty::TypeVariants::TyRef(_, t) => self.get_ty(t.ty),
+            ty::TypeVariants::TyArray(ty_, _) | ty::TypeVariants::TySlice(ty_) => {
+                Some(ty_)
+            }
+            ty::TypeVariants::TyAdt(_, subs) => {
+                if ty_.to_string().split("::").last().unwrap_or("").starts_with("Vec<") {
+                    if let Some(new_ty) = subs[0].as_type() {
+                        Some(new_ty)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
