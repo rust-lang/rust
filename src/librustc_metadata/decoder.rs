@@ -241,6 +241,11 @@ impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<hygiene::Mark, Self::Error> {
         let mark = u32::decode(self)?;
+        //
+        // We only perform translation if hygiene info is already available and if the
+        // mark actually needs translation. That way we avoid loops (as obtaining hygiene
+        // info for an external crate involves decoding marks) and avoid incorrectly translated
+        // default marks.
         if self.cdata().hygiene_data_import_info.borrow().is_some() && mark != 0  {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
@@ -254,6 +259,11 @@ impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
         let ctxt = u32::decode(self)?;
+
+        // We only perform translation if hygiene info is already available and if the
+        // syntax context actually needs translation. That way we avoid loops (as obtaining
+        // hygiene info for an external crate involves decoding syntax contexts) and avoid
+        // incorrectly translated default contexts.
         if self.cdata().hygiene_data_import_info.borrow().is_some() && ctxt != 0 {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
