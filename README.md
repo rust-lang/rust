@@ -229,6 +229,14 @@ On MacOS:
 export DYLD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$DYLD_LIBRARY_PATH
 ```
 
+On Windows (Git Bash/Mingw):
+
+```
+export PATH=$(rustc --print sysroot)/lib/rustlib/x86_64-pc-windows-gnu/lib/:$PATH
+```
+
+(Substitute `x86_64` by `i686` and `gnu` by `msvc` depending on which version of rustc was used to install rustfmt).
+
 ## License
 
 Rustfmt is distributed under the terms of both the MIT license and the
