@@ -288,7 +288,7 @@ fn rewrite_tuple_pat(
     }
 
     if pat_vec.is_empty() {
-        return Some(format!("{}()", try_opt!(path_str)));
+        return Some(format!("{}()", path_str.unwrap_or(String::new())));
     }
 
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
