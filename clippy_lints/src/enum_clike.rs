@@ -54,8 +54,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                     let bad = match cx.tcx.at(expr.span).const_eval(
                         param_env.and((did, substs)),
                     ) {
-                        Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
-                        Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
+                        Ok(ConstVal::Integral(Usize(Us64(i)))) => u64::from(i as u32) != i,
+                        Ok(ConstVal::Integral(Isize(Is64(i)))) => i64::from(i as i32) != i,
                         _ => false,
                     };
                     if bad {

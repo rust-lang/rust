@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 208 lints included in this crate:
+There are 209 lints included in this crate:
 
 name                                                                                                                         | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -198,6 +198,7 @@ name                                                                            
 [box_vec](https://github.com/rust-lang-nursery/rust-clippy/wiki#box_vec)                                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [boxed_local](https://github.com/rust-lang-nursery/rust-clippy/wiki#boxed_local)                                             | warn    | using `Box<T>` where unnecessary
 [builtin_type_shadow](https://github.com/rust-lang-nursery/rust-clippy/wiki#builtin_type_shadow)                             | warn    | shadowing a builtin type
+[cast_lossless](https://github.com/rust-lang-nursery/rust-clippy/wiki#cast_lossless)                                         | allow   | casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`
 [cast_possible_truncation](https://github.com/rust-lang-nursery/rust-clippy/wiki#cast_possible_truncation)                   | allow   | casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, or `x as i32` where `x: f32`
 [cast_possible_wrap](https://github.com/rust-lang-nursery/rust-clippy/wiki#cast_possible_wrap)                               | allow   | casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/rust-lang-nursery/rust-clippy/wiki#cast_precision_loss)                             | allow   | casts that cause loss of precision, e.g. `x as f32` where `x: u64`
