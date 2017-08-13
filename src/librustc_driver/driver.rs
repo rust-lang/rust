@@ -95,7 +95,7 @@ pub fn compile_input(sess: &Session,
 
         if sess.opts.crate_types.iter().all(|&t|{
             t != CrateType::CrateTypeRlib && t != CrateType::CrateTypeExecutable
-        }) {
+        }) && !sess.opts.crate_types.is_empty() {
             sess.err(
                 "LLVM is not supported by this rustc, so non rlib libraries are not supported"
             );
