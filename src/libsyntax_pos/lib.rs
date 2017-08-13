@@ -47,7 +47,7 @@ extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod hygiene;
-pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan};
+pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
 pub mod symbol;
 
@@ -149,6 +149,17 @@ impl Span {
     pub fn allows_unstable(&self) -> bool {
         match self.ctxt.outer().expn_info() {
             Some(info) => info.callee.allow_internal_unstable,
+            None => false,
+        }
+    }
+
+    /// Check if this span arises from a compiler desugaring of kind `kind`.
+    pub fn is_compiler_desugaring(&self, kind: CompilerDesugaringKind) -> bool {
+        match self.ctxt.outer().expn_info() {
+            Some(info) => match info.callee.format {
+                ExpnFormat::CompilerDesugaring(k) => k == kind,
+                _ => false,
+            },
             None => false,
         }
     }

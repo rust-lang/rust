@@ -397,11 +397,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn allow_internal_unstable(&self, reason: &'static str, mut span: Span) -> Span {
+        let reason = codemap::CompilerDesugaringKind::from(reason);
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(codemap::ExpnInfo {
             call_site: span,
             callee: codemap::NameAndSpan {
-                format: codemap::CompilerDesugaring(Symbol::intern(reason)),
+                format: codemap::CompilerDesugaring(reason),
                 span: Some(span),
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
