@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    compile_error!("test"); //~ ERROR: `compile_error` is not stable enough
+#![allow(unused)]
+
+macro_rules! column {
+    ($i:ident) => {
+        $i
+    };
 }
+
+fn foo() -> ! {
+    panic!();
+}
+
+fn main() {}

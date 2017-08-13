@@ -671,8 +671,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_entry)]
-    ///
     /// let mut x = None;
     ///
     /// {
@@ -685,7 +683,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[unstable(feature = "option_entry", issue = "39288")]
+    #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, v: T) -> &mut T {
         match *self {
             None => *self = Some(v),
@@ -706,8 +704,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_entry)]
-    ///
     /// let mut x = None;
     ///
     /// {
@@ -720,7 +716,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[unstable(feature = "option_entry", issue = "39288")]
+    #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
         match *self {
             None => *self = Some(f()),

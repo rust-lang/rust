@@ -7,7 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// no-system-llvm
+// compile-flags: -O
+#![crate_type="lib"]
 
-fn main() {
-    compile_error!("a very descriptive error message"); //~ ERROR: a very descriptive error message
+#[no_mangle]
+pub fn sum_me() -> i32 {
+    // CHECK-LABEL: @sum_me
+    // CHECK-NEXT: {{^.*:$}}
+    // CHECK-NEXT: ret i32 6
+    vec![1, 2, 3].iter().sum::<i32>()
 }

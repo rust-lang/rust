@@ -1009,7 +1009,7 @@ impl f64 {
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     ///
     /// ```
-    #[stable(feature = "float_bits_conv", since = "1.21.0")]
+    #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u64 {
         unsafe { ::mem::transmute(self) }
@@ -1040,7 +1040,7 @@ impl f64 {
     /// let snan = 0x7FF0000000000001;
     /// assert_ne!(f64::from_bits(snan).to_bits(), snan);
     /// ```
-    #[stable(feature = "float_bits_conv", since = "1.21.0")]
+    #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(mut v: u64) -> Self {
         const EXP_MASK: u64   = 0x7FF0000000000000;

@@ -9,5 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    compile_error!("a very descriptive error message"); //~ ERROR: a very descriptive error message
+    println!("{}", __rust_unstable_column!());
+    //~^ERROR the __rust_unstable_column macro is unstable
 }

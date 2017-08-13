@@ -34,7 +34,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(discriminant_value)]
 #![feature(specialization)]
-#![feature(manually_drop)]
 
 #![cfg_attr(stage0, feature(associated_consts))]
 #![cfg_attr(stage0, feature(struct_field_attributes))]
