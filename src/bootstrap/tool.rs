@@ -277,8 +277,11 @@ impl Step for Rustdoc {
 
         let mut cargo = prepare_tool_cargo(builder, build_compiler, target, "rustdoc");
         build.run(&mut cargo);
+        // Cargo adds a number of paths to the dylib search path on windows, which results in
+        // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+        // rustdoc a different name.
         let tool_rustdoc = build.cargo_out(build_compiler, Mode::Tool, target)
-            .join(exe("rustdoc", &target_compiler.host));
+            .join(exe("rustdoc-tool-binary", &target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
