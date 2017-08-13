@@ -246,8 +246,7 @@ pub fn compile_input(sess: &Session,
         })??
     };
 
-    #[cfg(not(feature="llvm"))]
-    {
+    if cfg!(not(feature="llvm")) {
         let (_, _) = (outputs, trans);
         sess.fatal("LLVM is not supported by this rustc");
     }
