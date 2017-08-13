@@ -102,6 +102,7 @@ impl Dns {
     }
 
     pub fn parse(data: &[u8]) -> Result<Self, String> {
+        let name_ind = 0b11000000;
         let mut i = 0;
 
         macro_rules! pop_u8 {
@@ -147,9 +148,15 @@ impl Dns {
             () => {
                 {
                     let mut name = String::new();
+                    let old_i = i;
 
                     loop {
                         let name_len = pop_u8!();
+                        if name_len & name_ind == name_ind {
+                            i -= 1;
+                            i = (pop_n16!() - ((name_ind as u16) << 8)) as usize;
+                            continue;
+                        }
                         if name_len == 0 {
                             break;
                         }
@@ -159,6 +166,10 @@ impl Dns {
                         for _name_i in 0..name_len {
                             name.push(pop_u8!() as char);
                         }
+                    }
+
+                    if i <= old_i {
+                        i = old_i + 2;
                     }
 
                     name
@@ -184,21 +195,8 @@ impl Dns {
 
         let mut answers = Vec::new();
         for _answer_i in 0..answers_len {
-            let name_ind = 0b11000000;
-            let name_test = pop_u8!();
-            i -= 1;
-
             answers.push(DnsAnswer {
-                name: if name_test & name_ind == name_ind {
-                    let name_off = pop_n16!() - ((name_ind as u16) << 8);
-                    let old_i = i;
-                    i = name_off as usize;
-                    let name = pop_name!();
-                    i = old_i;
-                    name
-                } else {
-                    pop_name!()
-                },
+                name: pop_name!(),
                 a_type: pop_n16!(),
                 a_class: pop_n16!(),
                 ttl_a: pop_n16!(),
