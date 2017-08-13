@@ -15,6 +15,8 @@ use infer::InferCtxt;
 use ty::{self, Region};
 use hir::def_id::DefId;
 use hir::map as hir_map;
+use hir::intravisit::Visitor;
+use infer::error_reporting::anon_anon_conflict::FindNestedTypeVisitor;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method walks the Type of the function body arguments using
@@ -140,6 +142,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
         false
     }
+
     // Here we check for the case where anonymous region
     // corresponds to self and if yes, we display E0312.
     // FIXME(#42700) - Need to format self properly to
@@ -153,5 +156,83 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return true;
         }
         false
+    }
+
+    /// This function calls the `visit_ty` method for the parameters
+    /// corresponding to the anonymous regions. The `nested_visitor.found_type`
+    /// contains the anonymous type.
+    ///
+    /// # Arguments
+    ///
+    /// region - the anonymous region corresponding to the lifetime conflicts
+    /// due to anonymous regions.
+    /// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
+    ///
+    /// # Example
+    /// ```
+    /// fn foo(x: &mut Vec<&u8>, y: &u8)
+    ///    { x.push(y); }
+    /// ```
+    /// The function returns the nested type corresponding to the anonymous region
+    /// for e.g. `&u8` and Vec<`&u8`.
+    pub fn find_anon_type(&self, region: Region<'tcx>, br: &ty::BoundRegion) -> Option<(&hir::Ty)> {
+        if let Some(anon_reg) = self.is_suitable_anonymous_region(region, true) {
+            let (def_id, _) = anon_reg;
+            if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                let ret_ty = self.tcx.type_of(def_id);
+                if let ty::TyFnDef(_, _) = ret_ty.sty {
+                    if let hir_map::NodeItem(it) = self.tcx.hir.get(node_id) {
+                        if let hir::ItemFn(ref fndecl, _, _, _, _, _) = it.node {
+                            return fndecl
+                                       .inputs
+                                       .iter()
+                                       .filter_map(|arg| {
+                                                       self.find_visitor_found_type(&**arg, br)
+                                                   })
+                                       .next();
+                        }
+                    } else if let hir_map::NodeTraitItem(it) = self.tcx.hir.get(node_id) {
+                        if let hir::TraitItemKind::Method(ref fndecl, _) = it.node {
+                            return fndecl
+                                       .decl
+                                       .inputs
+                                       .iter()
+                                       .filter_map(|arg| {
+                                                       self.find_visitor_found_type(&**arg, br)
+                                                   })
+                                       .next();
+                        }
+                    } else if let hir_map::NodeImplItem(it) = self.tcx.hir.get(node_id) {
+                        if let hir::ImplItemKind::Method(ref fndecl, _) = it.node {
+                            return fndecl
+                                       .decl
+                                       .inputs
+                                       .iter()
+                                       .filter_map(|arg| {
+                                                       self.find_visitor_found_type(&**arg, br)
+                                                   })
+                                       .next();
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    // This method creates a FindNestedTypeVisitor which returns the
+    // corresponding anonymous region.
+    fn find_visitor_found_type(&self,
+                               arg: &'gcx hir::Ty,
+                               br: &ty::BoundRegion)
+                               -> Option<(&'gcx hir::Ty)> {
+        let mut nested_visitor = FindNestedTypeVisitor {
+            infcx: &self,
+            hir_map: &self.tcx.hir,
+            bound_region: *br,
+            found_type: None,
+        };
+        nested_visitor.visit_ty(arg);
+        nested_visitor.found_type
     }
 }

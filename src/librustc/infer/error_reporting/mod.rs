@@ -963,4 +963,5 @@ impl<'tcx> ObligationCause<'tcx> {
             _ => "types are compatible",
         }
     }
+
 }

@@ -30,16 +30,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, (arg, new_ty, br, is_first), (scope_def_id, _)) = if
+        let (named, (arg, new_ty, br, is_first), (scope_def_id, _), anon) = if
             sub.is_named_region() && self.is_suitable_anonymous_region(sup, false).is_some() {
             (sub,
              self.find_arg_with_anonymous_region(sup, sub).unwrap(),
-             self.is_suitable_anonymous_region(sup, false).unwrap())
+             self.is_suitable_anonymous_region(sup, false).unwrap(),
+             sup)
         } else if
             sup.is_named_region() && self.is_suitable_anonymous_region(sub, false).is_some() {
             (sup,
              self.find_arg_with_anonymous_region(sub, sup).unwrap(),
-             self.is_suitable_anonymous_region(sub, false).unwrap())
+             self.is_suitable_anonymous_region(sub, false).unwrap(),
+             sub)
         } else {
             return false; // inapplicable
         };
@@ -54,16 +56,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ("parameter type".to_owned(), "type".to_owned())
             };
 
+            let span_label = if let Some(ty_anon) = self.find_anon_type(anon, &br) {
+                ty_anon.span
+            } else {
+                arg.pat.span
+            };
+
             struct_span_err!(self.tcx.sess,
                              span,
                              E0621,
                              "explicit lifetime required in {}",
                              error_var)
-                    .span_label(arg.pat.span,
+                    .span_label(span_label,
                                 format!("consider changing {} to `{}`", span_label_var, new_ty))
                     .span_label(span, format!("lifetime `{}` required", named))
                     .emit();
-
 
         }
         return true;
