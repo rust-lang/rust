@@ -18,16 +18,16 @@
 use Span;
 use symbol::{Ident, Symbol};
 
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use serialize::{Decoder, UseSpecializedDecodable};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
-#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash, RustcEncodable)]
 pub struct SyntaxContext(pub(super) u32);
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, RustcEncodable, RustcDecodable)]
 pub struct SyntaxContextData {
     pub outer_mark: Mark,
     pub prev_ctxt: SyntaxContext,
@@ -35,10 +35,10 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable)]
 pub struct Mark(u32);
 
-#[derive(Default)]
+#[derive(Default, RustcEncodable, RustcDecodable)]
 struct MarkData {
     parent: Mark,
     modern: bool,
@@ -64,6 +64,14 @@ impl Mark {
 
     pub fn from_u32(raw: u32) -> Mark {
         Mark(raw)
+    }
+
+    pub fn translate(&self, offset: u32) -> Mark {
+        if self.0 != 0 {
+            Mark(self.0 + offset)
+        } else {
+            Mark(self.0)
+        }
     }
 
     pub fn expn_info(self) -> Option<ExpnInfo> {
@@ -106,7 +114,8 @@ impl Mark {
     }
 }
 
-struct HygieneData {
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
@@ -129,13 +138,98 @@ impl HygieneData {
         }
         HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
     }
+
+    pub fn safe_with<T, F: FnOnce(&HygieneData) -> T>(f: F) -> T {
+        // FIXME(twk): not sure how this would behave...
+        thread_local! {
+            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
+        }
+        HYGIENE_DATA.with(|data| f(&*data.borrow()))
+    }
 }
 
 pub fn clear_markings() {
     HygieneData::with(|data| data.markings = HashMap::new());
 }
 
+/// Holds information about a HygieneData imported from another crate.
+/// See `imported_hygiene_data()` in `rustc_metadata` for more information.
+pub struct ImportedHygieneData {
+    /// The imported HygieneData's offset in the local HygieneData's marks vector.
+    pub mark_translation_offset: u32,
+    /// The imported HygieneData's offset in the local HygieneData's syntax contexts vector.
+    pub ctxt_translation_offset: u32,
+}
+
+pub fn extend_hygiene_data(extend_with: HygieneData) -> ImportedHygieneData {
+    fn translate_span(span: &Span, offset: u32) -> Span {
+        Span {
+            lo: span.lo,
+            hi: span.hi,
+            ctxt: span.ctxt.translate(offset),
+        }
+    }
+
+    HygieneData::with(move |data| {
+        let mark_offset = data.marks.len() as u32;
+        let ctxt_offset = data.syntax_contexts.len() as u32;
+
+        // skip the default mark, it doesn't need to be translated.
+        for mark_data in extend_with.marks.iter().skip(1) {
+            data.marks.push(MarkData {
+                parent: mark_data.parent.translate(mark_offset),
+                modern: mark_data.modern,
+                expn_info: mark_data.expn_info.as_ref().map(|info| {
+                    ExpnInfo {
+                        call_site: translate_span(&info.call_site, ctxt_offset),
+                        callee: NameAndSpan {
+                            format: info.callee.format.clone(),
+                            allow_internal_unstable: info.callee.allow_internal_unstable,
+                            span:
+                                info.callee.span.map(|span| translate_span(&span, ctxt_offset)),
+                        },
+                    }
+                }),
+            })
+        }
+
+        // skip the default syntax context, it doesn't need to be translated.
+        for ctxt in extend_with.syntax_contexts.iter().skip(1) {
+            data.syntax_contexts.push(SyntaxContextData {
+                outer_mark: ctxt.outer_mark.translate(mark_offset),
+                prev_ctxt: ctxt.prev_ctxt.translate(ctxt_offset),
+                modern: ctxt.modern.translate(ctxt_offset),
+            });
+        }
+
+        // translate markings map and extend the current one
+        for (&(ctxt1, mark), ctxt2) in extend_with.markings.iter() {
+            data.markings.insert((ctxt1.translate(ctxt_offset), mark.translate(mark_offset)),
+                                 ctxt2.translate(ctxt_offset));
+        }
+
+        data.gensym_to_ctxt.extend(extend_with.gensym_to_ctxt);
+
+        ImportedHygieneData {
+            mark_translation_offset: mark_offset,
+            ctxt_translation_offset: ctxt_offset,
+        }
+    })
+}
+
 impl SyntaxContext {
+    pub fn from_u32(raw: u32) -> SyntaxContext {
+        SyntaxContext(raw)
+    }
+
+    pub fn translate(&self, offset: u32) -> SyntaxContext {
+        if self.0 != 0 {
+            SyntaxContext(self.0 + offset)
+        } else {
+            SyntaxContext(self.0)
+        }
+    }
+
     pub const fn empty() -> Self {
         SyntaxContext(0)
     }
@@ -286,7 +380,7 @@ impl fmt::Debug for SyntaxContext {
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
@@ -302,7 +396,7 @@ pub struct ExpnInfo {
     pub callee: NameAndSpan
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct NameAndSpan {
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
@@ -330,7 +424,7 @@ impl NameAndSpan {
 }
 
 /// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
     MacroAttribute(Symbol),
@@ -360,15 +454,15 @@ impl CompilerDesugaringKind {
     }
 }
 
-impl Encodable for SyntaxContext {
-    fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
-        Ok(()) // FIXME(jseyfried) intercrate hygiene
+impl UseSpecializedDecodable for SyntaxContext {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<SyntaxContext, D::Error> {
+        d.read_u32().map(|u| SyntaxContext(u))
     }
 }
 
-impl Decodable for SyntaxContext {
-    fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
-        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+impl UseSpecializedDecodable for Mark {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Mark, D::Error> {
+        d.read_u32().map(Mark::from_u32)
     }
 }
 

@@ -24,7 +24,7 @@ use rustc_back::PanicStrategy;
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
 use syntax::symbol::Symbol;
-use syntax_pos::{self, Span};
+use syntax_pos::{self, hygiene, Span};
 
 use std::marker::PhantomData;
 use std::mem;
@@ -204,6 +204,7 @@ pub struct CrateRoot {
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
+    pub hygiene_data: Lazy<hygiene::HygieneData>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: LazySeq<DefIndex>,

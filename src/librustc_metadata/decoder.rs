@@ -45,7 +45,8 @@ use syntax::ast::{self, Ident};
 use syntax::codemap;
 use syntax::symbol::{InternedString, Symbol};
 use syntax::ext::base::MacroKind;
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
+use syntax_pos::{self, Span, SyntaxContext, BytePos, Pos, DUMMY_SP};
+use syntax_pos::hygiene;
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -237,15 +238,42 @@ impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<hygiene::Mark, Self::Error> {
+        let mark = u32::decode(self)?;
+        if self.cdata().hygiene_data_import_info.borrow().is_some() && mark != 0  {
+            let imported_hygiene = self.cdata().imported_hygiene_data();
+
+            Ok(hygiene::Mark::from_u32(mark + imported_hygiene.mark_translation_offset))
+        } else {
+            Ok(hygiene::Mark::from_u32(mark))
+        }
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
+        let ctxt = u32::decode(self)?;
+        if self.cdata().hygiene_data_import_info.borrow().is_some() && ctxt != 0 {
+            let imported_hygiene = self.cdata().imported_hygiene_data();
+
+            Ok(SyntaxContext::from_u32(ctxt + imported_hygiene.ctxt_translation_offset))
+        } else {
+            Ok(SyntaxContext::from_u32(ctxt))
+        }
+    }
+}
+
 impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Span, Self::Error> {
         let lo = BytePos::decode(self)?;
         let hi = BytePos::decode(self)?;
+        let ctxt = SyntaxContext::decode(self)?;
 
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(Span::new(lo, hi, NO_EXPANSION));
+            return Ok(Span { lo, hi, ctxt });
         };
 
         let (lo, hi) = if lo > hi {
@@ -292,7 +320,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = (lo - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
         let hi = (hi - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
 
-        Ok(Span::new(lo, hi, NO_EXPANSION))
+        Ok(Span::new(lo, hi, ctxt))
     }
 }
 
@@ -1223,5 +1251,21 @@ impl<'a, 'tcx> CrateMetadata {
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         *self.codemap_import_info.borrow_mut() = imported_filemaps;
         self.codemap_import_info.borrow()
+    }
+
+    pub fn imported_hygiene_data(&'a self) -> Ref<'a, hygiene::ImportedHygieneData> {
+        {
+            let hygiene_data = self.hygiene_data_import_info.borrow();
+            if hygiene_data.is_some() {
+                return Ref::map(hygiene_data, |d| d.as_ref().unwrap());
+            }
+        }
+
+        let external_hygiene_data = self.root.hygiene_data.decode(self);
+
+        // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
+        *self.hygiene_data_import_info.borrow_mut() =
+            Some(hygiene::extend_hygiene_data(external_hygiene_data));
+        Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap())
     }
 }

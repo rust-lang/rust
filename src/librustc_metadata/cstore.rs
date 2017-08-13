@@ -27,7 +27,7 @@ use owning_ref::ErasedBoxRef;
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
-use syntax_pos;
+use syntax_pos::{self, hygiene};
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::NativeLibraryKind::*;
@@ -87,6 +87,8 @@ pub struct CrateMetadata {
     pub proc_macros: Option<Vec<(ast::Name, Rc<SyntaxExtension>)>>,
     // Foreign items imported from a dylib (Windows only)
     pub dllimport_foreign_items: FxHashSet<DefIndex>,
+
+    pub hygiene_data_import_info: RefCell<Option<hygiene::ImportedHygieneData>>,
 }
 
 pub struct CStore {

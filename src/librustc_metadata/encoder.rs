@@ -42,7 +42,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos;
+use syntax_pos::{self, hygiene};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -323,6 +323,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq_ref(adapted.iter().map(|rc| &**rc))
     }
 
+    fn encode_hygiene_data(&mut self) -> Lazy<hygiene::HygieneData> {
+        hygiene::HygieneData::safe_with(|data| self.lazy(data))
+    }
+
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
         let mut i = self.position();
 
@@ -366,6 +370,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         i = self.position();
         let codemap = self.encode_codemap();
         let codemap_bytes = self.position() - i;
+
+        // Encode hygiene data
+        i = self.position();
+        let hygiene_data = self.encode_hygiene_data();
+        let hygiene_data_bytes = self.position() - i;
 
         // Encode DefPathTable
         i = self.position();
@@ -421,13 +430,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-
             crate_deps,
             dylib_dependency_formats,
             lang_items,
             lang_items_missing,
             native_libraries,
             codemap,
+            hygiene_data,
             def_path_table,
             impls,
             exported_symbols,
@@ -456,6 +465,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
+            println!("    hygiene data bytes: {}", hygiene_data_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
