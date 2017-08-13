@@ -107,7 +107,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans): (OutputFilenames, write::OngoingCrateTranslation) = {
+    let (outputs, trans): (OutputFilenames, OngoingCrateTranslation) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
