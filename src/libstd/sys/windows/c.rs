@@ -301,7 +301,7 @@ pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 pub const FD_SETSIZE: usize = 64;
 
 #[repr(C)]
-#[cfg(target_arch = "x86")]
+#[cfg(not(target_pointer_width = "64"))]
 pub struct WSADATA {
     pub wVersion: WORD,
     pub wHighVersion: WORD,
@@ -312,7 +312,7 @@ pub struct WSADATA {
     pub lpVendorInfo: *mut u8,
 }
 #[repr(C)]
-#[cfg(target_arch = "x86_64")]
+#[cfg(target_pointer_width = "64")]
 pub struct WSADATA {
     pub wVersion: WORD,
     pub wHighVersion: WORD,
@@ -767,6 +767,14 @@ pub struct FLOATING_SAVE_AREA {
     _align_hack: [u64x2; 0], // FIXME align on 16-byte
     _Dummy: [u8; 512] // FIXME: Fill this out
 }
+
+// FIXME(#43348): This structure is used for backtrace only, and a fake
+// definition is provided here only to allow rustdoc to pass type-check. This
+// will not appear in the final documentation. This should be also defined for
+// other architectures supported by Windows such as ARM, and for historical
+// interest, maybe MIPS and PowerPC as well.
+#[cfg(all(dox, not(any(target_arch = "x86_64", target_arch = "x86"))))]
+pub enum CONTEXT {}
 
 #[repr(C)]
 pub struct SOCKADDR_STORAGE_LH {

@@ -32,6 +32,7 @@ use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{self, driver, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
+use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
@@ -39,6 +40,7 @@ use rustc_trans::back::link;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::fold::Folder;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
 use errors;
 use errors::emitter::ColorConfig;
@@ -72,6 +74,7 @@ pub fn run(input: &str,
         crate_types: vec![config::CrateTypeDylib],
         externs: externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
+        lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
         ..config::basic_options().clone()
     };
@@ -94,6 +97,7 @@ pub fn run(input: &str,
     let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
                                                       &sess,
                                                       &input));
+    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
             &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
@@ -121,6 +125,7 @@ pub fn run(input: &str,
         let map = hir::map::map_crate(&mut hir_forest, defs);
         let krate = map.krate();
         let mut hir_collector = HirCollector {
+            sess: &sess,
             collector: &mut collector,
             map: &map
         };
@@ -574,6 +579,7 @@ impl Collector {
 }
 
 struct HirCollector<'a, 'hir: 'a> {
+    sess: &'a session::Session,
     collector: &'a mut Collector,
     map: &'a hir::map::Map<'hir>
 }
@@ -583,12 +589,18 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                                             name: String,
                                             attrs: &[ast::Attribute],
                                             nested: F) {
+        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs);
+        if let Some(ref cfg) = attrs.cfg {
+            if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features.borrow())) {
+                return;
+            }
+        }
+
         let has_name = !name.is_empty();
         if has_name {
             self.collector.names.push(name);
         }
 
-        let mut attrs = Attributes::from_ast(attrs);
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {

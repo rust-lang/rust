@@ -1962,6 +1962,14 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
+    if let Some(ref cfg) = item.attrs.cfg {
+        stability.push(format!("<div class='stab portability'>{}</div>", if show_reason {
+            cfg.render_long_html()
+        } else {
+            cfg.render_short_html()
+        }));
+    }
+
     stability
 }
 
