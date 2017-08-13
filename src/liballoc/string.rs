@@ -653,7 +653,7 @@ impl String {
     /// * `capacity` needs to be the correct value.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal datastructures.
+    /// internal data structures.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `String` which may then deallocate, reallocate or change the

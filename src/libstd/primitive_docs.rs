@@ -906,7 +906,7 @@ mod prim_ref { }
 /// These markers can be combined, so `unsafe extern "stdcall" fn()` is a valid type.
 ///
 /// Like references in rust, function pointers are assumed to not be null, so if you want to pass a
-/// function pointer over FFI and be able to accomodate null pointers, make your type
+/// function pointer over FFI and be able to accommodate null pointers, make your type
 /// `Option<fn()>` with your required signature.
 ///
 /// Function pointers implement the following traits:

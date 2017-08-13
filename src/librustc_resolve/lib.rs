@@ -1621,7 +1621,7 @@ impl<'a> Resolver<'a> {
             return Some(module.parent.unwrap());
         }
 
-        let mut module_expansion = module.expansion.modern(); // for backward compatability
+        let mut module_expansion = module.expansion.modern(); // for backward compatibility
         while let Some(parent) = module.parent {
             let parent_expansion = parent.expansion.modern();
             if module_expansion.is_descendant_of(parent_expansion) &&

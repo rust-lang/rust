@@ -488,7 +488,7 @@ impl Lifetime {
     // on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
     // and the intrinsic for `lt` and passes them to `emit`, which is in
     // charge of generating code to call the passed intrinsic on whatever
-    // block of generated code is targetted for the intrinsic.
+    // block of generated code is targeted for the intrinsic.
     //
     // If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
     // off) or `ptr` is zero-sized, then no-op (does not call `emit`).

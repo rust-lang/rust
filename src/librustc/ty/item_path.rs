@@ -125,7 +125,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// If possible, this pushes a global path resolving to `external_def_id` that is visible
     /// from at least one local module and returns true. If the crate defining `external_def_id` is
-    /// declared with an `extern crate`, the path is guarenteed to use the `extern crate`.
+    /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     pub fn try_push_visible_item_path<T>(self, buffer: &mut T, external_def_id: DefId) -> bool
         where T: ItemPathBuffer
     {

@@ -657,7 +657,7 @@ impl OpenOptions {
     /// This function will return an error under a number of different
     /// circumstances. Some of these error conditions are listed here, together
     /// with their [`ErrorKind`]. The mapping to [`ErrorKind`]s is not part of
-    /// the compatiblity contract of the function, especially the `Other` kind
+    /// the compatibility contract of the function, especially the `Other` kind
     /// might change to more specific kinds in the future.
     ///
     /// * [`NotFound`]: The specified file does not exist and neither `create`

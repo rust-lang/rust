@@ -529,7 +529,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   `foo(return)`; we warn on the `foo()` expression. (We then
     ///   update the flag to `WarnedAlways` to suppress duplicate
     ///   reports.) Similarly, if we traverse to a fresh statement (or
-    ///   tail expression) from a `Always` setting, we will isssue a
+    ///   tail expression) from a `Always` setting, we will issue a
     ///   warning. This corresponds to something like `{return;
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
@@ -538,7 +538,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   (including the "return slot") of type `!`.  This is allowed
     ///   if **either** the type of value being assigned is `!`, which
     ///   means the current code is dead, **or** the expression's
-    ///   divering flag is true, which means that a divering value was
+    ///   diverging flag is true, which means that a diverging value was
     ///   wrapped (e.g., `let x: ! = foo(return)`).
     ///
     /// To repeat the last point: an expression represents dead-code
@@ -1895,7 +1895,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             if let ty::TyAnon(def_id, substs) = ty.sty {
                 // Use the same type variable if the exact same TyAnon appears more
-                // than once in the return type (e.g. if it's pased to a type alias).
+                // than once in the return type (e.g. if it's passed to a type alias).
                 let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                 if let Some(ty_var) = self.anon_types.borrow().get(&id) {
                     return ty_var;
@@ -4244,7 +4244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether a
-    /// suggetion can be made, `None` otherwise.
+    /// suggestion can be made, `None` otherwise.
     pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
@@ -4312,7 +4312,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// ```
     ///
     /// This routine checks if the return expression in a block would make sense on its own as a
-    /// statement and the return type has been left as defaultor has been specified as `()`. If so,
+    /// statement and the return type has been left as default or has been specified as `()`. If so,
     /// it suggests adding a semicolon.
     fn suggest_missing_semicolon(&self,
                                      err: &mut DiagnosticBuilder<'tcx>,

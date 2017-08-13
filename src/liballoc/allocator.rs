@@ -240,7 +240,7 @@ impl Layout {
     ///
     /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded witnin the concatenated record
+    /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `None`.
@@ -297,7 +297,7 @@ impl Layout {
     ///
     /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded witnin the concatenated record
+    /// start of the `next` embedded within the concatenated record
     /// (assuming that the record itself starts at offset 0).
     ///
     /// (The `offset` is always the same as `self.size()`; we use this
@@ -544,7 +544,7 @@ pub unsafe trait Alloc {
     /// practice this means implementors should eschew allocating,
     /// especially from `self` (directly or indirectly).
     ///
-    /// Implementions of the allocation and reallocation methods
+    /// Implementations of the allocation and reallocation methods
     /// (e.g. `alloc`, `alloc_one`, `realloc`) are discouraged from
     /// panicking (or aborting) in the event of memory exhaustion;
     /// instead they should return an appropriate error from the

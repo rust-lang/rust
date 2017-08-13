@@ -587,7 +587,7 @@ macro_rules! define_maps {
                 }
 
                 // FIXME(eddyb) Get more valid Span's on queries.
-                // def_span guard is necesary to prevent a recursive loop,
+                // def_span guard is necessary to prevent a recursive loop,
                 // default_span calls def_span query internally.
                 if span == DUMMY_SP && stringify!($name) != "def_span" {
                     span = key.default_span(tcx)
