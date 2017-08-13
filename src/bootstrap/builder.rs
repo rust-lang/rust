@@ -324,7 +324,7 @@ impl<'a> Builder<'a> {
         StepDescription::run(&Builder::get_step_descriptions(Kind::Doc), self, paths);
     }
 
-    /// Obtain a compiler at a given stage and for a given host. Explictly does
+    /// Obtain a compiler at a given stage and for a given host. Explicitly does
     /// not take `Compiler` since all `Compiler` instances are meant to be
     /// obtained through this function, since it ensures that they are valid
     /// (i.e., built and assembled).
@@ -489,7 +489,7 @@ impl<'a> Builder<'a> {
             // crates). Let's say, for example that rustc itself depends on the
             // bitflags crate. If an external crate then depends on the
             // bitflags crate as well, we need to make sure they don't
-            // conflict, even if they pick the same verison of bitflags. We'll
+            // conflict, even if they pick the same version of bitflags. We'll
             // want to make sure that e.g. a plugin and rustc each get their
             // own copy of bitflags.
 

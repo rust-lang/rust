@@ -248,7 +248,7 @@ pub struct Map<'hir> {
     pub forest: &'hir Forest,
 
     /// Same as the dep_graph in forest, just available with one fewer
-    /// deref. This is a gratuitious micro-optimization.
+    /// deref. This is a gratuitous micro-optimization.
     pub dep_graph: DepGraph,
 
     /// NodeIds are sequential integers from 0, so we can be

@@ -496,7 +496,7 @@ impl Crate {
         &self.impl_items[&id]
     }
 
-    /// Visits all items in the crate in some determinstic (but
+    /// Visits all items in the crate in some deterministic (but
     /// unspecified) order. If you just need to process every item,
     /// but don't care about nesting, this method is the best choice.
     ///

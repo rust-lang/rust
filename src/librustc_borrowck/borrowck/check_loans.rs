@@ -472,7 +472,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
                     if new_loan.span == old_loan.span {
                         // Both borrows are happening in the same place
-                        // Meaning the borrow is occuring in a loop
+                        // Meaning the borrow is occurring in a loop
                         err.span_label(
                                 new_loan.span,
                                 format!("mutable borrow starts here in previous \

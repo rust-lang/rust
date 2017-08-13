@@ -387,7 +387,7 @@ impl Sig for ast::Item {
 
                 sig.text.push('(');
                 for i in &decl.inputs {
-                    // FIXME shoudl descend into patterns to add defs.
+                    // FIXME should descend into patterns to add defs.
                     sig.text.push_str(&pprust::pat_to_string(&i.pat));
                     sig.text.push_str(": ");
                     let nested = i.ty.make(offset + sig.text.len(), Some(i.id), scx)?;
@@ -922,7 +922,7 @@ fn make_method_signature(id: NodeId,
 
     sig.text.push('(');
     for i in &m.decl.inputs {
-        // FIXME shoudl descend into patterns to add defs.
+        // FIXME should descend into patterns to add defs.
         sig.text.push_str(&pprust::pat_to_string(&i.pat));
         sig.text.push_str(": ");
         let nested = i.ty.make(sig.text.len(), Some(i.id), scx)?;

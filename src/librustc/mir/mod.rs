@@ -695,7 +695,7 @@ impl<'tcx> Debug for TerminatorKind<'tcx> {
 
 impl<'tcx> TerminatorKind<'tcx> {
     /// Write the "head" part of the terminator; that is, its name and the data it uses to pick the
-    /// successor basic block, if any. The only information not inlcuded is the list of possible
+    /// successor basic block, if any. The only information not included is the list of possible
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
         use self::TerminatorKind::*;

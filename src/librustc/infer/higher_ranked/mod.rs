@@ -589,7 +589,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         (result, map)
     }
 
-    /// Searches the region constriants created since `snapshot` was started
+    /// Searches the region constraints created since `snapshot` was started
     /// and checks to determine whether any of the skolemized regions created
     /// in `skol_map` would "escape" -- meaning that they are related to
     /// other regions in some way. If so, the higher-ranked subtyping doesn't

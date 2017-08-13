@@ -974,7 +974,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
     passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
 
-    // We compute "constant qualifications" betwen MIR_CONST and MIR_VALIDATED.
+    // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
 
     // What we need to run borrowck etc.
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);

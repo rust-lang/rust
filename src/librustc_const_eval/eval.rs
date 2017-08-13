@@ -106,7 +106,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     }
 
     /// Evaluate a constant expression in a context where the expression isn't
-    /// guaranteed to be evaluatable.
+    /// guaranteed to be evaluable.
     pub fn eval(&self, e: &Expr) -> EvalResult<'tcx> {
         if self.tables.tainted_by_errors {
             signal!(e, TypeckError);
