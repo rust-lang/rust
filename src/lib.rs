@@ -535,7 +535,7 @@ impl fmt::Display for FormatReport {
 // Formatting which depends on the AST.
 fn format_ast<F>(
     krate: &ast::Crate,
-    mut parse_session: &mut ParseSess,
+    parse_session: &mut ParseSess,
     main_file: &Path,
     config: &Config,
     codemap: &Rc<CodeMap>,
@@ -796,7 +796,7 @@ pub enum Input {
 }
 
 pub fn run(input: Input, config: &Config) -> Summary {
-    let mut out = &mut stdout();
+    let out = &mut stdout();
     output_header(out, config.write_mode()).ok();
     match format_input(input, config, Some(out)) {
         Ok((summary, _, report)) => {

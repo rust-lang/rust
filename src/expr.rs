@@ -19,7 +19,8 @@ use syntax::parse::classify;
 use {Indent, Shape, Spanned};
 use chains::rewrite_chain;
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, recover_comment_removed, rewrite_comment, FindUncommented};
+use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
+              rewrite_comment, FindUncommented};
 use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
@@ -47,61 +48,6 @@ impl Rewrite for ast::Expr {
 pub enum ExprType {
     Statement,
     SubExpression,
-}
-
-fn combine_attr_and_expr(
-    context: &RewriteContext,
-    shape: Shape,
-    expr: &ast::Expr,
-    expr_str: &str,
-) -> Option<String> {
-    let attrs = outer_attributes(&expr.attrs);
-    let attr_str = try_opt!(attrs.rewrite(context, shape));
-    let separator = if attr_str.is_empty() {
-        String::new()
-    } else {
-        // Try to recover comments between the attributes and the expression if available.
-        let missing_snippet = context.snippet(mk_sp(attrs[attrs.len() - 1].span.hi, expr.span.lo));
-        let comment_opening_pos = missing_snippet.chars().position(|c| c == '/');
-        let prefer_same_line = if let Some(pos) = comment_opening_pos {
-            !missing_snippet[..pos].contains('\n')
-        } else {
-            !missing_snippet.contains('\n')
-        };
-
-        let trimmed = missing_snippet.trim();
-        let missing_comment = if trimmed.is_empty() {
-            String::new()
-        } else {
-            try_opt!(rewrite_comment(&trimmed, false, shape, context.config))
-        };
-
-        // 2 = ` ` + ` `
-        let one_line_width =
-            attr_str.len() + missing_comment.len() + 2 + first_line_width(expr_str);
-        let attr_expr_separator = if prefer_same_line && !missing_comment.starts_with("//") &&
-            one_line_width <= shape.width
-        {
-            String::from(" ")
-        } else {
-            format!("\n{}", shape.indent.to_string(context.config))
-        };
-
-        if missing_comment.is_empty() {
-            attr_expr_separator
-        } else {
-            // 1 = ` `
-            let one_line_width =
-                last_line_width(&attr_str) + 1 + first_line_width(&missing_comment);
-            let attr_comment_separator = if prefer_same_line && one_line_width <= shape.width {
-                String::from(" ")
-            } else {
-                format!("\n{}", shape.indent.to_string(context.config))
-            };
-            attr_comment_separator + &missing_comment + &attr_expr_separator
-        }
-    };
-    Some(format!("{}{}{}", attr_str, separator, expr_str))
 }
 
 pub fn format_expr(
@@ -355,7 +301,13 @@ pub fn format_expr(
             recover_comment_removed(expr_str, expr.span, context, shape)
         })
         .and_then(|expr_str| {
-            combine_attr_and_expr(context, shape, expr, &expr_str)
+            let attrs = outer_attributes(&expr.attrs);
+            let attrs_str = try_opt!(attrs.rewrite(context, shape));
+            let span = mk_sp(
+                attrs.last().map_or(expr.span.lo, |attr| attr.span.hi),
+                expr.span.lo,
+            );
+            combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
         })
 }
 

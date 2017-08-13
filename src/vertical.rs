@@ -17,12 +17,12 @@ use syntax::codemap::{BytePos, Span};
 
 use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
-use comment::contains_comment;
+use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{contains_skip, mk_sp};
+use utils::{contains_skip, is_attributes_extendable, mk_sp};
 
 pub trait AlignedItem {
     fn skip(&self) -> bool;
@@ -46,7 +46,22 @@ impl AlignedItem for ast::StructField {
     }
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        rewrite_struct_field_prefix(context, self, shape)
+        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        let missing_span = if self.attrs.is_empty() {
+            mk_sp(self.span.lo, self.span.lo)
+        } else {
+            mk_sp(self.attrs.last().unwrap().span.hi, self.span.lo)
+        };
+        rewrite_struct_field_prefix(context, self).and_then(|field_str| {
+            combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                &field_str,
+                missing_span,
+                shape,
+                is_attributes_extendable(&attrs_str),
+            )
+        })
     }
 
     fn rewrite_aligned_item(
@@ -69,12 +84,21 @@ impl AlignedItem for ast::Field {
     }
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let mut attrs_str = try_opt!(self.attrs.rewrite(context, shape));
-        if !attrs_str.is_empty() {
-            attrs_str.push_str(&format!("\n{}", shape.indent.to_string(context.config)));
-        };
+        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
         let name = &self.ident.node.to_string();
-        Some(format!("{}{}", attrs_str, name))
+        let missing_span = if self.attrs.is_empty() {
+            mk_sp(self.span.lo, self.span.lo)
+        } else {
+            mk_sp(self.attrs.last().unwrap().span.hi, self.span.lo)
+        };
+        combine_strs_with_missing_comments(
+            context,
+            &attrs_str,
+            name,
+            missing_span,
+            shape,
+            is_attributes_extendable(&attrs_str),
+        )
     }
 
     fn rewrite_aligned_item(

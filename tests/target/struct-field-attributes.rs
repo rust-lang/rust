@@ -4,8 +4,7 @@
 struct Foo {
     bar: u64,
 
-    #[cfg(test)]
-    qux: u64,
+    #[cfg(test)] qux: u64,
 }
 
 fn do_something() -> Foo {
@@ -24,8 +23,7 @@ fn main() {
 // #1462
 struct Foo {
     foo: usize,
-    #[cfg(feature = "include-bar")]
-    bar: usize,
+    #[cfg(feature = "include-bar")] bar: usize,
 }
 
 fn new_foo() -> Foo {

@@ -125,3 +125,14 @@ enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 enum Looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong {}
 enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong {}
 enum Loooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong { Foo }
+
+// #1046
+pub enum Entry<'a, K: 'a, V: 'a> {
+    Vacant(
+        #[ stable( feature = "rust1", since = "1.0.0" ) ]   VacantEntry<'a, K, V>,
+    ),
+    Occupied(
+        #[ stable( feature = "rust1", since = "1.0.0" ) ]
+         OccupiedEntry<'a, K, V>,
+    ),
+}

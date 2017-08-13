@@ -68,7 +68,7 @@ pub fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    let mut context = &mut context.clone();
+    let context = &mut context.clone();
     context.inside_macro = true;
     if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
