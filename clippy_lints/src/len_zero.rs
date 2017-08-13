@@ -10,9 +10,10 @@ use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, wal
 /// just to compare to zero, and suggests using `.is_empty()` where applicable.
 ///
 /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
-/// than calculating their length. So it is good to get into the habit of using
-/// `.is_empty()`, and having it is cheap. Besides, it makes the intent clearer
-/// than a comparison.
+/// than calculating their length. Notably, for slices, getting the length
+/// requires a subtraction whereas `.is_empty()` is just a comparison. So it is
+/// good to get into the habit of using `.is_empty()`, and having it is cheap.
+/// Besides, it makes the intent clearer than a manual comparison.
 ///
 /// **Known problems:** None.
 ///
