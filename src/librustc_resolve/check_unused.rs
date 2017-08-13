@@ -120,8 +120,8 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
             _ if directive.used.get() ||
                  directive.vis.get() == ty::Visibility::Public ||
                  directive.span.source_equal(&DUMMY_SP) => {}
-            ImportDirectiveSubclass::ExternCrate { cnum } => {
-                resolver.maybe_unused_extern_crates.push((directive.id, directive.span, cnum));
+            ImportDirectiveSubclass::ExternCrate => {
+                resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
             ImportDirectiveSubclass::MacroUse => {
                 let lint = lint::builtin::UNUSED_IMPORTS;

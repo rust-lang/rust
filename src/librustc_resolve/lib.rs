@@ -35,7 +35,7 @@ use rustc::middle::cstore::CrateLoader;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
@@ -1102,7 +1102,7 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Import {
                 directive: &ImportDirective {
-                    subclass: ImportDirectiveSubclass::ExternCrate { .. }, ..
+                    subclass: ImportDirectiveSubclass::ExternCrate, ..
                 }, ..
             } => true,
             _ => false,
@@ -1250,7 +1250,7 @@ pub struct Resolver<'a> {
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
     pub maybe_unused_trait_imports: NodeSet,
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span, CrateNum)>,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// privacy errors are delayed until the end in order to deduplicate them
     privacy_errors: Vec<PrivacyError<'a>>,

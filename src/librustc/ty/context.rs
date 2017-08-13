@@ -797,7 +797,7 @@ pub struct GlobalCtxt<'tcx> {
 
     pub maybe_unused_trait_imports: NodeSet,
 
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span, CrateNum)>,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
