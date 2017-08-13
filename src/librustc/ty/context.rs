@@ -1522,6 +1522,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.struct_span_lint_node(lint, id, span.into(), msg).emit()
     }
 
+    pub fn lint_node_note<S: Into<MultiSpan>>(self,
+                                              lint: &'static Lint,
+                                              id: NodeId,
+                                              span: S,
+                                              msg: &str,
+                                              note: &str) {
+        let mut err = self.struct_span_lint_node(lint, id, span.into(), msg);
+        err.note(note);
+        err.emit()
+    }
+
     pub fn lint_level_at_node(self, lint: &'static Lint, mut id: NodeId)
         -> (lint::Level, lint::LintSource)
     {
