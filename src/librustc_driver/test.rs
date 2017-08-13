@@ -14,7 +14,6 @@ use driver;
 use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
-#[cfg(feature="llvm")]
 use rustc_trans;
 use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;

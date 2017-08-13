@@ -28,15 +28,10 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 
-#[cfg(not(feature="llvm"))]
-extern crate ar;
-
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
-#[cfg(not(feature="llvm"))]
-extern crate owning_ref;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;
@@ -79,13 +74,9 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
-#[cfg(not(feature="llvm"))]
-use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
-#[cfg(not(feature="llvm"))]
-use rustc_back::target::Target;
 
 use serialize::json::ToJson;
 
@@ -98,8 +89,6 @@ use std::ffi::OsString;
 use std::io::{self, Read, Write};
 use std::iter::repeat;
 use std::path::PathBuf;
-#[cfg(not(feature="llvm"))]
-use std::path::Path;
 use std::process::{self, Command, Stdio};
 use std::rc::Rc;
 use std::str;
@@ -112,15 +101,11 @@ use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
 
-#[cfg(not(feature="llvm"))]
-use owning_ref::{OwningRef, ErasedBoxRef};
-
 #[cfg(test)]
 pub mod test;
 
 pub mod driver;
 pub mod pretty;
-#[cfg(feature="llvm")]
 pub mod target_features;
 mod derive_registrar;
 
@@ -167,67 +152,98 @@ pub fn run<F>(run_compiler: F) -> isize
 }
 
 #[cfg(not(feature="llvm"))]
-pub struct NoLLvmMetadataLoader;
-
-#[cfg(not(feature="llvm"))]
-pub use NoLLvmMetadataLoader as MetadataLoader;
+pub use no_llvm_metadata_loader::NoLLvmMetadataLoader as MetadataLoader;
 #[cfg(feature="llvm")]
 pub use rustc_trans::LlvmMetadataLoader as MetadataLoader;
 
 #[cfg(not(feature="llvm"))]
-impl MetadataLoaderTrait for NoLLvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
-        use std::fs::File;
-        use std::io;
-        use self::ar::Archive;
+mod no_llvm_metadata_loader{
+    extern crate ar;
+    extern crate owning_ref;
+    
+    use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
+    use rustc_back::target::Target;
+    use std::io;
+    use std::fs::File;
+    use std::path::Path;
+    
+    use self::ar::Archive;
+    use self::owning_ref::{OwningRef, ErasedBoxRef};
 
-        let file = File::open(filename).map_err(|e|format!("metadata file open err: {:?}", e))?;
-        let mut archive = Archive::new(file);
+    pub struct NoLLvmMetadataLoader;
 
-        while let Some(entry_result) = archive.next_entry() {
-            let mut entry = entry_result.map_err(|e|format!("metadata section read err: {:?}", e))?;
-            if entry.header().identifier() == "rust.metadata.bin" {
-                let mut buf = Vec::new();
-                io::copy(&mut entry, &mut buf).unwrap();
-                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                return Ok(buf.map_owner_box().erase_owner());
+    impl MetadataLoaderTrait for NoLLvmMetadataLoader {
+        fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+            let file = File::open(filename).map_err(|e|format!("metadata file open err: {:?}", e))?;
+            let mut archive = Archive::new(file);
+
+            while let Some(entry_result) = archive.next_entry() {
+                let mut entry = entry_result.map_err(|e|format!("metadata section read err: {:?}", e))?;
+                if entry.header().identifier() == "rust.metadata.bin" {
+                    let mut buf = Vec::new();
+                    io::copy(&mut entry, &mut buf).unwrap();
+                    let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                    return Ok(buf.map_owner_box().erase_owner());
+                }
             }
+
+            Err("Couldnt find metadata section".to_string())
         }
 
-        Err("Couldnt find metadata section".to_string())
-    }
-
-    fn get_dylib_metadata(&self,
-                          _target: &Target,
-                          _filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String> {
-        panic!("Dylib metadata loading not supported without LLVM")
+        fn get_dylib_metadata(&self,
+                            _target: &Target,
+                            _filename: &Path)
+                            -> Result<ErasedBoxRef<[u8]>, String> {
+            panic!("Dylib metadata loading not supported without LLVM")
+        }
     }
 }
 
-#[cfg(feature="llvm")]
+#[cfg(not(feature="llvm"))]
 mod rustc_trans {
+    use syntax_pos::symbol::Symbol;
+    use rustc::session::Session;
+    use rustc::session::config::{PrintRequest, OutputFilenames};
+    use rustc::ty::{TyCtxt, CrateAnalysis};
     use rustc::ty::maps::Providers;
+    use rustc_incremental::IncrementalHashesMap;
+
+    use self::back::write::OngoingCrateTranslation;
+
     pub fn init(_sess: &Session) {}
     pub fn enable_llvm_debug() {}
     pub fn provide(_providers: &mut Providers) {}
-    pub struct CrateTranslation(());
-    pub mod back {
-        pub mod write {
-            pub struct OngoingCrateTranslation(());
-        }
-    }
-    mod diagnostics {
-        register_long_diagnostics! {}
+    pub fn print_version() {}
+    pub fn print_passes() {}
+    pub fn print(_req: PrintRequest, _sess: &Session) {}
+    pub fn target_features(_sess: &Session) -> Vec<Symbol> { vec![] }
+
+    pub fn trans_crate<'a, 'tcx>(
+        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _analysis: CrateAnalysis,
+        _incr_hashes_map: IncrementalHashesMap,
+        _output_filenames: &OutputFilenames
+    ) -> OngoingCrateTranslation {
+        OngoingCrateTranslation(())
     }
 
-    pub use diagnostics::DIAGNOSTICS;
+    pub struct CrateTranslation(());
+
+    pub mod back {
+        pub mod write {
+            pub struct OngoingCrateTranslation(pub (in ::rustc_trans) ());
+
+            pub const RELOC_MODEL_ARGS: [(&'static str, ()); 0] = [];
+            pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
+        }
+    }
+
+    __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
-#[cfg_attr(not(feature="llvm"), allow(unused_mut))]
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
                         file_loader: Option<Box<FileLoader + 'static>>,
@@ -282,7 +298,6 @@ pub fn run_compiler<'a>(args: &[String],
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess, cfg);
-    #[cfg(feature="llvm")]
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
@@ -535,7 +550,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         Compilation::Continue
     }
 
-    #[cfg_attr(not(feature="llvm"), allow(unused_mut))]
     fn no_input(&mut self,
                 matches: &getopts::Matches,
                 sopts: &config::Options,
@@ -562,7 +576,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
-                #[cfg(feature="llvm")]
                 target_features::add_configuration(&mut cfg, &sess);
                 sess.parse_sess.config = cfg;
                 let should_stop =
@@ -816,7 +829,6 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
-                    #[cfg(feature="llvm")]
                     for &(name, _) in rustc_trans::back::write::RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
@@ -824,17 +836,13 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
-                    #[cfg(feature="llvm")]
                     for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
                 }
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
-                    #[cfg(feature="llvm")]
                     rustc_trans::print(*req, sess);
-                    #[cfg(not(feature="llvm"))]
-                    panic!("LLVM not supported by this rustc")
                 }
             }
         }
@@ -873,7 +881,6 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("commit-date: {}", unw(commit_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
-        #[cfg(feature="llvm")]
         rustc_trans::print_version();
     }
 }
@@ -1171,7 +1178,6 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     }
 
     if cg_flags.contains(&"passes=list".to_string()) {
-        #[cfg(feature="llvm")]
         rustc_trans::print_passes();
         return None;
     }
