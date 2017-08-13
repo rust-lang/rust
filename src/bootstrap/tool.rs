@@ -262,7 +262,7 @@ impl Step for Rustdoc {
         } else if target_compiler.stage >= 2 {
             // Past stage 2, we consider the compiler to be ABI-compatible and hence capable of
             // building rustdoc itself.
-            target_compiler
+            builder.compiler(target_compiler.stage, builder.build.build)
         } else {
             // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
             // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
