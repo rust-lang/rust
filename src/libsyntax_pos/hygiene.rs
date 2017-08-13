@@ -185,6 +185,7 @@ pub fn extend_hygiene_data(extend_with: HygieneData) -> ImportedHygieneData {
                         callee: NameAndSpan {
                             format: info.callee.format.clone(),
                             allow_internal_unstable: info.callee.allow_internal_unstable,
+                            allow_internal_unsafe: info.callee.allow_internal_unsafe,
                             span:
                                 info.callee.span.map(|span| translate_span(&span, ctxt_offset)),
                         },
