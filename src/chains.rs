@@ -233,6 +233,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         connector.as_str()
     };
 
+    let subexpr_num = subexpr_list.len();
     let result = if is_small_parent && rewrites.len() > 1 {
         let second_connector = choose_first_connector(
             context,

@@ -333,3 +333,8 @@ fn issue_1862() {
         this_last_arg_is_tooooooooooooooooooooooooooooooooo_long_to_be_kept_with_the_pre_comment,
     )
 }
+
+fn issue_1878() {
+    let channel: &str = seq.next_element()?
+        .ok_or_else(|| de::Error::invalid_length(2, &self))?;
+}
