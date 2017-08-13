@@ -190,8 +190,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     .map(|l| map_line(l).for_code())
                     .collect::<Vec<&str>>().join("\n");
                 let krate = krate.as_ref().map(|s| &**s);
-                let test = test::maketest(&test, krate, false,
-                                        &Default::default());
+                let test = test::make_test(&test, krate, false,
+                                           &Default::default());
                 let channel = if test.contains("#![feature(") {
                     "&amp;version=nightly"
                 } else {
@@ -584,8 +584,8 @@ pub fn render(w: &mut fmt::Formatter,
                         .map(|l| map_line(l).for_code())
                         .collect::<Vec<&str>>().join("\n");
                     let krate = krate.as_ref().map(|s| &**s);
-                    let test = test::maketest(&test, krate, false,
-                                              &Default::default());
+                    let test = test::make_test(&test, krate, false,
+                                               &Default::default());
                     let channel = if test.contains("#![feature(") {
                         "&amp;version=nightly"
                     } else {
