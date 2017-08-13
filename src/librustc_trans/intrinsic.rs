@@ -83,38 +83,6 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     Some(ccx.get_intrinsic(&llvm_name))
 }
 
-fn warn_if_size_is_weird<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                   tp_ty: Ty<'tcx>,
-                                   count: ValueRef,
-                                   span: Span,
-                                   name: &str) {
-    let ccx = bcx.ccx;
-    let lltp_ty = type_of::type_of(ccx, tp_ty);
-    let ty_size = machine::llsize_of(ccx, lltp_ty);
-    let total = const_to_uint( bcx.mul(ty_size, count) );
-
-    if total > 0 {
-        return;
-    }
-
-    let text = format!("suspicious monomorphization of `{}` intrinsic", name);
-    let note = match name
-    {
-        "volatile_load" | "volatile_store" =>
-             format!("'{}' was specialized with zero-sized type '{}'",
-                    name, tp_ty),
-        _ => format!("'{}' was specialized with type '{}', number of \
-                     elements is {}",
-                     name, tp_ty,
-                     const_to_uint(count))
-    };
-
-    let sess = bcx.sess();
-    sess.struct_span_warn(span, &text)
-        .note(&note)
-        .emit();
-}
-
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
@@ -249,24 +217,17 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
 
         "volatile_copy_nonoverlapping_memory" => {
-            let tp_ty = substs.type_at(0);
-            warn_if_size_is_weird(bcx, tp_ty, llargs[2], span, name);
-            copy_intrinsic(bcx, false, true, tp_ty, llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx, false, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         "volatile_copy_memory" => {
-            let tp_ty = substs.type_at(0);
-            warn_if_size_is_weird(bcx, tp_ty, llargs[2], span, name);
-            copy_intrinsic(bcx, true, true, tp_ty, llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx, true, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         "volatile_set_memory" => {
-            let tp_ty = substs.type_at(0);
-            warn_if_size_is_weird(bcx, tp_ty, llargs[2], span, name);
-            memset_intrinsic(bcx, true, tp_ty, llargs[0], llargs[1], llargs[2])
+            memset_intrinsic(bcx, true, substs.type_at(0), llargs[0], llargs[1], llargs[2])
         }
         "volatile_load" => {
             let tp_ty = substs.type_at(0);
             let mut ptr = llargs[0];
-            warn_if_size_is_weird(bcx, tp_ty, C_uint(ccx,1usize), span, name);
             if let Some(ty) = fn_ty.ret.cast {
                 ptr = bcx.pointercast(ptr, ty.ptr_to());
             }
@@ -278,7 +239,6 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            warn_if_size_is_weird(bcx, tp_ty, C_uint(ccx,1usize), span, name);
             if type_is_fat_ptr(bcx.ccx, tp_ty) {
                 bcx.volatile_store(llargs[1], get_dataptr(bcx, llargs[0]));
                 bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));

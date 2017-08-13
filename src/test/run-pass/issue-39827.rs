@@ -13,6 +13,11 @@ use std::intrinsics::{ volatile_copy_memory, volatile_store, volatile_load,
                        volatile_copy_nonoverlapping_memory,
                        volatile_set_memory };
 
+//
+// This test ensures that volatile intrinsics can be specialised with
+// zero-sized types and, in case of copy/set functions, can accept
+// number of elements equal to zero.
+//
 fn main () {
     let mut dst_pair = (1, 2);
     let src_pair = (3, 4);

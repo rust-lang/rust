@@ -384,11 +384,10 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// over time. That being said, the semantics will almost always end up pretty
 /// similar to [C11's definition of volatile][c11].
 ///
-/// Compiler shouldn't change relative order or number of volatile memory
-/// operations, however this implies that memory operation actually takes place.
-/// If a zero-sized type is used in a specialisation of `read_volatile`, value
-/// is known at any time and can not be modified outside of program control.
-/// In this case such operation may be omitted by compiler backend.
+/// The compiler shouldn't change the relative order or number of volatile
+/// memory operations. However, volatile memory operations on zero-sized types
+/// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
+/// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
@@ -433,11 +432,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// over time. That being said, the semantics will almost always end up pretty
 /// similar to [C11's definition of volatile][c11].
 ///
-/// Compiler shouldn't change relative order or number of volatile memory
-/// operations, however this implies that memory operation actually takes place.
-/// If a zero-sized type is used in a specialisation of `write_volatile`, value
-/// is known at any time and can not be modified outside of program control.
-/// In this case such operation may be omitted by compiler backend.
+/// The compiler shouldn't change the relative order or number of volatile
+/// memory operations. However, volatile memory operations on zero-sized types
+/// (e.g. if a zero-sized type is passed to `write_volatile`) are no-ops
+/// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
