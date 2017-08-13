@@ -10,10 +10,22 @@
 
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
-use rustc::middle::cstore;
+use rustc::middle::cstore::{self, LinkMeta};
+use rustc::dep_graph::{DepKind, DepNode};
+use rustc::hir::svh::Svh;
+use rustc_incremental::IncrementalHashesMap;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax_pos::Span;
+
+pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
+    let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
+    let r = LinkMeta {
+        crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
+    };
+    info!("{:?}", r);
+    return r;
+}
 
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],

@@ -104,7 +104,11 @@ impl Step for Std {
 
         let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
-        let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
+        let mut cargo = if compiler.stage == 0 {
+            builder.cargo(compiler, Mode::Libstd, target, "build")
+        }else{
+            builder.cargo(compiler, Mode::Libstd, target, "check")
+        };
         std_cargo(build, &compiler, target, &mut cargo);
         run_cargo(build,
                 &mut cargo,
@@ -161,6 +165,7 @@ pub fn std_cargo(build: &Build,
         // missing
         // We also only build the runtimes when --enable-sanitizers (or its
         // config.toml equivalent) is used
+        //cargo.env("RUST_FLAGS", "-Zno-trans");
         cargo.env("LLVM_CONFIG", build.llvm_config(target));
     }
 

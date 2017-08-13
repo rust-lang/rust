@@ -77,6 +77,8 @@ pub fn compile_input(sess: &Session,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
     use rustc_trans::back::write::OngoingCrateTranslation;
+    use rustc::session::config::CrateType;
+
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -94,7 +96,6 @@ pub fn compile_input(sess: &Session,
     }
 
     if cfg!(not(feature="llvm")) {
-        use rustc::session::config::CrateType;
         if !sess.opts.debugging_opts.no_trans && sess.opts.output_types.should_trans() {
             sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
         }
