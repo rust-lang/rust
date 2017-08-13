@@ -28,6 +28,7 @@ pub mod __core {
 extern "Rust" {
     #[allocator]
     fn __rust_alloc(size: usize, align: usize, err: *mut u8) -> *mut u8;
+    #[cold]
     fn __rust_oom(err: *const u8) -> !;
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     fn __rust_usable_size(layout: *const u8,
@@ -81,6 +82,7 @@ unsafe impl Alloc for Heap {
     }
 
     #[inline]
+    #[cold]
     fn oom(&mut self, err: AllocErr) -> ! {
         unsafe {
             __rust_oom(&err as *const AllocErr as *const u8)
