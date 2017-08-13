@@ -114,10 +114,14 @@
 //!
 //! ## Naming threads
 //!
-//! Threads are able to have associated names for identification purposes. For example, the thread
-//! name is used in panic messages. By default, spawned threads are unnamed. To specify a name for
-//! a thread, build the thread with [`Builder`] and pass the desired thread name to
-//! [`Builder::name`]. To retrieve the thread name from within the thread, use [`Thread::name`].
+//! Threads are able to have associated names for identification purposes. By default, spawned
+//! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
+//! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
+//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//!
+//! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
+//! * The thread name is provided to the OS where applicable (e.g. `pthread_setname_np` in
+//!   unix-like platforms).
 //!
 //! ## Stack size
 //!
