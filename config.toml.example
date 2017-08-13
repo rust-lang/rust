@@ -258,6 +258,9 @@
 # saying that the FileCheck executable is missing, you may want to disable this.
 #codegen-tests = true
 
+# Flag indicating whether git info will be retrieved from .git automatically.
+#ignore-git = false
+
 # =============================================================================
 # Options for specific targets
 #

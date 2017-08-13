@@ -164,7 +164,7 @@ impl Step for Cargotest {
         try_run(build, cmd.arg(&build.initial_cargo)
                           .arg(&out_dir)
                           .env("RUSTC", builder.rustc(compiler))
-                          .env("RUSTDOC", builder.rustdoc(compiler)));
+                          .env("RUSTDOC", builder.rustdoc(compiler.host)));
     }
 }
 
@@ -565,7 +565,7 @@ impl Step for Compiletest {
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc" || mode == "run-make" {
-            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
+            cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
         cmd.arg("--src-base").arg(build.src.join("src/test").join(suite));
@@ -625,7 +625,7 @@ impl Step for Compiletest {
             cmd.arg("--system-llvm");
         }
 
-        cmd.args(&build.flags.cmd.test_args());
+        cmd.args(&build.config.cmd.test_args());
 
         if build.is_verbose() {
             cmd.arg("--verbose");
@@ -814,13 +814,13 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) {
     }
 
     println!("doc tests for: {}", markdown.display());
-    let mut cmd = builder.rustdoc_cmd(compiler);
+    let mut cmd = builder.rustdoc_cmd(compiler.host);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
     cmd.arg(markdown);
     cmd.env("RUSTC_BOOTSTRAP", "1");
 
-    let test_args = build.flags.cmd.test_args().join(" ");
+    let test_args = build.config.cmd.test_args().join(" ");
     cmd.arg("--test-args").arg(test_args);
 
     if build.config.quiet_tests {
@@ -1051,7 +1051,7 @@ impl Step for Crate {
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
         cargo.arg("--");
-        cargo.args(&build.flags.cmd.test_args());
+        cargo.args(&build.config.cmd.test_args());
 
         if build.config.quiet_tests {
             cargo.arg("--quiet");
@@ -1147,6 +1147,7 @@ pub struct Distcheck;
 
 impl Step for Distcheck {
     type Output = ();
+    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("distcheck")
@@ -1159,16 +1160,6 @@ impl Step for Distcheck {
     /// Run "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
         let build = builder.build;
-
-        if *build.build != *"x86_64-unknown-linux-gnu" {
-            return
-        }
-        if !build.config.host.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
-            return
-        }
-        if !build.config.target.iter().any(|s| s == "x86_64-unknown-linux-gnu") {
-            return
-        }
 
         println!("Distcheck");
         let dir = build.out.join("tmp").join("distcheck");
@@ -1236,7 +1227,7 @@ impl Step for Bootstrap {
         if !build.fail_fast {
             cmd.arg("--no-fail-fast");
         }
-        cmd.arg("--").args(&build.flags.cmd.test_args());
+        cmd.arg("--").args(&build.config.cmd.test_args());
         try_run(build, &mut cmd);
     }
 

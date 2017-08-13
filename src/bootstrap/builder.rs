@@ -120,28 +120,19 @@ impl StepDescription {
     fn maybe_run(&self, builder: &Builder, path: Option<&Path>) {
         let build = builder.build;
         let hosts = if self.only_build_targets || self.only_build {
-            &build.config.host[..1]
+            build.build_triple()
         } else {
             &build.hosts
         };
 
-        // Determine the actual targets participating in this rule.
-        // NOTE: We should keep the full projection from build triple to
-        // the hosts for the dist steps, now that the hosts array above is
-        // truncated to avoid duplication of work in that case. Therefore
-        // the original non-shadowed hosts array is used below.
+        // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            // If --target was specified but --host wasn't specified,
-            // don't run any host-only tests. Also, respect any `--host`
-            // overrides as done for `hosts`.
-            if build.flags.host.len() > 0 {
-                &build.flags.host[..]
-            } else if build.flags.target.len() > 0 {
+            if build.config.run_host_only {
                 &[]
             } else if self.only_build {
-                &build.config.host[..1]
+                build.build_triple()
             } else {
-                &build.config.host[..]
+                &build.hosts
             }
         } else {
             &build.targets
@@ -288,7 +279,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build: build,
-            top_stage: build.flags.stage.unwrap_or(2),
+            top_stage: build.config.stage.unwrap_or(2),
             kind: kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -307,7 +298,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn run(build: &Build) {
-        let (kind, paths) = match build.flags.cmd {
+        let (kind, paths) = match build.config.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
             Subcommand::Test { ref paths, .. } => (Kind::Test, &paths[..]),
@@ -319,7 +310,7 @@ impl<'a> Builder<'a> {
 
         let builder = Builder {
             build: build,
-            top_stage: build.flags.stage.unwrap_or(2),
+            top_stage: build.config.stage.unwrap_or(2),
             kind: kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
@@ -414,22 +405,19 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { target_compiler: compiler })
+    pub fn rustdoc(&self, host: Interned<String>) -> PathBuf {
+        self.ensure(tool::Rustdoc { host })
     }
 
-    pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
+    pub fn rustdoc_cmd(&self, host: Interned<String>) -> Command {
         let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        let compiler = self.compiler(self.top_stage, host);
         cmd
             .env("RUSTC_STAGE", compiler.stage.to_string())
-            .env("RUSTC_SYSROOT", if compiler.is_snapshot(&self.build) {
-                INTERNER.intern_path(self.build.rustc_snapshot_libdir())
-            } else {
-                self.sysroot(compiler)
-            })
-            .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
+            .env("RUSTC_SYSROOT", self.sysroot(compiler))
+            .env("RUSTC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
             .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
-            .env("RUSTDOC_REAL", self.rustdoc(compiler));
+            .env("RUSTDOC_REAL", self.rustdoc(host));
         cmd
     }
 
@@ -483,7 +471,7 @@ impl<'a> Builder<'a> {
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", if cmd == "doc" || cmd == "test" {
-                 self.rustdoc(compiler)
+                 self.rustdoc(compiler.host)
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
@@ -543,12 +531,12 @@ impl<'a> Builder<'a> {
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
-        if self.flags.incremental && compiler.stage == 0 {
+        if self.config.incremental && compiler.stage == 0 {
             let incr_dir = self.incremental_dir(compiler);
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
-        if let Some(ref on_fail) = self.flags.on_fail {
+        if let Some(ref on_fail) = self.config.on_fail {
             cargo.env("RUSTC_ON_FAIL", on_fail);
         }
 
