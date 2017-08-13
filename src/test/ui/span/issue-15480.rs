@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn id<T>(x: T) -> T { x }
+
 fn main() {
     let v = vec![
-        &3
+        &id(3)
     ];
 
     for &&x in &v {
