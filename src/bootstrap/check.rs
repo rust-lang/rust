@@ -618,12 +618,6 @@ impl Step for Compiletest {
         if let Some(ref dir) = build.lldb_python_dir {
             cmd.arg("--lldb-python-dir").arg(dir);
         }
-        let llvm_config = build.llvm_config(target);
-        let llvm_version = output(Command::new(&llvm_config).arg("--version"));
-        cmd.arg("--llvm-version").arg(llvm_version);
-        if !build.is_rust_llvm(target) {
-            cmd.arg("--system-llvm");
-        }
 
         cmd.args(&build.config.cmd.test_args());
 
@@ -635,17 +629,32 @@ impl Step for Compiletest {
             cmd.arg("--quiet");
         }
 
-        // Only pass correct values for these flags for the `run-make` suite as it
-        // requires that a C++ compiler was configured which isn't always the case.
-        if suite == "run-make" {
-            let llvm_components = output(Command::new(&llvm_config).arg("--components"));
-            let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
-            cmd.arg("--cc").arg(build.cc(target))
-               .arg("--cxx").arg(build.cxx(target).unwrap())
-               .arg("--cflags").arg(build.cflags(target).join(" "))
-               .arg("--llvm-components").arg(llvm_components.trim())
-               .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
-        } else {
+        if build.config.llvm_enabled {
+            let llvm_config = build.llvm_config(target);
+            let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+            cmd.arg("--llvm-version").arg(llvm_version);
+            if !build.is_rust_llvm(target) {
+                cmd.arg("--system-llvm");
+            }
+
+            // Only pass correct values for these flags for the `run-make` suite as it
+            // requires that a C++ compiler was configured which isn't always the case.
+            if suite == "run-make" {
+                let llvm_components = output(Command::new(&llvm_config).arg("--components"));
+                let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
+                cmd.arg("--cc").arg(build.cc(target))
+                .arg("--cxx").arg(build.cxx(target).unwrap())
+                .arg("--cflags").arg(build.cflags(target).join(" "))
+                .arg("--llvm-components").arg(llvm_components.trim())
+                .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+            }
+        }
+        if suite == "run-make" && !build.config.llvm_enabled {
+            println!("Ignoring run-make test suite as they generally dont work without LLVM");
+            return;
+        }
+
+        if suite != "run-make" {
             cmd.arg("--cc").arg("")
                .arg("--cxx").arg("")
                .arg("--cflags").arg("")
