@@ -3309,6 +3309,10 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     let traits = &cache().traits;
     let trait_ = i.trait_did().and_then(|did| traits.get(&did));
 
+    if !show_def_docs {
+        write!(w, "<span class='docblock autohide'>")?;
+    }
+
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
         doc_impl_item(w, cx, trait_item, link, render_mode,
@@ -3343,6 +3347,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                              render_mode, outer_version, show_def_docs)?;
     }
     write!(w, "</div>")?;
+
+    if !show_def_docs {
+        write!(w, "</span>")?;
+    }
+
     Ok(())
 }
 
