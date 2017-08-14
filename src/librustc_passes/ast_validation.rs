@@ -94,10 +94,25 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus)
-    fn check_expr_within_pat(&self, expr: &Expr) {
+    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus),
+    /// or path for ranges.
+    ///
+    /// FIXME: do we want to allow expr -> pattern conversion to create path expressions?
+    /// That means making this work:
+    ///
+    /// ```rust,ignore (FIXME)
+    ///     struct S;
+    ///     macro_rules! m {
+    ///         ($a:expr) => {
+    ///             let $a = S;
+    ///         }
+    ///     }
+    ///     m!(S);
+    /// ```
+    fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
-            ExprKind::Lit(..) | ExprKind::Path(..) => {}
+            ExprKind::Lit(..) => {}
+            ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
                 if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
             _ => self.err_handler().span_err(expr.span, "arbitrary expressions aren't allowed \
@@ -332,11 +347,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.node {
             PatKind::Lit(ref expr) => {
-                self.check_expr_within_pat(expr);
+                self.check_expr_within_pat(expr, false);
             }
             PatKind::Range(ref start, ref end, _) => {
-                self.check_expr_within_pat(start);
-                self.check_expr_within_pat(end);
+                self.check_expr_within_pat(start, true);
+                self.check_expr_within_pat(end, true);
             }
             _ => {}
         }
