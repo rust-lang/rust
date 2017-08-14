@@ -16,7 +16,6 @@ use std::cell::Cell;
 use std::env;
 use std::path::Path;
 
-use syntax::ast;
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
@@ -207,75 +206,6 @@ impl<'a> SpanUtils<'a> {
         result
     }
 
-    // Reparse span and return an owned vector of sub spans of the first limit
-    // identifier tokens in the given nesting level.
-    // example with Foo<Bar<T,V>, Bar<T,V>>
-    // Nesting = 0: all idents outside of angle brackets: [Foo]
-    // Nesting = 1: idents within one level of angle brackets: [Bar, Bar]
-    pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
-        let mut result: Vec<Span> = vec![];
-
-        let mut toks = self.retokenise_span(span);
-        // We keep track of how many brackets we're nested in
-        let mut angle_count: isize = 0;
-        let mut bracket_count: isize = 0;
-        let mut found_ufcs_sep = false;
-        loop {
-            let ts = toks.real_token();
-            if ts.tok == token::Eof {
-                if angle_count != 0 || bracket_count != 0 {
-                    if generated_code(span) {
-                        return vec![];
-                    }
-                    let loc = self.sess.codemap().lookup_char_pos(span.lo);
-                    span_bug!(span,
-                              "Mis-counted brackets when breaking path? \
-                               Parsing '{}' in {}, line {}",
-                              self.snippet(span),
-                              loc.file.name,
-                              loc.line);
-                }
-                return result
-            }
-            if (result.len() as isize) == limit {
-                return result;
-            }
-            bracket_count += match ts.tok {
-                token::OpenDelim(token::Bracket) => 1,
-                token::CloseDelim(token::Bracket) => -1,
-                _ => 0,
-            };
-            if bracket_count > 0 {
-                continue;
-            }
-            angle_count += match ts.tok {
-                token::Lt => 1,
-                token::Gt => -1,
-                token::BinOp(token::Shl) => 2,
-                token::BinOp(token::Shr) => -2,
-                _ => 0,
-            };
-
-            // Ignore the `>::` in `<Type as Trait>::AssocTy`.
-
-            // The root cause of this hack is that the AST representation of
-            // qpaths is horrible. It treats <A as B>::C as a path with two
-            // segments, B and C and notes that there is also a self type A at
-            // position 0. Because we don't have spans for individual idents,
-            // only the whole path, we have to iterate over the tokens in the
-            // path, trying to pull out the non-nested idents (e.g., avoiding 'a
-            // in `<A as B<'a>>::C`). So we end up with a span for `B>::C` from
-            // the start of the first ident to the end of the path.
-            if !found_ufcs_sep && angle_count == -1 {
-                found_ufcs_sep = true;
-                angle_count += 1;
-            }
-            if ts.tok.is_ident() && angle_count == nesting {
-                result.push(ts.sp);
-            }
-        }
-    }
-
     pub fn sub_span_before_token(&self, span: Span, tok: Token) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
@@ -328,21 +258,6 @@ impl<'a> SpanUtils<'a> {
                 }
             }
         }
-    }
-
-
-    // Returns a list of the spans of idents in a path.
-    // E.g., For foo::bar<x,t>::baz, we return [foo, bar, baz] (well, their spans)
-    pub fn spans_for_path_segments(&self, path: &ast::Path) -> Vec<Span> {
-        self.spans_with_brackets(path.span, 0, -1)
-    }
-
-    // Return an owned vector of the subspans of the param identifier
-    // tokens found in span.
-    pub fn spans_for_ty_params(&self, span: Span, number: isize) -> Vec<Span> {
-        // Type params are nested within one level of brackets:
-        // i.e. we want Vec<A, B> from Foo<A, B<T,U>>
-        self.spans_with_brackets(span, 1, number)
     }
 
     // // Return the name for a macro definition (identifier after first `!`)
