@@ -8,11 +8,6 @@ os:
 
 sudo: false
 
-cache:
-  cargo: true
-  directories:
-  - target
-
 env:
  global:
    # TRAVIS_TOKEN_CLIPPY_SERVICE

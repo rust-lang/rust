@@ -80,7 +80,7 @@ declare_lint! {
     "`fn new() -> Self` without `#[derive]`able `Default` implementation"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct NewWithoutDefault;
 
 impl LintPass for NewWithoutDefault {
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
         decl: &'tcx hir::FnDecl,
         _: &'tcx hir::Body,
         span: Span,
-        id: ast::NodeId
+        id: ast::NodeId,
     ) {
         if in_external_macro(cx, span) {
             return;
@@ -109,13 +109,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 return;
             }
             if !sig.generics.ty_params.is_empty() {
-                // when the result of `new()` depends on a type parameter we should not require an
+                // when the result of `new()` depends on a type parameter we should not require
+                // an
                 // impl of `Default`
                 return;
             }
             if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
-                let self_ty = cx.tcx
-                    .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
+                let self_ty = cx.tcx.type_of(
+                    cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)),
+                );
                 if_let_chain!{[
                     same_tys(cx, self_ty, return_ty(cx, id)),
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),

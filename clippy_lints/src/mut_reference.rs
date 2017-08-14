@@ -24,7 +24,7 @@ declare_lint! {
 }
 
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct UnnecessaryMutPassed;
 
 impl LintPass for UnnecessaryMutPassed {
@@ -38,10 +38,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
         match e.node {
             ExprCall(ref fn_expr, ref arguments) => {
                 if let ExprPath(ref path) = fn_expr.node {
-                    check_arguments(cx,
-                                    arguments,
-                                    cx.tables.expr_ty(fn_expr),
-                                    &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)));
+                    check_arguments(
+                        cx,
+                        arguments,
+                        cx.tables.expr_ty(fn_expr),
+                        &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
+                    );
                 }
             },
             ExprMethodCall(ref path, _, ref arguments) => {
@@ -64,10 +66,12 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
                     ty::TyRef(_, ty::TypeAndMut { mutbl: MutImmutable, .. }) |
                     ty::TyRawPtr(ty::TypeAndMut { mutbl: MutImmutable, .. }) => {
                         if let ExprAddrOf(MutMutable, _) = argument.node {
-                            span_lint(cx,
-                                      UNNECESSARY_MUT_PASSED,
-                                      argument.span,
-                                      &format!("The function/method `{}` doesn't need a mutable reference", name));
+                            span_lint(
+                                cx,
+                                UNNECESSARY_MUT_PASSED,
+                                argument.span,
+                                &format!("The function/method `{}` doesn't need a mutable reference", name),
+                            );
                         }
                     },
                     _ => (),

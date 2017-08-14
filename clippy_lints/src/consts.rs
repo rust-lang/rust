@@ -83,7 +83,8 @@ impl PartialEq for Constant {
 
 impl Hash for Constant {
     fn hash<H>(&self, state: &mut H)
-        where H: Hasher
+    where
+        H: Hasher,
     {
         match *self {
             Constant::Str(ref s, ref k) => {

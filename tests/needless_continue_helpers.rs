@@ -86,4 +86,3 @@ fn test_erode_block() {
     println!("input: {}\nexpected:\n{}\ngot:\n{}", input, expected, got);
     assert_eq!(expected, got);
 }
-

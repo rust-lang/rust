@@ -63,20 +63,28 @@ impl LintPass for Clippy {
 
 impl EarlyLintPass for Clippy {
     fn check_crate(&mut self, cx: &EarlyContext, krate: &AstCrate) {
-        if let Some(utils) = krate.module.items.iter().find(|item| item.ident.name == "utils") {
+        if let Some(utils) = krate.module.items.iter().find(
+            |item| item.ident.name == "utils",
+        )
+        {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
-                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name == "paths") {
+                if let Some(paths) = utils_mod.items.iter().find(
+                    |item| item.ident.name == "paths",
+                )
+                {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
                         let mut last_name: Option<InternedString> = None;
                         for item in &paths_mod.items {
                             let name = item.ident.name.as_str();
                             if let Some(ref last_name) = last_name {
                                 if **last_name > *name {
-                                    span_lint(cx,
-                                              CLIPPY_LINTS_INTERNAL,
-                                              item.span,
-                                              "this constant should be before the previous constant due to lexical \
-                                               ordering");
+                                    span_lint(
+                                        cx,
+                                        CLIPPY_LINTS_INTERNAL,
+                                        item.span,
+                                        "this constant should be before the previous constant due to lexical \
+                                               ordering",
+                                    );
                                 }
                             }
                             last_name = Some(name);
@@ -128,13 +136,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             // not able to capture the error.
             // Therefore, we need to climb the macro expansion tree and find the
             // actual span that invoked `declare_lint!`:
-            let lint_span = lint_span.ctxt.outer().expn_info().map(|ei| ei.call_site).expect("unable to get call_site");
+            let lint_span = lint_span
+                .ctxt
+                .outer()
+                .expn_info()
+                .map(|ei| ei.call_site)
+                .expect("unable to get call_site");
 
             if !self.registered_lints.contains(lint_name) {
-                span_lint(cx,
-                          LINT_WITHOUT_LINT_PASS,
-                          lint_span,
-                          &format!("the lint `{}` is not added to any `LintPass`", lint_name));
+                span_lint(
+                    cx,
+                    LINT_WITHOUT_LINT_PASS,
+                    lint_span,
+                    &format!("the lint `{}` is not added to any `LintPass`", lint_name),
+                );
             }
         }
     }
@@ -142,7 +157,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
-    if let TyRptr(ref lt, MutTy { ty: ref inner, mutbl: MutImmutable }) = ty.node {
+    if let TyRptr(ref lt,
+                  MutTy {
+                      ty: ref inner,
+                      mutbl: MutImmutable,
+                  }) = ty.node
+    {
         if lt.is_elided() {
             return false;
         }

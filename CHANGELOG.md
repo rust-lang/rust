@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.151
+* Update to *rustc 1.21.0-nightly (13d94d5fa 2017-08-10)*
+
+## 0.0.150
+* Update to *rustc 1.21.0-nightly (215e0b10e 2017-08-08)*
+
 ## 0.0.148
 * Update to *rustc 1.21.0-nightly (37c7d0ebb 2017-07-31)*
 * New lints: [`unreadable_literal`], [`inconsisten_digit_grouping`], [`large_digit_groups`]

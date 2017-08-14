@@ -26,7 +26,7 @@ declare_lint! {
     "taking a reference that is going to be automatically dereferenced"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct NeedlessBorrow;
 
 impl LintPass for NeedlessBorrow {

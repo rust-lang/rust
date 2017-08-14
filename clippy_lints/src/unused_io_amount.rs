@@ -4,9 +4,12 @@ use utils::{span_lint, match_path, match_trait_method, is_try, paths};
 
 /// **What it does:** Checks for unused written/read amount.
 ///
-/// **Why is this bad?** `io::Write::write` and `io::Read::read` are not guaranteed to
-/// process the entire buffer. They return how many bytes were processed, which might be smaller
-/// than a given buffer's length. If you don't need to deal with partial-write/read, use
+/// **Why is this bad?** `io::Write::write` and `io::Read::read` are not
+/// guaranteed to
+/// process the entire buffer. They return how many bytes were processed, which
+/// might be smaller
+/// than a given buffer's length. If you don't need to deal with
+/// partial-write/read, use
 /// `write_all`/`read_exact` instead.
 ///
 /// **Known problems:** Detects only common patterns.
@@ -73,15 +76,19 @@ fn check_method_call(cx: &LateContext, call: &hir::Expr, expr: &hir::Expr) {
     if let hir::ExprMethodCall(ref path, _, _) = call.node {
         let symbol = &*path.name.as_str();
         if match_trait_method(cx, call, &paths::IO_READ) && symbol == "read" {
-            span_lint(cx,
-                      UNUSED_IO_AMOUNT,
-                      expr.span,
-                      "handle read amount returned or use `Read::read_exact` instead");
+            span_lint(
+                cx,
+                UNUSED_IO_AMOUNT,
+                expr.span,
+                "handle read amount returned or use `Read::read_exact` instead",
+            );
         } else if match_trait_method(cx, call, &paths::IO_WRITE) && symbol == "write" {
-            span_lint(cx,
-                      UNUSED_IO_AMOUNT,
-                      expr.span,
-                      "handle written amount returned or use `Write::write_all` instead");
+            span_lint(
+                cx,
+                UNUSED_IO_AMOUNT,
+                expr.span,
+                "handle written amount returned or use `Write::write_all` instead",
+            );
         }
     }
 }

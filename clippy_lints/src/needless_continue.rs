@@ -99,7 +99,7 @@ declare_lint! {
     "`continue` statements that can be replaced by a rearrangement of code"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct NeedlessContinue;
 
 impl LintPass for NeedlessContinue {
@@ -116,59 +116,60 @@ impl EarlyLintPass for NeedlessContinue {
     }
 }
 
-/* This lint has to mainly deal with two cases of needless continue statements.
- *
- * Case 1 [Continue inside else block]:
- *
- *     loop {
- *         // region A
- *         if cond {
- *             // region B
- *         } else {
- *             continue;
- *         }
- *         // region C
- *     }
- *
- * This code can better be written as follows:
- *
- *     loop {
- *         // region A
- *         if cond {
- *             // region B
- *             // region C
- *         }
- *     }
- *
- * Case 2 [Continue inside then block]:
- *
- *     loop {
- *       // region A
- *       if cond {
- *           continue;
- *           // potentially more code here.
- *       } else {
- *           // region B
- *       }
- *       // region C
- *     }
- *
- *
- * This snippet can be refactored to:
- *
- *     loop {
- *       // region A
- *       if !cond {
- *           // region B
- *           // region C
- *       }
- *     }
- * */
+/* This lint has to mainly deal with two cases of needless continue
+ * statements. */
+// Case 1 [Continue inside else block]:
+//
+//     loop {
+//         // region A
+//         if cond {
+//             // region B
+//         } else {
+//             continue;
+//         }
+//         // region C
+//     }
+//
+// This code can better be written as follows:
+//
+//     loop {
+//         // region A
+//         if cond {
+//             // region B
+//             // region C
+//         }
+//     }
+//
+// Case 2 [Continue inside then block]:
+//
+//     loop {
+//       // region A
+//       if cond {
+//           continue;
+//           // potentially more code here.
+//       } else {
+//           // region B
+//       }
+//       // region C
+//     }
+//
+//
+// This snippet can be refactored to:
+//
+//     loop {
+//       // region A
+//       if !cond {
+//           // region B
+//           // region C
+//       }
+//     }
+//
 
 /// Given an expression, returns true if either of the following is true
 ///
 /// - The expression is a `continue` node.
-/// - The expression node is a block with the first statement being a `continue`.
+/// - The expression node is a block with the first statement being a
+/// `continue`.
 ///
 fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
     match else_expr.node {
@@ -195,7 +196,8 @@ fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
 /// If `expr` is a loop expression (while/while let/for/loop), calls `func` with
 /// the AST object representing the loop block of `expr`.
 fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
-    where F: FnMut(&ast::Block)
+where
+    F: FnMut(&ast::Block),
 {
     match expr.node {
         ast::ExprKind::While(_, ref loop_block, _) |
@@ -206,7 +208,8 @@ fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
     }
 }
 
-/// If `stmt` is an if expression node with an `else` branch, calls func with the
+/// If `stmt` is an if expression node with an `else` branch, calls func with
+/// the
 /// following:
 ///
 /// - The `if` expression itself,
@@ -215,7 +218,8 @@ fn with_loop_block<F>(expr: &ast::Expr, mut func: F)
 /// - The `else` expression.
 ///
 fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
-    where F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr)
+where
+    F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr),
 {
     match stmt.node {
         ast::StmtKind::Semi(ref e) |
@@ -271,10 +275,18 @@ fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: L
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
         LintType::ContinueInsideElseBlock => {
-            (suggestion_snippet_for_continue_inside_else(ctx, data, header), MSG_REDUNDANT_ELSE_BLOCK, data.else_expr)
+            (
+                suggestion_snippet_for_continue_inside_else(ctx, data, header),
+                MSG_REDUNDANT_ELSE_BLOCK,
+                data.else_expr,
+            )
         },
         LintType::ContinueInsideThenBlock => {
-            (suggestion_snippet_for_continue_inside_if(ctx, data, header), MSG_ELSE_BLOCK_NOT_NEEDED, data.if_expr)
+            (
+                suggestion_snippet_for_continue_inside_if(ctx, data, header),
+                MSG_ELSE_BLOCK_NOT_NEEDED,
+                data.if_expr,
+            )
         },
     };
     span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
@@ -407,7 +419,8 @@ pub fn erode_from_front(s: &str) -> String {
 }
 
 /// If `s` contains the code for a block, delimited by braces, this function
-/// tries to get the contents of the block. If there is no closing brace present,
+/// tries to get the contents of the block. If there is no closing brace
+/// present,
 /// an empty string is returned.
 pub fn erode_block(s: &str) -> String {
     erode_from_back(&erode_from_front(s))

@@ -1,9 +1,9 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use syntax::ast::LitKind;
+use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::Span;
 use unicode_normalization::UnicodeNormalization;
-use utils::{snippet, span_help_and_lint};
+use utils::{snippet, span_help_and_lint, is_allowed};
 
 /// **What it does:** Checks for the Unicode zero-width space in the code.
 ///
@@ -12,7 +12,8 @@ use utils::{snippet, span_help_and_lint};
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** You don't see it, but there may be a zero-width space somewhere in this text.
+/// **Example:** You don't see it, but there may be a zero-width space
+/// somewhere in this text.
 declare_lint! {
     pub ZERO_WIDTH_SPACE,
     Deny,
@@ -72,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprLit(ref lit) = expr.node {
             if let LitKind::Str(_, _) = lit.node {
-                check_str(cx, lit.span)
+                check_str(cx, lit.span, expr.id)
             }
         }
     }
@@ -92,33 +93,43 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &LateContext, span: Span) {
+fn check_str(cx: &LateContext, span: Span, id: NodeId) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
-        span_help_and_lint(cx,
-                           ZERO_WIDTH_SPACE,
-                           span,
-                           "zero-width space detected",
-                           &format!("Consider replacing the string with:\n\"{}\"",
-                                    string.replace("\u{200B}", "\\u{200B}")));
+        span_help_and_lint(
+            cx,
+            ZERO_WIDTH_SPACE,
+            span,
+            "zero-width space detected",
+            &format!(
+                "Consider replacing the string with:\n\"{}\"",
+                string.replace("\u{200B}", "\\u{200B}")
+            ),
+        );
     }
     if string.chars().any(|c| c as u32 > 0x7F) {
-        span_help_and_lint(cx,
-                           NON_ASCII_LITERAL,
-                           span,
-                           "literal non-ASCII character detected",
-                           &format!("Consider replacing the string with:\n\"{}\"",
-                                    if cx.current_level(UNICODE_NOT_NFC) == Level::Allow {
-                                        escape(string.chars())
-                                    } else {
-                                        escape(string.nfc())
-                                    }));
+        span_help_and_lint(
+            cx,
+            NON_ASCII_LITERAL,
+            span,
+            "literal non-ASCII character detected",
+            &format!(
+                "Consider replacing the string with:\n\"{}\"",
+                if is_allowed(cx, UNICODE_NOT_NFC, id) {
+                    escape(string.chars())
+                } else {
+                    escape(string.nfc())
+                }
+            ),
+        );
     }
-    if cx.current_level(NON_ASCII_LITERAL) == Level::Allow && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        span_help_and_lint(cx,
-                           UNICODE_NOT_NFC,
-                           span,
-                           "non-nfc unicode sequence detected",
-                           &format!("Consider replacing the string with:\n\"{}\"", string.nfc().collect::<String>()));
+    if is_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
+        span_help_and_lint(
+            cx,
+            UNICODE_NOT_NFC,
+            span,
+            "non-nfc unicode sequence detected",
+            &format!("Consider replacing the string with:\n\"{}\"", string.nfc().collect::<String>()),
+        );
     }
 }

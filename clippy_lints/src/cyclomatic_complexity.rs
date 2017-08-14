@@ -8,14 +8,15 @@ use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use syntax::ast::{Attribute, NodeId};
 use syntax::codemap::Span;
 
-use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
+use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type, is_allowed};
 
 /// **What it does:** Checks for methods with high cyclomatic complexity.
 ///
 /// **Why is this bad?** Methods of high cyclomatic complexity tend to be badly
 /// readable. Also LLVM will usually optimize small methods better.
 ///
-/// **Known problems:** Sometimes it's hard to find a way to reduce the complexity.
+/// **Known problems:** Sometimes it's hard to find a way to reduce the
+/// complexity.
 ///
 /// **Example:** No. You'll see it when you get the warning.
 declare_lint! {
@@ -63,7 +64,13 @@ impl CyclomaticComplexity {
             cx: cx,
         };
         helper.visit_expr(expr);
-        let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
+        let CCHelper {
+            match_arms,
+            divergence,
+            short_circuits,
+            returns,
+            ..
+        } = helper;
         let ret_ty = cx.tables.node_id_to_type(expr.id);
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
@@ -72,7 +79,16 @@ impl CyclomaticComplexity {
         };
 
         if cc + divergence < match_arms + short_circuits {
-            report_cc_bug(cx, cc, match_arms, divergence, short_circuits, ret_adjust, span);
+            report_cc_bug(
+                cx,
+                cc,
+                match_arms,
+                divergence,
+                short_circuits,
+                ret_adjust,
+                span,
+                body.id().node_id,
+            );
         } else {
             let mut rust_cc = cc + divergence - match_arms - short_circuits;
             // prevent degenerate cases where unreachable code contains `return` statements
@@ -80,11 +96,13 @@ impl CyclomaticComplexity {
                 rust_cc -= ret_adjust;
             }
             if rust_cc > self.limit.limit() {
-                span_help_and_lint(cx,
-                                   CYCLOMATIC_COMPLEXITY,
-                                   span,
-                                   &format!("the function has a cyclomatic complexity of {}", rust_cc),
-                                   "you could split it up into multiple smaller functions");
+                span_help_and_lint(
+                    cx,
+                    CYCLOMATIC_COMPLEXITY,
+                    span,
+                    &format!("the function has a cyclomatic complexity of {}", rust_cc),
+                    "you could split it up into multiple smaller functions",
+                );
             }
         }
     }
@@ -98,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
         _: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
-        node_id: NodeId
+        node_id: NodeId,
     ) {
         let def_id = cx.tcx.hir.local_def_id(node_id);
         if !cx.tcx.has_attr(def_id, "test") {
@@ -107,10 +125,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     }
 
     fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.push_attrs(
+            cx.sess(),
+            attrs,
+            "cyclomatic_complexity",
+        );
     }
     fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.pop_attrs(
+            cx.sess(),
+            attrs,
+            "cyclomatic_complexity",
+        );
     }
 }
 
@@ -162,29 +188,37 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
     }
 }
 
-#[cfg(feature="debugging")]
-fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
-    span_bug!(span,
-              "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
+#[cfg(feature = "debugging")]
+#[allow(too_many_arguments)]
+fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
+    span_bug!(
+        span,
+        "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
                div = {}, shorts = {}, returns = {}. Please file a bug report.",
-              cc,
-              narms,
-              div,
-              shorts,
-              returns);
+        cc,
+        narms,
+        div,
+        shorts,
+        returns
+    );
 }
-#[cfg(not(feature="debugging"))]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
-    if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
-        cx.sess().span_note_without_error(span,
-                                          &format!("Clippy encountered a bug calculating cyclomatic complexity \
+#[cfg(not(feature = "debugging"))]
+#[allow(too_many_arguments)]
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
+    if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
+        cx.sess().span_note_without_error(
+            span,
+            &format!(
+                "Clippy encountered a bug calculating cyclomatic complexity \
                                                     (hide this message with `#[allow(cyclomatic_complexity)]`): \
                                                     cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
                                                     Please file a bug report.",
-                                                   cc,
-                                                   narms,
-                                                   div,
-                                                   shorts,
-                                                   returns));
+                cc,
+                narms,
+                div,
+                shorts,
+                returns
+            ),
+        );
     }
 }

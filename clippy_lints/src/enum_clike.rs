@@ -1,4 +1,5 @@
-//! lint on C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`
+//! lint on C-like enums that are `repr(isize/usize)` and have values that
+//! don't fit into an `i32`
 
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
@@ -50,16 +51,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                     let did = cx.tcx.hir.body_owner_def_id(body_id);
                     let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
                     let substs = Substs::identity_for_item(cx.tcx.global_tcx(), did);
-                    let bad = match cx.tcx.at(expr.span).const_eval(param_env.and((did, substs))) {
+                    let bad = match cx.tcx.at(expr.span).const_eval(
+                        param_env.and((did, substs)),
+                    ) {
                         Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
                         Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
                         _ => false,
                     };
                     if bad {
-                        span_lint(cx,
-                                  ENUM_CLIKE_UNPORTABLE_VARIANT,
-                                  var.span,
-                                  "Clike enum variant discriminant is not portable to 32-bit targets");
+                        span_lint(
+                            cx,
+                            ENUM_CLIKE_UNPORTABLE_VARIANT,
+                            var.span,
+                            "Clike enum variant discriminant is not portable to 32-bit targets",
+                        );
                     }
                 }
             }

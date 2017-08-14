@@ -10,7 +10,8 @@ use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast,
 /// **Why is this bad?** Removing the `return` and semicolon will make the code
 /// more rusty.
 ///
-/// **Known problems:** None.
+/// **Known problems:** If the computation returning the value borrows a local
+/// variable, removing the `return` may run afoul of the borrow checker.
 ///
 /// **Example:**
 /// ```rust
@@ -22,7 +23,8 @@ declare_lint! {
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
-/// **What it does:** Checks for `let`-bindings, which are subsequently returned.
+/// **What it does:** Checks for `let`-bindings, which are subsequently
+/// returned.
 ///
 /// **Why is this bad?** It is just extraneous code. Remove it to make your code
 /// more rusty.
@@ -92,13 +94,11 @@ impl ReturnPass {
         if in_external_macro(cx, inner_span) || in_macro(inner_span) {
             return;
         }
-        span_lint_and_then(cx,
-                           NEEDLESS_RETURN,
-                           ret_span,
-                           "unneeded return statement",
-                           |db| if let Some(snippet) = snippet_opt(cx, inner_span) {
-                               db.span_suggestion(ret_span, "remove `return` as shown", snippet);
-                           });
+        span_lint_and_then(cx, NEEDLESS_RETURN, ret_span, "unneeded return statement", |db| {
+            if let Some(snippet) = snippet_opt(cx, inner_span) {
+                db.span_suggestion(ret_span, "remove `return` as shown", snippet);
+            }
+        });
     }
 
     // Check for "let x = EXPR; x"

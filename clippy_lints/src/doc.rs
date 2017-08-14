@@ -19,7 +19,8 @@ use utils::span_lint;
 ///
 /// **Examples:**
 /// ```rust
-/// /// Do something with the foo_bar parameter. See also that::other::module::foo.
+/// /// Do something with the foo_bar parameter. See also
+/// that::other::module::foo.
 /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
 /// fn doit(foo_bar) { .. }
 /// ```
@@ -78,7 +79,8 @@ impl<'a> Iterator for Parser<'a> {
 /// Cleanup documentation decoration (`///` and such).
 ///
 /// We can't use `syntax::attr::AttributeMethods::with_desugared_doc` or
-/// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we need to keep track of
+/// `syntax::parse::lexer::comments::strip_doc_comment_decoration` because we
+/// need to keep track of
 /// the spans but this function is inspired from the later.
 #[allow(cast_possible_truncation)]
 pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(usize, Span)>) {
@@ -89,7 +91,18 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             let doc = &comment[prefix.len()..];
             let mut doc = doc.to_owned();
             doc.push('\n');
-            return (doc.to_owned(), vec![(doc.len(), Span { lo: span.lo + BytePos(prefix.len() as u32), ..span })]);
+            return (
+                doc.to_owned(),
+                vec![
+                    (
+                        doc.len(),
+                        Span {
+                            lo: span.lo + BytePos(prefix.len() as u32),
+                            ..span
+                        }
+                    ),
+                ],
+            );
         }
     }
 
@@ -102,7 +115,13 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             debug_assert_eq!(offset as u32 as usize, offset);
 
             // +1 for the newline
-            sizes.push((line.len() + 1, Span { lo: span.lo + BytePos(offset as u32), ..span }));
+            sizes.push((
+                line.len() + 1,
+                Span {
+                    lo: span.lo + BytePos(offset as u32),
+                    ..span
+                },
+            ));
         }
 
         return (doc.to_string(), sizes);
@@ -163,7 +182,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
     cx: &EarlyContext,
     valid_idents: &[String],
     docs: Events,
-    spans: &[(usize, Span)]
+    spans: &[(usize, Span)],
 ) {
     use pulldown_cmark::Event::*;
     use pulldown_cmark::Tag::*;
@@ -192,7 +211,10 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
                     let (begin, span) = spans[index];
 
                     // Adjust for the begining of the current `Event`
-                    let span = Span { lo: span.lo + BytePos::from_usize(offset - begin), ..span };
+                    let span = Span {
+                        lo: span.lo + BytePos::from_usize(offset - begin),
+                        ..span
+                    };
 
                     check_text(cx, valid_idents, &text, span);
                 }
@@ -225,8 +247,10 @@ fn check_text(cx: &EarlyContext, valid_idents: &[String], text: &str, span: Span
 }
 
 fn check_word(cx: &EarlyContext, word: &str, span: Span) {
-    /// Checks if a string is camel-case, ie. contains at least two uppercase letter (`Clippy` is
-    /// ok) and one lower-case letter (`NASA` is ok). Plural are also excluded (`IDs` is ok).
+    /// Checks if a string is camel-case, ie. contains at least two uppercase
+    /// letter (`Clippy` is
+    /// ok) and one lower-case letter (`NASA` is ok). Plural are also excluded
+    /// (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
         if s.starts_with(|c: char| c.is_digit(10)) {
             return false;
@@ -239,7 +263,7 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
         };
 
         s.chars().all(char::is_alphanumeric) && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1 &&
-        s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
+            s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }
 
     fn has_underscore(s: &str) -> bool {
@@ -247,9 +271,11 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
-        span_lint(cx,
-                  DOC_MARKDOWN,
-                  span,
-                  &format!("you should put `{}` between ticks in the documentation", word));
+        span_lint(
+            cx,
+            DOC_MARKDOWN,
+            span,
+            &format!("you should put `{}` between ticks in the documentation", word),
+        );
     }
 }

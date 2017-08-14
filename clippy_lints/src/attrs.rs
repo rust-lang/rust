@@ -35,12 +35,15 @@ declare_lint! {
     "use of `#[inline(always)]`"
 }
 
-/// **What it does:** Checks for `extern crate` and `use` items annotated with lint attributes
+/// **What it does:** Checks for `extern crate` and `use` items annotated with
+/// lint attributes
 ///
-/// **Why is this bad?** Lint attributes have no effect on crate imports. Most likely a `!` was
+/// **Why is this bad?** Lint attributes have no effect on crate imports. Most
+/// likely a `!` was
 /// forgotten
 ///
-/// **Known problems:** Technically one might allow `unused_import` on a `use` item,
+/// **Known problems:** Technically one might allow `unused_import` on a `use`
+/// item,
 /// but it's easier to remove the unused item.
 ///
 /// **Example:**
@@ -75,7 +78,7 @@ declare_lint! {
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct AttrPass;
 
 impl LintPass for AttrPass {
@@ -124,14 +127,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                     }
                                     if let Some(mut sugg) = snippet_opt(cx, attr.span) {
                                         if sugg.len() > 1 {
-                                            span_lint_and_then(cx,
-                                                               USELESS_ATTRIBUTE,
-                                                               attr.span,
-                                                               "useless lint attribute",
-                                                               |db| {
-                                                sugg.insert(1, '!');
-                                                db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
-                                            });
+                                            span_lint_and_then(
+                                                cx,
+                                                USELESS_ATTRIBUTE,
+                                                attr.span,
+                                                "useless lint attribute",
+                                                |db| {
+                                                    sugg.insert(1, '!');
+                                                    db.span_suggestion(
+                                                        attr.span,
+                                                        "if you just forgot a `!`, use",
+                                                        sugg,
+                                                    );
+                                                },
+                                            );
                                         }
                                     }
                                 },
@@ -191,7 +200,10 @@ fn is_relevant_block(tcx: TyCtxt, tables: &ty::TypeckTables, block: &Block) -> b
             StmtSemi(ref expr, _) => is_relevant_expr(tcx, tables, expr),
         }
     } else {
-        block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
+        block.expr.as_ref().map_or(
+            false,
+            |e| is_relevant_expr(tcx, tables, e),
+        )
     }
 }
 
@@ -224,11 +236,15 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
                 continue;
             }
             if is_word(&values[0], "always") {
-                span_lint(cx,
-                          INLINE_ALWAYS,
-                          attr.span,
-                          &format!("you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
-                                   name));
+                span_lint(
+                    cx,
+                    INLINE_ALWAYS,
+                    attr.span,
+                    &format!(
+                        "you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
+                        name
+                    ),
+                );
             }
         }
     }
@@ -240,10 +256,12 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
             return;
         }
     }
-    span_lint(cx,
-              DEPRECATED_SEMVER,
-              span,
-              "the since field must contain a semver-compliant version");
+    span_lint(
+        cx,
+        DEPRECATED_SEMVER,
+        span,
+        "the since field must contain a semver-compliant version",
+    );
 }
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {

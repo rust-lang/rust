@@ -9,8 +9,9 @@ use toml;
 use std::sync::Mutex;
 
 /// Get the configuration file from arguments.
-pub fn file_from_args(args: &[codemap::Spanned<ast::NestedMetaItemKind>])
-    -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
+pub fn file_from_args(
+    args: &[codemap::Spanned<ast::NestedMetaItemKind>],
+) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
         if arg.name() == "conf_file" {
             return match arg.node {
@@ -38,12 +39,14 @@ pub enum Error {
     /// Not valid toml or doesn't fit the expected conf format
     Toml(String),
     /// Type error.
-    Type(/// The name of the key.
-         &'static str,
-         /// The expected type.
-         &'static str,
-         /// The type we got instead.
-         &'static str),
+    Type(
+        /// The name of the key.
+        &'static str,
+        /// The expected type.
+        &'static str,
+        /// The type we got instead.
+        &'static str
+    ),
     /// There is an unknown key is the file.
     UnknownKey(String),
 }
@@ -234,11 +237,25 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
         Err(err) => return default(vec![err.into()]),
     };
 
-    assert!(ERRORS.lock().expect("no threading -> mutex always safe").is_empty());
+    assert!(
+        ERRORS
+            .lock()
+            .expect("no threading -> mutex always safe")
+            .is_empty()
+    );
     match toml::from_str(&file) {
-        Ok(toml) => (toml, ERRORS.lock().expect("no threading -> mutex always safe").split_off(0)),
+        Ok(toml) => (
+            toml,
+            ERRORS
+                .lock()
+                .expect("no threading -> mutex always safe")
+                .split_off(0),
+        ),
         Err(e) => {
-            let mut errors = ERRORS.lock().expect("no threading -> mutex always safe").split_off(0);
+            let mut errors = ERRORS
+                .lock()
+                .expect("no threading -> mutex always safe")
+                .split_off(0);
             errors.push(Error::Toml(e.to_string()));
             default(errors)
         },

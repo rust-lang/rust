@@ -20,7 +20,8 @@ pub struct EtaPass;
 /// ```rust
 /// xs.map(|x| foo(x))
 /// ```
-/// where `foo(_)` is a plain function that takes the exact argument type of `x`.
+/// where `foo(_)` is a plain function that takes the exact argument type of
+/// `x`.
 declare_lint! {
     pub REDUNDANT_CLOSURE,
     Warn,
@@ -91,13 +92,11 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                     return;
                 }
             }
-            span_lint_and_then(cx,
-                               REDUNDANT_CLOSURE,
-                               expr.span,
-                               "redundant closure found",
-                               |db| if let Some(snippet) = snippet_opt(cx, caller.span) {
-                                   db.span_suggestion(expr.span, "remove closure as shown", snippet);
-                               });
+            span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
+                if let Some(snippet) = snippet_opt(cx, caller.span) {
+                    db.span_suggestion(expr.span, "remove closure as shown", snippet);
+                }
+            });
         }
     }
 }

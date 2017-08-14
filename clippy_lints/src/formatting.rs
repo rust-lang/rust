@@ -4,9 +4,11 @@ use syntax_pos::{Span, NO_EXPANSION};
 use utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
 
-/// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-` operators.
+/// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
+/// operators.
 ///
-/// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or confusing.
+/// **Why is this bad?** This is either a typo of `*=`, `!=` or `-=` or
+/// confusing.
 ///
 /// **Known problems:** None.
 ///
@@ -67,12 +69,16 @@ declare_lint! {
 }
 
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct Formatting;
 
 impl LintPass for Formatting {
     fn get_lints(&self) -> LintArray {
-        lint_array![SUSPICIOUS_ASSIGNMENT_FORMATTING, SUSPICIOUS_ELSE_FORMATTING, POSSIBLE_MISSING_COMMA]
+        lint_array!(
+            SUSPICIOUS_ASSIGNMENT_FORMATTING,
+            SUSPICIOUS_ELSE_FORMATTING,
+            POSSIBLE_MISSING_COMMA
+        )
     }
 }
 
@@ -114,14 +120,18 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
                         ctxt: NO_EXPANSION,
                     };
                     if eq_snippet.ends_with('=') {
-                        span_note_and_lint(cx,
-                                           SUSPICIOUS_ASSIGNMENT_FORMATTING,
-                                           eqop_span,
-                                           &format!("this looks like you are trying to use `.. {op}= ..`, but you \
+                        span_note_and_lint(
+                            cx,
+                            SUSPICIOUS_ASSIGNMENT_FORMATTING,
+                            eqop_span,
+                            &format!(
+                                "this looks like you are trying to use `.. {op}= ..`, but you \
                                                      really are doing `.. = ({op} ..)`",
-                                                    op = op),
-                                           eqop_span,
-                                           &format!("to remove this lint, use either `{op}=` or `= {op}`", op = op));
+                                op = op
+                            ),
+                            eqop_span,
+                            &format!("to remove this lint, use either `{op}=` or `= {op}`", op = op),
+                        );
                     }
                 }
             }
@@ -133,7 +143,8 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
 fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
         if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(then.span) {
-            // this will be a span from the closing ‘}’ of the “then” block (excluding) to the
+            // this will be a span from the closing ‘}’ of the “then” block (excluding) to
+            // the
             // “if” of the “else if” block (excluding)
             let else_span = Span {
                 lo: then.span.hi,
@@ -144,16 +155,20 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
             // the snippet should look like " else \n    " with maybe comments anywhere
             // it’s bad when there is a ‘\n’ after the “else”
             if let Some(else_snippet) = snippet_opt(cx, else_span) {
-                let else_pos = else_snippet.find("else").expect("there must be a `else` here");
+                let else_pos = else_snippet.find("else").expect(
+                    "there must be a `else` here",
+                );
 
                 if else_snippet[else_pos..].contains('\n') {
-                    span_note_and_lint(cx,
-                                       SUSPICIOUS_ELSE_FORMATTING,
-                                       else_span,
-                                       "this is an `else if` but the formatting might hide it",
-                                       else_span,
-                                       "to remove this lint, remove the `else` or remove the new line between `else` \
-                                        and `if`");
+                    span_note_and_lint(
+                        cx,
+                        SUSPICIOUS_ELSE_FORMATTING,
+                        else_span,
+                        "this is an `else if` but the formatting might hide it",
+                        else_span,
+                        "to remove this lint, remove the `else` or remove the new line between `else` \
+                                        and `if`",
+                    );
                 }
             }
         }
@@ -178,12 +193,14 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
                             ctxt: NO_EXPANSION,
                         };
                         if space_snippet.contains('\n') {
-                            span_note_and_lint(cx,
-                                               POSSIBLE_MISSING_COMMA,
-                                               lint_span,
-                                               "possibly missing a comma here",
-                                               lint_span,
-                                               "to remove this lint, add a comma or write the expr in a single line");
+                            span_note_and_lint(
+                                cx,
+                                POSSIBLE_MISSING_COMMA,
+                                lint_span,
+                                "possibly missing a comma here",
+                                lint_span,
+                                "to remove this lint, add a comma or write the expr in a single line",
+                            );
                         }
                     }
                 }
@@ -195,7 +212,8 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
 fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
     if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) && unsugar_if(first).is_some() &&
-       unsugar_if(second).is_some() {
+        unsugar_if(second).is_some()
+    {
         // where the else would be
         let else_span = Span {
             lo: first.span.hi,
@@ -205,13 +223,15 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
 
         if let Some(else_snippet) = snippet_opt(cx, else_span) {
             if !else_snippet.contains('\n') {
-                span_note_and_lint(cx,
-                                   SUSPICIOUS_ELSE_FORMATTING,
-                                   else_span,
-                                   "this looks like an `else if` but the `else` is missing",
-                                   else_span,
-                                   "to remove this lint, add the missing `else` or add a new line before the second \
-                                    `if`");
+                span_note_and_lint(
+                    cx,
+                    SUSPICIOUS_ELSE_FORMATTING,
+                    else_span,
+                    "this looks like an `else if` but the `else` is missing",
+                    else_span,
+                    "to remove this lint, add the missing `else` or add a new line before the second \
+                                    `if`",
+                );
             }
         }
     }

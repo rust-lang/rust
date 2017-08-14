@@ -41,7 +41,7 @@ declare_lint! {
     "`foo = bar; bar = foo` sequence"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct Swap;
 
 impl LintPass for Swap {

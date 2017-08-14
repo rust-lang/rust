@@ -49,7 +49,7 @@ declare_lint! {
     "unidiomatic `let mut` declaration followed by initialization in `if`"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct LetIfSeq;
 
 impl LintPass for LetIfSeq {
@@ -154,7 +154,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
 fn check_assign<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     decl: hir::def_id::DefId,
-    block: &'tcx hir::Block
+    block: &'tcx hir::Block,
 ) -> Option<&'tcx hir::Expr> {
     if_let_chain! {[
         block.expr.is_none(),

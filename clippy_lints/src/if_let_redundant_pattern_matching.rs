@@ -3,9 +3,11 @@ use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::{paths, span_lint_and_then, match_path, snippet};
 
-/// **What it does:*** Lint for redundant pattern matching over `Result` or `Option`
+/// **What it does:*** Lint for redundant pattern matching over `Result` or
+/// `Option`
 ///
-/// **Why is this bad?** It's more concise and clear to just use the proper utility function
+/// **Why is this bad?** It's more concise and clear to just use the proper
+/// utility function
 ///
 /// **Known problems:** None.
 ///

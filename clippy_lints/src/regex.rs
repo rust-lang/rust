@@ -178,7 +178,8 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
                 },
                 3 => {
                     if let (&Expr::StartText, &Expr::Literal { .. }, &Expr::EndText) =
-                        (&exprs[0], &exprs[1], &exprs[2]) {
+                        (&exprs[0], &exprs[1], &exprs[2])
+                    {
                         Some("consider using `==` on `str`s")
                     } else {
                         None
@@ -211,18 +212,22 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
             match builder.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {
-                        span_help_and_lint(cx,
-                                           TRIVIAL_REGEX,
-                                           expr.span,
-                                           "trivial regex",
-                                           &format!("consider using {}", repl));
+                        span_help_and_lint(
+                            cx,
+                            TRIVIAL_REGEX,
+                            expr.span,
+                            "trivial regex",
+                            &format!("consider using {}", repl),
+                        );
                     }
                 },
                 Err(e) => {
-                    span_lint(cx,
-                              INVALID_REGEX,
-                              str_span(expr.span, r, e.position()),
-                              &format!("regex syntax error: {}", e.description()));
+                    span_lint(
+                        cx,
+                        INVALID_REGEX,
+                        str_span(expr.span, r, e.position()),
+                        &format!("regex syntax error: {}", e.description()),
+                    );
                 },
             }
         }
@@ -230,18 +235,22 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
         match builder.parse(&r) {
             Ok(r) => {
                 if let Some(repl) = is_trivial_regex(&r) {
-                    span_help_and_lint(cx,
-                                       TRIVIAL_REGEX,
-                                       expr.span,
-                                       "trivial regex",
-                                       &format!("consider using {}", repl));
+                    span_help_and_lint(
+                        cx,
+                        TRIVIAL_REGEX,
+                        expr.span,
+                        "trivial regex",
+                        &format!("consider using {}", repl),
+                    );
                 }
             },
             Err(e) => {
-                span_lint(cx,
-                          INVALID_REGEX,
-                          expr.span,
-                          &format!("regex syntax error on position {}: {}", e.position(), e.description()));
+                span_lint(
+                    cx,
+                    INVALID_REGEX,
+                    expr.span,
+                    &format!("regex syntax error on position {}: {}", e.position(), e.description()),
+                );
             },
         }
     }

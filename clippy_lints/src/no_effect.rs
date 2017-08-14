@@ -62,10 +62,10 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         Expr_::ExprBox(ref inner) => has_no_effect(cx, inner),
         Expr_::ExprStruct(_, ref fields, ref base) => {
             fields.iter().all(|field| has_no_effect(cx, &field.expr)) &&
-            match *base {
-                Some(ref base) => has_no_effect(cx, base),
-                None => true,
-            }
+                match *base {
+                    Some(ref base) => has_no_effect(cx, base),
+                    None => true,
+                }
         },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {
@@ -83,11 +83,11 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         },
         Expr_::ExprBlock(ref block) => {
             block.stmts.is_empty() &&
-            if let Some(ref expr) = block.expr {
-                has_no_effect(cx, expr)
-            } else {
-                false
-            }
+                if let Some(ref expr) = block.expr {
+                    has_no_effect(cx, expr)
+                } else {
+                    false
+                }
         },
         _ => false,
     }
@@ -120,12 +120,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         return;
                     }
                 }
-                span_lint_and_sugg(cx,
-                                   UNNECESSARY_OPERATION,
-                                   stmt.span,
-                                   "statement can be reduced",
-                                   "replace it with",
-                                   snippet);
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_OPERATION,
+                    stmt.span,
+                    "statement can be reduced",
+                    "replace it with",
+                    snippet,
+                );
             }
         }
     }
@@ -152,7 +154,14 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         Expr_::ExprStruct(_, ref fields, ref base) => {
-            Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
+            Some(
+                fields
+                    .iter()
+                    .map(|f| &f.expr)
+                    .chain(base)
+                    .map(Deref::deref)
+                    .collect(),
+            )
         },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {

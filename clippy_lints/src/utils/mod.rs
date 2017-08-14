@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
 use rustc::hir::map::Node;
-use rustc::lint::{LintContext, LateContext, Level, Lint};
+use rustc::lint::{LintContext, Level, LateContext, Lint};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, Ty};
@@ -93,7 +93,8 @@ macro_rules! if_let_chain {
 
 pub mod higher;
 
-/// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one
+/// Returns true if the two spans come from differing expansions (i.e. one is
+/// from a macro and one
 /// isn't).
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.ctxt != lhs.ctxt
@@ -119,10 +120,12 @@ pub fn in_macro(span: Span) -> bool {
     })
 }
 
-/// Returns true if the macro that expanded the crate was outside of the current crate or was a
+/// Returns true if the macro that expanded the crate was outside of the
+/// current crate or was a
 /// compiler plugin.
 pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
-    /// Invokes `in_macro` with the expansion info of the given span slightly heavy, try to use
+    /// Invokes `in_macro` with the expansion info of the given span slightly
+    /// heavy, try to use
     /// this after other checks have already happened.
     fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
         // no ExpnInfo = no macro
@@ -133,11 +136,18 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
         // no span for the callee = external macro
         info.callee.span.map_or(true, |span| {
             // no snippet = external macro or compiler-builtin expansion
-            cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| !code.starts_with("macro_rules"))
+            cx.sess().codemap().span_to_snippet(span).ok().map_or(
+                true,
+                |code| {
+                    !code.starts_with("macro_rules")
+                },
+            )
         })
     }
 
-    span.ctxt.outer().expn_info().map_or(false, |info| in_macro_ext(cx, &info))
+    span.ctxt.outer().expn_info().map_or(false, |info| {
+        in_macro_ext(cx, &info)
+    })
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.
@@ -170,7 +180,10 @@ pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
 
     tcx.push_item_path(&mut apb, def_id);
 
-    apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
+    apb.names.len() == path.len() &&
+        apb.names.into_iter().zip(path.iter()).all(
+            |(a, &b)| *a == *b,
+        )
 }
 
 /// Check if type is struct, enum or union type with given def path.
@@ -206,9 +219,9 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 pub fn last_path_segment(path: &QPath) -> &PathSegment {
     match *path {
         QPath::Resolved(_, ref path) => {
-            path.segments
-                .last()
-                .expect("A path must have at least one segment")
+            path.segments.last().expect(
+                "A path must have at least one segment",
+            )
         },
         QPath::TypeRelative(_, ref seg) => seg,
     }
@@ -235,7 +248,7 @@ pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
             match ty.node {
                 TyPath(ref inner_path) => {
                     !segments.is_empty() && match_path(inner_path, &segments[..(segments.len() - 1)]) &&
-                    segment.name == segments[segments.len() - 1]
+                        segment.name == segments[segments.len() - 1]
                 },
                 _ => false,
             }
@@ -244,7 +257,9 @@ pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
 }
 
 pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.name == *b)
+    path.segments.iter().rev().zip(segments.iter().rev()).all(
+        |(a, b)| a.name == *b,
+    )
 }
 
 /// Match a `Path` against a slice of segment string literals, e.g.
@@ -254,7 +269,9 @@ pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
 /// match_path(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(|(a, b)| a.identifier.name == *b)
+    path.segments.iter().rev().zip(segments.iter().rev()).all(
+        |(a, b)| a.identifier.name == *b,
+    )
 }
 
 /// Get the definition associated to a path.
@@ -262,7 +279,9 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     let cstore = &cx.tcx.sess.cstore;
 
     let crates = cstore.crates();
-    let krate = crates.iter().find(|&&krate| cstore.crate_name(krate) == path[0]);
+    let krate = crates.iter().find(
+        |&&krate| cstore.crate_name(krate) == path[0],
+    );
     if let Some(krate) = krate {
         let krate = DefId {
             krate: *krate,
@@ -312,14 +331,20 @@ pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     ty: Ty<'tcx>,
     trait_id: DefId,
-    ty_params: &[Ty<'tcx>]
+    ty_params: &[Ty<'tcx>],
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let obligation = cx.tcx
-        .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-    cx.tcx
-        .infer_ctxt()
-        .enter(|infcx| traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation))
+    let obligation = cx.tcx.predicate_for_trait_def(
+        cx.param_env,
+        traits::ObligationCause::dummy(),
+        trait_id,
+        0,
+        ty,
+        ty_params,
+    );
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
+    })
 }
 
 /// Resolve the definition of a node from its `NodeId`.
@@ -330,7 +355,8 @@ pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: NodeId) -> def::Def {
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.
 ///
 /// For example, if `expr` represents the `.baz()` in `foo.bar().baz()`,
-/// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec` containing the `Expr`s for
+/// `matched_method_chain(expr, &["bar", "baz"])` will return a `Vec`
+/// containing the `Expr`s for
 /// `.bar()` and `.baz()`
 pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a [Expr]>> {
     let mut current = expr;
@@ -382,8 +408,10 @@ pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String>
     cx.sess().codemap().span_to_snippet(span).ok()
 }
 
-/// Convert a span (from a block) to a code snippet if available, otherwise use default.
-/// This trims the code of indentation, except for the first line. Use it for blocks or block-like
+/// Convert a span (from a block) to a code snippet if available, otherwise use
+/// default.
+/// This trims the code of indentation, except for the first line. Use it for
+/// blocks or block-like
 /// things which need to be printed as such.
 ///
 /// # Example
@@ -401,7 +429,7 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
     cx: &T,
     expr: &Expr,
     option: Option<String>,
-    default: &'a str
+    default: &'a str,
 ) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
@@ -414,7 +442,8 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
     }
 }
 
-/// Trim indentation from a multiline string with possibility of ignoring the first line.
+/// Trim indentation from a multiline string with possibility of ignoring the
+/// first line.
 pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {
     let s_space = trim_multiline_inner(s, ignore_first, ' ');
     let s_tab = trim_multiline_inner(s_space, ignore_first, '\t');
@@ -429,24 +458,28 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
                 None
             } else {
                 // ignore empty lines
-                Some(l.char_indices()
-                    .find(|&(_, x)| x != ch)
-                    .unwrap_or((l.len(), ch))
-                    .0)
+                Some(
+                    l.char_indices()
+                        .find(|&(_, x)| x != ch)
+                        .unwrap_or((l.len(), ch))
+                        .0,
+                )
             }
         })
         .min()
         .unwrap_or(0);
     if x > 0 {
-        Cow::Owned(s.lines()
-            .enumerate()
-            .map(|(i, l)| if (ignore_first && i == 0) || l.is_empty() {
-                l
-            } else {
-                l.split_at(x).1
-            })
-            .collect::<Vec<_>>()
-            .join("\n"))
+        Cow::Owned(
+            s.lines()
+                .enumerate()
+                .map(|(i, l)| if (ignore_first && i == 0) || l.is_empty() {
+                    l
+                } else {
+                    l.split_at(x).1
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+        )
     } else {
         s
     }
@@ -460,17 +493,22 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     if node_id == parent_id {
         return None;
     }
-    map.find(parent_id).and_then(|node| if let Node::NodeExpr(parent) = node {
-        Some(parent)
-    } else {
-        None
-    })
+    map.find(parent_id).and_then(
+        |node| if let Node::NodeExpr(parent) =
+            node
+        {
+            Some(parent)
+        } else {
+            None
+        },
+    )
 }
 
 pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
     let map = &cx.tcx.hir;
-    let enclosing_node = map.get_enclosing_scope(node)
-        .and_then(|enclosing_id| map.find(enclosing_id));
+    let enclosing_node = map.get_enclosing_scope(node).and_then(|enclosing_id| {
+        map.find(enclosing_id)
+    });
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(block) => Some(block),
@@ -498,17 +536,16 @@ impl<'a> Drop for DiagnosticWrapper<'a> {
 impl<'a> DiagnosticWrapper<'a> {
     fn wiki_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
-            self.0.help(&format!("for further information visit https://github.com/rust-lang-nursery/rust-clippy/wiki#{}",
-                                 lint.name_lower()));
+            self.0.help(&format!(
+                "for further information visit https://github.com/rust-lang-nursery/rust-clippy/wiki#{}",
+                lint.name_lower()
+            ));
         }
     }
 }
 
 pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
-    if cx.current_level(lint) != Level::Allow {
-        db.wiki_link(lint);
-    }
+    DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).wiki_link(lint);
 }
 
 pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -516,13 +553,11 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     lint: &'static Lint,
     span: Span,
     msg: &str,
-    help: &str
+    help: &str,
 ) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    if cx.current_level(lint) != Level::Allow {
-        db.0.help(help);
-        db.wiki_link(lint);
-    }
+    db.0.help(help);
+    db.wiki_link(lint);
 }
 
 pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -531,17 +566,15 @@ pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     span: Span,
     msg: &str,
     note_span: Span,
-    note: &str
+    note: &str,
 ) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
-    if cx.current_level(lint) != Level::Allow {
-        if note_span == span {
-            db.0.note(note);
-        } else {
-            db.0.span_note(note_span, note);
-        }
-        db.wiki_link(lint);
+    if note_span == span {
+        db.0.note(note);
+    } else {
+        db.0.span_note(note_span, note);
     }
+    db.wiki_link(lint);
 }
 
 pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
@@ -549,14 +582,13 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     lint: &'static Lint,
     sp: Span,
     msg: &str,
-    f: F
-) where F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>)
+    f: F,
+) where
+    F: for<'b> FnOnce(&mut DiagnosticBuilder<'b>),
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
-    if cx.current_level(lint) != Level::Allow {
-        f(&mut db.0);
-        db.wiki_link(lint);
-    }
+    f(&mut db.0);
+    db.wiki_link(lint);
 }
 
 pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -565,15 +597,17 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     sp: Span,
     msg: &str,
     help: &str,
-    sugg: String
+    sugg: String,
 ) {
     span_lint_and_then(cx, lint, sp, msg, |db| { db.span_suggestion(sp, help, sugg); });
 }
 
 /// Create a suggestion made from several `span → replacement`.
 ///
-/// Note: in the JSON format (used by `compiletest_rs`), the help message will appear once per
-/// replacement. In human-readable format though, it only appears once before the whole suggestion.
+/// Note: in the JSON format (used by `compiletest_rs`), the help message will
+/// appear once per
+/// replacement. In human-readable format though, it only appears once before
+/// the whole suggestion.
 pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(Span, String)>) {
     let sugg = rustc_errors::CodeSuggestion {
         substitution_parts: sugg.into_iter()
@@ -598,7 +632,8 @@ pub fn walk_ptrs_ty(ty: Ty) -> Ty {
     }
 }
 
-/// Return the base type for references and raw pointers, and count reference depth.
+/// Return the base type for references and raw pointers, and count reference
+/// depth.
 pub fn walk_ptrs_ty_depth(ty: Ty) -> (Ty, usize) {
     fn inner(ty: Ty, depth: usize) -> (Ty, usize) {
         match ty.sty {
@@ -639,7 +674,9 @@ impl LimitStack {
         LimitStack { stack: vec![limit] }
     }
     pub fn limit(&self) -> u64 {
-        *self.stack.last().expect("there should always be a value in the stack")
+        *self.stack.last().expect(
+            "there should always be a value in the stack",
+        )
     }
     pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
         let stack = &mut self.stack;
@@ -669,14 +706,14 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
-/// Return the pre-expansion span if is this comes from an expansion of the macro `name`.
+/// Return the pre-expansion span if is this comes from an expansion of the
+/// macro `name`.
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt
-            .outer()
-            .expn_info()
-            .map(|ei| (ei.callee.name(), ei.call_site));
+        let span_name_span = span.ctxt.outer().expn_info().map(|ei| {
+            (ei.callee.name(), ei.call_site)
+        });
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
@@ -686,18 +723,19 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Return the pre-expansion span if is this directly comes from an expansion of the macro `name`.
+/// Return the pre-expansion span if is this directly comes from an expansion
+/// of the macro `name`.
 /// The difference with `is_expn_of` is that in
 /// ```rust,ignore
 /// foo!(bar!(42));
 /// ```
-/// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only `bar!` by
+/// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only
+/// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt
-        .outer()
-        .expn_info()
-        .map(|ei| (ei.callee.name(), ei.call_site));
+    let span_name_span = span.ctxt.outer().expn_info().map(|ei| {
+        (ei.callee.name(), ei.call_site)
+    });
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name == name => Some(new_span),
@@ -705,7 +743,8 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     }
 }
 
-/// Return the index of the character after the first camel-case component of `s`.
+/// Return the index of the character after the first camel-case component of
+/// `s`.
 pub fn camel_case_until(s: &str) -> usize {
     let mut iter = s.char_indices();
     if let Some((_, first)) = iter.next() {
@@ -771,10 +810,13 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'t
 }
 
 /// Check if two types are the same.
-// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
+// FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for
+// <'b> Foo<'b>` but
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        infcx.can_eq(cx.param_env, a, b).is_ok()
+    })
 }
 
 /// Return whether the given type is an `unsafe` function.
@@ -792,8 +834,10 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext, qpath: &QPath, did: NodeId) -> bool {
-        matches!(cx.tables.qpath_def(qpath, did),
-                 def::Def::Variant(..) | def::Def::VariantCtor(..))
+        matches!(
+            cx.tables.qpath_def(qpath, did),
+            def::Def::Variant(..) | def::Def::VariantCtor(..)
+        )
     }
 
     fn are_refutable<'a, I: Iterator<Item = &'a Pat>>(cx: &LateContext, mut i: I) -> bool {
@@ -824,19 +868,26 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
             }
         },
         PatKind::Slice(ref head, ref middle, ref tail) => {
-            are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+            are_refutable(
+                cx,
+                head.iter().chain(middle).chain(tail.iter()).map(
+                    |pat| &**pat,
+                ),
+            )
         },
     }
 }
 
-/// Checks for the `#[automatically_derived]` attribute all `#[derive]`d implementations have.
+/// Checks for the `#[automatically_derived]` attribute all `#[derive]`d
+/// implementations have.
 pub fn is_automatically_derived(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "automatically_derived")
 }
 
 /// Remove blocks around an expression.
 ///
-/// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return themselves.
+/// Ie. `x`, `{ x }` and `{{{{ x }}}}` all give `x`. `{ x; y }` and `{}` return
+/// themselves.
 pub fn remove_blocks(expr: &Expr) -> &Expr {
     if let ExprBlock(ref block) = expr.node {
         if block.stmts.is_empty() {
@@ -948,5 +999,14 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u64> {
-    ty.layout(cx.tcx, cx.param_env).ok().map(|layout| layout.size(cx.tcx).bytes())
+    ty.layout(cx.tcx, cx.param_env).ok().map(|layout| {
+        layout.size(cx.tcx).bytes()
+    })
+}
+
+/// Returns true if the lint is allowed in the current context
+///
+/// Useful for skipping long running code when it's unnecessary
+pub fn is_allowed(cx: &LateContext, lint: &'static Lint, id: NodeId) -> bool {
+    cx.tcx.lint_level_at_node(lint, id).0 == Level::Allow
 }

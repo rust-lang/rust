@@ -14,7 +14,8 @@ use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integ
 use utils::sugg::Sugg;
 use syntax::ast::{LitKind, CRATE_NODE_ID, FloatTy};
 
-/// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
+/// **What it does:** Checks for function arguments and let bindings denoted as
+/// `ref`.
 ///
 /// **Why is this bad?** The `ref` declaration makes the function take an owned
 /// value, but turns the argument into a reference (which means that the value
@@ -118,7 +119,8 @@ declare_lint! {
 
 /// **What it does:** Checks for patterns in the form `name @ _`.
 ///
-/// **Why is this bad?** It's almost always more readable to just use direct bindings.
+/// **Why is this bad?** It's almost always more readable to just use direct
+/// bindings.
 ///
 /// **Known problems:** None.
 ///
@@ -135,7 +137,8 @@ declare_lint! {
     "using `name @ _` in a pattern"
 }
 
-/// **What it does:** Checks for the use of bindings with a single leading underscore.
+/// **What it does:** Checks for the use of bindings with a single leading
+/// underscore.
 ///
 /// **Why is this bad?** A single leading underscore is usually used to indicate
 /// that a binding will not be used. Using such a binding breaks this
@@ -147,7 +150,8 @@ declare_lint! {
 /// **Example:**
 /// ```rust
 /// let _x = 0;
-/// let y = _x + 1; // Here we are using `_x`, even though it has a leading underscore.
+/// let y = _x + 1; // Here we are using `_x`, even though it has a leading
+/// underscore.
 ///                 // We should rename `_x` to `x`
 /// ```
 declare_lint! {
@@ -156,11 +160,14 @@ declare_lint! {
     "using a binding which is prefixed with an underscore"
 }
 
-/// **What it does:** Checks for the use of short circuit boolean conditions as a
+/// **What it does:** Checks for the use of short circuit boolean conditions as
+/// a
 /// statement.
 ///
-/// **Why is this bad?** Using a short circuit boolean condition as a statement may
-/// hide the fact that the second part is executed or not depending on the outcome of
+/// **Why is this bad?** Using a short circuit boolean condition as a statement
+/// may
+/// hide the fact that the second part is executed or not depending on the
+/// outcome of
 /// the first part.
 ///
 /// **Known problems:** None.
@@ -198,15 +205,17 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(TOPLEVEL_REF_ARG,
-                    CMP_NAN,
-                    FLOAT_CMP,
-                    CMP_OWNED,
-                    MODULO_ONE,
-                    REDUNDANT_PATTERN,
-                    USED_UNDERSCORE_BINDING,
-                    SHORT_CIRCUIT_STATEMENT,
-                    ZERO_PTR)
+        lint_array!(
+            TOPLEVEL_REF_ARG,
+            CMP_NAN,
+            FLOAT_CMP,
+            CMP_OWNED,
+            MODULO_ONE,
+            REDUNDANT_PATTERN,
+            USED_UNDERSCORE_BINDING,
+            SHORT_CIRCUIT_STATEMENT,
+            ZERO_PTR
+        )
     }
 }
 
@@ -218,7 +227,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         decl: &'tcx FnDecl,
         body: &'tcx Body,
         _: Span,
-        _: NodeId
+        _: NodeId,
     ) {
         if let FnKind::Closure(_) = k {
             // Does not apply to closures
@@ -228,11 +237,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             match arg.pat.node {
                 PatKind::Binding(BindingAnnotation::Ref, _, _, _) |
                 PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
-                    span_lint(cx,
-                              TOPLEVEL_REF_ARG,
-                              arg.pat.span,
-                              "`ref` directly on a function argument is ignored. Consider using a reference type \
-                               instead.");
+                    span_lint(
+                        cx,
+                        TOPLEVEL_REF_ARG,
+                        arg.pat.span,
+                        "`ref` directly on a function argument is ignored. Consider using a reference type \
+                               instead.",
+                    );
                 },
                 _ => {},
             }
@@ -316,7 +327,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let Some(name) = get_item_name(cx, expr) {
                         let name = name.as_str();
                         if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                           name.ends_with("_eq") {
+                            name.ends_with("_eq")
+                        {
                             return;
                         }
                     }
@@ -324,9 +336,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let lhs = Sugg::hir(cx, left, "..");
                         let rhs = Sugg::hir(cx, right, "..");
 
-                        db.span_suggestion(expr.span,
-                                           "consider comparing them within some error",
-                                           format!("({}).abs() < error", lhs - rhs));
+                        db.span_suggestion(
+                            expr.span,
+                            "consider comparing them within some error",
+                            format!("({}).abs() < error", lhs - rhs),
+                        );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
                 } else if op == BiRem && is_integer_literal(right, 1) {
@@ -347,7 +361,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
-                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.id)) {
+                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.id))
+                {
                     Some(binding)
                 } else {
                     None
@@ -364,22 +379,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             _ => None,
         };
         if let Some(binding) = binding {
-            span_lint(cx,
-                      USED_UNDERSCORE_BINDING,
-                      expr.span,
-                      &format!("used binding `{}` which is prefixed with an underscore. A leading \
+            span_lint(
+                cx,
+                USED_UNDERSCORE_BINDING,
+                expr.span,
+                &format!(
+                    "used binding `{}` which is prefixed with an underscore. A leading \
                                 underscore signals that a binding will not be used.",
-                               binding));
+                    binding
+                ),
+            );
         }
     }
 
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if let PatKind::Binding(_, _, ref ident, Some(ref right)) = pat.node {
             if right.node == PatKind::Wild {
-                span_lint(cx,
-                          REDUNDANT_PATTERN,
-                          pat.span,
-                          &format!("the `{} @ _` pattern can be written as just `{}`", ident.node, ident.node));
+                span_lint(
+                    cx,
+                    REDUNDANT_PATTERN,
+                    pat.span,
+                    &format!("the `{} @ _` pattern can be written as just `{}`", ident.node, ident.node),
+                );
             }
         }
     }
@@ -388,10 +409,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
         path.segments.last().map(|seg| if seg.name == "NAN" {
-            span_lint(cx,
-                      CMP_NAN,
-                      expr.span,
-                      "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
+            span_lint(
+                cx,
+                CMP_NAN,
+                expr.span,
+                "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
+            );
         });
     }
 }
@@ -421,7 +444,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
                 };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
-                val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+                    val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
             },
             FloatTy::F64 => {
                 let zero = ConstFloat {
@@ -440,7 +463,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
                 };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
-                val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+                    val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
             },
         }
     } else {
@@ -490,37 +513,43 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
         .builtin_deref(true, ty::LvaluePreference::NoPreference)
         .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty]))
         // arg impls PartialEq<other>
-        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty]) {
+        && !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty])
+    {
         return;
     }
 
-    span_lint_and_then(cx,
-                       CMP_OWNED,
-                       expr.span,
-                       "this creates an owned instance just for comparison",
-                       |db| {
-        // this is as good as our recursion check can get, we can't prove that the current function is
-        // called by
-        // PartialEq::eq, but we can at least ensure that this code is not part of it
-        let parent_fn = cx.tcx.hir.get_parent(expr.id);
-        let parent_impl = cx.tcx.hir.get_parent(parent_fn);
-        if parent_impl != CRATE_NODE_ID {
-            if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
-                if let ItemImpl(.., Some(ref trait_ref), _, _) = item.node {
-                    if trait_ref.path.def.def_id() == partial_eq_trait_id {
-                        // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise we go into
-                        // recursion
-                        db.span_label(expr.span, "try calling implementing the comparison without allocating");
-                        return;
+    span_lint_and_then(
+        cx,
+        CMP_OWNED,
+        expr.span,
+        "this creates an owned instance just for comparison",
+        |db| {
+            // this is as good as our recursion check can get, we can't prove that the
+            // current function is
+            // called by
+            // PartialEq::eq, but we can at least ensure that this code is not part of it
+            let parent_fn = cx.tcx.hir.get_parent(expr.id);
+            let parent_impl = cx.tcx.hir.get_parent(parent_fn);
+            if parent_impl != CRATE_NODE_ID {
+                if let map::NodeItem(item) = cx.tcx.hir.get(parent_impl) {
+                    if let ItemImpl(.., Some(ref trait_ref), _, _) = item.node {
+                        if trait_ref.path.def.def_id() == partial_eq_trait_id {
+                            // we are implementing PartialEq, don't suggest not doing `to_owned`, otherwise
+                            // we go into
+                            // recursion
+                            db.span_label(expr.span, "try calling implementing the comparison without allocating");
+                            return;
+                        }
                     }
                 }
             }
-        }
-        db.span_suggestion(expr.span, "try", snip.to_string());
-    });
+            db.span_suggestion(expr.span, "try", snip.to_string());
+        },
+    );
 }
 
-/// Heuristic to see if an expression is used. Should be compatible with `unused_variables`'s idea
+/// Heuristic to see if an expression is used. Should be compatible with
+/// `unused_variables`'s idea
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
@@ -534,10 +563,14 @@ fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     }
 }
 
-/// Test whether an expression is in a macro expansion (e.g. something generated by
+/// Test whether an expression is in a macro expansion (e.g. something
+/// generated by
 /// `#[derive(...)`] or the like).
 fn in_attributes_expansion(expr: &Expr) -> bool {
-    expr.span.ctxt.outer().expn_info().map_or(false, |info| matches!(info.callee.format, ExpnFormat::MacroAttribute(_)))
+    expr.span.ctxt.outer().expn_info().map_or(
+        false,
+        |info| matches!(info.callee.format, ExpnFormat::MacroAttribute(_)),
+    )
 }
 
 /// Test whether `def` is a variable defined outside a macro.
@@ -545,10 +578,9 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
         def::Def::Local(def_id) |
         def::Def::Upvar(def_id, _, _) => {
-            let id = cx.tcx
-                .hir
-                .as_local_node_id(def_id)
-                .expect("local variables should be found in the same crate");
+            let id = cx.tcx.hir.as_local_node_id(def_id).expect(
+                "local variables should be found in the same crate",
+            );
             !in_macro(cx.tcx.hir.span(id))
         },
         _ => false,

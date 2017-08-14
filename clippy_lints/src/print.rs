@@ -5,10 +5,12 @@ use utils::paths;
 use utils::{is_expn_of, match_def_path, resolve_node, span_lint, match_path_old};
 use format::get_argument_fmtstr_parts;
 
-/// **What it does:** This lint warns when you using `print!()` with a format string that
+/// **What it does:** This lint warns when you using `print!()` with a format
+/// string that
 /// ends in a newline.
 ///
-/// **Why is this bad?** You should use `println!()` instead, which appends the newline.
+/// **Why is this bad?** You should use `println!()` instead, which appends the
+/// newline.
 ///
 /// **Known problems:** None.
 ///

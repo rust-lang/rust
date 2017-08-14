@@ -1,4 +1,5 @@
-//! lint on if branches that could be swapped so no `!` operation is necessary on the condition
+//! lint on if branches that could be swapped so no `!` operation is necessary
+//! on the condition
 
 use rustc::lint::*;
 use syntax::ast::*;
@@ -50,18 +51,22 @@ impl EarlyLintPass for IfNotElse {
             if let ExprKind::Block(..) = els.node {
                 match cond.node {
                     ExprKind::Unary(UnOp::Not, _) => {
-                        span_help_and_lint(cx,
-                                           IF_NOT_ELSE,
-                                           item.span,
-                                           "Unnecessary boolean `not` operation",
-                                           "remove the `!` and swap the blocks of the if/else");
+                        span_help_and_lint(
+                            cx,
+                            IF_NOT_ELSE,
+                            item.span,
+                            "Unnecessary boolean `not` operation",
+                            "remove the `!` and swap the blocks of the if/else",
+                        );
                     },
                     ExprKind::Binary(ref kind, _, _) if kind.node == BinOpKind::Ne => {
-                        span_help_and_lint(cx,
-                                           IF_NOT_ELSE,
-                                           item.span,
-                                           "Unnecessary `!=` operation",
-                                           "change to `==` and swap the blocks of the if/else");
+                        span_help_and_lint(
+                            cx,
+                            IF_NOT_ELSE,
+                            item.span,
+                            "Unnecessary `!=` operation",
+                            "change to `==` and swap the blocks of the if/else",
+                        );
                     },
                     _ => (),
                 }

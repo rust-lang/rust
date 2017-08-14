@@ -10,9 +10,10 @@ use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, wal
 /// just to compare to zero, and suggests using `.is_empty()` where applicable.
 ///
 /// **Why is this bad?** Some structures can answer `.is_empty()` much faster
-/// than calculating their length. So it is good to get into the habit of using
-/// `.is_empty()`, and having it is cheap. Besides, it makes the intent clearer
-/// than a comparison.
+/// than calculating their length. Notably, for slices, getting the length
+/// requires a subtraction whereas `.is_empty()` is just a comparison. So it is
+/// good to get into the habit of using `.is_empty()`, and having it is cheap.
+/// Besides, it makes the intent clearer than a manual comparison.
 ///
 /// **Known problems:** None.
 ///
@@ -50,7 +51,7 @@ declare_lint! {
     "traits or impls with a public `len` method but no corresponding `is_empty` method"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct LenZero;
 
 impl LintPass for LenZero {
@@ -90,24 +91,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
         item.name == name &&
-        if let AssociatedItemKind::Method { has_self } = item.kind {
-            has_self &&
-            {
-                let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+            if let AssociatedItemKind::Method { has_self } = item.kind {
+                has_self &&
+                    {
+                        let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                        cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+                    }
+            } else {
+                false
             }
-        } else {
-            false
-        }
     }
 
     if !trait_items.iter().any(|i| is_named_self(cx, i, "is_empty")) {
         if let Some(i) = trait_items.iter().find(|i| is_named_self(cx, i, "len")) {
             if cx.access_levels.is_exported(i.id.node_id) {
-                span_lint(cx,
-                          LEN_WITHOUT_IS_EMPTY,
-                          item.span,
-                          &format!("trait `{}` has a `len` method but no `is_empty` method", item.name));
+                span_lint(
+                    cx,
+                    LEN_WITHOUT_IS_EMPTY,
+                    item.span,
+                    &format!("trait `{}` has a `len` method but no `is_empty` method", item.name),
+                );
             }
         }
     }
@@ -116,15 +119,15 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
         item.name == name &&
-        if let AssociatedItemKind::Method { has_self } = item.kind {
-            has_self &&
-            {
-                let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+            if let AssociatedItemKind::Method { has_self } = item.kind {
+                has_self &&
+                    {
+                        let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                        cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+                    }
+            } else {
+                false
             }
-        } else {
-            false
-        }
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
@@ -142,10 +145,12 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
             let def_id = cx.tcx.hir.local_def_id(item.id);
             let ty = cx.tcx.type_of(def_id);
 
-            span_lint(cx,
-                      LEN_WITHOUT_IS_EMPTY,
-                      item.span,
-                      &format!("item `{}` has a public `len` method but {} `is_empty` method", ty, is_empty));
+            span_lint(
+                cx,
+                LEN_WITHOUT_IS_EMPTY,
+                item.span,
+                &format!("item `{}` has a public `len` method but {} `is_empty` method", ty, is_empty),
+            );
         }
     }
 }
@@ -169,12 +174,14 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: &Lit, op: &str) {
     if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
-            span_lint_and_sugg(cx,
-                               LEN_ZERO,
-                               span,
-                               "length comparison to zero",
-                               "using `is_empty` is more concise",
-                               format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")));
+            span_lint_and_sugg(
+                cx,
+                LEN_ZERO,
+                span,
+                "length comparison to zero",
+                "using `is_empty` is more concise",
+                format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")),
+            );
         }
     }
 }
@@ -198,10 +205,11 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
-        cx.tcx
-            .inherent_impls(id)
-            .iter()
-            .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
+        cx.tcx.inherent_impls(id).iter().any(|imp| {
+            cx.tcx.associated_items(*imp).any(
+                |item| is_is_empty(cx, &item),
+            )
+        })
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
@@ -211,7 +219,12 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
                 .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
                 .any(|item| is_is_empty(cx, &item))
         },
-        ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, id)),
+        ty::TyProjection(_) => {
+            ty.ty_to_def_id().map_or(
+                false,
+                |id| has_is_empty_impl(cx, id),
+            )
+        },
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
         ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
         _ => false,

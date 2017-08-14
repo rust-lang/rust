@@ -40,9 +40,11 @@ declare_lint! {
     "function arguments having names which only differ by an underscore"
 }
 
-/// **What it does:** Detects closures called in the same expression where they are defined.
+/// **What it does:** Detects closures called in the same expression where they
+/// are defined.
 ///
-/// **Why is this bad?** It is unnecessarily adding to the expression's complexity.
+/// **Why is this bad?** It is unnecessarily adding to the expression's
+/// complexity.
 ///
 /// **Known problems:** None.
 ///
@@ -73,7 +75,8 @@ declare_lint! {
     "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
-/// **What it does:** Warns on hexadecimal literals with mixed-case letter digits.
+/// **What it does:** Warns on hexadecimal literals with mixed-case letter
+/// digits.
 ///
 /// **Why is this bad?** It looks confusing.
 ///
@@ -89,7 +92,8 @@ declare_lint! {
     "hex literals whose letter digits are not consistently upper- or lowercased"
 }
 
-/// **What it does:** Warns if literal suffixes are not separated by an underscore.
+/// **What it does:** Warns if literal suffixes are not separated by an
+/// underscore.
 ///
 /// **Why is this bad?** It is much less readable.
 ///
@@ -107,8 +111,10 @@ declare_lint! {
 
 /// **What it does:** Warns if an integral constant literal starts with `0`.
 ///
-/// **Why is this bad?** In some languages (including the infamous C language and most of its
-/// family), this marks an octal constant. In Rust however, this is a decimal constant. This could
+/// **Why is this bad?** In some languages (including the infamous C language
+/// and most of its
+/// family), this marks an octal constant. In Rust however, this is a decimal
+/// constant. This could
 /// be confusing for both the writer and a reader of the constant.
 ///
 /// **Known problems:** None.
@@ -167,14 +173,16 @@ pub struct MiscEarly;
 
 impl LintPass for MiscEarly {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNNEEDED_FIELD_PATTERN,
-                    DUPLICATE_UNDERSCORE_ARGUMENT,
-                    REDUNDANT_CLOSURE_CALL,
-                    DOUBLE_NEG,
-                    MIXED_CASE_HEX_LITERALS,
-                    UNSEPARATED_LITERAL_SUFFIX,
-                    ZERO_PREFIXED_LITERAL,
-                    BUILTIN_TYPE_SHADOW)
+        lint_array!(
+            UNNEEDED_FIELD_PATTERN,
+            DUPLICATE_UNDERSCORE_ARGUMENT,
+            REDUNDANT_CLOSURE_CALL,
+            DOUBLE_NEG,
+            MIXED_CASE_HEX_LITERALS,
+            UNSEPARATED_LITERAL_SUFFIX,
+            ZERO_PREFIXED_LITERAL,
+            BUILTIN_TYPE_SHADOW
+        )
     }
 }
 
@@ -183,10 +191,12 @@ impl EarlyLintPass for MiscEarly {
         for ty in &gen.ty_params {
             let name = ty.ident.name.as_str();
             if constants::BUILTIN_TYPES.contains(&&*name) {
-                span_lint(cx,
-                          BUILTIN_TYPE_SHADOW,
-                          ty.span,
-                          &format!("This generic shadows the built-in type `{}`", name));
+                span_lint(
+                    cx,
+                    BUILTIN_TYPE_SHADOW,
+                    ty.span,
+                    &format!("This generic shadows the built-in type `{}`", name),
+                );
             }
         }
     }
@@ -194,7 +204,11 @@ impl EarlyLintPass for MiscEarly {
     fn check_pat(&mut self, cx: &EarlyContext, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
-            let type_name = npat.segments.last().expect("A path must have at least one segment").identifier.name;
+            let type_name = npat.segments
+                .last()
+                .expect("A path must have at least one segment")
+                .identifier
+                .name;
 
             for field in pfields {
                 if field.node.pat.node == PatKind::Wild {
@@ -202,11 +216,13 @@ impl EarlyLintPass for MiscEarly {
                 }
             }
             if !pfields.is_empty() && wilds == pfields.len() {
-                span_help_and_lint(cx,
-                                   UNNEEDED_FIELD_PATTERN,
-                                   pat.span,
-                                   "All the struct fields are matched to a wildcard pattern, consider using `..`.",
-                                   &format!("Try with `{} {{ .. }}` instead", type_name));
+                span_help_and_lint(
+                    cx,
+                    UNNEEDED_FIELD_PATTERN,
+                    pat.span,
+                    "All the struct fields are matched to a wildcard pattern, consider using `..`.",
+                    &format!("Try with `{} {{ .. }}` instead", type_name),
+                );
                 return;
             }
             if wilds > 0 {
@@ -223,19 +239,21 @@ impl EarlyLintPass for MiscEarly {
                     if field.node.pat.node == PatKind::Wild {
                         wilds -= 1;
                         if wilds > 0 {
-                            span_lint(cx,
-                                      UNNEEDED_FIELD_PATTERN,
-                                      field.span,
-                                      "You matched a field with a wildcard pattern. Consider using `..` instead");
+                            span_lint(
+                                cx,
+                                UNNEEDED_FIELD_PATTERN,
+                                field.span,
+                                "You matched a field with a wildcard pattern. Consider using `..` instead",
+                            );
                         } else {
-                            span_help_and_lint(cx,
-                                               UNNEEDED_FIELD_PATTERN,
-                                               field.span,
-                                               "You matched a field with a wildcard pattern. Consider using `..` \
+                            span_help_and_lint(
+                                cx,
+                                UNNEEDED_FIELD_PATTERN,
+                                field.span,
+                                "You matched a field with a wildcard pattern. Consider using `..` \
                                                 instead",
-                                               &format!("Try with `{} {{ {}, .. }}`",
-                                                        type_name,
-                                                        normal[..].join(", ")));
+                                &format!("Try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
+                            );
                         }
                     }
                 }
@@ -252,12 +270,16 @@ impl EarlyLintPass for MiscEarly {
 
                 if arg_name.starts_with('_') {
                     if let Some(correspondence) = registered_names.get(&arg_name[1..]) {
-                        span_lint(cx,
-                                  DUPLICATE_UNDERSCORE_ARGUMENT,
-                                  *correspondence,
-                                  &format!("`{}` already exists, having another argument having almost the same \
+                        span_lint(
+                            cx,
+                            DUPLICATE_UNDERSCORE_ARGUMENT,
+                            *correspondence,
+                            &format!(
+                                "`{}` already exists, having another argument having almost the same \
                                             name makes code comprehension and documentation more difficult",
-                                           arg_name[1..].to_owned()));;
+                                arg_name[1..].to_owned()
+                            ),
+                        );;
                     }
                 } else {
                     registered_names.insert(arg_name, arg.pat.span);
@@ -287,10 +309,12 @@ impl EarlyLintPass for MiscEarly {
             },
             ExprKind::Unary(UnOp::Neg, ref inner) => {
                 if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
-                    span_lint(cx,
-                              DOUBLE_NEG,
-                              expr.span,
-                              "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op");
+                    span_lint(
+                        cx,
+                        DOUBLE_NEG,
+                        expr.span,
+                        "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
+                    );
                 }
             },
             ExprKind::Lit(ref lit) => self.check_lit(cx, lit),

@@ -11,12 +11,18 @@
 //   except according to those terms.
 //
 
-// Note: More specifically this lint is largely inspired (aka copied) from *rustc*'s
+// Note: More specifically this lint is largely inspired (aka copied) from
+// *rustc*'s
 // [`missing_doc`].
 //
 // [`missing_doc`]:
 // https://github.
 // com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.
+// 
+//
+//
+//
+//
 // rs#L246
 //
 
@@ -28,10 +34,13 @@ use syntax::attr;
 use syntax::codemap::Span;
 use utils::in_macro;
 
-/// **What it does:** Warns if there is missing doc for any documentable item (public or private).
+/// **What it does:** Warns if there is missing doc for any documentable item
+/// (public or private).
 ///
-/// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS` allowed-by-default lint for
-/// public members, but has no way to enforce documentation of private items. This lint fixes that.
+/// **Why is this bad?** Doc is good. *rustc* has a `MISSING_DOCS`
+/// allowed-by-default lint for
+/// public members, but has no way to enforce documentation of private items.
+/// This lint fixes that.
 ///
 /// **Known problems:** None.
 declare_lint! {
@@ -58,7 +67,9 @@ impl MissingDoc {
     }
 
     fn doc_hidden(&self) -> bool {
-        *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
+        *self.doc_hidden_stack.last().expect(
+            "empty doc_hidden_stack",
+        )
     }
 
     fn check_missing_docs_attrs(&self, cx: &LateContext, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
@@ -77,11 +88,15 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name().map_or(false, |n| n == "doc"));
+        let has_doc = attrs.iter().any(|a| {
+            a.is_value_str() && a.name().map_or(false, |n| n == "doc")
+        });
         if !has_doc {
-            cx.span_lint(MISSING_DOCS_IN_PRIVATE_ITEMS,
-                         sp,
-                         &format!("missing documentation for {}", desc));
+            cx.span_lint(
+                MISSING_DOCS_IN_PRIVATE_ITEMS,
+                sp,
+                &format!("missing documentation for {}", desc),
+            );
         }
     }
 }
@@ -95,13 +110,13 @@ impl LintPass for MissingDoc {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, attrs: &'tcx [ast::Attribute]) {
         let doc_hidden = self.doc_hidden() ||
-                         attrs.iter().any(|attr| {
-            attr.check_name("doc") &&
-            match attr.meta_item_list() {
-                None => false,
-                Some(l) => attr::list_contains_name(&l[..], "hidden"),
-            }
-        });
+            attrs.iter().any(|attr| {
+                attr.check_name("doc") &&
+                    match attr.meta_item_list() {
+                        None => false,
+                        Some(l) => attr::list_contains_name(&l[..], "hidden"),
+                    }
+            });
         self.doc_hidden_stack.push(doc_hidden);
     }
 

@@ -7,7 +7,7 @@ use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::{Expr, QPath, Expr_};
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
-use syntax::ast::{Attribute, NodeId, LitKind, DUMMY_NODE_ID, self};
+use syntax::ast::{self, Attribute, NodeId, LitKind, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use std::collections::HashMap;
 
@@ -166,13 +166,14 @@ impl PrintVisitor {
             Vacant(vac) => {
                 vac.insert(0);
                 s.to_owned()
-            }
+            },
         }
     }
 }
 
 struct PrintVisitor {
-    /// Fields are the current index that needs to be appended to pattern binding names
+    /// Fields are the current index that needs to be appended to pattern
+    /// binding names
     ids: HashMap<&'static str, usize>,
     /// the name that needs to be destructured
     current: String,
@@ -254,7 +255,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                         println!("    {}.as_str() == {:?}", str_pat, &*text.as_str())
                     },
                 }
-            }
+            },
             Expr_::ExprCast(ref expr, ref _ty) => {
                 let cast_pat = self.next("expr");
                 println!("Cast(ref {}, _) = {},", cast_pat, current);
@@ -282,7 +283,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.visit_expr(cond);
                 self.current = then_pat;
                 self.visit_expr(then);
-            }
+            },
             Expr_::ExprWhile(ref _cond, ref _body, ref _opt_label) => {
                 println!("While(ref cond, ref body, ref opt_label) = {},", current);
                 println!("    // unimplemented: `ExprWhile` is not further destructured at the moment");
@@ -398,7 +399,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let fields_pat = self.next("fields");
                 if let Some(ref base) = *opt_base {
                     let base_pat = self.next("base");
-                    println!("Struct(ref {}, ref {}, Some(ref {})) = {},", path_pat, fields_pat, base_pat, current);
+                    println!(
+                        "Struct(ref {}, ref {}, Some(ref {})) = {},",
+                        path_pat,
+                        fields_pat,
+                        base_pat,
+                        current
+                    );
                     self.current = base_pat;
                     self.visit_expr(base);
                 } else {
@@ -433,24 +440,27 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 fn has_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
         attr.check_name("clippy") &&
-        attr.meta_item_list().map_or(false, |list| {
-            list.len() == 1 && match list[0].node {
-                ast::NestedMetaItemKind::MetaItem(ref it) => it.name == "author",
-                ast::NestedMetaItemKind::Literal(_) => false,
-            }
-        })
+            attr.meta_item_list().map_or(false, |list| {
+                list.len() == 1 &&
+                    match list[0].node {
+                        ast::NestedMetaItemKind::MetaItem(ref it) => it.name == "author",
+                        ast::NestedMetaItemKind::Literal(_) => false,
+                    }
+            })
     })
 }
 
 fn print_path(path: &QPath, first: &mut bool) {
     match *path {
-        QPath::Resolved(_, ref path) => for segment in &path.segments {
-            if *first {
-                *first = false;
-            } else {
-                print!(", ");
+        QPath::Resolved(_, ref path) => {
+            for segment in &path.segments {
+                if *first {
+                    *first = false;
+                } else {
+                    print!(", ");
+                }
+                print!("{:?}", segment.name.as_str());
             }
-            print!("{:?}", segment.name.as_str());
         },
         QPath::TypeRelative(ref ty, ref segment) => {
             match ty.node {

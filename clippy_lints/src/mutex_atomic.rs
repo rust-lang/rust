@@ -28,9 +28,11 @@ declare_lint! {
     "using a mutex where an atomic value could be used instead"
 }
 
-/// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral type.
+/// **What it does:** Checks for usages of `Mutex<X>` where `X` is an integral
+/// type.
 ///
-/// **Why is this bad?** Using a mutex just to make access to a plain integer sequential is
+/// **Why is this bad?** Using a mutex just to make access to a plain integer
+/// sequential is
 /// shooting flies with cannons. `std::atomic::usize` is leaner and faster.
 ///
 /// **Known problems:** This lint cannot detect if the mutex is actually used
@@ -61,9 +63,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
             if match_type(cx, ty, &paths::MUTEX) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
-                    let msg = format!("Consider using an {} instead of a Mutex here. If you just want the locking \
+                    let msg = format!(
+                        "Consider using an {} instead of a Mutex here. If you just want the locking \
                                        behaviour and not the internal type, consider using Mutex<()>.",
-                                      atomic_name);
+                        atomic_name
+                    );
                     match mutex_param.sty {
                         ty::TyUint(t) if t != ast::UintTy::Us => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),
                         ty::TyInt(t) if t != ast::IntTy::Is => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),

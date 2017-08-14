@@ -30,7 +30,7 @@ declare_lint! {
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct HashMapLint;
 
 impl LintPass for HashMapLint {
@@ -48,11 +48,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                     // we can give a better error message
                     let sole_expr = {
                         else_block.is_none() &&
-                        if let ExprBlock(ref then_block) = then_block.node {
-                            (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
-                        } else {
-                            true
-                        }
+                            if let ExprBlock(ref then_block) = then_block.node {
+                                (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
+                            } else {
+                                true
+                            }
                     };
 
                     let mut visitor = InsertVisitor {
@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
 
 fn check_cond<'a, 'tcx, 'b>(
     cx: &'a LateContext<'a, 'tcx>,
-    check: &'b Expr
+    check: &'b Expr,
 ) -> Option<(&'static str, &'b Expr, &'b Expr)> {
     if_let_chain! {[
         let ExprMethodCall(ref path, _, ref params) = check.node,

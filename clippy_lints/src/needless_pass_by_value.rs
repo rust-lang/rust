@@ -13,10 +13,12 @@ use utils::{in_macro, is_self, is_copy, implements_trait, get_trait_def_id, matc
             multispan_sugg, paths};
 use std::collections::{HashSet, HashMap};
 
-/// **What it does:** Checks for functions taking arguments by value, but not consuming them in its
+/// **What it does:** Checks for functions taking arguments by value, but not
+/// consuming them in its
 /// body.
 ///
-/// **Why is this bad?** Taking arguments by reference is more flexible and can sometimes avoid
+/// **Why is this bad?** Taking arguments by reference is more flexible and can
+/// sometimes avoid
 /// unnecessary allocations.
 ///
 /// **Known problems:** Hopefully none.
@@ -53,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         decl: &'tcx FnDecl,
         body: &'tcx Body,
         span: Span,
-        node_id: NodeId
+        node_id: NodeId,
     ) {
         if in_macro(span) {
             return;
@@ -87,8 +89,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 .collect()
         };
 
-        // Collect moved variables and spans which will need dereferencings from the function body.
-        let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
+        // Collect moved variables and spans which will need dereferencings from the
+        // function body.
+        let MovedVariablesCtxt {
+            moved_vars,
+            spans_need_deref,
+            ..
+        } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
             let region_maps = &cx.tcx.region_maps(fn_def_id);
             euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
@@ -102,14 +109,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             // Determines whether `ty` implements `Borrow<U>` (U != ty) specifically.
             // This is needed due to the `Borrow<T> for T` blanket impl.
-            let implements_borrow_trait = preds.iter()
+            let implements_borrow_trait = preds
+                .iter()
                 .filter_map(|pred| if let ty::Predicate::Trait(ref poly_trait_ref) = *pred {
                     Some(poly_trait_ref.skip_binder())
                 } else {
                     None
                 })
                 .filter(|tpred| tpred.def_id() == borrow_trait && tpred.self_ty() == ty)
-                .any(|tpred| tpred.input_types().nth(1).expect("Borrow trait must have an parameter") != ty);
+                .any(|tpred| {
+                    tpred.input_types().nth(1).expect(
+                        "Borrow trait must have an parameter",
+                    ) != ty
+                });
 
             if_let_chain! {[
                 !is_self(arg),
@@ -177,7 +189,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     moved_vars: HashSet<DefId>,
-    /// Spans which need to be prefixed with `*` for dereferencing the suggested additional
+    /// Spans which need to be prefixed with `*` for dereferencing the
+    /// suggested additional
     /// reference.
     spans_need_deref: HashMap<DefId, HashSet<Span>>,
 }

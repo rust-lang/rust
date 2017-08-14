@@ -2,10 +2,12 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::{is_direct_expn_of, is_expn_of, implements_trait, span_lint};
 
-/// **What it does:** Checks for `assert!(x == y)` or `assert!(x != y)` which can be better written
+/// **What it does:** Checks for `assert!(x == y)` or `assert!(x != y)` which
+/// can be better written
 /// using `assert_eq` or `assert_ne` if `x` and `y` implement `Debug` trait.
 ///
-/// **Why is this bad?** `assert_eq` and `assert_ne` provide better assertion failure reporting.
+/// **Why is this bad?** `assert_eq` and `assert_ne` provide better assertion
+/// failure reporting.
 ///
 /// **Known problems:** Hopefully none.
 ///
@@ -14,7 +16,8 @@ use utils::{is_direct_expn_of, is_expn_of, implements_trait, span_lint};
 /// let (x, y) = (1, 2);
 ///
 /// assert!(x == y);  // assertion failed: x == y
-/// assert_eq!(x, y); // assertion failed: `(left == right)` (left: `1`, right: `2`)
+/// assert_eq!(x, y); // assertion failed: `(left == right)` (left: `1`, right:
+/// `2`)
 /// ```
 declare_lint! {
     pub SHOULD_ASSERT_EQ,

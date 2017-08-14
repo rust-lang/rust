@@ -29,8 +29,6 @@ fn compile_test() {
     prepare_env();
     run_mode("run-pass", "run-pass");
     run_mode("ui", "ui");
-    #[cfg(target_os = "windows")]
-    run_mode("ui-windows", "ui");
-    #[cfg(not(target_os = "windows"))]
-    run_mode("ui-posix", "ui");
+    #[cfg(target_os = "windows")] run_mode("ui-windows", "ui");
+    #[cfg(not(target_os = "windows"))] run_mode("ui-posix", "ui");
 }

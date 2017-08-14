@@ -9,6 +9,8 @@ error: This generic shadows the built-in type `u32`
 error[E0308]: mismatched types
  --> $DIR/builtin-type-shadow.rs:6:5
   |
+5 | fn foo<u32>(a: u32) -> u32 {
+  |                        --- expected `u32` because of return type
 6 |     42
   |     ^^ expected type parameter, found integral variable
   |
