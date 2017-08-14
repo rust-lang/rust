@@ -222,9 +222,16 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
             }
             StatementKind::Nop |
             StatementKind::Validate(..) |
-            StatementKind::StorageLive(..) |
-            StatementKind::StorageDead(..) => {
+            StatementKind::StorageLive(..) => {
                 // ignored by borrowck
+            }
+
+            StatementKind::StorageDead(ref lvalue) => {
+                // causes non-drop values to be dropped.
+                self.consume_lvalue(ContextKind::StorageDead.new(location),
+                                    ConsumeKind::Consume,
+                                    (lvalue, span),
+                                    flow_state)
             }
         }
     }
@@ -1112,6 +1119,7 @@ enum ContextKind {
     CallOperand,
     CallDest,
     Assert,
+    StorageDead,
 }
 
 impl ContextKind {
