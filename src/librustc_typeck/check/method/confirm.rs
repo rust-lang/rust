@@ -445,11 +445,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
-            let mut source = self.node_ty(expr.id);
+            let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
             // and replace them after mutating them, to avoid having the
             // tables borrowed during (`deref_mut`) method resolution.
-            let previous_adjustments = self.tables.borrow_mut().adjustments.remove(&expr.id);
+            let previous_adjustments = self.tables
+                                           .borrow_mut()
+                                           .adjustments_mut()
+                                           .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 let pref = LvaluePreference::PreferMutLvalue;
                 for adjustment in &mut adjustments {
@@ -466,12 +469,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     source = adjustment.target;
                 }
-                self.tables.borrow_mut().adjustments.insert(expr.id, adjustments);
+                self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
             match expr.node {
                 hir::ExprIndex(ref base_expr, ref index_expr) => {
-                    let index_expr_ty = self.node_ty(index_expr.id);
+                    let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_lvalue_op_to_mutable(
                         LvalueOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
@@ -498,7 +501,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }
 
         let base_ty = self.tables.borrow().expr_adjustments(base_expr).last()
-            .map_or_else(|| self.node_ty(expr.id), |adj| adj.target);
+            .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
         // Need to deref because overloaded lvalue ops take self by-reference.
@@ -513,7 +516,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.id, method);
+        self.write_method_call(expr.hir_id, method);
 
         let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
             (r, mt.mutbl)
@@ -523,8 +526,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.
-        let base_expr_ty = self.node_ty(base_expr.id);
-        if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+        let base_expr_ty = self.node_ty(base_expr.hir_id);
+        if let Some(adjustments) = self.tables
+                                       .borrow_mut()
+                                       .adjustments_mut()
+                                       .get_mut(base_expr.hir_id) {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {

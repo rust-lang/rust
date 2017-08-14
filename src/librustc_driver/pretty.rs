@@ -233,7 +233,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let empty_tables = ty::TypeckTables::empty();
+                    let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                         tables: Cell::new(&empty_tables)

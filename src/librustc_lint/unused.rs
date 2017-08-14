@@ -45,7 +45,8 @@ impl UnusedMut {
         let mut mutables = FxHashMap();
         for p in pats {
             p.each_binding(|_, id, span, path1| {
-                let bm = match cx.tables.pat_binding_modes.get(&id) {
+                let hir_id = cx.tcx.hir.node_to_hir_id(id);
+                let bm = match cx.tables.pat_binding_modes().get(hir_id) {
                     Some(&bm) => bm,
                     None => span_bug!(span, "missing binding mode"),
                 };
@@ -162,12 +163,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         let maybe_def = match expr.node {
             hir::ExprCall(ref callee, _) => {
                 match callee.node {
-                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.id)),
+                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.hir_id)),
                     _ => None
                 }
             },
             hir::ExprMethodCall(..) => {
-                cx.tables.type_dependent_defs.get(&expr.id).cloned()
+                cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
             },
             _ => { None }
         };

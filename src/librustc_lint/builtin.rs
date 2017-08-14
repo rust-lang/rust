@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        let ty = cx.tables.node_id_to_type(e.id);
+        let ty = cx.tables.node_id_to_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -905,7 +905,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match cx.tcx.hir.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
@@ -943,8 +943,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
             // Check for method calls and overloaded operators.
             if cx.tables.is_method_call(expr) {
-                let def_id = cx.tables.type_dependent_defs[&id].def_id();
-                let substs = cx.tables.node_substs(id);
+                let hir_id = cx.tcx.hir.definitions().node_to_hir_id(id);
+                let def_id = cx.tables.type_dependent_defs()[hir_id].def_id();
+                let substs = cx.tables.node_substs(hir_id);
                 if method_call_refers_to_method(cx, method, def_id, substs, id) {
                     return true;
                 }
@@ -954,13 +955,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match expr.node {
                 hir::ExprCall(ref callee, _) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
                     match def {
                         Def::Method(def_id) => {
-                            let substs = cx.tables.node_substs(callee.id);
+                            let substs = cx.tables.node_substs(callee.hir_id);
                             method_call_refers_to_method(cx, method, def_id, substs, id)
                         }
                         _ => false,
@@ -1188,7 +1189,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             let def = if let hir::ExprPath(ref qpath) = expr.node {
-                cx.tables.qpath_def(qpath, expr.id)
+                cx.tables.qpath_def(qpath, expr.hir_id)
             } else {
                 return None;
             };
@@ -1196,7 +1197,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let sig = cx.tables.node_id_to_type(expr.id).fn_sig(cx.tcx);
+                let sig = cx.tables.node_id_to_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = *sig.output().skip_binder();
                 return Some((&from.sty, &to.sty));

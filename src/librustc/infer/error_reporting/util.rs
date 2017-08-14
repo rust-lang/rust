@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             .iter()
                             .enumerate()
                             .filter_map(|(index, arg)| {
-                                let ty = tables.borrow().node_id_to_type(arg.id);
+                                let ty = tables.borrow().node_id_to_type(arg.hir_id);
                                 let mut found_anon_region = false;
                                 let new_arg_ty = self.tcx
                                     .fold_regions(&ty, &mut false, |r, _| if *r == *anon_region {

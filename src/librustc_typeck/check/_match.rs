@@ -118,8 +118,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // identical to what could be scraped from the HIR, but this will change with
                 // default binding modes (#42640).
                 let bm = ty::BindingMode::convert(ba);
-                self.inh.tables.borrow_mut().pat_binding_modes.insert(pat.id, bm);
-
+                self.inh
+                    .tables
+                    .borrow_mut()
+                    .pat_binding_modes_mut()
+                    .insert(pat.hir_id, bm);
                 let typ = self.local_ty(pat.span, pat.id);
                 match bm {
                     ty::BindByReference(mutbl) => {
@@ -323,7 +326,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        self.write_ty(pat.id, ty);
+        self.write_ty(pat.hir_id, ty);
 
         // (*) In most of the cases above (literals and constants being
         // the exception), we relate types using strict equality, evewn

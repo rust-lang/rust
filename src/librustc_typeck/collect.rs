@@ -1187,7 +1187,8 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeTy(&hir::Ty { node: TyImplTrait(..), .. }) => {
             let owner = tcx.hir.get_parent_did(node_id);
-            tcx.typeck_tables_of(owner).node_id_to_type(node_id)
+            let hir_id = tcx.hir.node_to_hir_id(node_id);
+            tcx.typeck_tables_of(owner).node_id_to_type(hir_id)
         }
 
         x => {
@@ -1238,8 +1239,8 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ))
         }
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
-            tcx.typeck_tables_of(def_id).closure_tys[&node_id]
+        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), hir_id, .. }) => {
+            tcx.typeck_tables_of(def_id).closure_tys()[hir_id]
         }
 
         x => {

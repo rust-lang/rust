@@ -196,6 +196,16 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T: Ord> IndexVec<I, T> {
+    #[inline]
+    pub fn binary_search(&self, value: &T) -> Result<I, I> {
+        match self.raw.binary_search(value) {
+            Ok(i) => Ok(Idx::new(i)),
+            Err(i) => Err(Idx::new(i)),
+        }
+    }
+}
+
 impl<I: Idx, T> Index<I> for IndexVec<I, T> {
     type Output = T;
 

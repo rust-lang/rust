@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
+    fn resolve_node_type(&self, id: hir::HirId) -> Ty<'tcx> {
         let t = self.node_ty(id);
         self.resolve_type(t)
     }
@@ -309,8 +309,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
-            let fn_sig_map = &self.tables.borrow().liberated_fn_sigs;
-            match fn_sig_map.get(&id) {
+            let fn_hir_id = self.tcx.hir.node_to_hir_id(id);
+            match self.tables.borrow().liberated_fn_sigs().get(fn_hir_id) {
                 Some(f) => f.clone(),
                 None => {
                     bug!("No fn-sig entry for id={}", id);
@@ -338,8 +338,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("visit_fn_body body.id {:?} call_site_scope: {:?}",
                body.id(), call_site_scope);
         let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
+        let body_hir_id = self.tcx.hir.node_to_hir_id(body_id.node_id);
         self.type_of_node_must_outlive(infer::CallReturn(span),
-                                       body_id.node_id,
+                                       body_hir_id,
                                        call_site_region);
 
         self.region_bound_pairs.truncate(old_region_bounds_pairs_len);
@@ -613,9 +614,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 
             let origin = infer::BindingTypeIsNotValidAtDecl(span);
-            self.type_of_node_must_outlive(origin, id, var_region);
+            let hir_id = self.tcx.hir.node_to_hir_id(id);
+            self.type_of_node_must_outlive(origin, hir_id, var_region);
 
-            let typ = self.resolve_node_type(id);
+            let typ = self.resolve_node_type(hir_id);
             let _ = dropck::check_safety_of_destructor_if_necessary(
                 self, typ, span, var_scope);
         })
@@ -664,7 +666,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
 
         // No matter what, the type of each expression must outlive the
         // scope of that expression. This also guarantees basic WF.
-        let expr_ty = self.resolve_node_type(expr.id);
+        let expr_ty = self.resolve_node_type(expr.hir_id);
         // the region corresponding to this expression
         let expr_region = self.tcx.node_scope_region(expr.id);
         self.type_must_outlive(infer::ExprTypeIsNotInScope(expr_ty, expr.span),
@@ -686,7 +688,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                     infer::ParameterOrigin::OverloadedOperator
             };
 
-            let substs = self.tables.borrow().node_substs(expr.id);
+            let substs = self.tables.borrow().node_substs(expr.hir_id);
             self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
             // Arguments (sub-expressions) are checked via `constrain_call`, below.
         }
@@ -709,7 +711,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                expr, self.repeating_scope);
         match expr.node {
             hir::ExprPath(_) => {
-                let substs = self.tables.borrow().node_substs(expr.id);
+                let substs = self.tables.borrow().node_substs(expr.hir_id);
                 let origin = infer::ParameterOrigin::Path;
                 self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
             }
@@ -718,7 +720,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 if is_method_call {
                     self.constrain_call(expr, Some(&callee), args.iter().map(|e| &*e));
                 } else {
-                    self.constrain_callee(callee.id, expr, &callee);
+                    self.constrain_callee(&callee);
                     self.constrain_call(expr, None, args.iter().map(|e| &*e));
                 }
 
@@ -812,7 +814,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 // adjustments*.
                 //
                 // FIXME(#6268) nested method calls requires that this rule change
-                let ty0 = self.resolve_node_type(expr.id);
+                let ty0 = self.resolve_node_type(expr.hir_id);
                 self.type_must_outlive(infer::AddrOf(expr.span), ty0, expr_region);
                 intravisit::walk_expr(self, expr);
             }
@@ -849,7 +851,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                        ret_expr.id, call_site_scope);
                 let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope.unwrap()));
                 self.type_of_node_must_outlive(infer::CallReturn(ret_expr.span),
-                                               ret_expr.id,
+                                               ret_expr.hir_id,
                                                call_site_region);
                 intravisit::walk_expr(self, expr);
             }
@@ -870,8 +872,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                cast_expr,
                source_expr);
 
-        let source_ty = self.resolve_node_type(source_expr.id);
-        let target_ty = self.resolve_node_type(cast_expr.id);
+        let source_ty = self.resolve_node_type(source_expr.hir_id);
+        let target_ty = self.resolve_node_type(cast_expr.hir_id);
 
         self.walk_cast(cast_expr, source_ty, target_ty);
     }
@@ -915,11 +917,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         self.set_repeating_scope(repeating_scope);
     }
 
-    fn constrain_callee(&mut self,
-                        callee_id: ast::NodeId,
-                        _call_expr: &hir::Expr,
-                        _callee_expr: &hir::Expr) {
-        let callee_ty = self.resolve_node_type(callee_id);
+    fn constrain_callee(&mut self, callee_expr: &hir::Expr) {
+        let callee_ty = self.resolve_node_type(callee_expr.hir_id);
         match callee_ty.sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => { }
             _ => {
@@ -962,14 +961,16 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // ensure that any regions appearing in the argument type are
             // valid for at least the lifetime of the function:
             self.type_of_node_must_outlive(infer::CallArg(arg_expr.span),
-                                           arg_expr.id, callee_region);
+                                           arg_expr.hir_id,
+                                           callee_region);
         }
 
         // as loop above, but for receiver
         if let Some(r) = receiver {
             debug!("receiver: {:?}", r);
             self.type_of_node_must_outlive(infer::CallRcvr(r.span),
-                                           r.id, callee_region);
+                                           r.hir_id,
+                                           callee_region);
         }
     }
 
@@ -1038,7 +1039,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 //
                 // FIXME(#6268) remove to support nested method calls
                 self.type_of_node_must_outlive(infer::AutoBorrow(expr.span),
-                                               expr.id, expr_region);
+                                               expr.hir_id,
+                                               expr_region);
             }
 
             cmt = self.with_mc(|mc| mc.cat_expr_adjusted(expr, cmt, &adjustment))?;
@@ -1109,21 +1111,25 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// adjustments) are valid for at least `minimum_lifetime`
     fn type_of_node_must_outlive(&mut self,
         origin: infer::SubregionOrigin<'tcx>,
-        id: ast::NodeId,
+        hir_id: hir::HirId,
         minimum_lifetime: ty::Region<'tcx>)
     {
         // Try to resolve the type.  If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
         // report errors later on in the writeback phase.
-        let ty0 = self.resolve_node_type(id);
-        let ty = self.tables.borrow().adjustments.get(&id)
-            .and_then(|adj| adj.last())
-            .map_or(ty0, |adj| adj.target);
+        let ty0 = self.resolve_node_type(hir_id);
+
+        let ty = self.tables
+                     .borrow()
+                     .adjustments()
+                     .get(hir_id)
+                     .and_then(|adj| adj.last())
+                     .map_or(ty0, |adj| adj.target);
         let ty = self.resolve_type(ty);
         debug!("constrain_regions_in_type_of_node(\
-                ty={}, ty0={}, id={}, minimum_lifetime={:?})",
+                ty={}, ty0={}, id={:?}, minimum_lifetime={:?})",
                 ty,  ty0,
-               id, minimum_lifetime);
+                hir_id, minimum_lifetime);
         self.type_must_outlive(origin, ty, minimum_lifetime);
     }
 
@@ -1137,7 +1143,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         debug!("link_addr_of: cmt={:?}", cmt);
 
-        self.link_region_from_node_type(expr.span, expr.id, mutability, cmt);
+        self.link_region_from_node_type(expr.span, expr.hir_id, mutability, cmt);
     }
 
     /// Computes the guarantors for any ref bindings in a `let` and
@@ -1173,7 +1179,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
         for arg in args {
-            let arg_ty = self.node_ty(arg.id);
+            let arg_ty = self.node_ty(arg.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let arg_cmt = self.with_mc(|mc| {
                 mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty)
@@ -1197,10 +1203,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match sub_pat.node {
                     // `ref x` pattern
                     PatKind::Binding(..) => {
-                        let bm = *mc.tables.pat_binding_modes.get(&sub_pat.id)
-                                                             .expect("missing binding mode");
+                        let bm = *mc.tables.pat_binding_modes().get(sub_pat.hir_id)
+                                                               .expect("missing binding mode");
                         if let ty::BindByReference(mutbl) = bm {
-                            self.link_region_from_node_type(sub_pat.span, sub_pat.id,
+                            self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
                                                             mutbl, sub_cmt);
                         }
                     }
@@ -1236,7 +1242,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// which must be some reference (`&T`, `&str`, etc).
     fn link_region_from_node_type(&self,
                                   span: Span,
-                                  id: ast::NodeId,
+                                  id: hir::HirId,
                                   mutbl: hir::Mutability,
                                   cmt_borrowed: mc::cmt<'tcx>) {
         debug!("link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",

@@ -11,7 +11,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{self, StableHashingContext, NodeIdHashingMode};
+use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::hash as std_hash;
@@ -610,64 +610,6 @@ impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
     substs,
     ty
 });
-
-
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::TypeckTables<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::TypeckTables {
-            ref type_dependent_defs,
-            ref node_types,
-            ref node_substs,
-            ref adjustments,
-            ref pat_binding_modes,
-            ref upvar_capture_map,
-            ref closure_tys,
-            ref closure_kinds,
-            ref liberated_fn_sigs,
-            ref fru_field_types,
-
-            ref cast_kinds,
-
-            ref used_trait_imports,
-            tainted_by_errors,
-            ref free_region_map,
-        } = *self;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_nodemap(hcx, hasher, type_dependent_defs);
-            ich::hash_stable_nodemap(hcx, hasher, node_types);
-            ich::hash_stable_nodemap(hcx, hasher, node_substs);
-            ich::hash_stable_nodemap(hcx, hasher, adjustments);
-            ich::hash_stable_nodemap(hcx, hasher, pat_binding_modes);
-            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
-                let ty::UpvarId {
-                    var_id,
-                    closure_expr_id
-                } = *up_var_id;
-
-                let var_def_id = hcx.tcx().hir.local_def_id(var_id);
-                let closure_def_id = hcx.tcx().hir.local_def_id(closure_expr_id);
-                (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
-            });
-
-            ich::hash_stable_nodemap(hcx, hasher, closure_tys);
-            ich::hash_stable_nodemap(hcx, hasher, closure_kinds);
-            ich::hash_stable_nodemap(hcx, hasher, liberated_fn_sigs);
-            ich::hash_stable_nodemap(hcx, hasher, fru_field_types);
-            ich::hash_stable_nodemap(hcx, hasher, cast_kinds);
-
-            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
-                hcx.def_path_hash(*def_id)
-            });
-
-            tainted_by_errors.hash_stable(hcx, hasher);
-            free_region_map.hash_stable(hcx, hasher);
-        })
-    }
-}
 
 impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
     BoolSimplifiedType,

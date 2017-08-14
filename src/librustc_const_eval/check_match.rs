@@ -188,7 +188,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_id_to_type(scrut.id);
+            let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
@@ -217,7 +217,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![pat.0])
                 .collect();
-            let scrut_ty = self.tables.node_id_to_type(scrut.id);
+            let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
@@ -269,7 +269,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, name, None) = p.node {
-            let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(p.hir_id)
+                        .expect("missing binding mode");
+
             if bm != ty::BindByValue(hir::MutImmutable) {
                 // Nothing to check.
                 return true;
@@ -458,7 +462,11 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     let mut by_ref_span = None;
     for pat in pats {
         pat.each_binding(|_, id, span, _path| {
-            let bm = *cx.tables.pat_binding_modes.get(&id).expect("missing binding mode");
+            let hir_id = cx.tcx.hir.node_to_hir_id(id);
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(hir_id)
+                        .expect("missing binding mode");
             if let ty::BindByReference(..) = bm {
                 by_ref_span = Some(span);
             }
@@ -491,10 +499,13 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+                let bm = *cx.tables
+                            .pat_binding_modes()
+                            .get(p.hir_id)
+                            .expect("missing binding mode");
                 match bm {
                     ty::BindByValue(..) => {
-                        let pat_ty = cx.tables.node_id_to_type(p.id);
+                        let pat_ty = cx.tables.node_id_to_type(p.hir_id);
                         if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }

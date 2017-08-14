@@ -572,8 +572,8 @@ impl<T> Slice<T> {
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
-    pub var_id: NodeId,
-    pub closure_expr_id: NodeId,
+    pub var_id: DefIndex,
+    pub closure_expr_id: DefIndex,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
@@ -1981,6 +1981,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             },
             r => bug!("Variable id {} maps to {:?}, not local", id, r),
         }
+    }
+
+    pub fn local_var_name_str_def_index(self, def_index: DefIndex) -> InternedString {
+        let node_id = self.hir.as_local_node_id(DefId::local(def_index)).unwrap();
+        self.local_var_name_str(node_id)
     }
 
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {

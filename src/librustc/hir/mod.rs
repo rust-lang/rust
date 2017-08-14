@@ -129,8 +129,10 @@ pub const CRATE_HIR_ID: HirId = HirId {
 
 pub const DUMMY_HIR_ID: HirId = HirId {
     owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId(!0)
+    local_id: DUMMY_ITEM_LOCAL_ID,
 };
+
+pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId(!0);
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -547,6 +549,7 @@ pub struct Block {
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
     pub id: NodeId,
+    pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
@@ -560,6 +563,7 @@ pub struct Block {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pat {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
 }
@@ -897,6 +901,7 @@ pub struct Local {
     /// Initializer expression to set the value, if any
     pub init: Option<P<Expr>>,
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
     pub source: LocalSource,
@@ -986,6 +991,7 @@ pub struct Expr {
     pub span: Span,
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Expr {
@@ -1423,6 +1429,7 @@ pub struct InlineAsm {
 pub struct Arg {
     pub pat: P<Pat>,
     pub id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents the header (not the body) of a function declaration

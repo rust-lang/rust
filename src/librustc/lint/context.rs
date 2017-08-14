@@ -986,7 +986,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut cx = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
