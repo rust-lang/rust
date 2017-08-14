@@ -448,6 +448,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
+            ty::TyClosure(def_id, ..) |
             ty::TyAnon(def_id, _) => Some(def_id),
             _ => None
         };
