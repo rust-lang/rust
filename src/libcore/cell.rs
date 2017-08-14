@@ -571,6 +571,59 @@ impl<T> RefCell<T> {
         debug_assert!(self.borrow.get() == UNUSED);
         unsafe { self.value.into_inner() }
     }
+
+    /// Replaces the wrapped value with a new one, returning the old value,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_replace_swap)]
+    /// use std::cell::RefCell;
+    /// let c = RefCell::new(5);
+    /// let u = c.replace(6);
+    /// assert_eq!(u, 5);
+    /// assert_eq!(c, RefCell::new(6));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the `RefCell` has any outstanding borrows,
+    /// whether or not they are full mutable borrows.
+    #[inline]
+    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    pub fn replace(&self, t: T) -> T {
+        mem::replace(&mut *self.borrow_mut(), t)
+    }
+
+    /// Swaps the wrapped value of `self` with the wrapped value of `other`,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_replace_swap)]
+    /// use std::cell::RefCell;
+    /// let c = RefCell::new(5);
+    /// let d = RefCell::new(6);
+    /// c.swap(&d);
+    /// assert_eq!(c, RefCell::new(6));
+    /// assert_eq!(d, RefCell::new(5));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if either `RefCell` has any outstanding borrows,
+    /// whether or not they are full mutable borrows.
+    #[inline]
+    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    pub fn swap(&self, other: &Self) {
+        mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
+    }
 }
 
 impl<T: ?Sized> RefCell<T> {

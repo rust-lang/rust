@@ -31,6 +31,7 @@
 #![feature(ord_max_min)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
 #![feature(slice_rotate)]
