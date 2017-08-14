@@ -10,6 +10,24 @@
 
 // ignore-cross-compile
 
+
+// The general idea of this test is to enumerate all "interesting" expressions and check that
+// `parse(print(e)) == e` for all `e`.  Here's what's interesting, for the purposes of this test:
+//
+//  1. The test focuses on expression nesting, because interactions between different expression
+//     types are harder to test manually than single expression types in isolation.
+//
+//  2. The test only considers expressions of at most two nontrivial nodes.  So it will check `x +
+//     x` and `x + (x - x)` but not `(x * x) + (x - x)`.  The assumption here is that the correct
+//     handling of an expression might depend on the expression's parent, but doesn't depend on its
+//     siblings or any more distant ancestors.
+//
+// 3. The test only checks certain expression kinds.  The assumption is that similar expression
+//    types, such as `if` and `while` or `+` and `-`,  will be handled identically in the printer
+//    and parser.  So if all combinations of exprs involving `if` work correctly, then combinations
+//    using `while`, `if let`, and so on will likely work as well.
+
+
 #![feature(rustc_private)]
 
 extern crate syntax;
