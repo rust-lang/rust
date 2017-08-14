@@ -365,8 +365,24 @@ impl<T, CTX> HashStable<CTX> for Option<T>
     }
 }
 
+impl<T1, T2, CTX> HashStable<CTX> for Result<T1, T2>
+    where T1: HashStable<CTX>,
+          T2: HashStable<CTX>,
+{
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(ctx, hasher);
+        match *self {
+            Ok(ref x) => x.hash_stable(ctx, hasher),
+            Err(ref x) => x.hash_stable(ctx, hasher),
+        }
+    }
+}
+
 impl<'a, T, CTX> HashStable<CTX> for &'a T
-    where T: HashStable<CTX>
+    where T: HashStable<CTX> + ?Sized
 {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
@@ -423,5 +439,15 @@ impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<
         for v in &self.raw {
             v.hash_stable(ctx, hasher);
         }
+    }
+}
+
+
+impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::indexed_set::IdxSetBuf<I>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.words().hash_stable(ctx, hasher);
     }
 }

@@ -12,9 +12,12 @@ use std::cmp;
 
 use errors::DiagnosticBuilder;
 use hir::HirId;
+use ich::{self, StableHashingContext};
 use lint::builtin;
 use lint::context::CheckLintNameResult;
 use lint::{self, Lint, LintId, Level, LintSource};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 use session::Session;
 use syntax::ast;
 use syntax::attr;
@@ -382,3 +385,61 @@ impl LintLevelMap {
         })
     }
 }
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for LintLevelMap {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let LintLevelMap {
+            ref sets,
+            ref id_to_set,
+        } = *self;
+
+        let definitions = hcx.tcx().hir.definitions();
+        ich::hash_stable_hashmap(hcx, hasher, id_to_set, |_, hir_id| {
+            (definitions.def_path_hash(hir_id.owner), hir_id.local_id)
+        });
+
+        let LintLevelSets {
+            ref list,
+            lint_cap,
+        } = *sets;
+
+        lint_cap.hash_stable(hcx, hasher);
+
+        hcx.while_hashing_spans(true, |hcx| {
+            list.len().hash_stable(hcx, hasher);
+
+            // We are working under the assumption here that the list of
+            // lint-sets is built in a deterministic order.
+            for lint_set in list {
+                ::std::mem::discriminant(lint_set).hash_stable(hcx, hasher);
+
+                match *lint_set {
+                    LintSet::CommandLine { ref specs } => {
+                        ich::hash_stable_hashmap(hcx, hasher, specs, |_, lint_id| {
+                            lint_id.lint_name_raw()
+                        });
+                    }
+                    LintSet::Node { ref specs, parent } => {
+                        ich::hash_stable_hashmap(hcx, hasher, specs, |_, lint_id| {
+                            lint_id.lint_name_raw()
+                        });
+                        parent.hash_stable(hcx, hasher);
+                    }
+                }
+            }
+        })
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for LintId {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.lint_name_raw().hash_stable(hcx, hasher);
+    }
+}
+

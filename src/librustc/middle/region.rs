@@ -14,6 +14,7 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
+use ich::{self, StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
@@ -31,6 +32,8 @@ use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
 use mir::transform::MirSource;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 
 /// Scope represents a statically-describable scope that can be
 /// used to bound the lifetime/region for values.
@@ -1234,4 +1237,44 @@ pub fn provide(providers: &mut Providers) {
         region_scope_tree,
         ..*providers
     };
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ScopeTree {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ScopeTree {
+            root_body,
+            root_parent,
+            ref parent_map,
+            ref var_map,
+            ref destruction_scopes,
+            ref rvalue_scopes,
+            ref closure_tree,
+            ref yield_in_scope,
+        } = *self;
+
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            root_body.hash_stable(hcx, hasher);
+            root_parent.hash_stable(hcx, hasher);
+        });
+
+        ich::hash_stable_hashmap(hcx, hasher, parent_map, |hcx, scope| {
+            let mut hasher = StableHasher::new();
+            scope.hash_stable(hcx, &mut hasher);
+            let stable: u64 = hasher.finish();
+            stable
+        });
+
+        ich::hash_stable_itemlocalmap(hcx, hasher, var_map);
+        ich::hash_stable_itemlocalmap(hcx, hasher, destruction_scopes);
+        ich::hash_stable_itemlocalmap(hcx, hasher, rvalue_scopes);
+        ich::hash_stable_itemlocalmap(hcx, hasher, closure_tree);
+        ich::hash_stable_hashmap(hcx, hasher, yield_in_scope, |hcx, scope| {
+            let mut hasher = StableHasher::new();
+            scope.hash_stable(hcx, &mut hasher);
+            let stable: u64 = hasher.finish();
+            stable
+        });
+    }
 }

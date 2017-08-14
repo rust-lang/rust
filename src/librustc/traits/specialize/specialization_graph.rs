@@ -11,6 +11,9 @@
 use super::OverlapError;
 
 use hir::def_id::DefId;
+use ich::{self, StableHashingContext};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
@@ -363,5 +366,36 @@ pub fn ancestors(tcx: TyCtxt,
         trait_def_id,
         specialization_graph,
         current_source: Some(Node::Impl(start_from_impl)),
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Children {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let Children {
+            ref nonblanket_impls,
+            ref blanket_impls,
+        } = *self;
+
+        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Graph {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let Graph {
+            ref parent,
+            ref children,
+        } = *self;
+
+        ich::hash_stable_hashmap(hcx, hasher, parent, |hcx, def_id| {
+            hcx.def_path_hash(*def_id)
+        });
+        ich::hash_stable_hashmap(hcx, hasher, children, |hcx, def_id| {
+            hcx.def_path_hash(*def_id)
+        });
     }
 }

@@ -13,13 +13,12 @@
 
 use hir;
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
-use ich::{StableHashingContext, NodeIdHashingMode};
-use std::mem;
-
-use syntax::ast;
-
+use ich::{self, StableHashingContext, NodeIdHashingMode};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
+use std::mem;
+use syntax::ast;
+use util::nodemap::DefIdSet;
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefId {
     #[inline]
@@ -30,6 +29,16 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefId 
     }
 }
 
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefIdSet
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        ich::hash_stable_hashset(hcx, hasher, self, |hcx, def_id| {
+            hcx.def_path_hash(*def_id)
+        });
+    }
+}
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
     #[inline]
@@ -235,7 +244,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::T
             hir::TyTypeof(..)      |
             hir::TyErr             |
             hir::TyInfer           => {
-                NodeIdHashingMode::Ignore
+                NodeIdHashingMode::CheckedIgnore
             }
             hir::TyPath(..) => {
                 NodeIdHashingMode::HashTraitsInScope
@@ -403,7 +412,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::P
             hir::PatKind::Lit(..)     |
             hir::PatKind::Range(..)   |
             hir::PatKind::Slice(..)   => {
-                NodeIdHashingMode::Ignore
+                NodeIdHashingMode::CheckedIgnore
             }
             hir::PatKind::Path(..)        |
             hir::PatKind::Struct(..)      |
@@ -574,21 +583,21 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                 hir::ExprRepeat(..)     |
                 hir::ExprTup(..)        => {
                     // For these we only hash the span when debuginfo is on.
-                    (false, NodeIdHashingMode::Ignore)
+                    (false, NodeIdHashingMode::CheckedIgnore)
                 }
                 // For the following, spans might be significant because of
                 // panic messages indicating the source location.
                 hir::ExprBinary(op, ..) => {
-                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::Ignore)
+                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::CheckedIgnore)
                 }
                 hir::ExprUnary(op, _) => {
-                    (hcx.unop_can_panic_at_runtime(op), NodeIdHashingMode::Ignore)
+                    (hcx.unop_can_panic_at_runtime(op), NodeIdHashingMode::CheckedIgnore)
                 }
                 hir::ExprAssignOp(op, ..) => {
-                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::Ignore)
+                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::CheckedIgnore)
                 }
                 hir::ExprIndex(..) => {
-                    (true, NodeIdHashingMode::Ignore)
+                    (true, NodeIdHashingMode::CheckedIgnore)
                 }
                 // For these we don't care about the span, but want to hash the
                 // trait in scope
@@ -899,7 +908,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
             hir::ItemStatic(..)      |
             hir::ItemConst(..)       |
             hir::ItemFn(..)          => {
-                (NodeIdHashingMode::Ignore, hcx.hash_spans())
+                (NodeIdHashingMode::CheckedIgnore, hcx.hash_spans())
             }
             hir::ItemUse(..) => {
                 (NodeIdHashingMode::HashTraitsInScope, false)
@@ -916,7 +925,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
             hir::ItemUnion(..)       => {
-                (NodeIdHashingMode::Ignore, false)
+                (NodeIdHashingMode::CheckedIgnore, false)
             }
         };
 
@@ -1158,5 +1167,22 @@ for ::middle::lang_items::LangItem {
                                           _: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         ::std::hash::Hash::hash(self, hasher);
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+for hir::TraitCandidate {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            let hir::TraitCandidate {
+                def_id,
+                import_id,
+            } = *self;
+
+            def_id.hash_stable(hcx, hasher);
+            import_id.hash_stable(hcx, hasher);
+        });
     }
 }

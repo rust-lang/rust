@@ -38,3 +38,10 @@ impl_stable_hash_for!(enum middle::cstore::LinkagePreference {
     RequireDynamic,
     RequireStatic
 });
+
+impl_stable_hash_for!(struct middle::cstore::ExternCrate {
+    def_id,
+    span,
+    direct,
+    path_len
+});

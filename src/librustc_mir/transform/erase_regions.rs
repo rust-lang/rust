@@ -15,7 +15,8 @@
 //! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid, and EndRegion.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts};
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
@@ -78,6 +79,45 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
         };
         self.super_statement(block, statement, location);
         self.in_validation_statement = false;
+    }
+
+    fn visit_const_val(&mut self,
+                       const_val: &mut ConstVal<'tcx>,
+                       _: Location) {
+        erase_const_val(self.tcx, const_val);
+        self.super_const_val(const_val);
+
+        fn erase_const_val<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     const_val: &mut ConstVal<'tcx>) {
+            match *const_val {
+                ConstVal::Float(_)    |
+                ConstVal::Integral(_) |
+                ConstVal::Str(_)      |
+                ConstVal::ByteStr(_)  |
+                ConstVal::Bool(_)     |
+                ConstVal::Char(_)     |
+                ConstVal::Variant(_)  => {
+                    // nothing to do
+                }
+                ConstVal::Function(_, ref mut substs) => {
+                    *substs = tcx.erase_regions(&{*substs});
+                }
+                ConstVal::Struct(ref mut field_map) => {
+                    for (_, field_val) in field_map {
+                        erase_const_val(tcx, field_val);
+                    }
+                }
+                ConstVal::Tuple(ref mut fields) |
+                ConstVal::Array(ref mut fields) => {
+                    for field_val in fields {
+                        erase_const_val(tcx, field_val);
+                    }
+                }
+                ConstVal::Repeat(ref mut expr, _) => {
+                    erase_const_val(tcx, &mut **expr);
+                }
+            }
+        }
     }
 }
 
