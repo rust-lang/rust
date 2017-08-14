@@ -1116,21 +1116,17 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let steps = self.steps.clone();
 
         // find the first step that works
-        steps.iter().filter_map(|step| self.pick_step(step)).next()
-    }
-
-    fn pick_step(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
-        debug!("pick_step: step={:?}", step);
-
-        if step.self_ty.references_error() {
-            return None;
-        }
-
-        if let Some(result) = self.pick_by_value_method(step) {
-            return Some(result);
-        }
-
-        self.pick_autorefd_method(step)
+        steps
+            .iter()
+            .filter(|step| {
+                debug!("pick_core: step={:?}", step);
+                !step.self_ty.references_error()
+            }).flat_map(|step| {
+                self.pick_by_value_method(step).or_else(|| {
+                self.pick_autorefd_method(step, hir::MutImmutable).or_else(|| {
+                self.pick_autorefd_method(step, hir::MutMutable)
+            })})})
+            .next()
     }
 
     fn pick_by_value_method(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
@@ -1161,36 +1157,30 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn pick_autorefd_method(&mut self, step: &CandidateStep<'tcx>) -> Option<PickResult<'tcx>> {
+    fn pick_autorefd_method(&mut self, step: &CandidateStep<'tcx>, mutbl: hir::Mutability)
+                            -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
         let region = tcx.types.re_erased;
 
-        // Search through mutabilities in order to find one where pick works:
-        [hir::MutImmutable, hir::MutMutable]
-            .iter()
-            .filter_map(|&m| {
-                let autoref_ty = tcx.mk_ref(region,
-                                            ty::TypeAndMut {
-                                                ty: step.self_ty,
-                                                mutbl: m,
-                                            });
-                self.pick_method(autoref_ty).map(|r| {
-                    r.map(|mut pick| {
-                        pick.autoderefs = step.autoderefs;
-                        pick.autoref = Some(m);
-                        pick.unsize = if step.unsize {
-                            Some(step.self_ty)
-                        } else {
-                            None
-                        };
-                        pick
-                    })
-                })
+        let autoref_ty = tcx.mk_ref(region,
+                                    ty::TypeAndMut {
+                                        ty: step.self_ty, mutbl
+                                    });
+        self.pick_method(autoref_ty).map(|r| {
+            r.map(|mut pick| {
+                pick.autoderefs = step.autoderefs;
+                pick.autoref = Some(mutbl);
+                pick.unsize = if step.unsize {
+                    Some(step.self_ty)
+                } else {
+                    None
+                };
+                pick
             })
-            .nth(0)
+        })
     }
 
     fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
