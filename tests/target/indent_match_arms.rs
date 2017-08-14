@@ -23,5 +23,4 @@ fn main() {
     },
     _ => "something else",
     }
-
 }

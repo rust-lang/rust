@@ -102,7 +102,6 @@ fn match_cli_path_or_file(
     config_path: Option<PathBuf>,
     input_file: &Path,
 ) -> FmtResult<(Config, Option<PathBuf>)> {
-
     if let Some(config_file) = config_path {
         let toml = Config::from_toml_path(config_file.as_ref())?;
         return Ok((toml, Some(config_file)));

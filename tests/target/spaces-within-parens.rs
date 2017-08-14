@@ -14,7 +14,6 @@ struct TupleStruct2( u32, u32 );
 fn fooEmpty() {}
 
 fn foo( e: E, _: u32 ) -> ( u32, u32 ) {
-
     // Tuples
     let t1 = ();
     let t2 = ( 1, );

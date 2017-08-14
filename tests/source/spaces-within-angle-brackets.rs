@@ -31,7 +31,6 @@ fn foo<T, E>(a: T, b: E) {
 }
 
 fn foo<T: Send, E: Send>(a: T, b: E) {
-
     foo::<u32, str>(10, "bar");
 
     let opt: Option<u32>;

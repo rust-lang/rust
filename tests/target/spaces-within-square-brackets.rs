@@ -1,7 +1,6 @@
 // rustfmt-spaces_within_square_brackets: true
 
 fn main() {
-
     let arr: [ i32; 5 ] = [ 1, 2, 3, 4, 5 ];
     let arr: [ i32; 500 ] = [ 0; 500 ];
 

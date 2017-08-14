@@ -271,7 +271,6 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
         std::io::ErrorKind::NotFound,
         str::from_utf8(&output.stderr).unwrap(),
     ))
-
 }
 
 fn target_from_json(jtarget: &Value) -> Target {

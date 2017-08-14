@@ -404,7 +404,6 @@ where
     } else {
         Some(format!("{}{}", args, output))
     }
-
 }
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
@@ -601,7 +600,6 @@ impl Rewrite for ast::TyParam {
             result.push_str(&join_bounds(context, shape, &strs));
         }
         if let Some(ref def) = self.default {
-
             let eq_str = match context.config.type_punctuation_density() {
                 TypeDensity::Compressed => "=",
                 TypeDensity::Wide => " = ",

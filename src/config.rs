@@ -606,7 +606,9 @@ create_config! {
                                               tuple patterns";
     combine_control_expr: bool, true, "Combine control expressions with funciton calls.";
     struct_field_align_threshold: usize, 0, "Align struct fields if their diffs fits within \
-                                             threshold."
+                                             threshold.";
+    remove_blank_lines_at_start_or_end_of_block: bool, true,
+        "Remove blank lines at start or end of a block";
 }
 
 #[cfg(test)]

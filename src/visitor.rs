@@ -12,12 +12,13 @@ use std::cmp;
 
 use strings::string_buffer::StringBuffer;
 use syntax::{ast, ptr, visit};
-use syntax::codemap::{self, BytePos, CodeMap, Span};
+use syntax::attr::HasAttrs;
+use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, FindUncommented};
+use comment::{contains_comment, CodeCharKind, CommentCodeSlices, FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use expr::{format_expr, ExprType};
@@ -131,6 +132,48 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent = self.block_indent.block_indent(self.config);
         self.buffer.push_str("{");
 
+        if self.config.remove_blank_lines_at_start_or_end_of_block() {
+            if let Some(first_stmt) = b.stmts.first() {
+                let attr_lo = inner_attrs
+                    .and_then(|attrs| {
+                        utils::inner_attributes(attrs)
+                            .first()
+                            .map(|attr| attr.span.lo)
+                    })
+                    .or_else(|| {
+                        // Attributes for an item in a statement position
+                        // do not belong to the statement. (rust-lang/rust#34459)
+                        if let ast::StmtKind::Item(ref item) = first_stmt.node {
+                            item.attrs.first()
+                        } else {
+                            first_stmt.attrs().first()
+                        }.and_then(|attr| {
+                            // Some stmts can have embedded attributes.
+                            // e.g. `match { #![attr] ... }`
+                            let attr_lo = attr.span.lo;
+                            if attr_lo < first_stmt.span.lo {
+                                Some(attr_lo)
+                            } else {
+                                None
+                            }
+                        })
+                    });
+
+                let snippet =
+                    self.snippet(mk_sp(self.last_pos, attr_lo.unwrap_or(first_stmt.span.lo)));
+                let len = CommentCodeSlices::new(&snippet).nth(0).and_then(
+                    |(kind, _, s)| if kind == CodeCharKind::Normal {
+                        s.rfind('\n')
+                    } else {
+                        None
+                    },
+                );
+                if let Some(len) = len {
+                    self.last_pos = self.last_pos + BytePos::from_usize(len);
+                }
+            }
+        }
+
         // Format inner attributes if available.
         if let Some(attrs) = inner_attrs {
             self.visit_attrs(attrs, ast::AttrStyle::Inner);
@@ -148,9 +191,31 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
+        let mut remove_len = BytePos(0);
+        if self.config.remove_blank_lines_at_start_or_end_of_block() {
+            if let Some(stmt) = b.stmts.last() {
+                let snippet = self.snippet(mk_sp(
+                    stmt.span.hi,
+                    source!(self, b.span).hi - brace_compensation,
+                ));
+                let len = CommentCodeSlices::new(&snippet)
+                    .last()
+                    .and_then(|(kind, _, s)| {
+                        if kind == CodeCharKind::Normal && s.trim().is_empty() {
+                            Some(s.len())
+                        } else {
+                            None
+                        }
+                    });
+                if let Some(len) = len {
+                    remove_len = BytePos::from_usize(len);
+                }
+            }
+        }
+
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
-            let end_pos = source!(self, b.span).hi - brace_compensation;
+            let end_pos = source!(self, b.span).hi - brace_compensation - remove_len;
             let snippet = self.get_context().snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
@@ -158,7 +223,7 @@ impl<'a> FmtVisitor<'a> {
         if unindent_comment {
             self.block_indent = self.block_indent.block_unindent(self.config);
         }
-        self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation);
+        self.format_missing_with_indent(source!(self, b.span).hi - brace_compensation - remove_len);
         if unindent_comment {
             self.block_indent = self.block_indent.block_indent(self.config);
         }
