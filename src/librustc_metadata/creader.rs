@@ -294,6 +294,7 @@ impl<'a> CrateLoader<'a> {
             // after we were able to deserialize its contents.
             dllimport_foreign_items: FxHashSet(),
             hygiene_data_import_info: RefCell::new(None),
+            hygiene_data_being_decoded: Cell::new(false),
         };
 
         let dllimports: FxHashSet<_> = cmeta

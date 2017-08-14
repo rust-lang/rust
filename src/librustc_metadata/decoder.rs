@@ -241,11 +241,7 @@ impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<hygiene::Mark, Self::Error> {
         let mark = u32::decode(self)?;
 
-        // We only perform translation if hygiene info is already available and if the
-        // mark actually needs translation. That way we avoid loops (as obtaining hygiene
-        // info for an external crate involves decoding marks) and avoid incorrectly translated
-        // default marks.
-        if self.cdata().hygiene_data_import_info.borrow().is_some() && mark != 0  {
+        if !self.cdata().hygiene_data_being_decoded.get() && mark != 0  {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
             Ok(hygiene::Mark::from_u32(mark + imported_hygiene.mark_translation_offset))
@@ -259,11 +255,7 @@ impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
         let ctxt = u32::decode(self)?;
 
-        // We only perform translation if hygiene info is already available and if the
-        // syntax context actually needs translation. That way we avoid loops (as obtaining
-        // hygiene info for an external crate involves decoding syntax contexts) and avoid
-        // incorrectly translated default contexts.
-        if self.cdata().hygiene_data_import_info.borrow().is_some() && ctxt != 0 {
+        if !self.cdata().hygiene_data_being_decoded.get() && ctxt != 0 {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
             Ok(SyntaxContext::from_u32(ctxt + imported_hygiene.ctxt_translation_offset))
@@ -1270,11 +1262,15 @@ impl<'a, 'tcx> CrateMetadata {
             }
         }
 
+        self.hygiene_data_being_decoded.set(true);
+
         let external_hygiene_data = self.root.hygiene_data.decode(self);
 
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         *self.hygiene_data_import_info.borrow_mut() =
             Some(hygiene::extend_hygiene_data(external_hygiene_data));
-        Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap())
+        self.hygiene_data_being_decoded.set(false);
+
+        Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap());
     }
 }

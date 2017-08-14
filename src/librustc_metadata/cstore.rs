@@ -89,6 +89,7 @@ pub struct CrateMetadata {
     pub dllimport_foreign_items: FxHashSet<DefIndex>,
 
     pub hygiene_data_import_info: RefCell<Option<hygiene::ImportedHygieneData>>,
+    pub hygiene_data_being_decoded: Cell<bool>,
 }
 
 pub struct CStore {
