@@ -26,6 +26,7 @@
 #![feature(core_intrinsics)]
 #![feature(discriminant_value)]
 #![feature(i128_type)]
+#![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
@@ -44,6 +45,8 @@ extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
+#[cfg(windows)]
+extern crate libc;
 extern crate owning_ref;
 extern crate rustc_back;
 extern crate rustc_data_structures;
