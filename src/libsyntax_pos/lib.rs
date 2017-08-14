@@ -316,13 +316,17 @@ impl Default for Span {
 
 impl serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_struct("Span", 2, |s| {
+        s.emit_struct("Span", 3, |s| {
             s.emit_struct_field("lo", 0, |s| {
                 self.lo().encode(s)
             })?;
 
             s.emit_struct_field("hi", 1, |s| {
                 self.hi().encode(s)
+            })?;
+
+            s.emit_struct_field("ctxt", 2, |s| {
+                self.ctxt().encode(s)
             })
         })
     }

@@ -45,8 +45,7 @@ use syntax::ast::{self, Ident};
 use syntax::codemap;
 use syntax::symbol::{InternedString, Symbol};
 use syntax::ext::base::MacroKind;
-use syntax_pos::{self, Span, SyntaxContext, BytePos, Pos, DUMMY_SP};
-use syntax_pos::hygiene;
+use syntax_pos::{self, hygiene, Span, SyntaxContext, BytePos, Pos, DUMMY_SP};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -241,7 +240,7 @@ impl<'a, 'tcx> SpecializedDecoder<CrateNum> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<hygiene::Mark, Self::Error> {
         let mark = u32::decode(self)?;
-        //
+
         // We only perform translation if hygiene info is already available and if the
         // mark actually needs translation. That way we avoid loops (as obtaining hygiene
         // info for an external crate involves decoding marks) and avoid incorrectly translated
