@@ -261,6 +261,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None
             }
+            (_, &ty::TyRef(_, checked)) => {
+                if self.infcx.can_sub(self.param_env, checked.ty, &expected).is_ok() &&
+                   expr.span.ctxt().outer().expn_info().is_none() {
+                    match expr.node {
+                        hir::ExprAddrOf(_, ref expr) => {
+                            if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
+                                return Some(format!("try with `{}`", code));
+                            }
+                        }
+                        _ => {
+                            if !self.infcx.type_moves_by_default(self.param_env,
+                                                                checked.ty,
+                                                                expr.span) {
+                                let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                                if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                                    return Some(format!("try with `*{}`", code));
+                                }
+                            }
+                        },
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }
