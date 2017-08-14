@@ -141,20 +141,6 @@ Similar to `--library-path`, `--extern` is about specifying the location
 of a dependency. `--library-path` provides directories to search in, `--extern`
 instead lets you specify exactly which dependency is located where.
 
-
-## `--plugin-path`: loading plugins
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs --plugin-path=/path/to/plugins
-```
-
-Similar to `--library-path`, but for plugins. For more, see
-the [chapter on plugins](plugins.html).
-
-See also: `--plugins`.
-
 ## `--passes`: add more rustdoc passes
 
 Using this flag looks like this:
@@ -170,18 +156,6 @@ arguments will be the name of which passes to run in addition to the defaults.
 For more details on passes, see [the chapter on them](passes.html).
 
 See also `--no-defaults`.
-
-## `--plugins`: 
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs --plugins foo bar
-```
-
-For more, see the [chapter on plugins](plugins.html).
-
-See also: `--plugin-path`.
 
 ## `--no-defaults`: don't run default passes
 
