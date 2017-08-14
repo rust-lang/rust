@@ -18,13 +18,14 @@ use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use std::rc::Rc;
 use super::FnCtxt;
-use util::nodemap::FxHashSet;
 use util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     cache: FxHashMap<NodeId, Option<Span>>,
-    types: FxHashSet<Ty<'tcx>>,
+
+    // FIXME: Use an ordered hash map here
+    types: Vec<Ty<'tcx>>,
     region_maps: Rc<RegionMaps>,
 }
 
@@ -37,26 +38,19 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
         }).unwrap_or(true);
 
         if live_across_yield {
+            let ty = self.fcx.resolve_type_vars_if_possible(&ty);
+
             if log_enabled!(log::LogLevel::Debug) {
-                if let Some(s) = scope {
-                    let span = s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP);
-                    debug!("type in generator with scope = {:?}, type = {:?}, span = {:?}",
-                           scope,
-                           self.fcx.resolve_type_vars_if_possible(&ty),
-                           span);
-                } else {
-                    debug!("type in generator WITHOUT scope, type = {:?}",
-                           self.fcx.resolve_type_vars_if_possible(&ty));
-                }
-                if let Some(e) = expr {
-                    debug!("type from expression: {:?}, span={:?}", e, e.span);
-                }
+                let span = scope.map(|s| s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP));
+                debug!("type in expr = {:?}, scope = {:?}, type = {:?}, span = {:?}",
+                       expr, scope, ty, span);
             }
-            self.types.insert(ty);
+
+            if !self.types.contains(&ty) {
+                self.types.push(ty);
+            }
         } else {
-            if let Some(e) = expr {
-                debug!("NO type from expression: {:?}, span = {:?}", e, e.span);
-            }
+            debug!("no type in expr = {:?}, span = {:?}", expr, expr.map(|e| e.span));
         }
     }
 }
@@ -68,19 +62,13 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let body = fcx.tcx.hir.body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
-        types: FxHashSet(),
+        types: Vec::new(),
         cache: FxHashMap(),
         region_maps: fcx.tcx.region_maps(def_id),
     };
     intravisit::walk_body(&mut visitor, body);
 
-    // Deduplicate types
-    let set: FxHashSet<_> = visitor.types.into_iter()
-        .map(|t| fcx.resolve_type_vars_if_possible(&t))
-        .collect();
-    let types: Vec<_> = set.into_iter().collect();
-
-    let tuple = fcx.tcx.intern_tup(&types, false);
+    let tuple = fcx.tcx.intern_tup(&visitor.types, false);
 
     debug!("Types in generator {:?}, span = {:?}", tuple, body.value.span);
 
