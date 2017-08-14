@@ -226,8 +226,7 @@ pub struct LocalTableInContext<'a, V: 'a> {
 fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
                                      hir_id: hir::HirId,
                                      mut_access: bool) {
-    #[cfg(debug_assertions)]
-    {
+    if cfg!(debug_assertions) {
         if let Some(local_id_root) = local_id_root {
             if hir_id.owner != local_id_root.index {
                 ty::tls::with(|tcx| {
