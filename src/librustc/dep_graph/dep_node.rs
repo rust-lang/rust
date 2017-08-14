@@ -432,6 +432,7 @@ define_dep_nodes!( <'tcx>
     [] ImplPolarity(DefId),
     [] ClosureKind(DefId),
     [] FnSignature(DefId),
+    [] GenSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
     [] ItemVarianceConstraints(DefId),

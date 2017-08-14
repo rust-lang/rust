@@ -919,7 +919,7 @@ define_maps! { <'tcx>
 
     /// Records the signature of each generator. The def ID is the ID of the
     /// expression defining the closure.
-    [] generator_sig: TypeckTables(DefId) -> Option<ty::PolyGenSig<'tcx>>,
+    [] generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
     [] coerce_unsized_info: CoerceUnsizedInfo(DefId)
