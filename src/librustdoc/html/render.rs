@@ -3535,6 +3535,17 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
 
     sidebar.push_str(&sidebar_assoc_items(it));
 
+    let c = cache();
+
+    if let Some(implementors) = c.implementors.get(&it.def_id) {
+        if implementors.iter().any(|i| i.impl_.for_.def_id()
+                                   .map_or(false, |d| !c.paths.contains_key(&d)))
+        {
+            sidebar.push_str("<li><a href=\"#foreign-impls\">\
+                             Implementations on Foreign Types</a></li>");
+        }
+    }
+
     sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
 
     write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)
