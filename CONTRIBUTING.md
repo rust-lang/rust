@@ -298,6 +298,31 @@ Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found
 [here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
 
+### External Dependencies
+
+Currently building Rust will also build the following external projects:
+
+* [clippy](https://github.com/rust-lang-nursery/rust-clippy)
+
+If your changes break one of these projects, you need to fix them by opening
+a pull request against the broken project. When you have opened a pull request,
+you can point the submodule at your pull request by calling
+
+```
+git checkout pulls/$id_of_your_pr/head
+```
+
+within the submodule's directory. Don't forget to also add your changes with
+
+```
+git add path/to/submodule
+```
+
+outside the submodule.
+
+It can also be more convenient during development to set `submodules = false`
+in the `config.toml` to prevent `x.py` from resetting to the original branch.
+
 ## Writing Documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
