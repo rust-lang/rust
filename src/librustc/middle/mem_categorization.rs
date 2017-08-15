@@ -728,7 +728,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let kind = match self.tables.closure_kinds().get(fn_hir_id) {
             Some(&(kind, _)) => kind,
             None => {
-                let ty = self.node_ty(fn_node_id)?;
+                let ty = self.node_ty(fn_hir_id)?;
                 match ty.sty {
                     ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
                     _ => span_bug!(span, "missing closure kind"),

@@ -636,9 +636,10 @@ impl MirPass for StateTransform {
 
         let node_id = source.item_id();
         let def_id = tcx.hir.local_def_id(source.item_id());
+        let hir_id = tcx.hir.node_to_hir_id(node_id);
 
         // Get the interior types which typeck computed
-        let interior = *tcx.typeck_tables_of(def_id).generator_interiors.get(&node_id).unwrap();
+        let interior = *tcx.typeck_tables_of(def_id).generator_interiors().get(hir_id).unwrap();
 
         // The first argument is the generator type passed by value
         let gen_ty = mir.local_decls.raw[1].ty;

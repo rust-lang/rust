@@ -340,9 +340,9 @@ pub struct TypeckTables<'tcx> {
     /// that caused the closure to be this kind.
     closure_kinds: ItemLocalMap<(ty::ClosureKind, Option<(Span, ast::Name)>)>,
 
-    pub generator_sigs: ItemLocalMap<Option<ty::GenSig<'tcx>>>,
+    generator_sigs: ItemLocalMap<Option<ty::GenSig<'tcx>>>,
 
-    pub generator_interiors: ItemLocalMap<ty::GeneratorInterior<'tcx>>,
+    generator_interiors: ItemLocalMap<ty::GeneratorInterior<'tcx>>,
 
     /// For each fn, records the "liberated" types of its arguments
     /// and return type. Liberated means that all bound regions
@@ -640,6 +640,42 @@ impl<'tcx> TypeckTables<'tcx> {
             data: &mut self.cast_kinds
         }
     }
+
+    pub fn generator_sigs(&self)
+        -> LocalTableInContext<Option<ty::GenSig<'tcx>>>
+    {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.generator_sigs,
+        }
+    }
+
+    pub fn generator_sigs_mut(&mut self)
+        -> LocalTableInContextMut<Option<ty::GenSig<'tcx>>>
+    {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.generator_sigs,
+        }
+    }
+
+    pub fn generator_interiors(&self)
+        -> LocalTableInContext<ty::GeneratorInterior<'tcx>>
+    {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.generator_interiors,
+        }
+    }
+
+    pub fn generator_interiors_mut(&mut self)
+        -> LocalTableInContextMut<ty::GeneratorInterior<'tcx>>
+    {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.generator_interiors,
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TypeckTables<'gcx> {
@@ -664,6 +700,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
+            ref generator_sigs,
+            ref generator_interiors,
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -697,6 +735,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
             ich::hash_stable_itemlocalmap(hcx, hasher, liberated_fn_sigs);
             ich::hash_stable_itemlocalmap(hcx, hasher, fru_field_types);
             ich::hash_stable_itemlocalmap(hcx, hasher, cast_kinds);
+            ich::hash_stable_itemlocalmap(hcx, hasher, generator_sigs);
+            ich::hash_stable_itemlocalmap(hcx, hasher, generator_interiors);
 
             ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
                 hcx.def_path_hash(*def_id)

@@ -1367,7 +1367,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn generator_sig(&self, def_id: DefId) -> Option<ty::PolyGenSig<'tcx>> {
         if let Some(tables) = self.in_progress_tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                if let Some(&ty) = tables.borrow().generator_sigs.get(&id) {
+                let hir_id = self.tcx.hir.node_to_hir_id(id);
+                if let Some(&ty) = tables.borrow().generator_sigs().get(hir_id) {
                     return ty.map(|t| ty::Binder(t));
                 }
             }

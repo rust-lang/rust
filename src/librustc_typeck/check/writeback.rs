@@ -361,19 +361,29 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_generator_interiors(&mut self) {
-        for (&node_id, interior) in self.fcx.tables.borrow().generator_interiors.iter() {
-            let interior = self.resolve(interior, &node_id);
-            self.tables.generator_interiors.insert(node_id, interior);
+        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
+        for (&id, interior) in self.fcx.tables.borrow().generator_interiors().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id: id,
+            };
+            let interior = self.resolve(interior, &hir_id);
+            self.tables.generator_interiors_mut().insert(hir_id, interior);
         }
     }
 
     fn visit_generator_sigs(&mut self) {
-        for (&node_id, gen_sig) in self.fcx.tables.borrow().generator_sigs.iter() {
+        let common_local_id_root = self.fcx.tables.borrow().local_id_root.unwrap();
+        for (&id, gen_sig) in self.fcx.tables.borrow().generator_sigs().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id: id,
+            };
             let gen_sig = gen_sig.map(|s| ty::GenSig {
-                yield_ty: self.resolve(&s.yield_ty, &node_id),
-                return_ty: self.resolve(&s.return_ty, &node_id),
+                yield_ty: self.resolve(&s.yield_ty, &hir_id),
+                return_ty: self.resolve(&s.return_ty, &hir_id),
             });
-            self.tables.generator_sigs.insert(node_id, gen_sig);
+            self.tables.generator_sigs_mut().insert(hir_id, gen_sig);
         }
     }
 

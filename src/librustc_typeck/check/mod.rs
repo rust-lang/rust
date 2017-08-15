@@ -750,7 +750,8 @@ fn generator_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           def_id: DefId)
                           -> Option<ty::PolyGenSig<'tcx>> {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    tcx.typeck_tables_of(def_id).generator_sigs[&node_id].map(|s| ty::Binder(s))
+    let hir_id = tcx.hir.node_to_hir_id(node_id);
+    tcx.typeck_tables_of(def_id).generator_sigs()[hir_id].map(|s| ty::Binder(s))
 }
 
 fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1050,25 +1051,26 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.write_ty(arg.hir_id, arg_ty);
     }
 
+    let fn_hir_id = fcx.tcx.hir.node_to_hir_id(fn_id);
     let gen_ty = if can_be_generator && body.is_generator {
         let gen_sig = ty::GenSig {
             yield_ty: fcx.yield_ty.unwrap(),
             return_ty: ret_ty,
         };
-        inherited.tables.borrow_mut().generator_sigs.insert(fn_hir_id, Some(gen_sig));
+        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, Some(gen_sig));
 
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), witness));
         let interior = ty::GeneratorInterior::new(witness);
 
-        inherited.tables.borrow_mut().generator_interiors.insert(fn_hir_id, interior);
+        inherited.tables.borrow_mut().generator_interiors_mut().insert(fn_hir_id, interior);
 
         Some(interior)
     } else {
-        inherited.tables.borrow_mut().generator_sigs.insert(fn_hir_id, None);
+        inherited.tables.borrow_mut().generator_sigs_mut().insert(fn_hir_id, None);
         None
     };
-    inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_hir_id, fn_sig);
+    inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_hir_id, fn_sig);
 
     fcx.check_return_expr(&body.value);
 
