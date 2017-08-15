@@ -614,6 +614,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
+    check_for_mut_range_bound(cx, arg, expr);
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
@@ -1301,6 +1302,44 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
             }
         }
     }
+}
+
+fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, expr: &Expr) {
+    if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
+        let bounds = vec![start, end];
+        for bound in &bounds {
+            if check_for_mutability(cx, bound) {
+                span_lint(cx, MUT_RANGE_BOUND, expr.span, "you are looping over a range where at least one bound was defined as a mutable variable. keep in mind that mutating this variable inside the loop will not affect the range");   
+                return;
+            }
+        }
+    }
+}
+
+fn check_for_mutability(cx: &LateContext, bound: &Expr) -> bool {
+    if_let_chain! {[
+        let ExprPath(ref qpath) = bound.node,
+        let QPath::Resolved(None, ref path) = *qpath,
+        path.segments.len() == 1,
+    ], {
+        let def = cx.tables.qpath_def(qpath, bound.id);
+        match def {
+            Def::Local(..) | Def::Upvar(..) => {
+                let def_id = def.def_id();
+                let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
+                let node_str = cx.tcx.hir.get(node_id);
+                if_let_chain! {[
+                    let map::Node::NodeLocal(pat) = node_str,
+                    let PatKind::Binding(bind_ann, _, _, _) = pat.node,
+                    let BindingAnnotation::Mutable = bind_ann,
+                ], {
+                    return true;
+                }} 
+            },
+            _ => (),
+        }}
+    }
+    return false;
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
