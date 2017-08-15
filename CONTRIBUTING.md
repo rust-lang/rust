@@ -309,8 +309,8 @@ a pull request against the broken project. When you have opened a pull request,
 you can point the submodule at your pull request by calling
 
 ```
-git fetch origin pull/$id_of_your_pr/head
-git checkout pull/$id_of_your_pr/head
+git fetch origin pull/$id_of_your_pr/head:my_pr
+git checkout my_pr
 ```
 
 within the submodule's directory. Don't forget to also add your changes with
