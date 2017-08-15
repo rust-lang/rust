@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(fn_traits)]
+
 fn main() {
-    let mut zero = || {};
-    let () = zero.call_mut(());
-    //~^ ERROR we have not yet inferred what kind of closure it is
+    let mut zero = || 0;
+    let x = zero.call_mut(());
+    assert_eq!(x, 0);
 }

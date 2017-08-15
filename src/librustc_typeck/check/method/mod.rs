@@ -52,10 +52,6 @@ pub enum MethodError<'tcx> {
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
 
-    // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
-    ClosureAmbiguity(// DefId of fn trait
-                     DefId),
-
     // Found an applicable method, but it is not visible. The second argument contains a list of
     // not-in-scope traits which may work.
     PrivateMatch(Def, Vec<DefId>),
@@ -113,7 +109,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(..) => true,
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
-            Err(ClosureAmbiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
             Err(IllegalSizedBound(..)) => true,
         }
