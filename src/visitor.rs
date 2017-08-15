@@ -321,10 +321,12 @@ impl<'a> FmtVisitor<'a> {
                     attrs = &filtered_attrs;
                 }
             }
-            _ => if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
-                self.push_rewrite(item.span, None);
-                return;
-            },
+            _ => {
+                if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
+                    self.push_rewrite(item.span, None);
+                    return;
+                }
+            }
         }
 
         match item.node {

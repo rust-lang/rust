@@ -462,18 +462,20 @@ where
                 None => DefinitiveListTactic::Vertical,
             }
         }
-        IndentStyle::Visual => if has_long_item || items.iter().any(ListItem::is_multiline) {
-            definitive_tactic(
-                &items,
-                ListTactic::LimitedHorizontalVertical(
-                    context.config.width_heuristics().array_width,
-                ),
-                Separator::Comma,
-                nested_shape.width,
-            )
-        } else {
-            DefinitiveListTactic::Mixed
-        },
+        IndentStyle::Visual => {
+            if has_long_item || items.iter().any(ListItem::is_multiline) {
+                definitive_tactic(
+                    &items,
+                    ListTactic::LimitedHorizontalVertical(
+                        context.config.width_heuristics().array_width,
+                    ),
+                    Separator::Comma,
+                    nested_shape.width,
+                )
+            } else {
+                DefinitiveListTactic::Mixed
+            }
+        }
     };
     let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
 
@@ -1501,8 +1503,8 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
                     !context.config.force_multiline_blocks()
-                        && (can_extend_match_arm_body(expr), &**expr),
-                    &**expr,
+                        && can_extend_match_arm_body(expr),
+                    &*expr,
                 )
             } else {
                 (false, &*body)

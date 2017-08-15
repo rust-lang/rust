@@ -51,11 +51,13 @@ impl Rewrite for Pat {
 
                 Some(format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat))
             }
-            PatKind::Wild => if 1 <= shape.width {
-                Some("_".to_owned())
-            } else {
-                None
-            },
+            PatKind::Wild => {
+                if 1 <= shape.width {
+                    Some("_".to_owned())
+                } else {
+                    None
+                }
+            }
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 let infix = match *end_kind {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
