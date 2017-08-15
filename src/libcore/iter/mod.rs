@@ -1050,13 +1050,13 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Map<I, F> {
+pub struct Map<I, F: ?Sized> {
     iter: I,
     f: F,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, F> fmt::Debug for Map<I, F> {
+impl<I: fmt::Debug, F: ?Sized> fmt::Debug for Map<I, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Map")
             .field("iter", &self.iter)
@@ -1065,7 +1065,8 @@ impl<I: fmt::Debug, F> fmt::Debug for Map<I, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: Iterator, F> Iterator for Map<I, F> where F: FnMut(I::Item) -> B {
+impl<B, I: Iterator, F: ?Sized> Iterator for Map<I, F> where F: FnMut(I::Item) -> B
+{
     type Item = B;
 
     #[inline]
@@ -1078,16 +1079,17 @@ impl<B, I: Iterator, F> Iterator for Map<I, F> where F: FnMut(I::Item) -> B {
         self.iter.size_hint()
     }
 
-    fn fold<Acc, G>(self, init: Acc, mut g: G) -> Acc
+    fn fold<Acc, G>(mut self, init: Acc, mut g: G) -> Acc
         where G: FnMut(Acc, Self::Item) -> Acc,
+              Self: Sized,
     {
-        let mut f = self.f;
+        let f = &mut self.f;
         self.iter.fold(init, move |acc, elt| g(acc, f(elt)))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
+impl<B, I: DoubleEndedIterator, F: ?Sized> DoubleEndedIterator for Map<I, F> where
     F: FnMut(I::Item) -> B,
 {
     #[inline]
@@ -1097,7 +1099,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
+impl<B, I: ExactSizeIterator, F: ?Sized> ExactSizeIterator for Map<I, F>
     where F: FnMut(I::Item) -> B
 {
     fn len(&self) -> usize {
@@ -1110,16 +1112,16 @@ impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<B, I: FusedIterator, F> FusedIterator for Map<I, F>
+impl<B, I: FusedIterator, F: ?Sized> FusedIterator for Map<I, F>
     where F: FnMut(I::Item) -> B {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<B, I, F> TrustedLen for Map<I, F>
+unsafe impl<B, I, F: ?Sized> TrustedLen for Map<I, F>
     where I: TrustedLen,
           F: FnMut(I::Item) -> B {}
 
 #[doc(hidden)]
-unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
+unsafe impl<B, I, F: ?Sized> TrustedRandomAccess for Map<I, F>
     where I: TrustedRandomAccess,
           F: FnMut(I::Item) -> B,
 {
@@ -1140,13 +1142,13 @@ unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Filter<I, P> {
+pub struct Filter<I, P: ?Sized> {
     iter: I,
     predicate: P,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, P> fmt::Debug for Filter<I, P> {
+impl<I: fmt::Debug, P: ?Sized> fmt::Debug for Filter<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Filter")
             .field("iter", &self.iter)
@@ -1155,7 +1157,8 @@ impl<I: fmt::Debug, P> fmt::Debug for Filter<I, P> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {
+impl<I: Iterator, P: ?Sized> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool
+{
     type Item = I::Item;
 
     #[inline]
@@ -1186,7 +1189,9 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
     // Using the branchless version will also simplify the LLVM byte code, thus
     // leaving more budget for LLVM optimizations.
     #[inline]
-    fn count(mut self) -> usize {
+    fn count(mut self) -> usize
+        where Self: Sized
+    {
         let mut count = 0;
         for x in &mut self.iter {
             count += (self.predicate)(&x) as usize;
@@ -1196,7 +1201,7 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
+impl<I: DoubleEndedIterator, P: ?Sized> DoubleEndedIterator for Filter<I, P>
     where P: FnMut(&I::Item) -> bool,
 {
     #[inline]
@@ -1211,7 +1216,7 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
+impl<I: FusedIterator, P: ?Sized> FusedIterator for Filter<I, P>
     where P: FnMut(&I::Item) -> bool {}
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
@@ -1224,13 +1229,13 @@ impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct FilterMap<I, F> {
+pub struct FilterMap<I, F: ?Sized> {
     iter: I,
     f: F,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, F> fmt::Debug for FilterMap<I, F> {
+impl<I: fmt::Debug, F: ?Sized> fmt::Debug for FilterMap<I, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("FilterMap")
             .field("iter", &self.iter)
@@ -1239,7 +1244,7 @@ impl<I: fmt::Debug, F> fmt::Debug for FilterMap<I, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
+impl<B, I: Iterator, F: ?Sized> Iterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B>,
 {
     type Item = B;
@@ -1262,7 +1267,7 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
+impl<B, I: DoubleEndedIterator, F: ?Sized> DoubleEndedIterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B>,
 {
     #[inline]
@@ -1277,7 +1282,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
+impl<B, I: FusedIterator, F: ?Sized> FusedIterator for FilterMap<I, F>
     where F: FnMut(I::Item) -> Option<B> {}
 
 /// An iterator that yields the current count and the element during iteration.
@@ -1534,14 +1539,14 @@ impl<I: Iterator> Peekable<I> {
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct SkipWhile<I, P> {
+pub struct SkipWhile<I, P: ?Sized> {
     iter: I,
     flag: bool,
     predicate: P,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, P> fmt::Debug for SkipWhile<I, P> {
+impl<I: fmt::Debug, P: ?Sized> fmt::Debug for SkipWhile<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("SkipWhile")
             .field("iter", &self.iter)
@@ -1551,7 +1556,7 @@ impl<I: fmt::Debug, P> fmt::Debug for SkipWhile<I, P> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, P> Iterator for SkipWhile<I, P>
+impl<I: Iterator, P: ?Sized> Iterator for SkipWhile<I, P>
     where P: FnMut(&I::Item) -> bool
 {
     type Item = I::Item;
@@ -1575,7 +1580,7 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<I, P> FusedIterator for SkipWhile<I, P>
+impl<I, P: ?Sized> FusedIterator for SkipWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
 /// An iterator that only accepts elements while `predicate` is true.
@@ -1588,14 +1593,14 @@ impl<I, P> FusedIterator for SkipWhile<I, P>
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct TakeWhile<I, P> {
+pub struct TakeWhile<I, P: ?Sized> {
     iter: I,
     flag: bool,
     predicate: P,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, P> fmt::Debug for TakeWhile<I, P> {
+impl<I: fmt::Debug, P: ?Sized> fmt::Debug for TakeWhile<I, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TakeWhile")
             .field("iter", &self.iter)
@@ -1605,7 +1610,7 @@ impl<I: fmt::Debug, P> fmt::Debug for TakeWhile<I, P> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, P> Iterator for TakeWhile<I, P>
+impl<I: Iterator, P: ?Sized> Iterator for TakeWhile<I, P>
     where P: FnMut(&I::Item) -> bool
 {
     type Item = I::Item;
@@ -1634,7 +1639,7 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<I, P> FusedIterator for TakeWhile<I, P>
+impl<I, P: ?Sized> FusedIterator for TakeWhile<I, P>
     where I: FusedIterator, P: FnMut(&I::Item) -> bool {}
 
 /// An iterator that skips over `n` elements of `iter`.
@@ -1851,15 +1856,15 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct FlatMap<I, U: IntoIterator, F> {
+pub struct FlatMap<I, U: IntoIterator, F: ?Sized> {
     iter: I,
-    f: F,
     frontiter: Option<U::IntoIter>,
     backiter: Option<U::IntoIter>,
+    f: F,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
+impl<I: fmt::Debug, U: IntoIterator, F: ?Sized> fmt::Debug for FlatMap<I, U, F>
     where U::IntoIter: fmt::Debug
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1872,7 +1877,7 @@ impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
+impl<I: Iterator, U: IntoIterator, F: ?Sized> Iterator for FlatMap<I, U, F>
     where F: FnMut(I::Item) -> U,
 {
     type Item = U::Item;
@@ -1905,7 +1910,7 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> where
+impl<I: DoubleEndedIterator, U, F: ?Sized> DoubleEndedIterator for FlatMap<I, U, F> where
     F: FnMut(I::Item) -> U,
     U: IntoIterator,
     U::IntoIter: DoubleEndedIterator
@@ -1927,7 +1932,7 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<I, U, F> FusedIterator for FlatMap<I, U, F>
+impl<I, U, F: ?Sized> FusedIterator for FlatMap<I, U, F>
     where I: FusedIterator, U: IntoIterator, F: FnMut(I::Item) -> U {}
 
 /// An iterator that yields `None` forever after the underlying iterator
@@ -2090,13 +2095,13 @@ impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Inspect<I, F> {
+pub struct Inspect<I, F: ?Sized> {
     iter: I,
     f: F,
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<I: fmt::Debug, F> fmt::Debug for Inspect<I, F> {
+impl<I: fmt::Debug, F: ?Sized> fmt::Debug for Inspect<I, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Inspect")
             .field("iter", &self.iter)
@@ -2104,7 +2109,7 @@ impl<I: fmt::Debug, F> fmt::Debug for Inspect<I, F> {
     }
 }
 
-impl<I: Iterator, F> Inspect<I, F> where F: FnMut(&I::Item) {
+impl<I: Iterator, F: ?Sized> Inspect<I, F> where F: FnMut(&I::Item) {
     #[inline]
     fn do_inspect(&mut self, elt: Option<I::Item>) -> Option<I::Item> {
         if let Some(ref a) = elt {
@@ -2116,7 +2121,7 @@ impl<I: Iterator, F> Inspect<I, F> where F: FnMut(&I::Item) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, F> Iterator for Inspect<I, F> where F: FnMut(&I::Item) {
+impl<I: Iterator, F: ?Sized> Iterator for Inspect<I, F> where F: FnMut(&I::Item) {
     type Item = I::Item;
 
     #[inline]
@@ -2132,7 +2137,7 @@ impl<I: Iterator, F> Iterator for Inspect<I, F> where F: FnMut(&I::Item) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
+impl<I: DoubleEndedIterator, F: ?Sized> DoubleEndedIterator for Inspect<I, F>
     where F: FnMut(&I::Item),
 {
     #[inline]
@@ -2143,7 +2148,7 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
+impl<I: ExactSizeIterator, F: ?Sized> ExactSizeIterator for Inspect<I, F>
     where F: FnMut(&I::Item)
 {
     fn len(&self) -> usize {
@@ -2156,5 +2161,5 @@ impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
 }
 
 #[unstable(feature = "fused", issue = "35602")]
-impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>
+impl<I: FusedIterator, F: ?Sized> FusedIterator for Inspect<I, F>
     where F: FnMut(&I::Item) {}

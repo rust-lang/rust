@@ -1288,3 +1288,16 @@ fn test_step_replace_no_between() {
     assert_eq!(x, 1);
     assert_eq!(y, 5);
 }
+
+#[test]
+fn test_unsized_closures_in_map_etc() {
+    fn an_iterator<I: Iterator + ?Sized>(iter: &mut I) { let _ = iter.next(); }
+
+    an_iterator::<Filter<_, FnMut(&_) -> _>>(&mut (0..10).filter(|_| true));
+    an_iterator::<FilterMap<_, FnMut(_) -> _>>(&mut (0..10).filter_map(|i| Some(i)));
+    an_iterator::<FlatMap<_, _, FnMut(_) -> _>>(&mut (0..10).flat_map(|i| 0..i));
+    an_iterator::<Inspect<_, FnMut(&_)>>(&mut (0..10).inspect(|_| {}));
+    an_iterator::<Map<_, FnMut(_) -> _>>(&mut (0..10).map(|x| x + 1));
+    an_iterator::<SkipWhile<_, FnMut(&_) -> _>>(&mut (0..10).skip_while(|_| true));
+    an_iterator::<TakeWhile<_, FnMut(&_) -> _>>(&mut (0..10).take_while(|_| true));
+}
