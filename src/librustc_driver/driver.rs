@@ -306,7 +306,7 @@ pub fn source_name(input: &Input) -> String {
     }
 }
 
-/// CompileController is used to customise compilation, it allows compilation to
+/// CompileController is used to customize compilation, it allows compilation to
 /// be stopped and/or to call arbitrary code at various points in compilation.
 /// It also allows for various flags to be set to influence what information gets
 /// collected during compilation.

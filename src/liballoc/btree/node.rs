@@ -763,7 +763,7 @@ impl<Node: Copy, Type> Clone for Handle<Node, Type> {
 }
 
 impl<Node, Type> Handle<Node, Type> {
-    /// Retrieves the node that contains the edge of key/value pair this handle pointes to.
+    /// Retrieves the node that contains the edge of key/value pair this handle points to.
     pub fn into_node(self) -> Node {
         self.node
     }

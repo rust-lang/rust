@@ -14,7 +14,7 @@ use std::cell::Cell;
 /// A write-once variable. When constructed, it is empty, and
 /// can only be set once.
 ///
-/// Ivars ensure that data that can only be initialised once. A full
+/// Ivars ensure that data that can only be initialized once. A full
 /// implementation is used for concurrency and blocks on a read of an
 /// unfulfilled value. This implementation is more minimal and panics
 /// if you attempt to read the value before it has been set. It is also

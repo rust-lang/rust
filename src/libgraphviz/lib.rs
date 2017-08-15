@@ -11,7 +11,7 @@
 //! Generate files suitable for use with [Graphviz](http://www.graphviz.org/)
 //!
 //! The `render` function generates output (e.g. an `output.dot` file) for
-//! use with [Graphviz](http://www.graphviz.org/) by walking a labelled
+//! use with [Graphviz](http://www.graphviz.org/) by walking a labeled
 //! graph. (Graphviz can then automatically lay out the nodes and edges
 //! of the graph, and also optionally render the graph as an image or
 //! other [output formats](
@@ -150,7 +150,7 @@
 //!
 //! The output from this example renders four nodes that make up the
 //! Hasse-diagram for the subsets of the set `{x, y}`. Each edge is
-//! labelled with the &sube; character (specified using the HTML character
+//! labeled with the &sube; character (specified using the HTML character
 //! entity `&sube`).
 //!
 //! ```rust
@@ -789,7 +789,7 @@ mod tests {
     }
 
     struct LabelledGraph {
-        /// The name for this graph. Used for labelling generated `digraph`.
+        /// The name for this graph. Used for labeling generated `digraph`.
         name: &'static str,
 
         /// Each node is an index into `node_labels`; these labels are

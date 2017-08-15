@@ -23,7 +23,7 @@
 //!   and lifetimes for methods.)
 //! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
 //!
-//! The most important thing for implementers is the `Substructure` and
+//! The most important thing for implementors is the `Substructure` and
 //! `SubstructureFields` objects. The latter groups 5 possibilities of the
 //! arguments:
 //!

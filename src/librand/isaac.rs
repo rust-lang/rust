@@ -76,7 +76,7 @@ impl IsaacRng {
         rng
     }
 
-    /// Initialises `self`. If `use_rsl` is true, then use the current value
+    /// Initializes `self`. If `use_rsl` is true, then use the current value
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
     fn init(&mut self, use_rsl: bool) {
@@ -367,7 +367,7 @@ impl Isaac64Rng {
         rng
     }
 
-    /// Initialises `self`. If `use_rsl` is true, then use the current value
+    /// Initializes `self`. If `use_rsl` is true, then use the current value
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
     fn init(&mut self, use_rsl: bool) {
