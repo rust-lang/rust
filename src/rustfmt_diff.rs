@@ -12,6 +12,7 @@ use diff;
 use std::collections::VecDeque;
 use std::io;
 use term;
+use utils::isatty;
 
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
@@ -104,25 +105,6 @@ where
             print_diff_fancy(diff, get_section_title, term::stdout().unwrap())
         }
         _ => print_diff_basic(diff, get_section_title),
-    }
-
-    // isatty shamelessly adapted from cargo.
-    #[cfg(unix)]
-    fn isatty() -> bool {
-        extern crate libc;
-
-        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
-    }
-    #[cfg(windows)]
-    fn isatty() -> bool {
-        extern crate kernel32;
-        extern crate winapi;
-
-        unsafe {
-            let handle = kernel32::GetStdHandle(winapi::winbase::STD_OUTPUT_HANDLE);
-            let mut out = 0;
-            kernel32::GetConsoleMode(handle, &mut out) != 0
-        }
     }
 }
 
