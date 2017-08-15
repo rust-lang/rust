@@ -394,7 +394,7 @@ where
         1 // "["
     };
 
-    let mut nested_shape = match context.config.array_layout() {
+    let nested_shape = match context.config.array_layout() {
         IndentStyle::Block => try_opt!(
             shape
                 .block()
@@ -456,19 +456,11 @@ where
             DefinitiveListTactic::Mixed
         },
     };
-    let mut ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
+    let ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
     if context.config.array_horizontal_layout_threshold() > 0 &&
         items.len() > context.config.array_horizontal_layout_threshold()
     {
         tactic = DefinitiveListTactic::Mixed;
-        ends_with_newline = false;
-        if context.config.array_layout() == IndentStyle::Block {
-            nested_shape = try_opt!(
-                shape
-                    .visual_indent(bracket_size)
-                    .sub_width(bracket_size * 2)
-            );
-        }
     }
 
     let fmt = ListFormatting {
@@ -489,7 +481,7 @@ where
     let list_str = try_opt!(write_list(&items, &fmt));
 
     let result = if context.config.array_layout() == IndentStyle::Visual ||
-        tactic != DefinitiveListTactic::Vertical
+        tactic == DefinitiveListTactic::Horizontal
     {
         if context.config.spaces_within_square_brackets() && list_str.len() > 0 {
             format!("[ {} ]", list_str)
