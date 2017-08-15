@@ -1271,6 +1271,6 @@ impl<'a, 'tcx> CrateMetadata {
             Some(hygiene::extend_hygiene_data(external_hygiene_data));
         self.hygiene_data_being_decoded.set(false);
 
-        Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap());
+        Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap())
     }
 }

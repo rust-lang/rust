@@ -350,6 +350,12 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(krate)
     }
 
+    fn ensure_hygiene_data_loaded(&self) {
+        self.iter_crate_data(|_, metadata| {
+            (*metadata).imported_hygiene_data();
+        });
+    }
+
     fn metadata_loader(&self) -> &MetadataLoader {
         &*self.metadata_loader
     }

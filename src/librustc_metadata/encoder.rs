@@ -324,6 +324,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_hygiene_data(&mut self) -> Lazy<hygiene::HygieneData> {
+        self.tcx.sess.cstore.ensure_hygiene_data_loaded();
         hygiene::HygieneData::safe_with(|data| self.lazy(data))
     }
 
