@@ -438,6 +438,9 @@ pub use self::hash_set::HashSet;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::range;
 
+#[unstable(feature = "try_reserve", reason = "new API", issue="0000")]
+pub use alloc::allocator::CollectionAllocErr;
+
 mod hash;
 
 #[stable(feature = "rust1", since = "1.0.0")]
