@@ -448,6 +448,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
+            ty::TyClosure(def_id, ..) |
             ty::TyAnon(def_id, _) => Some(def_id),
             _ => None
         };
@@ -473,6 +474,7 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: ast::NodeId,
+    empty_tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
@@ -486,6 +488,22 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
                 .span_label(span, format!("field `{}` is private", field.name))
                 .emit();
         }
+    }
+}
+
+// Set the correct TypeckTables for the given `item_id` (or an empty table if
+// there is no TypeckTables for the item).
+fn update_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           item_id: ast::NodeId,
+                           tables: &mut &'a ty::TypeckTables<'tcx>,
+                           empty_tables: &'a ty::TypeckTables<'tcx>)
+                           -> &'a ty::TypeckTables<'tcx> {
+    let def_id = tcx.hir.local_def_id(item_id);
+
+    if tcx.has_typeck_tables(def_id) {
+        replace(tables, tcx.typeck_tables_of(def_id))
+    } else {
+        replace(tables, empty_tables)
     }
 }
 
@@ -505,14 +523,28 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let orig_current_item = replace(&mut self.current_item, item.id);
+        let orig_tables = update_tables(self.tcx, item.id, &mut self.tables, self.empty_tables);
         intravisit::walk_item(self, item);
         self.current_item = orig_current_item;
+        self.tables = orig_tables;
+    }
+
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+        let orig_tables = update_tables(self.tcx, ti.id, &mut self.tables, self.empty_tables);
+        intravisit::walk_trait_item(self, ti);
+        self.tables = orig_tables;
+    }
+
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+        let orig_tables = update_tables(self.tcx, ii.id, &mut self.tables, self.empty_tables);
+        intravisit::walk_impl_item(self, ii);
+        self.tables = orig_tables;
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprStruct(ref qpath, ref fields, ref base) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
+                let def = self.tables.qpath_def(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 if let Some(ref base) = *base {
@@ -539,7 +571,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
@@ -564,6 +596,7 @@ struct TypePrivacyVisitor<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     current_item: DefId,
     span: Span,
+    empty_tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
@@ -607,7 +640,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Take node ID of an expression or pattern and check its type for privacy.
-    fn check_expr_pat_type(&mut self, id: ast::NodeId, span: Span) -> bool {
+    fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
         if let Some(ty) = self.tables.node_id_to_type_opt(id) {
             if ty.visit_with(self) {
@@ -617,7 +650,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
         if self.tables.node_substs(id).visit_with(self) {
             return true;
         }
-        if let Some(adjustments) = self.tables.adjustments.get(&id) {
+        if let Some(adjustments) = self.tables.adjustments().get(id) {
             for adjustment in adjustments {
                 if adjustment.target.visit_with(self) {
                     return true;
@@ -703,20 +736,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types of expressions
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        if self.check_expr_pat_type(expr.id, expr.span) {
+        if self.check_expr_pat_type(expr.hir_id, expr.span) {
             // Do not check nested expressions if the error already happened.
             return;
         }
         match expr.node {
             hir::ExprAssign(.., ref rhs) | hir::ExprMatch(ref rhs, ..) => {
                 // Do not report duplicate errors for `x = y` and `match x { ... }`.
-                if self.check_expr_pat_type(rhs.id, rhs.span) {
+                if self.check_expr_pat_type(rhs.hir_id, rhs.span) {
                     return;
                 }
             }
             hir::ExprMethodCall(_, span, _) => {
                 // Method calls have to be checked specially.
-                let def_id = self.tables.type_dependent_defs[&expr.id].def_id();
+                let def_id = self.tables.type_dependent_defs()[expr.hir_id].def_id();
                 self.span = span;
                 if self.tcx.type_of(def_id).visit_with(self) {
                     return;
@@ -732,7 +765,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         // Inherent associated constants don't have self type in substs,
         // we have to check it additionally.
         if let hir::QPath::TypeRelative(..) = *qpath {
-            if let Some(def) = self.tables.type_dependent_defs.get(&id).cloned() {
+            let hir_id = self.tcx.hir.node_to_hir_id(id);
+            if let Some(def) = self.tables.type_dependent_defs().get(hir_id).cloned() {
                 if let Some(assoc_item) = self.tcx.opt_associated_item(def.def_id()) {
                     if let ty::ImplContainer(impl_def_id) = assoc_item.container {
                         if self.tcx.type_of(impl_def_id).visit_with(self) {
@@ -748,7 +782,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     // Check types of patterns
     fn visit_pat(&mut self, pattern: &'tcx hir::Pat) {
-        if self.check_expr_pat_type(pattern.id, pattern.span) {
+        if self.check_expr_pat_type(pattern.hir_id, pattern.span) {
             // Do not check nested patterns if the error already happened.
             return;
         }
@@ -758,7 +792,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
     fn visit_local(&mut self, local: &'tcx hir::Local) {
         if let Some(ref init) = local.init {
-            if self.check_expr_pat_type(init.id, init.span) {
+            if self.check_expr_pat_type(init.hir_id, init.span) {
                 // Do not report duplicate errors for `let x = y`.
                 return;
             }
@@ -770,6 +804,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // Check types in item interfaces
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let orig_current_item = self.current_item;
+        let orig_tables = update_tables(self.tcx,
+                                        item.id,
+                                        &mut self.tables,
+                                        self.empty_tables);
 
         match item.node {
             hir::ItemExternCrate(..) | hir::ItemMod(..) |
@@ -829,7 +867,20 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 
         self.current_item = self.tcx.hir.local_def_id(item.id);
         intravisit::walk_item(self, item);
+        self.tables = orig_tables;
         self.current_item = orig_current_item;
+    }
+
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+        let orig_tables = update_tables(self.tcx, ti.id, &mut self.tables, self.empty_tables);
+        intravisit::walk_trait_item(self, ti);
+        self.tables = orig_tables;
+    }
+
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+        let orig_tables = update_tables(self.tcx, ii.id, &mut self.tables, self.empty_tables);
+        intravisit::walk_impl_item(self, ii);
+        self.tables = orig_tables;
     }
 }
 
@@ -1605,12 +1656,14 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
+    let empty_tables = ty::TypeckTables::empty(None);
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
         tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &empty_tables,
         current_item: CRATE_NODE_ID,
+        empty_tables: &empty_tables,
     };
     intravisit::walk_crate(&mut visitor, krate);
 
@@ -1618,9 +1671,10 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // inferred types of expressions and patterns.
     let mut visitor = TypePrivacyVisitor {
         tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &empty_tables,
         current_item: DefId::local(CRATE_DEF_INDEX),
         span: krate.span,
+        empty_tables: &empty_tables,
     };
     intravisit::walk_crate(&mut visitor, krate);
 

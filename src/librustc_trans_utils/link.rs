@@ -8,34 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::session::config::{self, /*NoDebugInfo,*/ OutputFilenames, Input, OutputType};
-/*use rustc::session::filesearch;
-use rustc::session::search_paths::PathKind;
-*/use rustc::session::Session;
-use rustc::middle::cstore;/*::{self, LinkMeta, NativeLibrary, LibSource, LinkagePreference,
-                            NativeLibraryKind};*/
-/*use rustc::middle::dependency_format::Linkage;
-use rustc::util::common::time;
-use rustc::util::fs::fix_windows_verbatim_for_gcc;
-use rustc::dep_graph::{DepKind, DepNode};
-use rustc::hir::def_id::CrateNum;
-use rustc::hir::svh::Svh;
-use rustc_back::tempdir::TempDir;
-use rustc_back::{PanicStrategy, RelroLevel};
-use rustc_incremental::IncrementalHashesMap;*/
-
-/*use std::ascii;
-use std::char;
-use std::env;
-use std::ffi::OsString;
-use std::fs;
-use std::io::{self, Read, Write};
-use std::mem;
-*/use std::path::PathBuf;/*{Path, PathBuf};
-use std::process::Command;
-use std::str;*/
+use rustc::session::config::{self, OutputFilenames, Input, OutputType};
+use rustc::session::Session;
+use rustc::middle::cstore;
+use std::path::PathBuf;
 use syntax::ast;
-//use syntax::attr;
 use syntax_pos::Span;
 
 pub fn find_crate_name(sess: Option<&Session>,

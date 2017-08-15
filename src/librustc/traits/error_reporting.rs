@@ -111,8 +111,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // returns if `cond` not occuring implies that `error` does not occur - i.e. that
-    // `error` occuring implies that `cond` occurs.
+    // returns if `cond` not occurring implies that `error` does not occur - i.e. that
+    // `error` occurring implies that `cond` occurs.
     fn error_implies(&self,
                      cond: &ty::Predicate<'tcx>,
                      error: &ty::Predicate<'tcx>)
@@ -683,7 +683,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // Additional context information explaining why the closure only implements
                         // a particular trait.
                         if let Some(tables) = self.in_progress_tables {
-                            match tables.borrow().closure_kinds.get(&node_id) {
+                            let tables = tables.borrow();
+                            let closure_hir_id = self.tcx.hir.node_to_hir_id(node_id);
+                            match tables.closure_kinds().get(closure_hir_id) {
                                 Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) => {
                                     err.span_note(span, &format!(
                                         "closure is `FnOnce` because it moves the \

@@ -368,6 +368,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
             format: MacroAttribute(Symbol::intern("proc_macro")),
             span: None,
             allow_internal_unstable: true,
+            allow_internal_unsafe: false,
         }
     });
     let span = Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..DUMMY_SP };

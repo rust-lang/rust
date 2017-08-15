@@ -87,7 +87,7 @@ pub enum NestedVisitorMap<'this, 'tcx: 'this> {
     /// Do not visit nested item-like things, but visit nested things
     /// that are inside of an item-like.
     ///
-    /// **This is the most common choice.** A very commmon pattern is
+    /// **This is the most common choice.** A very common pattern is
     /// to use `visit_all_item_likes()` as an outer loop,
     /// and to have the visitor that visits the contents of each item
     /// using this setting.

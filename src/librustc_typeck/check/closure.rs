@@ -111,12 +111,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                sig,
                opt_kind);
 
-        self.tables.borrow_mut().closure_tys.insert(expr.id, sig);
-        match opt_kind {
-            Some(kind) => {
-                self.tables.borrow_mut().closure_kinds.insert(expr.id, (kind, None));
+        {
+            let mut tables = self.tables.borrow_mut();
+            tables.closure_tys_mut().insert(expr.hir_id, sig);
+            match opt_kind {
+                Some(kind) => {
+                    tables.closure_kinds_mut().insert(expr.hir_id, (kind, None));
+                }
+                None => {}
             }
-            None => {}
         }
 
         closure_type

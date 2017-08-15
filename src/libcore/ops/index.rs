@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// The `Index` trait is used to specify the functionality of indexing operations
-/// like `container[index]` when used in an immutable context.
+/// Used for indexing operations (`container[index]`) in immutable contexts.
 ///
 /// `container[index]` is actually syntactic sugar for `*container.index(index)`,
 /// but only when used as an immutable value. If a mutable value is requested,
 /// [`IndexMut`] is used instead. This allows nice things such as
-/// `let value = v[index]` if `value` implements [`Copy`].
+/// `let value = v[index]` if the type of `value` implements [`Copy`].
 ///
 /// [`IndexMut`]: ../../std/ops/trait.IndexMut.html
 /// [`Copy`]: ../../std/marker/trait.Copy.html
@@ -64,25 +63,23 @@
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Index<Idx: ?Sized> {
-    /// The returned type after indexing
+    /// The returned type after indexing.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output: ?Sized;
 
-    /// The method for the indexing (`container[index]`) operation
+    /// Performs the indexing (`container[index]`) operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
-/// The `IndexMut` trait is used to specify the functionality of indexing
-/// operations like `container[index]` when used in a mutable context.
+/// Used for indexing operations (`container[index]`) in mutable contexts.
 ///
 /// `container[index]` is actually syntactic sugar for
 /// `*container.index_mut(index)`, but only when used as a mutable value. If
 /// an immutable value is requested, the [`Index`] trait is used instead. This
-/// allows nice things such as `v[index] = value` if `value` implements [`Copy`].
+/// allows nice things such as `v[index] = value`.
 ///
 /// [`Index`]: ../../std/ops/trait.Index.html
-/// [`Copy`]: ../../std/marker/trait.Copy.html
 ///
 /// # Examples
 ///
@@ -106,7 +103,7 @@ pub trait Index<Idx: ?Sized> {
 ///
 /// struct Balance {
 ///     pub left: Weight,
-///     pub right:Weight,
+///     pub right: Weight,
 /// }
 ///
 /// impl Index<Side> for Balance {
@@ -131,28 +128,26 @@ pub trait Index<Idx: ?Sized> {
 ///     }
 /// }
 ///
-/// fn main() {
-///     let mut balance = Balance {
-///         right: Weight::Kilogram(2.5),
-///         left: Weight::Pound(1.5),
-///     };
+/// let mut balance = Balance {
+///     right: Weight::Kilogram(2.5),
+///     left: Weight::Pound(1.5),
+/// };
 ///
-///     // In this case balance[Side::Right] is sugar for
-///     // *balance.index(Side::Right), since we are only reading
-///     // balance[Side::Right], not writing it.
-///     assert_eq!(balance[Side::Right],Weight::Kilogram(2.5));
+/// // In this case, `balance[Side::Right]` is sugar for
+/// // `*balance.index(Side::Right)`, since we are only *reading*
+/// // `balance[Side::Right]`, not writing it.
+/// assert_eq!(balance[Side::Right], Weight::Kilogram(2.5));
 ///
-///     // However in this case balance[Side::Left] is sugar for
-///     // *balance.index_mut(Side::Left), since we are writing
-///     // balance[Side::Left].
-///     balance[Side::Left] = Weight::Kilogram(3.0);
-/// }
+/// // However, in this case `balance[Side::Left]` is sugar for
+/// // `*balance.index_mut(Side::Left)`, since we are writing
+/// // `balance[Side::Left]`.
+/// balance[Side::Left] = Weight::Kilogram(3.0);
 /// ```
 #[lang = "index_mut"]
 #[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
-    /// The method for the mutable indexing (`container[index]`) operation
+    /// Performs the mutable indexing (`container[index]`) operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }

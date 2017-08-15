@@ -139,7 +139,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        let ty = cx.tables.node_id_to_type(e.id);
+        let ty = cx.tables.node_id_to_type(e.hir_id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -195,12 +195,23 @@ impl LintPass for UnsafeCode {
     }
 }
 
+impl UnsafeCode {
+    fn report_unsafe(&self, cx: &LateContext, span: Span, desc: &'static str) {
+        // This comes from a macro that has #[allow_internal_unsafe].
+        if span.allows_unsafe() {
+            return;
+        }
+
+        cx.span_lint(UNSAFE_CODE, span, desc);
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == hir::UnsafeBlock(hir::UserProvided) {
-                cx.span_lint(UNSAFE_CODE, blk.span, "usage of an `unsafe` block");
+                self.report_unsafe(cx, blk.span, "usage of an `unsafe` block");
             }
         }
     }
@@ -208,11 +219,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemTrait(hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait")
+                self.report_unsafe(cx, it.span, "declaration of an `unsafe` trait")
             }
 
             hir::ItemImpl(hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait")
+                self.report_unsafe(cx, it.span, "implementation of an `unsafe` trait")
             }
 
             _ => return,
@@ -228,12 +239,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
                 _: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, ..) => {
-                cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function")
+                self.report_unsafe(cx, span, "declaration of an `unsafe` function")
             }
 
             FnKind::Method(_, sig, ..) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
-                    cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
+                    self.report_unsafe(cx, span, "implementation of an `unsafe` method")
                 }
             }
 
@@ -244,9 +255,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnsafeCode {
     fn check_trait_item(&mut self, cx: &LateContext, item: &hir::TraitItem) {
         if let hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(_)) = item.node {
             if sig.unsafety == hir::Unsafety::Unsafe {
-                cx.span_lint(UNSAFE_CODE,
-                             item.span,
-                             "declaration of an `unsafe` method")
+                self.report_unsafe(cx, item.span, "declaration of an `unsafe` method")
             }
         }
     }
@@ -896,7 +905,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match cx.tcx.hir.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
@@ -934,8 +943,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
 
             // Check for method calls and overloaded operators.
             if cx.tables.is_method_call(expr) {
-                let def_id = cx.tables.type_dependent_defs[&id].def_id();
-                let substs = cx.tables.node_substs(id);
+                let hir_id = cx.tcx.hir.definitions().node_to_hir_id(id);
+                let def_id = cx.tables.type_dependent_defs()[hir_id].def_id();
+                let substs = cx.tables.node_substs(hir_id);
                 if method_call_refers_to_method(cx, method, def_id, substs, id) {
                     return true;
                 }
@@ -945,13 +955,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             match expr.node {
                 hir::ExprCall(ref callee, _) => {
                     let def = if let hir::ExprPath(ref qpath) = callee.node {
-                        cx.tables.qpath_def(qpath, callee.id)
+                        cx.tables.qpath_def(qpath, callee.hir_id)
                     } else {
                         return false;
                     };
                     match def {
                         Def::Method(def_id) => {
-                            let substs = cx.tables.node_substs(callee.id);
+                            let substs = cx.tables.node_substs(callee.hir_id);
                             method_call_refers_to_method(cx, method, def_id, substs, id)
                         }
                         _ => false,
@@ -1179,7 +1189,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(&'tcx ty::TypeVariants<'tcx>, &'tcx ty::TypeVariants<'tcx>)> {
             let def = if let hir::ExprPath(ref qpath) = expr.node {
-                cx.tables.qpath_def(qpath, expr.id)
+                cx.tables.qpath_def(qpath, expr.hir_id)
             } else {
                 return None;
             };
@@ -1187,7 +1197,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
-                let sig = cx.tables.node_id_to_type(expr.id).fn_sig(cx.tcx);
+                let sig = cx.tables.node_id_to_type(expr.hir_id).fn_sig(cx.tcx);
                 let from = sig.inputs().skip_binder()[0];
                 let to = *sig.output().skip_binder();
                 return Some((&from.sty, &to.sty));

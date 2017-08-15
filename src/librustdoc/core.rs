@@ -10,6 +10,7 @@
 
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
+use rustc_driver::pretty::ReplaceBodyWithLoop;
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
@@ -26,6 +27,7 @@ use rustc_metadata::cstore::CStore;
 
 use syntax::{ast, codemap};
 use syntax::feature_gate::UnstableFeatures;
+use syntax::fold::Folder;
 use errors;
 use errors::emitter::ColorConfig;
 
@@ -158,6 +160,7 @@ pub fn run_core(search_paths: SearchPaths,
     let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
                                                       &sess,
                                                       &input));
+    let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
 
     let name = link::find_crate_name(Some(&sess), &krate.attrs, &input);
 

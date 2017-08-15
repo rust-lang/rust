@@ -45,3 +45,33 @@ mod imp;
 #[cfg(target_os = "redox")]
 #[path = "redox/mod.rs"]
 mod imp;
+
+
+// Import essential modules from both platforms when documenting.
+
+#[cfg(all(dox, not(unix)))]
+use os::linux as platform;
+
+#[cfg(all(dox, not(any(unix, target_os = "redox"))))]
+#[path = "unix/ext/mod.rs"]
+pub mod unix_ext;
+
+#[cfg(all(dox, any(unix, target_os = "redox")))]
+pub use self::ext as unix_ext;
+
+
+#[cfg(all(dox, not(windows)))]
+#[macro_use]
+#[path = "windows/compat.rs"]
+mod compat;
+
+#[cfg(all(dox, not(windows)))]
+#[path = "windows/c.rs"]
+mod c;
+
+#[cfg(all(dox, not(windows)))]
+#[path = "windows/ext/mod.rs"]
+pub mod windows_ext;
+
+#[cfg(all(dox, windows))]
+pub use self::ext as windows_ext;

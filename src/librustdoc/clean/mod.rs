@@ -52,7 +52,10 @@ use visit_ast;
 use html::item_type::ItemType;
 
 pub mod inline;
+pub mod cfg;
 mod simplify;
+
+use self::cfg::Cfg;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
@@ -536,31 +539,67 @@ impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
 pub struct Attributes {
     pub doc_strings: Vec<String>,
     pub other_attrs: Vec<ast::Attribute>,
+    pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
 }
 
 impl Attributes {
-    pub fn from_ast(attrs: &[ast::Attribute]) -> Attributes {
-        let mut doc_strings = vec![];
-        let mut sp = None;
-        let other_attrs = attrs.iter().filter_map(|attr| {
-            attr.with_desugared_doc(|attr| {
-                if let Some(value) = attr.value_str() {
-                    if attr.check_name("doc") {
-                        doc_strings.push(value.to_string());
-                        if sp.is_none() {
-                            sp = Some(attr.span);
+    /// Extracts the content from an attribute `#[doc(cfg(content))]`.
+    fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
+        use syntax::ast::NestedMetaItemKind::MetaItem;
+
+        if let ast::MetaItemKind::List(ref nmis) = mi.node {
+            if nmis.len() == 1 {
+                if let MetaItem(ref cfg_mi) = nmis[0].node {
+                    if cfg_mi.check_name("cfg") {
+                        if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.node {
+                            if cfg_nmis.len() == 1 {
+                                if let MetaItem(ref content_mi) = cfg_nmis[0].node {
+                                    return Some(content_mi);
+                                }
+                            }
                         }
-                        return None;
                     }
                 }
+            }
+        }
 
+        None
+    }
+
+    pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+        let mut doc_strings = vec![];
+        let mut sp = None;
+        let mut cfg = Cfg::True;
+
+        let other_attrs = attrs.iter().filter_map(|attr| {
+            attr.with_desugared_doc(|attr| {
+                if attr.check_name("doc") {
+                    if let Some(mi) = attr.meta() {
+                        if let Some(value) = mi.value_str() {
+                            // Extracted #[doc = "..."]
+                            doc_strings.push(value.to_string());
+                            if sp.is_none() {
+                                sp = Some(attr.span);
+                            }
+                            return None;
+                        } else if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                            // Extracted #[doc(cfg(...))]
+                            match Cfg::parse(cfg_mi) {
+                                Ok(new_cfg) => cfg &= new_cfg,
+                                Err(e) => diagnostic.span_err(e.span, e.msg),
+                            }
+                            return None;
+                        }
+                    }
+                }
                 Some(attr.clone())
             })
         }).collect();
         Attributes {
-            doc_strings: doc_strings,
-            other_attrs: other_attrs,
+            doc_strings,
+            other_attrs,
+            cfg: if cfg == Cfg::True { None } else { Some(Rc::new(cfg)) },
             span: sp,
         }
     }
@@ -579,8 +618,8 @@ impl AttributesExt for Attributes {
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
-    fn clean(&self, _cx: &DocContext) -> Attributes {
-        Attributes::from_ast(self)
+    fn clean(&self, cx: &DocContext) -> Attributes {
+        Attributes::from_ast(cx.sess().diagnostic(), self)
     }
 }
 

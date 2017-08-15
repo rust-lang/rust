@@ -90,7 +90,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         } else if let MirSource::Fn(id) = src {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
-            let fn_sig = cx.tables().liberated_fn_sigs[&id].clone();
+            let fn_hir_id = tcx.hir.node_to_hir_id(id);
+            let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
 
             let ty = tcx.type_of(tcx.hir.local_def_id(id));
             let mut abi = fn_sig.abi;
@@ -215,7 +216,8 @@ pub fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: hir::BodyId)
                              -> Ty<'tcx> {
-    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
+    let closure_expr_hir_id = tcx.hir.node_to_hir_id(closure_expr_id);
+    let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_hir_id);
 
     let closure_def_id = tcx.hir.local_def_id(closure_expr_id);
     let region = ty::ReFree(ty::FreeRegion {
@@ -382,10 +384,12 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
-            let var_id = tcx.hir.as_local_node_id(fv.def.def_id()).unwrap();
+            let var_def_id = fv.def.def_id();
+            let var_node_id = tcx.hir.as_local_node_id(var_def_id).unwrap();
+            let closure_expr_id = tcx.hir.local_def_id(fn_id).index;
             let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_id: var_id,
-                closure_expr_id: fn_id
+                var_id: var_def_id.index,
+                closure_expr_id,
             });
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue => false,
@@ -395,7 +399,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 debug_name: keywords::Invalid.name(),
                 by_ref: by_ref
             };
-            if let Some(hir::map::NodeLocal(pat)) = tcx.hir.find(var_id) {
+            if let Some(hir::map::NodeLocal(pat)) = tcx.hir.find(var_node_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }

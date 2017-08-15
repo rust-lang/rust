@@ -17,6 +17,7 @@
 //! platform-agnostic idioms would not normally support.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(cfg(windows))]
 
 pub mod ffi;
 pub mod fs;

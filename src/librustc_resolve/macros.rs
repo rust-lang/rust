@@ -313,7 +313,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT(_, isp, _) => isp,
+                SyntaxExtension::NormalTT { def_info, .. } => def_info,
                 SyntaxExtension::DeclMacro(.., osp) => osp,
                 _ => None,
             };

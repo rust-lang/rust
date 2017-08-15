@@ -844,7 +844,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // First try to coerce the new expression to the type of the previous ones,
         // but only if the new expression has no coercion already applied to it.
         let mut first_error = None;
-        if !self.tables.borrow().adjustments.contains_key(&new.id) {
+        if !self.tables.borrow().adjustments().contains_key(new.hir_id) {
             let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
             match result {
                 Ok(ok) => {
@@ -866,7 +866,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Adjustment { kind: Adjust::Deref(_), .. },
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }
                 ] => {
-                    match self.node_ty(expr.id).sty {
+                    match self.node_ty(expr.hir_id).sty {
                         ty::TyRef(_, mt_orig) => {
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref

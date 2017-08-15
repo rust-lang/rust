@@ -14,6 +14,7 @@
 
 use check::FnCtxt;
 use rustc::hir;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -34,7 +35,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let mut wbcx = WritebackCx::new(self, body);
         for arg in &body.arguments {
-            wbcx.visit_node_id(arg.pat.span, arg.id);
+            wbcx.visit_node_id(arg.pat.span, arg.hir_id);
         }
         wbcx.visit_body(body);
         wbcx.visit_upvar_borrow_map();
@@ -76,10 +77,13 @@ struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>, body: &'gcx hir::Body)
-        -> WritebackCx<'cx, 'gcx, 'tcx> {
+        -> WritebackCx<'cx, 'gcx, 'tcx>
+    {
+        let owner = fcx.tcx.hir.definitions().node_to_hir_id(body.id().node_id);
+
         WritebackCx {
             fcx: fcx,
-            tables: ty::TypeckTables::empty(),
+            tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
             body: body
         }
     }
@@ -88,10 +92,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         self.fcx.tcx
     }
 
-    fn write_ty_to_tables(&mut self, node_id: ast::NodeId, ty: Ty<'gcx>) {
-        debug!("write_ty_to_tables({}, {:?})", node_id,  ty);
+    fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'gcx>) {
+        debug!("write_ty_to_tables({:?}, {:?})", hir_id,  ty);
         assert!(!ty.needs_infer());
-        self.tables.node_types.insert(node_id, ty);
+        self.tables.node_types_mut().insert(hir_id, ty);
     }
 
     // Hacky hack: During type-checking, we treat *all* operators
@@ -102,37 +106,38 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref inner) |
             hir::ExprUnary(hir::UnNot, ref inner)  => {
-                let inner_ty = self.fcx.node_ty(inner.id);
+                let inner_ty = self.fcx.node_ty(inner.hir_id);
                 let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
 
                 if inner_ty.is_scalar() {
                     let mut tables = self.fcx.tables.borrow_mut();
-                    tables.type_dependent_defs.remove(&e.id);
-                    tables.node_substs.remove(&e.id);
+                    tables.type_dependent_defs_mut().remove(e.hir_id);
+                    tables.node_substs_mut().remove(e.hir_id);
                 }
             }
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
             hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
-                let lhs_ty = self.fcx.node_ty(lhs.id);
+                let lhs_ty = self.fcx.node_ty(lhs.hir_id);
                 let lhs_ty = self.fcx.resolve_type_vars_if_possible(&lhs_ty);
 
-                let rhs_ty = self.fcx.node_ty(rhs.id);
+                let rhs_ty = self.fcx.node_ty(rhs.hir_id);
                 let rhs_ty = self.fcx.resolve_type_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                     let mut tables = self.fcx.tables.borrow_mut();
-                    tables.type_dependent_defs.remove(&e.id);
-                    tables.node_substs.remove(&e.id);
+                    tables.type_dependent_defs_mut().remove(e.hir_id);
+                    tables.node_substs_mut().remove(e.hir_id);
 
                     match e.node {
                         hir::ExprBinary(..) => {
                             if !op.node.is_by_value() {
-                                tables.adjustments.get_mut(&lhs.id).map(|a| a.pop());
-                                tables.adjustments.get_mut(&rhs.id).map(|a| a.pop());
+                                let mut adjustments = tables.adjustments_mut();
+                                adjustments.get_mut(lhs.hir_id).map(|a| a.pop());
+                                adjustments.get_mut(rhs.hir_id).map(|a| a.pop());
                             }
                         },
                         hir::ExprAssignOp(..) => {
-                            tables.adjustments.get_mut(&lhs.id).map(|a| a.pop());
+                            tables.adjustments_mut().get_mut(lhs.hir_id).map(|a| a.pop());
                         },
                         _ => {},
                     }
@@ -159,13 +164,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_expr(&mut self, e: &'gcx hir::Expr) {
         self.fix_scalar_builtin_expr(e);
 
-        self.visit_node_id(e.span, e.id);
+        self.visit_node_id(e.span, e.hir_id);
 
         if let hir::ExprClosure(_, _, body, _, _) = e.node {
             let body = self.fcx.tcx.hir.body(body);
             // FIXME: Why visit the args here?
             for arg in &body.arguments {
-                self.visit_node_id(e.span, arg.id);
+                self.visit_node_id(e.span, arg.hir_id);
             }
 
             self.visit_body(body);
@@ -175,21 +180,25 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_block(&mut self, b: &'gcx hir::Block) {
-        self.visit_node_id(b.span, b.id);
+        self.visit_node_id(b.span, b.hir_id);
         intravisit::walk_block(self, b);
     }
 
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
         match p.node {
             hir::PatKind::Binding(..) => {
-                let bm = *self.fcx.tables.borrow().pat_binding_modes.get(&p.id)
-                                                                    .expect("missing binding mode");
-                self.tables.pat_binding_modes.insert(p.id, bm);
+                let bm = *self.fcx
+                              .tables
+                              .borrow()
+                              .pat_binding_modes()
+                              .get(p.hir_id)
+                              .expect("missing binding mode");
+                self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
             }
             _ => {}
         };
 
-        self.visit_node_id(p.span, p.id);
+        self.visit_node_id(p.span, p.hir_id);
         intravisit::walk_pat(self, p);
     }
 
@@ -197,7 +206,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         intravisit::walk_local(self, l);
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, &l.span);
-        self.write_ty_to_tables(l.id, var_ty);
+        self.write_ty_to_tables(l.hir_id, var_ty);
     }
 }
 
@@ -221,19 +230,42 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_closures(&mut self) {
-        for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
-            let closure_ty = self.resolve(closure_ty, &id);
-            self.tables.closure_tys.insert(id, closure_ty);
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+
+        for (&id, closure_ty) in fcx_tables.closure_tys().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id: id,
+            };
+            let closure_ty = self.resolve(closure_ty, &hir_id);
+            self.tables.closure_tys_mut().insert(hir_id, closure_ty);
         }
 
-        for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
-            self.tables.closure_kinds.insert(id, closure_kind);
+        for (&id, &closure_kind) in fcx_tables.closure_kinds().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id: id,
+            };
+            self.tables.closure_kinds_mut().insert(hir_id, closure_kind);
         }
     }
 
     fn visit_cast_types(&mut self) {
-        self.tables.cast_kinds.extend(
-            self.fcx.tables.borrow().cast_kinds.iter().map(|(&key, &value)| (key, value)));
+        let fcx_tables = self.fcx.tables.borrow();
+        let fcx_cast_kinds = fcx_tables.cast_kinds();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let mut self_cast_kinds = self.tables.cast_kinds_mut();
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+
+        for (&local_id, &cast_kind) in fcx_cast_kinds.iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id,
+            };
+            self_cast_kinds.insert(hir_id, cast_kind);
+        }
     }
 
     fn visit_free_region_map(&mut self) {
@@ -276,45 +308,54 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            self.tables.node_types.insert(node_id, outside_ty);
+            let hir_id = self.tcx().hir.node_to_hir_id(node_id);
+            self.tables.node_types_mut().insert(hir_id, outside_ty);
         }
     }
 
-    fn visit_node_id(&mut self, span: Span, node_id: ast::NodeId) {
+    fn visit_node_id(&mut self, span: Span, hir_id: hir::HirId) {
         // Export associated path extensions and method resultions.
-        if let Some(def) = self.fcx.tables.borrow_mut().type_dependent_defs.remove(&node_id) {
-            self.tables.type_dependent_defs.insert(node_id, def);
+        if let Some(def) = self.fcx
+                               .tables
+                               .borrow_mut()
+                               .type_dependent_defs_mut()
+                               .remove(hir_id) {
+            self.tables.type_dependent_defs_mut().insert(hir_id, def);
         }
 
         // Resolve any borrowings for the node with id `node_id`
-        self.visit_adjustments(span, node_id);
+        self.visit_adjustments(span, hir_id);
 
         // Resolve the type of the node with id `node_id`
-        let n_ty = self.fcx.node_ty(node_id);
+        let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(&n_ty, &span);
-        self.write_ty_to_tables(node_id, n_ty);
-        debug!("Node {} has type {:?}", node_id, n_ty);
+        self.write_ty_to_tables(hir_id, n_ty);
+        debug!("Node {:?} has type {:?}", hir_id, n_ty);
 
         // Resolve any substitutions
-        if let Some(&substs) = self.fcx.tables.borrow().node_substs.get(&node_id) {
+        if let Some(substs) = self.fcx.tables.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(&substs, &span);
-            debug!("write_substs_to_tcx({}, {:?})", node_id, substs);
+            debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
             assert!(!substs.needs_infer());
-            self.tables.node_substs.insert(node_id, substs);
+            self.tables.node_substs_mut().insert(hir_id, substs);
         }
     }
 
-    fn visit_adjustments(&mut self, span: Span, node_id: ast::NodeId) {
-        let adjustment = self.fcx.tables.borrow_mut().adjustments.remove(&node_id);
+    fn visit_adjustments(&mut self, span: Span, hir_id: hir::HirId) {
+        let adjustment = self.fcx
+                             .tables
+                             .borrow_mut()
+                             .adjustments_mut()
+                             .remove(hir_id);
         match adjustment {
             None => {
-                debug!("No adjustments for node {}", node_id);
+                debug!("No adjustments for node {:?}", hir_id);
             }
 
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(&adjustment, &span);
-                debug!("Adjustments for node {}: {:?}", node_id, resolved_adjustment);
-                self.tables.adjustments.insert(node_id, resolved_adjustment);
+                debug!("Adjustments for node {:?}: {:?}", hir_id, resolved_adjustment);
+                self.tables.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }
     }
@@ -337,16 +378,32 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_liberated_fn_sigs(&mut self) {
-        for (&node_id, fn_sig) in self.fcx.tables.borrow().liberated_fn_sigs.iter() {
-            let fn_sig = self.resolve(fn_sig, &node_id);
-            self.tables.liberated_fn_sigs.insert(node_id, fn_sig.clone());
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+
+        for (&local_id, fn_sig) in fcx_tables.liberated_fn_sigs().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id,
+            };
+            let fn_sig = self.resolve(fn_sig, &hir_id);
+            self.tables.liberated_fn_sigs_mut().insert(hir_id, fn_sig.clone());
         }
     }
 
     fn visit_fru_field_types(&mut self) {
-        for (&node_id, ftys) in self.fcx.tables.borrow().fru_field_types.iter() {
-            let ftys = self.resolve(ftys, &node_id);
-            self.tables.fru_field_types.insert(node_id, ftys);
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+
+        for (&local_id, ftys) in fcx_tables.fru_field_types().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id,
+            };
+            let ftys = self.resolve(ftys, &hir_id);
+            self.tables.fru_field_types_mut().insert(hir_id, ftys);
         }
     }
 
@@ -374,6 +431,20 @@ impl Locatable for Span {
 
 impl Locatable for ast::NodeId {
     fn to_span(&self, tcx: &TyCtxt) -> Span { tcx.hir.span(*self) }
+}
+
+impl Locatable for DefIndex {
+    fn to_span(&self, tcx: &TyCtxt) -> Span {
+        let node_id = tcx.hir.def_index_to_node_id(*self);
+        tcx.hir.span(node_id)
+    }
+}
+
+impl Locatable for hir::HirId {
+    fn to_span(&self, tcx: &TyCtxt) -> Span {
+        let node_id = tcx.hir.definitions().find_node_for_hir_id(*self);
+        tcx.hir.span(node_id)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

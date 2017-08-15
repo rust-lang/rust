@@ -762,6 +762,7 @@ fn write_shared(cx: &Context,
             }
         };
 
+        let mut have_impls = false;
         let mut implementors = format!(r#"implementors["{}"] = ["#, krate.name);
         for imp in imps {
             // If the trait and implementation are in the same crate, then
@@ -769,9 +770,20 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
+            // If the implementation is from another crate then that crate
+            // should add it.
+            if !imp.def_id.is_local() { continue }
+            have_impls = true;
             write!(implementors, "{},", as_json(&imp.impl_.to_string())).unwrap();
         }
         implementors.push_str("];");
+
+        // Only create a js file if we have impls to add to it. If the trait is
+        // documented locally though we always create the file to avoid dead
+        // links.
+        if !have_impls && !cache.paths.contains_key(&did) {
+            continue;
+        }
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
@@ -1948,6 +1960,14 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
 
         let text = format!("Deprecated{}{}", since, MarkdownHtml(&note, cx.render_type));
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
+    }
+
+    if let Some(ref cfg) = item.attrs.cfg {
+        stability.push(format!("<div class='stab portability'>{}</div>", if show_reason {
+            cfg.render_long_html()
+        } else {
+            cfg.render_short_html()
+        }));
     }
 
     stability

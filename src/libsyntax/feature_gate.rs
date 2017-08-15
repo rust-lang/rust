@@ -194,6 +194,14 @@ declare_features! (
     // rustc internal
     (active, allow_internal_unstable, "1.0.0", None),
 
+    // Allows the use of #[allow_internal_unsafe]. This is an
+    // attribute on macro_rules! and can't use the attribute handling
+    // below (it has to be checked before expansion possibly makes
+    // macros disappear).
+    //
+    // rustc internal
+    (active, allow_internal_unsafe, "1.0.0", None),
+
     // #23121. Array patterns have some hazards yet.
     (active, slice_patterns, "1.0.0", Some(23121)),
 
@@ -368,6 +376,9 @@ declare_features! (
     // global allocators and their internals
     (active, global_allocator, "1.20.0", None),
     (active, allocator_internals, "1.20.0", None),
+
+    // #[doc(cfg(...))]
+    (active, doc_cfg, "1.21.0", Some(43781)),
 );
 
 declare_features! (
@@ -739,6 +750,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
                                               cfg_fn!(allow_internal_unstable))),
 
+    ("allow_internal_unsafe", Normal, Gated(Stability::Unstable,
+                                            "allow_internal_unsafe",
+                                            EXPLAIN_ALLOW_INTERNAL_UNSAFE,
+                                            cfg_fn!(allow_internal_unsafe))),
+
     ("fundamental", Whitelisted, Gated(Stability::Unstable,
                                        "fundamental",
                                        "the `#[fundamental]` attribute \
@@ -1049,6 +1065,8 @@ pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
     "allow_internal_unstable side-steps feature gating and stability checks";
+pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &'static str =
+    "allow_internal_unsafe side-steps the unsafe_code lint";
 
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
     "`#[derive]` for custom traits is deprecated and will be removed in the future.";
@@ -1159,6 +1177,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
+        }
+
+        if attr.check_name("doc") {
+            if let Some(content) = attr.meta_item_list() {
+                if content.len() == 1 && content[0].check_name("cfg") {
+                    gate_feature_post!(&self, doc_cfg, attr.span,
+                        "#[doc(cfg(...))] is experimental"
+                    );
+                }
+            }
         }
 
         if self.context.features.proc_macro && attr::is_known(attr) {

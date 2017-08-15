@@ -296,7 +296,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("consume_body(body={:?})", body);
 
         for arg in &body.arguments {
-            let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.id));
+            let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.hir_id));
 
             let fn_body_scope_r = self.tcx().node_scope_region(body.value.id);
             let arg_cmt = self.mc.cat_rvalue(
@@ -541,7 +541,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             }
             ty::TyError => { }
             _ => {
-                let def_id = self.mc.tables.type_dependent_defs[&call.id].def_id();
+                let def_id = self.mc.tables.type_dependent_defs()[call.hir_id].def_id();
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().node_scope_region(call.id);
@@ -801,7 +801,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                pat);
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |cmt_pat, pat| {
             if let PatKind::Binding(..) = pat.node {
-                let bm = *self.mc.tables.pat_binding_modes.get(&pat.id)
+                let bm = *self.mc.tables.pat_binding_modes().get(pat.hir_id)
                                                           .expect("missing binding mode");
                 match bm {
                     ty::BindByReference(..) =>
@@ -827,10 +827,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
             if let PatKind::Binding(_, def_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
-                let bm = *mc.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
+                let bm = *mc.tables.pat_binding_modes().get(pat.hir_id)
+                                                     .expect("missing binding mode");
 
                 // pat_ty: the type of the binding being produced.
-                let pat_ty = return_if_err!(mc.node_ty(pat.id));
+                let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
@@ -867,7 +868,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = mc.tables.qpath_def(qpath, pat.id);
+            let def = mc.tables.qpath_def(qpath, pat.hir_id);
             match def {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
@@ -891,10 +892,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let def_id = freevar.def.def_id();
-                let id_var = self.tcx().hir.as_local_node_id(def_id).unwrap();
-                let upvar_id = ty::UpvarId { var_id: id_var,
-                                             closure_expr_id: closure_expr.id };
+                let var_def_id = freevar.def.def_id();
+                debug_assert!(var_def_id.is_local());
+                let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
+                let upvar_id = ty::UpvarId {
+                    var_id: var_def_id.index,
+                    closure_expr_id: closure_def_id.index
+                };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                    fn_decl_span,
@@ -927,8 +931,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
-        let var_ty = self.mc.node_ty(var_id)?;
+        let var_node_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
+        let var_hir_id = self.tcx().hir.node_to_hir_id(var_node_id);
+        let var_ty = self.mc.node_ty(var_hir_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 }

@@ -1347,7 +1347,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
         builders::debug_struct_new(self, name)
     }
@@ -1375,7 +1374,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(10, "Hello World".to_string()));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
     }
@@ -1400,7 +1398,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
         builders::debug_list_new(self)
     }
@@ -1425,7 +1422,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
     }
@@ -1450,7 +1446,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
     }

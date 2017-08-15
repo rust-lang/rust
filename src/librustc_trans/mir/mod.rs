@@ -135,7 +135,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             (scope, source_info.span)
         } else {
             // Walk up the macro expansion chain until we reach a non-expanded span.
-            // We also stop at the function body level because no line stepping can occurr
+            // We also stop at the function body level because no line stepping can occur
             // at the level above that.
             let mut span = source_info.span;
             while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {

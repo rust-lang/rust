@@ -548,7 +548,7 @@ impl<'a> LabelText<'a> {
     }
 
     /// Renders text as string suitable for a label in a .dot file.
-    /// This includes quotes or suitable delimeters.
+    /// This includes quotes or suitable delimiters.
     pub fn to_dot_string(&self) -> String {
         match self {
             &LabelStr(ref s) => format!("\"{}\"", s.escape_default()),

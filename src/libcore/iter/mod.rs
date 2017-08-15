@@ -1035,7 +1035,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 /// Now consider this twist where we add a call to `rev`. This version will
 /// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
 /// but the values of the counter still go in order. This is because `map()` is
-/// still being called lazilly on each item, but we are popping items off the
+/// still being called lazily on each item, but we are popping items off the
 /// back of the vector now, instead of shifting them from the front.
 ///
 /// ```rust

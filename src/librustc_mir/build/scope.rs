@@ -113,7 +113,7 @@ pub struct Scope<'tcx> {
     /// for unwinding, for several reasons:
     ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
     ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * pollutting the cleanup MIR with StorageDead creates
+    ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
     needs_cleanup: bool,

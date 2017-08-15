@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
-            },
+            }
             Err(e) => {
                 Some(self.report_mismatched_types(cause, expected, actual, e))
             }
@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Checks that the type of `expr` can be coerced to `expected`.
     //
-    // NB: This code relies on `self.diverges` to be accurate.  In
+    // NB: This code relies on `self.diverges` to be accurate. In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
     pub fn demand_coerce_diag(&self,

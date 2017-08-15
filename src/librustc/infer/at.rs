@@ -169,7 +169,7 @@ impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
     }
 
     /// Sets the "trace" values that will be used for
-    /// error-repporting, but doesn't actually perform any operation
+    /// error-reporting, but doesn't actually perform any operation
     /// yet (this is useful when you want to set the trace using
     /// distinct values from those you wish to operate upon).
     pub fn trace<T>(self,

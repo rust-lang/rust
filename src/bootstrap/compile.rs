@@ -32,6 +32,7 @@ use serde_json;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 use native;
+use tool;
 
 use cache::{INTERNER, Interned};
 use builder::{Step, RunConfig, ShouldRun, Builder};
@@ -198,6 +199,12 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
         }
+
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Libstd,
+        });
     }
 }
 
@@ -389,6 +396,11 @@ impl Step for TestLink {
                 target);
         add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(build, compiler, target));
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Libtest,
+        });
     }
 }
 
@@ -567,6 +579,11 @@ impl Step for RustcLink {
                  target);
         add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(build, compiler, target));
+        builder.ensure(tool::CleanTools {
+            compiler: target_compiler,
+            target: target,
+            mode: Mode::Librustc,
+        });
     }
 }
 
@@ -679,10 +696,10 @@ impl Step for Assemble {
         // link to these. (FIXME: Is that correct? It seems to be correct most
         // of the time but I think we do link to these for stage2/bin compilers
         // when not performing a full bootstrap).
-        if builder.build.flags.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
+        if builder.build.config.keep_stage.map_or(false, |s| target_compiler.stage <= s) {
             builder.verbose("skipping compilation of compiler due to --keep-stage");
             let compiler = build_compiler;
-            for stage in 0..min(target_compiler.stage, builder.flags.keep_stage.unwrap()) {
+            for stage in 0..min(target_compiler.stage, builder.config.keep_stage.unwrap()) {
                 let target_compiler = builder.compiler(stage, target_compiler.host);
                 let target = target_compiler.host;
                 builder.ensure(StdLink { compiler, target_compiler, target });

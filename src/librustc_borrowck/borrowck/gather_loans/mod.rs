@@ -153,7 +153,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
-        let ty = self.bccx.tables.node_id_to_type(id);
+        let ty = self.bccx
+                     .tables
+                     .node_id_to_type(self.bccx.tcx.hir.node_to_hir_id(id));
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
@@ -445,7 +447,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     }
                     None
                 }
-                LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
+                LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
+                    let local_id = self.tcx().hir.def_index_to_node_id(var_id);
                     self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
                     None
                 }

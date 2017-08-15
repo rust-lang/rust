@@ -44,6 +44,7 @@ use std::io::{self, Write};
 use std::option;
 use std::path::Path;
 use std::str::FromStr;
+use std::mem;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
@@ -232,7 +233,7 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let empty_tables = ty::TypeckTables::empty();
+                    let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx: tcx,
                         tables: Cell::new(&empty_tables)
@@ -618,52 +619,53 @@ impl UserIdentifiedItem {
     }
 }
 
-struct ReplaceBodyWithLoop {
+// Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
+pub struct ReplaceBodyWithLoop {
     within_static_or_const: bool,
 }
 
 impl ReplaceBodyWithLoop {
-    fn new() -> ReplaceBodyWithLoop {
+    pub fn new() -> ReplaceBodyWithLoop {
         ReplaceBodyWithLoop { within_static_or_const: false }
+    }
+
+    fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
+        let old_const = mem::replace(&mut self.within_static_or_const, is_const);
+        let ret = action(self);
+        self.within_static_or_const = old_const;
+        ret
     }
 }
 
 impl fold::Folder for ReplaceBodyWithLoop {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
-        match i {
-            ast::ItemKind::Static(..) |
-            ast::ItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_item_kind(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_item_kind(i, self),
-        }
+        let is_const = match i {
+            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
+            ast::ItemKind::Fn(_, _, ref constness, _, _, _) =>
+                constness.node == ast::Constness::Const,
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
     }
 
     fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
-        match i.node {
-            ast::TraitItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_trait_item(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_trait_item(i, self),
-        }
+        let is_const = match i.node {
+            ast::TraitItemKind::Const(..) => true,
+            ast::TraitItemKind::Method(ast::MethodSig { ref constness, .. }, _) =>
+                constness.node == ast::Constness::Const,
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
     }
 
     fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
-        match i.node {
-            ast::ImplItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_impl_item(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_impl_item(i, self),
-        }
+        let is_const = match i.node {
+            ast::ImplItemKind::Const(..) => true,
+            ast::ImplItemKind::Method(ast::MethodSig { ref constness, .. }, _) =>
+                constness.node == ast::Constness::Const,
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_impl_item(i, s))
     }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {

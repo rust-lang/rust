@@ -27,7 +27,7 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
@@ -324,8 +324,9 @@ pub enum LoanPathElem<'tcx> {
     LpInterior(Option<DefId>, InteriorKind),
 }
 
-pub fn closure_to_block(closure_id: ast::NodeId,
-                        tcx: TyCtxt) -> ast::NodeId {
+fn closure_to_block(closure_id: DefIndex,
+                    tcx: TyCtxt) -> ast::NodeId {
+    let closure_id = tcx.hir.def_index_to_node_id(closure_id);
     match tcx.hir.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(.., body_id, _, _) => {
@@ -597,8 +598,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let need_note = match lp.ty.sty {
                     ty::TypeVariants::TyClosure(id, _) => {
                         let node_id = self.tcx.hir.as_local_node_id(id).unwrap();
+                        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
                         if let Some(&(ty::ClosureKind::FnOnce, Some((span, name)))) =
-                            self.tables.closure_kinds.get(&node_id)
+                            self.tables.closure_kinds().get(hir_id)
                         {
                             err.span_note(span, &format!(
                                 "closure cannot be invoked more than once because \
@@ -1044,7 +1046,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 } else {
                     "consider changing this closure to take self by mutable reference"
                 };
-                err.span_help(self.tcx.hir.span(id), help);
+                let node_id = self.tcx.hir.def_index_to_node_id(id);
+                err.span_help(self.tcx.hir.span(node_id), help);
                 err
             }
             _ =>  {
@@ -1100,8 +1103,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         match pat.node {
-            hir::PatKind::Binding(..) =>
-                *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode"),
+            hir::PatKind::Binding(..) => {
+                *self.tables
+                     .pat_binding_modes()
+                     .get(pat.hir_id)
+                     .expect("missing binding mode")
+            }
             _ => bug!("local is not a binding: {:?}", pat)
         }
     }
@@ -1248,7 +1255,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     _ => bug!()
                 };
                 if kind == ty::ClosureKind::Fn {
-                    db.span_help(self.tcx.hir.span(upvar_id.closure_expr_id),
+                    let closure_node_id =
+                        self.tcx.hir.def_index_to_node_id(upvar_id.closure_expr_id);
+                    db.span_help(self.tcx.hir.span(closure_node_id),
                                  "consider changing this closure to take \
                                   self by mutable reference");
                 }
@@ -1281,7 +1290,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                       loan_path: &LoanPath<'tcx>,
                                       out: &mut String) {
         match loan_path.kind {
-            LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
+            LpUpvar(ty::UpvarId { var_id: id, closure_expr_id: _ }) => {
+                out.push_str(&self.tcx.local_var_name_str_def_index(id));
+            }
             LpVar(id) => {
                 out.push_str(&self.tcx.local_var_name_str(id));
             }
@@ -1419,8 +1430,11 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id }) => {
-                let s = ty::tls::with(|tcx| tcx.hir.node_to_string(var_id));
-                write!(f, "$({} captured by id={})", s, closure_expr_id)
+                let s = ty::tls::with(|tcx| {
+                    let var_node_id = tcx.hir.def_index_to_node_id(var_id);
+                    tcx.hir.node_to_string(var_node_id)
+                });
+                write!(f, "$({} captured by id={:?})", s, closure_expr_id)
             }
 
             LpDowncast(ref lp, variant_def_id) => {
@@ -1451,7 +1465,10 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
             }
 
             LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                let s = ty::tls::with(|tcx| tcx.hir.node_to_user_string(var_id));
+                let s = ty::tls::with(|tcx| {
+                    let var_node_id = tcx.hir.def_index_to_node_id(var_id);
+                    tcx.hir.node_to_string(var_node_id)
+                });
                 write!(f, "$({} captured by closure)", s)
             }
 

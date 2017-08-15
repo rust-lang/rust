@@ -70,7 +70,7 @@ pub use self::Note::*;
 use self::Aliasability::*;
 
 use middle::region::RegionMaps;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex};
 use hir::map as hir_map;
 use infer::InferCtxt;
 use hir::def::{Def, CtorKind};
@@ -190,7 +190,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 pub enum ImmutabilityBlame<'tcx> {
     ImmLocal(ast::NodeId),
-    ClosureEnv(ast::NodeId),
+    ClosureEnv(DefIndex),
     LocalDeref(ast::NodeId),
     AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
 }
@@ -334,7 +334,9 @@ impl MutabilityCategory {
         let ret = match tcx.hir.get(id) {
             hir_map::NodeLocal(p) => match p.node {
                 PatKind::Binding(..) => {
-                    let bm = *tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+                    let bm = *tables.pat_binding_modes()
+                                    .get(p.hir_id)
+                                    .expect("missing binding mode");
                     if bm == ty::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
@@ -435,7 +437,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     }
 
     fn resolve_type_vars_or_error(&self,
-                                  id: ast::NodeId,
+                                  id: hir::HirId,
                                   ty: Option<Ty<'tcx>>)
                                   -> McResult<Ty<'tcx>> {
         match ty {
@@ -451,33 +453,41 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // FIXME
             None if self.is_tainted_by_errors() => Err(()),
             None => {
+                let id = self.tcx.hir.definitions().find_node_for_hir_id(id);
                 bug!("no type for node {}: {} in mem_categorization",
                      id, self.tcx.hir.node_to_string(id));
             }
         }
     }
 
-    pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(id, self.tables.node_id_to_type_opt(id))
+    pub fn node_ty(&self,
+                   hir_id: hir::HirId)
+                   -> McResult<Ty<'tcx>> {
+        self.resolve_type_vars_or_error(hir_id,
+                                        self.tables.node_id_to_type_opt(hir_id))
     }
 
     pub fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_opt(expr))
     }
 
     pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        self.resolve_type_vars_or_error(expr.id, self.tables.expr_ty_adjusted_opt(expr))
+        self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
-        let base_ty = self.node_ty(pat.id)?;
+        let base_ty = self.node_ty(pat.hir_id)?;
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
             PatKind::Binding(..) => {
-                let bm = *self.tables.pat_binding_modes.get(&pat.id).expect("missing binding mode");
+                let bm = *self.tables
+                              .pat_binding_modes()
+                              .get(pat.hir_id)
+                              .expect("missing binding mode");
+
                 if let ty::BindByReference(_) = bm {
                     // a bind-by-ref means that the base_ty will be the type of the ident itself,
                     // but what we want here is the type of the underlying value being borrowed.
@@ -604,7 +614,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           }
 
           hir::ExprPath(ref qpath) => {
-            let def = self.tables.qpath_def(qpath, expr.id);
+            let def = self.tables.qpath_def(qpath, expr.hir_id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -643,7 +653,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
 
-          Def::Static(_, mutbl) => {
+          Def::Static(def_id, mutbl) => {
+            // `#[thread_local]` statics may not outlive the current function.
+            for attr in &self.tcx.get_attrs(def_id)[..] {
+                if attr.check_name("thread_local") {
+                    return Ok(self.cat_rvalue_node(id, span, expr_ty));
+                }
+            }
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -684,6 +700,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                  fn_node_id: ast::NodeId)
                  -> McResult<cmt<'tcx>>
     {
+        let fn_hir_id = self.tcx.hir.node_to_hir_id(fn_node_id);
+
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
@@ -707,7 +725,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
-        let kind = match self.tables.closure_kinds.get(&fn_node_id) {
+        let kind = match self.tables.closure_kinds().get(fn_hir_id) {
             Some(&(kind, _)) => kind,
             None => {
                 let ty = self.node_ty(fn_node_id)?;
@@ -718,9 +736,15 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
         };
 
-        let upvar_id = ty::UpvarId { var_id,
-                                     closure_expr_id: fn_node_id };
-        let var_ty = self.node_ty(var_id)?;
+        let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
+        let var_def_index = self.tcx.hir.local_def_id(var_id).index;
+
+        let upvar_id = ty::UpvarId {
+            var_id: var_def_index,
+            closure_expr_id: closure_expr_def_index
+        };
+        let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
+        let var_ty = self.node_ty(var_hir_id)?;
 
         // Mutability of original variable itself
         let var_mutbl = MutabilityCategory::from_local(self.tcx, self.tables, var_id);
@@ -755,8 +779,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // If this is a by-ref capture, then the upvar we loaded is
         // actually a reference, so we have to add an implicit deref
         // for that.
-        let upvar_id = ty::UpvarId { var_id,
-                                     closure_expr_id: fn_node_id };
         let upvar_capture = self.tables.upvar_capture(upvar_id);
         let cmt_result = match upvar_capture {
             ty::UpvarCapture::ByValue => {
@@ -794,7 +816,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx.hir.local_def_id(upvar_id.closure_expr_id),
+            scope: DefId::local(upvar_id.closure_expr_id),
             bound_region: ty::BrEnv
         }));
 
@@ -1130,7 +1152,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         match pat.node {
           PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
-            let def = self.tables.qpath_def(qpath, pat.id);
+            let def = self.tables.qpath_def(qpath, pat.hir_id);
             let (cmt, expected_len) = match def {
                 Def::Err => {
                     debug!("access to unresolvable pattern {:?}", pat);
@@ -1167,7 +1189,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           PatKind::Struct(ref qpath, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
-            let def = self.tables.qpath_def(qpath, pat.id);
+            let def = self.tables.qpath_def(qpath, pat.hir_id);
             let cmt = match def {
                 Def::Err => {
                     debug!("access to unresolvable pattern {:?}", pat);

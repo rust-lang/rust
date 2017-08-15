@@ -333,11 +333,11 @@ pub trait BitDenotation {
     /// basic block) according to the effects of evaluating statement.
     ///
     /// This is used, in particular, for building up the
-    /// "transfer-function" represnting the overall-effect of the
+    /// "transfer-function" representing the overall-effect of the
     /// block, represented via GEN and KILL sets.
     ///
     /// The statement is identified as `bb_data[idx_stmt]`, where
-    /// `bb_data` is the sequence of statements identifed by `bb` in
+    /// `bb_data` is the sequence of statements identified by `bb` in
     /// the MIR.
     fn statement_effect(&self,
                         sets: &mut BlockSets<Self::Idx>,
@@ -349,7 +349,7 @@ pub trait BitDenotation {
     /// the terminator.
     ///
     /// This is used, in particular, for building up the
-    /// "transfer-function" represnting the overall-effect of the
+    /// "transfer-function" representing the overall-effect of the
     /// block, represented via GEN and KILL sets.
     ///
     /// The effects applied here cannot depend on which branch the

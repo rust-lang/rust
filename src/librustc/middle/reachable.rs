@@ -107,10 +107,10 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         let def = match expr.node {
             hir::ExprPath(ref qpath) => {
-                Some(self.tables.qpath_def(qpath, expr.id))
+                Some(self.tables.qpath_def(qpath, expr.hir_id))
             }
             hir::ExprMethodCall(..) => {
-                Some(self.tables.type_dependent_defs[&expr.id])
+                Some(self.tables.type_dependent_defs()[expr.hir_id])
             }
             _ => None
         };
@@ -296,6 +296,9 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Type(_) => {}
                 }
             }
+            hir_map::NodeExpr(&hir::Expr { node: hir::ExprClosure(.., body, _), .. }) => {
+                self.visit_nested_body(body);
+            }
             // Nothing to recurse on for these
             hir_map::NodeForeignItem(_) |
             hir_map::NodeVariant(_) |
@@ -375,7 +378,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     });
     let mut reachable_context = ReachableContext {
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(None),
         reachable_symbols: NodeSet(),
         worklist: Vec::new(),
         any_library,

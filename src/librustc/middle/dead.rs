@@ -94,8 +94,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
-        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
+    fn lookup_and_handle_method(&mut self, id: hir::HirId) {
+        self.check_def_id(self.tables.type_dependent_defs()[id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
@@ -119,7 +119,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, def: Def,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
-        let variant = match self.tables.node_id_to_type(lhs.id).sty {
+        let variant = match self.tables.node_id_to_type(lhs.hir_id).sty {
             ty::TyAdt(adt, _) => adt.variant_of_def(def),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
@@ -235,11 +235,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
+                let def = self.tables.qpath_def(qpath, expr.hir_id);
                 self.handle_definition(def);
             }
             hir::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(expr.id);
+                self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprField(ref lhs, ref name) => {
                 self.handle_field_access(&lhs, name.node);
@@ -282,7 +282,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_field_pattern_match(pat, path.def, fields);
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 self.handle_definition(def);
             }
             _ => ()
@@ -425,7 +425,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,
         ignore_non_const_paths: false,

@@ -111,8 +111,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.needs_infer() {
+        if !t.needs_infer() && !ty::keep_local(&t) {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
+                // ^ we need to have the `keep_local` check to un-default
+                // defaulted tuples.
         } else {
             let t = self.infcx.shallow_resolve(t);
             match t.sty {
@@ -130,6 +132,12 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
                 }
                 ty::TyInfer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
+                }
+                ty::TyTuple(tys, true) => {
+                    // Un-default defaulted tuples - we are going to a
+                    // different infcx, and the default will just cause
+                    // pollution.
+                    self.tcx().intern_tup(tys, false)
                 }
                 _ => {
                     t.super_fold_with(self)

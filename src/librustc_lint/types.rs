@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
 
                 if binop.node.is_shift() {
-                    let opt_ty_bits = match cx.tables.node_id_to_type(l.id).sty {
+                    let opt_ty_bits = match cx.tables.node_id_to_type(l.hir_id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None,
@@ -135,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprLit(ref lit) => {
-                match cx.tables.node_id_to_type(e.id).sty {
+                match cx.tables.node_id_to_type(e.hir_id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -285,7 +285,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_id_to_type(expr.id).sty {
+            match cx.tables.node_id_to_type(expr.hir_id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {

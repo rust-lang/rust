@@ -29,7 +29,7 @@ use ty::subst::Substs;
 /// by `autoref`, to either a raw or borrowed pointer. In these cases unsize is
 /// `false`.
 ///
-/// 2. A thin-to-fat coercon involves unsizing the underlying data. We start
+/// 2. A thin-to-fat coercion involves unsizing the underlying data. We start
 /// with a thin pointer, deref a number of times, unsize the underlying data,
 /// then autoref. The 'unsize' phase may change a fixed length array to a
 /// dynamically sized one, a concrete object to a trait object, or statically
@@ -52,7 +52,7 @@ use ty::subst::Substs;
 /// that case, we have the pointer we need coming in, so there are no
 /// autoderefs, and no autoref. Instead we just do the `Unsize` transformation.
 /// At some point, of course, `Box` should move out of the compiler, in which
-/// case this is analogous to transformating a struct. E.g., Box<[i32; 4]> ->
+/// case this is analogous to transforming a struct. E.g., Box<[i32; 4]> ->
 /// Box<[i32]> is an `Adjust::Unsize` with the target `Box<[i32]>`.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Adjustment<'tcx> {

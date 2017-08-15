@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![cfg_attr(not(feature="llvm"), allow(dead_code))]
+
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
 use rustc::ich::Fingerprint;
@@ -19,8 +21,6 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, stability, reachable};
-#[cfg(feature="llvm")]
-use rustc::middle::dependency_format;
 use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
@@ -33,9 +33,7 @@ use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-#[cfg(feature="llvm")]
-use rustc_trans::back::{link, write};
-#[cfg(feature="llvm")]
+use rustc_trans::back::write;
 use rustc_trans as trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
@@ -73,11 +71,7 @@ pub fn compile_input(sess: &Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: &CompileController) -> CompileResult {
-    #[cfg(feature="llvm")]
     use rustc_trans::back::write::OngoingCrateTranslation;
-    #[cfg(not(feature="llvm"))]
-    type OngoingCrateTranslation = ();
-
     macro_rules! controller_entry_point {
         ($point: ident, $tsess: expr, $make_state: expr, $phase_result: expr) => {{
             let state = &mut $make_state;
@@ -92,6 +86,23 @@ pub fn compile_input(sess: &Session,
                 return $tsess.compile_status();
             }
         }}
+    }
+
+    if cfg!(not(feature="llvm")) {
+        use rustc::session::config::CrateType;
+        if !sess.opts.debugging_opts.no_trans && sess.opts.output_types.should_trans() {
+            sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
+        }
+
+        if sess.opts.crate_types.iter().all(|&t|{
+            t != CrateType::CrateTypeRlib && t != CrateType::CrateTypeExecutable
+        }) && !sess.opts.crate_types.is_empty() {
+            sess.err(
+                "LLVM is not supported by this rustc, so non rlib libraries are not supported"
+            );
+        }
+
+        sess.abort_if_errors();
     }
 
     // We need nested scopes here, because the intermediate results can keep
@@ -217,7 +228,6 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            #[cfg(feature="llvm")]
             let trans = phase_4_translate_to_llvm(tcx, analysis, incremental_hashes_map,
                                                   &outputs);
 
@@ -233,24 +243,13 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            #[cfg(not(feature="llvm"))]
-            {
-                let _ = incremental_hashes_map;
-                sess.err(&format!("LLVM is not supported by this rustc"));
-                sess.abort_if_errors();
-                unreachable!();
-            }
-
-            #[cfg(feature="llvm")]
             Ok((outputs, trans))
         })??
     };
 
-    #[cfg(not(feature="llvm"))]
-    {
-        let _ = outputs;
-        let _ = trans;
-        unreachable!();
+    if cfg!(not(feature="llvm")) {
+        let (_, _) = (outputs, trans);
+        sess.fatal("LLVM is not supported by this rustc");
     }
 
     #[cfg(feature="llvm")]
@@ -315,7 +314,7 @@ pub fn source_name(input: &Input) -> String {
 /// This is a somewhat higher level controller than a Session - the Session
 /// controls what happens in each phase, whereas the CompileController controls
 /// whether a phase is run at all and whether other code (from outside the
-/// the compiler) is run between phases.
+/// compiler) is run between phases.
 ///
 /// Note that if compilation is set to stop and a callback is provided for a
 /// given entry point, the callback is called before compilation is stopped.
@@ -393,7 +392,6 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
-    #[cfg(feature="llvm")]
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -420,7 +418,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: None,
             analysis: None,
             tcx: None,
-            #[cfg(feature="llvm")]
             trans: None,
         }
     }
@@ -509,7 +506,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         }
     }
 
-    #[cfg(feature="llvm")]
     fn state_after_llvm(input: &'a Input,
                         session: &'tcx Session,
                         out_dir: &'a Option<PathBuf>,
@@ -523,7 +519,6 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         }
     }
 
-    #[cfg(feature="llvm")]
     fn state_when_compilation_done(input: &'a Input,
                                    session: &'tcx Session,
                                    out_dir: &'a Option<PathBuf>,
@@ -942,7 +937,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    #[cfg(feature="llvm")]
     trans::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
@@ -955,7 +949,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    #[cfg(feature="llvm")]
     trans::provide(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
@@ -974,7 +967,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_CONST, mir::transform::type_check::TypeckMir);
     passes.push_pass(MIR_CONST, mir::transform::rustc_peek::SanityCheck);
 
-    // We compute "constant qualifications" betwen MIR_CONST and MIR_VALIDATED.
+    // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
 
     // What we need to run borrowck etc.
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
@@ -1104,7 +1097,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-#[cfg(feature="llvm")]
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: IncrementalHashesMap,
@@ -1114,7 +1106,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(time_passes,
          "resolving dependency formats",
-         || dependency_format::calculate(tcx));
+         || ::rustc::middle::dependency_format::calculate(tcx));
 
     let translation =
         time(time_passes,
@@ -1149,9 +1141,9 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(),
-         "linking",
-         || link::link_binary(sess, trans, outputs, &trans.crate_name.as_str()));
+    time(sess.time_passes(), "linking", || {
+        ::rustc_trans::back::link::link_binary(sess, trans, outputs, &trans.crate_name.as_str())
+    });
 }
 
 fn escape_dep_filename(filename: &str) -> String {

@@ -3,8 +3,11 @@ name = "rustdoc-tool"
 version = "0.0.0"
 authors = ["The Rust Project Developers"]
 
+# Cargo adds a number of paths to the dylib search path on windows, which results in
+# the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+# rustdoc a different name.
 [[bin]]
-name = "rustdoc"
+name = "rustdoc-tool-binary"
 path = "main.rs"
 
 [dependencies]

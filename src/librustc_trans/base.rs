@@ -191,7 +191,7 @@ pub fn compare_simd_types<'a, 'tcx>(
 /// adjustment.
 ///
 /// The `old_info` argument is a bit funny. It is intended for use
-/// in an upcast, where the new vtable for an object will be drived
+/// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
 pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 source: Ty<'tcx>,
@@ -488,7 +488,7 @@ impl Lifetime {
     // on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
     // and the intrinsic for `lt` and passes them to `emit`, which is in
     // charge of generating code to call the passed intrinsic on whatever
-    // block of generated code is targetted for the intrinsic.
+    // block of generated code is targeted for the intrinsic.
     //
     // If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
     // off) or `ptr` is zero-sized, then no-op (does not call `emit`).

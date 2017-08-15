@@ -250,7 +250,7 @@ pub struct Map<'hir> {
     pub forest: &'hir Forest,
 
     /// Same as the dep_graph in forest, just available with one fewer
-    /// deref. This is a gratuitious micro-optimization.
+    /// deref. This is a gratuitous micro-optimization.
     pub dep_graph: DepGraph,
 
     /// NodeIds are sequential integers from 0, so we can be
@@ -359,6 +359,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[inline]
     pub fn definitions(&self) -> &Definitions {
         &self.definitions
     }
@@ -379,6 +380,7 @@ impl<'hir> Map<'hir> {
         self.definitions.def_path(def_id.index)
     }
 
+    #[inline]
     pub fn local_def_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
             bug!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
@@ -386,12 +388,29 @@ impl<'hir> Map<'hir> {
         })
     }
 
+    #[inline]
     pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
         self.definitions.opt_local_def_id(node)
     }
 
+    #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         self.definitions.as_local_node_id(def_id)
+    }
+
+    #[inline]
+    pub fn node_to_hir_id(&self, node_id: NodeId) -> HirId {
+        self.definitions.node_to_hir_id(node_id)
+    }
+
+    #[inline]
+    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> HirId {
+        self.definitions.def_index_to_hir_id(def_index)
+    }
+
+    #[inline]
+    pub fn def_index_to_node_id(&self, def_index: DefIndex) -> NodeId {
+        self.definitions.as_local_node_id(DefId::local(def_index)).unwrap()
     }
 
     fn entry_count(&self) -> usize {

@@ -99,7 +99,7 @@ Before you can start building the compiler you need to configure the build for
 your system. In most cases, that will just mean using the defaults provided
 for Rust.
 
-To change configuration, you must copy the file `src/bootstrap/config.toml.example`
+To change configuration, you must copy the file `config.toml.example`
 to `config.toml` in the directory from which you will be running the build, and
 change the settings provided.
 
@@ -237,10 +237,13 @@ Some common invocations of `x.py` are:
 ## Pull Requests
 
 Pull requests are the primary mechanism we use to change Rust. GitHub itself
-has some [great documentation][pull-requests] on using the Pull Request
-feature. We use the 'fork and pull' model described there.
+has some [great documentation][pull-requests] on using the Pull Request feature.
+We use the "fork and pull" model [described here][development-models], where
+contributors push changes to their personal fork and create pull requests to
+bring those changes into the source repository.
 
-[pull-requests]: https://help.github.com/articles/using-pull-requests/
+[pull-requests]: https://help.github.com/articles/about-pull-requests/
+[development-models]: https://help.github.com/articles/about-collaborative-development-models/
 
 Please make pull requests against the `master` branch.
 

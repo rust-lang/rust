@@ -486,8 +486,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                 }
             },
-            Lvalue::Static(_) => {
+            Lvalue::Static(ref global) => {
                 self.add(Qualif::STATIC);
+
+                if self.mode != Mode::Fn {
+                    for attr in &self.tcx.get_attrs(global.def_id)[..] {
+                        if attr.check_name("thread_local") {
+                            span_err!(self.tcx.sess, self.span, E0625,
+                                      "thread-local statics cannot be \
+                                       accessed at compile-time");
+                            return;
+                        }
+                    }
+                }
+
                 if self.mode == Mode::Const || self.mode == Mode::ConstFn {
                     span_err!(self.tcx.sess, self.span, E0013,
                               "{}s cannot refer to statics, use \
@@ -1001,6 +1013,12 @@ impl MirPass for QualifyAndPromoteConstants {
 
         // Statics must be Sync.
         if mode == Mode::Static {
+            // `#[thread_local]` statics don't have to be `Sync`.
+            for attr in &tcx.get_attrs(def_id)[..] {
+                if attr.check_name("thread_local") {
+                    return;
+                }
+            }
             let ty = mir.return_ty;
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty(Reveal::UserFacing);

@@ -213,7 +213,7 @@ impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'tcx> {
 /// you if an l-value *might* be uninitialized at a given point in the
 /// control flow. But `MovingOutStatements` also includes the added
 /// data of *which* particular statement causing the deinitialization
-/// that the borrow checker's error meessage may need to report.
+/// that the borrow checker's error message may need to report.
 #[allow(dead_code)]
 pub struct MovingOutStatements<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,

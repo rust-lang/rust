@@ -69,7 +69,7 @@ pub struct LintStore {
     /// is true if the lint group was added by a plugin.
     lint_groups: FxHashMap<&'static str, (Vec<LintId>, bool)>,
 
-    /// Extra info for future incompatibility lints, descibing the
+    /// Extra info for future incompatibility lints, describing the
     /// issue or RFC that caused the incompatibility.
     future_incompatible: FxHashMap<LintId, FutureIncompatibleInfo>,
 }
@@ -986,7 +986,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     let mut cx = LateContext {
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(None),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
