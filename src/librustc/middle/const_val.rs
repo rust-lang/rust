@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::ConstVal::*;
-use self::ConstAggregate::*;
 pub use rustc_const_math::ConstInt;
 
 use hir;
@@ -73,23 +71,6 @@ impl<'tcx> Decodable for ConstAggregate<'tcx> {
 }
 
 impl<'tcx> ConstVal<'tcx> {
-    pub fn description(&self) -> &'static str {
-        match *self {
-            Float(f) => f.description(),
-            Integral(i) => i.description(),
-            Str(_) => "string literal",
-            ByteStr(_) => "byte string literal",
-            Bool(_) => "boolean",
-            Char(..) => "char",
-            Variant(_) => "enum variant",
-            Aggregate(Struct(_)) => "struct",
-            Aggregate(Tuple(_)) => "tuple",
-            Function(..) => "function definition",
-            Aggregate(Array(..)) => "array",
-            Aggregate(Repeat(..)) => "repeat",
-        }
-    }
-
     pub fn to_const_int(&self) -> Option<ConstInt> {
         match *self {
             ConstVal::Integral(i) => Some(i),
@@ -110,8 +91,6 @@ pub struct ConstEvalErr<'tcx> {
 pub enum ErrKind<'tcx> {
     CannotCast,
     MissingStructField,
-    NegateOn(ConstVal<'tcx>),
-    NotOn(ConstVal<'tcx>),
 
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -170,9 +149,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
         match self.kind {
             CannotCast => simple!("can't cast this type"),
-            NegateOn(ref const_val) => simple!("negate on {}", const_val.description()),
-            NotOn(ref const_val) => simple!("not on {}", const_val.description()),
-
             MissingStructField  => simple!("nonexistent struct field"),
             NonConstPath        => simple!("non-constant path in constant expression"),
             UnimplementedConstVal(what) =>

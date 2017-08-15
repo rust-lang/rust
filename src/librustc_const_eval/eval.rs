@@ -186,14 +186,14 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         mk_const(match cx.eval(inner)?.val {
           Float(f) => Float(-f),
           Integral(i) => Integral(math!(e, -i)),
-          const_val => signal!(e, NegateOn(const_val)),
+          _ => signal!(e, TypeckError)
         })
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
         mk_const(match cx.eval(inner)?.val {
           Integral(i) => Integral(math!(e, !i)),
           Bool(b) => Bool(!b),
-          const_val => signal!(e, NotOn(const_val)),
+          _ => signal!(e, TypeckError)
         })
       }
       hir::ExprUnary(hir::UnDeref, _) => signal!(e, UnimplementedConstVal("deref operation")),
@@ -734,10 +734,8 @@ pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
         Some(result) => Ok(result),
         None => {
             // FIXME: can this ever be reached?
-            span_err!(tcx.sess, span, E0298,
-                      "type mismatch comparing {} and {}",
-                      a.description(),
-                      b.description());
+            tcx.sess.delay_span_bug(span,
+                &format!("type mismatch comparing {:?} and {:?}", a, b));
             Err(ErrorReported)
         }
     }
