@@ -248,7 +248,7 @@ impl<'a> Builder<'a> {
                 compile::StartupObjects, tool::BuildManifest, tool::Rustbook, tool::ErrorIndex,
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
-                tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc,
+                tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm),
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Linkcheck,
