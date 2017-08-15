@@ -54,7 +54,7 @@ pub struct Config {
     pub extended: bool,
     pub sanitizers: bool,
     pub profiler: bool,
-    pub ignore_git: bool,
+    pub ignore_git: Option<bool>,
 
     pub run_host_only: bool,
 
@@ -296,7 +296,6 @@ impl Config {
         config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
-        config.ignore_git = false;
         config.rust_dist_src = true;
 
         config.on_fail = flags.on_fail;
@@ -419,7 +418,7 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
-            set(&mut config.ignore_git, rust.ignore_git);
+            config.ignore_git = rust.ignore_git;
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
@@ -476,6 +475,10 @@ impl Config {
         // compat with `./configure` while we're still using that
         if fs::metadata("config.mk").is_ok() {
             config.update_with_config_mk();
+        }
+
+        if config.channel == "dev" && config.ignore_git.is_none() {
+            config.ignore_git = Some(true);
         }
 
         config
