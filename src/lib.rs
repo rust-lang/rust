@@ -43,7 +43,7 @@ use checkstyle::{output_footer, output_header};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
-use utils::{mk_sp, outer_attributes};
+use utils::{isatty, mk_sp, outer_attributes};
 use visitor::FmtVisitor;
 
 pub use self::summary::Summary;
@@ -532,6 +532,76 @@ impl FormatReport {
     pub fn has_warnings(&self) -> bool {
         self.warning_count() > 0
     }
+
+    pub fn print_warnings_fancy(
+        &self,
+        mut t: Box<term::Terminal<Output = io::Stderr>>,
+    ) -> Result<(), term::Error> {
+        for (file, errors) in &self.file_error_map {
+            for error in errors {
+                let prefix_space_len = error.line.to_string().len();
+                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+
+                // First line: the overview of error
+                t.fg(term::color::RED)?;
+                t.attr(term::Attr::Bold)?;
+                write!(t, "{} ", error.msg_prefix())?;
+                t.reset()?;
+                t.attr(term::Attr::Bold)?;
+                write!(t, "{}\n", error.kind)?;
+
+                // Second line: file info
+                write!(t, "{}--> ", &prefix_spaces[1..])?;
+                t.reset()?;
+                write!(t, "{}:{}\n", file, error.line)?;
+
+                // Third to fifth lines: show the line which triggered error, if available.
+                if !error.line_buffer.is_empty() {
+                    let (space_len, target_len) = error.format_len();
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}|\n{} | ", prefix_spaces, error.line)?;
+                    t.reset()?;
+                    write!(t, "{}\n", error.line_buffer)?;
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}| ", prefix_spaces)?;
+                    t.fg(term::color::RED)?;
+                    write!(t, "{}\n", target_str(space_len, target_len))?;
+                    t.reset()?;
+                }
+
+                // The last line: show note if available.
+                let msg_suffix = error.msg_suffix();
+                if !msg_suffix.is_empty() {
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}= note: ", prefix_spaces)?;
+                    t.reset()?;
+                    write!(t, "{}\n", error.msg_suffix())?;
+                } else {
+                    write!(t, "\n")?;
+                }
+                t.reset()?;
+            }
+        }
+
+        if !self.file_error_map.is_empty() {
+            t.attr(term::Attr::Bold)?;
+            write!(t, "warning: ")?;
+            t.reset()?;
+            write!(
+                t,
+                "rustfmt may have failed to format. See previous {} errors.\n\n",
+                self.warning_count(),
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+fn target_str(space_len: usize, target_len: usize) -> String {
+    let empty_line: String = repeat(" ").take(space_len).collect();
+    let overflowed: String = repeat("^").take(target_len).collect();
+    empty_line + &overflowed
 }
 
 impl fmt::Display for FormatReport {
@@ -867,7 +937,15 @@ pub fn run(input: Input, config: &Config) -> Summary {
             output_footer(out, config.write_mode()).ok();
 
             if report.has_warnings() {
-                msg!("{}", report);
+                match term::stderr() {
+                    Some(ref t) if isatty() && t.supports_color() => {
+                        match report.print_warnings_fancy(term::stderr().unwrap()) {
+                            Ok(..) => (),
+                            Err(..) => panic!("Unable to write to stderr: {}", report),
+                        }
+                    }
+                    _ => msg!("{}", report),
+                }
             }
 
             summary
