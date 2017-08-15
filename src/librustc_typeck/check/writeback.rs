@@ -168,7 +168,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         if let hir::ExprClosure(_, _, body, _, _) = e.node {
             let body = self.fcx.tcx.hir.body(body);
-            // FIXME: Why visit the args here?
             for arg in &body.arguments {
                 self.visit_node_id(e.span, arg.hir_id);
             }
