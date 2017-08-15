@@ -192,6 +192,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             hir_map: &self.tcx.hir,
             bound_region: *br,
             found_type: None,
+            depth: 0,
         };
         nested_visitor.visit_ty(arg);
         nested_visitor.found_type
@@ -214,6 +215,7 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // The type where the anonymous lifetime appears
     // for e.g. Vec<`&u8`> and <`&u8`>
     found_type: Option<&'gcx hir::Ty>,
+    depth: u32,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
@@ -263,11 +265,35 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     self.found_type = Some(arg);
                 }
             }
+
+            hir::TyBareFn(ref fndecl) => {
+                fndecl.lifetimes.iter().filter_map(|lf| {
+                    match self.infcx.tcx.named_region_map.defs.get(&lf.lifetime.id) {
+
+                        Some(&rl::Region::LateBoundAnon(debuijn_index, anon_index)) => {
+                        if debuijn_index.depth == self.depth && anon_index == br_index {
+                            self.found_type = Some(arg);
+                            return; // we can stop visiting now
+                        }else{}
+                    }
+                    Some(&rl::Region::Static) |
+                    Some(&rl::Region::EarlyBound(_, _)) |
+                    Some(&rl::Region::LateBound(_, _)) |
+                    Some(&rl::Region::Free(_, _)) |
+                    None => {
+                        debug!("no arg found");
+                    }
+                }       
+            
+            }).next();}
+            
             _ => {}
         }
         // walk the embedded contents: e.g., if we are visiting `Vec<&Foo>`,
         // go on to visit `&Foo`
+        self.depth += 1;
         intravisit::walk_ty(self, arg);
+        self.depth += 1;
     }
 }
 
