@@ -372,6 +372,9 @@ declare_features! (
 
     // #[doc(cfg(...))]
     (active, doc_cfg, "1.21.0", Some(43781)),
+
+    // allow `#[must_use]` on functions (RFC 1940)
+    (active, fn_must_use, "1.21.0", Some(43302)),
 );
 
 declare_features! (
@@ -1014,7 +1017,7 @@ pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: Gate
 }
 
 pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
-                   explain: &str) -> DiagnosticBuilder<'a> {
+                       explain: &str) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
 
     let issue = match issue {
@@ -1233,6 +1236,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "declaration of a nonstandard #[main] \
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
+                }
+                if attr::contains_name(&i.attrs[..], "must_use") {
+                    gate_feature_post!(&self, fn_must_use, i.span,
+                                       "`#[must_use]` on functions is experimental");
                 }
             }
 

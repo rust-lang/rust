@@ -8,28 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(fn_must_use)]
-#![warn(unused_must_use)]
+#[must_use]
+fn need_to_use_it() -> bool { true } //~ ERROR `#[must_use]` on functions is experimental
 
-struct MyStruct {
-    n: usize
-}
-
-impl MyStruct {
-    #[must_use]
-    fn need_to_use_this_method_value(&self) -> usize {
-        self.n
-    }
-}
-
-#[must_use="it's important"]
-fn need_to_use_this_value() -> bool {
-    false
-}
-
-fn main() {
-    need_to_use_this_value();
-
-    let m = MyStruct { n: 2 };
-    m.need_to_use_this_method_value();
-}
+fn main() {}
