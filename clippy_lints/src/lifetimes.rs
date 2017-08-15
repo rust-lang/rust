@@ -284,7 +284,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
         let last_path_segment = &last_path_segment(qpath).parameters;
         if let AngleBracketedParameters(ref params) = *last_path_segment {
             if params.lifetimes.is_empty() {
-                match self.cx.tables.qpath_def(qpath, ty.id) {
+                let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
+                match self.cx.tables.qpath_def(qpath, hir_id) {
                     Def::TyAlias(def_id) |
                     Def::Struct(def_id) => {
                         let generics = self.cx.tcx.generics_of(def_id);

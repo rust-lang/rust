@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if_let_chain!{[
                         let ExprPath(ref qpath) = fun.node,
                         args.len() == 2,
-                        match_def_path(cx.tcx, resolve_node(cx, qpath, fun.id).def_id(), &paths::FMT_ARGUMENTS_NEWV1),
+                        match_def_path(cx.tcx, resolve_node(cx, qpath, fun.hir_id).def_id(), &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
                         check_static_str(cx, &args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
@@ -130,7 +130,7 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         let ExprCall(_, ref args) = exprs[0].node,
         args.len() == 2,
         let ExprPath(ref qpath) = args[1].node,
-        match_def_path(cx.tcx, resolve_node(cx, qpath, args[1].id).def_id(), &paths::DISPLAY_FMT_METHOD),
+        match_def_path(cx.tcx, resolve_node(cx, qpath, args[1].hir_id).def_id(), &paths::DISPLAY_FMT_METHOD),
     ], {
         let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
 

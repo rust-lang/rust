@@ -898,7 +898,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
         let hir::ExprCall(ref fun, ref args) = new.node,
         args.len() == 1,
         let hir::ExprPath(ref path) = fun.node,
-        let Def::Method(did) = cx.tables.qpath_def(path, fun.id),
+        let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id),
         match_def_path(cx.tcx, did, &paths::CSTRING_NEW)
     ], {
         span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,

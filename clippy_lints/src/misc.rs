@@ -361,7 +361,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
-                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.id))
+                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.hir_id))
                 {
                     Some(binding)
                 } else {

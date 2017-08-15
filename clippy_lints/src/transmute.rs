@@ -88,7 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprCall(ref path_expr, ref args) = e.node {
             if let ExprPath(ref qpath) = path_expr.node {
-                let def_id = cx.tables.qpath_def(qpath, path_expr.id).def_id();
+                let def_id = cx.tables.qpath_def(qpath, path_expr.hir_id).def_id();
 
                 if match_def_path(cx.tcx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tables.expr_ty(&args[0]);

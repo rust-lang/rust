@@ -215,7 +215,7 @@ fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool
         ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(ref qpath) = path_expr.node {
-                let fun_id = tables.qpath_def(qpath, path_expr.id).def_id();
+                let fun_id = tables.qpath_def(qpath, path_expr.hir_id).def_id();
                 !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
             } else {
                 true

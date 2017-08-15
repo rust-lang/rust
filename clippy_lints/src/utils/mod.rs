@@ -196,7 +196,7 @@ pub fn match_type(cx: &LateContext, ty: Ty, path: &[&str]) -> bool {
 
 /// Check if the method call given in `expr` belongs to given type.
 pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = cx.tables.type_dependent_defs[&expr.id];
+    let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.impl_of_method(method_call.def_id());
     if let Some(trt_id) = trt_id {
         match_def_path(cx.tcx, trt_id, path)
@@ -207,7 +207,7 @@ pub fn match_impl_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
 
 /// Check if the method call given in `expr` belongs to given trait.
 pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = cx.tables.type_dependent_defs[&expr.id];
+    let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
     let trt_id = cx.tcx.trait_of_item(method_call.def_id());
     if let Some(trt_id) = trt_id {
         match_def_path(cx.tcx, trt_id, path)
@@ -347,8 +347,8 @@ pub fn implements_trait<'a, 'tcx>(
     })
 }
 
-/// Resolve the definition of a node from its `NodeId`.
-pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: NodeId) -> def::Def {
+/// Resolve the definition of a node from its `HirId`.
+pub fn resolve_node(cx: &LateContext, qpath: &QPath, id: HirId) -> def::Def {
     cx.tables.qpath_def(qpath, id)
 }
 
@@ -656,7 +656,7 @@ pub fn is_integer_literal(expr: &Expr, value: u128) -> bool {
 }
 
 pub fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
-    cx.tables.adjustments.get(&e.id).is_some()
+    cx.tables.adjustments().get(e.hir_id).is_some()
 }
 
 pub struct LimitStack {
@@ -833,9 +833,9 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 
 /// Return whether a pattern is refutable.
 pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
-    fn is_enum_variant(cx: &LateContext, qpath: &QPath, did: NodeId) -> bool {
+    fn is_enum_variant(cx: &LateContext, qpath: &QPath, id: HirId) -> bool {
         matches!(
-            cx.tables.qpath_def(qpath, did),
+            cx.tables.qpath_def(qpath, id),
             def::Def::Variant(..) | def::Def::VariantCtor(..)
         )
     }
@@ -851,17 +851,17 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
         PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) |
         PatKind::Range(..) => true,
-        PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.id),
+        PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
         PatKind::Struct(ref qpath, ref fields, _) => {
-            if is_enum_variant(cx, qpath, pat.id) {
+            if is_enum_variant(cx, qpath, pat.hir_id) {
                 true
             } else {
                 are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
             }
         },
         PatKind::TupleStruct(ref qpath, ref pats, _) => {
-            if is_enum_variant(cx, qpath, pat.id) {
+            if is_enum_variant(cx, qpath, pat.hir_id) {
                 true
             } else {
                 are_refutable(cx, pats.iter().map(|pat| &**pat))

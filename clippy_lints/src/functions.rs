@@ -187,7 +187,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                 }
             },
             hir::ExprMethodCall(_, _, ref args) => {
-                let def_id = self.cx.tables.type_dependent_defs[&expr.id].def_id();
+                let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
                 let base_type = self.cx.tcx.type_of(def_id);
 
                 if type_is_unsafe_function(self.cx, base_type) {
@@ -210,7 +210,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
 impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprPath(ref qpath) = ptr.node {
-            let def = self.cx.tables.qpath_def(qpath, ptr.id);
+            let def = self.cx.tables.qpath_def(qpath, ptr.hir_id);
             if self.ptrs.contains(&def.def_id()) {
                 span_lint(
                     self.cx,

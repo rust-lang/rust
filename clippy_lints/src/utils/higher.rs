@@ -159,7 +159,7 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
         let hir::ExprPath(ref path) = fun.node,
         is_expn_of(fun.span, "vec").is_some(),
     ], {
-        let fun_def = resolve_node(cx, path, fun.id);
+        let fun_def = resolve_node(cx, path, fun.hir_id);
         return if match_def_path(cx.tcx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))

@@ -73,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(ref qpath) = fun.node,
         ], {
-            let fun = resolve_node(cx, qpath, fun.id);
+            let fun = resolve_node(cx, qpath, fun.hir_id);
             let fun_id = fun.def_id();
 
             // Search for `std::io::_print(..)` which is unique in a
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let ExprCall(ref args_fun, ref args_args) = args[0].node,
                         let ExprPath(ref qpath) = args_fun.node,
                         match_def_path(cx.tcx,
-                                       resolve_node(cx, qpath, args_fun.id).def_id(),
+                                       resolve_node(cx, qpath, args_fun.hir_id).def_id(),
                                        &paths::FMT_ARGUMENTS_NEWV1),
                         args_args.len() == 2,
                         let ExprAddrOf(_, ref match_expr) = args_args[1].node,
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
             else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
                 if let ExprPath(ref qpath) = args[1].node {
-                    let def_id = cx.tables.qpath_def(qpath, args[1].id).def_id();
+                    let def_id = cx.tables.qpath_def(qpath, args[1].hir_id).def_id();
                     if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
                        is_expn_of(expr.span, "panic").is_none() {
                         span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");

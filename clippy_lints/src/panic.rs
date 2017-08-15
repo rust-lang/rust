@@ -40,7 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprCall(ref fun, ref params) = ex.node,
             params.len() == 2,
             let ExprPath(ref qpath) = fun.node,
-            match_def_path(cx.tcx, resolve_node(cx, qpath, fun.id).def_id(), &paths::BEGIN_PANIC),
+            match_def_path(cx.tcx, resolve_node(cx, qpath, fun.hir_id).def_id(), &paths::BEGIN_PANIC),
             let ExprLit(ref lit) = params[0].node,
             is_direct_expn_of(expr.span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,

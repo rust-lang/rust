@@ -71,7 +71,7 @@ impl CyclomaticComplexity {
             returns,
             ..
         } = helper;
-        let ret_ty = cx.tables.node_id_to_type(expr.id);
+        let ret_ty = cx.tables.node_id_to_type(expr.hir_id);
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
         } else {
@@ -160,7 +160,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
             },
             ExprCall(ref callee, _) => {
                 walk_expr(self, e);
-                let ty = self.cx.tables.node_id_to_type(callee.id);
+                let ty = self.cx.tables.node_id_to_type(callee.hir_id);
                 match ty.sty {
                     ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                         let sig = ty.fn_sig(self.cx.tcx);

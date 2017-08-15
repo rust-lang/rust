@@ -12,7 +12,7 @@ use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{FloatTy, LitKind, StrStyle, NodeId};
+use syntax::ast::{FloatTy, LitKind, StrStyle};
 use syntax::ptr::P;
 
 #[derive(Debug, Copy, Clone)]
@@ -249,7 +249,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// simple constant folding: Insert an expression, get a constant or none.
     fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
-            ExprPath(ref qpath) => self.fetch_path(qpath, e.id),
+            ExprPath(ref qpath) => self.fetch_path(qpath, e.hir_id),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tcx, self.tables.expr_ty(e))),
@@ -284,7 +284,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     }
 
     /// lookup a possibly constant expression from a ExprPath
-    fn fetch_path(&mut self, qpath: &QPath, id: NodeId) -> Option<Constant> {
+    fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         let def = self.tables.qpath_def(qpath, id);
         match def {
             Def::Const(def_id) |

@@ -139,7 +139,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_let_chain! {[
             let hir::ExprPath(ref qpath) = expr.node,
-            self.id == self.cx.tables.qpath_def(qpath, expr.id).def_id(),
+            self.id == self.cx.tables.qpath_def(qpath, expr.hir_id).def_id(),
         ], {
             self.used = true;
             return;
@@ -162,7 +162,7 @@ fn check_assign<'a, 'tcx>(
         let hir::StmtSemi(ref expr, _) = expr.node,
         let hir::ExprAssign(ref var, ref value) = expr.node,
         let hir::ExprPath(ref qpath) = var.node,
-        decl == cx.tables.qpath_def(qpath, var.id).def_id(),
+        decl == cx.tables.qpath_def(qpath, var.hir_id).def_id(),
     ], {
         let mut v = UsedVisitor {
             cx: cx,

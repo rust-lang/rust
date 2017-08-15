@@ -69,7 +69,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {
-                let def = cx.tables.qpath_def(qpath, callee.id);
+                let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Struct(..) |
                     Def::Variant(..) |
@@ -165,7 +165,7 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         },
         Expr_::ExprCall(ref callee, ref args) => {
             if let Expr_::ExprPath(ref qpath) = callee.node {
-                let def = cx.tables.qpath_def(qpath, callee.id);
+                let def = cx.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Struct(..) |
                     Def::Variant(..) |

@@ -148,7 +148,7 @@ fn check_decl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx Decl, bindings: 
     }
 }
 
-fn is_binding(cx: &LateContext, pat_id: NodeId) -> bool {
+fn is_binding(cx: &LateContext, pat_id: HirId) -> bool {
     let var_ty = cx.tables.node_id_to_type(pat_id);
     match var_ty.sty {
         ty::TyAdt(..) => false,
@@ -167,7 +167,7 @@ fn check_pat<'a, 'tcx>(
     match pat.node {
         PatKind::Binding(_, _, ref ident, ref inner) => {
             let name = ident.node;
-            if is_binding(cx, pat.id) {
+            if is_binding(cx, pat.hir_id) {
                 let mut new_binding = true;
                 for tup in bindings.iter_mut() {
                     if tup.0 == name {

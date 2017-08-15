@@ -122,6 +122,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                     let mk_expr = |op| {
                         Expr {
                             id: DUMMY_NODE_ID,
+                            hir_id: DUMMY_HIR_ID,
                             span: DUMMY_SP,
                             attrs: ThinVec::new(),
                             node: ExprBinary(dummy_spanned(op), lhs.clone(), rhs.clone()),
@@ -411,7 +412,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
             ExprUnary(UnNot, ref inner) => {
-                if self.cx.tables.node_types[&inner.id].is_bool() {
+                if self.cx.tables.node_types()[inner.hir_id].is_bool() {
                     self.bool_expr(e);
                 } else {
                     walk_expr(self, e);

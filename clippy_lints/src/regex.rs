@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
         ], {
-            let def_id = cx.tables.qpath_def(qpath, fun.id).def_id();
+            let def_id = cx.tables.qpath_def(qpath, fun.hir_id).def_id();
             if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
                match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);

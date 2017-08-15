@@ -67,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
                 if let ExprPath(ref qpath) = lhs.node {
                     if let QPath::Resolved(_, ref path) = *qpath {
                         if path.segments.len() == 1 {
-                            let var = cx.tables.qpath_def(qpath, lhs.id).def_id();
+                            let var = cx.tables.qpath_def(qpath, lhs.hir_id).def_id();
                             let mut visitor = ReadVisitor {
                                 cx: cx,
                                 var: var,
@@ -304,7 +304,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
         match expr.node {
             ExprPath(ref qpath) => {
                 if let QPath::Resolved(None, ref path) = *qpath {
-                    if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
+                    if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var {
                         if is_in_assignment_position(self.cx, expr) {
                             // This is a write, not a read.
                         } else {

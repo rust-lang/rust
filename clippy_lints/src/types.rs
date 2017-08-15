@@ -149,7 +149,8 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
     }
     match ast_ty.node {
         TyPath(ref qpath) if !is_local => {
-            let def = cx.tables.qpath_def(qpath, ast_ty.id);
+            let hir_id = cx.tcx.hir.node_to_hir_id(ast_ty.id);
+            let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
                 if Some(def_id) == cx.tcx.lang_items.owned_box() {
                     let last = last_path_segment(qpath);
@@ -157,8 +158,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
                         let Some(vec) = ag.types.get(0),
                         let TyPath(ref qpath) = vec.node,
-                        let def::Def::Struct(..) = cx.tables.qpath_def(qpath, vec.id),
-                        let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, vec.id)),
+                        let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id))),
                         match_def_path(cx.tcx, did, &paths::VEC),
                     ], {
                         span_help_and_lint(cx,
@@ -202,7 +202,8 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
         TyRptr(ref lt, MutTy { ref ty, ref mutbl }) => {
             match ty.node {
                 TyPath(ref qpath) => {
-                    let def = cx.tables.qpath_def(qpath, ast_ty.id);
+                    let hir_id = cx.tcx.hir.node_to_hir_id(ty.id);
+                    let def = cx.tables.qpath_def(qpath, hir_id);
                     if_let_chain! {[
                         let Some(def_id) = opt_def_id(def),
                         Some(def_id) == cx.tcx.lang_items.owned_box(),

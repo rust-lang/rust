@@ -801,8 +801,8 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     lint_iter_method(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let def_id = cx.tables.type_dependent_defs[&arg.id].def_id();
-                let substs = cx.tables.node_substs(arg.id);
+                let def_id = cx.tables.type_dependent_defs()[arg.hir_id].def_id();
+                let substs = cx.tables.node_substs(arg.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
 
                 let fn_arg_tys = method_type.fn_sig(cx.tcx).inputs();
@@ -1053,13 +1053,13 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             let QPath::Resolved(None, ref path) = *qpath,
             path.segments.len() == 1,
             // our variable!
-            self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var,
+            self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var,
             // the indexed container is referenced by a name
             let ExprPath(ref seqpath) = seqexpr.node,
             let QPath::Resolved(None, ref seqvar) = *seqpath,
             seqvar.segments.len() == 1,
         ], {
-            let def = self.cx.tables.qpath_def(seqpath, seqexpr.id);
+            let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
             match def {
                 Def::Local(..) | Def::Upvar(..) => {
                     let def_id = def.def_id();
@@ -1085,7 +1085,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             let QPath::Resolved(None, ref path) = *qpath,
             path.segments.len() == 1,
         ], {
-            if self.cx.tables.qpath_def(qpath, expr.id).def_id() == self.var {
+            if self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var {
                 // we are not indexing anything, record that
                 self.nonindex = true;
             } else {
@@ -1376,7 +1376,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let ExprPath(ref qpath) = expr.node {
-        let path_res = cx.tables.qpath_def(qpath, expr.id);
+        let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
         if let Def::Local(def_id) = path_res {
             let node_id = cx.tcx.hir.as_local_node_id(def_id).expect(
                 "That DefId should be valid",

@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprPath(ref qpath) = path.node,
             args.len() == 1,
         ], {
-            let def_id = cx.tables.qpath_def(qpath, path.id).def_id();
+            let def_id = cx.tables.qpath_def(qpath, path.hir_id).def_id();
             let lint;
             let msg;
             let arg = &args[0];
