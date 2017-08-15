@@ -68,6 +68,7 @@ macro_rules! book {
 book!(
     Nomicon, "src/doc/book", "nomicon";
     Reference, "src/doc/reference", "reference";
+    Rustdoc, "src/doc/rustdoc", "rustdoc";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
