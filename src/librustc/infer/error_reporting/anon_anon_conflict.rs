@@ -267,14 +267,17 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
             }
 
             hir::TyBareFn(ref fndecl) => {
-                fndecl.lifetimes.iter().filter_map(|lf| {
+                fndecl.lifetimes.iter().map(|lf| {
+                                            debug!("arg we are handling is...{:?}",arg);
                     match self.infcx.tcx.named_region_map.defs.get(&lf.lifetime.id) {
-
                         Some(&rl::Region::LateBoundAnon(debuijn_index, anon_index)) => {
+                            debug!("debuijn_index.depth ={:?} self.depth = {:?} anon_index ={:?} br_index={:?}",
+                            debuijn_index.depth, self.depth, anon_index, br_index);
                         if debuijn_index.depth == self.depth && anon_index == br_index {
+                            debug!("arg is {:?}",Some(arg));
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
-                        }else{}
+                        }
                     }
                     Some(&rl::Region::Static) |
                     Some(&rl::Region::EarlyBound(_, _)) |
@@ -292,6 +295,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
         // walk the embedded contents: e.g., if we are visiting `Vec<&Foo>`,
         // go on to visit `&Foo`
         self.depth += 1;
+        debug!("depth is {:?}",self.depth);
         intravisit::walk_ty(self, arg);
         self.depth += 1;
     }
