@@ -916,7 +916,7 @@ impl AsInner<fs_imp::FileAttr> for Metadata {
 }
 
 impl Permissions {
-    /// Returns whether these permissions describe a readonly file.
+    /// Returns whether these permissions describe a readonly (unwritable) file.
     ///
     /// # Examples
     ///
