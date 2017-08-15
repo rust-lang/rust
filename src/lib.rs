@@ -482,8 +482,7 @@ impl FormattingError {
 
     fn msg_suffix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "(sorry)",
-            ErrorKind::BadIssue(_) => "",
+            _ => String::from(""),
         }
     }
 }
