@@ -468,8 +468,10 @@ impl fmt::Display for ErrorKind {
 
 // Formatting errors that are identified *after* rustfmt has run.
 pub struct FormattingError {
-    line: u32,
+    line: usize,
     kind: ErrorKind,
+    is_comment: bool,
+    line_buffer: String,
 }
 
 impl FormattingError {
@@ -600,6 +602,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
     let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
     let mut prev_char: Option<char> = None;
     let mut is_comment = false;
+    let mut line_buffer = String::with_capacity(config.max_width() * 2);
 
     for (c, b) in text.chars() {
         if c == '\r' {
@@ -614,6 +617,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 errors.push(FormattingError {
                     line: cur_line,
                     kind: ErrorKind::BadIssue(issue),
+                    is_comment: false,
+                    line_buffer: String::new(),
                 });
             }
         }
@@ -622,7 +627,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             if format_line {
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
-                    trims.push((cur_line, lw, b));
+                    trims.push((cur_line, lw, b, line_buffer.clone()));
                     line_len -= 1;
                 }
 
@@ -633,6 +638,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                     errors.push(FormattingError {
                         line: cur_line,
                         kind: ErrorKind::LineOverflow(line_len, config.max_width()),
+                        is_comment: is_comment,
+                        line_buffer: line_buffer.clone(),
                     });
                 }
             }
@@ -643,6 +650,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             last_wspace = None;
             prev_char = None;
             is_comment = false;
+            line_buffer.clear();
         } else {
             newline_count = 0;
             line_len += 1;
@@ -660,6 +668,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 last_wspace = None;
             }
             prev_char = Some(c);
+            line_buffer.push(c);
         }
     }
 
@@ -669,10 +678,12 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
         text.truncate(line);
     }
 
-    for &(l, _, _) in &trims {
+    for &(l, _, _, ref b) in &trims {
         errors.push(FormattingError {
             line: l,
             kind: ErrorKind::TrailingWhitespace,
+            is_comment: false,
+            line_buffer: b.clone(),
         });
     }
 
