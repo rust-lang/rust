@@ -1980,7 +1980,7 @@ impl<'a> LoweringContext<'a> {
                             e
                         });
                         if is_generator && !decl.inputs.is_empty() {
-                            span_err!(this.sess, fn_decl_span, E0625,
+                            span_err!(this.sess, fn_decl_span, E0628,
                                       "generators cannot have explicit arguments");
                             this.sess.abort_if_errors();
                         }
