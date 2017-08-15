@@ -1,6 +1,9 @@
 // rustfmt-wrap_comments: true
 // Test attributes and doc comments are preserved.
 
+#[invalid attribute]
+fn foo() {}
+
 /// Blah blah blah.
 /// Blah blah blah.
 /// Blah blah blah.
