@@ -27,6 +27,7 @@ extern crate unicode_segmentation;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, Write};
+use std::iter::repeat;
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -42,7 +43,7 @@ use checkstyle::{output_footer, output_header};
 use config::Config;
 use filemap::FileMap;
 use issues::{BadIssueSeeker, Issue};
-use utils::{mk_sp, outer_attributes};
+use utils::{isatty, mk_sp, outer_attributes};
 use visitor::FmtVisitor;
 
 pub use self::summary::Summary;
@@ -456,7 +457,7 @@ impl fmt::Display for ErrorKind {
         match *self {
             ErrorKind::LineOverflow(found, maximum) => write!(
                 fmt,
-                "line exceeded maximum length (maximum: {}, found: {})",
+                "line exceeded maximum width (maximum: {}, found: {})",
                 maximum,
                 found
             ),
@@ -468,22 +469,43 @@ impl fmt::Display for ErrorKind {
 
 // Formatting errors that are identified *after* rustfmt has run.
 pub struct FormattingError {
-    line: u32,
+    line: usize,
     kind: ErrorKind,
+    is_comment: bool,
+    line_buffer: String,
 }
 
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "Rustfmt failed at",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "error:",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
 
-    fn msg_suffix(&self) -> &str {
+    fn msg_suffix(&self) -> String {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "(sorry)",
-            ErrorKind::BadIssue(_) => "",
+            ErrorKind::LineOverflow(..) if self.is_comment => format!(
+                "use `error_on_lineoverflow_comments = false` to suppress \
+                 the warning against line comments\n",
+            ),
+            _ => String::from(""),
+        }
+    }
+
+    // (space, target)
+    pub fn format_len(&self) -> (usize, usize) {
+        match self.kind {
+            ErrorKind::LineOverflow(found, max) => (max, found - max),
+            ErrorKind::TrailingWhitespace => {
+                let trailing_ws_len = self.line_buffer
+                    .chars()
+                    .rev()
+                    .take_while(|c| c.is_whitespace())
+                    .count();
+                (self.line_buffer.len() - trailing_ws_len, trailing_ws_len)
+            }
+            _ => (0, 0), // unreachable
         }
     }
 }
@@ -510,6 +532,76 @@ impl FormatReport {
     pub fn has_warnings(&self) -> bool {
         self.warning_count() > 0
     }
+
+    pub fn print_warnings_fancy(
+        &self,
+        mut t: Box<term::Terminal<Output = io::Stderr>>,
+    ) -> Result<(), term::Error> {
+        for (file, errors) in &self.file_error_map {
+            for error in errors {
+                let prefix_space_len = error.line.to_string().len();
+                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+
+                // First line: the overview of error
+                t.fg(term::color::RED)?;
+                t.attr(term::Attr::Bold)?;
+                write!(t, "{} ", error.msg_prefix())?;
+                t.reset()?;
+                t.attr(term::Attr::Bold)?;
+                write!(t, "{}\n", error.kind)?;
+
+                // Second line: file info
+                write!(t, "{}--> ", &prefix_spaces[1..])?;
+                t.reset()?;
+                write!(t, "{}:{}\n", file, error.line)?;
+
+                // Third to fifth lines: show the line which triggered error, if available.
+                if !error.line_buffer.is_empty() {
+                    let (space_len, target_len) = error.format_len();
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}|\n{} | ", prefix_spaces, error.line)?;
+                    t.reset()?;
+                    write!(t, "{}\n", error.line_buffer)?;
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}| ", prefix_spaces)?;
+                    t.fg(term::color::RED)?;
+                    write!(t, "{}\n", target_str(space_len, target_len))?;
+                    t.reset()?;
+                }
+
+                // The last line: show note if available.
+                let msg_suffix = error.msg_suffix();
+                if !msg_suffix.is_empty() {
+                    t.attr(term::Attr::Bold)?;
+                    write!(t, "{}= note: ", prefix_spaces)?;
+                    t.reset()?;
+                    write!(t, "{}\n", error.msg_suffix())?;
+                } else {
+                    write!(t, "\n")?;
+                }
+                t.reset()?;
+            }
+        }
+
+        if !self.file_error_map.is_empty() {
+            t.attr(term::Attr::Bold)?;
+            write!(t, "warning: ")?;
+            t.reset()?;
+            write!(
+                t,
+                "rustfmt may have failed to format. See previous {} errors.\n\n",
+                self.warning_count(),
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+fn target_str(space_len: usize, target_len: usize) -> String {
+    let empty_line: String = repeat(" ").take(space_len).collect();
+    let overflowed: String = repeat("^").take(target_len).collect();
+    empty_line + &overflowed
 }
 
 impl fmt::Display for FormatReport {
@@ -517,16 +609,49 @@ impl fmt::Display for FormatReport {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (file, errors) in &self.file_error_map {
             for error in errors {
+                let prefix_space_len = error.line.to_string().len();
+                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+
+                let error_line_buffer = if error.line_buffer.is_empty() {
+                    String::from(" ")
+                } else {
+                    let (space_len, target_len) = error.format_len();
+                    format!(
+                        "{}|\n{} | {}\n{}| {}",
+                        prefix_spaces,
+                        error.line,
+                        error.line_buffer,
+                        prefix_spaces,
+                        target_str(space_len, target_len)
+                    )
+                };
+
+                let error_info = format!("{} {}", error.msg_prefix(), error.kind);
+                let file_info = format!("{}--> {}:{}", &prefix_spaces[1..], file, error.line);
+                let msg_suffix = error.msg_suffix();
+                let note = if msg_suffix.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}note= ", prefix_spaces)
+                };
+
                 write!(
                     fmt,
-                    "{} {}:{}: {} {}\n",
-                    error.msg_prefix(),
-                    file,
-                    error.line,
-                    error.kind,
+                    "{}\n{}\n{}\n{}{}\n",
+                    error_info,
+                    file_info,
+                    error_line_buffer,
+                    note,
                     error.msg_suffix()
                 )?;
             }
+        }
+        if !self.file_error_map.is_empty() {
+            write!(
+                fmt,
+                "warning: rustfmt may have failed to format. See previous {} errors.\n",
+                self.warning_count(),
+            )?;
         }
         Ok(())
     }
@@ -601,6 +726,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
     let mut issue_seeker = BadIssueSeeker::new(config.report_todo(), config.report_fixme());
     let mut prev_char: Option<char> = None;
     let mut is_comment = false;
+    let mut line_buffer = String::with_capacity(config.max_width() * 2);
 
     for (c, b) in text.chars() {
         if c == '\r' {
@@ -615,6 +741,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 errors.push(FormattingError {
                     line: cur_line,
                     kind: ErrorKind::BadIssue(issue),
+                    is_comment: false,
+                    line_buffer: String::new(),
                 });
             }
         }
@@ -623,7 +751,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             if format_line {
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
-                    trims.push((cur_line, lw, b));
+                    trims.push((cur_line, lw, b, line_buffer.clone()));
                     line_len -= 1;
                 }
 
@@ -634,6 +762,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                     errors.push(FormattingError {
                         line: cur_line,
                         kind: ErrorKind::LineOverflow(line_len, config.max_width()),
+                        is_comment: is_comment,
+                        line_buffer: line_buffer.clone(),
                     });
                 }
             }
@@ -644,6 +774,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             last_wspace = None;
             prev_char = None;
             is_comment = false;
+            line_buffer.clear();
         } else {
             newline_count = 0;
             line_len += 1;
@@ -661,6 +792,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 last_wspace = None;
             }
             prev_char = Some(c);
+            line_buffer.push(c);
         }
     }
 
@@ -670,10 +802,12 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
         text.truncate(line);
     }
 
-    for &(l, _, _) in &trims {
+    for &(l, _, _, ref b) in &trims {
         errors.push(FormattingError {
             line: l,
             kind: ErrorKind::TrailingWhitespace,
+            is_comment: false,
+            line_buffer: b.clone(),
         });
     }
 
@@ -803,7 +937,15 @@ pub fn run(input: Input, config: &Config) -> Summary {
             output_footer(out, config.write_mode()).ok();
 
             if report.has_warnings() {
-                msg!("{}", report);
+                match term::stderr() {
+                    Some(ref t) if isatty() && t.supports_color() => {
+                        match report.print_warnings_fancy(term::stderr().unwrap()) {
+                            Ok(..) => (),
+                            Err(..) => panic!("Unable to write to stderr: {}", report),
+                        }
+                    }
+                    _ => msg!("{}", report),
+                }
             }
 
             summary

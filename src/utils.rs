@@ -516,3 +516,22 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         _ => e,
     }
 }
+
+// isatty shamelessly adapted from cargo.
+#[cfg(unix)]
+pub fn isatty() -> bool {
+    extern crate libc;
+
+    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+}
+#[cfg(windows)]
+pub fn isatty() -> bool {
+    extern crate kernel32;
+    extern crate winapi;
+
+    unsafe {
+        let handle = kernel32::GetStdHandle(winapi::winbase::STD_OUTPUT_HANDLE);
+        let mut out = 0;
+        kernel32::GetConsoleMode(handle, &mut out) != 0
+    }
+}
