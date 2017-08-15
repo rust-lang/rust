@@ -112,6 +112,29 @@
 //! will want to make use of some form of **interior mutability** through the
 //! [`Cell`] or [`RefCell`] types.
 //!
+//! ## Naming threads
+//!
+//! Threads are able to have associated names for identification purposes. By default, spawned
+//! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
+//! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
+//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//!
+//! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
+//! * The thread name is provided to the OS where applicable (e.g. `pthread_setname_np` in
+//!   unix-like platforms).
+//!
+//! ## Stack size
+//!
+//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
+//! subject to change in the future. There are two ways to manually specify the stack size for
+//! spawned threads:
+//!
+//! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
+//! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!
+//! Note that the stack size of the main thread is *not* determined by Rust.
+//!
 //! [channels]: ../../std/sync/mpsc/index.html
 //! [`Arc`]: ../../std/sync/struct.Arc.html
 //! [`spawn`]: ../../std/thread/fn.spawn.html
@@ -123,11 +146,14 @@
 //! [`Err`]: ../../std/result/enum.Result.html#variant.Err
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
+//! [`Builder::stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
+//! [`Builder::name`]: ../../std/thread/struct.Builder.html#method.name
 //! [`thread::current`]: ../../std/thread/fn.current.html
 //! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+//! [`Thread::name`]: ../../std/thread/struct.Thread.html#method.name
 //! [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
@@ -187,16 +213,8 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 ///
 /// The two configurations available are:
 ///
-/// - [`name`]: allows to give a name to the thread which is currently
-///   only used in `panic` messages.
-/// - [`stack_size`]: specifies the desired stack size. Note that this can
-///   be overridden by the OS.
-///
-/// If the [`stack_size`] field is not specified, the stack size
-/// will be the `RUST_MIN_STACK` environment variable. If it is
-/// not specified either, a sensible default will be set.
-///
-/// If the [`name`] field is not specified, the thread will not be named.
+/// - [`name`]: specifies an [associated name for the thread][naming-threads]
+/// - [`stack_size`]: specifies the [desired stack size for the thread][stack-size]
 ///
 /// The [`spawn`] method will take ownership of the builder and create an
 /// [`io::Result`] to the thread handle with the given configuration.
@@ -228,6 +246,8 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 /// [`spawn`]: ../../std/thread/struct.Builder.html#method.spawn
 /// [`io::Result`]: ../../std/io/type.Result.html
 /// [`unwrap`]: ../../std/result/enum.Result.html#method.unwrap
+/// [naming-threads]: ./index.html#naming-threads
+/// [stack-size]: ./index.html#stack-size
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -267,6 +287,9 @@ impl Builder {
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
     ///
+    /// For more information about named threads, see
+    /// [this module-level documentation][naming-threads].
+    ///
     /// # Examples
     ///
     /// ```
@@ -281,6 +304,8 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
@@ -292,6 +317,9 @@ impl Builder {
     /// The actual stack size may be greater than this value if
     /// the platform specifies minimal stack size.
     ///
+    /// For more information about the stack size for threads, see
+    /// [this module-level documentation][stack-size].
+    ///
     /// # Examples
     ///
     /// ```
@@ -299,6 +327,8 @@ impl Builder {
     ///
     /// let builder = thread::Builder::new().stack_size(32 * 1024);
     /// ```
+    ///
+    /// [stack-size]: ./index.html#stack-size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
@@ -987,6 +1017,9 @@ impl Thread {
 
     /// Gets the thread's name.
     ///
+    /// For more information about named threads, see
+    /// [this module-level documentation][naming-threads].
+    ///
     /// # Examples
     ///
     /// Threads by default have no name specified:
@@ -1017,6 +1050,8 @@ impl Thread {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
