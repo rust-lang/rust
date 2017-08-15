@@ -27,6 +27,7 @@ extern crate unicode_segmentation;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, Write};
+use std::iter::repeat;
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -456,7 +457,7 @@ impl fmt::Display for ErrorKind {
         match *self {
             ErrorKind::LineOverflow(found, maximum) => write!(
                 fmt,
-                "line exceeded maximum length (maximum: {}, found: {})",
+                "line exceeded maximum width (maximum: {}, found: {})",
                 maximum,
                 found
             ),
@@ -477,14 +478,34 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "Rustfmt failed at",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "error:",
             ErrorKind::BadIssue(_) => "WARNING:",
         }
     }
 
-    fn msg_suffix(&self) -> &str {
+    fn msg_suffix(&self) -> String {
         match self.kind {
+            ErrorKind::LineOverflow(..) if self.is_comment => format!(
+                "use `error_on_lineoverflow_comments = false` to suppress \
+                 the warning against line comments\n",
+            ),
             _ => String::from(""),
+        }
+    }
+
+    // (space, target)
+    pub fn format_len(&self) -> (usize, usize) {
+        match self.kind {
+            ErrorKind::LineOverflow(found, max) => (max, found - max),
+            ErrorKind::TrailingWhitespace => {
+                let trailing_ws_len = self.line_buffer
+                    .chars()
+                    .rev()
+                    .take_while(|c| c.is_whitespace())
+                    .count();
+                (self.line_buffer.len() - trailing_ws_len, trailing_ws_len)
+            }
+            _ => (0, 0), // unreachable
         }
     }
 }
@@ -518,16 +539,49 @@ impl fmt::Display for FormatReport {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (file, errors) in &self.file_error_map {
             for error in errors {
+                let prefix_space_len = error.line.to_string().len();
+                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+
+                let error_line_buffer = if error.line_buffer.is_empty() {
+                    String::from(" ")
+                } else {
+                    let (space_len, target_len) = error.format_len();
+                    format!(
+                        "{}|\n{} | {}\n{}| {}",
+                        prefix_spaces,
+                        error.line,
+                        error.line_buffer,
+                        prefix_spaces,
+                        target_str(space_len, target_len)
+                    )
+                };
+
+                let error_info = format!("{} {}", error.msg_prefix(), error.kind);
+                let file_info = format!("{}--> {}:{}", &prefix_spaces[1..], file, error.line);
+                let msg_suffix = error.msg_suffix();
+                let note = if msg_suffix.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}note= ", prefix_spaces)
+                };
+
                 write!(
                     fmt,
-                    "{} {}:{}: {} {}\n",
-                    error.msg_prefix(),
-                    file,
-                    error.line,
-                    error.kind,
+                    "{}\n{}\n{}\n{}{}\n",
+                    error_info,
+                    file_info,
+                    error_line_buffer,
+                    note,
                     error.msg_suffix()
                 )?;
             }
+        }
+        if !self.file_error_map.is_empty() {
+            write!(
+                fmt,
+                "warning: rustfmt may have failed to format. See previous {} errors.\n",
+                self.warning_count(),
+            )?;
         }
         Ok(())
     }
