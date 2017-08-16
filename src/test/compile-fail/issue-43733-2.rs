@@ -16,6 +16,7 @@
 #[cfg(not(target_thread_local))]
 struct Key<T> {
     _data: std::cell::UnsafeCell<Option<T>>,
+    _state: std::cell::UnsafeCell<std::thread::LocalKeyState>,
     _flag: std::cell::Cell<bool>,
 }
 
@@ -34,6 +35,7 @@ use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
 //~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>: std::marker::Sync` is not satisfied
+//~| ERROR `std::cell::UnsafeCell<std::thread::LocalKeyState>: std::marker::Sync` is not satisfied
 //~| ERROR `std::cell::Cell<bool>: std::marker::Sync` is not satisfied
 
 fn main() {}

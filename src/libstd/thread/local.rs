@@ -192,7 +192,7 @@ macro_rules! __thread_local_inner {
             static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                 $crate::thread::__OsLocalKeyInner::new();
 
-            unsafe fn __getit() -> &'static Option<$t> { __KEY.get() }
+            unsafe fn __getit() -> &'static $crate::option::Option<$t> { __KEY.get() }
 
             unsafe fn __get_state() -> $crate::thread::LocalKeyState { __KEY.get_state() }
 
@@ -504,39 +504,33 @@ pub mod fast {
             }
         }
 
-        pub fn get(&self) -> &'static Option<T> {
-            unsafe { &*self.inner.get() }
+        pub unsafe fn get(&self) -> &'static Option<T> {
+            &*self.inner.get()
         }
 
-        pub fn get_state(&self) -> LocalKeyState {
-            unsafe { *self.state.get() }
+        pub unsafe fn get_state(&self) -> LocalKeyState {
+            *self.state.get()
         }
 
-        pub fn pre_init(&self) {
-            unsafe {
-                // It's critical that we set the state to Initializing before
-                // registering destructors - if registering destructors causes
-                // allocation, and the global allocator uses TLS, then the
-                // allocator needs to be able to detect that the TLS is in
-                // the Initializing state and perform appropriate fallback
-                // logic rather than recursing infinitely.
-                *self.state.get() = LocalKeyState::Initializing;
-                self.register_dtor();
-            }
+        pub unsafe fn pre_init(&self) {
+            // It's critical that we set the state to Initializing before
+            // registering destructors - if registering destructors causes
+            // allocation, and the global allocator uses TLS, then the
+            // allocator needs to be able to detect that the TLS is in
+            // the Initializing state and perform appropriate fallback
+            // logic rather than recursing infinitely.
+            *self.state.get() = LocalKeyState::Initializing;
+            self.register_dtor();
         }
 
-        pub fn post_init(&self, val: T) {
-            unsafe {
-                *self.inner.get() = Some(val);
-                *self.state.get() = LocalKeyState::Valid;
-            }
+        pub unsafe fn post_init(&self, val: T) {
+            *self.inner.get() = Some(val);
+            *self.state.get() = LocalKeyState::Valid;
         }
 
-        pub fn rollback_init(&self) {
-            unsafe {
-                *self.inner.get() = None;
-                *self.state.get() = LocalKeyState::Uninitialized;
-            }
+        pub unsafe fn rollback_init(&self) {
+            *self.inner.get() = None;
+            *self.state.get() = LocalKeyState::Uninitialized;
         }
 
         unsafe fn register_dtor(&self) {
@@ -605,54 +599,46 @@ pub mod os {
             }
         }
 
-        pub fn get(&self) -> &'static Option<T> {
-            unsafe {
-                match *self.state.get() {
-                    LocalKeyState::Valid => {
-                        // Since the state is Valid, we know that os points to
-                        // an allocated Value<T>.
-                        let ptr = self.os.get() as *mut Value<T>;
-                        debug_assert!(!ptr.is_null());
-                        &*(*ptr).value.get()
-                    }
-                    _ => {
-                        // The dummy_value is guaranteed to always be None. This
-                        // allows us to avoid allocating if the state isn't Valid.
-                        // This is critical because it means that an allocator can
-                        // call try_with and detect that the key is in state
-                        // Initializing without recursing infinitely.
-                        &*self.dummy_value.get()
-                    }
+        pub unsafe fn get(&self) -> &'static Option<T> {
+            match *self.state.get() {
+                LocalKeyState::Valid => {
+                    // Since the state is Valid, we know that os points to
+                    // an allocated Value<T>.
+                    let ptr = self.os.get() as *mut Value<T>;
+                    debug_assert!(!ptr.is_null());
+                    &*(*ptr).value.get()
+                }
+                _ => {
+                    // The dummy_value is guaranteed to always be None. This
+                    // allows us to avoid allocating if the state isn't Valid.
+                    // This is critical because it means that an allocator can
+                    // call try_with and detect that the key is in state
+                    // Initializing without recursing infinitely.
+                    &*self.dummy_value.get()
                 }
             }
         }
 
-        pub fn get_state(&self) -> LocalKeyState {
-            unsafe { *self.state.get() }
+        pub unsafe fn get_state(&self) -> LocalKeyState {
+            *self.state.get()
         }
 
-        pub fn pre_init(&self) {
-            unsafe {
-                *self.state.get() = LocalKeyState::Initializing;
-            }
+        pub unsafe fn pre_init(&self) {
+            *self.state.get() = LocalKeyState::Initializing;
         }
 
-        pub fn rollback_init(&self) {
-            unsafe {
-                *self.state.get() = LocalKeyState::Uninitialized;
-            }
+        pub unsafe fn rollback_init(&self) {
+            *self.state.get() = LocalKeyState::Uninitialized;
         }
 
-        pub fn post_init(&self, val: T) {
-            unsafe {
-                let ptr: Box<Value<T>> = box Value {
-                                                 key: &*(self as *const _),
-                                                 value: UnsafeCell::new(Some(val)),
-                                             };
-                let ptr = Box::into_raw(ptr);
-                self.os.set(ptr as *mut u8);
-                *self.state.get() = LocalKeyState::Valid;
-            }
+        pub unsafe fn post_init(&self, val: T) {
+            let ptr: Box<Value<T>> = box Value {
+                                             key: &*(self as *const _),
+                                             value: UnsafeCell::new(Some(val)),
+                                         };
+            let ptr = Box::into_raw(ptr);
+            self.os.set(ptr as *mut u8);
+            *self.state.get() = LocalKeyState::Valid;
         }
     }
 

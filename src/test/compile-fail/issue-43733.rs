@@ -9,11 +9,10 @@
 // except according to those terms.
 
 #![feature(const_fn, drop_types_in_const)]
-#![feature(cfg_target_thread_local, thread_local_internals)]
+#![feature(cfg_target_thread_local, thread_local_internals, thread_local_state)]
 
 type Foo = std::cell::RefCell<String>;
 
-#[cfg(target_thread_local)]
 static __KEY: std::thread::__FastLocalKeyInner<Foo> =
     std::thread::__FastLocalKeyInner::new();
 
@@ -21,16 +20,33 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> =
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
     std::thread::__OsLocalKeyInner::new();
 
-fn __getit() -> std::option::Option<
-    &'static std::cell::UnsafeCell<
-        std::option::Option<Foo>>>
-{
+fn __getit() -> &'static std::option::Option<Foo> {
     __KEY.get() //~ ERROR  invocation of unsafe method requires unsafe
 }
 
+fn __get_state() -> std::thread::LocalKeyState {
+    __KEY.get_state() //~ ERROR  invocation of unsafe method requires unsafe
+}
+
+fn __pre_init() {
+    __KEY.pre_init() //~ ERROR  invocation of unsafe method requires unsafe
+}
+
+fn __post_init(val: Foo) {
+    __KEY.post_init(val) //~ ERROR  invocation of unsafe method requires unsafe
+}
+
+fn __rollback_init() {
+    __KEY.rollback_init() //~ ERROR  invocation of unsafe method requires unsafe
+}
+
 static FOO: std::thread::LocalKey<Foo> =
-    std::thread::LocalKey::new(__getit, Default::default);
-//~^ ERROR call to unsafe function requires unsafe
+    std::thread::LocalKey::new(__getit, //~ ERROR call to unsafe function requires unsafe
+                               __get_state,
+                               __pre_init,
+                               Default::default,
+                               __post_init,
+                               __rollback_init);
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));
