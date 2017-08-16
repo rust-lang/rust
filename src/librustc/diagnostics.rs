@@ -362,9 +362,9 @@ Here are some simple examples of where you'll run into this error:
 struct Foo { x: &bool }        // error
 struct Foo<'a> { x: &'a bool } // correct
 
-struct Bar{ x: Foo }
+struct Bar { x: Foo }
                ^^^ expected lifetime parameter
-struct Bar<'a>{ x: Foo<'a> } // correct
+struct Bar<'a> { x: Foo<'a> } // correct
 
 enum Bar { A(u8), B(&bool), }        // error
 enum Bar<'a> { A(u8), B(&'a bool), } // correct
