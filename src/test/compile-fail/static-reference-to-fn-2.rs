@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn id<T>(x: T) -> T { x }
+
 struct StateMachineIter<'a> {
     statefn: &'a StateMachineFunc<'a>
 }
@@ -23,19 +25,19 @@ impl<'a> Iterator for StateMachineIter<'a> {
 }
 
 fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
-    self_.statefn = &(state2 as StateMachineFunc);
+    self_.statefn = &id(state2 as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state1");
 }
 
 fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-    self_.statefn = &(state3 as StateMachineFunc);
+    self_.statefn = &id(state3 as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state2");
 }
 
 fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-    self_.statefn = &(finished as StateMachineFunc);
+    self_.statefn = &id(finished as StateMachineFunc);
     //~^ ERROR borrowed value does not live long enough
     return Some("state3");
 }
@@ -46,7 +48,8 @@ fn finished(_: &mut StateMachineIter) -> Option<(&'static str)> {
 
 fn state_iter() -> StateMachineIter<'static> {
     StateMachineIter {
-        statefn: &(state1 as StateMachineFunc) //~ ERROR borrowed value does not live long enough
+        statefn: &id(state1 as StateMachineFunc)
+        //~^ ERROR borrowed value does not live long enough
     }
 }
 

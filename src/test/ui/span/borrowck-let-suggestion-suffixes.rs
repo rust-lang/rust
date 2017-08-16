@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+fn id<T>(x: T) -> T { x }
+
 fn f() {
     let old = ['o'];         // statement 0
     let mut v1 = Vec::new(); // statement 1
@@ -21,7 +23,7 @@ fn f() {
 
     let mut v3 = Vec::new(); // statement 5
 
-    v3.push(&'x');           // statement 6
+    v3.push(&id('x'));           // statement 6
     //~^ ERROR borrowed value does not live long enough
     //~| NOTE temporary value created here
     //~| NOTE temporary value only lives until here
@@ -31,7 +33,7 @@ fn f() {
 
         let mut v4 = Vec::new(); // (sub) statement 0
 
-        v4.push(&'y');
+        v4.push(&id('y'));
         //~^ ERROR borrowed value does not live long enough
         //~| NOTE temporary value created here
         //~| NOTE temporary value only lives until here
@@ -42,7 +44,7 @@ fn f() {
 
     let mut v5 = Vec::new(); // statement 8
 
-    v5.push(&'z');
+    v5.push(&id('z'));
     //~^ ERROR borrowed value does not live long enough
     //~| NOTE temporary value created here
     //~| NOTE temporary value only lives until here
