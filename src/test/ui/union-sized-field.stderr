@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `T: std::marker::Sized` is not satisfied
+  --> $DIR/union-sized-field.rs:14:5
+   |
+14 |     value: T,
+   |     ^^^^^^^^ `T` does not have a constant size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `T`
+   = help: consider adding a `where T: std::marker::Sized` bound
+   = note: only the last field of a struct or an union may have a dynamically sized type
+
+error: aborting due to previous error
+
