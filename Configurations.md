@@ -41,10 +41,13 @@ let a = vec![
 ```
 
 #### `1000`:
+
 ```rust
 // Each element will be placed on the same line as much as possible.
-let a = vec![0, 1, 2, 3, 4, ...
-             ..., 999, 1000];
+let a = vec![
+    0, 1, 2, 3, 4, ...
+    ..., 999, 1000,
+];
 ```
 
 ## `array_layout`
@@ -91,8 +94,7 @@ Maximum width of an array literal before falling back to vertical formatting
 
 #### Lines shorter than `array_width`:
 ```rust
-let lorem =
-    vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit"];
+let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit"];
 ```
 
 #### Lines longer than `array_width`:
@@ -198,6 +200,8 @@ lorem_ipsum(|| {
     println!("elit");
 });
 ```
+
+**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
 
 ## `combine_control_expr`
 
@@ -400,11 +404,15 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
-             adipiscing: Adipiscing, elit: Elit);
+    fn lorem(
+        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
+        adipiscing: Adipiscing, elit: Elit,
+    );
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
-             adipiscing: Adipiscing, elit: Elit) {
+    fn lorem(
+        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
+        adipiscing: Adipiscing, elit: Elit,
+    ) {
         // body
     }
 }
@@ -420,16 +428,20 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
-             adipiscing: Adipiscing, elit: Elit);
+    fn lorem(
+        ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Amet, consectetur: Consectetur,
+        adipiscing: Adipiscing, elit: Elit,
+    );
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet,
-             consectetur: onsectetur,
-             adipiscing: Adipiscing,
-             elit: Elit) {
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: onsectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    ) {
         // body
     }
 }
@@ -445,21 +457,25 @@ trait Lorem {
         // body
     }
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet,
-             consectetur: onsectetur,
-             adipiscing: Adipiscing,
-             elit: Elit);
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: onsectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    );
 
-    fn lorem(ipsum: Ipsum,
-             dolor: Dolor,
-             sit: Sit,
-             amet: Amet,
-             consectetur: onsectetur,
-             adipiscing: Adipiscing,
-             elit: Elit) {
+    fn lorem(
+        ipsum: Ipsum,
+        dolor: Dolor,
+        sit: Sit,
+        amet: Amet,
+        consectetur: onsectetur,
+        adipiscing: Adipiscing,
+        elit: Elit,
+    ) {
         // body
     }
 }
@@ -560,8 +576,8 @@ fn lorem(
     ipsum: Ipsum,
     dolor: Dolor,
     sit: Sit,
-    amet: Amet)
-    -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
+    amet: Amet,
+) -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
     // body
 }
 ```
@@ -570,11 +586,12 @@ fn lorem(
 
 ```rust
 fn lorem
-    (ipsum: Ipsum,
-     dolor: Dolor,
-     sit: Sit,
-     amet: Amet)
-     -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
+    (
+    ipsum: Ipsum,
+    dolor: Dolor,
+    sit: Sit,
+    amet: Amet,
+) -> DolorSitAmetConsecteturAdipiscingElitLoremIpsumDolorSitAmetConsecteturAdipiscingElit {
     // body
 }
 ```
@@ -600,7 +617,8 @@ fn lorem(ipsum: usize)
 }
 
 fn lorem<T>(ipsum: T)
-    where T: Add + Sub + Mul + Div
+where
+    T: Add + Sub + Mul + Div,
 {
     // body
 }
@@ -618,7 +636,8 @@ fn lorem(ipsum: usize) {
 }
 
 fn lorem<T>(ipsum: T)
-    where T: Add + Sub + Mul + Div {
+where
+    T: Add + Sub + Mul + Div, {
     // body
 }
 ```
@@ -635,7 +654,8 @@ fn lorem(ipsum: usize) {
 }
 
 fn lorem<T>(ipsum: T)
-    where T: Add + Sub + Mul + Div
+where
+    T: Add + Sub + Mul + Div,
 {
     // body
 }
@@ -757,6 +777,8 @@ fn lorem(ipsum: Ipsum,
 
 ```
 
+**Note**: This option only takes effect when `fn_call_style` is set to `"Visual"`.
+
 ## `fn_single_line`
 
 Put single-expression functions on a single line
@@ -867,14 +889,15 @@ fn lorem<
     Adipiscing: Eq = usize,
     Consectetur: Eq = usize,
     Elit: Eq = usize
->(ipsum: Ipsum,
+>(
+    ipsum: Ipsum,
     dolor: Dolor,
     sit: Sit,
     amet: Amet,
     adipiscing: Adipiscing,
     consectetur: Consectetur,
-    elit: Elit)
-    -> T {
+    elit: Elit,
+) -> T {
     // body
 }
 ```
@@ -1844,7 +1867,7 @@ let lorem = ipsum.map(|dolor| dolor.sit())?;
 
 ## `where_density`
 
-Density of a where clause
+Density of a where clause. 
 
 - **Default value**: `"CompressedIfEmpty"`
 - **Possible values**: `"Compressed"`, `"CompressedIfEmpty"`, `"Tall"`, `"Vertical"`
@@ -1853,9 +1876,11 @@ Density of a where clause
 
 ```rust
 trait Lorem {
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit where Dolor: Eq;
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+    where Dolor: Eq;
 
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit where Dolor: Eq {
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+    where Dolor: Eq {
         // body
     }
 }
@@ -1865,10 +1890,12 @@ trait Lorem {
 
 ```rust
 trait Lorem {
-    fn ipsum<Dolor>(dolor: Dolor) -> Sit where Dolor: Eq;
+    fn ipsum<Dolor>(dolor: Dolor) -> Sit
+    where Dolor: Eq;
 
     fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq
+    where
+        Dolor: Eq,
     {
         // body
     }
@@ -1880,10 +1907,12 @@ trait Lorem {
 ```rust
 trait Lorem {
     fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq;
+    where
+        Dolor: Eq;
 
     fn ipsum<Dolor>(dolor: Dolor) -> Sit
-        where Dolor: Eq
+    where
+        Dolor: Eq,
     {
         // body
     }
@@ -1990,6 +2019,8 @@ fn lorem<Ipsum, Dolor, Sit, Amet>(ipsum: Ipsum, dolor: Dolor, sit: Sit, amet: Am
 }
 ```
 
+**Note**: This option only takes effect when `where_style` is set to `"Legacy"`.
+
 See also: [`where_density`](#where_density), [`where_pred_indent`](#where_pred_indent), [`where_style`](#where_style).
 
 ## `where_pred_indent`
@@ -2024,6 +2055,8 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
     // body
 }
 ```
+
+**Note**: This option only takes effect when `where_style` is set to `"Legacy"`.
 
 See also: [`where_density`](#where_density), [`where_layout`](#where_layout), [`where_style`](#where_style).
 
