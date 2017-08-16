@@ -24,7 +24,7 @@ static CNT: AtomicUsize = ATOMIC_USIZE_INIT;
 impl Foo {
     fn init() -> Foo {
         let cnt = CNT.fetch_add(1, Ordering::SeqCst);
-        if cnt == 0 {
+        if FOO.state() == LocalKeyState::Uninitialized {
             FOO.with(|_| {});
         }
         Foo { cnt: cnt }
@@ -34,20 +34,16 @@ impl Foo {
 impl Drop for Foo {
     fn drop(&mut self) {
         if self.cnt == 1 {
-            FOO.with(|foo| assert_eq!(foo.cnt, 0));
+            assert_eq!(FOO.state(), LocalKeyState::Destroyed);
         } else {
             assert_eq!(self.cnt, 0);
-            match FOO.state() {
-                LocalKeyState::Valid => panic!("should not be in valid state"),
-                LocalKeyState::Uninitialized |
-                LocalKeyState::Destroyed => {}
-            }
+            assert_eq!(FOO.state(), LocalKeyState::Valid);
         }
     }
 }
 
 fn main() {
     thread::spawn(|| {
-        FOO.with(|_| {});
+        Foo::init();
     }).join().unwrap();
 }
