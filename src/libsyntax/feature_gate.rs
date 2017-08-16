@@ -112,8 +112,8 @@ macro_rules! declare_features {
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
 //
-// NB: The featureck.py script parses this information directly out of the source
-// so take care when modifying it.
+// NB: tools/tidy/src/features.rs parses this information directly out of the
+// source, so take care when modifying it.
 
 declare_features! (
     (active, asm, "1.0.0", Some(29722)),
