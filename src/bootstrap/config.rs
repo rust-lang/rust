@@ -296,7 +296,7 @@ impl Config {
         config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
-        config.ignore_git = false;
+        config.ignore_git = true;
         config.rust_dist_src = true;
 
         config.on_fail = flags.on_fail;
@@ -419,7 +419,12 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
+
+            // on the dev channel, ignore_git should be true by default
+            // on other channels it should be false by default
+            config.ignore_git = config.channel == "dev";
             set(&mut config.ignore_git, rust.ignore_git);
+
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
