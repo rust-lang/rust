@@ -75,7 +75,7 @@ impl AddCallGuards {
                         statements: vec![],
                         is_cleanup: block.is_cleanup,
                         terminator: Some(Terminator {
-                            source_info: source_info,
+                            source_info,
                             kind: TerminatorKind::Goto { target: *destination }
                         })
                     };

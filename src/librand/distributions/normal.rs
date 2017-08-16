@@ -103,8 +103,8 @@ impl Normal {
     pub fn new(mean: f64, std_dev: f64) -> Normal {
         assert!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
         Normal {
-            mean: mean,
-            std_dev: std_dev,
+            mean,
+            std_dev,
         }
     }
 }

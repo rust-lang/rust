@@ -453,7 +453,7 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     let mut any_data = 0;
     let mut any_vtable = 0;
     let mut data = Data {
-        f: f,
+        f,
     };
 
     let r = __rust_maybe_catch_panic(do_call::<F, R>,

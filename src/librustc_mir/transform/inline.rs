@@ -90,8 +90,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
                         callsites.push_back(CallSite {
                             callee: callee_def_id,
-                            substs: substs,
-                            bb: bb,
+                            substs,
+                            bb,
                             location: terminator.source_info
                         });
                     }
@@ -136,8 +136,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                             if callsite.callee != callee_def_id {
                                 callsites.push_back(CallSite {
                                     callee: callee_def_id,
-                                    substs: substs,
-                                    bb: bb,
+                                    substs,
+                                    bb,
                                     location: terminator.source_info
                                 });
                             }
@@ -437,12 +437,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let mut integrator = Integrator {
                     block_idx: bb_len,
                     args: &args,
-                    local_map: local_map,
-                    scope_map: scope_map,
-                    promoted_map: promoted_map,
+                    local_map,
+                    scope_map,
+                    promoted_map,
                     _callsite: callsite,
                     destination: dest,
-                    return_block: return_block,
+                    return_block,
                     cleanup_block: cleanup,
                     in_cleanup_block: false
                 };
@@ -465,7 +465,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             kind => {
                 caller_mir[callsite.bb].terminator = Some(Terminator {
                     source_info: terminator.source_info,
-                    kind: kind
+                    kind,
                 });
                 false
             }

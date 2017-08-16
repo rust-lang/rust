@@ -184,8 +184,8 @@ impl Span {
             if !info.call_site.source_equal(&prev_span) {
                 result.push(MacroBacktrace {
                     call_site: info.call_site,
-                    macro_decl_name: macro_decl_name,
-                    def_site_span: def_site_span,
+                    macro_decl_name,
+                    def_site_span,
                 });
             }
 
@@ -358,7 +358,7 @@ impl MultiSpan {
 
         for &(span, ref label) in &self.span_labels {
             span_labels.push(SpanLabel {
-                span: span,
+                span,
                 is_primary: is_primary(span),
                 label: Some(label.clone())
             });
@@ -367,7 +367,7 @@ impl MultiSpan {
         for &span in &self.primary_spans {
             if !span_labels.iter().any(|sl| sl.span == span) {
                 span_labels.push(SpanLabel {
-                    span: span,
+                    span,
                     is_primary: true,
                     label: None
                 });
@@ -556,16 +556,16 @@ impl Decodable for FileMap {
             let multibyte_chars: Vec<MultiByteChar> =
                 d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
             Ok(FileMap {
-                name: name,
-                name_was_remapped: name_was_remapped,
+                name,
+                name_was_remapped,
                 // `crate_of_origin` has to be set by the importer.
                 // This value matches up with rustc::hir::def_id::INVALID_CRATE.
                 // That constant is not available here unfortunately :(
                 crate_of_origin: ::std::u32::MAX - 1,
-                start_pos: start_pos,
-                end_pos: end_pos,
+                start_pos,
+                end_pos,
                 src: None,
-                src_hash: src_hash,
+                src_hash,
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars)
@@ -594,13 +594,13 @@ impl FileMap {
         let end_pos = start_pos.to_usize() + src.len();
 
         FileMap {
-            name: name,
-            name_was_remapped: name_was_remapped,
+            name,
+            name_was_remapped,
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
-            src_hash: src_hash,
+            src_hash,
             external_src: RefCell::new(ExternalSource::Unneeded),
-            start_pos: start_pos,
+            start_pos,
             end_pos: Pos::from_usize(end_pos),
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
@@ -687,8 +687,8 @@ impl FileMap {
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
         assert!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
-            pos: pos,
-            bytes: bytes,
+            pos,
+            bytes,
         };
         self.multibyte_chars.borrow_mut().push(mbc);
     }

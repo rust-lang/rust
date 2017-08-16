@@ -61,7 +61,7 @@ pub struct Handle {
 impl Handle {
     pub fn new(raw: mx_handle_t) -> Handle {
         Handle {
-            raw: raw,
+            raw,
         }
     }
 

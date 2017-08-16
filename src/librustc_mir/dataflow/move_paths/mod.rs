@@ -212,9 +212,9 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         let mut path_map = IndexVec::new();
 
         MoveDataBuilder {
-            mir: mir,
-            tcx: tcx,
-            param_env: param_env,
+            mir,
+            tcx,
+            param_env,
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(mir),
@@ -224,8 +224,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                     }).collect(),
                     projections: FxHashMap(),
                 },
-                move_paths: move_paths,
-                path_map: path_map,
+                move_paths,
+                path_map,
             }
         }
     }
@@ -239,8 +239,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
         let move_path = move_paths.push(MovePath {
             next_sibling: None,
             first_child: None,
-            parent: parent,
-            lvalue: lvalue
+            parent,
+            lvalue,
         });
 
         if let Some(parent) = parent {

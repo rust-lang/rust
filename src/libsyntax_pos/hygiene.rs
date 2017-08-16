@@ -161,7 +161,7 @@ impl SyntaxContext {
                 syntax_contexts.push(SyntaxContextData {
                     outer_mark: mark,
                     prev_ctxt: self,
-                    modern: modern,
+                    modern,
                 });
                 SyntaxContext(syntax_contexts.len() as u32 - 1)
             })

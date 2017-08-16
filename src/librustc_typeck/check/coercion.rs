@@ -128,8 +128,8 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
 impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>, cause: ObligationCause<'tcx>) -> Self {
         Coerce {
-            fcx: fcx,
-            cause: cause,
+            fcx,
+            cause,
             use_lub: false,
         }
     }

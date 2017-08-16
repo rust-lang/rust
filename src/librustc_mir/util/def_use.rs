@@ -97,8 +97,8 @@ impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
                     location: Location) {
         if let Some(ref mut info) = self.lvalue_mut_info(lvalue) {
             info.defs_and_uses.push(Use {
-                context: context,
-                location: location,
+                context,
+                location,
             })
         }
         self.super_lvalue(lvalue, context, location)
@@ -140,8 +140,8 @@ impl<'tcx, F> MutateUseVisitor<'tcx, F> {
            -> MutateUseVisitor<'tcx, F>
            where F: for<'a> FnMut(&'a mut Lvalue<'tcx>, LvalueContext<'tcx>, Location) {
         MutateUseVisitor {
-            query: query,
-            callback: callback,
+            query,
+            callback,
             phantom: PhantomData,
         }
     }

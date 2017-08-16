@@ -140,7 +140,7 @@ impl<T> Node<T> {
         Node {
             next: None,
             prev: None,
-            element: element,
+            element,
         }
     }
 
@@ -924,7 +924,7 @@ impl<'a, T> IterMut<'a, T> {
                 let node = Some(Shared::from(Box::into_unique(box Node {
                     next: Some(head),
                     prev: Some(prev),
-                    element: element,
+                    element,
                 })));
 
                 prev.as_mut().next = node;

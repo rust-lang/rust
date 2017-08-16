@@ -161,10 +161,10 @@ impl TocBuilder {
         }
 
         self.chain.push(TocEntry {
-            level: level,
-            name: name,
-            sec_number: sec_number,
-            id: id,
+            level,
+            name,
+            sec_number,
+            id,
             children: Toc { entries: Vec::new() }
         });
 

@@ -91,8 +91,8 @@ pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>)
                          -> Result<(), ErrorReported>
 {
     let mut visitor = CheckCrateVisitor {
-        sess: sess,
-        hir_map: hir_map,
+        sess,
+        hir_map,
         discriminant_map: NodeMap(),
         detected_recursive_ids: NodeSet(),
     };

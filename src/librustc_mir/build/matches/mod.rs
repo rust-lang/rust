@@ -69,8 +69,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
-                        guard: guard,
-                        arm_index: arm_index,
+                        guard,
+                        arm_index,
                     }
                 })
                 .collect();
@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 var_scope = Some(this.new_visibility_scope(scope_span));
             }
             let source_info = SourceInfo {
-                span: span,
+                span,
                 scope: var_scope.unwrap()
             };
             this.declare_binding(source_info, mutability, name, var, ty);
@@ -193,7 +193,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement {
-            source_info: source_info,
+            source_info,
             kind: StatementKind::StorageLive(Lvalue::Local(local_id))
         });
         Lvalue::Local(local_id)
@@ -708,10 +708,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                var_id, name, var_ty, source_info);
 
         let var = self.local_decls.push(LocalDecl::<'tcx> {
-            mutability: mutability,
+            mutability,
             ty: var_ty.clone(),
             name: Some(name),
-            source_info: source_info,
+            source_info,
             internal: false,
             is_user_variable: true,
         });

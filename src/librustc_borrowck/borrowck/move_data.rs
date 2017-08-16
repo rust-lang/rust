@@ -310,7 +310,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     parent: parent_index,
                     first_move: InvalidMoveIndex,
                     first_child: InvalidMovePathIndex,
-                    next_sibling: next_sibling,
+                    next_sibling,
                 });
 
                 index
@@ -408,9 +408,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
         self.moves.borrow_mut().push(Move {
             path: path_index,
-            id: id,
-            kind: kind,
-            next_move: next_move
+            id,
+            kind,
+            next_move,
         });
     }
 
@@ -468,8 +468,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let assignment = Assignment {
             path: path_index,
             id: assign_id,
-            span: span,
-            assignee_id: assignee_id,
+            span,
+            assignee_id,
         };
 
         if self.is_var_path(path_index) {
@@ -504,7 +504,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
             path: path_index,
             base_path: base_path_index,
             id: pattern_id,
-            mode: mode,
+            mode,
         };
 
         self.variant_matches.borrow_mut().push(variant_match);
@@ -680,9 +680,9 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         dfcx_assign.propagate(cfg, body);
 
         FlowedMoveData {
-            move_data: move_data,
-            dfcx_moves: dfcx_moves,
-            dfcx_assign: dfcx_assign,
+            move_data,
+            dfcx_moves,
+            dfcx_assign,
         }
     }
 

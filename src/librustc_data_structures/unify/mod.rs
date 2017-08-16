@@ -87,8 +87,8 @@ impl<K: UnifyKey> VarValue<K> {
     fn new(parent: K, value: K::Value, rank: u32) -> VarValue<K> {
         VarValue {
             parent: parent, // this is a root
-            value: value,
-            rank: rank,
+            value,
+            rank,
         }
     }
 
@@ -98,8 +98,8 @@ impl<K: UnifyKey> VarValue<K> {
 
     fn root(self, rank: u32, value: K::Value) -> VarValue<K> {
         VarValue {
-            rank: rank,
-            value: value,
+            rank,
+            value,
             ..self
         }
     }

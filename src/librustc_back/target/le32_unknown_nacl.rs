@@ -25,8 +25,8 @@ pub fn target() -> TargetResult {
         linker: "pnacl-clang".to_string(),
         ar: "pnacl-ar".to_string(),
 
-        pre_link_args: pre_link_args,
-        post_link_args: post_link_args,
+        pre_link_args,
+        post_link_args,
         dynamic_linking: false,
         executables: true,
         exe_suffix: ".pexe".to_string(),

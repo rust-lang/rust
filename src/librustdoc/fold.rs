@@ -97,9 +97,8 @@ pub trait DocFolder : Sized {
             _ => self.fold_inner_recur(inner),
         };
 
-        Some(Item { attrs: attrs, name: name, source: source, inner: inner,
-                    visibility: visibility, stability: stability, deprecation: deprecation,
-                    def_id: def_id })
+        Some(Item { attrs, name, source, inner, visibility,
+                    stability, deprecation, def_id })
     }
 
     fn fold_mod(&mut self, m: Module) -> Module {

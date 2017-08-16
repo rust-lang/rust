@@ -443,8 +443,8 @@ pub fn run(mut krate: clean::Crate,
         None => PathBuf::new(),
     };
     let mut scx = SharedContext {
-        src_root: src_root,
-        passes: passes,
+        src_root,
+        passes,
         include_sources: true,
         local_sources: FxHashMap(),
         issue_tracker_base_url: None,
@@ -496,10 +496,10 @@ pub fn run(mut krate: clean::Crate,
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
         current: Vec::new(),
-        dst: dst,
+        dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
-        render_type: render_type,
+        render_type,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -518,7 +518,7 @@ pub fn run(mut krate: clean::Crate,
 
     let mut cache = Cache {
         impls: FxHashMap(),
-        external_paths: external_paths,
+        external_paths,
         paths: FxHashMap(),
         implementors: FxHashMap(),
         stack: Vec::new(),
@@ -531,9 +531,9 @@ pub fn run(mut krate: clean::Crate,
         access_levels: krate.access_levels.clone(),
         orphan_impl_items: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, FxHashMap()),
-        deref_trait_did: deref_trait_did,
-        deref_mut_trait_did: deref_mut_trait_did,
-        owned_box_did: owned_box_did,
+        deref_trait_did,
+        deref_mut_trait_did,
+        owned_box_did,
         typarams: external_typarams,
     };
 
@@ -823,8 +823,8 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
     let dst = dst.join("src").join(&krate.name);
     try_err!(fs::create_dir_all(&dst), &dst);
     let mut folder = SourceCollector {
-        dst: dst,
-        scx: scx,
+        dst,
+        scx,
     };
     Ok(folder.fold_crate(krate))
 }
@@ -1068,7 +1068,7 @@ impl DocFolder for Cache {
                             name: s.to_string(),
                             path: path.join("::").to_string(),
                             desc: plain_summary_line(item.doc_value()),
-                            parent: parent,
+                            parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
                         });
@@ -2038,7 +2038,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
            decl = Method {
                decl: &f.decl,
-               name_len: name_len,
+               name_len,
                indent: 0,
            })?;
     document(w, cx, it)
@@ -2406,12 +2406,12 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                decl = Method {
                    decl: d,
                    name_len: head_len,
-                   indent: indent,
+                   indent,
                },
                where_clause = WhereClause {
                    gens: g,
-                   indent: indent,
-                   end_newline: end_newline,
+                   indent,
+                   end_newline,
                })
     }
     match item.inner {

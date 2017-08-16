@@ -232,8 +232,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
         let region_maps = fcx.tcx.region_maps(subject);
         RegionCtxt {
-            fcx: fcx,
-            region_maps: region_maps,
+            fcx,
+            region_maps,
             repeating_scope: initial_repeating_scope,
             body_id: initial_body_id,
             call_site_scope: None,

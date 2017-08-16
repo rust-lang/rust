@@ -32,8 +32,8 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool)
     let features;
     {
         let mut strip_unconfigured = StripUnconfigured {
-            should_test: should_test,
-            sess: sess,
+            should_test,
+            sess,
             features: None,
         };
 
@@ -105,10 +105,10 @@ impl<'a> StripUnconfigured<'a> {
             self.process_cfg_attr(ast::Attribute {
                 id: attr::mk_attr_id(),
                 style: attr.style,
-                path: path,
-                tokens: tokens,
+                path,
+                tokens,
                 is_sugared_doc: false,
-                span: span,
+                span,
             })
         } else {
             None

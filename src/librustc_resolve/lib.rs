@@ -793,7 +793,7 @@ impl<'a> Rib<'a> {
     fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
             bindings: FxHashMap(),
-            kind: kind,
+            kind,
         }
     }
 }
@@ -875,9 +875,9 @@ impl<'a> ModuleData<'a> {
            expansion: Mark,
            span: Span) -> Self {
         ModuleData {
-            parent: parent,
-            kind: kind,
-            normal_ancestor_id: normal_ancestor_id,
+            parent,
+            kind,
+            normal_ancestor_id,
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
@@ -887,8 +887,8 @@ impl<'a> ModuleData<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(normal_ancestor_id.is_local()),
-            span: span,
-            expansion: expansion,
+            span,
+            expansion,
         }
     }
 
@@ -1356,13 +1356,13 @@ impl<'a> Resolver<'a> {
         macro_defs.insert(Mark::root(), root_def_id);
 
         Resolver {
-            session: session,
+            session,
 
-            definitions: definitions,
+            definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
-            graph_root: graph_root,
+            graph_root,
             prelude: None,
 
             has_self: FxHashSet(),
@@ -1389,7 +1389,7 @@ impl<'a> Resolver<'a> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
-            module_map: module_map,
+            module_map,
             block_map: NodeMap(),
             extern_module_map: FxHashMap(),
 
@@ -1404,7 +1404,7 @@ impl<'a> Resolver<'a> {
             gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
-            arenas: arenas,
+            arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
                 expansion: Mark::root(),
@@ -1416,14 +1416,14 @@ impl<'a> Resolver<'a> {
             use_extern_macros:
                 features.use_extern_macros || features.proc_macro || features.decl_macro,
 
-            crate_loader: crate_loader,
+            crate_loader,
             macro_names: FxHashSet(),
             global_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
-            invocations: invocations,
-            macro_defs: macro_defs,
+            invocations,
+            macro_defs,
             local_macro_def_scopes: FxHashMap(),
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
@@ -1502,7 +1502,7 @@ impl<'a> Resolver<'a> {
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2, legacy } => {
                 self.ambiguity_errors.push(AmbiguityError {
-                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy: legacy,
+                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy,
                 });
                 if legacy {
                     self.record_use(ident, ns, b1, span);
@@ -2915,7 +2915,7 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 vec.push(Freevar {
                                     def: prev_def,
-                                    span: span,
+                                    span,
                                 });
                                 seen.insert(node_id, depth);
                             }

@@ -178,7 +178,7 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
                                                       id_range,
                                                       this.body);
 
-    Some(AnalysisData { all_loans: all_loans,
+    Some(AnalysisData { all_loans,
                         loans: loan_dfcx,
                         move_data:flowed_moves })
 }

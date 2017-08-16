@@ -303,7 +303,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             kind: InvocationKind::Derive { path: path.clone(), item: item },
                             expansion_kind: invoc.expansion_kind,
                             expansion_data: ExpansionData {
-                                mark: mark,
+                                mark,
                                 ..invoc.expansion_data.clone()
                             },
                         });
@@ -579,7 +579,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         let pretty_name = Symbol::intern(&format!("derive({})", path));
         let span = path.span;
         let attr = ast::Attribute {
-            path: path, tokens: TokenStream::empty(), span: span,
+            path, span,
+            tokens: TokenStream::empty(),
             // irrelevant:
             id: ast::AttrId(0), style: ast::AttrStyle::Outer, is_sugared_doc: false,
         };
@@ -714,10 +715,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
         let mark = Mark::fresh(self.cx.current_expansion.mark);
         self.invocations.push(Invocation {
-            kind: kind,
-            expansion_kind: expansion_kind,
+            kind,
+            expansion_kind,
             expansion_data: ExpansionData {
-                mark: mark,
+                mark,
                 depth: self.cx.current_expansion.depth + 1,
                 ..self.cx.current_expansion.clone()
             },
@@ -876,7 +877,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 item.and_then(|item| match item.node {
                     ItemKind::Mac(mac) => {
                         self.collect(ExpansionKind::Items, InvocationKind::Bang {
-                            mac: mac,
+                            mac,
                             ident: Some(item.ident),
                             span: item.span,
                         }).make_items()
@@ -1035,7 +1036,7 @@ macro_rules! feature_tests {
 impl<'feat> ExpansionConfig<'feat> {
     pub fn default(crate_name: String) -> ExpansionConfig<'static> {
         ExpansionConfig {
-            crate_name: crate_name,
+            crate_name,
             features: None,
             recursion_limit: 1024,
             trace_mac: false,

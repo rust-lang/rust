@@ -28,7 +28,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
     let doc = cx.meta_list(span, Symbol::intern("doc"), vec![hidden]);
     let attrs = vec![cx.attribute(span, inline), cx.attribute(span, doc)];
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
         path: path_std!(cx, core::cmp::Eq),
         additional_bounds: Vec::new(),

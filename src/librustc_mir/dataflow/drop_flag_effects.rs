@@ -76,9 +76,9 @@ pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         name_found(tcx.sess, attributes, "borrowck_graphviz_postflow");
 
     let mut mbcx = DataflowBuilder {
-        node_id: node_id,
-        print_preflow_to: print_preflow_to,
-        print_postflow_to: print_postflow_to,
+        node_id,
+        print_preflow_to,
+        print_postflow_to,
         flow_state: DataflowAnalysis::new(tcx, mir, dead_unwinds, bd),
     };
 

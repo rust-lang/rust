@@ -375,8 +375,8 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyKind::BareFn(f) => {
                 TyKind::BareFn(f.map(|BareFnTy {lifetimes, unsafety, abi, decl}| BareFnTy {
                     lifetimes: fld.fold_lifetime_defs(lifetimes),
-                    unsafety: unsafety,
-                    abi: abi,
+                    unsafety,
+                    abi,
                     decl: fld.fold_fn_decl(decl)
                 }))
             }
@@ -387,7 +387,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
                 let qself = qself.map(|QSelf { ty, position }| {
                     QSelf {
                         ty: fld.fold_ty(ty),
-                        position: position
+                        position,
                     }
                 });
                 TyKind::Path(qself, fld.fold_path(path))
@@ -415,7 +415,7 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
 pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
                                         fld: &mut T) -> ForeignMod {
     ForeignMod {
-        abi: abi,
+        abi,
         items: items.move_map(|x| fld.fold_foreign_item(x)),
     }
 }
@@ -658,7 +658,7 @@ pub fn noop_fold_fn_decl<T: Folder>(decl: P<FnDecl>, fld: &mut T) -> P<FnDecl> {
             FunctionRetTy::Ty(ty) => FunctionRetTy::Ty(fld.fold_ty(ty)),
             FunctionRetTy::Default(span) => FunctionRetTy::Default(fld.new_span(span)),
         },
-        variadic: variadic
+        variadic,
     })
 }
 
@@ -745,7 +745,7 @@ pub fn noop_fold_where_clause<T: Folder>(
         predicates: predicates.move_map(|predicate| {
             fld.fold_where_predicate(predicate)
         }),
-        span: span,
+        span,
     }
 }
 
@@ -846,7 +846,7 @@ pub fn noop_fold_field<T: Folder>(f: Field, folder: &mut T) -> Field {
 pub fn noop_fold_mt<T: Folder>(MutTy {ty, mutbl}: MutTy, folder: &mut T) -> MutTy {
     MutTy {
         ty: folder.fold_ty(ty),
-        mutbl: mutbl,
+        mutbl,
     }
 }
 
@@ -864,7 +864,7 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
     b.map(|Block {id, stmts, rules, span}| Block {
         id: folder.new_id(id),
         stmts: stmts.move_flat_map(|s| folder.fold_stmt(s).into_iter()),
-        rules: rules,
+        rules,
         span: folder.new_span(span),
     })
 }
@@ -998,10 +998,10 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
                                   folder: &mut T) -> Crate {
     let mut items = folder.fold_item(P(ast::Item {
         ident: keywords::Invalid.ident(),
-        attrs: attrs,
+        attrs,
         id: ast::DUMMY_NODE_ID,
         vis: ast::Visibility::Public,
-        span: span,
+        span,
         node: ast::ItemKind::Mod(module),
         tokens: None,
     })).into_iter();
@@ -1024,9 +1024,9 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
     };
 
     Crate {
-        module: module,
-        attrs: attrs,
-        span: span,
+        module,
+        attrs,
+        span,
     }
 }
 
@@ -1048,7 +1048,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span,
 
         // FIXME: if this is replaced with a call to `folder.fold_tts` it causes
         //        an ICE during resolve... odd!
-        tokens: tokens,
+        tokens,
     }
 }
 
@@ -1264,7 +1264,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 let qself = qself.map(|QSelf { ty, position }| {
                     QSelf {
                         ty: folder.fold_ty(ty),
-                        position: position
+                        position,
                     }
                 });
                 ExprKind::Path(qself, folder.fold_path(path))

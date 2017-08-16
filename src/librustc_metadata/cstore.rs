@@ -114,7 +114,7 @@ impl CStore {
             statically_included_foreign_items: RefCell::new(FxHashSet()),
             dllimport_foreign_items: RefCell::new(FxHashSet()),
             visible_parent_map: RefCell::new(FxHashMap()),
-            metadata_loader: metadata_loader,
+            metadata_loader,
         }
     }
 

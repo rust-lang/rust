@@ -401,8 +401,8 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
              out_dir: &'a Option<PathBuf>)
              -> Self {
         CompileState {
-            input: input,
-            session: session,
+            input,
+            session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
             arena: None,
@@ -868,7 +868,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         },
-        hir_forest: hir_forest,
+        hir_forest,
     })
 }
 

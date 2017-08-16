@@ -169,7 +169,7 @@ fn make_place<T>() -> IntermediateBox<T> {
 
     IntermediateBox {
         ptr: p,
-        layout: layout,
+        layout,
         marker: marker::PhantomData,
     }
 }

@@ -265,7 +265,7 @@ pub mod printf {
     /// Returns an iterator over all substitutions in a given string.
     pub fn iter_subs(s: &str) -> Substitutions {
         Substitutions {
-            s: s,
+            s,
         }
     }
 
@@ -553,12 +553,12 @@ pub mod printf {
 
         let f = Format {
             span: start.slice_between(end).unwrap(),
-            parameter: parameter,
-            flags: flags,
-            width: width,
-            precision: precision,
-            length: length,
-            type_: type_,
+            parameter,
+            flags,
+            width,
+            precision,
+            length,
+            type_,
         };
         Some((Substitution::Format(f), end.slice_after()))
     }
@@ -776,7 +776,7 @@ pub mod shell {
     /// Returns an iterator over all substitutions in a given string.
     pub fn iter_subs(s: &str) -> Substitutions {
         Substitutions {
-            s: s,
+            s,
         }
     }
 
@@ -933,7 +933,7 @@ mod strcursor {
     impl<'a> StrCursor<'a> {
         pub fn new_at_start(s: &'a str) -> StrCursor<'a> {
             StrCursor {
-                s: s,
+                s,
                 at: 0,
             }
         }

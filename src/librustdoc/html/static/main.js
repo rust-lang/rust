@@ -596,9 +596,9 @@
             }
 
             return {
-                raw: raw,
-                query: query,
-                type: type,
+                raw,
+                query,
+                type,
                 id: query + type
             };
         }
@@ -837,7 +837,7 @@
 
                 searchWords.push(crate);
                 searchIndex.push({
-                    crate: crate,
+                    crate,
                     ty: 1, // == ExternCrate
                     name: crate,
                     path: "",
@@ -1271,7 +1271,7 @@
                     e.innerHTML = labelForToggleButton(true);
                 });
                 onEach(toggle.getElementsByClassName('toggle-label'), function(e) {
-                    e.style.display = 'block';
+                    e.style.display = 'inline-block';
                 });
             }
         }

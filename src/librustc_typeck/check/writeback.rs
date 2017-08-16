@@ -82,9 +82,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         let owner = fcx.tcx.hir.definitions().node_to_hir_id(body.id().node_id);
 
         WritebackCx {
-            fcx: fcx,
+            fcx,
             tables: ty::TypeckTables::empty(Some(DefId::local(owner.owner))),
-            body: body
+            body,
         }
     }
 
@@ -474,8 +474,8 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
         Resolver {
             tcx: fcx.tcx,
             infcx: fcx,
-            span: span,
-            body: body,
+            span,
+            body,
         }
     }
 

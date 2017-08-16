@@ -75,10 +75,10 @@ fn build_krate(build: &mut Build, krate: &str) {
                 doc_step: format!("doc-crate-{}", name),
                 test_step: format!("test-crate-{}", name),
                 bench_step: format!("bench-crate-{}", name),
-                name: name,
+                name,
                 version: package.version,
                 deps: Vec::new(),
-                path: path,
+                path,
             });
         }
     }

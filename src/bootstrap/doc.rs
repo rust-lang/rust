@@ -68,6 +68,7 @@ macro_rules! book {
 book!(
     Nomicon, "src/doc/book", "nomicon";
     Reference, "src/doc/reference", "reference";
+    Rustdoc, "src/doc/rustdoc", "rustdoc";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -212,13 +213,13 @@ impl Step for TheBook {
         let name = self.name;
         // build book first edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/first-edition", name)),
         });
 
         // build book second edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 

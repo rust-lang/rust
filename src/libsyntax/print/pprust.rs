@@ -72,7 +72,7 @@ fn rust_printer<'a>(writer: Box<Write+'a>, ann: &'a PpAnn) -> State<'a> {
         literals: vec![].into_iter().peekable(),
         cur_cmnt: 0,
         boxes: Vec::new(),
-        ann: ann,
+        ann,
     }
 }
 
@@ -145,11 +145,11 @@ impl<'a> State<'a> {
         State {
             s: pp::mk_printer(out, DEFAULT_COLUMNS),
             cm: Some(cm),
-            comments: comments,
+            comments,
             literals: literals.unwrap_or_default().into_iter().peekable(),
             cur_cmnt: 0,
             boxes: Vec::new(),
-            ann: ann,
+            ann,
         }
     }
 }

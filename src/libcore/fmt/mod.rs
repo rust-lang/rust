@@ -334,9 +334,9 @@ impl<'a> Arguments<'a> {
     pub fn new_v1(pieces: &'a [&'a str],
                   args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments {
-            pieces: pieces,
+            pieces,
             fmt: None,
-            args: args
+            args,
         }
     }
 
@@ -353,9 +353,9 @@ impl<'a> Arguments<'a> {
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
         Arguments {
-            pieces: pieces,
+            pieces,
             fmt: Some(fmt),
-            args: args
+            args,
         }
     }
 

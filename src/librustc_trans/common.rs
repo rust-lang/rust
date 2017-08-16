@@ -188,7 +188,7 @@ pub struct Funclet {
 impl Funclet {
     pub fn new(cleanuppad: ValueRef) -> Funclet {
         Funclet {
-            cleanuppad: cleanuppad,
+            cleanuppad,
             operand: OperandBundleDef::new("funclet", &[cleanuppad]),
         }
     }

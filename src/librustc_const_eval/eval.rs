@@ -379,7 +379,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             tcx,
             param_env: cx.param_env,
             tables: tcx.typeck_tables_of(def_id),
-            substs: substs,
+            substs,
             fn_args: Some(call_args)
           };
           callee_cx.eval(&body.value)?

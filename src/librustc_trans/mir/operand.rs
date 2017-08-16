@@ -98,8 +98,8 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             OperandValue::Immediate(C_null(llty))
         };
         OperandRef {
-            val: val,
-            ty: ty
+            val,
+            ty,
         }
     }
 
@@ -122,7 +122,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         };
         LvalueRef {
             llval: llptr,
-            llextra: llextra,
+            llextra,
             ty: LvalueTy::from_ty(projected_ty),
             alignment: Alignment::AbiAligned,
         }

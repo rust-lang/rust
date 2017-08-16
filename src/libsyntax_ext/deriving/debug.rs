@@ -28,7 +28,7 @@ pub fn expand_deriving_debug(cx: &mut ExtCtxt,
                    Borrowed(None, ast::Mutability::Mutable));
 
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
         path: path_std!(cx, core::fmt::Debug),
         additional_bounds: Vec::new(),

@@ -141,8 +141,8 @@ impl SocketAddr {
         }
 
         Ok(SocketAddr {
-            addr: addr,
-            len: len,
+            addr,
+            len,
         })
     }
 

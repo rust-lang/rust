@@ -323,10 +323,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
         SharedCrateContext {
-            tcx: tcx,
-            check_overflow: check_overflow,
-            use_dll_storage_attrs: use_dll_storage_attrs,
-            output_filenames: output_filenames,
+            tcx,
+            check_overflow,
+            use_dll_storage_attrs,
+            output_filenames,
         }
     }
 
@@ -395,10 +395,10 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
             };
 
             let local_ccx = LocalCrateContext {
-                llmod: llmod,
-                llcx: llcx,
+                llmod,
+                llcx,
                 stats: Stats::default(),
-                codegen_unit: codegen_unit,
+                codegen_unit,
                 crate_trans_items,
                 exported_symbols,
                 instances: RefCell::new(FxHashMap()),
@@ -416,7 +416,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
-                dbg_cx: dbg_cx,
+                dbg_cx,
                 eh_personality: Cell::new(None),
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
@@ -462,7 +462,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                  -> CrateContext<'a, 'tcx> {
         assert!(local_ccxs.len() == 1);
         CrateContext {
-            shared: shared,
+            shared,
             local_ccx: &local_ccxs[0]
         }
     }

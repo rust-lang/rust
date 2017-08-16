@@ -50,8 +50,8 @@ impl MirPass for ElaborateDrops {
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
-                move_data: move_data,
-                param_env: param_env
+                move_data,
+                param_env,
             };
             let dead_unwinds = find_dead_unwinds(tcx, mir, id, &env);
             let flow_inits =
@@ -64,11 +64,11 @@ impl MirPass for ElaborateDrops {
                                       |bd, p| &bd.move_data().move_paths[p]);
 
             ElaborateDropsCtxt {
-                tcx: tcx,
-                mir: mir,
+                tcx,
+                mir,
                 env: &env,
-                flow_inits: flow_inits,
-                flow_uninits: flow_uninits,
+                flow_inits,
+                flow_uninits,
                 drop_flags: FxHashMap(),
                 patch: MirPatch::new(mir),
             }.elaborate()
@@ -510,7 +510,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("elaborate_drop_and_replace({:?}) - untracked {:?}", terminator, parent);
                 self.patch.patch_terminator(bb, TerminatorKind::Drop {
                     location: location.clone(),
-                    target: target,
+                    target,
                     unwind: Some(unwind)
                 });
             }
@@ -519,7 +519,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn constant_bool(&self, span: Span, val: bool) -> Rvalue<'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
-            span: span,
+            span,
             ty: self.tcx.types.bool,
             literal: Literal::Value { value: ConstVal::Bool(val) }
         })))

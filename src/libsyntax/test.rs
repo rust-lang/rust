@@ -202,18 +202,18 @@ impl fold::Folder for EntryPointCleaner {
                                                               allow_dead_code_item);
 
                     ast::Item {
-                        id: id,
-                        ident: ident,
+                        id,
+                        ident,
                         attrs: attrs.into_iter()
                             .filter(|attr| {
                                 !attr.check_name("main") && !attr.check_name("start")
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
-                        node: node,
-                        vis: vis,
-                        span: span,
-                        tokens: tokens,
+                        node,
+                        vis,
+                        span,
+                        tokens,
                     }
                 }),
             EntryPointType::None |
@@ -243,7 +243,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 
     let reexport_mod = ast::Mod {
         inner: DUMMY_SP,
-        items: items,
+        items,
     };
 
     let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
@@ -273,12 +273,12 @@ fn generate_test_harness(sess: &ParseSess,
 
     let mark = Mark::fresh(Mark::root());
     let mut cx: TestCtxt = TestCtxt {
-        sess: sess,
+        sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
         testfns: Vec::new(),
-        reexport_test_harness_main: reexport_test_harness_main,
+        reexport_test_harness_main,
         is_test_crate: is_test_crate(&krate),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
@@ -296,7 +296,7 @@ fn generate_test_harness(sess: &ParseSess,
     });
 
     TestHarnessGenerator {
-        cx: cx,
+        cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
     }.fold_crate(krate)
@@ -464,10 +464,10 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
-        ident: ident,
+        ident,
         node: vi,
         attrs: vec![],
-        vis: vis,
+        vis,
         span: sp,
         tokens: None,
     })

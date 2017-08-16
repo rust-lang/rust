@@ -584,7 +584,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
     let borrow = tcx.all_traits.borrow();
     assert!(borrow.is_some());
     AllTraits {
-        borrow: borrow,
+        borrow,
         idx: 0,
     }
 }

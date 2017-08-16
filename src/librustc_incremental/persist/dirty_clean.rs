@@ -83,15 +83,15 @@ pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("query-nodes: {:?}", query.nodes());
     let krate = tcx.hir.krate();
     let mut dirty_clean_visitor = DirtyCleanVisitor {
-        tcx: tcx,
+        tcx,
         query: &query,
-        dirty_inputs: dirty_inputs,
+        dirty_inputs,
         checked_attrs: FxHashSet(),
     };
     krate.visit_all_item_likes(&mut dirty_clean_visitor);
 
     let mut all_attrs = FindAllAttrs {
-        tcx: tcx,
+        tcx,
         attr_names: vec![ATTR_DIRTY, ATTR_CLEAN],
         found_attrs: vec![],
     };
@@ -243,15 +243,15 @@ pub fn check_dirty_clean_metadata<'a, 'tcx>(
     tcx.dep_graph.with_ignore(||{
         let krate = tcx.hir.krate();
         let mut dirty_clean_visitor = DirtyCleanMetadataVisitor {
-            tcx: tcx,
-            prev_metadata_hashes: prev_metadata_hashes,
-            current_metadata_hashes: current_metadata_hashes,
+            tcx,
+            prev_metadata_hashes,
+            current_metadata_hashes,
             checked_attrs: FxHashSet(),
         };
         intravisit::walk_crate(&mut dirty_clean_visitor, krate);
 
         let mut all_attrs = FindAllAttrs {
-            tcx: tcx,
+            tcx,
             attr_names: vec![ATTR_DIRTY_METADATA, ATTR_CLEAN_METADATA],
             found_attrs: vec![],
         };

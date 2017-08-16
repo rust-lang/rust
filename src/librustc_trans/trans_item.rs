@@ -384,9 +384,9 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                omit_local_crate_name: bool)
                -> Self {
         DefPathBasedNames {
-            tcx: tcx,
-            omit_disambiguators: omit_disambiguators,
-            omit_local_crate_name: omit_local_crate_name,
+            tcx,
+            omit_disambiguators,
+            omit_local_crate_name,
         }
     }
 

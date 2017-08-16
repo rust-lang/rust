@@ -153,7 +153,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         let idx = self.next_node_index();
         self.nodes.push(Node {
             first_edge: [INVALID_EDGE_INDEX, INVALID_EDGE_INDEX],
-            data: data,
+            data,
         });
         idx
     }
@@ -189,9 +189,9 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         // as the next pointers
         self.edges.push(Edge {
             next_edge: [source_first, target_first],
-            source: source,
-            target: target,
-            data: data,
+            source,
+            target,
+            data,
         });
 
         // adjust the firsts for each node target be the next object.
@@ -269,7 +269,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         let first_edge = self.node(source).first_edge[direction.repr];
         AdjacentEdges {
             graph: self,
-            direction: direction,
+            direction,
             next: first_edge,
         }
     }
@@ -482,10 +482,10 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
     pub fn new(graph: &'g Graph<N, E>, direction: Direction) -> Self {
         let visited = BitVector::new(graph.len_nodes());
         DepthFirstTraversal {
-            graph: graph,
+            graph,
             stack: vec![],
-            visited: visited,
-            direction: direction,
+            visited,
+            direction,
         }
     }
 
@@ -496,10 +496,10 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
         let mut visited = BitVector::new(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal {
-            graph: graph,
+            graph,
             stack: vec![start_node],
-            visited: visited,
-            direction: direction,
+            visited,
+            direction,
         }
     }
 

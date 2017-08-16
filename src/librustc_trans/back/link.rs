@@ -379,7 +379,7 @@ fn archive_config<'a>(sess: &'a Session,
                       output: &Path,
                       input: Option<&Path>) -> ArchiveConfig<'a> {
     ArchiveConfig {
-        sess: sess,
+        sess,
         dst: output.to_path_buf(),
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),

@@ -181,15 +181,15 @@ fn main() {
     t!(io::stdin().read_to_string(&mut passphrase));
 
     Builder {
-        rust_release: rust_release,
-        cargo_release: cargo_release,
-        rls_release: rls_release,
-        input: input,
-        output: output,
+        rust_release,
+        cargo_release,
+        rls_release,
+        input,
+        output,
         gpg_passphrase: passphrase,
         digests: BTreeMap::new(),
-        s3_address: s3_address,
-        date: date,
+        s3_address,
+        date,
         rust_version: String::new(),
         cargo_version: String::new(),
         rls_version: String::new(),

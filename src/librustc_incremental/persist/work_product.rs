@@ -57,7 +57,7 @@ pub fn save_trans_partition(sess: &Session,
     let work_product = WorkProduct {
         cgu_name: cgu_name.to_string(),
         input_hash: partition_hash,
-        saved_files: saved_files,
+        saved_files,
     };
 
     sess.dep_graph.insert_work_product(&work_product_id, work_product);

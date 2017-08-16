@@ -83,8 +83,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
         DumpVisitor {
             tcx: save_ctxt.tcx,
-            save_ctxt: save_ctxt,
-            dumper: dumper,
+            save_ctxt,
+            dumper,
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
             // mac_defs: HashSet::new(),
@@ -1351,7 +1351,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                                 self.span_from_span(sub_span.expect("No span found for var ref"));
                             self.dumper.dump_ref(Ref {
                                 kind: RefKind::Variable,
-                                span: span,
+                                span,
                                 ref_id: ::id_from_def_id(def.struct_variant().fields[idx.node].did),
                             });
                         }

@@ -253,7 +253,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
             let substs = relation.relate(&a.substs, &b.substs)?;
             Ok(ty::ExistentialProjection {
                 item_def_id: a.item_def_id,
-                substs: substs,
+                substs,
                 ty,
             })
         }

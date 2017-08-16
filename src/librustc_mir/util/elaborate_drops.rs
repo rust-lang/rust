@@ -521,7 +521,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
 
         let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
-            ty: ty,
+            ty,
             mutbl: hir::Mutability::MutMutable
         });
         let ref_lvalue = self.new_temp(ref_ty);
@@ -861,7 +861,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn drop_block<'a>(&mut self, target: BasicBlock, unwind: Unwind) -> BasicBlock {
         let block = TerminatorKind::Drop {
             location: self.lvalue.clone(),
-            target: target,
+            target,
             unwind: unwind.into_option()
         };
         self.new_block(unwind, block)

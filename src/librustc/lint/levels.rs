@@ -83,10 +83,13 @@ impl LintLevelSets {
         });
     }
 
-    fn get_lint_level(&self, lint: &'static Lint, idx: u32)
+    fn get_lint_level(&self,
+                      lint: &'static Lint,
+                      idx: u32,
+                      aux: Option<&FxHashMap<LintId, (Level, LintSource)>>)
         -> (Level, LintSource)
     {
-        let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx);
+        let (level, mut src) = self.get_lint_id_level(LintId::of(lint), idx, aux);
 
         // If `level` is none then we actually assume the default level for this
         // lint.
@@ -97,7 +100,9 @@ impl LintLevelSets {
         // `allow(warnings)` in scope then we want to respect that instead.
         if level == Level::Warn {
             let (warnings_level, warnings_src) =
-                self.get_lint_id_level(LintId::of(lint::builtin::WARNINGS), idx);
+                self.get_lint_id_level(LintId::of(lint::builtin::WARNINGS),
+                                       idx,
+                                       aux);
             if let Some(configured_warning_level) = warnings_level {
                 if configured_warning_level != Level::Warn {
                     level = configured_warning_level;
@@ -112,9 +117,17 @@ impl LintLevelSets {
         return (level, src)
     }
 
-    fn get_lint_id_level(&self, id: LintId, mut idx: u32)
+    fn get_lint_id_level(&self,
+                         id: LintId,
+                         mut idx: u32,
+                         aux: Option<&FxHashMap<LintId, (Level, LintSource)>>)
         -> (Option<Level>, LintSource)
     {
+        if let Some(specs) = aux {
+            if let Some(&(level, src)) = specs.get(&id) {
+                return (Some(level), src)
+            }
+        }
         loop {
             match self.list[idx as usize] {
                 LintSet::CommandLine { ref specs } => {
@@ -212,21 +225,35 @@ impl<'a> LintLevelsBuilder<'a> {
                             specs.insert(*id, (level, src));
                         }
                     }
+
+                    _ if !self.warn_about_weird_lints => {}
+
                     CheckLintNameResult::Warning(ref msg) => {
-                        if self.warn_about_weird_lints {
-                            self.struct_lint(builtin::RENAMED_AND_REMOVED_LINTS,
-                                             Some(li.span.into()),
-                                             msg)
-                                .emit();
-                        }
+                        let lint = builtin::RENAMED_AND_REMOVED_LINTS;
+                        let (level, src) = self.sets.get_lint_level(lint,
+                                                                    self.cur,
+                                                                    Some(&specs));
+                        lint::struct_lint_level(self.sess,
+                                                lint,
+                                                level,
+                                                src,
+                                                Some(li.span.into()),
+                                                msg)
+                            .emit();
                     }
                     CheckLintNameResult::NoLint => {
-                        if self.warn_about_weird_lints {
-                            self.struct_lint(builtin::UNKNOWN_LINTS,
-                                             Some(li.span.into()),
-                                             &format!("unknown lint: `{}`", name))
-                                .emit();
-                        }
+                        let lint = builtin::UNKNOWN_LINTS;
+                        let (level, src) = self.sets.get_lint_level(lint,
+                                                                    self.cur,
+                                                                    Some(&specs));
+                        let msg = format!("unknown lint: `{}`", name);
+                        lint::struct_lint_level(self.sess,
+                                                lint,
+                                                level,
+                                                src,
+                                                Some(li.span.into()),
+                                                &msg)
+                            .emit();
                     }
                 }
             }
@@ -236,7 +263,7 @@ impl<'a> LintLevelsBuilder<'a> {
             if level == Level::Forbid {
                 continue
             }
-            let forbid_src = match self.sets.get_lint_id_level(*id, self.cur) {
+            let forbid_src = match self.sets.get_lint_id_level(*id, self.cur, None) {
                 (Some(Level::Forbid), src) => src,
                 _ => continue,
             };
@@ -298,7 +325,7 @@ impl<'a> LintLevelsBuilder<'a> {
                        msg: &str)
         -> DiagnosticBuilder<'a>
     {
-        let (level, src) = self.sets.get_lint_level(lint, self.cur);
+        let (level, src) = self.sets.get_lint_level(lint, self.cur, None);
         lint::struct_lint_level(self.sess, lint, level, src, span, msg)
     }
 
@@ -337,7 +364,7 @@ impl LintLevelMap {
         -> Option<(Level, LintSource)>
     {
         self.id_to_set.get(&id).map(|idx| {
-            self.sets.get_lint_level(lint, *idx)
+            self.sets.get_lint_level(lint, *idx, None)
         })
     }
 }

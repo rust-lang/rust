@@ -27,6 +27,7 @@
 /// # More on `Deref` coercion
 ///
 /// If `T` implements `Deref<Target = U>`, and `x` is a value of type `T`, then:
+///
 /// * In immutable contexts, `*x` on non-pointer types is equivalent to
 ///   `*Deref::deref(&x)`.
 /// * Values of type `&T` are coerced to values of type `&U`
@@ -113,6 +114,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 ///
 /// If `T` implements `DerefMut<Target = U>`, and `x` is a value of type `T`,
 /// then:
+///
 /// * In mutable contexts, `*x` on non-pointer types is equivalent to
 ///   `*Deref::deref(&x)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`

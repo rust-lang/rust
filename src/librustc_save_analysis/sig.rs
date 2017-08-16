@@ -149,7 +149,7 @@ fn merge_sigs(text: String, sigs: Vec<Signature>) -> Signature {
 
 fn text_sig(text: String) -> Signature {
     Signature {
-        text: text,
+        text,
         defs: vec![],
         refs: vec![],
     }
@@ -706,8 +706,8 @@ impl Sig for ast::Variant_ {
                 text.push('}');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Tuple(ref fields, id) => {
@@ -729,8 +729,8 @@ impl Sig for ast::Variant_ {
                 text.push(')');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Unit(id) => {

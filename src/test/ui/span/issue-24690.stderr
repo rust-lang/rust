@@ -10,6 +10,7 @@ note: lint level defined here
 18 | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: to disable this warning, consider using `_theOtherTwo` instead
 
 warning: variable `theTwo` should have a snake case name such as `the_two`
   --> $DIR/issue-24690.rs:22:9

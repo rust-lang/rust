@@ -97,7 +97,7 @@ pub fn run(lib_path: &str,
     let Output { status, stdout, stderr } = process.wait_with_output().unwrap();
 
     Ok(Result {
-        status: status,
+        status,
         out: String::from_utf8(stdout).unwrap(),
         err: String::from_utf8(stderr).unwrap(),
     })

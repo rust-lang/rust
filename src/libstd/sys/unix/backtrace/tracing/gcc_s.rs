@@ -43,7 +43,7 @@ pub fn unwind_backtrace(frames: &mut [Frame])
 {
     let mut cx = Context {
         idx: 0,
-        frames: frames,
+        frames,
     };
     let result_unwind = unsafe {
         uw::_Unwind_Backtrace(trace_fn,

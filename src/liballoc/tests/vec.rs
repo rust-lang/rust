@@ -801,3 +801,170 @@ fn overaligned_allocations() {
         assert!(v.as_ptr() as usize & 0xff == 0);
     }
 }
+
+#[test]
+fn drain_filter_empty() {
+    let mut vec: Vec<i32> = vec![];
+
+    {
+        let mut iter = vec.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+    assert_eq!(vec.len(), 0);
+    assert_eq!(vec, vec![]);
+}
+
+#[test]
+fn drain_filter_zst() {
+    let mut vec = vec![(), (), (), (), ()];
+    let initial_len = vec.len();
+    let mut count = 0;
+    {
+        let mut iter = vec.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        while let Some(_) = iter.next() {
+            count += 1;
+            assert_eq!(iter.size_hint(), (0, Some(initial_len - count)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, initial_len);
+    assert_eq!(vec.len(), 0);
+    assert_eq!(vec, vec![]);
+}
+
+#[test]
+fn drain_filter_false() {
+    let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    let initial_len = vec.len();
+    let mut count = 0;
+    {
+        let mut iter = vec.drain_filter(|_| false);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        for _ in iter.by_ref() {
+            count += 1;
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, 0);
+    assert_eq!(vec.len(), initial_len);
+    assert_eq!(vec, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+}
+
+#[test]
+fn drain_filter_true() {
+    let mut vec = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    let initial_len = vec.len();
+    let mut count = 0;
+    {
+        let mut iter = vec.drain_filter(|_| true);
+        assert_eq!(iter.size_hint(), (0, Some(initial_len)));
+        while let Some(_) = iter.next() {
+            count += 1;
+            assert_eq!(iter.size_hint(), (0, Some(initial_len - count)));
+        }
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+
+    assert_eq!(count, initial_len);
+    assert_eq!(vec.len(), 0);
+    assert_eq!(vec, vec![]);
+}
+
+#[test]
+fn drain_filter_complex() {
+
+    {   //                [+xxx++++++xxxxx++++x+x++]
+        let mut vec = vec![1,
+                           2, 4, 6,
+                           7, 9, 11, 13, 15, 17,
+                           18, 20, 22, 24, 26,
+                           27, 29, 31, 33,
+                           34,
+                           35,
+                           36,
+                           37, 39];
+
+        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(vec.len(), 14);
+        assert_eq!(vec, vec![1, 7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
+    }
+
+    {   //                [xxx++++++xxxxx++++x+x++]
+        let mut vec = vec![2, 4, 6,
+                           7, 9, 11, 13, 15, 17,
+                           18, 20, 22, 24, 26,
+                           27, 29, 31, 33,
+                           34,
+                           35,
+                           36,
+                           37, 39];
+
+        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(vec.len(), 13);
+        assert_eq!(vec, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35, 37, 39]);
+    }
+
+    {   //                [xxx++++++xxxxx++++x+x]
+        let mut vec = vec![2, 4, 6,
+                           7, 9, 11, 13, 15, 17,
+                           18, 20, 22, 24, 26,
+                           27, 29, 31, 33,
+                           34,
+                           35,
+                           36];
+
+        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 18, 20, 22, 24, 26, 34, 36]);
+
+        assert_eq!(vec.len(), 11);
+        assert_eq!(vec, vec![7, 9, 11, 13, 15, 17, 27, 29, 31, 33, 35]);
+    }
+
+    {   //                [xxxxxxxxxx+++++++++++]
+        let mut vec = vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+                           1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+
+        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+
+        assert_eq!(vec.len(), 10);
+        assert_eq!(vec, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+    }
+
+    {   //                [+++++++++++xxxxxxxxxx]
+        let mut vec = vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19,
+                           2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
+
+        let removed = vec.drain_filter(|x| *x % 2 == 0).collect::<Vec<_>>();
+        assert_eq!(removed.len(), 10);
+        assert_eq!(removed, vec![2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+
+        assert_eq!(vec.len(), 10);
+        assert_eq!(vec, vec![1, 3, 5, 7, 9, 11, 13, 15, 17, 19]);
+    }
+}
+
+

@@ -23,8 +23,8 @@ impl<G: ControlFlowGraph> TransposedGraph<G> {
 
     pub fn with_start(base_graph: G, start_node: G::Node) -> Self {
         TransposedGraph {
-            base_graph: base_graph,
-            start_node: start_node,
+            base_graph,
+            start_node,
         }
     }
 }

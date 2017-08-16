@@ -58,9 +58,9 @@ impl<'tcx> Lift for LvalueElem<'tcx> {
                 ProjectionElem::Subslice { from: from, to: to },
             ProjectionElem::ConstantIndex {offset,min_length,from_end} =>
                 ProjectionElem::ConstantIndex {
-                    offset: offset,
-                    min_length: min_length,
-                    from_end: from_end
+                    offset,
+                    min_length,
+                    from_end,
                 },
             ProjectionElem::Downcast(a, u) =>
                 ProjectionElem::Downcast(a.clone(), u.clone()),

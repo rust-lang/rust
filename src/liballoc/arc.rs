@@ -278,7 +278,7 @@ impl<T> Arc<T> {
         let x: Box<_> = box ArcInner {
             strong: atomic::AtomicUsize::new(1),
             weak: atomic::AtomicUsize::new(1),
-            data: data,
+            data,
         };
         Arc { ptr: Shared::from(Box::into_unique(x)) }
     }
