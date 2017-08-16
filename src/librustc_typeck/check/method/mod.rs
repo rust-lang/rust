@@ -59,6 +59,9 @@ pub enum MethodError<'tcx> {
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
     IllegalSizedBound(Vec<DefId>),
+
+    // Found a match, but the return type is wrong
+    BadReturnType,
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -111,6 +114,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
             Err(IllegalSizedBound(..)) => true,
+            Err(BadReturnType) => {
+                bug!("no return type expectations but got BadReturnType")
+            }
+
         }
     }
 
