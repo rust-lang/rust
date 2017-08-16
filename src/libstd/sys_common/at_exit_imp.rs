@@ -48,7 +48,7 @@ pub fn cleanup() {
         unsafe {
             LOCK.lock();
             let queue = QUEUE;
-            QUEUE = if i == ITERS - 1 {1} else {0} as *mut _;
+            QUEUE = if i == ITERS - 1 {1usize} else {0usize} as *mut _;
             LOCK.unlock();
 
             // make sure we're not recursively cleaning up
