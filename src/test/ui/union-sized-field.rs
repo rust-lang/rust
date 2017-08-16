@@ -14,4 +14,13 @@ union Foo<T: ?Sized> {
     value: T,
 }
 
+struct Foo2<T: ?Sized> {
+    value: T,
+    t: u32,
+}
+
+enum Foo3<T: ?Sized> {
+    Value(T),
+}
+
 fn main() {}
