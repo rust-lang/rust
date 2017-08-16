@@ -684,18 +684,13 @@ impl<'a> FmtVisitor<'a> {
             return false;
         }
 
-        let first = &attrs[0];
-        self.format_missing_with_indent(source!(self, first.span).lo);
+        let rewrite = attrs.rewrite(
+            &self.get_context(),
+            Shape::indented(self.block_indent, self.config),
+        );
+        let span = mk_sp(attrs[0].span.lo, attrs[attrs.len() - 1].span.hi);
+        self.push_rewrite(span, rewrite);
 
-        let rewrite = attrs
-            .rewrite(
-                &self.get_context(),
-                Shape::indented(self.block_indent, self.config),
-            )
-            .unwrap();
-        self.buffer.push_str(&rewrite);
-        let last = attrs.last().unwrap();
-        self.last_pos = source!(self, last.span).hi;
         false
     }
 
