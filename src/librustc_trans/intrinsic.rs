@@ -383,6 +383,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 _ => C_null(llret_ty)
             }
         }
+
+        "align_offset" => {
+            // `ptr as usize`
+            let ptr_val = bcx.ptrtoint(llargs[0], bcx.ccx.int_type());
+            // `ptr_val % align`
+            let offset = bcx.urem(ptr_val, llargs[1]);
+            let zero = C_null(bcx.ccx.int_type());
+            // `offset == 0`
+            let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
+            // `if offset == 0 { 0 } else { offset - align }`
+            bcx.select(is_zero, zero, bcx.sub(offset, llargs[1]))
+        }
         name if name.starts_with("simd_") => {
             generic_simd_intrinsic(bcx, name,
                                    callee_ty,
