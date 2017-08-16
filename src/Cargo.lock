@@ -1452,6 +1452,7 @@ dependencies = [
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

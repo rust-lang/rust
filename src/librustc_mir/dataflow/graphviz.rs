@@ -13,7 +13,6 @@
 use syntax::ast::NodeId;
 use rustc::mir::{BasicBlock, Mir};
 use rustc_data_structures::bitslice::bits_to_string;
-use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use dot;
@@ -24,61 +23,12 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::marker::PhantomData;
-use std::mem;
 use std::path::Path;
 
 use util;
 
 use super::{BitDenotation, DataflowState};
 use super::DataflowBuilder;
-
-impl<O: BitDenotation> DataflowState<O> {
-    fn each_bit<F>(&self, words: &IdxSet<O::Idx>, mut f: F)
-        where F: FnMut(O::Idx) {
-        //! Helper for iterating over the bits in a bitvector.
-
-        let bits_per_block = self.operator.bits_per_block();
-        let usize_bits: usize = mem::size_of::<usize>() * 8;
-
-        for (word_index, &word) in words.words().iter().enumerate() {
-            if word != 0 {
-                let base_index = word_index * usize_bits;
-                for offset in 0..usize_bits {
-                    let bit = 1 << offset;
-                    if (word & bit) != 0 {
-                        // NB: we round up the total number of bits
-                        // that we store in any given bit set so that
-                        // it is an even multiple of usize::BITS. This
-                        // means that there may be some stray bits at
-                        // the end that do not correspond to any
-                        // actual value; that's why we first check
-                        // that we are in range of bits_per_block.
-                        let bit_index = base_index + offset as usize;
-                        if bit_index >= bits_per_block {
-                            return;
-                        } else {
-                            f(O::Idx::new(bit_index));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn interpret_set<'c, P>(&self,
-                                o: &'c O,
-                                words: &IdxSet<O::Idx>,
-                                render_idx: &P)
-                                -> Vec<&'c Debug>
-        where P: Fn(&O, O::Idx) -> &Debug
-    {
-        let mut v = Vec::new();
-        self.each_bit(words, |i| {
-            v.push(render_idx(o, i));
-        });
-        v
-    }
-}
 
 pub trait MirWithFlowState<'tcx> {
     type BD: BitDenotation;
