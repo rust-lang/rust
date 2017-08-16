@@ -1,4 +1,4 @@
-- Feature Name: alignto_intrinsic
+- Feature Name: align_to_intrinsic
 - Start Date: 2017-06-20
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -12,7 +12,7 @@ pointer `ptr` to `align`.
 
 The intrinsic is reexported as a method on `*const T` and `*mut T`.
 
-Also add an `unsafe fn alignto<T, U>(&[U]) -> (&[U], &[T], &[U])` library function
+Also add an `unsafe fn align_to<T, U>(&[U]) -> (&[U], &[T], &[U])` library function
 under `core::mem` and `std::mem` that simplifies the common use case, returning
 the unaligned prefix, the aligned center part and the unaligned trailing elements.
 The function is unsafe because it produces a `&T` to the memory location of a `U`,
@@ -82,20 +82,20 @@ Usually one should pass in the result of an `align_of` call.
 Add a new method `align_offset` to `*const T` and `*mut T`, which forwards to the
 `align_offset` intrinsic.
 
-Add two new functions `alignto` and `alignto_mut` to `core::mem` and `std::mem`
+Add two new functions `align_to` and `align_to_mut` to `core::mem` and `std::mem`
 with the following signature:
 
 ```rust
-unsafe fn alignto<T, U>(&[U]) -> (&[U], &[T], &[U]) { /**/ }
-unsafe fn alignto_mut<T, U>(&mut [U]) -> (&mut [U], &mut [T], &mut [U]) { /**/ }
+unsafe fn align_to<T, U>(&[U]) -> (&[U], &[T], &[U]) { /**/ }
+unsafe fn align_to_mut<T, U>(&mut [U]) -> (&mut [U], &mut [T], &mut [U]) { /**/ }
 ```
 
-`alignto` can be implemented as
+`align_to` can be implemented as
 
 ```rust
-unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
+unsafe fn align_to<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
     use core::mem::{size_of, align_of};
-    assert!(size_of::<T>() != 0 && size_of::<U>() != 0, "don't use `alignto` with zsts");
+    assert!(size_of::<T>() != 0 && size_of::<U>() != 0, "don't use `align_to` with zsts");
     if size_of::<T>() % size_of::<U>() == 0 {
         let align = align_of::<T>();
         let size = size_of::<T>();
@@ -124,7 +124,7 @@ unsafe fn alignto<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
 }
 ```
 
-on all current platforms. `alignto_mut` is expanded accordingly.
+on all current platforms. `align_to_mut` is expanded accordingly.
 
 Users of the functions must process all the returned slices and
 cannot rely on any behaviour except that the `&[T]`'s elements are correctly
@@ -145,8 +145,8 @@ choice:
 
 1. In the case where processing the initial unaligned bits might abort the entire
    process, use `align_offset`
-2. If it is likely that all bytes are going to get processed, use `alignto`
-    * `alignto` has a slight overhead for creating the slices in case not all
+2. If it is likely that all bytes are going to get processed, use `align_to`
+    * `align_to` has a slight overhead for creating the slices in case not all
         slices are used
 
 ### Example 1 (pointers)
@@ -177,7 +177,7 @@ let align = unsafe {
 ## Example 2 (slices)
 
 The `memchr` impl in the standard library explicitly uses the three phases of
-the `alignto` functions:
+the `align_to` functions:
 
 ```rust
 // Split `text` in three parts
@@ -224,7 +224,7 @@ if len >= 2 * usize_bytes {
 text[offset..].iter().position(|elt| *elt == x).map(|i| offset + i)
 ```
 
-With the `alignto` function this could be written as
+With the `align_to` function this could be written as
 
 
 ```rust
@@ -235,7 +235,7 @@ With the `alignto` function this could be written as
 let len = text.len();
 let ptr = text.as_ptr();
 
-let (head, mid, tail) = std::mem::alignto::<(usize, usize)>(text);
+let (head, mid, tail) = std::mem::align_to::<(usize, usize)>(text);
 
 // search up to an aligned boundary
 if let Some(index) = head.iter().position(|elt| *elt == x) {
@@ -264,9 +264,9 @@ tail.iter().position(|elt| *elt == x).map(|i| head.len() + mid.len() + i)
 ## Documentation
 
 A lint could be implemented which detects hand-written alignment checks and
-suggests to use the `alignto` function instead.
+suggests to use the `align_to` function instead.
 
-The `std::mem::align` function's documentation should point to `std::mem::alignto`
+The `std::mem::align` function's documentation should point to `std::mem::align_to`
 in order to increase the visibility of the function. The documentation of
 `std::mem::align` should note that it is unidiomatic to manually align pointers,
 since that might not be supported on all platforms and is prone to implementation
@@ -290,5 +290,5 @@ to errors due to code duplication.
 [unresolved]: #unresolved-questions
 
 * produce a lint in case `sizeof<T>() % sizeof<U>() != 0` and in case the expansion
-  is not part of a monomorphisation, since in that case `alignto` is statically
+  is not part of a monomorphisation, since in that case `align_to` is statically
   known to never be effective
