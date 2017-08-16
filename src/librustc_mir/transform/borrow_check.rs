@@ -293,12 +293,20 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
                                              (index, span), flow_state);
                     }
                     AssertMessage::Math(_/*const_math_err*/) => {}
+                    AssertMessage::GeneratorResumedAfterReturn => {}
+                    AssertMessage::GeneratorResumedAfterPanic => {}
                 }
+            }
+
+            TerminatorKind::Yield { ref value, resume: _, drop: _} => {
+                self.consume_operand(ContextKind::Yield.new(loc),
+                                     Consume, (value, span), flow_state);
             }
 
             TerminatorKind::Goto { target: _ } |
             TerminatorKind::Resume |
             TerminatorKind::Return |
+            TerminatorKind::GeneratorDrop |
             TerminatorKind::Unreachable => {
                 // no data used, thus irrelevant to borrowck
             }
@@ -1120,6 +1128,7 @@ enum ContextKind {
     CallDest,
     Assert,
     StorageDead,
+    Yield,
 }
 
 impl ContextKind {
