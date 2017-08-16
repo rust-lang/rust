@@ -360,18 +360,6 @@ impl CompilerDesugaringKind {
     }
 }
 
-impl<'a> From<&'a str> for CompilerDesugaringKind {
-    fn from(s: &'a str) -> Self {
-        use CompilerDesugaringKind::*;
-        match s {
-            "<-" => BackArrow,
-            "..." => DotFill,
-            "?" => QuestionMark,
-            _ => panic!("Invalid compiler desugaring"),
-        }
-    }
-}
-
 impl Encodable for SyntaxContext {
     fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
         Ok(()) // FIXME(jseyfried) intercrate hygiene

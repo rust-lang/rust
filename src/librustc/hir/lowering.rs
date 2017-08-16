@@ -59,7 +59,7 @@ use syntax::ast::*;
 use syntax::errors;
 use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ptr::P;
-use syntax::codemap::{self, respan, Spanned};
+use syntax::codemap::{self, respan, Spanned, CompilerDesugaringKind};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::small_vector::SmallVector;
@@ -396,8 +396,9 @@ impl<'a> LoweringContext<'a> {
         Symbol::gensym(s)
     }
 
-    fn allow_internal_unstable(&self, reason: &'static str, mut span: Span) -> Span {
-        let reason = codemap::CompilerDesugaringKind::from(reason);
+    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, mut span: Span)
+        -> Span
+    {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(codemap::ExpnInfo {
             call_site: span,
@@ -1763,7 +1764,8 @@ impl<'a> LoweringContext<'a> {
                 let move_val_init = ["intrinsics", "move_val_init"];
                 let inplace_finalize = ["ops", "InPlace", "finalize"];
 
-                let unstable_span = self.allow_internal_unstable("<-", e.span);
+                let unstable_span =
+                    self.allow_internal_unstable(CompilerDesugaringKind::BackArrow, e.span);
                 let make_call = |this: &mut LoweringContext, p, args| {
                     let path = P(this.expr_std_path(unstable_span, p, ThinVec::new()));
                     P(this.expr_call(e.span, path, args))
@@ -1976,12 +1978,14 @@ impl<'a> LoweringContext<'a> {
                     e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e)))
                     .map(|(s, e)| {
                         let expr = P(self.lower_expr(&e));
-                        let unstable_span = self.allow_internal_unstable("...", e.span);
+                        let unstable_span =
+                            self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
                         self.field(Symbol::intern(s), expr, unstable_span)
                     }).collect::<P<[hir::Field]>>();
 
                 let is_unit = fields.is_empty();
-                let unstable_span = self.allow_internal_unstable("...", e.span);
+                let unstable_span =
+                    self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
                 let struct_path =
                     iter::once("ops").chain(iter::once(path))
                     .collect::<Vec<_>>();
@@ -2317,7 +2321,8 @@ impl<'a> LoweringContext<'a> {
                 //                 return Try::from_error(From::from(err)),
                 // }
 
-                let unstable_span = self.allow_internal_unstable("?", e.span);
+                let unstable_span =
+                    self.allow_internal_unstable(CompilerDesugaringKind::QuestionMark, e.span);
 
                 // Try::into_result(<expr>)
                 let discr = {
