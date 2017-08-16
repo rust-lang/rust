@@ -271,9 +271,9 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
 
     let expander: Box<_> = Box::new(MacroRulesMacroExpander {
         name: def.ident,
-        lhses: lhses,
-        rhses: rhses,
-        valid: valid,
+        lhses,
+        rhses,
+        valid,
     });
 
     if body.legacy {

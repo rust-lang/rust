@@ -127,11 +127,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     unpack!(block = this.as_local_operand(block, input))
                 }).collect();
                 this.cfg.push(block, Statement {
-                    source_info: source_info,
+                    source_info,
                     kind: StatementKind::InlineAsm {
                         asm: box asm.clone(),
-                        outputs: outputs,
-                        inputs: inputs
+                        outputs,
+                        inputs,
                     },
                 });
                 block.unit()

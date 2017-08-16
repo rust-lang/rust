@@ -71,8 +71,8 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
     }
 
     Dominators {
-        post_order_rank: post_order_rank,
-        immediate_dominators: immediate_dominators,
+        post_order_rank,
+        immediate_dominators,
     }
 }
 
@@ -181,7 +181,7 @@ impl<Node: Idx> Dominators<Node> {
         }
         DominatorTree {
             root: root.unwrap(),
-            children: children,
+            children,
         }
     }
 }

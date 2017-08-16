@@ -1576,9 +1576,9 @@ pub fn check_crate(krate: &ast::Crate,
                    unstable: UnstableFeatures) {
     maybe_stage_features(&sess.span_diagnostic, krate, unstable);
     let ctx = Context {
-        features: features,
+        features,
         parse_sess: sess,
-        plugin_attributes: plugin_attributes,
+        plugin_attributes,
     };
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
 }

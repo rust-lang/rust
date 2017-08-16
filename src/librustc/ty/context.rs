@@ -1695,8 +1695,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          substs: &'tcx Substs<'tcx>)
         -> Ty<'tcx> {
             self.mk_ty(TyProjection(ProjectionTy {
-                item_def_id: item_def_id,
-                substs: substs,
+                item_def_id,
+                substs,
             }))
         }
 

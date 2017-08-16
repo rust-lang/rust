@@ -41,7 +41,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
-        bccx: bccx,
+        bccx,
         all_loans: Vec::new(),
         item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
@@ -230,8 +230,8 @@ fn check_mutability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             // Only mutable data can be lent as mutable.
             if !cmt.mutbl.is_mutable() {
                 Err(bccx.report(BckError { span: borrow_span,
-                                           cause: cause,
-                                           cmt: cmt,
+                                           cause,
+                                           cmt,
                                            code: err_mutbl }))
             } else {
                 Ok(())
@@ -389,13 +389,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
                 Loan {
                     index: self.all_loans.len(),
-                    loan_path: loan_path,
+                    loan_path,
                     kind: req_kind,
-                    gen_scope: gen_scope,
-                    kill_scope: kill_scope,
+                    gen_scope,
+                    kill_scope,
                     span: borrow_span,
-                    restricted_paths: restricted_paths,
-                    cause: cause,
+                    restricted_paths,
+                    cause,
                 }
             }
         };
@@ -423,13 +423,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //    let all_loans = &mut *self.all_loans; // FIXME(#5074)
             //    Loan {
             //        index: all_loans.len(),
-            //        loan_path: loan_path,
-            //        cmt: cmt,
+            //        loan_path,
+            //        cmt,
             //        mutbl: ConstMutability,
             //        gen_scope: borrow_id,
-            //        kill_scope: kill_scope,
+            //        kill_scope,
             //        span: borrow_span,
-            //        restrictions: restrictions
+            //        restrictions,
             //    }
         // }
     }

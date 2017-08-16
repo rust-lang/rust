@@ -1496,9 +1496,9 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             item_def_id: self.tcx.hir.local_def_id(item_id),
             span: self.tcx.hir.span(item_id),
             min_visibility: ty::Visibility::Public,
-            required_visibility: required_visibility,
+            required_visibility,
             has_pub_restricted: self.has_pub_restricted,
-            has_old_errors: has_old_errors,
+            has_old_errors,
         }
     }
 }
@@ -1660,7 +1660,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor {
-        tcx: tcx,
+        tcx,
         tables: &empty_tables,
         current_item: CRATE_NODE_ID,
         empty_tables: &empty_tables,
@@ -1670,7 +1670,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
     let mut visitor = TypePrivacyVisitor {
-        tcx: tcx,
+        tcx,
         tables: &empty_tables,
         current_item: DefId::local(CRATE_DEF_INDEX),
         span: krate.span,
@@ -1681,7 +1681,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
-        tcx: tcx,
+        tcx,
         access_levels: Default::default(),
         prev_level: Some(AccessLevel::Public),
         changed: false,
@@ -1698,7 +1698,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     {
         let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
-            tcx: tcx,
+            tcx,
             access_levels: &visitor.access_levels,
             in_variant: false,
             old_error_set: NodeSet(),
@@ -1708,7 +1708,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let has_pub_restricted = {
             let mut pub_restricted_visitor = PubRestrictedVisitor {
-                tcx: tcx,
+                tcx,
                 has_pub_restricted: false
             };
             intravisit::walk_crate(&mut pub_restricted_visitor, krate);
@@ -1717,8 +1717,8 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Check for private types and traits in public interfaces
         let mut visitor = PrivateItemsInPublicInterfacesVisitor {
-            tcx: tcx,
-            has_pub_restricted: has_pub_restricted,
+            tcx,
+            has_pub_restricted,
             old_error_set: &visitor.old_error_set,
             inner_visibility: ty::Visibility::Public,
         };

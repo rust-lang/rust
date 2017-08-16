@@ -106,8 +106,8 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
     let move_info = GatherMoveInfo {
         id: move_expr_id,
-        kind: kind,
-        cmt: cmt,
+        kind,
+        cmt,
         span_path_opt: None,
     };
     gather_move(bccx, move_data, move_error_collector, move_info);
@@ -163,7 +163,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let move_info = GatherMoveInfo {
         id: move_pat.id,
         kind: MovePat,
-        cmt: cmt,
+        cmt,
         span_path_opt: pat_span_path_opt,
     };
 

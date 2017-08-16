@@ -151,7 +151,7 @@ impl BitMatrix {
         // element. Round up to an even number of u64s.
         let u64s_per_row = u64s(columns);
         BitMatrix {
-            columns: columns,
+            columns,
             vector: vec![0; rows * u64s_per_row],
         }
     }

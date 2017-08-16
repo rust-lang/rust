@@ -353,14 +353,14 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
         let ib_index = ib_index & table.capacity_mask;
         Bucket {
             raw: table.raw_bucket_at(ib_index),
-            table: table,
+            table,
         }
     }
 
     pub fn first(table: M) -> Bucket<K, V, M> {
         Bucket {
             raw: table.raw_bucket_at(0),
-            table: table,
+            table,
         }
     }
 
@@ -455,7 +455,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> EmptyBucket<K, V, M> {
         match self.next().peek() {
             Full(bucket) => {
                 Ok(GapThenFull {
-                    gap: gap,
+                    gap,
                     full: bucket,
                 })
             }
@@ -860,8 +860,8 @@ impl<K, V> RawTable<K, V> {
         // Replace the marker regardless of lifetime bounds on parameters.
         IntoIter {
             iter: RawBuckets {
-                raw: raw,
-                elems_left: elems_left,
+                raw,
+                elems_left,
                 marker: marker::PhantomData,
             },
             table: self,
@@ -873,8 +873,8 @@ impl<K, V> RawTable<K, V> {
         // Replace the marker regardless of lifetime bounds on parameters.
         Drain {
             iter: RawBuckets {
-                raw: raw,
-                elems_left: elems_left,
+                raw,
+                elems_left,
                 marker: marker::PhantomData,
             },
             table: Shared::from(self),

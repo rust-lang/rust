@@ -781,10 +781,10 @@ mod tests {
 
     fn edge(from: usize, to: usize, label: &'static str, style: Style) -> Edge {
         Edge {
-            from: from,
-            to: to,
-            label: label,
-            style: style,
+            from,
+            to,
+            label,
+            style,
         }
     }
 
@@ -848,9 +848,9 @@ mod tests {
                -> LabelledGraph {
             let count = node_labels.len();
             LabelledGraph {
-                name: name,
+                name,
                 node_labels: node_labels.to_opt_strs(),
-                edges: edges,
+                edges,
                 node_styles: match node_styles {
                     Some(nodes) => nodes,
                     None => vec![Style::None; count],

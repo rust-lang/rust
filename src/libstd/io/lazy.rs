@@ -27,7 +27,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         Lazy {
             lock: Mutex::new(),
             ptr: Cell::new(ptr::null_mut()),
-            init: init
+            init,
         }
     }
 

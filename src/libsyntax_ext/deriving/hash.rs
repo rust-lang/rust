@@ -30,9 +30,9 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
 
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
-        path: path,
+        path,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

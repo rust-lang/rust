@@ -393,8 +393,8 @@ impl UnsafetyState {
                     hir::DefaultBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
-                UnsafetyState{ def: def,
-                               unsafety: unsafety,
+                UnsafetyState{ def,
+                               unsafety,
                                unsafe_push_count: count,
                                from_fn: false }
             }
@@ -609,7 +609,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             tables: MaybeInProgressTables {
                 maybe_tables: infcx.in_progress_tables,
             },
-            infcx: infcx,
+            infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
@@ -1697,7 +1697,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
-            body_id: body_id,
+            body_id,
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
@@ -1709,7 +1709,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 stack: Vec::new(),
                 by_id: NodeMap(),
             }),
-            inh: inh,
+            inh,
         }
     }
 
@@ -3783,7 +3783,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               };
 
               let ctxt = BreakableCtxt {
-                  coerce: coerce,
+                  coerce,
                   may_break: false, // will get updated if/when we find a `break`
               };
 

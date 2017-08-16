@@ -164,8 +164,8 @@ impl<U: Write> Writer for U {
 impl<'a> Classifier<'a> {
     pub fn new(lexer: lexer::StringReader<'a>, codemap: &'a CodeMap) -> Classifier<'a> {
         Classifier {
-            lexer: lexer,
-            codemap: codemap,
+            lexer,
+            codemap,
             in_attribute: false,
             in_macro: false,
             in_macro_nonterminal: false,

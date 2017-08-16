@@ -205,11 +205,11 @@ fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
     type_map.register_type_with_metadata(unfinished_type, metadata_stub);
 
     UnfinishedMetadata {
-        unfinished_type: unfinished_type,
-        unique_type_id: unique_type_id,
-        metadata_stub: metadata_stub,
-        llvm_type: llvm_type,
-        member_description_factory: member_description_factory,
+        unfinished_type,
+        unique_type_id,
+        metadata_stub,
+        llvm_type,
+        member_description_factory,
     }
 }
 
@@ -847,8 +847,8 @@ struct MetadataCreationResult {
 impl MetadataCreationResult {
     fn new(metadata: DIType, already_stored_in_typemap: bool) -> MetadataCreationResult {
         MetadataCreationResult {
-            metadata: metadata,
-            already_stored_in_typemap: already_stored_in_typemap
+            metadata,
+            already_stored_in_typemap,
         }
     }
 }
@@ -947,10 +947,10 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             let offset = FixedMemberOffset { bytes: offsets[i].bytes() as usize};
 
             MemberDescription {
-                name: name,
+                name,
                 llvm_type: type_of::in_memory_type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
-                offset: offset,
+                offset,
                 flags: DIFlags::FlagZero,
             }
         }).collect()
@@ -987,9 +987,9 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
             ty: struct_type,
-            variant: variant,
-            substs: substs,
-            span: span,
+            variant,
+            substs,
+            span,
         })
     )
 }
@@ -1052,7 +1052,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         TupleMDF(TupleMemberDescriptionFactory {
             ty: tuple_type,
             component_types: component_types.to_vec(),
-            span: span,
+            span,
         })
     )
 }
@@ -1111,9 +1111,9 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         union_metadata_stub,
         union_llvm_type,
         UnionMDF(UnionMemberDescriptionFactory {
-            variant: variant,
-            substs: substs,
-            span: span,
+            variant,
+            substs,
+            span,
         })
     )
 }
@@ -1462,14 +1462,14 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
             offsets: &struct_def.offsets[..],
-            args: args,
+            args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {
                     Some(discriminant_type_metadata)
                 }
                 _ => None
             },
-            span: span,
+            span,
         });
 
     (metadata_stub, variant_llvm_type, member_description_factory)
@@ -1590,12 +1590,12 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_metadata,
         enum_llvm_type,
         EnumMDF(EnumMemberDescriptionFactory {
-            enum_type: enum_type,
+            enum_type,
             type_rep: type_rep.layout,
-            discriminant_type_metadata: discriminant_type_metadata,
-            containing_scope: containing_scope,
-            file_metadata: file_metadata,
-            span: span,
+            discriminant_type_metadata,
+            containing_scope,
+            file_metadata,
+            span,
         }),
     );
 

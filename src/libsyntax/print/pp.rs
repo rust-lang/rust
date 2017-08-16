@@ -246,7 +246,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     let n: usize = 55 * linewidth;
     debug!("mk_printer {}", linewidth);
     Printer {
-        out: out,
+        out,
         buf_len: n,
         margin: linewidth as isize,
         space: linewidth as isize,

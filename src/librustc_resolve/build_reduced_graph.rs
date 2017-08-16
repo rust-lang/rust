@@ -172,7 +172,7 @@ impl<'a> Resolver<'a> {
 
                         let subclass = SingleImport {
                             target: binding,
-                            source: source,
+                            source,
                             result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
                             type_ns_only: false,
                         };
@@ -229,7 +229,7 @@ impl<'a> Resolver<'a> {
                                 target: rename,
                                 source: ident.node,
                                 result: self.per_ns(|_, _| Cell::new(Err(Undetermined))),
-                                type_ns_only: type_ns_only,
+                                type_ns_only,
                             };
                             let id = source_item.node.id;
                             self.add_import_directive(
@@ -239,7 +239,7 @@ impl<'a> Resolver<'a> {
                     }
                     ViewPathGlob(_) => {
                         let subclass = GlobImport {
-                            is_prelude: is_prelude,
+                            is_prelude,
                             max_vis: Cell::new(ty::Visibility::Invisible),
                         };
                         self.add_import_directive(
@@ -262,13 +262,13 @@ impl<'a> Resolver<'a> {
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
                     id: item.id,
-                    parent: parent,
+                    parent,
                     imported_module: Cell::new(Some(module)),
                     subclass: ImportDirectiveSubclass::ExternCrate,
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
-                    expansion: expansion,
+                    expansion,
                     used: Cell::new(used),
                 });
                 self.potentially_unused_imports.push(directive);
@@ -618,10 +618,10 @@ impl<'a> Resolver<'a> {
             parent: graph_root,
             imported_module: Cell::new(Some(module)),
             subclass: ImportDirectiveSubclass::MacroUse,
-            span: span,
+            span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
-            expansion: expansion,
+            expansion,
             used: Cell::new(false),
         });
 

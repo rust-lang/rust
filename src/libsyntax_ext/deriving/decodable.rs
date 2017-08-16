@@ -57,7 +57,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
     let typaram = &*deriving::hygienic_type_parameter(item, "__D");
 
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
         path: Path::new_(vec![krate, "Decodable"], None, vec![], true),
         additional_bounds: Vec::new(),

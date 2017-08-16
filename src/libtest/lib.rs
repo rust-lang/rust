@@ -235,8 +235,8 @@ pub struct Metric {
 impl Metric {
     pub fn new(value: f64, noise: f64) -> Metric {
         Metric {
-            value: value,
-            noise: noise,
+            value,
+            noise,
         }
     }
 }
@@ -492,17 +492,17 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     let test_opts = TestOpts {
-        list: list,
-        filter: filter,
+        list,
+        filter,
         filter_exact: exact,
-        run_ignored: run_ignored,
-        run_tests: run_tests,
-        bench_benchmarks: bench_benchmarks,
-        logfile: logfile,
-        nocapture: nocapture,
-        color: color,
-        quiet: quiet,
-        test_threads: test_threads,
+        run_ignored,
+        run_tests,
+        bench_benchmarks,
+        logfile,
+        nocapture,
+        color,
+        quiet,
+        test_threads,
         skip: matches.opt_strs("skip"),
         options: Options::new(),
     };
@@ -565,8 +565,8 @@ impl<T: Write> ConsoleTestState<T> {
         };
 
         Ok(ConsoleTestState {
-            out: out,
-            log_out: log_out,
+            out,
+            log_out,
             use_color: use_color(opts),
             quiet: opts.quiet,
             total: 0,
@@ -1330,7 +1330,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                 let TestDescAndFn {desc, testfn} = test;
                 Some(TestDescAndFn {
                     desc: TestDesc { ignore: false, ..desc },
-                    testfn: testfn,
+                    testfn,
                 })
             } else {
                 None
@@ -1367,7 +1367,7 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         };
         TestDescAndFn {
             desc: x.desc,
-            testfn: testfn,
+            testfn,
         }
     }).collect()
 }
@@ -1527,8 +1527,8 @@ impl MetricMap {
     /// negative direction represents a regression.
     pub fn insert_metric(&mut self, name: &str, value: f64, noise: f64) {
         let m = Metric {
-            value: value,
-            noise: noise,
+            value,
+            noise,
         };
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_owned(), m);
@@ -1689,7 +1689,7 @@ pub mod bench {
                 let mb_s = bs.bytes * 1000 / ns_iter;
 
                 BenchSamples {
-                    ns_iter_summ: ns_iter_summ,
+                    ns_iter_summ,
                     mb_s: mb_s as usize,
                 }
             }

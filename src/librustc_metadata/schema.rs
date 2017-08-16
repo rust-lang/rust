@@ -84,7 +84,7 @@ pub struct Lazy<T> {
 impl<T> Lazy<T> {
     pub fn with_position(position: usize) -> Lazy<T> {
         Lazy {
-            position: position,
+            position,
             _marker: PhantomData,
         }
     }
@@ -141,8 +141,8 @@ impl<T> LazySeq<T> {
 
     pub fn with_position_and_length(position: usize, len: usize) -> LazySeq<T> {
         LazySeq {
-            len: len,
-            position: position,
+            len,
+            position,
             _marker: PhantomData,
         }
     }
@@ -199,7 +199,7 @@ pub struct Tracked<T> {
 impl<T> Tracked<T> {
     pub fn new(state: T) -> Tracked<T> {
         Tracked {
-            state: state,
+            state,
         }
     }
 

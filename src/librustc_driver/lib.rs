@@ -802,7 +802,7 @@ impl RustcDefaultCalls {
                     let mut cfgs = Vec::new();
                     for &(name, ref value) in sess.parse_sess.config.iter() {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            name: name,
+                            name,
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });

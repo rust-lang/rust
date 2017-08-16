@@ -115,7 +115,7 @@ impl CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
             file_loader: Box::new(RealFileLoader),
-            path_mapping: path_mapping,
+            path_mapping,
         }
     }
 
@@ -124,8 +124,8 @@ impl CodeMap {
                             -> CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
-            file_loader: file_loader,
-            path_mapping: path_mapping,
+            file_loader,
+            path_mapping,
         }
     }
 
@@ -215,13 +215,13 @@ impl CodeMap {
 
         let filemap = Rc::new(FileMap {
             name: filename,
-            name_was_remapped: name_was_remapped,
-            crate_of_origin: crate_of_origin,
+            name_was_remapped,
+            crate_of_origin,
             src: None,
-            src_hash: src_hash,
+            src_hash,
             external_src: RefCell::new(ExternalSource::AbsentOk),
-            start_pos: start_pos,
-            end_pos: end_pos,
+            start_pos,
+            end_pos,
             lines: RefCell::new(file_local_lines),
             multibyte_chars: RefCell::new(file_local_multibyte_chars),
         });
@@ -255,7 +255,7 @@ impl CodeMap {
                 assert!(chpos >= linechpos);
                 Loc {
                     file: f,
-                    line: line,
+                    line,
                     col: chpos - linechpos,
                 }
             }
@@ -385,15 +385,15 @@ impl CodeMap {
             let line_len = lo.file.get_line(line_index)
                                   .map(|s| s.chars().count())
                                   .unwrap_or(0);
-            lines.push(LineInfo { line_index: line_index,
-                                  start_col: start_col,
+            lines.push(LineInfo { line_index,
+                                  start_col,
                                   end_col: CharPos::from_usize(line_len) });
             start_col = CharPos::from_usize(0);
         }
 
         // For the last line, it extends from `start_col` to `hi.col`:
         lines.push(LineInfo { line_index: hi.line - 1,
-                              start_col: start_col,
+                              start_col,
                               end_col: hi.col });
 
         Ok(FileLines {file: lo.file, lines: lines})
@@ -426,7 +426,7 @@ impl CodeMap {
                 return Err(SpanSnippetError::MalformedForCodemap(
                     MalformedCodemapPositions {
                         name: local_begin.fm.name.clone(),
-                        source_len: source_len,
+                        source_len,
                         begin_pos: local_begin.pos,
                         end_pos: local_end.pos,
                     }));
@@ -581,7 +581,7 @@ impl FilePathMapping {
 
     pub fn new(mapping: Vec<(String, String)>) -> FilePathMapping {
         FilePathMapping {
-            mapping: mapping
+            mapping,
         }
     }
 

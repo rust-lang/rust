@@ -37,10 +37,10 @@ pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("guarantee_lifetime(cmt={:?}, loan_region={:?})",
            cmt, loan_region);
     let ctxt = GuaranteeLifetimeContext {bccx: bccx,
-                                         item_scope: item_scope,
-                                         span: span,
-                                         cause: cause,
-                                         loan_region: loan_region,
+                                         item_scope,
+                                         span,
+                                         cause,
+                                         loan_region,
                                          cmt_original: cmt.clone()};
     ctxt.check(&cmt, None)
 }

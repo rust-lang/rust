@@ -776,8 +776,8 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
         debug_assert!(idx < node.len());
 
         Handle {
-            node: node,
-            idx: idx,
+            node,
+            idx,
             _marker: PhantomData
         }
     }
@@ -850,8 +850,8 @@ impl<BorrowType, K, V, NodeType>
         debug_assert!(idx <= node.len());
 
         Handle {
-            node: node,
-            idx: idx,
+            node,
+            idx,
             _marker: PhantomData
         }
     }
@@ -1149,7 +1149,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             let mut new_root = Root {
                 node: BoxedNode::from_internal(new_node),
-                height: height
+                height,
             };
 
             for i in 0..(new_len+1) {
@@ -1449,12 +1449,12 @@ impl<BorrowType, K, V, HandleType>
     > {
         match self.node.force() {
             ForceResult::Leaf(node) => ForceResult::Leaf(Handle {
-                node: node,
+                node,
                 idx: self.idx,
                 _marker: PhantomData
             }),
             ForceResult::Internal(node) => ForceResult::Internal(Handle {
-                node: node,
+                node,
                 idx: self.idx,
                 _marker: PhantomData
             })

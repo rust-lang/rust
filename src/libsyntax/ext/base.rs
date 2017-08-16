@@ -677,10 +677,10 @@ impl<'a> ExtCtxt<'a> {
                resolver: &'a mut Resolver)
                -> ExtCtxt<'a> {
         ExtCtxt {
-            parse_sess: parse_sess,
-            ecfg: ecfg,
+            parse_sess,
+            ecfg,
             crate_root: None,
-            resolver: resolver,
+            resolver,
             resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),

@@ -93,7 +93,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         }
     }
     tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
-        tcx: tcx,
+        tcx,
         set: &mut set,
     }.as_deep_visitor());
 

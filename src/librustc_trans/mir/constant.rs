@@ -57,8 +57,8 @@ pub struct Const<'tcx> {
 impl<'tcx> Const<'tcx> {
     pub fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
         Const {
-            llval: llval,
-            ty: ty
+            llval,
+            ty,
         }
     }
 
@@ -158,7 +158,7 @@ impl<'tcx> Const<'tcx> {
         };
 
         OperandRef {
-            val: val,
+            val,
             ty: self.ty
         }
     }
@@ -247,9 +247,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
            args: IndexVec<mir::Local, Result<Const<'tcx>, ConstEvalErr<'tcx>>>)
            -> MirConstContext<'a, 'tcx> {
         let mut context = MirConstContext {
-            ccx: ccx,
-            mir: mir,
-            substs: substs,
+            ccx,
+            mir,
+            substs,
             locals: (0..mir.local_decls.len()).map(|_| None).collect(),
         };
         for (i, arg) in args.into_iter().enumerate() {
@@ -491,7 +491,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 };
                 ConstLvalue {
                     base: projected,
-                    llextra: llextra,
+                    llextra,
                     ty: projected_ty
                 }
             }

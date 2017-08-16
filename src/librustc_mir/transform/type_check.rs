@@ -108,8 +108,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
-            cx: cx,
-            mir: mir,
+            cx,
+            mir,
             last_span: mir.span,
             errors_reported: false
         }
@@ -235,8 +235,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                             }
                         } else {
                             LvalueTy::Downcast {
-                                adt_def: adt_def,
-                                substs: substs,
+                                adt_def,
+                                substs,
                                 variant_index: index
                             }
                         }
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
            param_env: ty::ParamEnv<'gcx>)
            -> Self {
         TypeChecker {
-            infcx: infcx,
+            infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP,
             body_id,

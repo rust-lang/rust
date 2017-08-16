@@ -128,7 +128,7 @@ impl StaticKey {
     pub const fn new(dtor: Option<unsafe extern fn(*mut u8)>) -> StaticKey {
         StaticKey {
             key: atomic::AtomicUsize::new(0),
-            dtor: dtor
+            dtor,
         }
     }
 

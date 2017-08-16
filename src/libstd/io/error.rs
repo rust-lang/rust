@@ -252,8 +252,8 @@ impl Error {
     fn _new(kind: ErrorKind, error: Box<error::Error+Send+Sync>) -> Error {
         Error {
             repr: Repr::Custom(Box::new(Custom {
-                kind: kind,
-                error: error,
+                kind,
+                error,
             }))
         }
     }

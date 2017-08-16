@@ -194,7 +194,7 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
         search_paths: libs,
         crate_types: vec![config::CrateTypeExecutable],
         output_types: outputs,
-        externs: externs,
+        externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
             .. config::basic_codegen_options()
@@ -416,19 +416,19 @@ impl Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
             names: Vec::new(),
-            cfgs: cfgs,
-            libs: libs,
-            externs: externs,
+            cfgs,
+            libs,
+            externs,
             cnt: 0,
-            use_headers: use_headers,
+            use_headers,
             current_header: None,
-            cratename: cratename,
-            opts: opts,
-            maybe_sysroot: maybe_sysroot,
+            cratename,
+            opts,
+            maybe_sysroot,
             position: DUMMY_SP,
-            codemap: codemap,
-            filename: filename,
-            render_type: render_type,
+            codemap,
+            filename,
+            render_type,
         }
     }
 
@@ -499,7 +499,7 @@ impl Collector {
                 ignore: should_ignore,
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
-                allow_fail: allow_fail,
+                allow_fail,
             },
             testfn: testing::DynTestFn(box move |()| {
                 let panic = io::set_panic(None);

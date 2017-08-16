@@ -269,7 +269,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                 let backtrace = self.error_at(index);
                 errors.push(Error {
                     error: error.clone(),
-                    backtrace: backtrace,
+                    backtrace,
                 });
             }
         }
@@ -346,7 +346,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
-                        backtrace: backtrace,
+                        backtrace,
                     });
                 }
             }
@@ -357,8 +357,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             // changed.
             return Outcome {
                 completed: vec![],
-                errors: errors,
-                stalled: stalled,
+                errors,
+                stalled,
             };
         }
 
@@ -372,8 +372,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         Outcome {
             completed: completed_obligations,
-            errors: errors,
-            stalled: stalled,
+            errors,
+            stalled,
         }
     }
 
@@ -638,8 +638,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 impl<O> Node<O> {
     fn new(parent: Option<NodeIndex>, obligation: O) -> Node<O> {
         Node {
-            obligation: obligation,
-            parent: parent,
+            obligation,
+            parent,
             state: Cell::new(NodeState::Pending),
             dependents: vec![],
         }

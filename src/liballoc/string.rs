@@ -1378,8 +1378,8 @@ impl String {
         let chars_iter = self[start..end].chars();
 
         Drain {
-            start: start,
-            end: end,
+            start,
+            end,
             iter: chars_iter,
             string: self_ptr,
         }
@@ -1442,11 +1442,11 @@ impl String {
         let chars_iter = self[start..end].chars();
 
         Splice {
-            start: start,
-            end: end,
+            start,
+            end,
             iter: chars_iter,
             string: self_ptr,
-            replace_with: replace_with
+            replace_with,
         }
     }
 

@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         } else {
             vec![CandidateStep {
-                     self_ty: self_ty,
+                     self_ty,
                      autoderefs: 0,
                      unsize: false,
                  }]
@@ -361,15 +361,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
-            fcx: fcx,
-            span: span,
-            mode: mode,
-            looking_for: looking_for,
+            fcx,
+            span,
+            mode,
+            looking_for,
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
             impl_dups: FxHashSet(),
             steps: Rc::new(steps),
-            opt_simplified_steps: opt_simplified_steps,
+            opt_simplified_steps,
             static_candidates: Vec::new(),
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),

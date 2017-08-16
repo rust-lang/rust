@@ -2442,7 +2442,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
             VecDeque {
                 tail: 0,
                 head: len,
-                buf: buf,
+                buf,
             }
         }
     }

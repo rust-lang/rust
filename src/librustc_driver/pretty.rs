@@ -174,7 +174,7 @@ impl PpSourceMode {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                 let annotation = NoAnn {
-                    sess: sess,
+                    sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
                 f(&annotation)
@@ -182,14 +182,14 @@ impl PpSourceMode {
 
             PpmIdentified | PpmExpandedIdentified => {
                 let annotation = IdentifiedAnnotation {
-                    sess: sess,
+                    sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
                 f(&annotation)
             }
             PpmExpandedHygiene => {
                 let annotation = HygieneAnnotation {
-                    sess: sess,
+                    sess,
                 };
                 f(&annotation)
             }
@@ -211,7 +211,7 @@ impl PpSourceMode {
         match *self {
             PpmNormal => {
                 let annotation = NoAnn {
-                    sess: sess,
+                    sess,
                     hir_map: Some(hir_map.clone()),
                 };
                 f(&annotation, hir_map.forest.krate())
@@ -219,7 +219,7 @@ impl PpSourceMode {
 
             PpmIdentified => {
                 let annotation = IdentifiedAnnotation {
-                    sess: sess,
+                    sess,
                     hir_map: Some(hir_map.clone()),
                 };
                 f(&annotation, hir_map.forest.krate())
@@ -235,7 +235,7 @@ impl PpSourceMode {
                                                                  |tcx, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
-                        tcx: tcx,
+                        tcx,
                         tables: Cell::new(&empty_tables)
                     };
                     let _ignore = tcx.dep_graph.in_ignore();
@@ -680,7 +680,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
                     })
                     .into_iter()
                     .collect(),
-                rules: rules,
+                rules,
                 id: ast::DUMMY_NODE_ID,
                 span: syntax_pos::DUMMY_SP,
             })
@@ -739,7 +739,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
         hir_map: &tcx.hir,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
-        labelled_edges: labelled_edges,
+        labelled_edges,
     };
 
     match code {
@@ -758,7 +758,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,
-                variants: variants,
+                variants,
                 borrowck_ctxt: &bccx,
                 analysis_data: &analysis_data,
             };

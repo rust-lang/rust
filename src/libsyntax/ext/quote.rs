@@ -383,7 +383,7 @@ pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
             }
             TokenTree::Token(span, token::CloseDelim(delim)) => {
                 let tree = TokenTree::Delimited(span, Delimited {
-                    delim: delim,
+                    delim,
                     tts: result.into_iter().map(TokenStream::from).collect::<TokenStream>().into(),
                 });
                 result = results.pop().unwrap();

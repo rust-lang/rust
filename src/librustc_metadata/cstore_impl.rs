@@ -282,7 +282,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 
@@ -290,7 +290,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 

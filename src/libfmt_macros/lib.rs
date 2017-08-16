@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
 
         Argument {
             position: pos,
-            format: format,
+            format,
         }
     }
 

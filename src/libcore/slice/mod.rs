@@ -300,7 +300,7 @@ impl<T> SliceExt for [T] {
     {
         Split {
             v: self,
-            pred: pred,
+            pred,
             finished: false
         }
     }

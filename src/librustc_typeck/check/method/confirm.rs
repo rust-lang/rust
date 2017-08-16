@@ -69,10 +69,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
            call_expr: &'gcx hir::Expr)
            -> ConfirmContext<'a, 'gcx, 'tcx> {
         ConfirmContext {
-            fcx: fcx,
-            span: span,
-            self_expr: self_expr,
-            call_expr: call_expr,
+            fcx,
+            span,
+            self_expr,
+            call_expr,
         }
     }
 

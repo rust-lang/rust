@@ -337,8 +337,8 @@ pub fn msys_terminfo() -> TermInfo {
     TermInfo {
         names: vec!["cygwin".to_string()], // msys is a fork of an older cygwin version
         bools: HashMap::new(),
-        numbers: numbers,
-        strings: strings,
+        numbers,
+        strings,
     }
 }
 

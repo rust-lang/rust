@@ -72,9 +72,9 @@ pub enum InternalDebugLocation {
 impl InternalDebugLocation {
     pub fn new(scope: DIScope, line: usize, col: usize) -> InternalDebugLocation {
         KnownLocation {
-            scope: scope,
-            line: line,
-            col: col,
+            scope,
+            line,
+            col,
         }
     }
 }

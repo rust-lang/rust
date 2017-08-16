@@ -156,7 +156,7 @@ impl<'tcx> MirPatch<'tcx> {
             );
             mir[loc.block].statements.insert(
                 loc.statement_index, Statement {
-                    source_info: source_info,
+                    source_info,
                     kind: stmt
                 });
             delta += 1;

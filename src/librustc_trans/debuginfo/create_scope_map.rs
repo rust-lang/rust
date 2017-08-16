@@ -129,7 +129,7 @@ fn make_mir_scope(ccx: &CrateContext,
             loc.col.to_usize() as c_uint)
     };
     scopes[scope] = MirDebugScope {
-        scope_metadata: scope_metadata,
+        scope_metadata,
         file_start_pos: loc.file.start_pos,
         file_end_pos: loc.file.end_pos,
     };

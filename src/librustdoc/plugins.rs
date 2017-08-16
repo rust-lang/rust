@@ -35,7 +35,7 @@ impl PluginManager {
         PluginManager {
             dylibs: Vec::new(),
             callbacks: Vec::new(),
-            prefix: prefix,
+            prefix,
         }
     }
 

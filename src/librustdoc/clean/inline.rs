@@ -102,7 +102,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
         source: cx.tcx.def_span(did).clean(cx),
         name: Some(name.clean(cx)),
         attrs: load_attrs(cx, did),
-        inner: inner,
+        inner,
         visibility: Some(clean::Public),
         stability: cx.tcx.lookup_stability(did).clean(cx),
         deprecation: cx.tcx.lookup_deprecation(did).clean(cx),
@@ -142,7 +142,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
     let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
         unsafety: cx.tcx.trait_def(did).unsafety,
-        generics: generics,
+        generics,
         items: trait_items,
         bounds: supertrait_bounds,
     }
@@ -162,7 +162,7 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
         decl: (did, sig).clean(cx),
         generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
         unsafety: sig.unsafety(),
-        constness: constness,
+        constness,
         abi: sig.abi(),
     }
 }
@@ -302,7 +302,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
             }),
             source: tcx.def_span(did).clean(cx),
             name: None,
-            attrs: attrs,
+            attrs,
             visibility: Some(clean::Inherited),
             stability: tcx.lookup_stability(did).clean(cx),
             deprecation: tcx.lookup_deprecation(did).clean(cx),
@@ -359,11 +359,11 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
                         };
 
                         clean::MethodItem(clean::Method {
-                            unsafety: unsafety,
-                            constness: constness,
-                            decl: decl,
-                            generics: generics,
-                            abi: abi
+                            unsafety,
+                            constness,
+                            decl,
+                            generics,
+                            abi,
                         })
                     }
                     ref r => panic!("not a tymethod: {:?}", r),
@@ -414,15 +414,15 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
         inner: clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal, // FIXME: this should be decoded
             provided_trait_methods: provided,
-            trait_: trait_,
-            for_: for_,
+            trait_,
+            for_,
             generics: (tcx.generics_of(did), &predicates).clean(cx),
             items: trait_items,
             polarity: Some(polarity.clean(cx)),
         }),
         source: tcx.def_span(did).clean(cx),
         name: None,
-        attrs: attrs,
+        attrs,
         visibility: Some(clean::Inherited),
         stability: tcx.lookup_stability(did).clean(cx),
         deprecation: tcx.lookup_deprecation(did).clean(cx),
@@ -434,7 +434,7 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
     let mut items = Vec::new();
     fill_in(cx, did, &mut items);
     return clean::Module {
-        items: items,
+        items,
         is_crate: false,
     };
 

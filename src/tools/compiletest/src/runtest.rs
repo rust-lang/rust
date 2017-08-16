@@ -59,7 +59,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
 
     let base_cx = TestCx { config: &config,
                            props: &base_props,
-                           testpaths: testpaths,
+                           testpaths,
                            revision: None };
     base_cx.init_all();
 
@@ -72,7 +72,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
-                testpaths: testpaths,
+                testpaths,
                 revision: Some(revision)
             };
             rev_cx.run_revision();
@@ -354,7 +354,7 @@ impl<'test> TestCx<'test> {
         args.extend(self.props.compile_flags.iter().cloned());
         ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args: args,
+            args,
         }
     }
 
@@ -416,7 +416,7 @@ actual:\n\
         // FIXME (#9639): This needs to handle non-utf8 paths
         ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args: args,
+            args,
         }
     }
 
@@ -595,10 +595,10 @@ actual:\n\
                 };
 
                 debugger_run_result = ProcRes {
-                    status: status,
+                    status,
                     stdout: out,
                     stderr: err,
-                    cmdline: cmdline
+                    cmdline,
                 };
                 if process.kill().is_err() {
                     println!("Adb process is already finished.");
@@ -852,7 +852,7 @@ actual:\n\
 
         self.dump_output(&out, &err);
         ProcRes {
-            status: status,
+            status,
             stdout: out,
             stderr: err,
             cmdline: format!("{:?}", cmd)
@@ -899,9 +899,9 @@ actual:\n\
         }
 
         DebuggerCommands {
-            commands: commands,
-            check_lines: check_lines,
-            breakpoint_lines: breakpoint_lines,
+            commands,
+            check_lines,
+            breakpoint_lines,
         }
     }
 
@@ -1206,7 +1206,7 @@ actual:\n\
         let args = ProcArgs {
             prog: self.config.rustdoc_path
                 .as_ref().expect("--rustdoc-path passed").to_str().unwrap().to_owned(),
-            args: args,
+            args,
         };
         self.compose_and_run_compiler(args, None)
     }
@@ -1482,7 +1482,7 @@ actual:\n\
         args.extend(self.props.compile_flags.iter().cloned());
         ProcArgs {
             prog: self.config.rustc_path.to_str().unwrap().to_owned(),
-            args: args,
+            args,
         }
     }
 
@@ -1532,8 +1532,8 @@ actual:\n\
 
         let prog = args.remove(0);
          ProcArgs {
-            prog: prog,
-            args: args,
+            prog,
+            args,
         }
     }
 
@@ -1585,10 +1585,10 @@ actual:\n\
                          working_dir).expect(&format!("failed to exec `{}`", prog));
         self.dump_output(&out, &err);
         ProcRes {
-            status: status,
+            status,
             stdout: out,
             stderr: err,
-            cmdline: cmdline,
+            cmdline,
         }
     }
 

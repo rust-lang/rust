@@ -853,9 +853,9 @@ impl<'a, T> Hole<'a, T> {
         debug_assert!(pos < data.len());
         let elt = ptr::read(&data[pos]);
         Hole {
-            data: data,
+            data,
             elt: Some(elt),
-            pos: pos,
+            pos,
         }
     }
 
@@ -1203,7 +1203,7 @@ where T: Clone + Ord {
         let place = Placer::make_place(self.data.place_back());
         BinaryHeapPlace {
             heap: ptr,
-            place: place,
+            place,
         }
     }
 }

@@ -419,7 +419,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
             Empty(bucket) => {
                 // Found a hole!
                 return InternalEntry::Vacant {
-                    hash: hash,
+                    hash,
                     elem: NoElem(bucket, displacement),
                 };
             }
@@ -433,7 +433,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
             // We can finish the search early if we hit any bucket
             // with a lower distance to initial bucket than we've probed.
             return InternalEntry::Vacant {
-                hash: hash,
+                hash,
                 elem: NeqElem(full, probe_displacement),
             };
         }
@@ -646,7 +646,7 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap {
-            hash_builder: hash_builder,
+            hash_builder,
             resize_policy: DefaultResizePolicy::new(),
             table: RawTable::new(0),
         }
@@ -679,8 +679,8 @@ impl<K, V, S> HashMap<K, V, S>
         let resize_policy = DefaultResizePolicy::new();
         let raw_cap = resize_policy.raw_capacity(capacity);
         HashMap {
-            hash_builder: hash_builder,
-            resize_policy: resize_policy,
+            hash_builder,
+            resize_policy,
             table: RawTable::new(raw_cap),
         }
     }
@@ -1496,14 +1496,14 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
                     key: Some(key),
-                    elem: elem,
+                    elem,
                 }))
             }
             InternalEntry::Vacant { hash, elem } => {
                 Some(Vacant(VacantEntry {
-                    hash: hash,
-                    key: key,
-                    elem: elem,
+                    hash,
+                    key,
+                    elem,
                 }))
             }
             InternalEntry::TableIsEmpty => None,

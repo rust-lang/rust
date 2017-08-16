@@ -155,8 +155,8 @@ impl CodeSuggestion {
         let lo = primary_spans.iter().map(|sp| sp.0.lo).min().unwrap();
         let hi = primary_spans.iter().map(|sp| sp.0.hi).min().unwrap();
         let bounding_span = Span {
-            lo: lo,
-            hi: hi,
+            lo,
+            hi,
             ctxt: NO_EXPANSION,
         };
         let lines = cm.span_to_lines(bounding_span).unwrap();
@@ -292,8 +292,8 @@ impl Handler {
         Handler {
             err_count: Cell::new(0),
             emitter: RefCell::new(e),
-            can_emit_warnings: can_emit_warnings,
-            treat_err_as_bug: treat_err_as_bug,
+            can_emit_warnings,
+            treat_err_as_bug,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
         }

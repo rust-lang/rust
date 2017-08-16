@@ -94,14 +94,14 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: vec![program.as_ptr(), ptr::null()],
-            program: program,
+            program,
             args: Vec::new(),
             env: None,
             envp: None,
             cwd: None,
             uid: None,
             gid: None,
-            saw_nul: saw_nul,
+            saw_nul,
             closures: Vec::new(),
             stdin: None,
             stdout: None,

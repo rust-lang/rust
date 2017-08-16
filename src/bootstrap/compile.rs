@@ -74,13 +74,13 @@ impl Step for Std {
             let from = builder.compiler(1, build.build);
             builder.ensure(Std {
                 compiler: from,
-                target: target,
+                target,
             });
             println!("Uplifting stage1 std ({} -> {})", from.host, target);
             builder.ensure(StdLink {
                 compiler: from,
                 target_compiler: compiler,
-                target: target,
+                target,
             });
             return;
         }
@@ -100,7 +100,7 @@ impl Step for Std {
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, build.build),
             target_compiler: compiler,
-            target: target,
+            target,
         });
     }
 }
@@ -202,7 +202,7 @@ impl Step for StdLink {
 
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Libstd,
         });
     }
@@ -326,13 +326,13 @@ impl Step for Test {
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Test {
                 compiler: builder.compiler(1, build.build),
-                target: target,
+                target,
             });
             println!("Uplifting stage1 test ({} -> {})", &build.build, target);
             builder.ensure(TestLink {
                 compiler: builder.compiler(1, build.build),
                 target_compiler: compiler,
-                target: target,
+                target,
             });
             return;
         }
@@ -351,7 +351,7 @@ impl Step for Test {
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, build.build),
             target_compiler: compiler,
-            target: target,
+            target,
         });
     }
 }
@@ -398,7 +398,7 @@ impl Step for TestLink {
                     &libtest_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Libtest,
         });
     }
@@ -445,7 +445,7 @@ impl Step for Rustc {
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
                 compiler: builder.compiler(1, build.build),
-                target: target,
+                target,
             });
             println!("Uplifting stage1 rustc ({} -> {})", &build.build, target);
             builder.ensure(RustcLink {
@@ -581,7 +581,7 @@ impl Step for RustcLink {
                        &librustc_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Librustc,
         });
     }

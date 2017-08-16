@@ -311,7 +311,7 @@ impl<T> Rc<T> {
             ptr: Shared::from(Box::into_unique(box RcBox {
                 strong: Cell::new(1),
                 weak: Cell::new(1),
-                value: value,
+                value,
             })),
         }
     }

@@ -120,7 +120,7 @@ impl EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
-                dst: dst,
+                dst,
                 cm: code_map,
             }
         } else {
@@ -156,7 +156,7 @@ impl EmitterWriter {
                     }
                     // We don't have a line yet, create one
                     slot.lines.push(Line {
-                        line_index: line_index,
+                        line_index,
                         annotations: vec![ann],
                     });
                     slot.lines.sort();
@@ -165,9 +165,9 @@ impl EmitterWriter {
             }
             // This is the first time we're seeing the file
             file_vec.push(FileWithAnnotatedLines {
-                file: file,
+                file,
                 lines: vec![Line {
-                                line_index: line_index,
+                                line_index,
                                 annotations: vec![ann],
                             }],
                 multiline_depth: 0,

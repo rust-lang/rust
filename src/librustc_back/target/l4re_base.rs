@@ -25,7 +25,7 @@ pub fn opts() -> TargetOptions {
         exe_allocation_crate: Some("alloc_system".to_string()),
         panic_strategy: PanicStrategy::Abort,
         linker: "ld".to_string(),
-        pre_link_args: pre_link_args,
+        pre_link_args,
         target_family: Some("unix".to_string()),
         .. Default::default()
     }
