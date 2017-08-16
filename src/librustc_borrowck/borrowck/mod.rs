@@ -37,6 +37,8 @@ use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::FxHashMap;
+use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
+
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
@@ -217,6 +219,25 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     owner_def_id: DefId,
 
     body: &'tcx hir::Body,
+}
+
+impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
+    fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
+                                                         sp: S,
+                                                         msg: &str,
+                                                         code: &str)
+                                                         -> DiagnosticBuilder<'a>
+    {
+        self.tcx.sess.struct_span_err_with_code(sp, msg, code)
+    }
+
+    fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
+                                               sp: S,
+                                               msg: &str)
+                                               -> DiagnosticBuilder<'a>
+    {
+        self.tcx.sess.struct_span_err(sp, msg)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -548,14 +569,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             move_data::Declared => {
                 // If this is an uninitialized variable, just emit a simple warning
                 // and return.
-                struct_span_err!(
-                    self.tcx.sess, use_span, E0381,
-                    "{} of possibly uninitialized variable: `{}`",
-                    verb,
-                    self.loan_path_to_string(lp))
-                .span_label(use_span, format!("use of possibly uninitialized `{}`",
-                    self.loan_path_to_string(lp)))
-                .emit();
+                self.cannot_act_on_uninitialized_variable(use_span,
+                                                          verb,
+                                                          &self.loan_path_to_string(lp),
+                                                          Origin::Ast)
+                    .span_label(use_span, format!("use of possibly uninitialized `{}`",
+                                                  self.loan_path_to_string(lp)))
+                    .emit();
                 return;
             }
             _ => {
@@ -682,10 +702,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                                 lp: &LoanPath<'tcx>,
                                                 assign:
                                                 &move_data::Assignment) {
-        let mut err = struct_span_err!(
-            self.tcx.sess, span, E0384,
-            "re-assignment of immutable variable `{}`",
-            self.loan_path_to_string(lp));
+        let mut err = self.cannot_reassign_immutable(span,
+                                                     &self.loan_path_to_string(lp),
+                                                     Origin::Ast);
         err.span_label(span, "re-assignment of immutable variable");
         if span != assign.span {
             err.span_label(assign.span, format!("first assignment to `{}`",

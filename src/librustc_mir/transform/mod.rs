@@ -31,6 +31,7 @@ pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
+pub mod borrow_check;
 pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;
