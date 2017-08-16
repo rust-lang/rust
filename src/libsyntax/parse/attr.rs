@@ -244,10 +244,9 @@ impl<'a> Parser<'a> {
     pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
-        } else if self.token == token::OpenDelim(token::Paren) {
+        } else if self.eat(&token::OpenDelim(token::Paren)) {
             ast::MetaItemKind::List(self.parse_meta_seq()?)
         } else {
-            self.eat(&token::OpenDelim(token::Paren));
             ast::MetaItemKind::Word
         })
     }
@@ -277,9 +276,8 @@ impl<'a> Parser<'a> {
 
     /// matches meta_seq = ( COMMASEP(meta_item_inner) )
     fn parse_meta_seq(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
-        self.parse_unspanned_seq(&token::OpenDelim(token::Paren),
-                                 &token::CloseDelim(token::Paren),
-                                 SeqSep::trailing_allowed(token::Comma),
-                                 |p: &mut Parser<'a>| p.parse_meta_item_inner())
+        self.parse_seq_to_end(&token::CloseDelim(token::Paren),
+                              SeqSep::trailing_allowed(token::Comma),
+                              |p: &mut Parser<'a>| p.parse_meta_item_inner())
     }
 }
