@@ -717,6 +717,10 @@ pub struct Generics {
     pub regions: Vec<RegionParameterDef>,
     pub types: Vec<TypeParameterDef>,
 
+    /// Reverse map to each `RegionParameterDef`'s `index` field.
+    /// Currently only appears for an `impl Trait` type's `ty::Generics`
+    pub region_param_to_index: Option<BTreeMap<DefIndex, u32>>,
+
     /// Reverse map to each `TypeParameterDef`'s `index` field, from
     /// `def_id.index` (`def_id.krate` is the same as the item's).
     pub type_param_to_index: BTreeMap<DefIndex, u32>,
