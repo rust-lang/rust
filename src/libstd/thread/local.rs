@@ -276,7 +276,33 @@ pub enum LocalKeyState {
            reason = "state querying was recently added",
            issue = "27716")]
 pub struct AccessError {
-    _private: (),
+    // whether the error was due to the key being in the Initializing
+    // state - false means the key was in the Destroyed state
+    init: bool,
+}
+
+impl AccessError {
+    /// Determines whether the `AccessError` was due to the key being initialized.
+    ///
+    /// If `is_initializing` returns true, this `AccessError` was returned because
+    /// the key was in the `Initializing` state when it was accessed.
+    #[unstable(feature = "thread_local_state",
+               reason = "state querying was recently added",
+               issue = "27716")]
+    pub fn is_initializing(&self) -> bool {
+        self.init
+    }
+
+    /// Determines whether the `AccessError` was due to the key being destroyed.
+    ///
+    /// If `is_destroyed` returns true, this `AccessError` was returned because
+    /// the key was in the `Destroyed` state when it was accessed.
+    #[unstable(feature = "thread_local_state",
+               reason = "state querying was recently added",
+               issue = "27716")]
+    pub fn is_destroyed(&self) -> bool {
+        !self.init
+    }
 }
 
 #[unstable(feature = "thread_local_state",
@@ -293,7 +319,11 @@ impl fmt::Debug for AccessError {
            issue = "27716")]
 impl fmt::Display for AccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt("already destroyed", f)
+        if self.init {
+            fmt::Display::fmt("currently being initialized", f)
+        } else {
+            fmt::Display::fmt("already destroyed", f)
+        }
     }
 }
 
@@ -429,8 +459,8 @@ impl<T: 'static> LocalKey<T> {
                         // not to enter this else block in the recursive call.
                         self.try_with(f)
                     }
-                    LocalKeyState::Initializing |
-                    LocalKeyState::Destroyed => Err(AccessError { _private: ()}),
+                    LocalKeyState::Initializing => Err(AccessError { init: true }),
+                    LocalKeyState::Destroyed => Err(AccessError { init: false }),
                     LocalKeyState::Valid => unreachable!(),
                 }
             }
