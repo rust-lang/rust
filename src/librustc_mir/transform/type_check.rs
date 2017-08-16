@@ -112,9 +112,9 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
-            cx,
             mir,
             body_id: cx.body_id,
+            cx,
             last_span: mir.span,
             errors_reported: false
         }
