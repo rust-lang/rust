@@ -240,7 +240,12 @@ pub trait Hash {
 /// [`write_u8`]: #method.write_u8
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
-    /// Completes a round of hashing, producing the output hash generated.
+    /// Returns the hash value for the values written so far.
+    ///
+    /// Despite its name, the method does not reset the hasher’s internal
+    /// state. Additional [`write`]s will continue from the current value.
+    /// If you need to start a fresh hash value, you will have to create
+    /// a new hasher.
     ///
     /// # Examples
     ///
@@ -253,6 +258,8 @@ pub trait Hasher {
     ///
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
+    ///
+    /// ['write']: #tymethod.write
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
