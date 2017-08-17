@@ -1,12 +1,4 @@
 error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/yield-while-local-borrowed.rs:22:18
-   |
-22 |         let a = &3; //~ ERROR
-   |                  ^
-23 |         yield();
-   |         ------- possible yield occurs here
-
-error[E0626]: borrow may still be in use when generator yields
   --> $DIR/yield-while-local-borrowed.rs:48:22
    |
 48 |             let b = &a; //~ ERROR
@@ -14,5 +6,5 @@ error[E0626]: borrow may still be in use when generator yields
 49 |             yield();
    |             ------- possible yield occurs here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
