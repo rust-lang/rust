@@ -909,10 +909,8 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let mut allow_compile_fail = false;
         let mut allow_error_code_check = false;
         if UnstableFeatures::from_environment().is_nightly_build() {
-            allow_compile_fail = true;
             allow_error_code_check = true;
         }
 
@@ -936,7 +934,7 @@ impl LangString {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
-                "compile_fail" if allow_compile_fail => {
+                "compile_fail" => {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
