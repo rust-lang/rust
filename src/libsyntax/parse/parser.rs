@@ -1776,7 +1776,13 @@ impl<'a> Parser<'a> {
 
     pub fn parse_path_common(&mut self, style: PathStyle, enable_warning: bool)
                              -> PResult<'a, ast::Path> {
-        maybe_whole!(self, NtPath, |x| x);
+        maybe_whole!(self, NtPath, |path| {
+            if style == PathStyle::Mod &&
+               path.segments.iter().any(|segment| segment.parameters.is_some()) {
+                self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
+            }
+            path
+        });
 
         let lo = self.meta_var_span.unwrap_or(self.span);
         let mut segments = Vec::new();
