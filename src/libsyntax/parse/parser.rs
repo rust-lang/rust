@@ -2130,7 +2130,7 @@ impl<'a> Parser<'a> {
                     return self.parse_lambda_expr(lo, CaptureBy::Value, attrs);
                 }
                 if self.eat_keyword(keywords::If) {
-                    return self.parse_if_expr(attrs, false);
+                    return self.parse_if_expr(attrs);
                 }
                 if self.eat_keyword(keywords::For) {
                     let lo = self.prev_span;
@@ -2962,25 +2962,20 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an 'if' or 'if let' expression ('if' token already eaten)
-    pub fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>,
-                         in_else: bool) -> PResult<'a, P<Expr>> {
+    pub fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         if self.check_keyword(keywords::Let) {
             return self.parse_if_let_expr(attrs);
         }
         let lo = self.prev_span;
         let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL, None)?;
-        let thn = self.parse_block().map_err(|mut err| {
-            if in_else {
-                err.cancel();
-                let sp = lo.next_point();
-                let mut err = self.diagnostic()
-                    .struct_span_err(sp, "missing condition for `if` statemement");
-                err.span_label(sp, "expected if condition here");
-                err
-            } else {
-                err
-            }
-        })?;
+        if self.eat_keyword(keywords::Else) {
+            let sp = lo.next_point();
+            let mut err = self.diagnostic()
+                .struct_span_err(sp, "missing condition for `if` statemement");
+            err.span_label(sp, "expected if condition here");
+            return Err(err)
+        }
+        let thn = self.parse_block()?;
         let mut els: Option<P<Expr>> = None;
         let mut hi = thn.span;
         if self.eat_keyword(keywords::Else) {
@@ -3037,7 +3032,7 @@ impl<'a> Parser<'a> {
     // `else` token already eaten
     pub fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         if self.eat_keyword(keywords::If) {
-            return self.parse_if_expr(ThinVec::new(), true);
+            return self.parse_if_expr(ThinVec::new());
         } else {
             let blk = self.parse_block()?;
             return Ok(self.mk_expr(blk.span, ExprKind::Block(blk), ThinVec::new()));

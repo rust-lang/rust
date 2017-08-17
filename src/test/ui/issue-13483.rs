@@ -14,9 +14,3 @@ fn main() {
     } else {
     };
 }
-
-fn foo() {
-    if true {
-    } else if { //ERROR: MISSING CONDITIONAL
-    };
-}

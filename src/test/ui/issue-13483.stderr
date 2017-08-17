@@ -4,11 +4,5 @@ error: missing condition for `if` statemement
 13 |     } else if { //ERROR: MISSING CONDITIONAL
    |              ^ expected if condition here
 
-error: missing conditional
-  --> $DIR/issue-13483.rs:20:14
-   |
-20 |     } else if { //ERROR: MISSING CONDITIONAL
-   |              ^ expected if condition here
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
