@@ -30,6 +30,15 @@ pub struct AnonymousArgInfo<'tcx> {
     pub is_first: bool,
 }
 
+// This struct contains information regarding the
+// Refree((FreeRegion) corresponding to lifetime conflict
+pub struct FreeRegionInfo {
+    // def id corresponding to FreeRegion
+    pub def_id: DefId,
+    // the bound region corresponding to FreeRegion
+    pub boundregion: ty::BoundRegion,
+}
+
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method walks the Type of the function body arguments using
     // `fold_regions()` function and returns the
@@ -102,7 +111,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn is_suitable_anonymous_region(&self,
                                         region: Region<'tcx>,
                                         is_anon_anon: bool)
-                                        -> Option<(DefId, ty::BoundRegion)> {
+                                        -> Option<FreeRegionInfo> {
         if let ty::ReFree(ref free_region) = *region {
             if let ty::BrAnon(..) = free_region.bound_region {
                 let anonymous_region_binding_scope = free_region.scope;
@@ -136,7 +145,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     _ => return None, // inapplicable
                     // we target only top-level functions
                 }
-                return Some((anonymous_region_binding_scope, free_region.bound_region));
+                return Some(FreeRegionInfo {
+                                def_id: anonymous_region_binding_scope,
+                                boundregion: free_region.bound_region,
+                            });
             }
         }
         None

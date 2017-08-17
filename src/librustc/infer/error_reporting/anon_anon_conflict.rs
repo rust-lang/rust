@@ -50,7 +50,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let (Some(anon_reg_sup), Some(anon_reg_sub)) =
                 (self.is_suitable_anonymous_region(sup, true),
                  self.is_suitable_anonymous_region(sub, true)) {
-                let ((def_id_sup, br_sup), (def_id_sub, br_sub)) = (anon_reg_sup, anon_reg_sub);
+                let (def_id_sup, br_sup, def_id_sub, br_sub) = (anon_reg_sup.def_id,
+                                                                anon_reg_sup.boundregion,
+                                                                anon_reg_sub.def_id,
+                                                                anon_reg_sub.boundregion);
                 if let (Some(anonarg_sup), Some(anonarg_sub)) =
                     (self.find_anon_type(sup, &br_sup), self.find_anon_type(sub, &br_sub)) {
                     (anonarg_sup, anonarg_sub, def_id_sup, def_id_sub, br_sup, br_sub)
@@ -124,7 +127,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// for e.g. `&u8` and Vec<`&u8`.
     pub fn find_anon_type(&self, region: Region<'tcx>, br: &ty::BoundRegion) -> Option<&hir::Ty> {
         if let Some(anon_reg) = self.is_suitable_anonymous_region(region, true) {
-            let (def_id, _) = anon_reg;
+            let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let ret_ty = self.tcx.type_of(def_id);
                 if let ty::TyFnDef(_, _) = ret_ty.sty {
