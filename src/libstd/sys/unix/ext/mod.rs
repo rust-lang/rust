@@ -36,6 +36,7 @@ pub mod fs;
 pub mod process;
 pub mod raw;
 pub mod thread;
+#[cfg(not(target_os = "l4re"))]
 pub mod net;
 
 /// A prelude for conveniently writing platform-specific code.

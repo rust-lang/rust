@@ -44,6 +44,7 @@ pub mod fd;
 pub mod fs;
 pub mod memchr;
 pub mod mutex;
+#[cfg(not(target_os = "l4re"))]
 pub mod net;
 pub mod os;
 pub mod os_str;
