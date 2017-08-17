@@ -904,14 +904,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                dep_node: DepNodeIndex,
                                result: EvaluationResult)
     {
-        // Avoid caching results that depend on more than just the trait-ref:
-        // The stack can create recursion, and closure signatures
-        // being yet uninferred can create "spurious" EvaluatedToAmbig
-        // and EvaluatedToOk.
-        if result.is_stack_dependent() ||
-            ((result == EvaluatedToAmbig || result == EvaluatedToOk)
-             && trait_ref.has_closure_types())
-        {
+        // Avoid caching results that depend on more than just the trait-ref
+        // - the stack can create recursion.
+        if result.is_stack_dependent() {
             return;
         }
 
@@ -971,15 +966,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             this.candidate_from_obligation_no_cache(stack)
         });
 
-        if self.should_update_candidate_cache(&cache_fresh_trait_pred, &candidate) {
-            debug!("CACHE MISS: SELECT({:?})={:?}",
-                   cache_fresh_trait_pred, candidate);
-            self.insert_candidate_cache(stack.obligation.param_env,
-                                        cache_fresh_trait_pred,
-                                        dep_node,
-                                        candidate.clone());
-        }
-
+        debug!("CACHE MISS: SELECT({:?})={:?}",
+               cache_fresh_trait_pred, candidate);
+        self.insert_candidate_cache(stack.obligation.param_env,
+                                    cache_fresh_trait_pred,
+                                    dep_node,
+                                    candidate.clone());
         candidate
     }
 
@@ -1217,45 +1209,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.infcx.selection_cache.hashmap
                                   .borrow_mut()
                                   .insert(trait_ref, WithDepNode::new(dep_node, candidate));
-    }
-
-    fn should_update_candidate_cache(&mut self,
-                                     cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>,
-                                     candidate: &SelectionResult<'tcx, SelectionCandidate<'tcx>>)
-                                     -> bool
-    {
-        // In general, it's a good idea to cache results, even
-        // ambiguous ones, to save us some trouble later. But we have
-        // to be careful not to cache results that could be
-        // invalidated later by advances in inference. Normally, this
-        // is not an issue, because any inference variables whose
-        // types are not yet bound are "freshened" in the cache key,
-        // which means that if we later get the same request once that
-        // type variable IS bound, we'll have a different cache key.
-        // For example, if we have `Vec<_#0t> : Foo`, and `_#0t` is
-        // not yet known, we may cache the result as `None`. But if
-        // later `_#0t` is bound to `Bar`, then when we freshen we'll
-        // have `Vec<Bar> : Foo` as the cache key.
-        //
-        // HOWEVER, it CAN happen that we get an ambiguity result in
-        // one particular case around closures where the cache key
-        // would not change. That is when the precise types of the
-        // upvars that a closure references have not yet been figured
-        // out (i.e., because it is not yet known if they are captured
-        // by ref, and if by ref, what kind of ref). In these cases,
-        // when matching a builtin bound, we will yield back an
-        // ambiguous result. But the *cache key* is just the closure type,
-        // it doesn't capture the state of the upvar computation.
-        //
-        // To avoid this trap, just don't cache ambiguous results if
-        // the self-type contains no inference byproducts (that really
-        // shouldn't happen in other circumstances anyway, given
-        // coherence).
-
-        match *candidate {
-            Ok(Some(_)) | Err(_) => true,
-            Ok(None) => cache_fresh_trait_pred.has_infer_types()
-        }
     }
 
     fn assemble_candidates<'o>(&mut self,
