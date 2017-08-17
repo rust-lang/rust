@@ -121,10 +121,10 @@ pub enum FindLintError {
 
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
-    // Lint doesn't exist
+    /// Lint doesn't exist
     NoLint,
-    // The lint is either renamed or removed. This is the warning
-    // message.
+    /// The lint is either renamed or removed. This is the warning
+    /// message.
     Warning(String),
 }
 
