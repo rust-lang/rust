@@ -36,7 +36,11 @@ such struct and union must have a field name. When creating a binding to such
 an interface, whether manually or using a binding generator, the binding must
 invent an artificial field name that does not appear in the original interface.
 
-This RFC proposes a minimal mechanism to support such interfaces in Rust.
+This RFC proposes a minimal mechanism to support such interfaces in Rust. This
+feature exists primarily to support ergonomic FFI interfaces that match the
+layout of data structures for the native platform; this RFC intentionally
+limits itself to the `repr(C)` structure representation, and does not provide
+support for using this feature in Rust data structures using `repr(Rust)`.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -229,10 +233,9 @@ All of the following will instantiate a value of type `S`:
 
 ## Representation
 
-By default, Rust lays out structures using its native representation,
-`repr(Rust)`; that representation permits any layout that can store all the
-non-overlapping fields simultaneously, and makes no other guarantees about the
-storage of unnamed fields.
+This feature exists to support the layout of native platform data structures.
+Structures using the default `repr(Rust)` layout cannot use this feature, and
+the compiler should produce an error when attempting to do so.
 
 When using this mechanism to define a C interface, remember to use the
 `repr(C)` attribute to match C's data structure layout. Any representation
@@ -241,6 +244,9 @@ field within that declaration. Such a structure defined with `repr(C)` will use
 a representation identical to the same structure with all unnamed fields
 transformed to equivalent named fields of a struct or union type with the same
 fields.
+
+Similarly, applying `repr(packed)` to the top-level data structure will also
+apply it to all the contained structures.
 
 ## Derive
 
