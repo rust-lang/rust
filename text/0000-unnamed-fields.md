@@ -365,3 +365,10 @@ alignment, but does not seem particularly useful without the ability to
 reference the unnamed field. Nonetheless, extending this feature to allow
 unnamed `struct` and `union` fields to appear within either a `struct` or
 `union` would not introduce much additional complexity.
+
+C structures can still include other constructs that Rust does not currently
+represent, including bitfields, and variable-length arrays at the end of a
+structure. Future RFCs may wish to introduce support for those constructs as
+well. However, I do not believe it makes sense to require a solution for every
+problem of interfacing with C simultaneously, nor to gate a solution for one
+common issue on solutions for others.
