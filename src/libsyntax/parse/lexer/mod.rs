@@ -963,60 +963,67 @@ impl<'a> StringReader<'a> {
         true
     }
 
-    /// Scan over a \u{...} escape
+    /// Scan over a `\u{...}` escape
     ///
-    /// At this point, we have already seen the \ and the u, the { is the current character. We
-    /// will read at least one digit, and up to 6, and pass over the }.
+    /// At this point, we have already seen the `\` and the `u`, the `{` is the current character.
+    /// We will read a hex number (with `_` separators), with 1 to 6 actual digits,
+    /// and pass over the `}`.
     fn scan_unicode_escape(&mut self, delim: char) -> bool {
         self.bump(); // past the {
         let start_bpos = self.pos;
-        let mut count = 0;
-        let mut accum_int = 0;
         let mut valid = true;
 
-        while !self.ch_is('}') && count <= 6 {
-            let c = match self.ch {
-                Some(c) => c,
+        if let Some('_') = self.ch {
+            // disallow leading `_`
+            self.err_span_(self.pos,
+                           self.next_pos,
+                           "invalid start of unicode escape");
+            valid = false;
+        }
+
+        let count = self.scan_digits(16, 16);
+
+        if count > 6 {
+            self.err_span_(start_bpos,
+                           self.pos,
+                           "overlong unicode escape (must have at most 6 hex digits)");
+            valid = false;
+        }
+        loop {
+            match self.ch {
+                Some('}') => {
+                    if valid && count == 0 {
+                        self.err_span_(start_bpos,
+                                       self.pos,
+                                       "empty unicode escape (must have at least 1 hex digit)");
+                        valid = false;
+                    }
+                    self.bump(); // past the ending `}`
+                    break;
+                },
+                Some(c) => {
+                    if c == delim {
+                        self.err_span_(self.pos,
+                                       self.pos,
+                                       "unterminated unicode escape (needed a `}`)");
+                        valid = false;
+                        break;
+                    } else if valid {
+                        self.err_span_char(start_bpos,
+                                           self.pos,
+                                           "invalid character in unicode escape",
+                                           c);
+                        valid = false;
+                    }
+                },
                 None => {
                     panic!(self.fatal_span_(start_bpos,
                                             self.pos,
                                             "unterminated unicode escape (found EOF)"));
                 }
-            };
-            accum_int *= 16;
-            accum_int += c.to_digit(16).unwrap_or_else(|| {
-                if c == delim {
-                    panic!(self.fatal_span_(self.pos,
-                                            self.next_pos,
-                                            "unterminated unicode escape (needed a `}`)"));
-                } else {
-                    self.err_span_char(self.pos,
-                                       self.next_pos,
-                                       "invalid character in unicode escape",
-                                       c);
-                }
-                valid = false;
-                0
-            });
+            }
             self.bump();
-            count += 1;
         }
-
-        if count > 6 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "overlong unicode escape (can have at most 6 hex digits)");
-            valid = false;
-        }
-
-        if valid && (char::from_u32(accum_int).is_none() || count == 0) {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "invalid unicode character escape");
-            valid = false;
-        }
-
-        self.bump(); // past the ending }
         valid
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-pub fn main() {
-    let s1 = "\u{d805}"; //~ ERROR invalid unicode character escape
-    let s2 = "\u{ffffff}"; //~ ERROR invalid unicode character escape
+fn main() {
+    assert_eq!('\u{10__FFFF}', '\u{10FFFF}');
+    assert_eq!("\u{10_F0FF__}foo\u{1_0_0_0__}", "\u{10F0FF}foo\u{1000}");
 }
