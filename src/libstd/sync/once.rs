@@ -387,7 +387,7 @@ impl Drop for Finish {
 impl OnceState {
     /// Returns whether the associated [`Once`] has been poisoned.
     ///
-    /// Once an initalization routine for a [`Once`] has panicked it will forever
+    /// Once an initialization routine for a [`Once`] has panicked it will forever
     /// indicate to future forced initialization routines that it is poisoned.
     ///
     /// [`Once`]: struct.Once.html

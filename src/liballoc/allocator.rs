@@ -293,7 +293,7 @@ impl Layout {
     /// Creates a layout describing the record for `self` followed by
     /// `next` with no additional padding between the two. Since no
     /// padding is inserted, the alignment of `next` is irrelevant,
-    /// and is not incoporated *at all* into the resulting layout.
+    /// and is not incorporated *at all* into the resulting layout.
     ///
     /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
@@ -528,7 +528,7 @@ pub unsafe trait Alloc {
     ///   to allocate that block of memory.
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout);
 
-    /// Allocator-specific method for signalling an out-of-memory
+    /// Allocator-specific method for signaling an out-of-memory
     /// condition.
     ///
     /// `oom` aborts the thread or process, optionally performing
@@ -539,7 +539,7 @@ pub unsafe trait Alloc {
     /// unsatisfied allocation request (signaled by an error such as
     /// `AllocErr::Exhausted`), and wish to abandon computation rather
     /// than attempt to recover locally. Such clients should pass the
-    /// signalling error value back into `oom`, where the allocator
+    /// signaling error value back into `oom`, where the allocator
     /// may incorporate that error value into its diagnostic report
     /// before aborting.
     ///

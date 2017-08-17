@@ -560,7 +560,7 @@ pub fn current() -> Thread {
 /// implementing low-level shared resources or synchronization primitives.
 ///
 /// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
+/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
 /// thinking about thread scheduling.
 ///
 /// Note that [`channel`]s for example are implemented using this primitive.

@@ -47,7 +47,7 @@ pub fn unwind(val: ValueRef, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
-/// Tell LLVM whether it should optimise function for size.
+/// Tell LLVM whether it should optimize function for size.
 #[inline]
 #[allow(dead_code)] // possibly useful function
 pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {

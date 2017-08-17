@@ -822,7 +822,7 @@ impl EmitterWriter {
             .map(|_| " ")
             .collect::<String>();
 
-        /// Return wether `style`, or the override if present and the style is `NoStyle`.
+        /// Return whether `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {

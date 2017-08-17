@@ -400,7 +400,7 @@ pub fn main_args(args: &[String]) -> isize {
     })
 }
 
-/// Prints an uniformised error message on the standard error output
+/// Prints an uniformized error message on the standard error output
 fn print_error<T>(error_message: T) where T: Display {
     writeln!(
         &mut io::stderr(),
