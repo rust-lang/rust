@@ -1,8 +1,14 @@
 error: missing condition for `if` statemement
   --> $DIR/issue-13483.rs:13:14
    |
-13 |     } else if { //ERROR: MISSING CONDITIONAL
+13 |     } else if {
    |              ^ expected if condition here
 
-error: aborting due to previous error
+error: missing condition for `if` statemement
+  --> $DIR/issue-13483.rs:20:14
+   |
+20 |     } else if {
+   |              ^ expected if condition here
+
+error: aborting due to 2 previous errors
 

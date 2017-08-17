@@ -2968,7 +2968,12 @@ impl<'a> Parser<'a> {
         }
         let lo = self.prev_span;
         let cond = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL, None)?;
-        if self.eat_keyword(keywords::Else) {
+
+        // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then
+        // verify that the last statement is either an implicit return (no `;`) or an explicit
+        // return. This won't catch blocks with an explicit `return`, but that would be caught by
+        // the dead code lint.
+        if self.eat_keyword(keywords::Else) || !cond.returns() {
             let sp = lo.next_point();
             let mut err = self.diagnostic()
                 .struct_span_err(sp, "missing condition for `if` statemement");

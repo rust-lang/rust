@@ -10,7 +10,16 @@
 
 fn main() {
     if true {
-    } else if { //ERROR: MISSING CONDITIONAL
+    } else if {
     } else {
-    };
+    }
 }
+
+fn foo() {
+    if true {
+    } else if {
+    }
+    bar();
+}
+
+fn bar() {}

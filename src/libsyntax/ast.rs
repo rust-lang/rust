@@ -844,6 +844,32 @@ pub struct Expr {
     pub attrs: ThinVec<Attribute>
 }
 
+impl Expr {
+    /// Wether this expression would be valid somewhere that expects a value, for example, an `if`
+    /// condition.
+    pub fn returns(&self) -> bool {
+        if let ExprKind::Block(ref block) = self.node {
+            match block.stmts.last().map(|last_stmt| &last_stmt.node) {
+                // implicit return
+                Some(&StmtKind::Expr(_)) => true,
+                Some(&StmtKind::Semi(ref expr)) => {
+                    if let ExprKind::Ret(_) = expr.node {
+                        // last statement is explicit return
+                        true
+                    } else {
+                        false
+                    }
+                }
+                // This is a block that doesn't end in either an implicit or explicit return
+                _ => false,
+            }
+        } else {
+            // This is not a block, it is a value
+            true
+        }
+    }
+}
+
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
