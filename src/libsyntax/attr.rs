@@ -1064,26 +1064,21 @@ impl MetaItem {
             },
             _ => return None,
         };
+        let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi);
         let node = match MetaItemKind::from_tokens(tokens) {
             Some(node) => node,
             _ => return None,
         };
-        if let Some(last_span) = node.last_span() {
-            span.hi = last_span.hi;
-        }
+        span.hi = match node {
+            MetaItemKind::NameValue(ref lit) => lit.span.hi,
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi),
+            _ => span.hi,
+        };
         Some(MetaItem { name: name, span: span, node: node })
     }
 }
 
 impl MetaItemKind {
-    fn last_span(&self) -> Option<Span> {
-        match *self {
-            MetaItemKind::Word => None,
-            MetaItemKind::List(ref list) => list.last().map(NestedMetaItem::span),
-            MetaItemKind::NameValue(ref lit) => Some(lit.span),
-        }
-    }
-
     pub fn tokens(&self, span: Span) -> TokenStream {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
