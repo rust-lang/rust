@@ -1130,7 +1130,7 @@ impl MetaItemKind {
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
             match NestedMetaItemKind::from_tokens(&mut tokens) {
-                Some(item) => result.push(Spanned { span: item.span(), node: item }),
+                Some(item) => result.push(respan(item.span(), item)),
                 None => return None,
             }
             match tokens.next() {
@@ -1163,7 +1163,7 @@ impl NestedMetaItemKind {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
             if let Some(node) = LitKind::from_token(token) {
                 tokens.next();
-                return Some(NestedMetaItemKind::Literal(Spanned { node: node, span: span }));
+                return Some(NestedMetaItemKind::Literal(respan(span, node)));
             }
         }
 
@@ -1256,7 +1256,7 @@ pub trait HasAttrs: Sized {
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
     fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
-        Spanned { node: self.node.map_attrs(f), span: self.span }
+        respan(self.span, self.node.map_attrs(f))
     }
 }
 
