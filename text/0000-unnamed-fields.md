@@ -160,6 +160,48 @@ struct S {
 }
 ```
 
+## Mental model
+
+In the memory layout of a structure, the alternating uses of `struct { ... }`
+and `union { ... }` change the "direction" that fields are being laid out: if
+you think of memory addresses as going vertically, `struct` lays out fields
+vertically, in sequence, and `union` lays out fields horizontally, overlapping
+with each other. The following definition:
+
+```rust
+struct S {
+    a: u32,
+    union {
+        b: u32,
+        struct {
+            c: u16,
+            d: f16,
+        },
+        e: f32,
+    },
+    f: u64,
+}
+```
+
+corresponds to the following structure layout in memory:
+
+```
++-----------+ 0
+|     a     |
++-----------+ 4
+| b | c | e |
+|   +---+   | 6
+|   | d |   |
++-----------+ 8
+|     f     |
++-----------+ 16
+```
+
+The top-level `struct` lays out `a`, the unnamed `union`, and `f`, in
+sequential order. The unnamed `union` lays out `b`, the unnamed `struct`, and
+`e`, in parallel. The unnamed `struct` lays out `c` and `d` in sequential
+order.
+
 ## Instantiation
 
 Given the following declaration:
