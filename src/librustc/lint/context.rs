@@ -101,7 +101,7 @@ pub struct FutureIncompatibleInfo {
     pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
 }
 
-/// The targed of the `by_name` map, which accounts for renaming/deprecation.
+/// The target of the `by_name` map, which accounts for renaming/deprecation.
 enum TargetLint {
     /// A direct lint target
     Id(LintId),

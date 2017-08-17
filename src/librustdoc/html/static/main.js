@@ -596,9 +596,9 @@
             }
 
             return {
-                raw,
-                query,
-                type,
+                raw: raw,
+                query: query,
+                type: type,
                 id: query + type
             };
         }
@@ -837,7 +837,7 @@
 
                 searchWords.push(crate);
                 searchIndex.push({
-                    crate,
+                    crate: crate,
                     ty: 1, // == ExternCrate
                     name: crate,
                     path: "",

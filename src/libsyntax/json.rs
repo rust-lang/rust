@@ -11,7 +11,7 @@
 //! A JSON emitter for errors.
 //!
 //! This works by converting errors to a simplified structural format (see the
-//! structs at the start of the file) and then serialising them. These should
+//! structs at the start of the file) and then serializing them. These should
 //! contain as much information about the error as possible.
 //!
 //! The format of the JSON output should be considered *unstable*. For now the

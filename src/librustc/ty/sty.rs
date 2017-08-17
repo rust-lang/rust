@@ -739,7 +739,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// The process of doing that is called "skolemization". The bound regions
 /// are replaced by skolemized markers, which don't satisfy any relation
-/// not explicity provided.
+/// not explicitly provided.
 ///
 /// There are 2 kinds of skolemized regions in rustc: `ReFree` and
 /// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
