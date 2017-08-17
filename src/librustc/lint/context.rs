@@ -253,7 +253,7 @@ impl LintStore {
         }
     }
 
-    // Checks the validity of lint names derived from the command line
+    /// Checks the validity of lint names derived from the command line
     pub fn check_lint_name_cmdline(&self,
                                    sess: &Session,
                                    lint_name: &str,
