@@ -296,7 +296,7 @@ impl Config {
         config.rust_codegen_units = 1;
         config.channel = "dev".to_string();
         config.codegen_tests = true;
-        config.ignore_git = true;
+        config.ignore_git = false;
         config.rust_dist_src = true;
 
         config.on_fail = flags.on_fail;
