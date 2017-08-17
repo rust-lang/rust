@@ -16,6 +16,20 @@ use ty::{self, Region};
 use hir::def_id::DefId;
 use hir::map as hir_map;
 
+// The struct contains the information about the anonymous region
+// we are searching for.
+pub struct AnonymousArgInfo<'tcx> {
+    // the argument corresponding to the anonymous region
+    pub arg: &'tcx hir::Arg,
+    // the type corresponding to the anonymopus region argument
+    pub arg_ty: ty::Ty<'tcx>,
+    // the ty::BoundRegion corresponding to the anonymous region
+    pub bound_region: ty::BoundRegion,
+    // corresponds to id the argument is the first parameter
+    // in the declaration
+    pub is_first: bool,
+}
+
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method walks the Type of the function body arguments using
     // `fold_regions()` function and returns the
@@ -28,11 +42,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // i32, which is the type of y but with the anonymous region replaced
     // with 'a, the corresponding bound region and is_first which is true if
     // the hir::Arg is the first argument in the function declaration.
-    pub fn find_arg_with_anonymous_region
-        (&self,
-         anon_region: Region<'tcx>,
-         replace_region: Region<'tcx>)
-         -> Option<(&hir::Arg, ty::Ty<'tcx>, ty::BoundRegion, bool)> {
+    pub fn find_arg_with_anonymous_region(&self,
+                                          anon_region: Region<'tcx>,
+                                          replace_region: Region<'tcx>)
+                                          -> Option<AnonymousArgInfo> {
 
         if let ty::ReFree(ref free_region) = *anon_region {
 
@@ -57,7 +70,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                     });
                                 if found_anon_region {
                                     let is_first = index == 0;
-                                    Some((arg, new_arg_ty, free_region.bound_region, is_first))
+                                    Some(AnonymousArgInfo {
+                                             arg: arg,
+                                             arg_ty: new_arg_ty,
+                                             bound_region: free_region.bound_region,
+                                             is_first: is_first,
+                                         })
                                 } else {
                                     None
                                 }

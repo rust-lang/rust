@@ -30,7 +30,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.
-        let (named, (arg, new_ty, br, is_first), (scope_def_id, _)) = if
+        let (named, anon_arg_info, (scope_def_id, _)) = if
             sub.is_named_region() && self.is_suitable_anonymous_region(sup, false).is_some() {
             (sub,
              self.find_arg_with_anonymous_region(sup, sub).unwrap(),
@@ -44,6 +44,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return false; // inapplicable
         };
 
+        let (arg, new_ty, br, is_first) = (anon_arg_info.arg,
+                                           anon_arg_info.arg_ty,
+                                           anon_arg_info.bound_region,
+                                           anon_arg_info.is_first);
         if self.is_return_type_anon(scope_def_id, br) || self.is_self_anon(is_first, scope_def_id) {
             return false;
         } else {

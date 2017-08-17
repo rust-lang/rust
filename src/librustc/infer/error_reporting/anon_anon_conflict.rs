@@ -65,8 +65,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             (self.find_arg_with_anonymous_region(sup, sup),
              self.find_arg_with_anonymous_region(sub, sub)) {
 
-            let ((anon_arg_sup, _, _, is_first_sup), (anon_arg_sub, _, _, is_first_sub)) =
-                (sup_arg, sub_arg);
+            let (anon_arg_sup, is_first_sup, anon_arg_sub, is_first_sub) =
+                (sup_arg.arg, sup_arg.is_first, sub_arg.arg, sub_arg.is_first);
             if self.is_self_anon(is_first_sup, scope_def_id_sup) ||
                self.is_self_anon(is_first_sub, scope_def_id_sub) {
                 return false;
