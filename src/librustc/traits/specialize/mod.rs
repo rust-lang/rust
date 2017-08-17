@@ -247,6 +247,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     infcx.save_and_restore_in_snapshot_flag(|infcx| {
         let mut fulfill_cx = FulfillmentContext::new();
         for oblig in obligations.into_iter() {
+            debug!("fulfill_implication: registering obligation {:?}",
+                   oblig);
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
         match fulfill_cx.select_all_or_error(infcx) {

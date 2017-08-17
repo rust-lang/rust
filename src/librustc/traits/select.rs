@@ -472,12 +472,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let ret = match self.candidate_from_obligation(&stack)? {
             None => None,
             Some(candidate) => {
+                debug!("select: candidate={:?}", candidate);
                 let mut candidate = self.confirm_candidate(obligation, candidate)?;
-                let inferred_obligations = (*self.inferred_obligations).into_iter().cloned();
+                debug!("select: confirmed candidate={:?}", candidate);
+                let inferred_obligations: Vec<_> =
+                    (*self.inferred_obligations).into_iter().cloned().collect();
+                debug!("select: inferred_obligations={:?}", inferred_obligations);
+                debug!("select: candidate.nested_obligations={:?}",
+                       candidate.nested_obligations_mut());
                 candidate.nested_obligations_mut().extend(inferred_obligations);
                 Some(candidate)
             },
         };
+
+        debug!("select: ret={:?}", ret);
 
         // Test whether this is a `()` which was produced by defaulting a
         // diverging type variable with `!` disabled. If so, we may need
@@ -1428,13 +1436,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 self, obligation.param_env.clone(), obligation.cause.clone(),
                 &trait_bound);
         debug!("match_projection: \
-                obligation={:?}, normal_bound={:?}, \
+                normal_bound={:?}, \
                 additional inferred_obligations={:?}",
-               obligation, normal_bound, obligations);
+               normal_bound, obligations);
+        self.inferred_obligations.extend(obligations);
+
+        let Normalized { value: normal_skol_trait_ref, obligations } =
+            project::normalize(
+                self, obligation.param_env.clone(), obligation.cause.clone(),
+                &skol_trait_ref);
+        debug!("match_projection: \
+                normal_skol_trait_ref={:?}, \
+                additional inferred_obligations={:?}",
+               normal_skol_trait_ref, obligations);
         self.inferred_obligations.extend(obligations);
 
         match self.infcx.at(&obligation.cause, obligation.param_env)
-                        .sup(ty::Binder(skol_trait_ref), normal_bound) {
+                        .sup(ty::Binder(normal_skol_trait_ref), normal_bound) {
             Ok(InferOk { obligations, .. }) => {
                 self.inferred_obligations.extend(obligations);
             }
