@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn f() {
-    let x = [1].iter();
+    let x = vec![1].iter();
 }
 
 fn main() {

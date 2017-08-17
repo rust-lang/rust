@@ -345,9 +345,6 @@ declare_features! (
     // Allows `repr(align(u16))` struct attribute (RFC 1358)
     (active, repr_align, "1.17.0", Some(33626)),
 
-    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
-    (active, rvalue_static_promotion, "1.15.1", Some(38865)),
-
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289)),
 
@@ -461,6 +458,8 @@ declare_features! (
     (accepted, associated_consts, "1.20.0", Some(29646)),
     // Usage of the `compile_error!` macro
     (accepted, compile_error, "1.20.0", Some(40872)),
+    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
+    (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

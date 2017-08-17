@@ -1,49 +1,49 @@
 error[E0597]: `young[..]` does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:52:1
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:54:1
    |
-19 |     v2.push(&young[0]);      // statement 4
+21 |     v2.push(&young[0]);      // statement 4
    |              -------- borrow occurs here
 ...
-52 | }
+54 | }
    | ^ `young[..]` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:24:18
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:26:22
    |
-24 |     v3.push(&'x');           // statement 6
-   |              --- ^ temporary value dropped here while still borrowed
+26 |     v3.push(&id('x'));           // statement 6
+   |              ------- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...
-52 | }
+54 | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:34:22
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:36:26
    |
-34 |         v4.push(&'y');
-   |                  --- ^ temporary value dropped here while still borrowed
+36 |         v4.push(&id('y'));
+   |                  ------- ^ temporary value dropped here while still borrowed
    |                  |
    |                  temporary value created here
 ...
-40 |     }                       // (statement 7)
+42 |     }                       // (statement 7)
    |     - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime
 
 error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-let-suggestion-suffixes.rs:45:18
+  --> $DIR/borrowck-let-suggestion-suffixes.rs:47:22
    |
-45 |     v5.push(&'z');
-   |              --- ^ temporary value dropped here while still borrowed
+47 |     v5.push(&id('z'));
+   |              ------- ^ temporary value dropped here while still borrowed
    |              |
    |              temporary value created here
 ...
-52 | }
+54 | }
    | - temporary value needs to live until here
    |
    = note: consider using a `let` binding to increase its lifetime

@@ -26,7 +26,7 @@ pub struct DefIdForest {
     /// The minimal set of DefIds required to represent the whole set.
     /// If A and B are DefIds in the DefIdForest, and A is a descendant
     /// of B, then only B will be in root_ids.
-    /// We use a SmallVec here because (for its use for cacheing inhabitedness)
+    /// We use a SmallVec here because (for its use for caching inhabitedness)
     /// its rare that this will contain even two ids.
     root_ids: SmallVec<[DefId; 1]>,
 }

@@ -3017,8 +3017,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
                               "attempted to take value of method `{}` on type `{}`",
                               field.node, expr_t)
-                .help("maybe a `()` to call it is missing? \
-                       If not, try an anonymous function")
+                .help("maybe a `()` to call it is missing?")
                 .emit();
             self.tcx().types.err
         } else {

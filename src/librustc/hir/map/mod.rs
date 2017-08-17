@@ -733,7 +733,7 @@ impl<'hir> Map<'hir> {
 
     /// Returns the nearest enclosing scope. A scope is an item or block.
     /// FIXME it is not clear to me that all items qualify as scopes - statics
-    /// and associated types probably shouldn't, for example. Behaviour in this
+    /// and associated types probably shouldn't, for example. Behavior in this
     /// regard should be expected to be highly unstable.
     pub fn get_enclosing_scope(&self, id: NodeId) -> Option<NodeId> {
         match self.walk_parent_nodes(id, |node| match *node {

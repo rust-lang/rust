@@ -809,7 +809,7 @@ impl<T: ?Sized> RefCell<T> {
     /// [`borrow_mut`] method instead if `self` isn't mutable.
     ///
     /// Also, please be aware that this method is only for special circumstances and is usually
-    /// not you want. In case of doubt, use [`borrow_mut`] instead.
+    /// not what you want. In case of doubt, use [`borrow_mut`] instead.
     ///
     /// [`borrow_mut`]: #method.borrow_mut
     ///

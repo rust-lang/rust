@@ -444,7 +444,7 @@ impl Build {
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
-    /// running a particular compiler, wehther or not we're building the
+    /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
                  compiler: Compiler,

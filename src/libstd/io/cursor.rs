@@ -69,7 +69,7 @@ use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 /// // now let's write a test
 /// #[test]
 /// fn test_writes_bytes() {
-///     // setting up a real File is much more slow than an in-memory buffer,
+///     // setting up a real File is much slower than an in-memory buffer,
 ///     // let's use a cursor instead
 ///     use std::io::Cursor;
 ///     let mut buff = Cursor::new(vec![0; 15]);

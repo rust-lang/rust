@@ -74,7 +74,7 @@ use mir::transform::MirSource;
 ///  (M1.): Misc extent of the whole `let a = ...;` statement.
 ///  (M2.): Misc extent of the `f()` expression.
 ///  (M3.): Misc extent of the `f().g(..)` expression.
-///  (M4.): Misc extent of the block labelled `'b:`.
+///  (M4.): Misc extent of the block labeled `'b:`.
 ///  (M5.): Misc extent of the `let x = d();` statement
 ///  (D6.): DestructionScope for temporaries created during M5.
 ///  (R7.): Remainder extent for block `'b:`, stmt 0 (let x = ...).

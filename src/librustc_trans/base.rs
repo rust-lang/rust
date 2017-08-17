@@ -664,7 +664,7 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt) {
     }
 }
 
-/// Create the `main` function which will initialise the rust runtime and call
+/// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {

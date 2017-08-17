@@ -8,8 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_variables)]
-fn main() {
-    let x: &'static u32 = &42; //~ error: does not live long enough
-    let y: &'static Option<u32> = &None; //~ error: does not live long enough
+#![feature(conservative_impl_trait)]
+
+pub fn g() -> impl Iterator<Item=u8> {
+    Some(1u8).into_iter()
 }
+
+pub fn h() -> (impl Iterator<Item=u8>) {
+    Some(1u8).into_iter()
+}
+
+pub fn i() -> impl Iterator<Item=u8> + 'static {
+    Some(1u8).into_iter()
+}
+
+pub fn j() -> impl Iterator<Item=u8> + Clone {
+    Some(1u8).into_iter()
+}
+
+// @has issue_43869/fn.g.html
+// @has issue_43869/fn.h.html
+// @has issue_43869/fn.i.html
+// @has issue_43869/fn.j.html

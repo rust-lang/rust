@@ -897,7 +897,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
-    /// error reporting, and so is lazily initialised and generally
+    /// error reporting, and so is lazily initialized and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<Vec<DefId>>>,
 }

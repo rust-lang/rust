@@ -830,7 +830,7 @@ impl CStr {
     ///
     /// It is your responsibility to make sure that the underlying memory is not
     /// freed too early. For example, the following code will cause undefined
-    /// behaviour when `ptr` is used inside the `unsafe` block:
+    /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
     /// use std::ffi::{CString};

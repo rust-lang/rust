@@ -89,7 +89,7 @@ should go to.
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::Ty;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use syntax_pos::{Span};
@@ -665,7 +665,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         assert!(!self.scopes.is_empty()); // or `any` above would be false
 
-        let Builder { ref mut hir, ref mut cfg, ref mut scopes,
+        let Builder { ref mut cfg, ref mut scopes,
                       ref mut cached_resume_block, .. } = *self;
 
         // Build up the drops in **reverse** order. The end result will
@@ -692,8 +692,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(
-                hir.tcx(), cfg, scope.extent_span, scope, target, generator_drop);
+            target = build_diverge_scope(cfg, scope.extent_span, scope, target, generator_drop);
         }
         Some(target)
     }
@@ -829,8 +828,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'gcx, 'tcx>(_tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       cfg: &mut CFG<'tcx>,
+fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
                                        span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock,
