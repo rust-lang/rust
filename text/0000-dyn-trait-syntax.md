@@ -70,7 +70,7 @@ The functionality of `dyn Trait` is identical to today's trait object syntax.
 
 `Box<Trait>` becomes `Box<dyn Trait>`.
 
-`&Trait` and `&mut Trait` become `&dyn Trait` and `&dyn mut Trait`.
+`&Trait` and `&mut Trait` become `&dyn Trait` and `&mut dyn Trait`.
 
 # Drawbacks
 [drawbacks]: #drawbacks
