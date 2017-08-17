@@ -122,6 +122,10 @@ pub struct HygieneData {
     gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
 }
 
+thread_local! {
+    static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
+}
+
 impl HygieneData {
     fn new() -> Self {
         HygieneData {
@@ -133,17 +137,10 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        thread_local! {
-            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
-        }
         HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
     }
 
     pub fn safe_with<T, F: FnOnce(&HygieneData) -> T>(f: F) -> T {
-        // FIXME(twk): not sure how this would behave...
-        thread_local! {
-            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
-        }
         HYGIENE_DATA.with(|data| f(&*data.borrow()))
     }
 }
