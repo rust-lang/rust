@@ -1764,6 +1764,37 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     }
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
+    // This call is to remove reexport duplicates in cases such as:
+    //
+    // ```
+    // pub mod foo {
+    //     pub mod bar {
+    //         pub trait Double { fn foo(); }
+    //     }
+    // }
+    //
+    // pub use foo::bar::*;
+    // pub use foo::*;
+    // ```
+    //
+    // `Double` will appear twice in the generated docs.
+    //
+    // FIXME: This code is quite ugly and could be improved. Small issue: DefId
+    // can be identical even if the elements are different (mostly in imports).
+    // So in case this is an import, we keep everything by adding a "unique id"
+    // (which is the position in the vector).
+    indices.dedup_by_key(|i| (items[*i].def_id,
+                              if items[*i].name.as_ref().is_some() {
+                                  Some(full_path(cx, &items[*i]).clone())
+                              } else {
+                                  None
+                              },
+                              items[*i].type_(),
+                              if items[*i].is_import() {
+                                  *i
+                              } else {
+                                  0
+                              }));
 
     debug!("{:?}", indices);
     let mut curty = None;
