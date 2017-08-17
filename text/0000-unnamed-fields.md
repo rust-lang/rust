@@ -40,7 +40,9 @@ This RFC proposes a minimal mechanism to support such interfaces in Rust. This
 feature exists primarily to support ergonomic FFI interfaces that match the
 layout of data structures for the native platform; this RFC intentionally
 limits itself to the `repr(C)` structure representation, and does not provide
-support for using this feature in Rust data structures using `repr(Rust)`.
+support for using this feature in Rust data structures using `repr(Rust)`. As
+precedent, Rust's support for variadic argument lists only permits its use on
+`extern "C"` functions.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
