@@ -339,6 +339,8 @@ type. This RFC provides a usability improvement for such interfaces.
 # Rationale and Alternatives
 [alternatives]: #alternatives
 
+## Not implementing this feature at all
+
 Choosing not to implement this feature would force binding generators (and the
 authors of manual bindings) to invent new names for these groupings of fields.
 Users would need to look up the names for those groupings, and would not be
@@ -346,11 +348,42 @@ able to rely on documentation for the underlying interface. Furthermore,
 binding generators would not have any basis on which to generate a meaningful
 name.
 
+## Not implementable as a macro
+
 We cannot implement this feature as a macro, because it affects the names used
 to reference the fields contained within an unnamed field. A macro could
 extract and define types for the unnamed fields, but that macro would have to
 give a name to those unnamed fields, and accesses would have to include the
 intermediate name.
+
+## Unnamed fields using `_` with named types
+
+Rather than allowing the inline definition of the contents of unnamed `struct`
+or `union` fields, we could allow declaring an unnamed field with a named type.
+For instance:
+
+```rust
+union U { x: i64, y: f64 }
+struct S { _: U, z: usize }
+```
+
+Given these declarations, `S` would contain fields `x`, `y`, and `z`, with `x`
+and `y` overlapping. Rust currently does not allow `_` as a field name, so
+introducing this alternative syntax would not create any compatibility issue.
+This alternative syntax has the advantage of declaring the type layouts
+explicitly, simplifying the language definition. It also allows reusing the
+type definitions for fields within multiple structures, such as a common
+header. While C11 does not directly support inlining of separately defined
+structures, compilers do support it as an extension.
+
+This syntax would have the disadvantage of allowing the structure and union
+declarations to appear arbitrarily far apart from each other, potentially even
+in separate modules. It would also require careful implementation of rustdoc
+support, to show the resulting structure layout. Finally, it would require the
+introduction of names for the intermediate structures, such as in binding
+generators.
+
+## Field aliases
 
 Rather than introducing unnamed fields, we could introduce a mechanism to
 define field aliases for a type, such that for `struct S`, `s.b` desugars to
@@ -363,17 +396,23 @@ different platforms overlap those fields differently using unnamed unions.
 Finally, such a mechanism would make it harder to create bindings for this
 common pattern in C interfaces.
 
+## Alternate syntax
+
 Several alternative syntaxes could exist to designate the equivalent of
 `struct` and `union`. Such syntaxes would declare the same underlying types.
 However, inventing a novel syntax for this mechanism would make it less
 familiar both to Rust users accustomed to structs and unions as well as to C
 users accustomed to unnamed struct and union fields.
 
+## Arbitrary field positioning
+
 We could introduce a mechanism to declare arbitrarily positioned fields, such
 as attributes declaring the offset of each field. The same mechanism was also
 proposed in response to the original union RFC. However, as in that case, using
 struct and union syntax has the advantage of allowing the compiler to implement
 the appropriate positioning and alignment of fields.
+
+## General anonymous types
 
 In addition to introducing just this narrow mechanism for defining unnamed
 fields, we could introduce a fully general mechanism for anonymous `struct` and
