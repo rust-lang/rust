@@ -441,6 +441,10 @@ a {
 .small-section-header:hover > .anchor {
 	display: initial;
 }
+
+.in-band:hover > .anchor {
+	display: initial;
+}
 .anchor {
 	display: none;
 }

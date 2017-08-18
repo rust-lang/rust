@@ -2925,7 +2925,13 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_mode: RenderMode, outer_version: Option<&str>) -> fmt::Result {
     if render_mode == RenderMode::Normal {
-        write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
+        let id = derive_id(match i.inner_impl().trait_ {
+            Some(ref t) => format!("impl-{}", Escape(&format!("{:#}", t))),
+            None => "impl".to_string(),
+        });
+        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><code>{}</code>",
+               id, i.inner_impl())?;
+        write!(w, "<a href='#{}' class='anchor'></a>", id)?;
         write!(w, "</span><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
