@@ -6,8 +6,7 @@
 # Summary
 [summary]: #summary
 
-Improves the clarity, ergonomics, and learnability around explicit lifetimes, so
-that instead of writing
+Improves the clarity, ergonomics, and learnability around explicit lifetimes, so that instead of writing
 
 ```rust
 fn two_args<'b>(arg1: &Foo, arg2: &'b Bar) -> &'b Baz
@@ -21,9 +20,7 @@ fn two_args(arg1: &Foo, arg2: &Bar) -> &'arg2 Baz
 fn two_lifetimes(arg1: &Foo, arg2: &Bar) -> &'arg1 Quux<'arg2>
 ```
 
-More generally, this RFC completely removes the need for listing lifetime
-parameters, instead binding them "in-place" (but with absolute clarity about
-*when* this binding is happening):
+More generally, this RFC completely removes the need for listing lifetime parameters, instead binding them "in-place" (but with absolute clarity about *when* this binding is happening):
 
 ```rust
 fn named_lifetime(arg: &'inner Foo) -> &'inner Bar
@@ -31,9 +28,7 @@ fn nested_lifetime(arg: &&'inner Foo) -> &'inner Bar
 fn outer_lifetime(arg: &'outer &Foo) -> &'outer Bar
 ```
 
-It also proposes linting against leaving off lifetime parameters in structs
-(like `Ref` or `Iter`), instead nudging people to use explicit lifetimes in this
-case (but leveraging the other improvements to make it ergonomic to do so).
+It also proposes linting against leaving off lifetime parameters in structs (like `Ref` or `Iter`), instead nudging people to use explicit lifetimes in this case (but leveraging the other improvements to make it ergonomic to do so).
 
 The changes, in summary, are:
 
@@ -45,8 +40,7 @@ The changes, in summary, are:
   - Implicitly elide lifetimes for non `&` types.
 - The deprecations become errors at the next [epoch](https://github.com/rust-lang/rfcs/pull/2052).
 
-**This RFC does not introduce any breaking changes**, but does deprecate some
-existing forms in favor of improved styles of expression.
+**This RFC does not introduce any breaking changes**, but does deprecate some existing forms in favor of improved styles of expression.
 
 # Motivation
 [motivation]: #motivation
@@ -477,3 +471,6 @@ lifetimes from an `impl` header.
 [unresolved]: #unresolved-questions
 
 - Should we go further and eliminate the need for `for<'a>` notation as well?
+
+- Should we introduce a style lint for imposing a convention distinguishing
+  between `impl` and `fn` lifetimes?
