@@ -244,7 +244,7 @@ impl<'a, 'tcx> SpecializedDecoder<hygiene::Mark> for DecodeContext<'a, 'tcx> {
         if !self.cdata().hygiene_data_being_decoded.get() && mark != 0  {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
-            Ok(hygiene::Mark::from_u32(mark + imported_hygiene.mark_translation_offset))
+            Ok(imported_hygiene.translate_mark(hygiene::Mark::from_u32(mark)))
         } else {
             Ok(hygiene::Mark::from_u32(mark))
         }
@@ -258,7 +258,7 @@ impl<'a, 'tcx> SpecializedDecoder<SyntaxContext> for DecodeContext<'a, 'tcx> {
         if !self.cdata().hygiene_data_being_decoded.get() && ctxt != 0 {
             let imported_hygiene = self.cdata().imported_hygiene_data();
 
-            Ok(SyntaxContext::from_u32(ctxt + imported_hygiene.ctxt_translation_offset))
+            Ok(imported_hygiene.translate_ctxt(SyntaxContext::from_u32(ctxt)))
         } else {
             Ok(SyntaxContext::from_u32(ctxt))
         }

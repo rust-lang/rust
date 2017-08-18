@@ -29,7 +29,7 @@ use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
 
-use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
+use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, UseSpecializedEncodable, opaque};
 
 use std::hash::Hash;
 use std::intrinsics;
@@ -61,6 +61,13 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 
     pub metadata_hashes: EncodedMetadataHashes,
     pub compute_ich: bool,
+    // We need to encode hygiene info after all spans and possibly other data structures
+    // that reference it have been encoded already, since we only encode those elements of it
+    // that are actually used to avoid excessive memory usage. Thus, we need to keep track of
+    // whether we already encoded the hygiene info (and thus committed to a specific set of
+    // information to encode) to make sure we can catch bugs introduced by further changes
+    // quickly.
+    already_encoded_hygiene_data: bool,
 }
 
 macro_rules! encoder_methods {
@@ -133,6 +140,26 @@ impl<'a, 'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext
             self.encode_with_shorthand(predicate, predicate, |ecx| &mut ecx.predicate_shorthands)?
         }
         Ok(())
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<hygiene::SyntaxContext> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, ctxt: &hygiene::SyntaxContext) -> Result<(), Self::Error> {
+        if self.already_encoded_hygiene_data {
+            bug!("trying to encode syntax context `{:?}` after encoding hygiene data!", ctxt);
+        } else {
+            ctxt.default_encode(self)
+        }
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<hygiene::Mark> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, mark: &hygiene::Mark) -> Result<(), Self::Error> {
+        if self.already_encoded_hygiene_data {
+            bug!("trying to encode mark `{:?}` after encoding hygiene data!", mark);
+        } else {
+            mark.default_encode(self)
+        }
     }
 }
 
@@ -323,9 +350,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq_ref(adapted.iter().map(|rc| &**rc))
     }
 
-    fn encode_hygiene_data(&mut self) -> Lazy<hygiene::HygieneData> {
-        self.tcx.sess.cstore.ensure_hygiene_data_loaded();
-        hygiene::HygieneData::safe_with(|data| self.lazy(data))
+    fn encode_hygiene_data(&mut self) -> Lazy<hygiene::HygieneDataMap> {
+        // TODO(twk): remove the `ensure_hygiene_data_loaded` method!
+        hygiene::HygieneData::safe_with(|data| self.lazy(&data.to_map()))
     }
 
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
@@ -372,11 +399,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let codemap = self.encode_codemap();
         let codemap_bytes = self.position() - i;
 
-        // Encode hygiene data
-        i = self.position();
-        let hygiene_data = self.encode_hygiene_data();
-        let hygiene_data_bytes = self.position() - i;
-
         // Encode DefPathTable
         i = self.position();
         let def_path_table = self.encode_def_path_table();
@@ -406,6 +428,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         i = self.position();
         let index = items.write_index(&mut self.opaque.cursor);
         let index_bytes = self.position() - i;
+
+        // Encode hygiene data
+        i = self.position();
+        let hygiene_data = self.encode_hygiene_data();
+        let hygiene_data_bytes = self.position() - i;
+        self.already_encoded_hygiene_data = true;
 
         let tcx = self.tcx;
         let link_meta = self.link_meta;
@@ -437,11 +465,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items_missing,
             native_libraries,
             codemap,
-            hygiene_data,
             def_path_table,
             impls,
             exported_symbols,
             index,
+            hygiene_data,
         });
 
         let total_bytes = self.position();
@@ -466,10 +494,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("         codemap bytes: {}", codemap_bytes);
             println!("            impl bytes: {}", impl_bytes);
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
-            println!("    hygiene data bytes: {}", hygiene_data_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
             println!("           index bytes: {}", index_bytes);
+            println!("    hygiene data bytes: {}", hygiene_data_bytes);
             println!("            zero bytes: {}", zero_bytes);
             println!("           total bytes: {}", total_bytes);
         }
@@ -1689,6 +1717,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             predicate_shorthands: Default::default(),
             metadata_hashes: EncodedMetadataHashes::new(),
             compute_ich,
+            already_encoded_hygiene_data: false,
         };
 
         // Encode the rustc version string in a predictable location.

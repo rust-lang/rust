@@ -18,13 +18,13 @@
 use Span;
 use symbol::{Ident, Symbol};
 
-use serialize::{Decoder, UseSpecializedDecodable};
+use serialize::{Decoder, Encoder, UseSpecializedDecodable, UseSpecializedEncodable};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
-#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash, RustcEncodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
 pub struct SyntaxContext(pub(super) u32);
 
 #[derive(Copy, Clone, Default, RustcEncodable, RustcDecodable)]
@@ -35,10 +35,10 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct Mark(u32);
 
-#[derive(Default, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Default, RustcEncodable, RustcDecodable)]
 struct MarkData {
     parent: Mark,
     modern: bool,
@@ -114,11 +114,19 @@ impl Mark {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
 pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
+    gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
+    used_marks: Vec<Mark>,
+    used_syntax_contexts: Vec<SyntaxContext>,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct HygieneDataMap {
+    marks: HashMap<Mark, MarkData>,
+    syntax_contexts: HashMap<SyntaxContext, SyntaxContextData>,
     gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
 }
 
@@ -133,6 +141,8 @@ impl HygieneData {
             syntax_contexts: vec![SyntaxContextData::default()],
             markings: HashMap::new(),
             gensym_to_ctxt: HashMap::new(),
+            used_marks: Vec::new(),
+            used_syntax_contexts: Vec::new(),
         }
     }
 
@@ -143,75 +153,202 @@ impl HygieneData {
     pub fn safe_with<T, F: FnOnce(&HygieneData) -> T>(f: F) -> T {
         HYGIENE_DATA.with(|data| f(&*data.borrow()))
     }
+
+    pub fn to_map(&self) -> HygieneDataMap {
+        let mut marks = HashMap::new();
+        let mut syntax_contexts = HashMap::new();
+
+        let mut mark_queue: VecDeque<_> = self.used_marks.iter().cloned().collect();
+        let mut ctxt_queue: VecDeque<_> = self.used_syntax_contexts.iter().cloned().collect();
+        ctxt_queue.extend(self.gensym_to_ctxt.values());
+
+        let gensym_to_ctxt = self.gensym_to_ctxt.clone();
+
+        let mut visited_marks = HashSet::new();
+        let mut visited_ctxts = HashSet::new();
+
+        loop {
+            let next_mark = mark_queue.pop_front().and_then(|mark|
+                // skip default mark and already visited marks
+                if visited_marks.contains(&mark) || mark.0 == 0 {
+                    None
+                } else {
+                    visited_marks.insert(mark);
+                    Some(mark)
+                });
+            let next_ctxt = ctxt_queue.pop_front().and_then(|ctxt|
+                // skip default context and already visited contexts
+                if visited_ctxts.contains(&ctxt) || ctxt.0 == 0 {
+                    None
+                } else {
+                    visited_ctxts.insert(ctxt);
+                    Some(ctxt)
+                });
+
+            if next_mark.is_none() && next_ctxt.is_none() {
+                break;
+            }
+
+            if let Some(mark) = next_mark {
+                let data = &self.marks[mark.0 as usize];
+
+                mark_queue.push_back(data.parent);
+                if let Some(ref info) = data.expn_info {
+                    ctxt_queue.push_back(info.call_site.ctxt);
+
+                    if let Some(span) = info.callee.span {
+                        ctxt_queue.push_back(span.ctxt);
+                    }
+                }
+
+                marks.insert(mark, data.clone());
+            }
+
+            if let Some(ctxt) = next_ctxt {
+                let data = self.syntax_contexts[ctxt.0 as usize];
+
+                mark_queue.push_back(data.outer_mark);
+                ctxt_queue.push_back(data.prev_ctxt);
+                ctxt_queue.push_back(data.modern);
+
+                syntax_contexts.insert(ctxt, data);
+            }
+        }
+
+        HygieneDataMap {
+            marks,
+            syntax_contexts,
+            gensym_to_ctxt,
+        }
+    }
 }
 
 pub fn clear_markings() {
     HygieneData::with(|data| data.markings = HashMap::new());
 }
 
-/// Holds information about a HygieneData imported from another crate.
-/// See `imported_hygiene_data()` in `rustc_metadata` for more information.
-pub struct ImportedHygieneData {
-    /// The imported HygieneData's offset in the local HygieneData's marks vector.
-    pub mark_translation_offset: u32,
-    /// The imported HygieneData's offset in the local HygieneData's syntax contexts vector.
-    pub ctxt_translation_offset: u32,
+fn register_mark_use(mark: Mark) {
+    HygieneData::with(|data| if !data.used_marks.contains(&mark) {
+        data.used_marks.push(mark);
+    });
 }
 
-pub fn extend_hygiene_data(extend_with: HygieneData) -> ImportedHygieneData {
-    fn translate_span(span: &Span, offset: u32) -> Span {
+fn register_syntax_context_use(ctxt: SyntaxContext) {
+    HygieneData::with(|data| if !data.used_syntax_contexts.contains(&ctxt) {
+        data.used_syntax_contexts.push(ctxt)
+    });
+}
+
+/// Holds information about a HygieneData imported from another crate.
+/// See `imported_hygiene_data()` in `rustc_metadata` for more information.
+#[derive(Default)]
+pub struct ImportedHygieneData {
+    /// Map an external crate's syntax contexts to the current crate's.
+    ctxt_map: HashMap<SyntaxContext, SyntaxContext>,
+    /// Map an external crate's marks to the current crate's.
+    mark_map: HashMap<Mark, Mark>,
+}
+
+impl ImportedHygieneData {
+    fn insert_ctxt(&mut self, external: SyntaxContext, target: SyntaxContext) {
+        assert!(!self.ctxt_map.contains_key(&external));
+        self.ctxt_map.insert(external, target);
+    }
+
+    fn insert_mark(&mut self, external: Mark, target: Mark) {
+        assert!(!self.mark_map.contains_key(&external));
+        self.mark_map.insert(external, target);
+    }
+
+    pub fn translate_ctxt(&self, external: SyntaxContext) -> SyntaxContext {
+        self.ctxt_map[&external]
+    }
+
+    pub fn translate_mark(&self, external: Mark) -> Mark {
+        self.mark_map[&external]
+    }
+
+    pub fn translate_span(&self, external: Span) -> Span {
         Span {
-            lo: span.lo,
-            hi: span.hi,
-            ctxt: span.ctxt.translate(offset),
+            lo: external.lo,
+            hi: external.hi,
+            ctxt: self.ctxt_map[&external.ctxt],
         }
     }
 
+    fn translate_mark_data(&self, data: MarkData) -> MarkData {
+        MarkData {
+            parent: self.translate_mark(data.parent),
+            modern: data.modern,
+            expn_info: data.expn_info.as_ref().map(|info| {
+                ExpnInfo {
+                    call_site: self.translate_span(info.call_site),
+                    callee: NameAndSpan {
+                        format: info.callee.format.clone(),
+                        allow_internal_unstable: info.callee.allow_internal_unstable,
+                        allow_internal_unsafe: info.callee.allow_internal_unsafe,
+                        span: info.callee.span.map(|span| self.translate_span(span)),
+                    },
+                }
+            }),
+        }
+    }
+
+    fn translate_ctxt_data(&self, data: SyntaxContextData) -> SyntaxContextData {
+        SyntaxContextData {
+            outer_mark: self.translate_mark(data.outer_mark),
+            prev_ctxt: self.translate_ctxt(data.prev_ctxt),
+            modern: self.translate_ctxt(data.modern),
+        }
+    }
+}
+
+pub fn extend_hygiene_data(extend_with: HygieneDataMap) -> ImportedHygieneData {
     HygieneData::with(move |data| {
+        let mut imported_map = ImportedHygieneData::default();
         let mark_offset = data.marks.len() as u32;
         let ctxt_offset = data.syntax_contexts.len() as u32;
 
-        // skip the default mark, it doesn't need to be translated.
-        for mark_data in extend_with.marks.iter().skip(1) {
-            data.marks.push(MarkData {
-                parent: mark_data.parent.translate(mark_offset),
-                modern: mark_data.modern,
-                expn_info: mark_data.expn_info.as_ref().map(|info| {
-                    ExpnInfo {
-                        call_site: translate_span(&info.call_site, ctxt_offset),
-                        callee: NameAndSpan {
-                            format: info.callee.format.clone(),
-                            allow_internal_unstable: info.callee.allow_internal_unstable,
-                            allow_internal_unsafe: info.callee.allow_internal_unsafe,
-                            span:
-                                info.callee.span.map(|span| translate_span(&span, ctxt_offset)),
-                        },
-                    }
-                }),
+        let HygieneDataMap {
+            mut marks,
+            mut syntax_contexts,
+            mut gensym_to_ctxt,
+        } = extend_with;
+
+        let marks: Vec<_> = marks
+            .drain()
+            .enumerate()
+            .map(|(index_offset, (mark, data))| {
+                let index_offset = index_offset as u32;
+                imported_map.insert_mark(mark, mark.translate(mark_offset + index_offset));
+                data
             })
+            .collect();
+
+        let syntax_contexts: Vec<_> = syntax_contexts
+            .drain()
+            .enumerate()
+            .map(|(index_offset, (ctxt, data))| {
+                let index_offset = index_offset as u32;
+                imported_map.insert_ctxt(ctxt, ctxt.translate(ctxt_offset + index_offset));
+                data
+            })
+            .collect();
+
+        for mark in marks {
+            data.marks.push(imported_map.translate_mark_data(mark));
         }
 
-        // skip the default syntax context, it doesn't need to be translated.
-        for ctxt in extend_with.syntax_contexts.iter().skip(1) {
-            data.syntax_contexts.push(SyntaxContextData {
-                outer_mark: ctxt.outer_mark.translate(mark_offset),
-                prev_ctxt: ctxt.prev_ctxt.translate(ctxt_offset),
-                modern: ctxt.modern.translate(ctxt_offset),
-            });
+        for ctxt in syntax_contexts {
+            data.syntax_contexts.push(imported_map.translate_ctxt_data(ctxt));
         }
 
-        // translate markings map and extend the current one
-        for (&(ctxt1, mark), ctxt2) in extend_with.markings.iter() {
-            data.markings.insert((ctxt1.translate(ctxt_offset), mark.translate(mark_offset)),
-                                 ctxt2.translate(ctxt_offset));
-        }
+        data.gensym_to_ctxt
+            .extend(gensym_to_ctxt
+                        .drain()
+                        .map(|(symbol, ctxt)| (symbol, imported_map.translate_ctxt(ctxt))));
 
-        data.gensym_to_ctxt.extend(extend_with.gensym_to_ctxt);
-
-        ImportedHygieneData {
-            mark_translation_offset: mark_offset,
-            ctxt_translation_offset: ctxt_offset,
-        }
+        imported_map
     })
 }
 
@@ -458,9 +595,23 @@ impl UseSpecializedDecodable for SyntaxContext {
     }
 }
 
+impl UseSpecializedEncodable for SyntaxContext {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        register_syntax_context_use(*self);
+        s.emit_u32(self.0)
+    }
+}
+
 impl UseSpecializedDecodable for Mark {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<Mark, D::Error> {
         d.read_u32().map(Mark::from_u32)
+    }
+}
+
+impl UseSpecializedEncodable for Mark {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        register_mark_use(*self);
+        s.emit_u32(self.0)
     }
 }
 

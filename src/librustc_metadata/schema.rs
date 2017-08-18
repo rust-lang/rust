@@ -204,11 +204,11 @@ pub struct CrateRoot {
     pub lang_items_missing: LazySeq<lang_items::LangItem>,
     pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
-    pub hygiene_data: Lazy<hygiene::HygieneData>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
+    pub hygiene_data: Lazy<hygiene::HygieneDataMap>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
