@@ -20,7 +20,8 @@ use codemap::SpanUtils;
 use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
 use items::{rewrite_struct_field, rewrite_struct_field_prefix};
-use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator};
+use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
+            SeparatorPlace};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{contains_skip, is_attributes_extendable, mk_sp};
 
@@ -257,6 +258,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         tactic: tactic,
         separator: ",",
         trailing_separator: context.config.trailing_comma(),
+        separator_place: SeparatorPlace::Back,
         shape: item_shape,
         ends_with_newline: true,
         preserve_newline: true,

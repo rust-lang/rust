@@ -17,7 +17,7 @@ use Shape;
 use codemap::SpanUtils;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, Separator, SeparatorTactic};
+            ListItem, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::{rewrite_path, PathContext};
 use utils;
@@ -496,6 +496,7 @@ fn rewrite_use_list(
         } else {
             SeparatorTactic::Never
         },
+        separator_place: SeparatorPlace::Back,
         shape: nested_shape,
         ends_with_newline: ends_with_newline,
         preserve_newline: true,

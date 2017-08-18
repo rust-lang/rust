@@ -25,7 +25,7 @@ use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, Separator, SeparatorTactic};
+            ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
@@ -473,6 +473,7 @@ where
         } else {
             SeparatorTactic::Vertical
         },
+        separator_place: SeparatorPlace::Back,
         shape: nested_shape,
         ends_with_newline: ends_with_newline,
         preserve_newline: false,
@@ -555,6 +556,7 @@ fn rewrite_closure_fn_decl(
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
+        separator_place: SeparatorPlace::Back,
         shape: arg_shape,
         ends_with_newline: false,
         preserve_newline: true,
@@ -1578,6 +1580,7 @@ fn rewrite_match_arms(
         // We will add/remove commas inside `arm.rewrite()`, and hence no separator here.
         separator: "",
         trailing_separator: SeparatorTactic::Never,
+        separator_place: SeparatorPlace::Back,
         shape: arm_shape,
         ends_with_newline: true,
         preserve_newline: true,
@@ -1659,6 +1662,7 @@ fn rewrite_match_pattern(
         tactic: tactic,
         separator: " |",
         trailing_separator: SeparatorTactic::Never,
+        separator_place: context.config.match_pattern_separator_break_point(),
         shape: pat_shape,
         ends_with_newline: false,
         preserve_newline: false,
@@ -2161,6 +2165,7 @@ where
         } else {
             context.config.trailing_comma()
         },
+        separator_place: SeparatorPlace::Back,
         shape: shape,
         ends_with_newline: context.use_block_indent() && tactic == DefinitiveListTactic::Vertical,
         preserve_newline: false,
@@ -2761,6 +2766,7 @@ where
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
+        separator_place: SeparatorPlace::Back,
         shape: shape,
         ends_with_newline: false,
         preserve_newline: false,

@@ -61,6 +61,7 @@ pub struct ListFormatting<'a> {
     pub tactic: DefinitiveListTactic,
     pub separator: &'a str,
     pub trailing_separator: SeparatorTactic,
+    pub separator_place: SeparatorPlace,
     pub shape: Shape,
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
@@ -68,6 +69,19 @@ pub struct ListFormatting<'a> {
     // Remove newlines between list elements for expressions.
     pub preserve_newline: bool,
     pub config: &'a Config,
+}
+
+impl<'a> ListFormatting<'a> {
+    pub fn needs_trailing_separator(&self) -> bool {
+        match self.trailing_separator {
+            // We always put separator in front.
+            SeparatorTactic::Always => true,
+            SeparatorTactic::Vertical => self.tactic == DefinitiveListTactic::Vertical,
+            SeparatorTactic::Never => {
+                self.tactic == DefinitiveListTactic::Vertical && self.separator_place.is_front()
+            }
+        }
+    }
 }
 
 impl AsRef<ListItem> for ListItem {
@@ -165,6 +179,32 @@ impl Separator {
     }
 }
 
+/// Where to put separator.
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum SeparatorPlace {
+    Front,
+    Back,
+}
+
+impl_enum_serialize_and_deserialize!(SeparatorPlace, Front, Back);
+
+impl SeparatorPlace {
+    pub fn is_front(&self) -> bool {
+        *self == SeparatorPlace::Front
+    }
+
+    pub fn is_back(&self) -> bool {
+        *self == SeparatorPlace::Back
+    }
+
+    pub fn from_tactic(default: SeparatorPlace, tactic: DefinitiveListTactic) -> SeparatorPlace {
+        match tactic {
+            DefinitiveListTactic::Vertical => default,
+            _ => SeparatorPlace::Back,
+        }
+    }
+}
+
 pub fn definitive_tactic<I, T>(
     items: I,
     tactic: ListTactic,
@@ -214,11 +254,12 @@ where
 
     // Now that we know how we will layout, we can decide for sure if there
     // will be a trailing separator.
-    let mut trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
+    let mut trailing_separator = formatting.needs_trailing_separator();
     let mut result = String::new();
     let cloned_items = items.clone();
     let mut iter = items.into_iter().enumerate().peekable();
     let mut item_max_width: Option<usize> = None;
+    let mut sep_place = SeparatorPlace::from_tactic(formatting.separator_place, tactic);
 
     let mut line_len = 0;
     let indent_str = &formatting.shape.indent.to_string(formatting.config);
@@ -258,13 +299,16 @@ where
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
-                    if tactic == DefinitiveListTactic::Mixed && formatting.ends_with_newline {
+                    if formatting.ends_with_newline {
                         if last {
                             separate = true;
                         } else {
                             trailing_separator = true;
                         }
                     }
+                    sep_place = formatting.separator_place;
+                } else {
+                    sep_place = SeparatorPlace::Back;
                 }
 
                 if line_len > 0 {
@@ -314,6 +358,10 @@ where
             item_max_width = None;
         }
 
+        if separate && sep_place.is_front() && !first {
+            result.push_str(formatting.separator.trim());
+            result.push(' ');
+        }
         result.push_str(&inner_item[..]);
 
         // Post-comments
@@ -330,7 +378,7 @@ where
             result.push_str(&formatted_comment);
         }
 
-        if separate {
+        if separate && sep_place.is_back() {
             result.push_str(formatting.separator);
         }
 
@@ -642,17 +690,6 @@ where
     }
 }
 
-fn needs_trailing_separator(
-    separator_tactic: SeparatorTactic,
-    list_tactic: DefinitiveListTactic,
-) -> bool {
-    match separator_tactic {
-        SeparatorTactic::Always => true,
-        SeparatorTactic::Vertical => list_tactic == DefinitiveListTactic::Vertical,
-        SeparatorTactic::Never => false,
-    }
-}
-
 /// Returns the count and total width of the list items.
 fn calculate_width<I, T>(items: I) -> (usize, usize)
 where
@@ -762,6 +799,7 @@ pub fn struct_lit_formatting<'a>(
         } else {
             context.config.trailing_comma()
         },
+        separator_place: SeparatorPlace::Back,
         shape: shape,
         ends_with_newline: ends_with_newline,
         preserve_newline: true,
