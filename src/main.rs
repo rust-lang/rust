@@ -1,7 +1,6 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-
 #![allow(unknown_lints, missing_docs_in_private_items)]
 
 extern crate clippy_lints;
@@ -12,9 +11,9 @@ extern crate rustc_errors;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
-use rustc::session::{config, Session, CompileIncomplete};
-use rustc::session::config::{Input, ErrorOutputType};
+use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
+use rustc::session::{config, CompileIncomplete, Session};
+use rustc::session::config::{ErrorOutputType, Input};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{self, Command};
@@ -200,9 +199,9 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
-        let manifest_path_arg = std::env::args().skip(2).find(|val| {
-            val.starts_with("--manifest-path=")
-        });
+        let manifest_path_arg = std::env::args()
+            .skip(2)
+            .find(|val| val.starts_with("--manifest-path="));
 
         let mut metadata =
             if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
@@ -218,15 +217,15 @@ pub fn main() {
                 .expect("manifest path could not be canonicalized")
         });
 
-        let packages = if std::env::args().any(|a| a == "--all" ) {
+        let packages = if std::env::args().any(|a| a == "--all") {
             metadata.packages
         } else {
             let package_index = {
                 if let Some(manifest_path) = manifest_path {
                     metadata.packages.iter().position(|package| {
-                        let package_manifest_path = Path::new(&package.manifest_path).canonicalize().expect(
-                            "package manifest path could not be canonicalized",
-                        );
+                        let package_manifest_path = Path::new(&package.manifest_path)
+                            .canonicalize()
+                            .expect("package manifest path could not be canonicalized");
                         package_manifest_path == manifest_path
                     })
                 } else {
@@ -261,9 +260,9 @@ pub fn main() {
                             // code
                             // the call to `cargo_metadata::metadata` must have succeeded. So it's okay to
                             // unwrap the current path's parent.
-                            current_path = current_path.parent().unwrap_or_else(|| {
-                                panic!("could not find parent of path {}", current_path.display())
-                            });
+                            current_path = current_path
+                                .parent()
+                                .unwrap_or_else(|| panic!("could not find parent of path {}", current_path.display()));
                         }
                     }
                 }
@@ -276,7 +275,9 @@ pub fn main() {
             let manifest_path = package.manifest_path;
 
             for target in package.targets {
-                let args = std::env::args().skip(2).filter(|a| a != "--all" && !a.starts_with("--manifest-path="));
+                let args = std::env::args()
+                    .skip(2)
+                    .filter(|a| a != "--all" && !a.starts_with("--manifest-path="));
 
                 let args = std::iter::once(format!("--manifest-path={}", manifest_path)).chain(args);
                 if let Some(first) = target.kind.get(0) {
@@ -289,8 +290,7 @@ pub fn main() {
                             vec![format!("--{}", first), target.name]
                                 .into_iter()
                                 .chain(args),
-                        )
-                        {
+                        ) {
                             std::process::exit(code);
                         }
                     }
