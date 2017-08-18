@@ -152,6 +152,7 @@ Common options:
     -h, --help               Print this message
     --features               Features to compile for the package
     -V, --version            Print version info and exit
+    --all                    @@@ something sensible here (copy from cargo-edit?)
 
 Other options are the same as `cargo rustc`.
 
@@ -217,74 +218,85 @@ pub fn main() {
                 .expect("manifest path could not be canonicalized")
         });
 
-        let package_index = {
-            if let Some(manifest_path) = manifest_path {
-                metadata.packages.iter().position(|package| {
-                    let package_manifest_path = Path::new(&package.manifest_path).canonicalize().expect(
-                        "package manifest path could not be canonicalized",
-                    );
-                    package_manifest_path == manifest_path
-                })
-            } else {
-                let package_manifest_paths: HashMap<_, _> = metadata
-                    .packages
-                    .iter()
-                    .enumerate()
-                    .map(|(i, package)| {
-                        let package_manifest_path = Path::new(&package.manifest_path)
-                            .parent()
-                            .expect("could not find parent directory of package manifest")
-                            .canonicalize()
-                            .expect("package directory cannot be canonicalized");
-                        (package_manifest_path, i)
+        let packages = if std::env::args().any(|a| a == "--all" ) {
+            metadata.packages
+        } else {
+            let package_index = {
+                if let Some(manifest_path) = manifest_path {
+                    metadata.packages.iter().position(|package| {
+                        let package_manifest_path = Path::new(&package.manifest_path).canonicalize().expect(
+                            "package manifest path could not be canonicalized",
+                        );
+                        package_manifest_path == manifest_path
                     })
-                    .collect();
+                } else {
+                    let package_manifest_paths: HashMap<_, _> = metadata
+                        .packages
+                        .iter()
+                        .enumerate()
+                        .map(|(i, package)| {
+                            let package_manifest_path = Path::new(&package.manifest_path)
+                                .parent()
+                                .expect("could not find parent directory of package manifest")
+                                .canonicalize()
+                                .expect("package directory cannot be canonicalized");
+                            (package_manifest_path, i)
+                        })
+                        .collect();
 
-                let current_dir = std::env::current_dir()
-                    .expect("could not read current directory")
-                    .canonicalize()
-                    .expect("current directory cannot be canonicalized");
+                    let current_dir = std::env::current_dir()
+                        .expect("could not read current directory")
+                        .canonicalize()
+                        .expect("current directory cannot be canonicalized");
 
-                let mut current_path: &Path = &current_dir;
+                    let mut current_path: &Path = &current_dir;
 
-                // This gets the most-recent parent (the one that takes the fewest `cd ..`s to
-                // reach).
-                loop {
-                    if let Some(&package_index) = package_manifest_paths.get(current_path) {
-                        break Some(package_index);
-                    } else {
-                        // We'll never reach the filesystem root, because to get to this point in the
-                        // code
-                        // the call to `cargo_metadata::metadata` must have succeeded. So it's okay to
-                        // unwrap the current path's parent.
-                        current_path = current_path.parent().unwrap_or_else(|| {
-                            panic!("could not find parent of path {}", current_path.display())
-                        });
+                    // This gets the most-recent parent (the one that takes the fewest `cd ..`s to
+                    // reach).
+                    loop {
+                        if let Some(&package_index) = package_manifest_paths.get(current_path) {
+                            break Some(package_index);
+                        } else {
+                            // We'll never reach the filesystem root, because to get to this point in the
+                            // code
+                            // the call to `cargo_metadata::metadata` must have succeeded. So it's okay to
+                            // unwrap the current path's parent.
+                            current_path = current_path.parent().unwrap_or_else(|| {
+                                panic!("could not find parent of path {}", current_path.display())
+                            });
+                        }
                     }
                 }
-            }
-        }.expect("could not find matching package");
+            }.expect("could not find matching package");
 
-        let package = metadata.packages.remove(package_index);
-        for target in package.targets {
-            let args = std::env::args().skip(2);
-            if let Some(first) = target.kind.get(0) {
-                if target.kind.len() > 1 || first.ends_with("lib") {
-                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args)) {
-                        std::process::exit(code);
+            vec![metadata.packages.remove(package_index)]
+        };
+
+        for package in packages {
+            let manifest_path = package.manifest_path;
+
+            for target in package.targets {
+                let args = std::env::args().skip(2).filter(|a| a != "--all" && !a.starts_with("--manifest-path="));
+
+                let args = std::iter::once(format!("--manifest-path={}", manifest_path)).chain(args);
+                if let Some(first) = target.kind.get(0) {
+                    if target.kind.len() > 1 || first.ends_with("lib") {
+                        if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args)) {
+                            std::process::exit(code);
+                        }
+                    } else if ["bin", "example", "test", "bench"].contains(&&**first) {
+                        if let Err(code) = process(
+                            vec![format!("--{}", first), target.name]
+                                .into_iter()
+                                .chain(args),
+                        )
+                        {
+                            std::process::exit(code);
+                        }
                     }
-                } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(
-                        vec![format!("--{}", first), target.name]
-                            .into_iter()
-                            .chain(args),
-                    )
-                    {
-                        std::process::exit(code);
-                    }
+                } else {
+                    panic!("badly formatted cargo metadata: target::kind is an empty array");
                 }
-            } else {
-                panic!("badly formatted cargo metadata: target::kind is an empty array");
             }
         }
     } else {
