@@ -148,6 +148,7 @@ pub mod unicode;
 pub mod unsafe_removed_from_name;
 pub mod unused_io_amount;
 pub mod unused_label;
+pub mod use_self;
 pub mod vec;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -319,6 +320,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box should_assert_eq::ShouldAssertEq);
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
     reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
+    reg.register_late_lint_pass(box use_self::UseSelf);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
