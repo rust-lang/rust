@@ -18,7 +18,29 @@ fn main() {
         let _a = ();
     }
 
+    consume_units_with_for_loop(); // should be fine as well
+
     let_and_return!(()) // should be fine
+}
+
+// Related to issue #1964
+fn consume_units_with_for_loop() {
+    // `for_let_unit` lint should not be triggered by consuming them using for loop.
+    let v = vec![(), (), ()];
+    let mut count = 0;
+    for _ in v {
+        count += 1;
+    }
+    assert_eq!(count, 3);
+
+    // Same for consuming from some other Iterator<()>.
+    let (tx, rx) = ::std::sync::mpsc::channel();
+    tx.send(()).unwrap();
+    count = 0;
+    for _ in rx.iter() {
+        count += 1;
+    }
+    assert_eq!(count, 1);
 }
 
 #[derive(Copy, Clone)]

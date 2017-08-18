@@ -121,6 +121,22 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     ], {
         return true;
     }}
+
+    // This detects a variable binding in for loop to avoid `let_unit_value`
+    // lint (see issue #1964).
+    //
+    // ```
+    // for _ in vec![()] {
+    //   // anything
+    // }
+    // ```
+    if_let_chain! {[
+        let hir::DeclLocal(ref loc) = decl.node,
+        let hir::LocalSource::ForLoopDesugar = loc.source,
+    ], {
+        return true;
+    }}
+
     false
 }
 
