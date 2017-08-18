@@ -81,6 +81,8 @@ The functionality of `dyn Trait` is identical to today's trait object syntax.
 
 - `&dyn Trait` might give the impression that `&dyn` is a third type of reference alongside `&` and `&mut`.
 
+- In general, favoring generics over trait objects makes Rust code take longer to compile, and this change may encourage more of that.
+
 # Rationale and Alternatives
 [alternatives]: #alternatives
 
