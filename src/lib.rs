@@ -486,7 +486,7 @@ impl FormattingError {
     fn msg_suffix(&self) -> String {
         match self.kind {
             ErrorKind::LineOverflow(..) if self.is_comment => format!(
-                "use `error_on_lineoverflow_comments = false` to suppress \
+                "use `error_on_line_overflow_comments = false` to suppress \
                  the warning against line comments\n",
             ),
             _ => String::from(""),
