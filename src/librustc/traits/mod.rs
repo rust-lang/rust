@@ -20,7 +20,7 @@ use hir::def_id::DefId;
 use middle::region::RegionMaps;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
-use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
+use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use infer::{InferCtxt};
 
@@ -133,7 +133,7 @@ pub enum ObligationCauseCode<'tcx> {
     RepeatVec,
 
     /// Types of fields (other than the last) in a struct must be sized.
-    FieldSized,
+    FieldSized(AdtKind),
 
     /// Constant expressions must be sized.
     ConstSized,

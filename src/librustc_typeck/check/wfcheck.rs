@@ -233,7 +233,10 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                         fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
                         traits::ObligationCause::new(field.span,
                                                      fcx.body_id,
-                                                     traits::FieldSized));
+                                                     traits::FieldSized(match item.node.adt_kind() {
+                                                        Some(i) => i,
+                                                        None => bug!(),
+                                                     })));
                 }
 
                 // All field types must be well-formed.
