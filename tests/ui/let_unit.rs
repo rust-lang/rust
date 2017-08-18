@@ -33,9 +33,11 @@ fn consume_units_with_for_loop() {
     }
     assert_eq!(count, 3);
 
-    // Same for consuming from some other Iterator<()>.
+    // Same for consuming from some other Iterator<Item = ()>.
     let (tx, rx) = ::std::sync::mpsc::channel();
     tx.send(()).unwrap();
+    drop(tx);
+
     count = 0;
     for _ in rx.iter() {
         count += 1;
