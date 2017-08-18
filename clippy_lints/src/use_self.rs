@@ -1,8 +1,9 @@
 use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_path, NestedVisitorMap};
-use utils::span_lint;
+use utils::span_lint_and_then;
 use syntax::ast::NodeId;
+use syntax_pos::symbol::keywords::SelfType;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
@@ -33,7 +34,7 @@ use syntax::ast::NodeId;
 declare_lint! {
     pub USE_SELF,
     Allow,
-    "Repetitive struct name usage whereas `Self` is applicable"
+    "Unnecessary structure name repetition whereas `Self` is applicable"
 }
 
 #[derive(Copy, Clone, Default)]
@@ -72,13 +73,13 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         if self.item_path.def == path.def &&
            path.segments
             .last()
-            .expect("segments should be composed of at least 1 elemnt")
-            .name
-            .as_str() != "Self" {
-            span_lint(self.cx,
-                      USE_SELF,
-                      path.span,
-                      "repetitive struct name usage. Use `Self` instead.");
+            .expect("segments should be composed of at least 1 element")
+            .name != SelfType.name() {
+            span_lint_and_then(self.cx, USE_SELF, path.span, "unnecessary structure name repetition", |db| {
+                db.span_suggestion(path.span,
+                                   "use the applicable keyword",
+                                   "Self".to_owned());
+            });
         }
 
         walk_path(self, path);

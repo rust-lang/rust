@@ -1,40 +1,40 @@
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:13:21
    |
 13 |         fn new() -> Foo {
-   |                     ^^^
+   |                     ^^^ help: use the applicable keyword: `Self`
    |
    = note: `-D use-self` implied by `-D warnings`
 
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:14:13
    |
 14 |             Foo {}
-   |             ^^^
+   |             ^^^ help: use the applicable keyword: `Self`
 
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:16:22
    |
 16 |         fn test() -> Foo {
-   |                      ^^^
+   |                      ^^^ help: use the applicable keyword: `Self`
 
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:17:13
    |
 17 |             Foo::new()
-   |             ^^^^^^^^
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:22:25
    |
 22 |         fn default() -> Foo {
-   |                         ^^^
+   |                         ^^^ help: use the applicable keyword: `Self`
 
-error: repetitive struct name usage. Use `Self` instead.
+error: unnecessary structure name repetition
   --> $DIR/use_self.rs:23:13
    |
 23 |             Foo::new()
-   |             ^^^^^^^^
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: aborting due to 6 previous errors
 
