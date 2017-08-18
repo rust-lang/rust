@@ -159,10 +159,9 @@ fn issue339() {
         // t comment
         t => 1,
         u => 2,
-        // TODO uncomment when block-support exists
-        // v => {
-        // } /* funky block
-        //    * comment */
+        v => {
+        } /* funky block
+           * comment */
         // final comment
     }
 }

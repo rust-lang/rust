@@ -128,13 +128,15 @@ fn issue339() {
         h => {
             // comment above block
         }
-        i => {} // comment below block
+        i => {}
+        // comment below block
         j => {
             // comment inside block
         }
         j2 => {
             // comments inside...
-        } // ... and after
+        }
+        // ... and after
         // TODO uncomment when vertical whitespace is handled better
         // k => {
         //
@@ -156,11 +158,9 @@ fn issue339() {
         // t comment
         t => 1,
         u => 2,
-        // TODO uncomment when block-support exists
-        // v => {
-        // } /* funky block
-        //    * comment */
-        // final comment
+        v => {} /* funky block
+                 * comment */
+                /* final comment */
     }
 }
 
@@ -173,8 +173,8 @@ fn issue355() {
         e => vec![1, 2],
         f => vec![3; 4],
         h => println!("a", b), // h comment
-        i => vec![1, 2], // i comment
-        j => vec![3; 4], // j comment
+        i => vec![1, 2],       // i comment
+        j => vec![3; 4],       // j comment
         // k comment
         k => println!("a", b),
         // l comment
@@ -213,11 +213,11 @@ fn issue355() {
         y => vec![3; 4],
         // Brackets with comments
         tc => println!{"a", b}, // comment
-        uc => vec![1, 2], // comment
-        vc => vec![3; 4], // comment
+        uc => vec![1, 2],       // comment
+        vc => vec![3; 4],       // comment
         wc => println!["a", b], // comment
-        xc => vec![1, 2], // comment
-        yc => vec![3; 4], // comment
+        xc => vec![1, 2],       // comment
+        yc => vec![3; 4],       // comment
         yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
             aaaaaaaaaa,
             bbbbbbbbbb,

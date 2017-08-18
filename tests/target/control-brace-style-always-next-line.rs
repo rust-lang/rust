@@ -41,7 +41,8 @@ fn main() {
     }
 
     match some_var
-    { // match comment
+    {
+        // match comment
         pattern0 => val0,
         pattern1 => val1,
         pattern2 | pattern3 =>
