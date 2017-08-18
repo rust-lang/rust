@@ -1432,8 +1432,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                obligation, trait_bound);
 
         let Normalized { value: normal_bound, obligations } =
-            project::normalize(
-                self, obligation.param_env.clone(), obligation.cause.clone(),
+            normalize_with_depth(
+                self,
+                obligation.param_env.clone(),
+                obligation.cause.clone(),
+                obligation.recursion_depth,
                 &trait_bound);
         debug!("match_projection: \
                 normal_bound={:?}, \
@@ -1442,8 +1445,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.inferred_obligations.extend(obligations);
 
         let Normalized { value: normal_skol_trait_ref, obligations } =
-            project::normalize(
-                self, obligation.param_env.clone(), obligation.cause.clone(),
+            normalize_with_depth(
+                self,
+                obligation.param_env.clone(),
+                obligation.cause.clone(),
+                obligation.recursion_depth,
                 &skol_trait_ref);
         debug!("match_projection: \
                 normal_skol_trait_ref={:?}, \
