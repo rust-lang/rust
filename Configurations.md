@@ -1265,6 +1265,64 @@ Maximum width of each line
 
 See also [`error_on_line_overflow`](#error_on_line_overflow).
 
+## `multiline_closure_forces_block`
+
+Force multiline closure bodies to be wrapped in a block
+
+- **Default value**: `false`
+- **Possible values**: `false`, `true`
+
+#### `false`:
+
+```rust
+result.and_then(|maybe_value| match maybe_value {
+    None => ...,
+    Some(value) => ...,
+})
+```
+
+#### `true`:
+
+```rust
+result.and_then(|maybe_value| {
+    match maybe_value {
+        None => ...,
+        Some(value) => ...,
+    }
+})
+```
+
+## `multiline_match_arm_forces_block`
+
+Force multiline match arm bodies to be wrapped in a block
+
+- **Default value**: `false`
+- **Possible values**: `false`, `true`
+
+#### `false`:
+
+```rust
+match lorem {
+    None => if ipsum {
+        println!("Hello World");
+    },
+    Some(dolor) => ...,
+}
+```
+
+#### `true`:
+
+```rust
+match lorem {
+    None => {
+        if ipsum {
+            println!("Hello World");
+        }
+    }
+    Some(dolor) => ...,
+}
+```
+
 ## `newline_style`
 
 Unix or Windows line endings

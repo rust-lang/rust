@@ -690,6 +690,13 @@ fn rewrite_closure_expr(
     if classify::expr_requires_semi_to_be_stmt(left_most_sub_expr(expr)) {
         rewrite = and_one_line(rewrite);
     }
+    rewrite = rewrite.and_then(|rw| {
+        if context.config.multiline_closure_forces_block() && rw.contains('\n') {
+            None
+        } else {
+            Some(rw)
+        }
+    });
     rewrite.map(|rw| format!("{} {}", prefix, rw))
 }
 
@@ -1690,12 +1697,20 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
             if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
-                (expr.can_be_overflowed(context, 1), &**expr)
+                (
+                    !context.config.multiline_match_arm_forces_block() &&
+                        expr.can_be_overflowed(context, 1),
+                    &**expr,
+                )
             } else {
                 (false, &*body)
             }
         }
-        _ => (body.can_be_overflowed(context, 1), &*body),
+        _ => (
+            !context.config.multiline_match_arm_forces_block() &&
+                body.can_be_overflowed(context, 1),
+            &*body,
+        ),
     }
 }
 
