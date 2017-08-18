@@ -660,7 +660,7 @@ yield point.
 # #![feature(generators, generator_trait)]
 # use std::ops::Generator;
 let mut b = || {
-    let a = &3; // <-- This borrow...
+    let a = &String::new(); // <-- This borrow...
     yield (); // ...is still in scope here, when the yield occurs.
     println!("{}", a);
 };
