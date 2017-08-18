@@ -584,6 +584,7 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
 struct UsePlacementFinder {
     target_module: NodeId,
     span: Option<Span>,
+    found_use: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
@@ -611,6 +612,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                         let mut span = item.span;
                         span.hi = span.lo;
                         self.span = Some(span);
+                        self.found_use = true;
                         return;
                     }
                 },
@@ -3576,11 +3578,12 @@ impl<'a> Resolver<'a> {
             let mut finder = UsePlacementFinder {
                 target_module: node_id,
                 span: None,
+                found_use: false,
             };
             visit::walk_crate(&mut finder, krate);
             if !candidates.is_empty() {
                 let span = finder.span.expect("did not find module");
-                show_candidates(&mut err, span, &candidates, better);
+                show_candidates(&mut err, span, &candidates, better, finder.found_use);
             }
             err.emit();
         }
@@ -3776,7 +3779,8 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, St
 fn show_candidates(err: &mut DiagnosticBuilder,
                    span: Span,
                    candidates: &[ImportSuggestion],
-                   better: bool) {
+                   better: bool,
+                   found_use: bool) {
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -3792,7 +3796,14 @@ fn show_candidates(err: &mut DiagnosticBuilder,
     let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
     for candidate in &mut path_strings {
-        *candidate = format!("use {};\n", candidate);
+        // produce an additional newline to separate the new use statement
+        // from the directly following item.
+        let additional_newline = if found_use {
+            ""
+        } else {
+            "\n"
+        };
+        *candidate = format!("use {};\n{}", candidate, additional_newline);
     }
 
     err.span_suggestions(span, &msg, path_strings);

@@ -217,8 +217,10 @@ impl CodeSuggestion {
             if !buf.ends_with('\n') {
                 push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
-            // remove trailing newline
-            buf.pop();
+            // remove trailing newlines
+            while buf.ends_with('\n') {
+                buf.pop();
+            }
         }
         bufs
     }
