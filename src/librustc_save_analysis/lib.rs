@@ -591,7 +591,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 self.tables.qpath_def(qpath, hir_id)
             }
 
-            Node::NodeLocal(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
+            Node::NodeBinding(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
                 HirDef::Local(def_id)
             }
 

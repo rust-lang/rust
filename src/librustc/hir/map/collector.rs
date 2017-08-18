@@ -138,7 +138,7 @@ impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
 
     fn visit_pat(&mut self, pat: &'hir Pat) {
         let node = if let PatKind::Binding(..) = pat.node {
-            NodeLocal(pat)
+            NodeBinding(pat)
         } else {
             NodePat(pat)
         };
