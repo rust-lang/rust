@@ -195,6 +195,13 @@ impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
         });
     }
 
+    fn visit_local(&mut self, l: &'hir Local) {
+        self.insert(l.id, NodeLocal(l));
+        self.with_parent(l.id, |this| {
+            intravisit::walk_local(this, l)
+        })
+    }
+
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
     }

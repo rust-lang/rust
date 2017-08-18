@@ -56,6 +56,7 @@ pub enum Node<'hir> {
     NodeBinding(&'hir Pat),
     NodePat(&'hir Pat),
     NodeBlock(&'hir Block),
+    NodeLocal(&'hir Local),
 
     /// NodeStructCtor represents a tuple struct.
     NodeStructCtor(&'hir VariantData),
@@ -90,6 +91,7 @@ enum MapEntry<'hir> {
     EntryLifetime(NodeId, &'hir Lifetime),
     EntryTyParam(NodeId, &'hir TyParam),
     EntryVisibility(NodeId, &'hir Visibility),
+    EntryLocal(NodeId, &'hir Local),
 
     /// Roots for node trees.
     RootCrate,
@@ -121,6 +123,7 @@ impl<'hir> MapEntry<'hir> {
             NodeLifetime(n) => EntryLifetime(p, n),
             NodeTyParam(n) => EntryTyParam(p, n),
             NodeVisibility(n) => EntryVisibility(p, n),
+            NodeLocal(n) => EntryLocal(p, n),
         }
     }
 
@@ -143,6 +146,7 @@ impl<'hir> MapEntry<'hir> {
             EntryLifetime(id, _) => id,
             EntryTyParam(id, _) => id,
             EntryVisibility(id, _) => id,
+            EntryLocal(id, _) => id,
 
             NotPresent |
             RootCrate => return None,
@@ -168,6 +172,7 @@ impl<'hir> MapEntry<'hir> {
             EntryLifetime(_, n) => NodeLifetime(n),
             EntryTyParam(_, n) => NodeTyParam(n),
             EntryVisibility(_, n) => NodeVisibility(n),
+            EntryLocal(_, n) => NodeLocal(n),
             _ => return None
         })
     }
@@ -325,7 +330,8 @@ impl<'hir> Map<'hir> {
                 EntryStructCtor(p, _) |
                 EntryLifetime(p, _) |
                 EntryTyParam(p, _) |
-                EntryVisibility(p, _) =>
+                EntryVisibility(p, _) |
+                EntryLocal(p, _) =>
                     id = p,
 
                 EntryExpr(p, _) => {
@@ -923,6 +929,7 @@ impl<'hir> Map<'hir> {
             Some(EntryTyParam(_, ty_param)) => ty_param.span,
             Some(EntryVisibility(_, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, v)) => bug!("unexpected Visibility {:?}", v),
+            Some(EntryLocal(_, local)) => local.span,
 
             Some(RootCrate) => self.forest.krate.span,
             Some(NotPresent) | None => {
@@ -1131,6 +1138,7 @@ impl<'a> print::State<'a> {
             // hir_map to reconstruct their full structure for pretty
             // printing.
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
+            NodeLocal(a)       => self.print_local_decl(&a),
         }
     }
 }
@@ -1231,6 +1239,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeBlock(_)) => {
             format!("block {}{}", map.node_to_pretty_string(id), id_str)
+        }
+        Some(NodeLocal(_)) => {
+            format!("local {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeStructCtor(_)) => {
             format!("struct_ctor {}{}", path_str(), id_str)
