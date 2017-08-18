@@ -114,6 +114,13 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
 
 /// Checks if a `let` decl is from a `for` loop desugaring.
 pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
+    // This will detect plain for-loops without an actual variable binding:
+    //
+    // ```
+    // for x in some_vec {
+    //   // do stuff
+    // }
+    // ```
     if_let_chain! {[
         let hir::DeclLocal(ref loc) = decl.node,
         let Some(ref expr) = loc.init,
