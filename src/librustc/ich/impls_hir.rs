@@ -741,6 +741,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::T
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
             id,
+            hir_id: _,
             name,
             ref attrs,
             ref node,
@@ -774,6 +775,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
             id,
+            hir_id: _,
             name,
             ref vis,
             defaultness,
@@ -930,6 +932,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
             name,
             ref attrs,
             id,
+            hir_id: _,
             ref node,
             ref vis,
             span

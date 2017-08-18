@@ -1265,6 +1265,7 @@ pub struct TraitItemId {
 pub struct TraitItem {
     pub id: NodeId,
     pub name: Name,
+    pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: TraitItemKind,
     pub span: Span,
@@ -1306,6 +1307,7 @@ pub struct ImplItemId {
 pub struct ImplItem {
     pub id: NodeId,
     pub name: Name,
+    pub hir_id: HirId,
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
@@ -1712,8 +1714,9 @@ pub struct ItemId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
     pub name: Name,
-    pub attrs: HirVec<Attribute>,
     pub id: NodeId,
+    pub hir_id: HirId,
+    pub attrs: HirVec<Attribute>,
     pub node: Item_,
     pub vis: Visibility,
     pub span: Span,
