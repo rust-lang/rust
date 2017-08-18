@@ -38,10 +38,16 @@ impl Condvar {
         Condvar { inner: UnsafeCell::new(libc::PTHREAD_COND_INITIALIZER) }
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "l4re",
+              target_os = "android"))]
     pub unsafe fn init(&mut self) {}
 
-    #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+    #[cfg(not(any(target_os = "macos",
+                  target_os = "ios",
+                  target_os = "l4re",
+                  target_os = "android")))]
     pub unsafe fn init(&mut self) {
         use mem;
         let mut attr: libc::pthread_condattr_t = mem::uninitialized();

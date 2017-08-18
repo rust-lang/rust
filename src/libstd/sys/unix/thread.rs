@@ -52,6 +52,11 @@ impl Thread {
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
+
+        // L4Re only supports a maximum of 1Mb per default.
+        #[cfg(target_os = "l4re")]
+        let stack_size = cmp::min(stack_size, 1024 * 1024);
+
         match pthread_attr_setstacksize(&mut attr,
                                         stack_size) {
             0 => {}
@@ -131,6 +136,7 @@ impl Thread {
     #[cfg(any(target_env = "newlib",
               target_os = "solaris",
               target_os = "haiku",
+              target_os = "l4re",
               target_os = "emscripten"))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Illumos, Haiku, and Emscripten have no way to set a thread name.
@@ -226,7 +232,7 @@ pub mod guard {
     }
 
     #[cfg(any(target_os = "android", target_os = "freebsd",
-              target_os = "linux", target_os = "netbsd"))]
+              target_os = "linux", target_os = "netbsd", target_os = "l4re"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();
@@ -328,7 +334,7 @@ pub mod guard {
     }
 
     #[cfg(any(target_os = "android", target_os = "freebsd",
-              target_os = "linux", target_os = "netbsd"))]
+              target_os = "linux", target_os = "netbsd", target_os = "l4re"))]
     pub unsafe fn current() -> Option<usize> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();

@@ -47,7 +47,7 @@ pub mod wtf8;
 #[cfg(target_os = "redox")]
 pub use sys::net;
 
-#[cfg(not(target_os = "redox"))]
+#[cfg(not(any(target_os = "redox", target_os = "l4re")))]
 pub mod net;
 
 #[cfg(feature = "backtrace")]
