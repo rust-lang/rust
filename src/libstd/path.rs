@@ -1685,8 +1685,16 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        // FIXME: Remove target_os = "redox" and allow Redox prefixes
-        self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
+        #[cfg(not(target_os = "redox"))]
+        {
+            self.has_root() && (cfg!(unix) || self.prefix().is_some())
+        }
+        #[cfg(target_os = "redox")]
+        {
+            // FIXME: Allow Redox prefixes
+            use os::unix::ffi::OsStrExt;
+            self.as_os_str().as_bytes().split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
+        }
     }
 
     /// Returns `true` if the `Path` is relative, i.e. not absolute.
