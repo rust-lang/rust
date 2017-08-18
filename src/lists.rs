@@ -380,8 +380,9 @@ where
                 for _ in 0..(comment_alignment + 1) {
                     result.push(' ');
                 }
-                // An additional space for the missing trailing comma
-                if last && item_max_width.is_some() && !separate {
+                // An additional space for the missing trailing separator.
+                if last && item_max_width.is_some() && !separate && !formatting.separator.is_empty()
+                {
                     result.push(' ');
                 }
             }
@@ -525,25 +526,30 @@ where
                         }
                     }
                     let newline_index = post_snippet.find('\n');
-                    let separator_index = post_snippet.find_uncommented(",").unwrap();
-
-                    match (block_open_index, newline_index) {
-                        // Separator before comment, with the next item on same line.
-                        // Comment belongs to next item.
-                        (Some(i), None) if i > separator_index => separator_index + 1,
-                        // Block-style post-comment before the separator.
-                        (Some(i), None) => cmp::max(
-                            find_comment_end(&post_snippet[i..]).unwrap() + i,
-                            separator_index + 1,
-                        ),
-                        // Block-style post-comment. Either before or after the separator.
-                        (Some(i), Some(j)) if i < j => cmp::max(
-                            find_comment_end(&post_snippet[i..]).unwrap() + i,
-                            separator_index + 1,
-                        ),
-                        // Potential *single* line comment.
-                        (_, Some(j)) if j > separator_index => j + 1,
-                        _ => post_snippet.len(),
+                    if let Some(separator_index) = post_snippet.find_uncommented(",") {
+                        match (block_open_index, newline_index) {
+                            // Separator before comment, with the next item on same line.
+                            // Comment belongs to next item.
+                            (Some(i), None) if i > separator_index => separator_index + 1,
+                            // Block-style post-comment before the separator.
+                            (Some(i), None) => cmp::max(
+                                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                separator_index + 1,
+                            ),
+                            // Block-style post-comment. Either before or after the separator.
+                            (Some(i), Some(j)) if i < j => cmp::max(
+                                find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                separator_index + 1,
+                            ),
+                            // Potential *single* line comment.
+                            (_, Some(j)) if j > separator_index => j + 1,
+                            _ => post_snippet.len(),
+                        }
+                    } else {
+                        // Match arms may not have trailing comma. In any case, for match arms,
+                        // we will assume that the post comment belongs to the next arm if they
+                        // do not end with trailing comma.
+                        1
                     }
                 }
                 None => post_snippet

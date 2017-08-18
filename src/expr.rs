@@ -10,7 +10,7 @@
 
 use std::cmp::{min, Ordering};
 use std::fmt::Write;
-use std::iter::ExactSizeIterator;
+use std::iter::{repeat, ExactSizeIterator};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
@@ -1425,44 +1425,24 @@ fn is_unsafe_block(block: &ast::Block) -> bool {
     }
 }
 
-// inter-match-arm-comment-rules:
-//  - all comments following a match arm before the start of the next arm
-//    are about the second arm
-fn rewrite_match_arm_comment(
-    context: &RewriteContext,
-    missed_str: &str,
-    shape: Shape,
-    arm_indent_str: &str,
-) -> Option<String> {
-    // The leading "," is not part of the arm-comment
-    let missed_str = match missed_str.find_uncommented(",") {
-        Some(n) => &missed_str[n + 1..],
-        None => &missed_str[..],
-    };
+// A simple wrapper type against ast::Arm. Used inside write_list().
+struct ArmWrapper<'a> {
+    pub arm: &'a ast::Arm,
+    // True if the arm is the last one in match expression. Used to decide on whether we should add
+    // trailing comma to the match arm when `config.trailing_comma() == Never`.
+    pub is_last: bool,
+}
 
-    let mut result = String::new();
-    // any text not preceeded by a newline is pushed unmodified to the block
-    let first_brk = missed_str.find(|c: char| c == '\n').unwrap_or(0);
-    result.push_str(&missed_str[..first_brk]);
-    let missed_str = &missed_str[first_brk..]; // If missed_str had one newline, it starts with it
-
-    let first = missed_str
-        .find(|c: char| !c.is_whitespace())
-        .unwrap_or(missed_str.len());
-    if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
-        // Excessive vertical whitespace before comment should be preserved
-        // FIXME handle vertical whitespace better
-        result.push('\n');
+impl<'a> ArmWrapper<'a> {
+    pub fn new(arm: &'a ast::Arm, is_last: bool) -> ArmWrapper<'a> {
+        ArmWrapper { arm, is_last }
     }
-    let missed_str = missed_str[first..].trim();
-    if !missed_str.is_empty() {
-        let comment = try_opt!(rewrite_comment(&missed_str, false, shape, context.config));
-        result.push('\n');
-        result.push_str(arm_indent_str);
-        result.push_str(&comment);
-    }
+}
 
-    Some(result)
+impl<'a> Rewrite for ArmWrapper<'a> {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        rewrite_match_arm(context, self.arm, shape, self.is_last)
+    }
 }
 
 fn rewrite_match(
@@ -1511,7 +1491,7 @@ fn rewrite_match(
         try_opt!(
             inner_attrs
                 .rewrite(context, shape)
-                .map(|s| format!("\n{}{}", nested_indent_str, s))
+                .map(|s| format!("{}{}\n", nested_indent_str, s))
         )
     };
 
@@ -1523,11 +1503,18 @@ fn rewrite_match(
         inner_attrs[inner_attrs.len() - 1].span().hi
     };
 
+    let arm_indent_str = if context.config.indent_match_arms() {
+        nested_indent_str
+    } else {
+        shape.indent.to_string(context.config)
+    };
+
     Some(format!(
-        "match {}{}{{{}{}\n{}}}",
+        "match {}{}{{\n{}{}{}\n{}}}",
         cond_str,
         block_sep,
         inner_attrs_str,
+        arm_indent_str,
         try_opt!(rewrite_match_arms(
             context,
             arms,
@@ -1539,8 +1526,10 @@ fn rewrite_match(
     ))
 }
 
-fn arm_comma(config: &Config, body: &ast::Expr) -> &'static str {
-    if config.match_block_trailing_comma() {
+fn arm_comma(config: &Config, body: &ast::Expr, is_last: bool) -> &'static str {
+    if is_last && config.trailing_comma() == SeparatorTactic::Never {
+        ""
+    } else if config.match_block_trailing_comma() {
         ","
     } else if let ast::ExprKind::Block(ref block) = body.node {
         if let ast::BlockCheckMode::Default = block.rules {
@@ -1560,84 +1549,87 @@ fn rewrite_match_arms(
     span: Span,
     open_brace_pos: BytePos,
 ) -> Option<String> {
-    let mut result = String::new();
-
     let arm_shape = if context.config.indent_match_arms() {
         shape.block_indent(context.config.tab_spaces())
     } else {
         shape.block_indent(0)
     }.with_max_width(context.config);
-    let arm_indent_str = arm_shape.indent.to_string(context.config);
 
-    let arm_num = arms.len();
-    for (i, arm) in arms.iter().enumerate() {
-        // Make sure we get the stuff between arms.
-        let missed_str = if i == 0 {
-            context.snippet(mk_sp(open_brace_pos, arm.span().lo))
-        } else {
-            context.snippet(mk_sp(arms[i - 1].span().hi, arm.span().lo))
-        };
-        let comment = try_opt!(rewrite_match_arm_comment(
-            context,
-            &missed_str,
-            arm_shape,
-            &arm_indent_str,
-        ));
-        if !comment.chars().all(|c| c == ' ') {
-            result.push_str(&comment);
-        }
-        result.push('\n');
-        result.push_str(&arm_indent_str);
+    let arm_len = arms.len();
+    let is_last_iter = repeat(false)
+        .take(arm_len.checked_sub(1).unwrap_or(0))
+        .chain(repeat(true));
+    let items = itemize_list(
+        context.codemap,
+        arms.iter()
+            .zip(is_last_iter)
+            .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
+        "}",
+        |arm| arm.arm.span().lo,
+        |arm| arm.arm.span().hi,
+        |arm| arm.rewrite(context, arm_shape),
+        open_brace_pos,
+        span.hi,
+        false,
+    );
+    let arms_vec: Vec<_> = items.collect();
+    let fmt = ListFormatting {
+        tactic: DefinitiveListTactic::Vertical,
+        // We will add/remove commas inside `arm.rewrite()`, and hence no separator here.
+        separator: "",
+        trailing_separator: SeparatorTactic::Never,
+        shape: arm_shape,
+        ends_with_newline: true,
+        preserve_newline: true,
+        config: context.config,
+    };
 
-        let arm_str = rewrite_match_arm(context, arm, arm_shape);
-        if let Some(ref arm_str) = arm_str {
-            // Trim the trailing comma if necessary.
-            if i == arm_num - 1 && context.config.trailing_comma() == SeparatorTactic::Never &&
-                arm_str.ends_with(',')
-            {
-                result.push_str(&arm_str[0..arm_str.len() - 1])
-            } else {
-                result.push_str(arm_str)
-            }
-        } else {
-            // We couldn't format the arm, just reproduce the source.
-            let snippet = context.snippet(arm.span());
-            result.push_str(&snippet);
-            if context.config.trailing_comma() != SeparatorTactic::Never {
-                result.push_str(arm_comma(context.config, &arm.body))
-            }
-        }
-    }
-    // BytePos(1) = closing match brace.
-    let last_span = mk_sp(arms[arms.len() - 1].span().hi, span.hi - BytePos(1));
-    let last_comment = context.snippet(last_span);
-    let comment = try_opt!(rewrite_match_arm_comment(
-        context,
-        &last_comment,
-        arm_shape,
-        &arm_indent_str,
-    ));
-    result.push_str(&comment);
-
-    Some(result)
+    write_list(&arms_vec, &fmt)
 }
 
-fn rewrite_match_arm(context: &RewriteContext, arm: &ast::Arm, shape: Shape) -> Option<String> {
-    let attr_str = if !arm.attrs.is_empty() {
+fn rewrite_match_arm(
+    context: &RewriteContext,
+    arm: &ast::Arm,
+    shape: Shape,
+    is_last: bool,
+) -> Option<String> {
+    let (missing_span, attrs_str) = if !arm.attrs.is_empty() {
         if contains_skip(&arm.attrs) {
-            return None;
+            let (_, body) = flatten_arm_body(context, &arm.body);
+            // `arm.span()` does not include trailing comma, add it manually.
+            return Some(format!(
+                "{}{}",
+                context.snippet(arm.span()),
+                arm_comma(context.config, body, is_last),
+            ));
         }
-        format!(
-            "{}\n{}",
+        (
+            mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi, arm.pats[0].span.lo),
             try_opt!(arm.attrs.rewrite(context, shape)),
-            shape.indent.to_string(context.config)
         )
     } else {
-        String::new()
+        (mk_sp(arm.span().lo, arm.span().lo), String::new())
     };
-    let pats_str = try_opt!(rewrite_match_pattern(context, &arm.pats, &arm.guard, shape));
-    let pats_str = attr_str + &pats_str;
-    rewrite_match_body(context, &arm.body, &pats_str, shape, arm.guard.is_some())
+    let pats_str = try_opt!(
+        rewrite_match_pattern(context, &arm.pats, &arm.guard, shape).and_then(|pats_str| {
+            combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                &pats_str,
+                missing_span,
+                shape,
+                false,
+            )
+        })
+    );
+    rewrite_match_body(
+        context,
+        &arm.body,
+        &pats_str,
+        shape,
+        arm.guard.is_some(),
+        is_last,
+    )
 }
 
 fn rewrite_match_pattern(
@@ -1685,27 +1677,35 @@ fn rewrite_match_pattern(
     Some(format!("{}{}", pats_str, guard_str))
 }
 
-fn rewrite_match_body(
-    context: &RewriteContext,
-    body: &ptr::P<ast::Expr>,
-    pats_str: &str,
-    shape: Shape,
-    has_guard: bool,
-) -> Option<String> {
-    let (extend, body) = match body.node {
+// (extend, body)
+// @extend: true if the arm body can be put next to `=>`
+// @body: flattened body, if the body is block with a single expression
+fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bool, &'a ast::Expr) {
+    match body.node {
         ast::ExprKind::Block(ref block)
             if !is_unsafe_block(block) && is_simple_block(block, context.codemap) =>
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (expr.can_be_overflowed(context, 1), &**expr)
             } else {
-                (false, &**body)
+                (false, &*body)
             }
         }
-        _ => (body.can_be_overflowed(context, 1), &**body),
-    };
+        _ => (body.can_be_overflowed(context, 1), &*body),
+    }
+}
 
-    let comma = arm_comma(&context.config, body);
+fn rewrite_match_body(
+    context: &RewriteContext,
+    body: &ptr::P<ast::Expr>,
+    pats_str: &str,
+    shape: Shape,
+    has_guard: bool,
+    is_last: bool,
+) -> Option<String> {
+    let (extend, body) = flatten_arm_body(context, &body);
+
+    let comma = arm_comma(&context.config, body, is_last);
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let alt_block_sep = alt_block_sep.as_str();
     let (is_block, is_empty_block) = if let ast::ExprKind::Block(ref block) = body.node {
