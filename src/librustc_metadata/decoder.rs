@@ -1269,6 +1269,7 @@ impl<'a, 'tcx> CrateMetadata {
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         *self.hygiene_data_import_info.borrow_mut() =
             Some(hygiene::extend_hygiene_data(external_hygiene_data));
+
         self.hygiene_data_being_decoded.set(false);
 
         Ref::map(self.hygiene_data_import_info.borrow(), |d| d.as_ref().unwrap())

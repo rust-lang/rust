@@ -161,13 +161,12 @@ impl HygieneData {
         let mut mark_queue: VecDeque<_> = self.used_marks.iter().cloned().collect();
         let mut ctxt_queue: VecDeque<_> = self.used_syntax_contexts.iter().cloned().collect();
         ctxt_queue.extend(self.gensym_to_ctxt.values());
-
         let gensym_to_ctxt = self.gensym_to_ctxt.clone();
 
         let mut visited_marks = HashSet::new();
         let mut visited_ctxts = HashSet::new();
 
-        loop {
+        while !(mark_queue.is_empty() && ctxt_queue.is_empty()) {
             let next_mark = mark_queue.pop_front().and_then(|mark|
                 // skip default mark and already visited marks
                 if visited_marks.contains(&mark) || mark.0 == 0 {
@@ -184,10 +183,6 @@ impl HygieneData {
                     visited_ctxts.insert(ctxt);
                     Some(ctxt)
                 });
-
-            if next_mark.is_none() && next_ctxt.is_none() {
-                break;
-            }
 
             if let Some(mark) = next_mark {
                 let data = &self.marks[mark.0 as usize];
@@ -261,18 +256,26 @@ impl ImportedHygieneData {
     }
 
     pub fn translate_ctxt(&self, external: SyntaxContext) -> SyntaxContext {
-        self.ctxt_map[&external]
+        if external.0 != 0 {
+            self.ctxt_map[&external]
+        } else {
+            external
+        }
     }
 
     pub fn translate_mark(&self, external: Mark) -> Mark {
-        self.mark_map[&external]
+        if external.0 != 0 {
+            self.mark_map[&external]
+        } else {
+            external
+        }
     }
 
     pub fn translate_span(&self, external: Span) -> Span {
         Span {
             lo: external.lo,
             hi: external.hi,
-            ctxt: self.ctxt_map[&external.ctxt],
+            ctxt: self.translate_ctxt(external.ctxt),
         }
     }
 
@@ -320,7 +323,7 @@ pub fn extend_hygiene_data(extend_with: HygieneDataMap) -> ImportedHygieneData {
             .enumerate()
             .map(|(index_offset, (mark, data))| {
                 let index_offset = index_offset as u32;
-                imported_map.insert_mark(mark, mark.translate(mark_offset + index_offset));
+                imported_map.insert_mark(mark, Mark(mark_offset + index_offset));
                 data
             })
             .collect();
@@ -330,7 +333,7 @@ pub fn extend_hygiene_data(extend_with: HygieneDataMap) -> ImportedHygieneData {
             .enumerate()
             .map(|(index_offset, (ctxt, data))| {
                 let index_offset = index_offset as u32;
-                imported_map.insert_ctxt(ctxt, ctxt.translate(ctxt_offset + index_offset));
+                imported_map.insert_ctxt(ctxt, SyntaxContext(ctxt_offset + index_offset));
                 data
             })
             .collect();
