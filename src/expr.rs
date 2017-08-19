@@ -2786,7 +2786,7 @@ where
 {
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
-        // We use the same rule as funcation call for rewriting tuple.
+        // We use the same rule as function calls for rewriting tuples.
         let force_trailing_comma = if context.inside_macro {
             span_ends_with_comma(context, span)
         } else {
