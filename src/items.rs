@@ -548,13 +548,16 @@ impl<'a> FmtVisitor<'a> {
             },
         };
 
+        let attrs_extendable = attrs_str.is_empty() ||
+            (context.config.attributes_on_same_line_as_variant() &&
+                is_attributes_extendable(&attrs_str));
         combine_strs_with_missing_comments(
             &context,
             &attrs_str,
             &variant_body,
             span,
             shape,
-            is_attributes_extendable(&attrs_str),
+            attrs_extendable,
         )
     }
 }
@@ -1413,6 +1416,8 @@ pub fn rewrite_struct_field(
     let prefix = try_opt!(rewrite_struct_field_prefix(context, field));
 
     let attrs_str = try_opt!(field.attrs.rewrite(context, shape));
+    let attrs_extendable = attrs_str.is_empty() ||
+        (context.config.attributes_on_same_line_as_field() && is_attributes_extendable(&attrs_str));
     let missing_span = if field.attrs.is_empty() {
         mk_sp(field.span.lo, field.span.lo)
     } else {
@@ -1430,7 +1435,7 @@ pub fn rewrite_struct_field(
         &prefix,
         missing_span,
         shape,
-        is_attributes_extendable(&attrs_str),
+        attrs_extendable,
     ));
     let overhead = last_line_width(&attr_prefix);
     let lhs_offset = lhs_max_width.checked_sub(overhead).unwrap_or(0);
@@ -1438,9 +1443,7 @@ pub fn rewrite_struct_field(
         spacing.push(' ');
     }
     // In this extreme case we will be missing a space betweeen an attribute and a field.
-    if prefix.is_empty() && !attrs_str.is_empty() && is_attributes_extendable(&attrs_str) &&
-        spacing.is_empty()
-    {
+    if prefix.is_empty() && !attrs_str.is_empty() && attrs_extendable && spacing.is_empty() {
         spacing.push(' ');
     }
     let ty_rewritten = rewrite_struct_field_type(context, overhead, field, &spacing, shape);
@@ -1488,7 +1491,7 @@ pub fn rewrite_struct_field(
         &field_str,
         missing_span,
         shape,
-        is_attributes_extendable(&attrs_str),
+        attrs_extendable,
     )
 }
 

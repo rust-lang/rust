@@ -100,6 +100,66 @@ let lorem = vec!["ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "
 #### Lines longer than `array_width`:
 See [`array_layout`](#array_layout).
 
+## `attributes_on_same_line_as_field`
+
+Try to put attributes on the same line as fields
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true`
+
+```rust
+struct Lorem {
+    #[serde(rename = "Ipsum")] ipsum: usize,
+    #[serde(rename = "Dolor")] dolor: usize,
+    #[serde(rename = "Amet")] amet: usize,
+}
+```
+
+#### `false`
+
+```rust
+struct Lorem {
+    #[serde(rename = "Ipsum")]
+    ipsum: usize,
+    #[serde(rename = "Dolor")]
+    dolor: usize,
+    #[serde(rename = "Amet")]
+    amet: usize,
+}
+```
+
+## `attributes_on_same_line_as_variant`
+
+Try to put attributes on the same line as variants
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+#### `true`
+
+```rust
+enum Lorem {
+    #[serde(skip_serializing)] Ipsum,
+    #[serde(skip_serializing)] Dolor,
+    #[serde(skip_serializing)] Amet,
+}
+```
+
+#### `false`
+
+```rust
+enum Lorem {
+    #[serde(skip_serializing)]
+    Ipsum,
+    #[serde(skip_serializing)]
+    Dolor,
+    #[serde(skip_serializing)]
+    Amet,
+}
+```
+
 ## `chain_indent`
 
 Indentation of chain
