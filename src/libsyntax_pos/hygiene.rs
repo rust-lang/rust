@@ -573,7 +573,7 @@ pub enum ExpnFormat {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
     BackArrow,
     DotFill,
