@@ -33,6 +33,7 @@ use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
+use syntax::codemap::CompilerDesugaringKind;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use ty::fast_reject;
@@ -585,21 +586,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             trait_ref.to_predicate(),
                             post_message);
 
+                        let is_desugaring = span
+                            .is_compiler_desugaring(CompilerDesugaringKind::QuestionMark);
+                        let def_id = trait_predicate.skip_binder().def_id();
                         let unimplemented_note = self.on_unimplemented_note(trait_ref, obligation);
-                        if let Some(ref s) = unimplemented_note {
+                        let help_msg = format!("{}the trait `{}` is not implemented for `{}`",
+                                               pre_message,
+                                               trait_ref,
+                                               trait_ref.self_ty());
+
+                        if is_desugaring && Some(def_id) == self.tcx.lang_items.try_trait() {
+                            err.span_label(span,
+                                           format!("`?` cannot be applied to a value of type `{}`",
+                                              trait_ref.self_ty()));
+                            err.help(&help_msg);
+                        } else if let Some(ref s) = unimplemented_note {
                             // If it has a custom "#[rustc_on_unimplemented]"
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
-                            err.help(&format!("{}the trait `{}` is not implemented for `{}`",
-                                              pre_message,
-                                              trait_ref,
-                                              trait_ref.self_ty()));
+                            err.help(&help_msg);
                         } else {
-                            err.span_label(span,
-                                           &*format!("{}the trait `{}` is not implemented for `{}`",
-                                                     pre_message,
-                                                     trait_ref,
-                                                     trait_ref.self_ty()));
+                            err.span_label(span, help_msg);
                         }
 
                         // Try to report a help message
