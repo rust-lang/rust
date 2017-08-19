@@ -13,7 +13,6 @@
 // completely accurate (some things might be counted twice, others missed).
 
 use rustc_const_math::{ConstUsize};
-use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::const_val::{ConstVal};
 use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
 use rustc::mir::{Constant, Literal, Location, LocalDecl};
@@ -22,9 +21,7 @@ use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind, VisibilityScope, VisibilityScopeData};
 use rustc::mir::visit as mir_visit;
-use rustc::mir::visit::Visitor;
 use rustc::ty::{ClosureSubsts, TyCtxt};
-use rustc::util::common::to_readable_str;
 use rustc::util::nodemap::{FxHashMap};
 
 struct NodeData {
@@ -35,21 +32,6 @@ struct NodeData {
 struct StatCollector<'a, 'tcx: 'a> {
     _tcx: TyCtxt<'a, 'tcx, 'tcx>,
     data: FxHashMap<&'static str, NodeData>,
-}
-
-pub fn print_mir_stats<'tcx, 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, title: &str) {
-    let mut collector = StatCollector {
-        _tcx: tcx,
-        data: FxHashMap(),
-    };
-    // For debugging instrumentation like this, we don't need to worry
-    // about maintaining the dep graph.
-    let _ignore = tcx.dep_graph.in_ignore();
-    for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-        let mir = tcx.optimized_mir(def_id);
-        collector.visit_mir(&mir);
-    }
-    collector.print(title);
 }
 
 impl<'a, 'tcx> StatCollector<'a, 'tcx> {
@@ -66,27 +48,6 @@ impl<'a, 'tcx> StatCollector<'a, 'tcx> {
 
     fn record<T>(&mut self, label: &'static str, node: &T) {
         self.record_with_size(label, ::std::mem::size_of_val(node));
-    }
-
-    fn print(&self, title: &str) {
-        let mut stats: Vec<_> = self.data.iter().collect();
-
-        stats.sort_by_key(|&(_, ref d)| d.count * d.size);
-
-        println!("\n{}\n", title);
-
-        println!("{:<32}{:>18}{:>14}{:>14}",
-            "Name", "Accumulated Size", "Count", "Item Size");
-        println!("------------------------------------------------------------------------------");
-
-        for (label, data) in stats {
-            println!("{:<32}{:>18}{:>14}{:>14}",
-                label,
-                to_readable_str(data.count * data.size),
-                to_readable_str(data.count),
-                to_readable_str(data.size));
-        }
-        println!("------------------------------------------------------------------------------");
     }
 }
 

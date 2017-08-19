@@ -36,7 +36,6 @@
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
-use std::sync::Arc;
 
 extern crate flate2;
 extern crate libc;
@@ -46,7 +45,7 @@ extern crate rustc_allocator;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_incremental;
-pub extern crate rustc_llvm as llvm;
+extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
 #[macro_use]
@@ -78,7 +77,7 @@ pub mod back {
     pub(crate) mod symbol_export;
     pub(crate) mod symbol_names;
     pub mod write;
-    pub mod rpath;
+    mod rpath;
 }
 
 mod diagnostics;
@@ -138,8 +137,8 @@ pub struct ModuleTranslation {
     /// unique amongst **all** crates.  Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
-    pub name: String,
-    pub symbol_name_hash: u64,
+    name: String,
+    symbol_name_hash: u64,
     pub source: ModuleSource,
     pub kind: ModuleKind,
 }
@@ -206,7 +205,7 @@ pub enum ModuleSource {
 
 #[derive(Copy, Clone, Debug)]
 pub struct ModuleLlvm {
-    pub llcx: llvm::ContextRef,
+    llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
 }
 
@@ -216,14 +215,11 @@ unsafe impl Sync for ModuleTranslation { }
 pub struct CrateTranslation {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
-    pub metadata_module: CompiledModule,
-    pub allocator_module: Option<CompiledModule>,
+    allocator_module: Option<CompiledModule>,
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub exported_symbols: Arc<back::symbol_export::ExportedSymbols>,
-    pub no_builtins: bool,
-    pub windows_subsystem: Option<String>,
-    pub linker_info: back::linker::LinkerInfo
+    windows_subsystem: Option<String>,
+    linker_info: back::linker::LinkerInfo
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

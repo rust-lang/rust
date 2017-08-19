@@ -32,7 +32,7 @@ use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::NativeLibraryKind::*;
-pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
+pub use rustc::middle::cstore::{CrateSource, LibSource};
 
 pub use cstore_impl::{provide, provide_local};
 
@@ -140,14 +140,6 @@ impl CStore {
         for (&k, v) in self.metas.borrow().iter() {
             i(k, v);
         }
-    }
-
-    pub fn reset(&self) {
-        self.metas.borrow_mut().clear();
-        self.extern_mod_crate_map.borrow_mut().clear();
-        self.used_libraries.borrow_mut().clear();
-        self.used_link_args.borrow_mut().clear();
-        self.statically_included_foreign_items.borrow_mut().clear();
     }
 
     pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {

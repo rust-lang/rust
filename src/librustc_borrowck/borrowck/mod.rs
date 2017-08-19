@@ -714,25 +714,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    pub fn span_err(&self, s: Span, m: &str) {
-        self.tcx.sess.span_err(s, m);
-    }
-
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, s: S, m: &str)
-                                              -> DiagnosticBuilder<'a> {
-        self.tcx.sess.struct_span_err(s, m)
-    }
-
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(&self,
                                                          s: S,
                                                          msg: &str,
                                                          code: &str)
                                                          -> DiagnosticBuilder<'a> {
         self.tcx.sess.struct_span_err_with_code(s, msg, code)
-    }
-
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, s: S, msg: &str, code: &str) {
-        self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
     fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {

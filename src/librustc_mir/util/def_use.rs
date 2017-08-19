@@ -50,10 +50,6 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         &self.info[local]
     }
 
-    pub fn local_info_mut(&mut self, local: Local) -> &mut Info<'tcx> {
-        &mut self.info[local]
-    }
-
     fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Lvalue<'tcx>,
                                                       LvalueContext<'tcx>,

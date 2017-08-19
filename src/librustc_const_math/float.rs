@@ -37,13 +37,6 @@ impl ConstFloat {
         self.ty.ty_to_string()
     }
 
-    pub fn is_nan(&self) -> bool {
-        match self.ty {
-            ast::FloatTy::F32 => Single::from_bits(self.bits).is_nan(),
-            ast::FloatTy::F64 => Double::from_bits(self.bits).is_nan(),
-        }
-    }
-
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
         match (self.ty, rhs.ty) {

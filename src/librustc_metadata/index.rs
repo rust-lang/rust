@@ -100,32 +100,6 @@ impl<'tcx> LazySeq<Index> {
             Some(Lazy::with_position(position as usize))
         }
     }
-
-    pub fn iter_enumerated<'a>(&self,
-                               bytes: &'a [u8])
-                               -> impl Iterator<Item = (DefIndex, Lazy<Entry<'tcx>>)> + 'a {
-        let words = &bytes_to_words(&bytes[self.position..])[..self.len];
-        let lo_count = u32::from_le(words[0].get()) as usize;
-        let lo = &words[1 .. lo_count + 1];
-        let hi = &words[1 + lo_count ..];
-
-        lo.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
-                None
-            } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index), Lazy::with_position(pos)))
-            }
-        }).chain(hi.iter().map(|word| word.get()).enumerate().filter_map(|(index, pos)| {
-            if pos == u32::MAX {
-                None
-            } else {
-                let pos = u32::from_le(pos) as usize;
-                Some((DefIndex::new(index + DefIndexAddressSpace::High.start()),
-                                    Lazy::with_position(pos)))
-            }
-        }))
-    }
 }
 
 #[repr(packed)]

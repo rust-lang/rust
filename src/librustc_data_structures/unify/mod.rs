@@ -275,7 +275,8 @@ impl<'tcx, K: UnifyKey> UnificationTable<K>
         self.get(id).value
     }
 
-    pub fn unioned(&mut self, a_id: K, b_id: K) -> bool {
+    #[cfg(test)]
+    fn unioned(&mut self, a_id: K, b_id: K) -> bool {
         self.find(a_id) == self.find(b_id)
     }
 }

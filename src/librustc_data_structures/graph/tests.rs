@@ -43,29 +43,6 @@ fn create_graph() -> TestGraph {
     return graph;
 }
 
-fn create_graph_with_cycle() -> TestGraph {
-    let mut graph = Graph::new();
-
-    // Create a graph with a cycle.
-    //
-    //    A --> B <-- +
-    //          |     |
-    //          v     |
-    //          C --> D
-
-    let a = graph.add_node("A");
-    let b = graph.add_node("B");
-    let c = graph.add_node("C");
-    let d = graph.add_node("D");
-
-    graph.add_edge(a, b, "AB");
-    graph.add_edge(b, c, "BC");
-    graph.add_edge(c, d, "CD");
-    graph.add_edge(d, b, "DB");
-
-    return graph;
-}
-
 #[test]
 fn each_node() {
     let graph = create_graph();
@@ -82,7 +59,6 @@ fn each_edge() {
     let graph = create_graph();
     let expected = ["AB", "BC", "BD", "DE", "EC", "FB"];
     graph.each_edge(|idx, edge| {
-        assert_eq!(&expected[idx.0], graph.edge_data(idx));
         assert_eq!(expected[idx.0], edge.data);
         true
     });
@@ -97,7 +73,6 @@ fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(graph: &Graph
 
     let mut counter = 0;
     for (edge_index, edge) in graph.incoming_edges(start_index) {
-        assert!(graph.edge_data(edge_index) == &edge.data);
         assert!(counter < expected_incoming.len());
         debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                counter,
@@ -117,7 +92,6 @@ fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(graph: &Graph
 
     let mut counter = 0;
     for (edge_index, edge) in graph.outgoing_edges(start_index) {
-        assert!(graph.edge_data(edge_index) == &edge.data);
         assert!(counter < expected_outgoing.len());
         debug!("counter={:?} expected={:?} edge_index={:?} edge={:?}",
                counter,
@@ -162,59 +136,4 @@ fn each_adjacent_from_c() {
 fn each_adjacent_from_d() {
     let graph = create_graph();
     test_adjacent_edges(&graph, NodeIndex(3), "D", &[("BD", "B")], &[("DE", "E")]);
-}
-
-#[test]
-fn is_node_cyclic_a() {
-    let graph = create_graph_with_cycle();
-    assert!(!graph.is_node_cyclic(NodeIndex(0)));
-}
-
-#[test]
-fn is_node_cyclic_b() {
-    let graph = create_graph_with_cycle();
-    assert!(graph.is_node_cyclic(NodeIndex(1)));
-}
-
-#[test]
-fn nodes_in_postorder() {
-    let expected = vec![
-        ("A", vec!["C", "E", "D", "B", "A", "F"]),
-        ("B", vec!["C", "E", "D", "B", "A", "F"]),
-        ("C", vec!["C", "E", "D", "B", "A", "F"]),
-        ("D", vec!["C", "E", "D", "B", "A", "F"]),
-        ("E", vec!["C", "E", "D", "B", "A", "F"]),
-        ("F", vec!["C", "E", "D", "B", "F", "A"])
-    ];
-
-    let graph = create_graph();
-
-    for ((idx, node), &(node_name, ref expected))
-        in graph.enumerated_nodes().zip(&expected)
-    {
-        assert_eq!(node.data, node_name);
-        assert_eq!(expected,
-                   &graph.nodes_in_postorder(OUTGOING, idx)
-                   .into_iter().map(|idx| *graph.node_data(idx))
-                   .collect::<Vec<&str>>());
-    }
-
-    let expected = vec![
-        ("A", vec!["D", "C", "B", "A"]),
-        ("B", vec!["D", "C", "B", "A"]),
-        ("C", vec!["B", "D", "C", "A"]),
-        ("D", vec!["C", "B", "D", "A"]),
-    ];
-
-    let graph = create_graph_with_cycle();
-
-    for ((idx, node), &(node_name, ref expected))
-        in graph.enumerated_nodes().zip(&expected)
-    {
-        assert_eq!(node.data, node_name);
-        assert_eq!(expected,
-                   &graph.nodes_in_postorder(OUTGOING, idx)
-                   .into_iter().map(|idx| *graph.node_data(idx))
-                   .collect::<Vec<&str>>());
-    }
 }

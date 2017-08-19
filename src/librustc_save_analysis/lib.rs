@@ -51,7 +51,7 @@ use std::env;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
+use syntax::ast::{self, NodeId, PatKind, Attribute};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -80,8 +80,6 @@ pub struct SaveContext<'l, 'tcx: 'l> {
 
 #[derive(Debug)]
 pub enum Data {
-    /// Data about a macro use.
-    MacroUseData(MacroRef),
     RefData(Ref),
     DefData(Def),
     RelationData(Relation),
@@ -757,11 +755,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::PrimTy(_) | HirDef::SelfTy(..) | HirDef::Err => None,
             def => Some(def.def_id()),
         }
-    }
-
-    #[inline]
-    pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
-        self.tcx.hir.get_enclosing_scope(id).unwrap_or(CRATE_NODE_ID)
     }
 
     fn docs_for_attrs(&self, attrs: &[Attribute]) -> String {
