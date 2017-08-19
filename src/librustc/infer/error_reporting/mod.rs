@@ -899,9 +899,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
                 format!(" for lifetime parameter {}in generic type", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(type_name)) => {
+            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => {
                 format!(" for lifetime parameter {}in trait containing associated type `{}`",
-                        br_string(br), type_name)
+                        br_string(br), self.tcx.associated_item(def_id).name)
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
