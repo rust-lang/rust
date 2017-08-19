@@ -1551,7 +1551,8 @@ pub fn rewrite_associated_type(
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
-        let shape = Shape::indented(indent, context.config);
+        // 2 = ": ".len()
+        let shape = try_opt!(Shape::indented(indent, context.config).offset_left(prefix.len() + 2));
         let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(
             bounds
