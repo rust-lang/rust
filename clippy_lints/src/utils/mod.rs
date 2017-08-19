@@ -16,7 +16,7 @@ use std::mem;
 use std::str::FromStr;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
-use syntax::codemap::{ExpnFormat, ExpnInfo, Span, DUMMY_SP};
+use syntax::codemap::{CompilerDesugaringKind, ExpnFormat, ExpnInfo, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -114,7 +114,7 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 pub fn in_macro(span: Span) -> bool {
     span.ctxt.outer().expn_info().map_or(false, |info| {
         match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
-            ExpnFormat::CompilerDesugaring(name) => name != "...",
+            ExpnFormat::CompilerDesugaring(kind) => kind != CompilerDesugaringKind::DotFill,
             _ => true,
         }
     })
