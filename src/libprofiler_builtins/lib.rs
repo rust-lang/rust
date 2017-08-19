@@ -14,7 +14,5 @@
 #![unstable(feature = "profiler_runtime_lib",
             reason = "internal implementation detail of rustc right now",
             issue = "0")]
-#![crate_name = "profiler_builtins"]
-#![crate_type = "rlib"]
 #![allow(unused_features)]
 #![feature(staged_api)]

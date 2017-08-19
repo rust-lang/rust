@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #![no_std]
-#![crate_name = "unwind"]
-#![crate_type = "rlib"]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![deny(warnings)]
 

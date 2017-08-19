@@ -60,8 +60,6 @@
 //! The [`heap`](heap/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 
-#![crate_name = "alloc"]
-#![crate_type = "rlib"]
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc",
             reason = "this library is unlikely to be stabilized in its current \

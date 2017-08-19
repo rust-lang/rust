@@ -20,9 +20,7 @@
 //! provide for basic string-related manipulations. This crate does not
 //! (yet) aim to provide a full set of Unicode tables.
 
-#![crate_name = "std_unicode"]
 #![unstable(feature = "unicode", issue = "27783")]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",

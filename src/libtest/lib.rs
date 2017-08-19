@@ -23,10 +23,11 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
+// NB: this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
+// cargo) to detect this crate.
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
