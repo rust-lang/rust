@@ -470,7 +470,7 @@ fn rewrite_method_call(
     shape: Shape,
 ) -> Option<String> {
     let (lo, type_str) = if types.is_empty() {
-        (args[0].span.hi, String::new())
+        (args[0].span.hi(), String::new())
     } else {
         let type_list: Vec<_> =
             try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
@@ -481,11 +481,11 @@ fn rewrite_method_call(
             format!("::<{}>", type_list.join(", "))
         };
 
-        (types.last().unwrap().span.hi, type_str)
+        (types.last().unwrap().span.hi(), type_str)
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);
-    let span = mk_sp(lo, span.hi);
+    let span = mk_sp(lo, span.hi());
 
     rewrite_call(context, &callee_str, &args[1..], span, shape)
 }

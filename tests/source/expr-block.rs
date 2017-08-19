@@ -83,8 +83,8 @@ fn function_calls() {
     let items = itemize_list(context.codemap,
                              args.iter(),
                              ")",
-                             |item| item.span.lo,
-                             |item| item.span.hi,
+                             |item| item.span.lo(),
+                             |item| item.span.hi(),
                              |item| {
                                  item.rewrite(context,
                                               Shape {
@@ -92,14 +92,14 @@ fn function_calls() {
                                                   ..nested_shape
                                               })
                              },
-                             span.lo,
-                             span.hi);
+                             span.lo(),
+                             span.hi());
 
     itemize_list(context.codemap,
                              args.iter(),
                              ")",
-                             |item| item.span.lo,
-                             |item| item.span.hi,
+                             |item| item.span.lo(),
+                             |item| item.span.hi(),
                              |item| {
                                  item.rewrite(context,
                                               Shape {
@@ -107,8 +107,8 @@ fn function_calls() {
                                                   ..nested_shape
                                               })
                              },
-                             span.lo,
-                             span.hi)
+                             span.lo(),
+                             span.hi())
 }
 
 fn macros() {

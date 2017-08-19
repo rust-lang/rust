@@ -112,8 +112,8 @@ fn function_calls() {
         context.codemap,
         args.iter(),
         ")",
-        |item| item.span.lo,
-        |item| item.span.hi,
+        |item| item.span.lo(),
+        |item| item.span.hi(),
         |item| {
             item.rewrite(
                 context,
@@ -123,16 +123,16 @@ fn function_calls() {
                 },
             )
         },
-        span.lo,
-        span.hi,
+        span.lo(),
+        span.hi(),
     );
 
     itemize_list(
         context.codemap,
         args.iter(),
         ")",
-        |item| item.span.lo,
-        |item| item.span.hi,
+        |item| item.span.lo(),
+        |item| item.span.hi(),
         |item| {
             item.rewrite(
                 context,
@@ -142,8 +142,8 @@ fn function_calls() {
                 },
             )
         },
-        span.lo,
-        span.hi,
+        span.lo(),
+        span.hi(),
     )
 }
 

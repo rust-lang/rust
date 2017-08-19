@@ -49,9 +49,9 @@ impl AlignedItem for ast::StructField {
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
         let missing_span = if self.attrs.is_empty() {
-            mk_sp(self.span.lo, self.span.lo)
+            mk_sp(self.span.lo(), self.span.lo())
         } else {
-            mk_sp(self.attrs.last().unwrap().span.hi, self.span.lo)
+            mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
         };
         rewrite_struct_field_prefix(context, self).and_then(|field_str| {
             combine_strs_with_missing_comments(
@@ -88,9 +88,9 @@ impl AlignedItem for ast::Field {
         let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
         let name = &self.ident.node.to_string();
         let missing_span = if self.attrs.is_empty() {
-            mk_sp(self.span.lo, self.span.lo)
+            mk_sp(self.span.lo(), self.span.lo())
         } else {
-            mk_sp(self.attrs.last().unwrap().span.hi, self.span.lo)
+            mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
         };
         combine_strs_with_missing_comments(
             context,
@@ -127,15 +127,15 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     let init = &fields[0..group_index + 1];
     let rest = &fields[group_index + 1..];
     let init_last_pos = if rest.is_empty() {
-        span.hi
+        span.hi()
     } else {
         // Decide whether the missing comments should stick to init or rest.
-        let init_hi = init[init.len() - 1].get_span().hi;
-        let rest_lo = rest[0].get_span().lo;
+        let init_hi = init[init.len() - 1].get_span().hi();
+        let rest_lo = rest[0].get_span().lo();
         let missing_span = mk_sp(init_hi, rest_lo);
         let missing_span = mk_sp(
             context.codemap.span_after(missing_span, ","),
-            missing_span.hi,
+            missing_span.hi(),
         );
 
         let snippet = context.snippet(missing_span);
@@ -158,10 +158,10 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
 
             init_hi + BytePos(offset as u32 + 2)
         } else {
-            missing_span.lo
+            missing_span.lo()
         }
     };
-    let init_span = mk_sp(span.lo, init_last_pos);
+    let init_span = mk_sp(span.lo(), init_last_pos);
     let one_line_width = if rest.is_empty() { one_line_width } else { 0 };
     let result = try_opt!(rewrite_aligned_items_inner(
         context,
@@ -173,7 +173,7 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     if rest.is_empty() {
         Some(result + spaces)
     } else {
-        let rest_span = mk_sp(init_last_pos, span.hi);
+        let rest_span = mk_sp(init_last_pos, span.hi());
         let rest_str = try_opt!(rewrite_with_alignment(
             rest,
             context,
@@ -239,11 +239,11 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
         context.codemap,
         fields.iter(),
         "}",
-        |field| field.get_span().lo,
-        |field| field.get_span().hi,
+        |field| field.get_span().lo(),
+        |field| field.get_span().hi(),
         |field| field.rewrite_aligned_item(context, item_shape, field_prefix_max_width),
-        span.lo,
-        span.hi,
+        span.lo(),
+        span.hi(),
         false,
     ).collect::<Vec<_>>();
 
@@ -277,7 +277,7 @@ fn group_aligned_items<T: AlignedItem>(
             return ("", index);
         }
         // See if there are comments or empty lines between fields.
-        let span = mk_sp(fields[i].get_span().hi, fields[i + 1].get_span().lo);
+        let span = mk_sp(fields[i].get_span().hi(), fields[i + 1].get_span().lo());
         let snippet = context
             .snippet(span)
             .lines()

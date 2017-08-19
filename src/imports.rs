@@ -198,9 +198,9 @@ impl<'a> FmtVisitor<'a> {
                     self.last_pos,
                     p_i.attrs
                         .iter()
-                        .map(|attr| attr.span.lo)
+                        .map(|attr| attr.span.lo())
                         .min()
-                        .unwrap_or(p_i.span.lo),
+                        .unwrap_or(p_i.span.lo()),
                 )
             })
             .unwrap_or(self.last_pos);
@@ -211,7 +211,7 @@ impl<'a> FmtVisitor<'a> {
             .iter()
             .map(|p_i| {
                 let new_item = (&*p_i, last_pos_of_prev_use_item);
-                last_pos_of_prev_use_item = p_i.span.hi;
+                last_pos_of_prev_use_item = p_i.span.hi();
                 new_item
             })
             .collect::<Vec<_>>();
@@ -275,23 +275,23 @@ impl<'a> FmtVisitor<'a> {
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
-                let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo);
+                let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo());
                 let span_end = match self.snippet(prev_span).rfind('\n') {
                     Some(offset) => self.last_pos + BytePos(offset as u32),
-                    None => source!(self, span).lo,
+                    None => source!(self, span).lo(),
                 };
                 self.format_missing(span_end);
-                self.last_pos = source!(self, span).hi;
+                self.last_pos = source!(self, span).hi();
             }
             Some(ref s) => {
                 let s = format!("{}use {};", vis, s);
-                self.format_missing_with_indent(source!(self, span).lo);
+                self.format_missing_with_indent(source!(self, span).lo());
                 self.buffer.push_str(&s);
-                self.last_pos = source!(self, span).hi;
+                self.last_pos = source!(self, span).hi();
             }
             None => {
-                self.format_missing_with_indent(source!(self, span).lo);
-                self.format_missing(source!(self, span).hi);
+                self.format_missing_with_indent(source!(self, span).lo());
+                self.format_missing(source!(self, span).hi());
             }
         }
     }
@@ -442,11 +442,11 @@ fn rewrite_use_list(
             context.codemap,
             path_list.iter(),
             "}",
-            |vpi| vpi.span.lo,
-            |vpi| vpi.span.hi,
+            |vpi| vpi.span.lo(),
+            |vpi| vpi.span.hi(),
             rewrite_path_item,
             context.codemap.span_after(span, "{"),
-            span.hi,
+            span.hi(),
             false,
         );
         items.extend(iter);

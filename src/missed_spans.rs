@@ -82,14 +82,14 @@ impl<'a> FmtVisitor<'a> {
         // Get a snippet from the file start to the span's hi without allocating.
         // We need it to determine what precedes the current comment. If the comment
         // follows code on the same line, we won't touch it.
-        let big_span_lo = self.codemap.lookup_char_pos(span.lo).file.start_pos;
+        let big_span_lo = self.codemap.lookup_char_pos(span.lo()).file.start_pos;
         let local_begin = self.codemap.lookup_byte_offset(big_span_lo);
-        let local_end = self.codemap.lookup_byte_offset(span.hi);
+        let local_end = self.codemap.lookup_byte_offset(span.hi());
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
         let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
 
-        let big_diff = (span.lo - big_span_lo).to_usize();
+        let big_diff = (span.lo() - big_span_lo).to_usize();
         let snippet = self.snippet(span.clone());
 
         debug!("write_snippet `{}`", snippet);
@@ -114,7 +114,7 @@ impl<'a> FmtVisitor<'a> {
         let mut last_wspace = None;
         let mut rewrite_next_comment = true;
 
-        let char_pos = self.codemap.lookup_char_pos(span.lo);
+        let char_pos = self.codemap.lookup_char_pos(span.lo());
         let file_name = &char_pos.file.name;
         let mut cur_line = char_pos.line;
 

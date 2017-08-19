@@ -208,7 +208,7 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
             ast::RegionTyParamBound(ref lt) => lt.span,
             ast::TraitTyParamBound(ref prt, _) => prt.span,
         })
-        .hi
+        .hi()
 }
 
 #[inline]
@@ -363,11 +363,7 @@ macro_rules! source {
 }
 
 pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span {
-        lo,
-        hi,
-        ctxt: NO_EXPANSION,
-    }
+    Span::new(lo, hi, NO_EXPANSION)
 }
 
 // Return true if the given span does not intersect with file lines.

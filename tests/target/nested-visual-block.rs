@@ -5,17 +5,17 @@ fn main() {
         field_iter,
         "}",
         |item| match *item {
-            StructLitField::Regular(ref field) => field.span.lo,
+            StructLitField::Regular(ref field) => field.span.lo(),
             StructLitField::Base(ref expr) => {
-                let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
-                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                let last_field_hi = fields.last().map_or(span.lo(), |field| field.span.hi());
+                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo()));
                 let pos = snippet.find_uncommented("..").unwrap();
                 last_field_hi + BytePos(pos as u32)
             }
         },
         |item| match *item {
-            StructLitField::Regular(ref field) => field.span.hi,
-            StructLitField::Base(ref expr) => expr.span.hi,
+            StructLitField::Regular(ref field) => field.span.hi(),
+            StructLitField::Base(ref expr) => expr.span.hi(),
         },
         |item| {
             match *item {
@@ -34,7 +34,7 @@ fn main() {
             }
         },
         context.codemap.span_after(span, "{"),
-        span.hi,
+        span.hi(),
     );
 
     // #1580

@@ -157,11 +157,11 @@ fn rewrite_struct_pat(
         context.codemap,
         fields.iter(),
         terminator,
-        |f| f.span.lo,
-        |f| f.span.hi,
+        |f| f.span.lo(),
+        |f| f.span.hi(),
         |f| f.node.rewrite(context, v_shape),
         context.codemap.span_after(span, "{"),
-        span.hi,
+        span.hi(),
         false,
     );
     let item_vec = items.collect::<Vec<_>>();
@@ -266,24 +266,24 @@ fn rewrite_tuple_pat(
 
     if let Some(pos) = dotdot_pos {
         let prev = if pos == 0 {
-            span.lo
+            span.lo()
         } else {
-            pats[pos - 1].span().hi
+            pats[pos - 1].span().hi()
         };
         let next = if pos + 1 >= pats.len() {
-            span.hi
+            span.hi()
         } else {
-            pats[pos + 1].span().lo
+            pats[pos + 1].span().lo()
         };
         let dot_span = mk_sp(prev, next);
         let snippet = context.snippet(dot_span);
-        let lo = dot_span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
-        let dotdot = TuplePatField::Dotdot(Span {
-            lo: lo,
+        let lo = dot_span.lo() + BytePos(snippet.find_uncommented("..").unwrap() as u32);
+        let dotdot = TuplePatField::Dotdot(Span::new(
+            lo,
             // 2 == "..".len()
-            hi: lo + BytePos(2),
-            ctxt: codemap::NO_EXPANSION,
-        });
+            lo + BytePos(2),
+            codemap::NO_EXPANSION,
+        ));
         pat_vec.insert(pos, dotdot);
     }
 
@@ -297,9 +297,12 @@ fn rewrite_tuple_pat(
         let new_item_count = 1 + pat_vec.len() - wildcard_suffix_len;
         let sp = pat_vec[new_item_count - 1].span();
         let snippet = context.snippet(sp);
-        let lo = sp.lo + BytePos(snippet.find_uncommented("_").unwrap() as u32);
+        let lo = sp.lo() + BytePos(snippet.find_uncommented("_").unwrap() as u32);
         pat_vec[new_item_count - 1] = TuplePatField::Dotdot(mk_sp(lo, lo + BytePos(1)));
-        (&pat_vec[..new_item_count], mk_sp(span.lo, lo + BytePos(1)))
+        (
+            &pat_vec[..new_item_count],
+            mk_sp(span.lo(), lo + BytePos(1)),
+        )
     } else {
         (&pat_vec[..], span)
     };
@@ -338,11 +341,11 @@ fn count_wildcard_suffix_len(
         context.codemap,
         patterns.iter(),
         ")",
-        |item| item.span().lo,
-        |item| item.span().hi,
+        |item| item.span().lo(),
+        |item| item.span().hi(),
         |item| item.rewrite(context, shape),
         context.codemap.span_after(span, "("),
-        span.hi - BytePos(1),
+        span.hi() - BytePos(1),
         false,
     ).collect();
 

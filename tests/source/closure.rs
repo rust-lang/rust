@@ -13,9 +13,9 @@ fn main() {
 
     let loooooooooooooong_name = |field| {
              // format comments.
-             if field.node.attrs.len() > 0 { field.node.attrs[0].span.lo
+             if field.node.attrs.len() > 0 { field.node.attrs[0].span.lo()
              } else {
-                 field.span.lo
+                 field.span.lo()
              }};
 
     let unblock_me = |trivial| {
@@ -85,7 +85,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 fn foo() {
     lifetimes_iter___map(|lasdfasfd| {
         let hi = if l.bounds.is_empty() {
-            l.lifetime.span.hi
+            l.lifetime.span.hi()
         };
     });
 }

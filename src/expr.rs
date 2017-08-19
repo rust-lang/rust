@@ -65,7 +65,7 @@ pub fn format_expr(
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
             expr_vec.iter().map(|e| &**e),
-            mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi),
+            mk_sp(context.codemap.span_after(expr.span, "["), expr.span.hi()),
             context,
             shape,
             false,
@@ -81,7 +81,7 @@ pub fn format_expr(
             ),
         },
         ast::ExprKind::Call(ref callee, ref args) => {
-            let inner_span = mk_sp(callee.span.hi, expr.span.hi);
+            let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
             rewrite_call_with_binary_search(
                 context,
                 &**callee,
@@ -308,8 +308,8 @@ pub fn format_expr(
             let attrs = outer_attributes(&expr.attrs);
             let attrs_str = try_opt!(attrs.rewrite(context, shape));
             let span = mk_sp(
-                attrs.last().map_or(expr.span.lo, |attr| attr.span.hi),
-                expr.span.lo,
+                attrs.last().map_or(expr.span.lo(), |attr| attr.span.hi()),
+                expr.span.lo(),
             );
             combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
         })
@@ -417,11 +417,11 @@ where
         context.codemap,
         expr_iter,
         "]",
-        |item| item.span.lo,
-        |item| item.span.hi,
+        |item| item.span.lo(),
+        |item| item.span.hi(),
         |item| item.rewrite(context, nested_shape),
-        span.lo,
-        span.hi,
+        span.lo(),
+        span.hi(),
         false,
     ).collect::<Vec<_>>();
 
@@ -536,7 +536,7 @@ fn rewrite_closure_fn_decl(
         |arg| span_hi_for_arg(context, arg),
         |arg| arg.rewrite(context, arg_shape),
         context.codemap.span_after(span, "|"),
-        body.span.lo,
+        body.span.lo(),
         false,
     );
     let item_vec = arg_items.collect::<Vec<_>>();
@@ -837,9 +837,9 @@ fn rewrite_block_with_visitor(
         ast::BlockCheckMode::Unsafe(..) => {
             let snippet = context.snippet(block.span);
             let open_pos = try_opt!(snippet.find_uncommented("{"));
-            visitor.last_pos = block.span.lo + BytePos(open_pos as u32)
+            visitor.last_pos = block.span.lo() + BytePos(open_pos as u32)
         }
-        ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo,
+        ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo(),
     }
 
     visitor.visit_block(block, None);
@@ -1193,7 +1193,7 @@ impl<'a> ControlFlow<'a> {
         let cond_span = if let Some(cond) = self.cond {
             cond.span
         } else {
-            mk_sp(self.block.span.lo, self.block.span.lo)
+            mk_sp(self.block.span.lo(), self.block.span.lo())
         };
 
         // `for event in event`
@@ -1204,8 +1204,8 @@ impl<'a> ControlFlow<'a> {
                 .codemap
                 .span_after(mk_sp(lo, self.span.hi), self.keyword.trim()),
             self.pat
-                .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
-                    p.span.lo
+                .map_or(cond_span.lo(), |p| if self.matcher.is_empty() {
+                    p.span.lo()
                 } else {
                     context.codemap.span_before(self.span, self.matcher.trim())
                 }),
@@ -1214,7 +1214,7 @@ impl<'a> ControlFlow<'a> {
         let between_kwd_cond_comment = extract_comment(between_kwd_cond, context, shape);
 
         let after_cond_comment =
-            extract_comment(mk_sp(cond_span.hi, self.block.span.lo), context, shape);
+            extract_comment(mk_sp(cond_span.hi(), self.block.span.lo()), context, shape);
 
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
@@ -1305,7 +1305,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         next_else_block.as_ref().map(|e| &**e),
                         false,
                         true,
-                        mk_sp(else_block.span.lo, self.span.hi),
+                        mk_sp(else_block.span.lo(), self.span.hi()),
                     ).rewrite(context, shape)
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
@@ -1316,7 +1316,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                         next_else_block.as_ref().map(|e| &**e),
                         false,
                         true,
-                        mk_sp(else_block.span.lo, self.span.hi),
+                        mk_sp(else_block.span.lo(), self.span.hi()),
                     ).rewrite(context, shape)
                 }
                 _ => {
@@ -1332,10 +1332,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             };
 
             let between_kwd_else_block = mk_sp(
-                self.block.span.hi,
+                self.block.span.hi(),
                 context
                     .codemap
-                    .span_before(mk_sp(self.block.span.hi, else_block.span.lo), "else"),
+                    .span_before(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
             );
             let between_kwd_else_block_comment =
                 extract_comment(between_kwd_else_block, context, shape);
@@ -1343,8 +1343,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
             let after_else = mk_sp(
                 context
                     .codemap
-                    .span_after(mk_sp(self.block.span.hi, else_block.span.lo), "else"),
-                else_block.span.lo,
+                    .span_after(mk_sp(self.block.span.hi(), else_block.span.lo()), "else"),
+                else_block.span.lo(),
             );
             let after_else_comment = extract_comment(after_else, context, shape);
 
@@ -1504,9 +1504,9 @@ fn rewrite_match(
     let open_brace_pos = if inner_attrs.is_empty() {
         context
             .codemap
-            .span_after(mk_sp(cond.span.hi, arms[0].span().lo), "{")
+            .span_after(mk_sp(cond.span.hi(), arms[0].span().lo()), "{")
     } else {
-        inner_attrs[inner_attrs.len() - 1].span().hi
+        inner_attrs[inner_attrs.len() - 1].span().hi()
     };
 
     let arm_indent_str = if context.config.indent_match_arms() {
@@ -1571,11 +1571,11 @@ fn rewrite_match_arms(
             .zip(is_last_iter)
             .map(|(arm, is_last)| ArmWrapper::new(arm, is_last)),
         "}",
-        |arm| arm.arm.span().lo,
-        |arm| arm.arm.span().hi,
+        |arm| arm.arm.span().lo(),
+        |arm| arm.arm.span().hi(),
         |arm| arm.rewrite(context, arm_shape),
         open_brace_pos,
-        span.hi,
+        span.hi(),
         false,
     );
     let arms_vec: Vec<_> = items.collect();
@@ -1611,7 +1611,7 @@ fn rewrite_match_arm(
             ));
         }
         (
-            mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi, arm.pats[0].span.lo),
+            mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi(), arm.pats[0].span.lo()),
             try_opt!(arm.attrs.rewrite(context, shape)),
         )
     } else {
@@ -1973,7 +1973,7 @@ fn string_requires_rewrite(
     string: &str,
     shape: Shape,
 ) -> bool {
-    if context.codemap.lookup_char_pos(span.lo).col.0 != shape.indent.width() {
+    if context.codemap.lookup_char_pos(span.lo()).col.0 != shape.indent.width() {
         return true;
     }
 
@@ -2087,7 +2087,7 @@ where
     ).ok_or(Ordering::Greater)?;
 
     let span_lo = context.codemap.span_after(span, "(");
-    let args_span = mk_sp(span_lo, span.hi);
+    let args_span = mk_sp(span_lo, span.hi());
 
     let (extendable, list_str) = rewrite_call_args(
         context,
@@ -2146,11 +2146,11 @@ where
         context.codemap,
         args.iter(),
         ")",
-        |item| item.span().lo,
-        |item| item.span().hi,
+        |item| item.span().lo(),
+        |item| item.span().hi(),
         |item| item.rewrite(context, shape),
-        span.lo,
-        span.hi,
+        span.lo(),
+        span.hi(),
         true,
     );
     let mut item_vec: Vec<_> = items.collect();
@@ -2569,7 +2569,7 @@ fn rewrite_struct_lit<'a>(
             fields,
             context,
             shape,
-            mk_sp(body_lo, span.hi),
+            mk_sp(body_lo, span.hi()),
             one_line_width,
         ))
     } else {
@@ -2579,17 +2579,17 @@ fn rewrite_struct_lit<'a>(
             .chain(base.into_iter().map(StructLitField::Base));
 
         let span_lo = |item: &StructLitField| match *item {
-            StructLitField::Regular(field) => field.span().lo,
+            StructLitField::Regular(field) => field.span().lo(),
             StructLitField::Base(expr) => {
-                let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
-                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                let last_field_hi = fields.last().map_or(span.lo(), |field| field.span.hi());
+                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo()));
                 let pos = snippet.find_uncommented("..").unwrap();
                 last_field_hi + BytePos(pos as u32)
             }
         };
         let span_hi = |item: &StructLitField| match *item {
-            StructLitField::Regular(field) => field.span().hi,
-            StructLitField::Base(expr) => expr.span.hi,
+            StructLitField::Regular(field) => field.span().hi(),
+            StructLitField::Base(expr) => expr.span.hi(),
         };
         let rewrite = |item: &StructLitField| match *item {
             StructLitField::Regular(field) => {
@@ -2611,7 +2611,7 @@ fn rewrite_struct_lit<'a>(
             span_hi,
             rewrite,
             body_lo,
-            span.hi,
+            span.hi(),
             false,
         );
         let item_vec = items.collect::<Vec<_>>();
@@ -2760,11 +2760,11 @@ where
         context.codemap,
         items,
         ")",
-        |item| item.span().lo,
-        |item| item.span().hi,
+        |item| item.span().lo(),
+        |item| item.span().hi(),
         |item| item.rewrite(context, nested_shape),
         list_lo,
-        span.hi - BytePos(1),
+        span.hi() - BytePos(1),
         false,
     );
     let item_vec: Vec<_> = items.collect();

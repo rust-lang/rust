@@ -86,7 +86,7 @@ macro_rules! span_with_attrs_lo_hi {
             if attrs.is_empty() {
                 mk_sp($lo, $hi)
             } else {
-                mk_sp(attrs[0].span.lo, $hi)
+                mk_sp(attrs[0].span.lo(), $hi)
             }
         }
     }
@@ -94,7 +94,7 @@ macro_rules! span_with_attrs_lo_hi {
 
 macro_rules! span_with_attrs {
     ($this:ident) => {
-        span_with_attrs_lo_hi!($this, $this.span.lo, $this.span.hi)
+        span_with_attrs_lo_hi!($this, $this.span.lo(), $this.span.hi())
     }
 }
 
@@ -121,7 +121,7 @@ impl Spanned for ast::Stmt {
             ast::StmtKind::Local(ref local) => mk_sp(local.span().lo, self.span.hi),
             ast::StmtKind::Item(ref item) => mk_sp(item.span().lo, self.span.hi),
             ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
-                mk_sp(expr.span().lo, self.span.hi)
+                mk_sp(expr.span().lo(), self.span.hi())
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (_, _, ref attrs) = **mac;
@@ -149,14 +149,14 @@ impl Spanned for ast::Ty {
 
 impl Spanned for ast::Arm {
     fn span(&self) -> Span {
-        span_with_attrs_lo_hi!(self, self.pats[0].span.lo, self.body.span.hi)
+        span_with_attrs_lo_hi!(self, self.pats[0].span.lo(), self.body.span.hi())
     }
 }
 
 impl Spanned for ast::Arg {
     fn span(&self) -> Span {
         if items::is_named_arg(self) {
-            utils::mk_sp(self.pat.span.lo, self.ty.span.hi)
+            utils::mk_sp(self.pat.span.lo(), self.ty.span.hi())
         } else {
             self.ty.span
         }
@@ -165,7 +165,7 @@ impl Spanned for ast::Arg {
 
 impl Spanned for ast::StructField {
     fn span(&self) -> Span {
-        span_with_attrs_lo_hi!(self, self.span.lo, self.ty.span.hi)
+        span_with_attrs_lo_hi!(self, self.span.lo(), self.ty.span.hi())
     }
 }
 
@@ -192,17 +192,17 @@ impl Spanned for ast::TyParam {
     fn span(&self) -> Span {
         // Note that ty.span is the span for ty.ident, not the whole item.
         let lo = if self.attrs.is_empty() {
-            self.span.lo
+            self.span.lo()
         } else {
-            self.attrs[0].span.lo
+            self.attrs[0].span.lo()
         };
         if let Some(ref def) = self.default {
-            return mk_sp(lo, def.span.hi);
+            return mk_sp(lo, def.span.hi());
         }
         if self.bounds.is_empty() {
-            return mk_sp(lo, self.span.hi);
+            return mk_sp(lo, self.span.hi());
         }
-        let hi = self.bounds[self.bounds.len() - 1].span().hi;
+        let hi = self.bounds[self.bounds.len() - 1].span().hi();
         mk_sp(lo, hi)
     }
 }
@@ -705,7 +705,7 @@ where
         }
         {
             let mut visitor = FmtVisitor::from_codemap(parse_session, config);
-            let filemap = visitor.codemap.lookup_char_pos(module.inner.lo).file;
+            let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
             // Format inner attributes if available.
             if !krate.attrs.is_empty() && path == main_file {
                 visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner);

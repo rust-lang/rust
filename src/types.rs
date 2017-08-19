@@ -50,7 +50,7 @@ pub fn rewrite_path(
         String::new()
     };
 
-    let mut span_lo = path.span.lo;
+    let mut span_lo = path.span.lo();
 
     if let Some(qself) = qself {
         result.push('<');
@@ -76,7 +76,7 @@ pub fn rewrite_path(
                 result,
                 path.segments.iter().take(skip_count),
                 span_lo,
-                path.span.hi,
+                path.span.hi(),
                 context,
                 shape,
             ));
@@ -87,7 +87,7 @@ pub fn rewrite_path(
         }
 
         result.push_str(">::");
-        span_lo = qself.ty.span.hi + BytePos(1);
+        span_lo = qself.ty.span.hi() + BytePos(1);
     }
 
     rewrite_path_segments(
@@ -95,7 +95,7 @@ pub fn rewrite_path(
         result,
         path.segments.iter().skip(skip_count),
         span_lo,
-        path.span.hi,
+        path.span.hi(),
         context,
         shape,
     )
@@ -218,7 +218,7 @@ fn rewrite_segment(
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
+                let next_span_lo = param_list.last().unwrap().get_span().hi() + BytePos(1);
                 let list_lo = context.codemap.span_after(mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
@@ -236,8 +236,8 @@ fn rewrite_segment(
                     context.codemap,
                     param_list.into_iter(),
                     ">",
-                    |param| param.get_span().lo,
-                    |param| param.get_span().hi,
+                    |param| param.get_span().lo(),
+                    |param| param.get_span().hi(),
                     |seg| seg.rewrite(context, generics_shape),
                     list_lo,
                     span_hi,
@@ -332,11 +332,11 @@ where
             .chain(variadic_arg),
         ")",
         |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.span().lo,
+            ArgumentKind::Regular(ref ty) => ty.span().lo(),
             ArgumentKind::Variadic(start) => start,
         },
         |arg| match *arg {
-            ArgumentKind::Regular(ref ty) => ty.span().hi,
+            ArgumentKind::Regular(ref ty) => ty.span().hi(),
             ArgumentKind::Variadic(start) => start + BytePos(3),
         },
         |arg| match *arg {
@@ -344,7 +344,7 @@ where
             ArgumentKind::Variadic(_) => Some("...".to_owned()),
         },
         list_lo,
-        span.hi,
+        span.hi(),
         false,
     );
 
