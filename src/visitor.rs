@@ -837,52 +837,6 @@ impl Rewrite for ast::NestedMetaItem {
     }
 }
 
-fn count_missing_closing_parens(s: &str) -> u32 {
-    let mut op_parens: u32 = 0;
-    let mut cl_parens: u32 = 0;
-
-    #[derive(Eq, PartialEq)]
-    pub enum SnippetState {
-        Normal,
-        InsideStr,
-        InsideBulletComment,
-        InsideSingleLineComment,
-    }
-
-    let mut state = SnippetState::Normal;
-    let mut iter = s.chars().peekable();
-    let mut prev_char: Option<char> = None;
-    while let Some(c) = iter.next() {
-        let next_char = iter.peek();
-        match c {
-            '/' if state == SnippetState::Normal => match next_char {
-                Some(&'*') => state = SnippetState::InsideBulletComment,
-                Some(&'/') if prev_char.map_or(true, |c| c != '*') => {
-                    state = SnippetState::InsideSingleLineComment;
-                }
-                _ => (),
-            },
-            '*' if state == SnippetState::InsideBulletComment &&
-                next_char.map_or(false, |c| *c == '/') =>
-            {
-                state = SnippetState::Normal;
-            }
-            '\n' if state == SnippetState::InsideSingleLineComment => state = SnippetState::Normal,
-            '"' if state == SnippetState::InsideStr && prev_char.map_or(false, |c| c != '\\') => {
-                state = SnippetState::Normal;
-            }
-            '"' if state == SnippetState::Normal && prev_char.map_or(false, |c| c != '\\') => {
-                state = SnippetState::InsideStr
-            }
-            '(' if state == SnippetState::Normal => op_parens += 1,
-            ')' if state == SnippetState::Normal => cl_parens += 1,
-            _ => (),
-        }
-        prev_char = Some(c);
-    }
-    op_parens.checked_sub(cl_parens).unwrap_or(0)
-}
-
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
@@ -895,21 +849,15 @@ impl Rewrite for ast::MetaItem {
                         .shrink_left(name.len() + 3)
                         .and_then(|s| s.sub_width(2))
                 );
-                let hi = self.span.hi +
-                    BytePos(count_missing_closing_parens(&context.snippet(self.span)));
                 let items = itemize_list(
                     context.codemap,
                     list.iter(),
                     ")",
                     |nested_meta_item| nested_meta_item.span.lo,
-                    // FIXME: Span from MetaItem is missing closing parens.
-                    |nested_meta_item| {
-                        let snippet = context.snippet(nested_meta_item.span);
-                        nested_meta_item.span.hi + BytePos(count_missing_closing_parens(&snippet))
-                    },
+                    |nested_meta_item| nested_meta_item.span.hi,
                     |nested_meta_item| nested_meta_item.rewrite(context, item_shape),
                     self.span.lo,
-                    hi,
+                    self.span.hi,
                     false,
                 );
                 let item_vec = items.collect::<Vec<_>>();
