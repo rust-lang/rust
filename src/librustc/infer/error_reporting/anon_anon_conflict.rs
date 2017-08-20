@@ -131,42 +131,29 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let ret_ty = self.tcx.type_of(def_id);
                 if let ty::TyFnDef(_, _) = ret_ty.sty {
-                    if let hir_map::NodeItem(it) = self.tcx.hir.get(node_id) {
-                        if let hir::ItemFn(ref fndecl, _, _, _, _, _) = it.node {
-                            return fndecl
-                                       .inputs
-                                       .iter()
-                                       .filter_map(|arg| {
-                                                       self.find_component_for_bound_region(&**arg,
-                                                                                            br)
-                                                   })
-                                       .next();
-                        }
-                    } else if let hir_map::NodeTraitItem(it) = self.tcx.hir.get(node_id) {
-                        if let hir::TraitItemKind::Method(ref fndecl, _) = it.node {
-                            return fndecl
-                                       .decl
-                                       .inputs
-                                       .iter()
-                                       .filter_map(|arg| {
-                                                       self.find_component_for_bound_region(&**arg,
-                                                                                            br)
-                                                   })
-                                       .next();
-                        }
-                    } else if let hir_map::NodeImplItem(it) = self.tcx.hir.get(node_id) {
-                        if let hir::ImplItemKind::Method(ref fndecl, _) = it.node {
-                            return fndecl
-                                       .decl
-                                       .inputs
-                                       .iter()
-                                       .filter_map(|arg| {
-                                                       self.find_component_for_bound_region(&**arg,
-                                                                                            br)
-                                                   })
-                                       .next();
-                        }
-                    }
+                    let inputs: &[_] =
+                        match self.tcx.hir.get(node_id) {
+                            hir_map::NodeItem(&hir::Item {
+                                                  node: hir::ItemFn(ref fndecl, ..), ..
+                                              }) => &fndecl.inputs,
+                            hir_map::NodeTraitItem(&hir::TraitItem {
+                                                   node: hir::TraitItemKind::Method(ref fndecl, ..),
+                                                   ..
+                                               }) => &fndecl.decl.inputs,
+                            hir_map::NodeImplItem(&hir::ImplItem {
+                                                  node: hir::ImplItemKind::Method(ref fndecl, ..),
+                                                  ..
+                                              }) => &fndecl.decl.inputs,
+
+                            _ => &[],
+                        };
+
+                    return inputs
+                               .iter()
+                               .filter_map(|arg| {
+                                               self.find_component_for_bound_region(&**arg, br)
+                                           })
+                               .next();
                 }
             }
         }
