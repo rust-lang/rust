@@ -351,8 +351,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_hygiene_data(&mut self) -> Lazy<hygiene::HygieneDataMap> {
-        // FIXME(twk): remove the `ensure_hygiene_data_loaded` method
-        // self.tcx.sess.cstore.ensure_hygiene_data_loaded();
         let data = hygiene::HygieneData::safe_with(|data| data.to_map());
         self.lazy(&data)
     }

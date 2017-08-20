@@ -253,8 +253,6 @@ pub struct ExternBodyNestedBodies {
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
-    fn ensure_hygiene_data_loaded(&self);
-
     // access to the metadata loader
     fn metadata_loader(&self) -> &MetadataLoader;
 
@@ -327,7 +325,6 @@ pub struct DummyCrateStore;
 impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
-    fn ensure_hygiene_data_loaded(&self) { bug!("ensure_hygiene_data_loaded") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
     fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics
