@@ -9,8 +9,9 @@ on `crates.io`.
 
 ## Background
 The approach taken is to compile both versions of the crate to `rlib`s and to link them as
-dependencies of a third, empty, crate. Then, a custom compiler driver is run on the
-resulting crate and all necessary analysis is performed in that context.
+dependencies of a third, empty, dummy crate. Then, a custom compiler driver is run on the
+said dummy and all necessary analysis is performed in that context, where type information
+and other resources are available.
 
 More information on the inner workings will be provided soon.
 
@@ -19,8 +20,10 @@ The tool is implemented as a cargo plugin. As of now, it can be obtained from th
 repository and compiled from source, provided you have a recent Rust nightly installed:
 
 ```sh
+# using rustup is recommended
 $ rustup update nightly
 $ rustup default nightly
+
 $ git clone https://github.com/ibabushkin/rust-semverver
 $ cd rust-semverver
 $ cargo install
@@ -59,12 +62,15 @@ Options:
                         use a name-version string as current/new crate
 ```
 
+This means that you can compare any two crates' specified versions, as long as they are
+available on crates.io or present on your filesystem.
+
 ## Functionality
 The guideline used to implement semver compatibility is the [API evolution
 RFC](https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md), which
-applies the principles of semantic versioning to the Rust language. According to the RFC,
-most changes are already recognized correctly, even though trait- and inherent
-implementations are not yet handled, and some type checks behave incorrectly.
+applies the principles of semantic versioning to the Rust language's semantics. According
+to the RFC, most changes are already recognized correctly, even though some type checks
+still behave incorrectly in edge-cases. A longterm goal is to fix this in the compiler.
 
 At the time of writing, the following types of changes are recognized and classified
 correctly:
@@ -83,6 +89,8 @@ correctly:
 * changes to the unsafety of a trait
 * type changes of all toplevel items, as well as associated items in inherent impls and
   trait definitions
+* additions and removals of inherent impls or methods contained therein
+* additions and removals of trait impls
 
 Yet, the results presented to the user are merely an approximation of the required
 versioning policy, especially at such an early stage of development.
