@@ -336,7 +336,7 @@ impl Command {
                 panic!("return from exec without err");
             }
         } else {
-            io::Error::new(io::ErrorKind::NotFound, "")
+            io::Error::from_raw_os_error(syscall::ENOENT)
         }
     }
 
