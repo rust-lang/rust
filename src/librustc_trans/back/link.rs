@@ -647,11 +647,13 @@ fn link_staticlib(sess: &Session,
     ab.build();
 
     if !all_native_libs.is_empty() {
-        sess.note_without_error("link against the following native artifacts when linking against \
-                                 this static library");
-        sess.note_without_error("the order and any duplication can be significant on some \
-                                 platforms, and so may need to be preserved");
+            print_native_static_libs_legacy(sess, &all_native_libs);
     }
+}
+
+fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibrary]) {
+    sess.note_without_error("link against the following native artifacts when linking against \
+                             this static library");
 
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
