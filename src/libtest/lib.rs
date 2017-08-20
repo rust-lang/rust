@@ -37,6 +37,7 @@
 #![feature(libc)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
+#![feature(staged_api)]
 
 extern crate getopts;
 extern crate term;
