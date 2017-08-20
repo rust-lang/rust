@@ -151,7 +151,7 @@ Common options:
     -h, --help               Print this message
     --features               Features to compile for the package
     -V, --version            Print version info and exit
-    --all                    @@@ something sensible here (copy from cargo-edit?)
+    --all                    Run over all packages in the current workspace
 
 Other options are the same as `cargo rustc`.
 
