@@ -13,6 +13,28 @@ See [this issue](https://github.com/ibabushkin/rust-semverver/issues/24) for a v
 description of the problem and [this rust PR](https://github.com/rust-lang/rust/pull/43847)
 as a reference to the fixes needed.
 
+However, with the language being under active development and other changes taking place,
+the project will need some future work: More bugfixes, and handling of new language
+features might require a similar kind of development work as the one that took place over
+the course of the program. Other possible enhancements are listed in the issue tracker:
+
+* Checks for not directly code-related changes to a crate:
+  [#8](https://github.com/ibabushkin/rust-semverver/issues/8)
+* Recursive checking of dependencies:
+  [#12](https://github.com/ibabushkin/rust-semverver/issues/12)
+* Blacklisting modules and/or silencing analysis:
+  [#22](https://github.com/ibabushkin/rust-semverver/issues/22)
+* An automated tool checking all crates on `crates.io`:
+  [#27](https://github.com/ibabushkin/rust-semverver/issues/27)
+
+On a different front, the cargo plugin could need some technical improvements to improve
+usability and code quality.
+
+An overview of the functionality, and it's implementation can be found [here](404).
+
+## Progress made
+TODO: summarize your findings and what you learned here.
+
 ## List of references
 * [this repository](https://github.com/ibabushkin/rust-semverver) contains the main body
   of code written.
