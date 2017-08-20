@@ -23,9 +23,7 @@ use util::nodemap::FxHashMap;
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     cache: FxHashMap<NodeId, Option<Span>>,
-
-    // FIXME: Use an ordered hash map here
-    types: Vec<Ty<'tcx>>,
+    types: FxHashMap<Ty<'tcx>, usize>,
     region_maps: Rc<RegionMaps>,
 }
 
@@ -46,9 +44,9 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
                        expr, scope, ty, span);
             }
 
-            if !self.types.contains(&ty) {
-                self.types.push(ty);
-            }
+            // Map the type to the number of types added before it
+            let entries = self.types.len();
+            self.types.entry(&ty).or_insert(entries);
         } else {
             debug!("no type in expr = {:?}, span = {:?}", expr, expr.map(|e| e.span));
         }
@@ -62,13 +60,21 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let body = fcx.tcx.hir.body(body_id);
     let mut visitor = InteriorVisitor {
         fcx,
-        types: Vec::new(),
+        types: FxHashMap(),
         cache: FxHashMap(),
         region_maps: fcx.tcx.region_maps(def_id),
     };
     intravisit::walk_body(&mut visitor, body);
 
-    let tuple = fcx.tcx.intern_tup(&visitor.types, false);
+    let mut types: Vec<_> = visitor.types.drain().collect();
+
+    // Sort types by insertion order
+    types.sort_by_key(|t| t.1);
+
+    // Extract type components
+    let types: Vec<_> = types.into_iter().map(|t| t.0).collect();
+
+    let tuple = fcx.tcx.intern_tup(&types, false);
 
     debug!("Types in generator {:?}, span = {:?}", tuple, body.value.span);
 
