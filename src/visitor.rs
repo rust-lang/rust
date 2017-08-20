@@ -24,7 +24,8 @@ use config::{BraceStyle, Config};
 use expr::{format_expr, ExprType};
 use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
             rewrite_static, rewrite_type_alias};
-use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorTactic};
+use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
+            SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
@@ -917,6 +918,7 @@ impl Rewrite for ast::MetaItem {
                     tactic: DefinitiveListTactic::Mixed,
                     separator: ",",
                     trailing_separator: SeparatorTactic::Never,
+                    separator_place: SeparatorPlace::Back,
                     shape: item_shape,
                     ends_with_newline: false,
                     preserve_newline: false,

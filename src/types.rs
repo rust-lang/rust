@@ -23,7 +23,7 @@ use config::{IndentStyle, Style, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};
 use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
-            SeparatorTactic};
+            SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp, wrap_str};
 
@@ -365,6 +365,7 @@ where
         } else {
             context.config.trailing_comma()
         },
+        separator_place: SeparatorPlace::Back,
         shape: list_shape,
         ends_with_newline: tactic.ends_with_newline(context.config.fn_call_style()),
         preserve_newline: true,

@@ -17,7 +17,7 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 
 use file_lines::FileLines;
-use lists::{ListTactic, SeparatorTactic};
+use lists::{ListTactic, SeparatorPlace, SeparatorTactic};
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {
@@ -581,6 +581,8 @@ create_config! {
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     indent_match_arms: bool, true, "Indent match arms instead of keeping them at the same \
                                     indentation level as the match keyword";
+    match_pattern_separator_break_point: SeparatorPlace, SeparatorPlace::Back,
+        "Put a match sub-patterns' separator in front or back.";
     closure_block_indent_threshold: isize, 7, "How many lines a closure must have before it is \
                                                block indented. -1 means never use block indent.";
     space_before_type_annotation: bool, false,

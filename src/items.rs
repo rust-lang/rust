@@ -24,7 +24,7 @@ use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
-            ListItem, ListTactic, Separator, SeparatorTactic};
+            ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
@@ -481,6 +481,7 @@ impl<'a> FmtVisitor<'a> {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
             trailing_separator: self.config.trailing_comma(),
+            separator_place: SeparatorPlace::Back,
             shape: shape,
             ends_with_newline: true,
             preserve_newline: true,
@@ -2268,6 +2269,7 @@ fn rewrite_args(
         } else {
             trailing_comma
         },
+        separator_place: SeparatorPlace::Back,
         shape: Shape::legacy(budget, indent),
         ends_with_newline: tactic.ends_with_newline(context.config.fn_args_layout()),
         preserve_newline: true,
@@ -2463,6 +2465,7 @@ where
         } else {
             context.config.trailing_comma()
         },
+        separator_place: SeparatorPlace::Back,
         shape: shape,
         ends_with_newline: tactic.ends_with_newline(context.config.generics_indent()),
         preserve_newline: true,
@@ -2575,6 +2578,7 @@ fn rewrite_where_clause_rfc_style(
         tactic: DefinitiveListTactic::Vertical,
         separator: ",",
         trailing_separator: comma_tactic,
+        separator_place: SeparatorPlace::Back,
         shape: clause_shape,
         ends_with_newline: true,
         preserve_newline: true,
@@ -2686,6 +2690,7 @@ fn rewrite_where_clause(
         tactic: tactic,
         separator: ",",
         trailing_separator: comma_tactic,
+        separator_place: SeparatorPlace::Back,
         shape: Shape::legacy(budget, offset),
         ends_with_newline: tactic.ends_with_newline(context.config.where_pred_indent()),
         preserve_newline: true,
