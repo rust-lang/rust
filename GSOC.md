@@ -6,7 +6,7 @@ and which eventually led to the current working state of the project.
 
 ## Completion status
 All core functioanlity has been implemented. There are still some bugs present, whose
-fixes depend on changes to [rustc](https://github.com/rust-lang/rust) that are currently
+fixes depend on changes to [`rustc`](https://github.com/rust-lang/rust) that are currently
 underway and possibly not yet merged at the time of submission.
 
 See [this issue](https://github.com/ibabushkin/rust-semverver/issues/24) for a very rough
@@ -33,7 +33,12 @@ usability and code quality.
 An overview of the functionality, and it's implementation can be found [here](404).
 
 ## Progress made
-TODO: summarize your findings and what you learned here.
+The project provided a very through and challenging walkthrough to the internal working of
+`rustc` and it's surrounding infrastructure. I had the opportunity to learn to approach
+problems differently and in the context of a wider-reaching, larger project, which has
+it's own priorities and forces a different approach. In that context, the provided
+functionality is a stepping stone to maintain a codebase in and interact with the wider
+rust internals community.
 
 ## List of references
 * [this repository](https://github.com/ibabushkin/rust-semverver) contains the main body
