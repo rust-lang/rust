@@ -56,7 +56,6 @@ struct Test {
 }
 
 struct TestCtxt<'a> {
-    sess: &'a ParseSess,
     span_diagnostic: &'a errors::Handler,
     path: Vec<Ident>,
     ext_cx: ExtCtxt<'a>,
@@ -273,7 +272,6 @@ fn generate_test_harness(sess: &ParseSess,
 
     let mark = Mark::fresh(Mark::root());
     let mut cx: TestCtxt = TestCtxt {
-        sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
