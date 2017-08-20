@@ -251,6 +251,9 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             });
             debug!("select: outcome={:?}", outcome);
 
+            // FIXME: if we kept the original cache key, we could mark projection
+            // obligations as complete for the projection cache here.
+
             errors.extend(
                 outcome.errors.into_iter()
                               .map(|e| to_fulfillment_error(e)));
