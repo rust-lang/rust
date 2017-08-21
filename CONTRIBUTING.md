@@ -415,4 +415,4 @@ are:
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
 [rctd]: ./src/test/COMPILER_TESTS.md
-[cheatsheet]: https://buildbot.rust-lang.org/homu/
+[cheatsheet]: https://buildbot2.rust-lang.org/homu/
