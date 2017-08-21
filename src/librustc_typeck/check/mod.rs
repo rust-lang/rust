@@ -2818,6 +2818,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            formal_ret: Ty<'tcx>,
                                            formal_args: &[Ty<'tcx>])
                                            -> Vec<Ty<'tcx>> {
+        let formal_ret = self.resolve_type_vars_with_obligations(formal_ret);
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
             self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
@@ -3978,6 +3979,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprTup(ref elts) => {
             let flds = expected.only_has_type(self).and_then(|ty| {
+                let ty = self.resolve_type_vars_with_obligations(ty);
                 match ty.sty {
                     ty::TyTuple(ref flds, _) => Some(&flds[..]),
                     _ => None
