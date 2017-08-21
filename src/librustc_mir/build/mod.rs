@@ -382,7 +382,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 debug_name: keywords::Invalid.name(),
                 by_ref,
             };
-            if let Some(hir::map::NodeLocal(pat)) = tcx.hir.find(var_node_id) {
+            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_node_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }

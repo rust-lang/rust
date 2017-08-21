@@ -138,7 +138,7 @@ impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
 
     fn visit_pat(&mut self, pat: &'hir Pat) {
         let node = if let PatKind::Binding(..) = pat.node {
-            NodeLocal(pat)
+            NodeBinding(pat)
         } else {
             NodePat(pat)
         };
@@ -193,6 +193,13 @@ impl<'hir> Visitor<'hir> for NodeCollector<'hir> {
         self.with_parent(block.id, |this| {
             intravisit::walk_block(this, block);
         });
+    }
+
+    fn visit_local(&mut self, l: &'hir Local) {
+        self.insert(l.id, NodeLocal(l));
+        self.with_parent(l.id, |this| {
+            intravisit::walk_local(this, l)
+        })
     }
 
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {

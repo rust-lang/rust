@@ -68,19 +68,7 @@ fn get_pattern_source<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pat: &Pat) -> Patte
                     });
             PatternSource::MatchExpr(e)
         }
-        NodeStmt(ref s) => {
-            // the enclosing statement must be a `let` or something else
-            match s.node {
-                StmtDecl(ref decl, _) => {
-                    match decl.node {
-                        DeclLocal(ref local) => PatternSource::LetDecl(local),
-                        _ => return PatternSource::Other,
-                    }
-                }
-                _ => return PatternSource::Other,
-            }
-        }
-
+        NodeLocal(local) => PatternSource::LetDecl(local),
         _ => return PatternSource::Other,
 
     }

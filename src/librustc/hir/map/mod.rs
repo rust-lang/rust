@@ -53,9 +53,10 @@ pub enum Node<'hir> {
     NodeStmt(&'hir Stmt),
     NodeTy(&'hir Ty),
     NodeTraitRef(&'hir TraitRef),
-    NodeLocal(&'hir Pat),
+    NodeBinding(&'hir Pat),
     NodePat(&'hir Pat),
     NodeBlock(&'hir Block),
+    NodeLocal(&'hir Local),
 
     /// NodeStructCtor represents a tuple struct.
     NodeStructCtor(&'hir VariantData),
@@ -83,13 +84,14 @@ enum MapEntry<'hir> {
     EntryStmt(NodeId, &'hir Stmt),
     EntryTy(NodeId, &'hir Ty),
     EntryTraitRef(NodeId, &'hir TraitRef),
-    EntryLocal(NodeId, &'hir Pat),
+    EntryBinding(NodeId, &'hir Pat),
     EntryPat(NodeId, &'hir Pat),
     EntryBlock(NodeId, &'hir Block),
     EntryStructCtor(NodeId, &'hir VariantData),
     EntryLifetime(NodeId, &'hir Lifetime),
     EntryTyParam(NodeId, &'hir TyParam),
     EntryVisibility(NodeId, &'hir Visibility),
+    EntryLocal(NodeId, &'hir Local),
 
     /// Roots for node trees.
     RootCrate,
@@ -114,13 +116,14 @@ impl<'hir> MapEntry<'hir> {
             NodeStmt(n) => EntryStmt(p, n),
             NodeTy(n) => EntryTy(p, n),
             NodeTraitRef(n) => EntryTraitRef(p, n),
-            NodeLocal(n) => EntryLocal(p, n),
+            NodeBinding(n) => EntryBinding(p, n),
             NodePat(n) => EntryPat(p, n),
             NodeBlock(n) => EntryBlock(p, n),
             NodeStructCtor(n) => EntryStructCtor(p, n),
             NodeLifetime(n) => EntryLifetime(p, n),
             NodeTyParam(n) => EntryTyParam(p, n),
             NodeVisibility(n) => EntryVisibility(p, n),
+            NodeLocal(n) => EntryLocal(p, n),
         }
     }
 
@@ -136,13 +139,14 @@ impl<'hir> MapEntry<'hir> {
             EntryStmt(id, _) => id,
             EntryTy(id, _) => id,
             EntryTraitRef(id, _) => id,
-            EntryLocal(id, _) => id,
+            EntryBinding(id, _) => id,
             EntryPat(id, _) => id,
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
             EntryTyParam(id, _) => id,
             EntryVisibility(id, _) => id,
+            EntryLocal(id, _) => id,
 
             NotPresent |
             RootCrate => return None,
@@ -161,13 +165,14 @@ impl<'hir> MapEntry<'hir> {
             EntryStmt(_, n) => NodeStmt(n),
             EntryTy(_, n) => NodeTy(n),
             EntryTraitRef(_, n) => NodeTraitRef(n),
-            EntryLocal(_, n) => NodeLocal(n),
+            EntryBinding(_, n) => NodeBinding(n),
             EntryPat(_, n) => NodePat(n),
             EntryBlock(_, n) => NodeBlock(n),
             EntryStructCtor(_, n) => NodeStructCtor(n),
             EntryLifetime(_, n) => NodeLifetime(n),
             EntryTyParam(_, n) => NodeTyParam(n),
             EntryVisibility(_, n) => NodeVisibility(n),
+            EntryLocal(_, n) => NodeLocal(n),
             _ => return None
         })
     }
@@ -319,13 +324,14 @@ impl<'hir> Map<'hir> {
                 EntryStmt(p, _) |
                 EntryTy(p, _) |
                 EntryTraitRef(p, _) |
-                EntryLocal(p, _) |
+                EntryBinding(p, _) |
                 EntryPat(p, _) |
                 EntryBlock(p, _) |
                 EntryStructCtor(p, _) |
                 EntryLifetime(p, _) |
                 EntryTyParam(p, _) |
-                EntryVisibility(p, _) =>
+                EntryVisibility(p, _) |
+                EntryLocal(p, _) =>
                     id = p,
 
                 EntryExpr(p, _) => {
@@ -589,7 +595,7 @@ impl<'hir> Map<'hir> {
     /// immediate parent is an item or a closure.
     pub fn is_argument(&self, id: NodeId) -> bool {
         match self.find(id) {
-            Some(NodeLocal(_)) => (),
+            Some(NodeBinding(_)) => (),
             _ => return false,
         }
         match self.find(self.get_parent_node(id)) {
@@ -856,7 +862,7 @@ impl<'hir> Map<'hir> {
             NodeField(f) => f.name,
             NodeLifetime(lt) => lt.name,
             NodeTyParam(tp) => tp.name,
-            NodeLocal(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
+            NodeBinding(&Pat { node: PatKind::Binding(_,_,l,_), .. }) => l.node,
             NodeStructCtor(_) => self.name(self.get_parent(id)),
             _ => bug!("no name for {}", self.node_to_string(id))
         }
@@ -915,7 +921,7 @@ impl<'hir> Map<'hir> {
             Some(EntryStmt(_, stmt)) => stmt.span,
             Some(EntryTy(_, ty)) => ty.span,
             Some(EntryTraitRef(_, tr)) => tr.path.span,
-            Some(EntryLocal(_, pat)) => pat.span,
+            Some(EntryBinding(_, pat)) => pat.span,
             Some(EntryPat(_, pat)) => pat.span,
             Some(EntryBlock(_, block)) => block.span,
             Some(EntryStructCtor(_, _)) => self.expect_item(self.get_parent(id)).span,
@@ -923,6 +929,7 @@ impl<'hir> Map<'hir> {
             Some(EntryTyParam(_, ty_param)) => ty_param.span,
             Some(EntryVisibility(_, &Visibility::Restricted { ref path, .. })) => path.span,
             Some(EntryVisibility(_, v)) => bug!("unexpected Visibility {:?}", v),
+            Some(EntryLocal(_, local)) => local.span,
 
             Some(RootCrate) => self.forest.krate.span,
             Some(NotPresent) | None => {
@@ -1112,7 +1119,7 @@ impl<'a> print::State<'a> {
             NodeStmt(a)        => self.print_stmt(&a),
             NodeTy(a)          => self.print_type(&a),
             NodeTraitRef(a)    => self.print_trait_ref(&a),
-            NodeLocal(a)       |
+            NodeBinding(a)       |
             NodePat(a)         => self.print_pat(&a),
             NodeBlock(a)       => {
                 use syntax::print::pprust::PrintState;
@@ -1131,6 +1138,7 @@ impl<'a> print::State<'a> {
             // hir_map to reconstruct their full structure for pretty
             // printing.
             NodeStructCtor(_)  => bug!("cannot print isolated StructCtor"),
+            NodeLocal(a)       => self.print_local_decl(&a),
         }
     }
 }
@@ -1223,7 +1231,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeTraitRef(_)) => {
             format!("trait_ref {}{}", map.node_to_pretty_string(id), id_str)
         }
-        Some(NodeLocal(_)) => {
+        Some(NodeBinding(_)) => {
             format!("local {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodePat(_)) => {
@@ -1231,6 +1239,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeBlock(_)) => {
             format!("block {}{}", map.node_to_pretty_string(id), id_str)
+        }
+        Some(NodeLocal(_)) => {
+            format!("local {}{}", map.node_to_pretty_string(id), id_str)
         }
         Some(NodeStructCtor(_)) => {
             format!("struct_ctor {}{}", path_str(), id_str)
