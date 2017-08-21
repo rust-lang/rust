@@ -31,7 +31,6 @@ pub mod simplify;
 pub mod erase_regions;
 pub mod no_landing_pads;
 pub mod type_check;
-pub mod borrow_check;
 pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;
@@ -123,8 +122,9 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 }
 
 fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
-    // Borrowck uses `mir_validated`, so we have to force it to
+    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
+    ty::queries::mir_borrowck::force(tcx, DUMMY_SP, def_id);
     ty::queries::borrowck::force(tcx, DUMMY_SP, def_id);
 
     let mut mir = tcx.mir_validated(def_id).steal();
