@@ -411,6 +411,8 @@ define_dep_nodes!( <'tcx>
 
     [] BorrowCheckKrate,
     [] BorrowCheck(DefId),
+    [] MirBorrowCheck(DefId),
+
     [] RvalueCheck(DefId),
     [] Reachability,
     [] MirKeys,

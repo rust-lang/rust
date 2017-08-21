@@ -123,8 +123,9 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 }
 
 fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
-    // Borrowck uses `mir_validated`, so we have to force it to
+    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
+    ty::queries::mir_borrowck::force(tcx, DUMMY_SP, def_id);
     ty::queries::borrowck::force(tcx, DUMMY_SP, def_id);
 
     let mut mir = tcx.mir_validated(def_id).steal();

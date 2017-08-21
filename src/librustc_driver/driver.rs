@@ -1075,6 +1075,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "borrow checking",
              || borrowck::check_crate(tcx));
 
+        time(time_passes,
+             "MIR borrow checking",
+             || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
+
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
         // a

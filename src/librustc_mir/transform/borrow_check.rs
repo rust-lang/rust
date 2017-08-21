@@ -57,7 +57,7 @@ impl MirPass for BorrowckMir {
     }
 }
 
-fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir<'tcx>)
+pub(crate) fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir<'tcx>)
 {
     let id = src.item_id();
     let def_id = tcx.hir.local_def_id(id);
