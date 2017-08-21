@@ -1,7 +1,7 @@
 use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_path, NestedVisitorMap};
-use utils::span_lint_and_then;
+use utils::{span_lint_and_then, in_macro};
 use syntax::ast::NodeId;
 use syntax_pos::symbol::keywords::SelfType;
 
@@ -48,6 +48,9 @@ impl LintPass for UseSelf {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        if in_macro(item.span) {
+            return;
+        }
         if_let_chain!([
             let ItemImpl(.., ref item_type, ref refs) = item.node,
             let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node,
