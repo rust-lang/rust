@@ -599,9 +599,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
                 panic!(FatalError)
             }
         },
-        "path" => {
-            token::NtPath(panictry!(p.parse_path(PathStyle::Type)))
-        },
+        "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
         // this is not supposed to happen, since it has been checked

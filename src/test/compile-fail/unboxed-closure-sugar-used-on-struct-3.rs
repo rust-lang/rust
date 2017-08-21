@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-// Test that parentheses form doesn't work in expression paths.
+// Test that parentheses form parses in expression paths.
 
 struct Bar<A,R> {
     f: A, r: R
@@ -21,10 +19,10 @@ impl<A,B> Bar<A,B> {
 }
 
 fn bar() {
-    let b = Box::Bar::<isize,usize>::new(); // OK
+    let b = Bar::<isize, usize>::new(); // OK
 
-    let b = Box::Bar::()::new();
-    //~^ ERROR `::` is not supported before parenthesized generic arguments
+    let b = Bar::(isize, usize)::new(); // OK too (for the parser)
+    //~^ ERROR parenthesized parameters may only be used with a trait
 }
 
-fn main() { }
+fn main() {}
