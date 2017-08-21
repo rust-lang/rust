@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.153
+* Update to *rustc 1.21.0-nightly (8c303ed87 2017-08-20)*
+* New lint: [`use_self`]
+
 ## 0.0.152
 * Update to *rustc 1.21.0-nightly (df511d554 2017-08-14)*
 
@@ -595,6 +599,7 @@ All notable changes to this project will be documented in this file.
 [`unused_label`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#unused_label
 [`unused_lifetimes`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#unused_lifetimes
 [`use_debug`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#use_debug
+[`use_self`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#use_self
 [`used_underscore_binding`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#used_underscore_binding
 [`useless_attribute`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#useless_attribute
 [`useless_format`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#useless_format

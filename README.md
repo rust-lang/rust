@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 204 lints included in this crate:
+There are 205 lints included in this crate:
 
 name                                                                                                                         | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -372,6 +372,7 @@ name                                                                            
 [unused_label](https://github.com/rust-lang-nursery/rust-clippy/wiki#unused_label)                                           | warn    | unused labels
 [unused_lifetimes](https://github.com/rust-lang-nursery/rust-clippy/wiki#unused_lifetimes)                                   | warn    | unused lifetimes in function definitions
 [use_debug](https://github.com/rust-lang-nursery/rust-clippy/wiki#use_debug)                                                 | allow   | use of `Debug`-based formatting
+[use_self](https://github.com/rust-lang-nursery/rust-clippy/wiki#use_self)                                                   | allow   | Unnecessary structure name repetition whereas `Self` is applicable
 [used_underscore_binding](https://github.com/rust-lang-nursery/rust-clippy/wiki#used_underscore_binding)                     | allow   | using a binding which is prefixed with an underscore
 [useless_attribute](https://github.com/rust-lang-nursery/rust-clippy/wiki#useless_attribute)                                 | warn    | use of lint attributes on `extern crate` items
 [useless_format](https://github.com/rust-lang-nursery/rust-clippy/wiki#useless_format)                                       | warn    | useless use of `format!`

@@ -365,6 +365,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::INVALID_UPCAST_COMPARISONS,
         unicode::NON_ASCII_LITERAL,
         unicode::UNICODE_NOT_NFC,
+        use_self::USE_SELF,
     ]);
 
     reg.register_lint_group("clippy_internal", vec![
