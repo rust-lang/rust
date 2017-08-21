@@ -153,3 +153,9 @@ fn issue_902_comment() {}
 /// }
 /// ```
 fn issue_1469() {}
+
+/**
+ * This is a doc comment that should not be a list
+ *This would also be an error under a strict common mark interpretation
+ */
+fn issue_1920() {}

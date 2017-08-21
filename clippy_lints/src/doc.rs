@@ -109,11 +109,11 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
     if comment.starts_with("/*") {
         let doc = &comment[3..comment.len() - 2];
         let mut sizes = vec![];
-
+        let mut contains_initial_stars = false;
         for line in doc.lines() {
             let offset = line.as_ptr() as usize - comment.as_ptr() as usize;
             debug_assert_eq!(offset as u32 as usize, offset);
-
+            contains_initial_stars |= line.trim_left().starts_with('*');
             // +1 for the newline
             sizes.push((
                 line.len() + 1,
@@ -123,8 +123,25 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
                 },
             ));
         }
-
-        return (doc.to_string(), sizes);
+        if !contains_initial_stars {
+            return (doc.to_string(), sizes);
+        }
+        // remove the initial '*'s if any
+        let mut no_stars = String::with_capacity(doc.len());
+        for line in doc.lines() {
+            let mut chars = line.chars();
+            while let Some(c) = chars.next() {
+                if c.is_whitespace() {
+                    no_stars.push(c);
+                } else {
+                    no_stars.push(if c == '*' { ' ' } else { c });
+                    break;
+                }
+            }
+            no_stars.push_str(chars.as_str());
+            no_stars.push('\n');
+        }
+        return (no_stars, sizes);
     }
 
     panic!("not a doc-comment: {}", comment);
