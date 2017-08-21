@@ -1,6 +1,7 @@
 use rustc::hir::intravisit;
 use rustc::hir;
 use rustc::lint::*;
+use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -150,9 +151,11 @@ impl<'a, 'tcx> Functions {
                 .collect::<HashSet<_>>();
 
             if !raw_ptrs.is_empty() {
+                let tables = cx.tcx.body_tables(body.id());
                 let mut v = DerefVisitor {
                     cx: cx,
                     ptrs: raw_ptrs,
+                    tables,
                 };
 
                 hir::intravisit::walk_expr(&mut v, expr);
@@ -172,13 +175,14 @@ fn raw_ptr_arg(arg: &hir::Arg, ty: &hir::Ty) -> Option<hir::def_id::DefId> {
 struct DerefVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     ptrs: HashSet<hir::def_id::DefId>,
+    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprCall(ref f, ref args) => {
-                let ty = self.cx.tables.expr_ty(f);
+                let ty = self.tables.expr_ty(f);
 
                 if type_is_unsafe_function(self.cx, ty) {
                     for arg in args {
@@ -187,7 +191,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for DerefVisitor<'a, 'tcx> {
                 }
             },
             hir::ExprMethodCall(_, _, ref args) => {
-                let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
+                let def_id = self.tables.type_dependent_defs()[expr.hir_id].def_id();
                 let base_type = self.cx.tcx.type_of(def_id);
 
                 if type_is_unsafe_function(self.cx, base_type) {
