@@ -1,0 +1,10 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-using-impl-items.rs:15:16
+   |
+14 |     fn foo(x: &mut Vec<&u8>, y: &u8) {
+   |                        ---      --- these two types are declared with different lifetimes...
+15 |         x.push(y);
+   |                ^ ...but data from `y` flows into `x` here
+
+error: aborting due to previous error
+
