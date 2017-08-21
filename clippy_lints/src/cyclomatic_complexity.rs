@@ -31,7 +31,7 @@ pub struct CyclomaticComplexity {
 
 impl CyclomaticComplexity {
     pub fn new(limit: u64) -> Self {
-        CyclomaticComplexity { limit: LimitStack::new(limit) }
+        Self { limit: LimitStack::new(limit) }
     }
 }
 

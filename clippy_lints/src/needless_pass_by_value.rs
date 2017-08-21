@@ -197,7 +197,7 @@ struct MovedVariablesCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
-        MovedVariablesCtxt {
+        Self {
             cx: cx,
             moved_vars: HashSet::new(),
             spans_need_deref: HashMap::new(),

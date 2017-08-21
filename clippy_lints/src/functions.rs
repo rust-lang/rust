@@ -59,8 +59,8 @@ pub struct Functions {
 }
 
 impl Functions {
-    pub fn new(threshold: u64) -> Functions {
-        Functions { threshold: threshold }
+    pub fn new(threshold: u64) -> Self {
+        Self { threshold: threshold }
     }
 }
 

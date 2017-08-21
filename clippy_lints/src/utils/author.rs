@@ -147,7 +147,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 impl PrintVisitor {
     fn new(s: &'static str) -> Self {
-        PrintVisitor {
+        Self {
             ids: HashMap::new(),
             current: s.to_owned(),
         }

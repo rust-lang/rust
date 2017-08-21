@@ -670,8 +670,8 @@ impl Drop for LimitStack {
 }
 
 impl LimitStack {
-    pub fn new(limit: u64) -> LimitStack {
-        LimitStack { stack: vec![limit] }
+    pub fn new(limit: u64) -> Self {
+        Self { stack: vec![limit] }
     }
     pub fn limit(&self) -> u64 {
         *self.stack.last().expect(

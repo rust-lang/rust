@@ -23,7 +23,7 @@ pub enum FloatWidth {
 }
 
 impl From<FloatTy> for FloatWidth {
-    fn from(ty: FloatTy) -> FloatWidth {
+    fn from(ty: FloatTy) -> Self {
         match ty {
             FloatTy::F32 => FloatWidth::F32,
             FloatTy::F64 => FloatWidth::F64,
@@ -55,7 +55,7 @@ pub enum Constant {
 }
 
 impl PartialEq for Constant {
-    fn eq(&self, other: &Constant) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => ls == rs && l_sty == r_sty,
             (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
@@ -123,7 +123,7 @@ impl Hash for Constant {
 }
 
 impl PartialOrd for Constant {
-    fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => {
                 if l_sty == r_sty {
@@ -297,7 +297,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 };
                 let param_env = self.param_env.and((def_id, substs));
                 if let Some((def_id, substs)) = lookup_const_by_id(self.tcx, param_env) {
-                    let mut cx = ConstEvalLateContext {
+                    let mut cx = Self {
                         tcx: self.tcx,
                         tables: self.tcx.typeck_tables_of(def_id),
                         needed_resolution: false,

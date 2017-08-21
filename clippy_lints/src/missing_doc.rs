@@ -56,14 +56,14 @@ pub struct MissingDoc {
 }
 
 impl ::std::default::Default for MissingDoc {
-    fn default() -> MissingDoc {
-        MissingDoc::new()
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl MissingDoc {
-    pub fn new() -> MissingDoc {
-        MissingDoc { doc_hidden_stack: vec![false] }
+    pub fn new() -> Self {
+        Self { doc_hidden_stack: vec![false] }
     }
 
     fn doc_hidden(&self) -> bool {
