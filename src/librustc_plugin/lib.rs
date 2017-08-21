@@ -69,6 +69,7 @@
 #![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
+#![feature(staged_api)]
 
 #[macro_use] extern crate syntax;
 
