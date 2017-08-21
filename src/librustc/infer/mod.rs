@@ -578,13 +578,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         return variables;
     }
 
-    fn combine_fields(&'a self, trace: TypeTrace<'tcx>, param_env: ty::ParamEnv<'tcx>)
+    fn combine_fields(&'a self, trace: TypeTrace<'tcx>)
                       -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
             trace,
             cause: None,
-            param_env,
             obligations: PredicateObligations::new(),
         }
     }

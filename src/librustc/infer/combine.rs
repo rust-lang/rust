@@ -55,7 +55,6 @@ pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     pub infcx: &'infcx InferCtxt<'infcx, 'gcx, 'tcx>,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
-    pub param_env: ty::ParamEnv<'tcx>,
     pub obligations: PredicateObligations<'tcx>,
 }
 
@@ -159,20 +158,32 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn equate<'a>(&'a mut self, a_is_expected: bool) -> Equate<'a, 'infcx, 'gcx, 'tcx> {
-        Equate::new(self, a_is_expected)
+    pub fn equate<'a>(&'a mut self,
+                      param_env: ty::ParamEnv<'tcx>,
+                      a_is_expected: bool)
+                      -> Equate<'a, 'infcx, 'gcx, 'tcx> {
+        Equate::new(self, param_env, a_is_expected)
     }
 
-    pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'gcx, 'tcx> {
-        Sub::new(self, a_is_expected)
+    pub fn sub<'a>(&'a mut self,
+                   param_env: ty::ParamEnv<'tcx>,
+                   a_is_expected: bool)
+                   -> Sub<'a, 'infcx, 'gcx, 'tcx> {
+        Sub::new(self, param_env, a_is_expected)
     }
 
-    pub fn lub<'a>(&'a mut self, a_is_expected: bool) -> Lub<'a, 'infcx, 'gcx, 'tcx> {
-        Lub::new(self, a_is_expected)
+    pub fn lub<'a>(&'a mut self,
+                   param_env: ty::ParamEnv<'tcx>,
+                   a_is_expected: bool)
+                   -> Lub<'a, 'infcx, 'gcx, 'tcx> {
+        Lub::new(self, param_env, a_is_expected)
     }
 
-    pub fn glb<'a>(&'a mut self, a_is_expected: bool) -> Glb<'a, 'infcx, 'gcx, 'tcx> {
-        Glb::new(self, a_is_expected)
+    pub fn glb<'a>(&'a mut self,
+                   param_env: ty::ParamEnv<'tcx>,
+                   a_is_expected: bool)
+                   -> Glb<'a, 'infcx, 'gcx, 'tcx> {
+        Glb::new(self, param_env, a_is_expected)
     }
 
     /// Here dir is either EqTo, SubtypeOf, or SupertypeOf. The
@@ -185,6 +196,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
     /// of `a_ty`. Generalization introduces other inference
     /// variables wherever subtyping could occur.
     pub fn instantiate(&mut self,
+                       param_env: ty::ParamEnv<'tcx>,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
                        b_vid: ty::TyVid,
@@ -216,7 +228,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 
         if needs_wf {
             self.obligations.push(Obligation::new(self.trace.cause.clone(),
-                                                  self.param_env,
+                                                  param_env,
                                                   ty::Predicate::WellFormed(b_ty)));
         }
 
@@ -227,9 +239,9 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         // to associate causes/spans with each of the relations in
         // the stack to get this right.
         match dir {
-            EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
-            SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
-            SupertypeOf => self.sub(a_is_expected).relate_with_variance(
+            EqTo => self.equate(param_env, a_is_expected).relate(&a_ty, &b_ty),
+            SubtypeOf => self.sub(param_env, a_is_expected).relate(&a_ty, &b_ty),
+            SupertypeOf => self.sub(param_env, a_is_expected).relate_with_variance(
                 ty::Contravariant, &a_ty, &b_ty),
         }?;
 

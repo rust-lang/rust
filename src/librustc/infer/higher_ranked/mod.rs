@@ -25,7 +25,11 @@ use syntax_pos::Span;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
-    pub fn higher_ranked_sub<T>(&mut self, a: &Binder<T>, b: &Binder<T>, a_is_expected: bool)
+    pub fn higher_ranked_sub<T>(&mut self,
+                                param_env: ty::ParamEnv<'tcx>,
+                                a: &Binder<T>,
+                                b: &Binder<T>,
+                                a_is_expected: bool)
                                 -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'tcx>
     {
@@ -62,7 +66,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub(a_is_expected).relate(&a_prime, &b_prime)?;
+            let result = self.sub(param_env, a_is_expected).relate(&a_prime, &b_prime)?;
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".

@@ -22,13 +22,16 @@ use ty::relate::{self, Relate, RelateResult, TypeRelation};
 pub struct Equate<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> Equate<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>,
+               a_is_expected: bool)
         -> Equate<'combine, 'infcx, 'gcx, 'tcx>
     {
-        Equate { fields: fields, a_is_expected: a_is_expected }
+        Equate { fields, a_is_expected, param_env }
     }
 }
 
@@ -81,12 +84,20 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, RelationDir::EqTo, a_id, self.a_is_expected)?;
+                self.fields.instantiate(self.param_env,
+                                        b,
+                                        RelationDir::EqTo,
+                                        a_id,
+                                        self.a_is_expected)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
+                self.fields.instantiate(self.param_env,
+                                        a,
+                                        RelationDir::EqTo,
+                                        b_id,
+                                        self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -113,7 +124,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
-        self.fields.higher_ranked_sub(b, a, self.a_is_expected)
+        self.fields.higher_ranked_sub(self.param_env, a, b, self.a_is_expected)?;
+        self.fields.higher_ranked_sub(self.param_env, b, a, self.a_is_expected)
     }
 }

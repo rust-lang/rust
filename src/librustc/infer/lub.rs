@@ -21,13 +21,16 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 pub struct Lub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> Lub<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Lub<'combine, 'infcx, 'gcx, 'tcx>
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>,
+               a_is_expected: bool)
+               -> Lub<'combine, 'infcx, 'gcx, 'tcx>
     {
-        Lub { fields: fields, a_is_expected: a_is_expected }
+        Lub { fields, a_is_expected, param_env }
     }
 }
 
@@ -47,11 +50,11 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                                              -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
+            ty::Invariant => self.fields.equate(self.param_env, self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
             // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a.clone()),
-            ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
+            ty::Contravariant => self.fields.glb(self.param_env, self.a_is_expected).relate(a, b),
         }
     }
 
@@ -101,7 +104,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> LatticeDir<'infcx, 'gcx, 'tcx>
     }
 
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
-        let mut sub = self.fields.sub(self.a_is_expected);
+        let mut sub = self.fields.sub(self.param_env, self.a_is_expected);
         sub.relate(&a, &v)?;
         sub.relate(&b, &v)?;
         Ok(())
