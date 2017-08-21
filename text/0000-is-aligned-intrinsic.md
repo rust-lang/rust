@@ -13,7 +13,7 @@ pointer `ptr` to `align`.
 The intrinsic is reexported as a method on `*const T` and `*mut T`.
 
 Also add an `unsafe fn align_to<T, U>(&[U]) -> (&[U], &[T], &[U])` library function
-under `core::mem` and `std::mem` that simplifies the common use case, returning
+under `core::slice` and `std::slice` that simplifies the common use case, returning
 the unaligned prefix, the aligned center part and the unaligned trailing elements.
 The function is unsafe because it produces a `&T` to the memory location of a `U`,
 which might expose padding bytes or violate invariants of `T` or `U`.
@@ -82,7 +82,7 @@ Usually one should pass in the result of an `align_of` call.
 Add a new method `align_offset` to `*const T` and `*mut T`, which forwards to the
 `align_offset` intrinsic.
 
-Add two new functions `align_to` and `align_to_mut` to `core::mem` and `std::mem`
+Add two new functions `align_to` and `align_to_mut` to `core::slice` and `std::slice`
 with the following signature:
 
 ```rust
@@ -170,7 +170,7 @@ With the `align_offset` method the code can be changed to
 let ptr = v.as_ptr();
 let align = unsafe {
     // the offset is safe, because `index` is guaranteed inbounds
-    ptr.offset(index).align_offset(usize_bytes);
+    ptr.offset(index).align_offset(usize_bytes)
 };
 ```
 
@@ -235,7 +235,7 @@ With the `align_to` function this could be written as
 let len = text.len();
 let ptr = text.as_ptr();
 
-let (head, mid, tail) = std::mem::align_to::<(usize, usize)>(text);
+let (head, mid, tail) = std::slice::align_to::<(usize, usize), _>(text);
 
 // search up to an aligned boundary
 if let Some(index) = head.iter().position(|elt| *elt == x) {
@@ -263,10 +263,10 @@ tail.iter().position(|elt| *elt == x).map(|i| head.len() + mid.len() + i)
 
 ## Documentation
 
-A lint could be implemented which detects hand-written alignment checks and
+A lint could be added to `clippy` which detects hand-written alignment checks and
 suggests to use the `align_to` function instead.
 
-The `std::mem::align` function's documentation should point to `std::mem::align_to`
+The `std::mem::align` function's documentation should point to `std::slice::align_to`
 in order to increase the visibility of the function. The documentation of
 `std::mem::align` should note that it is unidiomatic to manually align pointers,
 since that might not be supported on all platforms and is prone to implementation
