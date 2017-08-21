@@ -12,7 +12,7 @@ Steps to publish a new clippy version
 - `git pull`.
 - `git tag -s v0.0.X -m "v0.0.X"`.
 - `git push --tags`.
-- `git clone git@github.com:Manishearth/rust-clippy.wiki.git ../rust-clippy.wiki`
+- `git clone git@github.com:rust-lang-nursery/rust-clippy.wiki.git ../rust-clippy.wiki`
 - `./util/update_wiki.py`
 - `cd ../rust-clippy.wiki`
 - `git add *`

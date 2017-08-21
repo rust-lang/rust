@@ -9,15 +9,15 @@ authors = [
 	"Oliver Schneider <clippy-iethah7aipeen8neex1a@oli-obk.de>"
 ]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
-repository = "https://github.com/Manishearth/rust-clippy"
+repository = "https://github.com/rust-lang-nursery/rust-clippy"
 readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 categories = ["development-tools", "development-tools::cargo-plugins"]
 
 [badges]
-travis-ci = { repository = "Manishearth/rust-clippy" }
-appveyor = { repository = "Manishearth/rust-clippy" }
+travis-ci = { repository = "rust-lang-nursery/rust-clippy" }
+appveyor = { repository = "rust-lang-nursery/rust-clippy" }
 
 [lib]
 name = "clippy"

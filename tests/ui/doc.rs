@@ -50,7 +50,7 @@ fn test_units() {
 }
 
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-/// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues)
+/// See also [the issue tracker](https://github.com/rust-lang-nursery/rust-clippy/search?q=doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
 /// It can also be [inline_link2].
 ///
@@ -142,7 +142,7 @@ fn four_quotes() {
 /// See [NIST SP 800-56A, revision 2].
 ///
 /// [NIST SP 800-56A, revision 2]:
-///     https://github.com/Manishearth/rust-clippy/issues/902#issuecomment-261919419
+///     https://github.com/rust-lang-nursery/rust-clippy/issues/902#issuecomment-261919419
 fn issue_902_comment() {}
 
 #[cfg_attr(feature = "a", doc = " ```")]
