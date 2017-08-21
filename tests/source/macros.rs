@@ -112,6 +112,7 @@ fn issue1178() {
 
     foo!(#[doc = "bar"] baz);
 }
+
 fn issue1739() {
     sql_function!(add_rss_item,
                   add_rss_item_t,
@@ -123,6 +124,14 @@ fn issue1739() {
 
     w.slice_mut(s![.., init_size[1] - extreeeeeeeeeeeeeeeeeeeeeeeem..init_size[1], ..])
         .par_map_inplace(|el| *el = 0.);
+}
+
+fn issue_1885() {
+    let threads = people.into_iter().map(|name| {
+        chan_select! {
+            rx.recv() => {}
+        }
+    }).collect::<Vec<_>>();
 }
 
 // Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
