@@ -883,8 +883,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 return self.commit_if_ok(|_| {
                     self.at(cause, self.param_env)
                         .lub(prev_ty, new_ty)
-                        .map(|ok| self.register_infer_ok_obligations(ok))
-                });
+                }).map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
 
@@ -897,8 +896,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.commit_if_ok(|_| {
                         self.at(cause, self.param_env)
                             .lub(prev_ty, new_ty)
-                            .map(|ok| self.register_infer_ok_obligations(ok))
-                    })
+                    }).map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
             Ok(ok) => {
