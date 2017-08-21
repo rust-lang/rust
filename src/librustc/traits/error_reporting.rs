@@ -1112,8 +1112,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
-            ObligationCauseCode::FieldSized => {
-                err.note("only the last field of a struct may have a dynamically sized type");
+            ObligationCauseCode::FieldSized(ref item) => {
+                match *item {
+                    AdtKind::Struct => {
+                        err.note("only the last field of a struct may have a dynamically \
+                                  sized type");
+                    }
+                    AdtKind::Union => {
+                        err.note("no field of a union may have a dynamically sized type");
+                    }
+                    AdtKind::Enum => {
+                        err.note("no field of an enum variant may have a dynamically sized type");
+                    }
+                }
             }
             ObligationCauseCode::ConstSized => {
                 err.note("constant expressions must have a statically known size");
@@ -1155,8 +1166,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn suggest_new_overflow_limit(&self, err: &mut DiagnosticBuilder) {
         let current_limit = self.tcx.sess.recursion_limit.get();
         let suggested_limit = current_limit * 2;
-        err.help(&format!(
-                          "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+        err.help(&format!("consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                           suggested_limit));
     }
 }

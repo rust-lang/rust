@@ -274,7 +274,7 @@ pub enum LateBoundRegionConversionTime {
     HigherRankedType,
 
     /// when projecting an associated type
-    AssocTypeProjection(ast::Name), // FIXME(tschottdorf): should contain DefId, not Name
+    AssocTypeProjection(DefId),
 }
 
 /// Reasons to create a region inference variable

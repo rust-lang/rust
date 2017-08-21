@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::super::test::TestGraph;
+#![feature(untagged_unions)]
 
-use super::*;
-
-#[test]
-fn diamond_post_order() {
-    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3)]);
-
-    let result = post_order_from(&graph, 0);
-    assert_eq!(result, vec![3, 1, 2, 0]);
+union Foo<T: ?Sized> {
+    value: T,
 }
+
+struct Foo2<T: ?Sized> {
+    value: T,
+    t: u32,
+}
+
+enum Foo3<T: ?Sized> {
+    Value(T),
+}
+
+fn main() {}

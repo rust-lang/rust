@@ -1687,11 +1687,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                         poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
-        let item = self.tcx().associated_item(item_def_id);
         let (trait_ref, _) =
             self.replace_late_bound_regions_with_fresh_var(
                 span,
-                infer::LateBoundRegionConversionTime::AssocTypeProjection(item.name),
+                infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
                 &poly_trait_ref);
 
         self.tcx().mk_projection(item_def_id, trait_ref.substs)

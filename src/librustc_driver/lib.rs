@@ -102,7 +102,7 @@ use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
 
 #[cfg(test)]
-pub mod test;
+mod test;
 
 pub mod driver;
 pub mod pretty;
@@ -859,17 +859,17 @@ impl RustcDefaultCalls {
 }
 
 /// Returns a version string such as "0.12.0-dev".
-pub fn release_str() -> Option<&'static str> {
+fn release_str() -> Option<&'static str> {
     option_env!("CFG_RELEASE")
 }
 
 /// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-pub fn commit_hash_str() -> Option<&'static str> {
+fn commit_hash_str() -> Option<&'static str> {
     option_env!("CFG_VER_HASH")
 }
 
 /// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-pub fn commit_date_str() -> Option<&'static str> {
+fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 

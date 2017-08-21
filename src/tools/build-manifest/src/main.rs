@@ -94,6 +94,7 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
+    "x86_64-unknown-redox",
 ];
 
 static MINGW: &'static [&'static str] = &[

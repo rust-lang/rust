@@ -27,7 +27,6 @@ use dataflow::{do_dataflow};
 use dataflow::{MoveDataParamEnv};
 use dataflow::{BitDenotation, BlockSets, DataflowResults, DataflowResultsConsumer};
 use dataflow::{MaybeInitializedLvals, MaybeUninitializedLvals};
-use dataflow::{MovingOutStatements};
 use dataflow::{Borrows, BorrowData, BorrowIndex};
 use dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex, LookupResult};
 use util::borrowck_errors::{BorrowckErrors, Origin};
@@ -80,9 +79,6 @@ fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir
         let flow_uninits = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
                                        MaybeUninitializedLvals::new(tcx, mir, &mdpe),
                                        |bd, i| &bd.move_data().move_paths[i]);
-        let flow_move_outs = do_dataflow(tcx, mir, id, &attributes, &dead_unwinds,
-                                         MovingOutStatements::new(tcx, mir, &mdpe),
-                                         |bd, i| &bd.move_data().moves[i]);
 
         let mut mbcx = MirBorrowckCtxt {
             tcx: tcx,
@@ -95,8 +91,7 @@ fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir
 
         let mut state = InProgress::new(flow_borrows,
                                         flow_inits,
-                                        flow_uninits,
-                                        flow_move_outs);
+                                        flow_uninits);
 
         mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
     });
@@ -119,7 +114,6 @@ pub struct InProgress<'b, 'tcx: 'b> {
     borrows: FlowInProgress<Borrows<'b, 'tcx>>,
     inits: FlowInProgress<MaybeInitializedLvals<'b, 'tcx>>,
     uninits: FlowInProgress<MaybeUninitializedLvals<'b, 'tcx>>,
-    move_outs: FlowInProgress<MovingOutStatements<'b, 'tcx>>,
 }
 
 struct FlowInProgress<BD> where BD: BitDenotation {
@@ -519,10 +513,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         if let Some(mpi) = self.move_path_for_lvalue(context, move_data, lvalue) {
             if maybe_uninits.curr_state.contains(&mpi) {
                 // find and report move(s) that could cause this to be uninitialized
-
-                // FIXME: for each move in flow_state.move_outs ...
-                &flow_state.move_outs;
-
                 self.report_use_of_moved(context, lvalue_span);
             } else {
                 // sanity check: initialized on *some* path, right?
@@ -1138,13 +1128,12 @@ impl ContextKind {
 impl<'b, 'tcx: 'b> InProgress<'b, 'tcx> {
     pub(super) fn new(borrows: DataflowResults<Borrows<'b, 'tcx>>,
                       inits: DataflowResults<MaybeInitializedLvals<'b, 'tcx>>,
-                      uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>,
-                      move_outs: DataflowResults<MovingOutStatements<'b, 'tcx>>) -> Self {
+                      uninits: DataflowResults<MaybeUninitializedLvals<'b, 'tcx>>)
+                      -> Self {
         InProgress {
             borrows: FlowInProgress::new(borrows),
             inits: FlowInProgress::new(inits),
             uninits: FlowInProgress::new(uninits),
-            move_outs: FlowInProgress::new(move_outs),
         }
     }
 

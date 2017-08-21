@@ -25,7 +25,7 @@ use std::path::PathBuf;
 use std::usize;
 
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
-pub use self::impls::{DefinitelyInitializedLvals, MovingOutStatements};
+pub use self::impls::{DefinitelyInitializedLvals};
 pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
 pub(crate) use self::drop_flag_effects::*;
 
@@ -363,8 +363,6 @@ impl<'a, 'tcx: 'a, O> DataflowAnalysis<'a, 'tcx, O> where O: BitDenotation
     pub fn results(self) -> DataflowResults<O> {
         DataflowResults(self.flow_state)
     }
-
-    pub fn flow_state(&self) -> &DataflowState<O> { &self.flow_state }
 
     pub fn mir(&self) -> &'a Mir<'tcx> { self.mir }
 }

@@ -80,7 +80,7 @@ extern crate rustc_errors as errors;
 
 pub use self::registry::Registry;
 
-pub mod diagnostics;
+mod diagnostics;
 pub mod registry;
 pub mod load;
 pub mod build;

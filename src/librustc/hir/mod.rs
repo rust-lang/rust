@@ -42,6 +42,7 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
+use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
 
@@ -1794,6 +1795,15 @@ impl Item_ {
             ItemTrait(..) => "trait",
             ItemImpl(..) |
             ItemDefaultImpl(..) => "item",
+        }
+    }
+
+    pub fn adt_kind(&self) -> Option<AdtKind> {
+        match *self {
+            ItemStruct(..) => Some(AdtKind::Struct),
+            ItemUnion(..) => Some(AdtKind::Union),
+            ItemEnum(..) => Some(AdtKind::Enum),
+            _ => None,
         }
     }
 }

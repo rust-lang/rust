@@ -14,16 +14,13 @@
 
 use rustc::ty::TyCtxt;
 use rustc::mir::{self, Mir, Location};
-use rustc_data_structures::bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 use rustc_data_structures::bitslice::{BitwiseOperator};
 use rustc_data_structures::indexed_set::{IdxSet};
-use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
 use util::elaborate_drops::DropFlagState;
 
-use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex};
-use super::move_paths::LookupResult;
+use super::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use super::{BitDenotation, BlockSets, DataflowOperator};
 
 use super::drop_flag_effects_for_function_entry;
@@ -201,40 +198,6 @@ impl<'a, 'tcx: 'a> DefinitelyInitializedLvals<'a, 'tcx> {
 }
 
 impl<'a, 'tcx: 'a> HasMoveData<'tcx> for DefinitelyInitializedLvals<'a, 'tcx> {
-    fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
-}
-
-/// `MovingOutStatements` tracks the statements that perform moves out
-/// of particular l-values. More precisely, it tracks whether the
-/// *effect* of such moves (namely, the uninitialization of the
-/// l-value in question) can reach some point in the control-flow of
-/// the function, or if that effect is "killed" by some intervening
-/// operation reinitializing that l-value.
-///
-/// The resulting dataflow is a more enriched version of
-/// `MaybeUninitializedLvals`. Both structures on their own only tell
-/// you if an l-value *might* be uninitialized at a given point in the
-/// control flow. But `MovingOutStatements` also includes the added
-/// data of *which* particular statement causing the deinitialization
-/// that the borrow checker's error message may need to report.
-#[allow(dead_code)]
-pub struct MovingOutStatements<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
-    mdpe: &'a MoveDataParamEnv<'tcx>,
-}
-
-impl<'a, 'tcx: 'a> MovingOutStatements<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               mdpe: &'a MoveDataParamEnv<'tcx>)
-               -> Self
-    {
-        MovingOutStatements { tcx: tcx, mir: mir, mdpe: mdpe }
-    }
-}
-
-impl<'a, 'tcx> HasMoveData<'tcx> for MovingOutStatements<'a, 'tcx> {
     fn move_data(&self) -> &MoveData<'tcx> { &self.mdpe.move_data }
 }
 
@@ -432,121 +395,6 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
-    type Idx = MoveOutIndex;
-    fn name() -> &'static str { "moving_out" }
-    fn bits_per_block(&self) -> usize {
-        self.move_data().moves.len()
-    }
-
-    fn start_block_effect(&self, _sets: &mut BlockSets<MoveOutIndex>) {
-        // no move-statements have been executed prior to function
-        // execution, so this method has no effect on `_sets`.
-    }
-    fn statement_effect(&self,
-                        sets: &mut BlockSets<MoveOutIndex>,
-                        location: Location) {
-        let (tcx, mir, move_data) = (self.tcx, self.mir, self.move_data());
-        let stmt = &mir[location.block].statements[location.statement_index];
-        let loc_map = &move_data.loc_map;
-        let path_map = &move_data.path_map;
-        let rev_lookup = &move_data.rev_lookup;
-
-        debug!("stmt {:?} at loc {:?} moves out of move_indexes {:?}",
-               stmt, location, &loc_map[location]);
-        for move_index in &loc_map[location] {
-            // Every path deinitialized by a *particular move*
-            // has corresponding bit, "gen'ed" (i.e. set)
-            // here, in dataflow vector
-            zero_to_one(sets.gen_set.words_mut(), *move_index);
-        }
-        let bits_per_block = self.bits_per_block();
-        match stmt.kind {
-            mir::StatementKind::SetDiscriminant { .. } => {
-                span_bug!(stmt.source_info.span, "SetDiscriminant should not exist in borrowck");
-            }
-            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
-                // assigning into this `lvalue` kills all
-                // MoveOuts from it, and *also* all MoveOuts
-                // for children and associated fragment sets.
-                match rvalue.initialization_state() {
-                    mir::tcx::RvalueInitializationState::Shallow => {
-                        if let LookupResult::Exact(mpi) = rev_lookup.find(lvalue) {
-                             for moi in &path_map[mpi] {
-                                 assert!(moi.index() < bits_per_block);
-                                 sets.kill_set.add(&moi);
-                             }
-                        }
-                    }
-                    mir::tcx::RvalueInitializationState::Deep => {
-                        on_lookup_result_bits(tcx,
-                                              mir,
-                                              move_data,
-                                              rev_lookup.find(lvalue),
-                                              |mpi| for moi in &path_map[mpi] {
-                                                  assert!(moi.index() < bits_per_block);
-                                                  sets.kill_set.add(&moi);
-                                              });
-                    }
-                }
-            }
-            mir::StatementKind::StorageLive(_) |
-            mir::StatementKind::StorageDead(_) |
-            mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::EndRegion(_) |
-            mir::StatementKind::Validate(..) |
-            mir::StatementKind::Nop => {}
-        }
-    }
-
-    fn terminator_effect(&self,
-                         sets: &mut BlockSets<MoveOutIndex>,
-                         location: Location)
-    {
-        let (mir, move_data) = (self.mir, self.move_data());
-        let term = mir[location.block].terminator();
-        let loc_map = &move_data.loc_map;
-        debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
-               term, location, &loc_map[location]);
-        let bits_per_block = self.bits_per_block();
-        for move_index in &loc_map[location] {
-            assert!(move_index.index() < bits_per_block);
-            zero_to_one(sets.gen_set.words_mut(), *move_index);
-        }
-    }
-
-    fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<MoveOutIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
-                             dest_lval: &mir::Lvalue) {
-        let move_data = self.move_data();
-        let bits_per_block = self.bits_per_block();
-
-        let path_map = &move_data.path_map;
-        on_lookup_result_bits(self.tcx,
-                              self.mir,
-                              move_data,
-                              move_data.rev_lookup.find(dest_lval),
-                              |mpi| for moi in &path_map[mpi] {
-                                  assert!(moi.index() < bits_per_block);
-                                  in_out.remove(&moi);
-                              });
-    }
-}
-
-fn zero_to_one(bitvec: &mut [usize], move_index: MoveOutIndex) {
-    let retval = bitvec.set_bit(move_index.index());
-    assert!(retval);
-}
-
-impl<'a, 'tcx> BitwiseOperator for MovingOutStatements<'a, 'tcx> {
-    #[inline]
-    fn join(&self, pred1: usize, pred2: usize) -> usize {
-        pred1 | pred2 // moves from both preds are in scope
-    }
-}
-
 impl<'a, 'tcx> BitwiseOperator for MaybeInitializedLvals<'a, 'tcx> {
     #[inline]
     fn join(&self, pred1: usize, pred2: usize) -> usize {
@@ -577,13 +425,6 @@ impl<'a, 'tcx> BitwiseOperator for DefinitelyInitializedLvals<'a, 'tcx> {
 // to start at all-zeroes and then use Union as your merge when
 // propagating, or you start at all-ones and then use Intersect as
 // your merge when propagating.
-
-impl<'a, 'tcx> DataflowOperator for MovingOutStatements<'a, 'tcx> {
-    #[inline]
-    fn bottom_value() -> bool {
-        false // bottom = no loans in scope by default
-    }
-}
 
 impl<'a, 'tcx> DataflowOperator for MaybeInitializedLvals<'a, 'tcx> {
     #[inline]

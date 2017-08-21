@@ -134,55 +134,9 @@ impl<Node: Idx> Dominators<Node> {
         self.dominators(node).any(|n| n == dom)
     }
 
-    pub fn mutual_dominator_node(&self, node1: Node, node2: Node) -> Node {
-        assert!(self.is_reachable(node1),
-                "node {:?} is not reachable",
-                node1);
-        assert!(self.is_reachable(node2),
-                "node {:?} is not reachable",
-                node2);
-        intersect::<Node>(&self.post_order_rank,
-                          &self.immediate_dominators,
-                          node1,
-                          node2)
-    }
-
-    pub fn mutual_dominator<I>(&self, iter: I) -> Option<Node>
-        where I: IntoIterator<Item = Node>
-    {
-        let mut iter = iter.into_iter();
-        iter.next()
-            .map(|dom| iter.fold(dom, |dom, node| self.mutual_dominator_node(dom, node)))
-    }
-
-    pub fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
+    #[cfg(test)]
+    fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
         &self.immediate_dominators
-    }
-
-    pub fn dominator_tree(&self) -> DominatorTree<Node> {
-        let elem: Vec<Node> = Vec::new();
-        let mut children: IndexVec<Node, Vec<Node>> =
-            IndexVec::from_elem_n(elem, self.immediate_dominators.len());
-        let mut root = None;
-        for (index, immed_dom) in self.immediate_dominators.iter().enumerate() {
-            let node = Node::new(index);
-            match *immed_dom {
-                None => {
-                    // node not reachable
-                }
-                Some(immed_dom) => {
-                    if node == immed_dom {
-                        root = Some(node);
-                    } else {
-                        children[immed_dom].push(node);
-                    }
-                }
-            }
-        }
-        DominatorTree {
-            root: root.unwrap(),
-            children,
-        }
     }
 }
 
@@ -215,37 +169,8 @@ pub struct DominatorTree<N: Idx> {
 }
 
 impl<Node: Idx> DominatorTree<Node> {
-    pub fn root(&self) -> Node {
-        self.root
-    }
-
     pub fn children(&self, node: Node) -> &[Node] {
         &self.children[node]
-    }
-
-    pub fn iter_children_of(&self, node: Node) -> IterChildrenOf<Node> {
-        IterChildrenOf {
-            tree: self,
-            stack: vec![node],
-        }
-    }
-}
-
-pub struct IterChildrenOf<'iter, Node: Idx + 'iter> {
-    tree: &'iter DominatorTree<Node>,
-    stack: Vec<Node>,
-}
-
-impl<'iter, Node: Idx> Iterator for IterChildrenOf<'iter, Node> {
-    type Item = Node;
-
-    fn next(&mut self) -> Option<Node> {
-        if let Some(node) = self.stack.pop() {
-            self.stack.extend(self.tree.children(node));
-            Some(node)
-        } else {
-            None
-        }
     }
 }
 

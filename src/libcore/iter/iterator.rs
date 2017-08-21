@@ -605,7 +605,7 @@ pub trait Iterator {
     /// closure returns [`None`], it will try again, and call the closure on the
     /// next element, seeing if it will return [`Some`].
     ///
-    /// Why `filter_map` and not just [`filter`].[`map`]? The key is in this
+    /// Why `filter_map` and not just [`filter`] and [`map`]? The key is in this
     /// part:
     ///
     /// [`filter`]: #method.filter

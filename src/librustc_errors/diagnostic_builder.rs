@@ -183,13 +183,6 @@ impl<'a> DiagnosticBuilder<'a> {
             diagnostic: Diagnostic::new_with_code(level, code, message)
         }
     }
-
-    pub fn into_diagnostic(mut self) -> Diagnostic {
-        // annoyingly, the Drop impl means we can't actually move
-        let result = self.diagnostic.clone();
-        self.cancel();
-        result
-    }
 }
 
 impl<'a> Debug for DiagnosticBuilder<'a> {

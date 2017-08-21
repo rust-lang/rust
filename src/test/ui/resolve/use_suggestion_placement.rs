@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::super::test::TestGraph;
+macro_rules! y {
+    () => {}
+}
 
-use super::*;
+mod m {
+    pub const A: i32 = 0;
+}
 
-#[test]
-fn diamond_post_order() {
-    let graph = TestGraph::new(0, &[(0, 1), (0, 2), (1, 3), (2, 3)]);
+fn main() {
+    y!();
+    let _ = A;
+    foo();
+}
 
-    let result = post_order_from(&graph, 0);
-    assert_eq!(result, vec![3, 1, 2, 0]);
+fn foo() {
+    type Dict<K, V> = HashMap<K, V>;
 }

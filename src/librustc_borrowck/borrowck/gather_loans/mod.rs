@@ -93,12 +93,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                matched_pat,
                cmt,
                mode);
-
-        if let Categorization::Downcast(..) = cmt.cat {
-            gather_moves::gather_match_variant(
-                self.bccx, &self.move_data, &mut self.move_error_collector,
-                matched_pat, cmt, mode);
-        }
     }
 
     fn consume_pat(&mut self,

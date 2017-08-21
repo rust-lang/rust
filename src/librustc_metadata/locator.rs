@@ -306,10 +306,6 @@ impl<'a> Context<'a> {
         self.find_library_crate()
     }
 
-    pub fn load_library_crate(&mut self) -> Library {
-        self.find_library_crate().unwrap_or_else(|| self.report_errs())
-    }
-
     pub fn report_errs(&mut self) -> ! {
         let add = match self.root {
             &None => String::new(),

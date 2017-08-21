@@ -38,8 +38,8 @@ use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
 
-pub mod diagnostic;
-pub mod diagnostic_builder;
+mod diagnostic;
+mod diagnostic_builder;
 pub mod emitter;
 mod snippet;
 pub mod registry;
@@ -111,7 +111,7 @@ impl CodeSuggestion {
     }
 
     /// Returns the number of substitutions
-    pub fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
+    fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
         self.substitution_parts.iter().map(|sub| sub.span)
     }
 
@@ -217,8 +217,10 @@ impl CodeSuggestion {
             if !buf.ends_with('\n') {
                 push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
-            // remove trailing newline
-            buf.pop();
+            // remove trailing newlines
+            while buf.ends_with('\n') {
+                buf.pop();
+            }
         }
         bufs
     }
@@ -260,7 +262,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, StringPart};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors
@@ -489,7 +491,7 @@ impl Handler {
         self.bug(&format!("unimplemented {}", msg));
     }
 
-    pub fn bump_err_count(&self) {
+    fn bump_err_count(&self) {
         self.panic_if_treat_err_as_bug();
         self.err_count.set(self.err_count.get() + 1);
     }
@@ -569,7 +571,7 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    pub fn color(self) -> term::color::Color {
+    fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
             Warning => {
@@ -594,14 +596,5 @@ impl Level {
             Help => "help",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }
-    }
-}
-
-pub fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T
-    where M: FnOnce() -> String
-{
-    match opt {
-        Some(t) => t,
-        None => diag.bug(&msg()),
     }
 }

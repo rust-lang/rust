@@ -1805,8 +1805,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let (outlives, _) =
                         self.replace_late_bound_regions_with_fresh_var(
                             span,
-                            infer::AssocTypeProjection(
-                                self.tcx.associated_item(projection_ty.item_def_id).name),
+                            infer::AssocTypeProjection(projection_ty.item_def_id),
                             &outlives);
 
                     debug!("projection_bounds: outlives={:?} (3)",

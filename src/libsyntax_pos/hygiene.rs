@@ -323,8 +323,8 @@ impl NameAndSpan {
     pub fn name(&self) -> Symbol {
         match self.format {
             ExpnFormat::MacroAttribute(s) |
-            ExpnFormat::MacroBang(s) |
-            ExpnFormat::CompilerDesugaring(s) => s,
+            ExpnFormat::MacroBang(s) => s,
+            ExpnFormat::CompilerDesugaring(ref kind) => kind.as_symbol(),
         }
     }
 }
@@ -337,7 +337,27 @@ pub enum ExpnFormat {
     /// e.g. `format!()`
     MacroBang(Symbol),
     /// Desugaring done by the compiler during HIR lowering.
-    CompilerDesugaring(Symbol)
+    CompilerDesugaring(CompilerDesugaringKind)
+}
+
+/// The kind of compiler desugaring.
+#[derive(Clone, Hash, Debug, PartialEq, Eq)]
+pub enum CompilerDesugaringKind {
+    BackArrow,
+    DotFill,
+    QuestionMark,
+}
+
+impl CompilerDesugaringKind {
+    pub fn as_symbol(&self) -> Symbol {
+        use CompilerDesugaringKind::*;
+        let s = match *self {
+            BackArrow => "<-",
+            DotFill => "...",
+            QuestionMark => "?",
+        };
+        Symbol::intern(s)
+    }
 }
 
 impl Encodable for SyntaxContext {
