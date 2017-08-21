@@ -1108,7 +1108,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     fn local_binding_mode(&self, node_id: ast::NodeId) -> ty::BindingMode {
         let pat = match self.tcx.hir.get(node_id) {
-            hir_map::Node::NodeLocal(pat) => pat,
+            hir_map::Node::NodeBinding(pat) => pat,
             node => bug!("bad node for local: {:?}", node)
         };
 
