@@ -142,6 +142,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  MutableTransmutes,
                  UnionsWithDropFields,
+                 IntoToRawPtrCast,
                  );
 
     add_builtin_with_new!(sess,
@@ -240,6 +241,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(LATE_BOUND_LIFETIME_ARGUMENTS),
             reference: "issue #42868 <https://github.com/rust-lang/rust/issues/42868>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(builtin::INT_TO_RAW_PTR_CAST),
+            reference: "issue #43291 <https://github.com/rust-lang/rust/issues/43291>",
         },
         ]);
 
