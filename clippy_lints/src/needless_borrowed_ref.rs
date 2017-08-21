@@ -3,8 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{MutImmutable, Pat, PatKind, BindByRef};
-use rustc::ty;
+use rustc::hir::{MutImmutable, Pat, PatKind, BindingAnnotation};
 use utils::{span_lint_and_then, in_macro, snippet};
 
 /// **What it does:** Checks for useless borrowed references.
@@ -63,16 +62,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
         }
 
         if_let_chain! {[
-            // Pat is a pattern whose node
-            // is a binding which "involves" an immutable reference...
-            let PatKind::Binding(BindingAnnotation::Ref, ..) = pat.node,
-            // Pattern's type is a reference. Get the type and mutability of referenced value (tam: TypeAndMut).
-            let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             // Only lint immutable refs, because `&mut ref T` may be useful.
             let PatKind::Ref(ref sub_pat, MutImmutable) = pat.node,
 
             // Check sub_pat got a `ref` keyword (excluding `ref mut`).
-            let PatKind::Binding(BindByRef(MutImmutable), _, spanned_name, ..) = sub_pat.node,
+            let PatKind::Binding(BindingAnnotation::Ref, _, spanned_name, ..) = sub_pat.node,
         ], {
             span_lint_and_then(cx, NEEDLESS_BORROWED_REFERENCE, pat.span,
                                "this pattern takes a reference on something that is being de-referenced",
