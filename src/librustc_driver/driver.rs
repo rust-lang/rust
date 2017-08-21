@@ -983,10 +983,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
 
-    // FIXME: niko says this should be a query (see rustc::ty::maps)
-    // instead of a pass.
-    passes.push_pass(MIR_VALIDATED, mir::transform::borrow_check::BorrowckMir);
-
     // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
@@ -1076,6 +1072,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes,
              "borrow checking",
              || borrowck::check_crate(tcx));
+
+        time(time_passes,
+             "MIR borrow checking",
+             || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
 
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids

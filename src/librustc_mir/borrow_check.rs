@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This pass borrow-checks the MIR to (further) ensure it is not broken.
+//! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+use rustc::hir::def_id::{DefId};
 use rustc::infer::{InferCtxt};
 use rustc::ty::{self, TyCtxt, ParamEnv};
+use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::{MirSource};
 
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
@@ -34,35 +36,25 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 use self::MutateMode::{JustWrite, WriteAndRead};
 use self::ConsumeKind::{Consume};
 
-pub struct BorrowckMir;
 
-impl MirPass for BorrowckMir {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-
-        // let err_count = tcx.sess.err_count();
-        // if err_count > 0 {
-        //     // compiling a broken program can obviously result in a
-        //     // broken MIR, so try not to report duplicate errors.
-        //     debug!("skipping BorrowckMir: {} due to {} previous errors",
-        //            tcx.node_path_str(src.item_id()), err_count);
-        //     return;
-        // }
-
-        debug!("run_pass BorrowckMir: {}", tcx.node_path_str(src.item_id()));
-
-        let def_id = tcx.hir.local_def_id(src.item_id());
-        if tcx.has_attr(def_id, "rustc_mir_borrowck") || tcx.sess.opts.debugging_opts.borrowck_mir {
-            borrowck_mir(tcx, src, mir);
-        }
-    }
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        mir_borrowck,
+        ..*providers
+    };
 }
 
-fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir<'tcx>)
-{
-    let id = src.item_id();
-    let def_id = tcx.hir.local_def_id(id);
-    debug!("borrowck_mir({}) UNIMPLEMENTED", tcx.item_path_str(def_id));
+fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
+    let mir = tcx.mir_validated(def_id);
+    let src = MirSource::from_local_def_id(tcx, def_id);
+    debug!("run query mir_borrowck: {}", tcx.node_path_str(src.item_id()));
 
+    let mir: &Mir<'tcx> = &mir.borrow();
+    if !tcx.has_attr(def_id, "rustc_mir_borrowck") || !tcx.sess.opts.debugging_opts.borrowck_mir {
+        return;
+    }
+
+    let id = src.item_id();
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
     tcx.infer_ctxt().enter(|_infcx| {
@@ -96,7 +88,7 @@ fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir
         mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
     });
 
-    debug!("borrowck_mir done");
+    debug!("mir_borrowck done");
 }
 
 #[allow(dead_code)]

@@ -45,6 +45,7 @@ extern crate core; // for NonZero
 
 mod diagnostics;
 
+mod borrow_check;
 mod build;
 mod dataflow;
 mod hair;
@@ -55,6 +56,7 @@ pub mod util;
 use rustc::ty::maps::Providers;
 
 pub fn provide(providers: &mut Providers) {
+    borrow_check::provide(providers);
     shim::provide(providers);
     transform::provide(providers);
 }
