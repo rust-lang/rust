@@ -45,7 +45,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             is_direct_expn_of(expr.span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,
             let Some(par) = string.as_str().find('{'),
-            string.as_str()[par..].contains('}')
+            string.as_str()[par..].contains('}'),
+            params[0].span.source_callee().is_none()
         ], {
             span_lint(cx, PANIC_PARAMS, params[0].span,
                       "you probably are missing some parameter in your format string");
