@@ -811,11 +811,6 @@ pub struct GlobalCtxt<'tcx> {
     /// present in this set can be warned about.
     pub used_unsafe: RefCell<NodeSet>,
 
-    /// Set of nodes which mark locals as mutable which end up getting used at
-    /// some point. Local variable definitions not in this set can be warned
-    /// about.
-    pub used_mut_nodes: RefCell<NodeSet>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -1043,7 +1038,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             inhabitedness_cache: RefCell::new(FxHashMap()),
             lang_items,
             used_unsafe: RefCell::new(NodeSet()),
-            used_mut_nodes: RefCell::new(NodeSet()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

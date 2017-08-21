@@ -34,7 +34,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
 use rustc::middle::region::{self, RegionMaps};
 use rustc::middle::free_region::RegionRelations;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, BorrowCheckResult, TyCtxt};
 use rustc::ty::maps::Providers;
 
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
@@ -80,7 +80,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
+fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) -> BorrowCheckResult {
     debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
@@ -128,6 +128,8 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     {
         check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
     }
+
+    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body)
 }
 
 fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tcx>,
@@ -216,6 +218,8 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
 
     region_maps: Rc<RegionMaps>,
+
+    borrowck_result: Rc<BorrowCheckResult>,
 
     owner_def_id: DefId,
 }

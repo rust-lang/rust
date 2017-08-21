@@ -189,7 +189,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
-                                     body: &hir::Body) {
+                                     body: &hir::Body) -> BorrowCheckResult {
     debug!("check_loans(body id={})", body.value.id);
 
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
@@ -203,6 +203,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
     euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
         .consume_body(body);
+    clcx.bccx.borrowck_result.borrow()
 }
 
 #[derive(PartialEq)]
@@ -843,7 +844,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let lp = opt_loan_path(&assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
-                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    self.bccx.borrowck_result.borrow_mut().used_mut_nodes.insert(local_id);
                 } else {
                     self.bccx.report_reassigned_immutable_variable(
                         assignment_span,
