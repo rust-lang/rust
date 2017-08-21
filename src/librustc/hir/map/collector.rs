@@ -88,6 +88,15 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             ).1;
         }
 
+        {
+            dep_graph.with_task(
+                DepNode::new_no_params(DepKind::AllLocalTraitImpls),
+                &hcx,
+                &krate.trait_impls,
+                identity_fn
+            );
+        }
+
         let hir_body_nodes = vec![root_mod_def_path_hash];
 
         let mut collector = NodeCollector {
