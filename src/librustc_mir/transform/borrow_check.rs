@@ -15,7 +15,7 @@ use rustc::ty::{self, TyCtxt, ParamEnv};
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Lvalue};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::transform::{MirPass, MirSource};
+use rustc::mir::transform::{MirSource};
 
 use rustc_data_structures::indexed_set::{self, IdxSetBuf};
 use rustc_data_structures::indexed_vec::{Idx};
@@ -33,29 +33,6 @@ use util::borrowck_errors::{BorrowckErrors, Origin};
 
 use self::MutateMode::{JustWrite, WriteAndRead};
 use self::ConsumeKind::{Consume};
-
-pub struct BorrowckMir;
-
-impl MirPass for BorrowckMir {
-    fn run_pass<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
-
-        // let err_count = tcx.sess.err_count();
-        // if err_count > 0 {
-        //     // compiling a broken program can obviously result in a
-        //     // broken MIR, so try not to report duplicate errors.
-        //     debug!("skipping BorrowckMir: {} due to {} previous errors",
-        //            tcx.node_path_str(src.item_id()), err_count);
-        //     return;
-        // }
-
-        debug!("run_pass BorrowckMir: {}", tcx.node_path_str(src.item_id()));
-
-        let def_id = tcx.hir.local_def_id(src.item_id());
-        if tcx.has_attr(def_id, "rustc_mir_borrowck") || tcx.sess.opts.debugging_opts.borrowck_mir {
-            borrowck_mir(tcx, src, mir);
-        }
-    }
-}
 
 pub(crate) fn borrowck_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, src: MirSource, mir: &Mir<'tcx>)
 {
