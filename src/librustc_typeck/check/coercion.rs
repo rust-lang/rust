@@ -807,8 +807,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let lub_ty = self.commit_if_ok(|_| {
                 self.at(cause, self.param_env)
                     .lub(prev_ty, new_ty)
-                    .map(|ok| self.register_infer_ok_obligations(ok))
-            });
+            }).map(|ok| self.register_infer_ok_obligations(ok));
 
             if lub_ty.is_ok() {
                 // We have a LUB of prev_ty and new_ty, just return it.
