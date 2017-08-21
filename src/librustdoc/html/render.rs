@@ -268,6 +268,7 @@ pub struct Cache {
     deref_trait_did: Option<DefId>,
     deref_mut_trait_did: Option<DefId>,
     owned_box_did: Option<DefId>,
+    masked_crates: FxHashSet<CrateNum>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -540,6 +541,7 @@ pub fn run(mut krate: clean::Crate,
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
+        masked_crates: mem::replace(&mut krate.masked_crates, FxHashSet()),
         typarams: external_typarams,
     };
 
@@ -1104,12 +1106,16 @@ impl DocFolder for Cache {
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = item.inner {
-            if let Some(did) = i.trait_.def_id() {
-                self.implementors.entry(did).or_insert(vec![]).push(Implementor {
-                    def_id: item.def_id,
-                    stability: item.stability.clone(),
-                    impl_: i.clone(),
-                });
+            if !self.masked_crates.contains(&item.def_id.krate) {
+                if let Some(did) = i.trait_.def_id() {
+                    if i.for_.def_id().map_or(true, |d| !self.masked_crates.contains(&d.krate)) {
+                        self.implementors.entry(did).or_insert(vec![]).push(Implementor {
+                            def_id: item.def_id,
+                            stability: item.stability.clone(),
+                            impl_: i.clone(),
+                        });
+                    }
+                }
             }
         }
 
@@ -1271,18 +1277,24 @@ impl DocFolder for Cache {
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
                 let did = if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
-                    match i.for_ {
-                        clean::ResolvedPath { did, .. } |
-                        clean::BorrowedRef {
-                            type_: box clean::ResolvedPath { did, .. }, ..
-                        } => {
-                            Some(did)
+                    let masked_trait = i.trait_.def_id().map_or(false,
+                        |d| self.masked_crates.contains(&d.krate));
+                    if !masked_trait {
+                        match i.for_ {
+                            clean::ResolvedPath { did, .. } |
+                            clean::BorrowedRef {
+                                type_: box clean::ResolvedPath { did, .. }, ..
+                            } => {
+                                Some(did)
+                            }
+                            ref t => {
+                                t.primitive_type().and_then(|t| {
+                                    self.primitive_locations.get(&t).cloned()
+                                })
+                            }
                         }
-                        ref t => {
-                            t.primitive_type().and_then(|t| {
-                                self.primitive_locations.get(&t).cloned()
-                            })
-                        }
+                    } else {
+                        None
                     }
                 } else {
                     unreachable!()

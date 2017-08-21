@@ -117,6 +117,7 @@ pub struct Crate {
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: FxHashMap<DefId, Trait>,
+    pub masked_crates: FxHashSet<CrateNum>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -141,6 +142,18 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
         let mut module = self.module.clean(cx);
+        let mut masked_crates = FxHashSet();
+
+        match module.inner {
+            ModuleItem(ref module) => {
+                for it in &module.items {
+                    if it.is_extern_crate() && it.attrs.has_doc_masked() {
+                        masked_crates.insert(it.def_id.krate);
+                    }
+                }
+            }
+            _ => unreachable!(),
+        }
 
         let ExternalCrate { name, src, primitives, .. } = LOCAL_CRATE.clean(cx);
         {
@@ -173,6 +186,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             primitives,
             access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
             external_traits: mem::replace(&mut external_traits, Default::default()),
+            masked_crates,
         }
     }
 }
@@ -325,6 +339,9 @@ impl Item {
     }
     pub fn is_import(&self) -> bool {
         self.type_() == ItemType::Import
+    }
+    pub fn is_extern_crate(&self) -> bool {
+        self.type_() == ItemType::ExternCrate
     }
 
     pub fn is_stripped(&self) -> bool {
@@ -569,6 +586,20 @@ impl Attributes {
         }
 
         None
+    }
+
+    pub fn has_doc_masked(&self) -> bool {
+        for attr in &self.other_attrs {
+            if !attr.check_name("doc") { continue; }
+
+            if let Some(items) = attr.meta_item_list() {
+                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name("masked")) {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
@@ -1651,6 +1682,16 @@ impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
+            Primitive(p) => ::html::render::cache().primitive_locations.get(&p).cloned(),
+            BorrowedRef { type_: box Generic(..), .. } =>
+                Primitive(PrimitiveType::Reference).def_id(),
+            BorrowedRef { ref type_, .. } => type_.def_id(),
+            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
+            Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
+            Array(..) => Primitive(PrimitiveType::Array).def_id(),
+            RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(),
+            QPath { ref self_type, .. } => self_type.def_id(),
             _ => None,
         }
     }

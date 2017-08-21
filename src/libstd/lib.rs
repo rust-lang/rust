@@ -347,19 +347,24 @@ use prelude::v1::*;
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
-#[allow(deprecated)] extern crate rand as core_rand;
+#[doc(masked)]
+#[allow(deprecated)]
+extern crate rand as core_rand;
 #[macro_use]
 #[macro_reexport(vec, format)]
 extern crate alloc;
 extern crate alloc_system;
 extern crate std_unicode;
+#[doc(masked)]
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
 // compiler-rt intrinsics
+#[doc(masked)]
 extern crate compiler_builtins;
 
 // During testing, this crate is not actually the "real" std library, but rather
