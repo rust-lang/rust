@@ -21,10 +21,10 @@ macro_rules! import {
 }
 
 fn f1() {
-    import! { a::b::c::S<u8> } //~ ERROR generic arguments in import path
+    import! { a::b::c::S<u8> } //~ ERROR unexpected generic arguments in path
 }
 fn f2() {
-    import! { a::b::c::S<> } //~ ERROR generic arguments in import path
+    import! { a::b::c::S<> } //~ ERROR unexpected generic arguments in path
 }
 
 fn main() {}
