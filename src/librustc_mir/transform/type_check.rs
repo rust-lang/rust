@@ -740,12 +740,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
 pub struct TypeckMir;
 
-impl TypeckMir {
-    pub fn new() -> Self {
-        TypeckMir
-    }
-}
-
 impl MirPass for TypeckMir {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
