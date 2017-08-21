@@ -1,3 +1,41 @@
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:18:25
+   |
+18 |     fn add(self, other: T) -> T { self }
+   |                         ^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D use-self` implied by `-D warnings`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:18:31
+   |
+18 |     fn add(self, other: T) -> T { self }
+   |                               ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:21:26
+   |
+21 |     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
+   |                          ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:21:33
+   |
+21 |     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
+   |                                 ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:22:21
+   |
+22 |     fn div(self) -> T { self } // no error, different #arguments
+   |                     ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:23:25
+   |
+23 |     fn rem(self, other: T) { } // no error, wrong return type
+   |                         ^ help: use the applicable keyword: `Self`
+
 error: defining a method called `add` on this type; consider implementing the `std::ops::Add` trait or choosing a less ambiguous name
   --> $DIR/methods.rs:18:5
    |
@@ -39,6 +77,54 @@ error: methods called `new` usually return `Self`
    |     ^^^^^^^^^^^^^^^
    |
    = note: `-D new-ret-no-self` implied by `-D warnings`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:40:35
+   |
+40 |     pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
+   |                                   ^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:49:28
+   |
+49 |     pub fn new(s: &str) -> Lt2 { unimplemented!() }
+   |                            ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:58:21
+   |
+58 |     pub fn new() -> Lt3<'static> { unimplemented!() }
+   |                     ^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:61:10
+   |
+61 | #[derive(Clone,Copy)]
+   |          ^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:74:24
+   |
+74 |     fn new() -> Option<V<T>> { None }
+   |                        ^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:78:19
+   |
+78 |     type Output = T;
+   |                   ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:79:25
+   |
+79 |     fn mul(self, other: T) -> T { self } // no error, obviously
+   |                         ^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/methods.rs:79:31
+   |
+79 |     fn mul(self, other: T) -> T { self } // no error, obviously
+   |                               ^ help: use the applicable keyword: `Self`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
   --> $DIR/methods.rs:97:13
@@ -103,6 +189,42 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
 124 | |                     0
 125 | |                 );
     | |_________________^
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:131:16
+    |
+131 | #[derive(Copy, Clone)]
+    |                ^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:145:16
+    |
+145 | #[derive(Copy, Clone)]
+    |                ^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:151:24
+    |
+151 |     fn filter(self) -> IteratorFalsePositives {
+    |                        ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:155:22
+    |
+155 |     fn next(self) -> IteratorFalsePositives {
+    |                      ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:175:32
+    |
+175 |     fn skip(self, _: usize) -> IteratorFalsePositives {
+    |                                ^^^^^^^^^^^^^^^^^^^^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:180:16
+    |
+180 | #[derive(Copy, Clone)]
+    |                ^^^^^ help: use the applicable keyword: `Self`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
    --> $DIR/methods.rs:194:13
@@ -177,6 +299,12 @@ error: called `is_some()` after searching an `Iterator` with rposition. This is 
 235 | |                                }
 236 | |                    ).is_some();
     | |______________________________^
+
+error: unnecessary structure name repetition
+   --> $DIR/methods.rs:250:21
+    |
+250 |         fn new() -> Foo { Foo }
+    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:268:5
@@ -432,6 +560,8 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 413 |     res6.ok().expect("meh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^
 
+error: unnecessary structure name repetition
+
 error: you should use the `starts_with` method
    --> $DIR/methods.rs:425:5
     |
@@ -626,5 +756,5 @@ error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
 
-error: aborting due to 89 previous errors
+error: aborting due to 111 previous errors
 
