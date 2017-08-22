@@ -327,14 +327,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 #[inline]
 #[allow(unused_variables)]
 fn has_scheme(s: &[u8]) -> bool {
-    #[cfg(target_os = "redox")]
-    {
-        s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
-    }
-    #[cfg(not(target_os = "redox"))]
-    {
-        false
-    }
+    cfg!(target_os = "redox") && s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1702,12 +1695,9 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        #[cfg(not(target_os = "redox"))]
-        {
+        if !cfg!(target_os = "redox") {
             self.has_root() && (cfg!(unix) || self.prefix().is_some())
-        }
-        #[cfg(target_os = "redox")]
-        {
+        } else {
             // FIXME: Allow Redox prefixes
             has_scheme(self.as_u8_slice())
         }
