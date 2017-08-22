@@ -28,6 +28,7 @@
 #![feature(str_escape)]
 #![feature(string_retain)]
 #![feature(test)]
+#![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 
