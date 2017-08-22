@@ -182,11 +182,11 @@ Note: how accurate `cfg!(target_feature)` can be made is an "Unresolved Question
 fn bzhi_u32(x: u32, bit_position: u32) -> u32 {
     // Conditional compilation: both branches must be syntactically valid,
     // but it suffices that the true branch type-checks:
-    #[cfg!(target_feature("bmi2"))] {
+    #[cfg(target_feature("bmi2"))] {
         // if this code is being compiled with BMI2 support, use a BMI2 instruction:
         unsafe { intrinsic::bmi2::bzhi(x, bit_position) }
     } 
-    #[not(cfg!(target_feature("bmi2")))] {
+    #[not(cfg(target_feature("bmi2")))] {
         // otherwise, call a portable emulation of the BMI2 instruction
         portable_emulation::bzhi(x, bit_position)
     } 
@@ -214,7 +214,7 @@ fn bzhi_u64(x: u64, bit_position: u64) -> u64 {
 unsafe fn foo() {
   if cfg!(target_feature("avx")) { /* this branch is always taken */ }
   else { /* this branch is never taken */ }
-  #[not(cfg!(target_feature("avx")))] {
+  #[not(cfg(target_feature("avx")))] {
     // this is dead code
   }
 }
@@ -255,7 +255,7 @@ fn foo() {}
 
 fn main() {
   foo(); // dispatches to the best implementation at run-time
-  #[cfg!(target_feature = "sse4")] {
+  #[cfg(target_feature = "sse4")] {
     foo(); // dispatches to the sse4 implementation at compile-time
   }
 }
@@ -285,13 +285,13 @@ fn initialize_foo() -> typeof(foo) {
 
 // Wrap foo to do compile-time dispatch
 #[inline(always)] fn foo() {
-  #[cfg!(target_feature("avx2"))] 
+  #[cfg(target_feature("avx2"))] 
   { unsafe { foo_avx2() } } 
-  #[and(cfg!(target_feature("avx")), not(cfg!(target_feature("avx2"))))] 
+  #[and(cfg(target_feature("avx")), not(cfg(target_feature("avx2"))))] 
   { unsafe { foo_avx() } } 
-  #[and(cfg!(target_feature("sse4")), not(cfg!(target_feature("avx"))))] 
+  #[and(cfg(target_feature("sse4")), not(cfg(target_feature("avx"))))] 
   { unsafe { foo_sse4() } } 
-  #[not(cfg!(target_feature("sse4")))] 
+  #[not(cfg(target_feature("sse4")))] 
   { foo_ptr() }
 }
 ```
@@ -314,12 +314,12 @@ fn software_emulation_of_raw_intrinsic_function(f64, f64) -> f64;
 // Safe zero-cost wrapper over the intrinsic
 // (i.e. can be inlined)
 fn my_intrinsic(a: f64, b: f64) -> f64 {
-  #[cfg!(target_feature("some_feature"))] {
+  #[cfg(target_feature("some_feature"))] {
     // If "some_feature" is enabled, it is safe to call the 
     // raw intrinsic function
     unsafe { raw_intrinsic_function(a, b) }
   }
-  #[not(cfg!(target_feature("some_feature")))] {
+  #[not(cfg(target_feature("some_feature")))] {
      // if "some_feature" is disabled calling 
      // the raw intrinsic function is undefined behavior (per LLVM), 
      // we call the safe software emulation of the intrinsic:
