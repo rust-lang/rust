@@ -24,5 +24,5 @@ fn main() {
 }
 
 fn foo(a: [D; 4], i: usize) -> D {
-    a[i] //~ ERROR cannot move out of type `[D; 4]`
+    a[i] //~ ERROR cannot move out of type `[D; 4]`, a non-copy array
 }
