@@ -16,7 +16,7 @@ such that the programs can use different algorithms depending on the features av
 
 The objective of this RFC is to extend the Rust language to solve these three problems, and it does so by adding the following three language features:
 
-- **compile-time feature detection**: using configuration macros `cfg!(target_feature("avx2"))` to detect whether a feature is enabled or disabled in a context (`#![cfg(target_feature("avx2"))]`, ...), 
+- **compile-time feature detection**: using configuration macros `cfg!(target_feature = "avx2")` to detect whether a feature is enabled or disabled in a context (`#![cfg(target_feature = "avx2")]`, ...), 
 - **run-time feature detection**: using the `std::target_feature("avx2")` API to detect whether the current host supports the feature, and
 - **unconditional code generation**: using the function attribute `#[target_feature(enable = "avx2")]` to allow the compiler to generate code under the assumption that this code will only be reached in hosts that support the feature. 
 
@@ -69,7 +69,7 @@ names and semantics than the ones provided by the LLVM backend.
 
 The effect of `--enable-features=feature-list` is to enable all features implicitly 
 for all functions of a crate. That is, anywhere within the crate the values of the macro 
-`cfg!(target_feature("feature"))` and `std::target_feature("feature")` are `true`.
+`cfg!(target_feature = "feature")` and `std::target_feature("feature")` are `true`.
 
 Whether the backend compilation options `-C --target-feature/--target-cpu` also enable
 some stabilized features or not should be resolved by the RFCs suggesting the stabilization
@@ -87,7 +87,7 @@ This RFC introduces a function attribute that only applies to unsafe functions: 
 - This attribute _extends_ the feature set of a function beyond its default feature set, which _allows_ the compiler to generate code under the assumption that the function's code will only be reached on hardware that supports its feature set.
 - Calling a function on a target that does not support its features is _undefined behavior_ (see the "On the unsafety of `#[target_feature]`" section).
 - The compiler will not inline functions in contexts that do not support all the functions features.
-- In `#[target_feature(enable="feature")]` functions the value of `cfg!(target_feature("feature"))` and `std::target_feature("feature")` is always `true` (otherwise undefined behavior did already happen). 
+- In `#[target_feature(enable = "feature")]` functions the value of `cfg!(target_feature = "feature")` and `std::target_feature("feature")` is always `true` (otherwise undefined behavior did already happen). 
 
 Note 0: the current RFC does not introduce any ABI issues in stable Rust. ABI issues with some unstable language features are explored in the "Unresolved Questions" section. 
 
@@ -165,13 +165,13 @@ unsafe fn moo() {
 ## Conditional compilation: `cfg!(target_feature)`
 
 The
-[`cfg!(target_feature("feature_name"))`](https://github.com/rust-lang/rust/issues/29717) macro
+[`cfg!(target_feature = "feature_name")`](https://github.com/rust-lang/rust/issues/29717) macro
 allows querying at compile-time whether a target feature is enabled in the
 current context. It returns `true` if the feature is enabled, and `false`
 otherwise.
 
 In a function annotated with `#[target_feature(enable = "feature_name")]` the macro
-`cfg!(target_feature("feature_name"))` expands to `true` if the generated
+`cfg!(target_feature = "feature_name")` expands to `true` if the generated
 code for the function uses the feature ([current bug](https://github.com/rust-lang/rust/issues/42515). 
 
 Note: how accurate `cfg!(target_feature)` can be made is an "Unresolved Question" (see the section below). Ideally, when `cfg!(target_feature)` is used in a function that does not support the feature, it should still return true in the cases where the function gets inlined into a context that does support the feature. This can happen often if the function is generic, or an `#[inline]` function defined in a different crate. This can results in errors at monomorphization time only if `#![cfg(target_feature)]` is used, but not if `if cfg!(target_feature)` is used since in this case all branches need to type-check properly.
@@ -182,11 +182,11 @@ Note: how accurate `cfg!(target_feature)` can be made is an "Unresolved Question
 fn bzhi_u32(x: u32, bit_position: u32) -> u32 {
     // Conditional compilation: both branches must be syntactically valid,
     // but it suffices that the true branch type-checks:
-    #[cfg(target_feature("bmi2"))] {
+    #[cfg(target_feature = "bmi2")] {
         // if this code is being compiled with BMI2 support, use a BMI2 instruction:
         unsafe { intrinsic::bmi2::bzhi(x, bit_position) }
     } 
-    #[not(cfg(target_feature("bmi2")))] {
+    #[cfg(not(target_feature = "bmi2"))] {
         // otherwise, call a portable emulation of the BMI2 instruction
         portable_emulation::bzhi(x, bit_position)
     } 
@@ -195,7 +195,7 @@ fn bzhi_u32(x: u32, bit_position: u32) -> u32 {
 fn bzhi_u64(x: u64, bit_position: u64) -> u64 {
     // Here both branches must type-check and whether the false branch is removed
     // or not is left up to the optimizer.
-    if cfg!(target_feature("bmi2")) {  // `cfg!` expands to `true` or `false` at compile-time
+    if cfg!(target_feature = "bmi2") {  // `cfg!` expands to `true` or `false` at compile-time
         // if target has the BMI2 instruction set, use a BMI2 instruction:
         unsafe { intrinsic::bmi2::bzhi(x, bit_position) }
         // ^^^ NOTE: this function cannot be inlined unless `bzhi_u64` supports
@@ -212,9 +212,9 @@ fn bzhi_u64(x: u64, bit_position: u64) -> u64 {
 ```rust
 #[target_feature("+avx")] 
 unsafe fn foo() {
-  if cfg!(target_feature("avx")) { /* this branch is always taken */ }
+  if cfg!(target_feature = "avx") { /* this branch is always taken */ }
   else { /* this branch is never taken */ }
-  #[not(cfg(target_feature("avx")))] {
+  #[cfg(not(target_feature = "avx"))] {
     // this is dead code
   }
 }
@@ -285,13 +285,13 @@ fn initialize_foo() -> typeof(foo) {
 
 // Wrap foo to do compile-time dispatch
 #[inline(always)] fn foo() {
-  #[cfg(target_feature("avx2"))] 
+  #[cfg(target_feature = "avx2")] 
   { unsafe { foo_avx2() } } 
-  #[and(cfg(target_feature("avx")), not(cfg(target_feature("avx2"))))] 
+  #[cfg(and(target_feature = "avx"), not(target_feature = "avx2")))] 
   { unsafe { foo_avx() } } 
-  #[and(cfg(target_feature("sse4")), not(cfg(target_feature("avx"))))] 
+  #[cfg(and(not(target_feature = "sse4")), not(target_feature = "avx")))] 
   { unsafe { foo_sse4() } } 
-  #[not(cfg(target_feature("sse4")))] 
+  #[cfg(not(target_feature = "sse4"))] 
   { foo_ptr() }
 }
 ```
@@ -314,12 +314,12 @@ fn software_emulation_of_raw_intrinsic_function(f64, f64) -> f64;
 // Safe zero-cost wrapper over the intrinsic
 // (i.e. can be inlined)
 fn my_intrinsic(a: f64, b: f64) -> f64 {
-  #[cfg(target_feature("some_feature"))] {
+  #[cfg(target_feature = "some_feature")] {
     // If "some_feature" is enabled, it is safe to call the 
     // raw intrinsic function
     unsafe { raw_intrinsic_function(a, b) }
   }
-  #[not(cfg(target_feature("some_feature")))] {
+  #[cfg(not(target_feature = "some_feature"))] {
      // if "some_feature" is disabled calling 
      // the raw intrinsic function is undefined behavior (per LLVM), 
      // we call the safe software emulation of the intrinsic:
@@ -433,7 +433,7 @@ one in the standard library.
 
 ## How accurate should cfg!(feature) be? 
 
-What happens if the macro `cfg!(target_feature("feature_name"))` is used inside a function for which `feature_name` is not enabled, but that function gets inlined into a context in which the feature is enabled? We want the macro to accurately return `true` in this case, that is, to be as accurate as possible so that users always get the most efficient algorithms, but whether this is even possible is an unresolved question. 
+What happens if the macro `cfg!(target_feature = "feature_name")` is used inside a function for which `feature_name` is not enabled, but that function gets inlined into a context in which the feature is enabled? We want the macro to accurately return `true` in this case, that is, to be as accurate as possible so that users always get the most efficient algorithms, but whether this is even possible is an unresolved question. 
 
 This might result in monomorphization errors if `#![cfg(target_feature)]` is used, but not if `if cfg!(target_feature)` is used since in this case all branches need to type-check properly.
 
