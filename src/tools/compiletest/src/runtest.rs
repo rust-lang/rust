@@ -1167,7 +1167,7 @@ actual:\n\
     }
 
     fn exec_compiled_test(&self) -> ProcRes {
-        let env = self.props.exec_env.clone();
+        let env = &self.props.exec_env;
 
         match &*self.config.target {
             // This is pretty similar to below, we're transforming:
