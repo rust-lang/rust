@@ -27,6 +27,10 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	border-bottom-color: #DDDDDD;
 }
 
+.in-band {
+	background-color: white;
+}
+
 .docblock code, .docblock-short code {
 	background-color: #F5F5F5;
 }
@@ -80,6 +84,11 @@ pre {
 }
 
 :target { background: #FDFFD3; }
+
+:target > .in-band {
+	background: #FDFFD3;
+}
+
 .content .highlighted {
 	color: #000 !important;
 	background-color: #ccc;
