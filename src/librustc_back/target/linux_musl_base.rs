@@ -60,13 +60,6 @@ pub fn opts() -> TargetOptions {
     base.pre_link_objects_exe.push("crti.o".to_string());
     base.post_link_objects.push("crtn.o".to_string());
 
-    // MUSL support doesn't currently include dynamic linking, so there's no
-    // need for dylibs or rpath business. Additionally `-pie` is incompatible
-    // with `-static`, so we can't pass `-pie`.
-    base.dynamic_linking = false;
-    base.has_rpath = false;
-    base.position_independent_executables = false;
-
     // These targets statically link libc by default
     base.crt_static_default = true;
     // These targets allow the user to choose between static and dynamic linking.
