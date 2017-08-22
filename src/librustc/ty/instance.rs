@@ -24,22 +24,15 @@ pub struct Instance<'tcx> {
 pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
-
-    /// <fn() as FnTrait>::call_*
-    /// def-id is FnTrait::call_*
+    // <fn() as FnTrait>::call_*
+    // def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
-
-    /// <Trait as Trait>::fn
+    // <Trait as Trait>::fn
     Virtual(DefId, usize),
-
-    /// <[mut closure] as FnOnce>::call_once
+    // <[mut closure] as FnOnce>::call_once
     ClosureOnceShim { call_once: DefId },
-
-    /// drop_in_place::<T>; None for empty drop glue.
+    // drop_in_place::<T>; None for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
-
-    /// Builtin method implementation, e.g. `Clone::clone`.
-    CloneShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -50,9 +43,9 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
-            InstanceDef::ClosureOnceShim { call_once: def_id } |
-            InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::CloneShim(def_id, _) => def_id
+            InstanceDef::ClosureOnceShim { call_once: def_id }
+                => def_id,
+            InstanceDef::DropGlue(def_id, _) => def_id
         }
     }
 
@@ -85,9 +78,6 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
                 write!(f, " - shim")
             }
             InstanceDef::DropGlue(_, ty) => {
-                write!(f, " - shim({:?})", ty)
-            }
-            InstanceDef::CloneShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
         }

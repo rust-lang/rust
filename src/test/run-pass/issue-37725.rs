@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn foo(&self);
-}
-
-fn foo<'a>(s: &'a mut ()) where &'a mut (): Foo {
-    s.foo();
+pub fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
+    s.clone();
 }
 fn main() {}

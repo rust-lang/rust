@@ -300,7 +300,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 })
             }
             traits::VtableParam(n) => Some(traits::VtableParam(n)),
-            traits::VtableBuiltin(n) => Some(traits::VtableBuiltin(n)),
+            traits::VtableBuiltin(d) => Some(traits::VtableBuiltin(d)),
             traits::VtableObject(traits::VtableObjectData {
                 upcast_trait_ref,
                 vtable_base,
