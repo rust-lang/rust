@@ -84,7 +84,7 @@ pub enum PathStyle {
     Expr,
     /// In other contexts, notably in types, no ambiguity exists and paths can be written
     /// without the disambiguator, e.g. `x<y>` - unambiguously a path.
-    /// Paths with disambiguators are rejected for now, but may be allowed in the future.
+    /// Paths with disambiguators are still accepted, `x::<Y>` - unambiguously a path too.
     Type,
     /// A path with generic arguments disallowed, e.g. `foo::bar::Baz`, used in imports,
     /// visibilities or attributes.
@@ -1755,7 +1755,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::ModSep)?;
 
         let qself = QSelf { ty, position: path.segments.len() };
-        self.parse_path_segments(&mut path.segments, style)?;
+        self.parse_path_segments(&mut path.segments, style, true)?;
 
         Ok((qself, ast::Path { segments: path.segments, span: lo.to(self.prev_span) }))
     }
@@ -1770,8 +1770,12 @@ impl<'a> Parser<'a> {
     /// `a::b::C::<D>` (with disambiguator)
     /// `Fn(Args)` (without disambiguator)
     /// `Fn::(Args)` (with disambiguator)
-    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path>
-    {
+    pub fn parse_path(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
+        self.parse_path_common(style, true)
+    }
+
+    pub fn parse_path_common(&mut self, style: PathStyle, enable_warning: bool)
+                             -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |x| x);
 
         let lo = self.meta_var_span.unwrap_or(self.span);
@@ -1779,7 +1783,7 @@ impl<'a> Parser<'a> {
         if self.eat(&token::ModSep) {
             segments.push(PathSegment::crate_root(lo));
         }
-        self.parse_path_segments(&mut segments, style)?;
+        self.parse_path_segments(&mut segments, style, enable_warning)?;
 
         Ok(ast::Path { segments, span: lo.to(self.prev_span) })
     }
@@ -1804,10 +1808,10 @@ impl<'a> Parser<'a> {
         self.parse_path(style)
     }
 
-    fn parse_path_segments(&mut self, segments: &mut Vec<PathSegment>, style: PathStyle)
-                           -> PResult<'a, ()> {
+    fn parse_path_segments(&mut self, segments: &mut Vec<PathSegment>, style: PathStyle,
+                           enable_warning: bool) -> PResult<'a, ()> {
         loop {
-            segments.push(self.parse_path_segment(style)?);
+            segments.push(self.parse_path_segment(style, enable_warning)?);
 
             if self.is_import_coupler() || !self.eat(&token::ModSep) {
                 return Ok(());
@@ -1815,7 +1819,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_path_segment(&mut self, style: PathStyle) -> PResult<'a, PathSegment> {
+    fn parse_path_segment(&mut self, style: PathStyle, enable_warning: bool)
+                          -> PResult<'a, PathSegment> {
         let ident_span = self.span;
         let ident = self.parse_path_segment_ident()?;
 
@@ -1835,17 +1840,9 @@ impl<'a> Parser<'a> {
                                       && self.look_ahead(1, |t| is_args_start(t)) {
             // Generic arguments are found - `<`, `(`, `::<` or `::(`.
             let lo = self.span;
-            if self.eat(&token::ModSep) {
-                // These errors are not strictly necessary and may be removed in the future.
-                if style == PathStyle::Type {
-                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
-                        "unnecessary path disambiguator");
-                    err.span_label(self.prev_span, "try removing `::`");
-                    err.emit();
-                } else if self.token == token::OpenDelim(token::Paren) {
-                    self.diagnostic().span_err(self.prev_span,
-                        "`::` is not supported before parenthesized generic arguments")
-                }
+            if self.eat(&token::ModSep) && style == PathStyle::Type && enable_warning {
+                self.diagnostic().struct_span_warn(self.prev_span, "unnecessary path disambiguator")
+                                 .span_label(self.prev_span, "try removing `::`").emit();
             }
 
             let parameters = if self.eat_lt() {
@@ -2390,7 +2387,7 @@ impl<'a> Parser<'a> {
 
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        let segment = self.parse_path_segment(PathStyle::Expr)?;
+        let segment = self.parse_path_segment(PathStyle::Expr, true)?;
         Ok(match self.token {
             token::OpenDelim(token::Paren) => {
                 // Method call `expr.f()`
