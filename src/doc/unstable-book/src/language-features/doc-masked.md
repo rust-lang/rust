@@ -1,6 +1,6 @@
 # `doc_masked`
 
-The tracking issue for this feature is: [TODO](TODO)
+The tracking issue for this feature is: [#44027]
 
 -----
 
@@ -16,7 +16,7 @@ of trait implementations. The specifics of the feature are as follows:
 3. When listing types that implement a given trait, rustdoc ensures that types from masked crates
    are not emitted into the documentation.
 
-This feature was introduced in PR [TODO](TODO) to ensure that compiler-internal and
+This feature was introduced in PR [#44026] to ensure that compiler-internal and
 implementation-specific types and traits were not included in the standard library's documentation.
 Such types would introduce broken links into the documentation.
 
@@ -35,3 +35,6 @@ pub trait MyMarker { }
 impl MyMarker for f32 { }
 impl MyMarker for f64 { }
 ```
+
+[#44026]: https://github.com/rust-lang/rust/pull/44026
+[#44027]: https://github.com/rust-lang/rust/pull/44027
