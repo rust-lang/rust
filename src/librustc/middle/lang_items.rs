@@ -274,6 +274,7 @@ language_item_table! {
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
+    CloneTraitLangItem,              "clone",                   clone_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
     FreezeTraitLangItem,             "freeze",                  freeze_trait;
 
