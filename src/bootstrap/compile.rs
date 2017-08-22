@@ -210,7 +210,10 @@ impl Step for StdLink {
 
 /// Copies the crt(1,i,n).o startup objects
 ///
-/// Only required for musl targets that statically link to libc
+/// Since musl supports fully static linking, we can cross link for it even
+/// with a glibc-targeting toolchain, given we have the appropriate startup
+/// files. As those shipped with glibc won't work, copy the ones provided by
+/// musl so we have them on linux-gnu hosts.
 fn copy_musl_third_party_objects(build: &Build, target: Interned<String>, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
         copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
