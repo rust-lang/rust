@@ -1,7 +1,7 @@
 [package]
 name = "clippy_lints"
 # begin automatic update
-version = "0.0.152"
+version = "0.0.153"
 # end automatic update
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
@@ -10,7 +10,7 @@ authors = [
 	"Martin Carton <cartonmartin@gmail.com>"
 ]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
-repository = "https://github.com/Manishearth/rust-clippy"
+repository = "https://github.com/rust-lang-nursery/rust-clippy"
 readme = "README.md"
 license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
