@@ -6,185 +6,175 @@
 # Motivation and Summary
 [summary]: #summary
 
-Some `x86_64` CPUs, among others, support extra "features", like AVX SIMD vector
-instructions, that not all `x86_64` CPUs do support. This RFC proposes extending
-Rust with:
+While architectures like `x86_64` or `ARMv8` define the lowest-common denominator of instructions that all CPUs must support, many CPUs extend these with vector ([AVX](https://en.wikipedia.org/wiki/Advanced_Vector_Extensions)), bitwise manipulation ([BMI](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets)) and/or cryptographic ([AES](https://en.wikipedia.org/wiki/AES_instruction_set)) instruction sets. By default, the Rust compiler produces portable binaries that are able to run on all CPUs of a particular architecture. Users that know in which CPUs their binaries are going to run on are able to allow the compiler to use these extra instructions by using the compiler flags `--target-feature` and `--target-cpu`. Running these binaries on mismatching CPUs is undefined behavior. Currently, these users have no way in stable Rust to:
 
-- **conditional compilation on target features**: choosing different code-paths
-  at compile-time depending on the features being used by the compiler,
-  
-- **unconditional code generation**: unconditionally generating code that uses
-  extra features that the host currently being targeted by the compiler does not
-  support (allows embedding code optimized for different CPUs within the same
-  binary), and
-  
-- (unresolved) **run-time feature detection**: querying whether a feature is
-  supported by the host in which the binary runs.
-  
-This RFC also specifies the semantics of the backend options `-C
---target-feature/--target-cpu`.
+- determine which features are available at compile-time, and
+- determine which features are available at run-time, and
+- embed code for different sets of features into the same binary,
+
+such that the programs can use different algorithms depending on the features available, and allowing portable ust binaries to efficiently run on many CPU families of a particular architecture. 
+
+The objective of this RFC is to extend the Rust language to solve these three problems, and it does so by adding the following three language features:
+
+- **compile-time feature detection**: using configuration macros `cfg!(target_feature("avx2"))` to detect whether a feature is enabled or disabled in a context (`#![cfg(target_feature("avx2"))]`, ...), 
+- **run-time feature detection**: using the `std::target_feature("avx2")` API to detect whether the current host supports the feature, and
+- **unconditional code generation**: using the function attribute `#[target_feature(enable = "avx2")]` to allow the compiler to generate code under the assumption that this code will only be reached in hosts that support the feature. 
 
 # Detailed design
 [design]: #detailed-design
 
-This RFC proposes adding the following three constructs to the language:
-
-- the `cfg!(target_feature = "feature_name")` macro which detects whether the
-  current scope is being compiled with a target feature enabled/disabled, 
-- the `#[target_feature = "+feature_name"]` attribute for `unsafe` functions
-  which allows the compiler to generate the function's code assuming that the
-  host in which the function is executed supports the feature, and
-- (unresolved) a `std::cpuid` module for detecting at run-time whether a feature
-  is supported by the current host.
-
 ## Target features
 
-Each rustc target has a default set of target features; this set is
-_implementation defined_.
+Each rustc target has a default set of target features that can be controled via 
+the backend compilation options. The target features for each target should
+be documented by the compiler and the backends (e.g. LLVM).
 
-This RFC does not add any target features to the language. It does however
-specify the process for adding target features. Each target feature must:
+This RFC does not add any target features to the language but it
+specifies the process for adding target features. Each target feature must:
 
-- be proposed in its own mini-RFC, RFC, or rustc-issue and follow a FCP period,
-- be behind its own feature macro of the form `target_feature_feature_name`
+- Be proposed in its own mini-RFC, RFC, or rustc-issue and follow a FCP period,
+- Be behind its own feature gate macro of the form `target_feature_feature_name`
   (where `feature_name` should be replaced by the name of the feature ).
-- (unresolved) when possible, be detectable at run-time via the `std::cpuid`
-  module.
+- When possible, be detectable at run-time via the `std::target_feature` API.
+- Include whether some backend-specific compilation options should enable the
+  feature.
   
-To use unstable features on nightly, crates must opt into them as usual by
+To use unstable target features on nightly, crates must opt into them as usual by
 writing, for example, `#![allow(target_feature_avx2)]`. Since this is currently
 not required, a grace period of one full release cycle will be given in which
 this will raise a soft error before turning this requirement into a hard error.
 
+## Backend compilation options
+
+There are currently two ways of passing target feature information to rustc's code
+generation backend on stable Rust. 
+
+- `-C --target-feature=+/-backend_target_feature_name`: where `+/-` add/remove
+  features from the default feature set of the platform for the whole crate. 
+
+- `-C --target-cpu=backend_cpu_name`, which changes the default feature set of
+  the crate to be that of all features enabled for `backend_cpu_name`.
+
+These two options are available on stable Rust and have been defacto stabilized. 
+Their semantics are LLVM specific and depend on what LLVM actually does with the
+features.
+
+This RFC proposes to keep these options "as is", and add one new compiler option,
+`--enable-features="feature0,feature1,..."`, (the analogous `--disable-features` 
+is discussed in the "Future Extensions" section) that supports only stabilized 
+target features.
+
+This allows us to preserve backwards compatibility while choosing different feature 
+names and semantics than the ones provided by the LLVM backend. 
+
+The effect of `--enable-features=feature-list` is to enable all features implicitly 
+for all functions of a crate. That is, anywhere within the crate the values of the macro 
+`cfg!(target_feature("feature"))` and `std::target_feature("feature")` are `true`.
+
+Whether the backend compilation options `-C --target-feature/--target-cpu` also enable
+some stabilized features or not should be resolved by the RFCs suggesting the stabilization
+of particular target features.
 
 ## Unconditional code generation: `#[target_feature]`
 
-(note: `#[target_feature]` is similar to clang's and
+(note: the function attribute `#[target_feature]` is similar to clang's and
 gcc's
 [`__attribute__ ((__target__ ("feature")))`](https://clang.llvm.org/docs/AttributeReference.html#target-gnu-target).)
 
+This RFC introduces a function attribute that only applies to unsafe functions: [`#[target_feature(enable =
+"feature_list")]`](https://github.com/rust-lang/rust/pull/38079) (the analogous `#[target_feature(disable = "feature_list")]` is discussed in the "Future Extensions" section): 
 
-The `unsafe` function attribute [`#[target_feature =
-"+feature_name"]`](https://github.com/rust-lang/rust/pull/38079) _extends_ the
-feature set of a function. That is, `#[target_feature = "+feature_name"] unsafe
-fn foo(...)` allows the compiler to generate code for `foo` under the assumption
-that `foo` will only run on binaries that support the feature `feature_name` in
-addition to the default feature set of the target, which can be controlled
-through the backend options `-C --target-feature/--target-cpu`.
+- This attribute _extends_ the feature set of a function beyond its default feature set, which _allows_ the compiler to generate code under the assumption that the function's code will only be reached on hardware that supports its feature set.
+- Calling a function on a target that does not support its features is _undefined behavior_ (see the "On the unsafety of `#[target_feature]`" section).
+- The compiler will not inline functions in contexts that do not support all the functions features.
+- In `#[target_feature(enable="feature")]` functions the value of `cfg!(target_feature("feature"))` and `std::target_feature("feature")` is always `true` (otherwise undefined behavior did already happen). 
 
-Calling a function on a target that does not support its feature set is
-_undefined behavior_; no diagnostic is required. Note: the sub-section "No
-segfaults" within the "Alternatives" section discusses how to implement run-time
-diagnostics but these incur a run-time cost.
+Note 0: the current RFC does not introduce any ABI issues in stable Rust. ABI issues with some unstable language features are explored in the "Unresolved Questions" section. 
 
-> Note: Calling a function on a host that does not support its features invokes
-undefined behavior in LLVM and the assembler, and also in some hardware. For
-this reason, `#[target_feature]` cannot apply to safe functions.
-
-Removing features from the default feature set using `#[target_feature =
-"-feature_name"]` is illegal; a diagnostic is required.
-
-The implementation will not inline code across mismatching target features.
-Calling a function annotated with both `#[target_feature]` and
-`#[always_inline]` from a context with a mismatching target feature is illegal;
-a diagnostic is required.
-
-Annotating a function with `#[target_feature]` potentially changes the ABI of
-the function, for example, if portable vector types are used as function
-arguments or return-types, or integer types like `_128` are used. Whether
-calling a function annotated with `#[target_feature]` from a context with a
-mismatching target feature is supported is _implementation defined_ (see
-unresolved questions). Note: the implementation can either produce a hard-error,
-or perform an implicit conversion that converts between ABIs (both GCC and Clang
-do this implicitly and can optionally emit a warning which can be turned into a
-hard error).
-
-Taking a function pointer to a function annotated with `#[target_feature]` is
-illegal if the ABI of the function does not match the ABI of the function
-pointer; diagnostic required.
+Note 1: a function has the features of the crate where the function is defined +/- `#[target_feature]` annotations. Iff the function
+is inlined into a context that extends its feature set, then the compiler is allowed to generate code for the function using this extended feature set (sub-note: inlining is forbidden in the opposite case).
 
 **Example 0 (basics):**
 
+This example covers how to use `#[target_feature]` with run-time feature detection to dispatch to different
+function implementations depending on the features supported by the CPU at run-time:
+
 ```rust
 // This function will be optimized for different targets
-#[always_inline] fn foo_impl() { ... }
+#[inline(always)] fn foo_impl() { ... }
 
 // This generates a stub for CPUs that support SSE4:
-#[target_feature = "+sse4"] unsafe fn foo_sse4() { foo_impl() } 
+#[target_feature(enable = "sse4")] unsafe fn foo_sse4() { 
+    // Inlining `foo_impl` here is fine because `foo_sse4` 
+    // extends `foo_impl` feature set
+    foo_impl() 
+} 
 
 // This generates a stub for CPUs that support AVX:
-#[target_feature = "+avx"] unsafe fn foo_avx() { foo_impl() } 
+#[target_feature(enable = "avx")] unsafe fn foo_avx() { foo_impl() } 
 
-// This global function pointer can be used to dispatch at run-time to the "best"
-// implementation of foo:
-static global_foo_ptr: fn() -> () = initialize_foo();
-// ^^^ this function pointer has no issues because it does not use any 
-//     arguments or return values whose ABI might change in the presence
-//     of target feature
-
-// This function initializes the global function pointer 
+// This function returns the best implementation of `foo` depending
+// on which target features the host CPU does support at run-time: 
 fn initialize_global_foo_ptr() -> fn () -> () {
-    if std::cpuid::has_feature("avx") { // (unresolved) run-time feature detection
+    if std::target_feature("avx") {
       unsafe { foo_avx }
-    } else if std::cpuid::has_feature("sse4") {
+    } else if std::target_feature("sse4") {
       unsafe { foo_sse4 }
     } else {
       foo_impl // use the default version
     }
 }
+
+// During binary initialization we can set a global function pointer 
+// to the best implementation of foo depending on the features that
+// the CPU where the binary is running does support: 
+static global_foo_ptr: fn() -> () = initialize_foo();
+// ^^ note: the ABI of this function pointer is independent of the target features
+
+
+fn main() {
+  // Finally, we can use the function pointer to dispatch to the best implementation:
+  global_foo_ptr();
+}
+
 ```
 
 **Example 1 (inlining):**
 
 ```rust
-#[target_feature="+avx"] unsafe fn foo();
-#[target_feature="+avx"] #[always_inline] unsafe fn bar();
+#[target_feature(enable = "avx")] unsafe fn foo();
+#[target_feature(enable = "avx")] #[inline] unsafe fn baz(); // OK
+#[target_feature(enable = "avx")] #[inline(always)] unsafe fn bar(); // OK  
 
-fn has_feature() -> bool;
-
-#[target_feature="+sse3"]
-unsafe fn baz() {
-  if std::cpuid::has_feature("avx") {
-      foo(); // OK: foo is not inlined into baz
-      bar(); // ERROR: cannot inline `#[always_inline]` function bar
-             // bar requires target feature "avx" but baz only provides "sse3"
+#[target_feature(enable = "sse3")]
+unsafe fn moo() {
+  // This function supports SSE3 but not AVX
+  if std::target_feature("avx") {
+      foo(); // OK: foo is not inlined into moo
+      baz(); // OK: baz is not inlined into moo
+      bar(); 
+      // ^ ERROR: bar cannot be inlined across mismatching features
+      // did you meant to make bar #[inline] instead of #[inline(always)]?
+      // Note: the logic to detect this is the same as for the call 
+      // to baz, but in this case rustc must emit an error because an
+      // #[inline(always)] function cannot be inlined in this call site. 
   }
-}
-```
-
-**Example 2 (ABI):**
-
-```rust
-#[target_feature="+sse2"] 
-unsafe fn foo_sse2(a: f32x8) -> f32x8 { a } // ABI: 2x 128bit registers
-
-#[target_feature="+avx2"] 
-unsafe fn foo_avx2(a: f32x8) -> f32x8 { // ABI: 1x 256bit register
-  foo_sse2(a) // ABI mismatch: implicit conversion or hard error (unresolved)
-}
-
-#[target_feature="+sse2"]
-unsafe fn bar() {
-  type fn_ptr = fn(f32x8) -> f32x8;
-  let mut p0: fn_ptr = foo_sse2; // OK
-  let p1: fn_ptr = foo_avx2; // ERROR: mismatching ABI
-  let p2 = foo_avx2; // OK
-  p0 = p2; // ERROR: mismatching ABI
 }
 ```
 
 ## Conditional compilation: `cfg!(target_feature)`
 
 The
-[`cfg!(target_feature = "feature_name")`](https://github.com/rust-lang/rust/issues/29717) macro
+[`cfg!(target_feature("feature_name"))`](https://github.com/rust-lang/rust/issues/29717) macro
 allows querying at compile-time whether a target feature is enabled in the
-current scope. It returns `true` if the feature is enabled, and `false`
+current context. It returns `true` if the feature is enabled, and `false`
 otherwise.
 
-In a function annotated with `#[target_feature = "feature_name"]` the macro
-`cfg!(target_feature = "feature_name")` _must_ expand to `true` if the generated
-code for the function uses the feature. Otherwise, the value of the macro is
-undefined. 
+In a function annotated with `#[target_feature(enable = "feature_name")]` the macro
+`cfg!(target_feature("feature_name"))` expands to `true` if the generated
+code for the function uses the feature ([current bug](https://github.com/rust-lang/rust/issues/42515). 
+
+Note: how accurate `cfg!(target_feature)` can be made is an "Unresolved Question" (see the section below). Ideally, when `cfg!(target_feature)` is used in a function that does not support the feature, it should still return true in the cases where the function gets inlined into a context that does support the feature. This can happen often if the function is generic, or an `#[inline]` function defined in a different crate. This can results in errors at monomorphization time only if `#![cfg(target_feature)]` is used, but not if `if cfg!(target_feature)` is used since in this case all branches need to type-check properly.
 
 **Example 3 (conditional compilation):**
 
@@ -192,11 +182,11 @@ undefined.
 fn bzhi_u32(x: u32, bit_position: u32) -> u32 {
     // Conditional compilation: both branches must be syntactically valid,
     // but it suffices that the true branch type-checks:
-    #[cfg!(target_feature = "bmi2")] {
+    #[cfg!(target_feature("bmi2"))] {
         // if this code is being compiled with BMI2 support, use a BMI2 instruction:
         unsafe { intrinsic::bmi2::bzhi(x, bit_position) }
     } 
-    #[not(cfg!(target_feature = "bmi2"))] {
+    #[not(cfg!(target_feature("bmi2")))] {
         // otherwise, call a portable emulation of the BMI2 instruction
         portable_emulation::bzhi(x, bit_position)
     } 
@@ -205,9 +195,11 @@ fn bzhi_u32(x: u32, bit_position: u32) -> u32 {
 fn bzhi_u64(x: u64, bit_position: u64) -> u64 {
     // Here both branches must type-check and whether the false branch is removed
     // or not is left up to the optimizer.
-    if cfg!(target_feature = "bmi2") {  // `cfg!` expands to `true` or `false` at compile-time
+    if cfg!(target_feature("bmi2")) {  // `cfg!` expands to `true` or `false` at compile-time
         // if target has the BMI2 instruction set, use a BMI2 instruction:
         unsafe { intrinsic::bmi2::bzhi(x, bit_position) }
+        // ^^^ NOTE: this function cannot be inlined unless `bzhi_u64` supports
+        // the required features
     } else {
         // otherwise call an algorithm that emulates the instruction:
         portable_emulation::bzhi(x, bit_position)
@@ -218,182 +210,88 @@ fn bzhi_u64(x: u64, bit_position: u64) -> u64 {
 **Example 4 (value of `cfg!` within `#[target_feature]`):**
 
 ```rust
-#[target_feature = "+avx"] 
+#[target_feature("+avx")] 
 unsafe fn foo() {
-  if cfg!(target_feature = "avx") { /* this branch is always taken */ }
+  if cfg!(target_feature("avx")) { /* this branch is always taken */ }
   else { /* this branch is never taken */ }
-  #[not(cfg!(target_feature = "avx"))] {
+  #[not(cfg!(target_feature("avx")))] {
     // this is dead code
   }
 }
 ```
 
-## (unresolved) Run-time feature detection
+## Run-time feature detection
 
 Writing safe wrappers around `unsafe` functions annotated with
-`#[target_feature]` requires run-time feature detection. This section explores
-the design space of run-time feature detection. Whether we need run-time feature
-detection before stabilizing this RFC is an unresolved question.
+`#[target_feature]` requires run-time feature detection. This RFC adds the following
+stable intrinsic to the standard library:
+
+- `std::target_feature("feature") -> bool`
+
+with the following semantics: "if the host hardware on which the current code is running
+supports the `"feature"`, `std::target_feature` expands/returns `true`, and `false`
+otherwise.
+
+Examples of using run-time feature detection have been shown throughout this RFC, there
+isn't really more to it.
 
 The logic users (or procedural macros) will write for performing run-time
 feature detection looks like this:
-
-**Example 5 (run-time feature detection overview):**
-
-```rust 
-if std::cpuid::has_feature("feature_name") {
-  // do something
-} else {
-  // do something else
-}
-```
-
-All examples in this RFC call `std::cpuid::has_feature(&str) -> bool` to perform
-run-time feature detection. This is a stub, multiple alternative exists.
-Run-time feature detection can be provided:
-
-- as a library:
-  - in a third-party crate,
-  - a crate in the nursery, or
-  - as a standard library module, e.g., `std::cpuid`, or
-- as a language feature (e.g. `cfg!(runtime_target_feature = "feature")`
-  expanding to some library function call).
-
-All of them work with this RFC as is (or with very minor changes). 
-
-However, the best API for such a library or language feature is unknown. For
-example, it might be better to use an `enum` to pattern-match on features
-instead of a `&str` and a `bool`. These options have not been explored in the
-ecosystem yet.
-
-For this reason, ideally we would let solutions compete in third-party library
-crates, and maybe at some point move the winner into the nursery or the standard
-library. [Such crates already exist](https://docs.rs/cpuid/).
-
-There are two main arguments for including run-time feature detection in the
-standard library or the language:
-
-- run-time feature detection is required to ensure memory safety when calling
-  unsafe functions annotated with `#[target_feature]`. A popular third-party
-  crate getting out-of-sync with rustc in a dangerous way could silently
-  introduce memory unsafety in the rust ecosystem. And,
-
-- implementing run-time feature detection in Rust requires using the `asm!`
-  macro, which means that either crates implementing it will need to require
-  unstable, or link to a library that hides this (like the cpuid does which
-  links to the C libcpuid library).
-
-As a consequence, we should consider whether we should stabilize some form of
-run-time feature detection alongside this RFC and make it part of the standard
-library or the language. Deciding whether we want to do this or not is left as
-an unresolved question to be resolved before stabilization.
-
-Note: the host detection library used by LLVM in `-march=native` is in
-[`]llvm/lib/Support/Host.cpp`](https://github.com/llvm-mirror/llvm/blob/master/lib/Support/Host.cpp).
-It is heavy-weight, and not intended to be used in the run-time of C-like
-languages. There is a `__builtin_cpu_supports`
-in
-[compiler-rt/lib/builtins/cpu_model.c](https://github.com/llvm-mirror/compiler-rt/blob/27ebbdc985fb55567329aa2b510229cc19bd62c5/lib/builtins/cpu_model.c) that
-was copy-pasted from LLVM in July 2016 and is x86 only.
-
-## Backend compilation options
-
-There are currently two ways of passing feature information to rustc's code
-generation backend on stable rust. These are the proposed semantics for these
-features:
-
-- `-C --target-feature=+/-backend_target_feature_name`: where `+/-` add/remove
-  features from the default feature set of the platform for the whole crate. The
-  behavior for non-stabilized features is _implementation defined_. The behavior
-  for stabilized features is:
-  
-  - to implicitly mark all functions in the crate with `#[target_feature =
-    "+/-feature_name"]` (where `-` is still a hard error)
-  
-  - `cfg!(target_feature = "feature_name")` returns `true` if the feature is
-    enabled. If the backend does not support the feature, the feature might be
-    disabled even if the user explicitly enabled it, in which case `cfg!`
-    returns false; a soft diagnostic is encouraged.
-
-- `-C --target-cpu=backend_cpu_name`, which changes the default feature set of
-  the crate to be that of `backend_cpu_name`.
-
-Since the behavior for unstabilized features is _implementation defined_ and
-currently no features are stabilized, rustc can continue to provide backwards
-compatible behavior for all currently implemented features.
-
-As features are stabilized, the behavior of the backend compilation options must
-match the one specified on this RFC for those features. Whether different
-feature names, or a warning period will be provided, is left to the RFCs
-proposing the stabilization of concrete features and should be evaluated on a
-per-feature basis depending on, e.g., impact.
-
-It is recommended that the implementation emits a soft diagnostic when unstable
-features are used via `--target-feature` on stable.
-
-These options are already available on stable rust, so we are constrained on the
-amount of changes that can be done here. An alternative would be to keep
-`--target-feature` as is and introduce a new `--stable-target-feature` or
-similar. Which approach is best is an unresolved question.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
 There are two parts to this story, the low-level part, and the high-level part.
 
-Starting with the high-level part, this is how users should be able to use
-target features:
+**Example 5 (high-level usage of target features):**
 
-**Example 6 (high-level usage of target features):**
+**note**: `ifunc` is not part of this RFC, but just an example of what can be built on top of it.
+
+In the high-level part we have the `ifunc` function attribute, implemented as a procedural macro (some of these macros [already](https://github.com/alexcrichton/cfg-specialize/blob/master/cfg-specialize-macros) [exist](https://github.com/parched/runtime-target-feature-rs)):   
 
 ```rust
-#[ifunc("default", "sse4", "avx", "avx2")]
+#[ifunc("default", "sse4", "avx", "avx2")]  //< MAGIC
 fn foo() {}
 
-... foo(); // dispatches to the best implementation at run-time
-
-#[cfg!(target_feature = "sse4")] {
-  foo(); // dispatches to the sse4 implementation at compile-time
+fn main() {
+  foo(); // dispatches to the best implementation at run-time
+  #[cfg!(target_feature = "sse4")] {
+    foo(); // dispatches to the sse4 implementation at compile-time
+  }
 }
 ```
 
-Here, `ifunc` is a procedural macro that abstracts all the complexity and
-unsafety of dealing with target features (some of these
-macros
-[already](https://github.com/alexcrichton/cfg-specialize/blob/master/cfg-specialize-macros) [exist](https://github.com/parched/runtime-target-feature-rs)).
+The following example covers what `ifunc` might expand to.
 
-To explain the low-lever part of the story, this is what `ifunc!` could expand
-to:
-
-**Example 7 (ifunc expansion):**
+**Example 6 (ifunc expansion):**
 
 ```rust
 // Copy-pastes "foo" and generates code for multiple target features:
 unsafe fn foo_default() { ...foo tokens... }
-#[target_feature="+sse4"] unsafe fn foo_sse4() { ...foo tokens... }
-#[target_feature="+avx"]  unsafe fn foo_avx() { ...foo tokens... }
-#[target_feature="+avx2"] unsafe fn foo_avx2() { ...foo tokens... }
+#[target_feature(enable = "sse4")] unsafe fn foo_sse4() { ...foo tokens... }
+#[target_feature(enable = "avx")]  unsafe fn foo_avx() { ...foo tokens... }
+#[target_feature(enable = "avx2")] unsafe fn foo_avx2() { ...foo tokens... }
 
 // Initializes `foo` on binary initialization
 static foo_ptr: fn() -> () = initialize_foo();
 
 fn initialize_foo() -> typeof(foo) {
     // run-time feature detection:
-    if std::cpuid::has_feature("avx2")  { return unsafe { foo_avx2 } }
-    if std::cpuid::has_feature("avx")  { return unsafe { foo_avx } }
-    if std::cpuid::has_feature("sse4")  { return unsafe { foo_sse4 } }
+    if std::target_feature("avx2")  { return unsafe { foo_avx2 } }
+    if std::target_feature("avx")  { return unsafe { foo_avx } }
+    if std::target_feature("sse4")  { return unsafe { foo_sse4 } }
     foo_default
 }
 
 // Wrap foo to do compile-time dispatch
-#[always_inline] fn foo() {
-  #[cfg!(target_feature = "avx2")] 
+#[inline(always)] fn foo() {
+  #[cfg!(target_feature("avx2"))] 
   { unsafe { foo_avx2() } } 
-  #[and(cfg!(target_feature = "avx"), not(cfg!(target_feature = "avx2")))] 
+  #[and(cfg!(target_feature("avx")), not(cfg!(target_feature("avx2"))))] 
   { unsafe { foo_avx() } } 
-  #[and(cfg!(target_feature = "sse4"), not(cfg!(target_feature = "avx")))] 
+  #[and(cfg!(target_feature("sse4")), not(cfg!(target_feature("avx"))))] 
   { unsafe { foo_sse4() } } 
-  #[not(cfg!(target_feature = "sse4"))] 
+  #[not(cfg!(target_feature("sse4")))] 
   { foo_ptr() }
 }
 ```
@@ -402,7 +300,7 @@ Note that there are many solutions to this problem and they have different
 trade-offs, but these can be explored in procedural macros. When wrapping unsafe
 intrinsics, conditional compilation can be used to create zero-cost wrappers:
 
-**Example 8 (three-layered approach to target features):**
+**Example 7 (three-layered approach to target features):**
 
 ```rust
 // Raw unsafe intrinsic: in LLVM, std::intrinsic, etc.
@@ -416,12 +314,12 @@ fn software_emulation_of_raw_intrinsic_function(f64, f64) -> f64;
 // Safe zero-cost wrapper over the intrinsic
 // (i.e. can be inlined)
 fn my_intrinsic(a: f64, b: f64) -> f64 {
-  #[cfg!(target_feature = "some_feature")] {
+  #[cfg!(target_feature("some_feature"))] {
     // If "some_feature" is enabled, it is safe to call the 
     // raw intrinsic function
     unsafe { raw_intrinsic_function(a, b) }
   }
-  #[not(cfg!(target_feature = "some_feature"))] {
+  #[not(cfg!(target_feature("some_feature")))] {
      // if "some_feature" is disabled calling 
      // the raw intrinsic function is undefined behavior (per LLVM), 
      // we call the safe software emulation of the intrinsic:
@@ -432,22 +330,12 @@ fn my_intrinsic(a: f64, b: f64) -> f64 {
 #[ifunc("default", "avx")]
 fn my_intrinsic_rt(a: f64, b: f64) -> f64 { my_intrinsic(a, b) }
 ```
-
-Note that `ifunc!` is not part of this proposal, it is a procedural macro that
-can be built on top and provided as a library. It is expected that similar
-macros for common usage patterns will emerge. Those needing something specific
-can still write unsafe code directly and deal (or not, its up to them) with it.
-
 Due to the low-level and high-level nature of these feature we will need two
-kinds of documentation.
+kinds of documentation. For the low level part:
 
-For the low level part:
-
-- a section in the book listing the stabilized target features, and including an
-  example application that uses both `cfg!` and `#[target_feature]` to explain
-  how they work, 
-- extend the section on `cfg!` with `target_feature`, and
-- (unresolved) document run-time feature detection.
+- document how to do compile-time and run-time feature detection using `cfg!(target_feature)` and `std::target_feature`,
+- document how to use `#[target_feature]`,
+- document how to use all of these together to solve problems like in the examples of this RFC.
 
 For the high-level part we should aim to bring third-party crates implementing
 `ifunc!` or similar close to 1.0 releases before stabilization. 
@@ -466,49 +354,168 @@ Rust.
 # Alternatives
 [alternatives]: #alternatives
 
-## Can we make `#[target_feature]` safe ?
+# Backend options
+
+An alternative would be to mix stable, unstable, unknown, 
+and backend-specific features into `--target-feature`.  
+
+## Make `#[target_feature]` safe
 
 Calling a function annotated with `#[target_feature]` on a host that does not
 support the feature invokes undefined behavior in LLVM, the assembler, and
-possibly the
-CPU.
-[See this comment](https://github.com/rust-lang/rfcs/pull/2045#issuecomment-311325202).
+possibly the hardware [See this comment](https://github.com/rust-lang/rfcs/pull/2045#issuecomment-311325202).
 
-## Relax inlining restrictions of `#[target_feature]`
+That is, calling a function on a target that does not support its feature set is
+_undefined behavior_ and this RFC cannot specify otherwise. The main reason is that `target_feature` is a promise from the user to the toolchain and the hardware, that the code will not be reached in a CPU that does not support the feature. LLVM, the assembler, and the hardware all assume that the user will not violate this contract, and there is little that the Rust compiler can do to make this safer:
+  - The Rust compiler cannot emit a compile-time diagnostic because it cannot know whether the user is going to run the binary in a CPU that supports the features or not. 
+  - A run-time diagnostic _always_ incurs a run-time cost, and is only possible iff the absence of a feature can be detected at run-time (the "Future Extensions" section of this RFC discusses how to implement "Run-time diagnostics" to detect this, when possible).
 
-The rules proposed in this RFC for the interaction between `#[target_feature]`,
-inlining, and `#[always_inline]` are modeled after the rules in LLVM and are
-consistent with clang, e.g., see
-this [nice clang compilation error](https://godbolt.org/g/2kSY4R)
-([gcc also errors but the message is less nice](https://godbolt.org/g/tkPgCU)).
+However, the `--target-feature/--target-cpu` compiler options allows one to implicitly generate binaries that reliably run into undefined behavior without needing any `unsafe` annotations at all, so the answer to the question "Should `#[target_feature]` be safe/unsafe?" is indeed a hard one.
 
-Rust, the language, could relax these rules. Whether doing so would require
-changes to LLVM hasn't been explored here.
+The main differences between `#[target_feature]` and `--target-feature`/`--enable-feature` are the following:
+- `--target-feature/--enable-feature` are "backend options" while `#[target_feature]` is part of the language
+- `--target-feature/--enable-feature` is specified by whoever compiles the code, while `#[target_feature]` is specified by whoever writes the code
+- compiling safe Rust code for a particular target, and then running the binary on that target, can only produce undefined behavior iff `#[target_feature]` is safe.  
 
-In particular, we could relax the rules to allow the "Example 1 (inlining)" to
-compile by using target feature boundaries within which code can be inlined, but
-across which code cannot be reordered:
+This RFC chooses that the `#[target_feature]` attribute only applies to `unsafe fn`s, so that if one compiles safe Rust source code for a particular target, and then runs the binary on that particular target, no unsafety can result.
+
+Note that we can always make `#[target_feature]` safe in the future without breaking backwards compatibility, but the opposite is not true. That is, if somebody figures out a way of making `#[target_feature]` safe such that the above holds, we can always make that change.
+
+## Guarantee no segfaults from `unsafe` code
+
+Calling a `#[target_feature]`-annotated function on a platform that does not
+support it invokes undefined behavior. We could guarantee that this does not 
+happen by always doing run-time feature detection, introducing a run-time cost 
+in the process, and by only accepting features for which run-time feature
+detection can be done. 
+
+This RFC considers that any run-time cost is unacceptable as a default 
+for a combination of language features whose main domain of use is a performance
+sensitive one. 
+
+The "Future Extension"s section discusses how to implement this in an opt-in way, 
+e.g., as a sort of binary instrumentation. 
+
+## Make `#[target_feature] + #[inline(always)]` incompatible
+
+This RFC requires the compiler to error when a function marked with both `#[target_feature]` and the `#[inline(always)]` attribute cannot be inlined in a particular call site due to incompatible features. So we might consider to simplify this RFC by just making these attributes incompatible. 
+
+While this is technically correct, the compiler must detect when any function (`#[inline(always)]`, `#[inline]`, generics, ...) is inlined into an incompatible context, and prevent this from happening. Erroring if the function is `#[inline(always)]` does not significantly simplify the RFC nor the compiler implementation.
+
+## Removing run-time feature detection from this RFC
+
+This RFC adds an API for run-time feature detection to the 
+standard library.  
+
+The alternative would be to implement similar functionality as a third-party crate that
+might eventually be moved into the nursery. [Such crates already exist](https://docs.rs/cpuid/)
+
+In particular, the API proposed in this RFC is "stringly-typed" (to make it uniform with the other features being proposed), but arguably a third party crate might want to use an `enum` to allow pattern-matching on features. These APIs have not been sufficiently explored in the ecosystem yet. 
+
+The main arguments in favor of including run-time feature detection in this RFC are:
+
+- it is impossible to write safe wrappers around `#[target_feature]` without it
+- implementing it requires the `asm!` macro or linking to a C library (or linking 
+  to a C wrapper around assembly), 
+- run-time detection should be kept in sync with the addition of new target features,
+- the compiler might want to use LLVM's run-time feature detection which is part
+  of compiler-rt.
+
+The consensus in the internal forums and previous discussions seem to be that this
+is worth it. 
+
+It might turn out that the people from the future are able to come up with a better
+API. But in that case we can always deprecate the current API and include the new
+one in the standard library. 
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+## How accurate should cfg!(feature) be? 
+
+What happens if the macro `cfg!(target_feature("feature_name"))` is used inside a function for which `feature_name` is not enabled, but that function gets inlined into a context in which the feature is enabled? We want the macro to accurately return `true` in this case, that is, to be as accurate as possible so that users always get the most efficient algorithms, but whether this is even possible is an unresolved question. 
+
+This might result in monomorphization errors if `#![cfg(target_feature)]` is used, but not if `if cfg!(target_feature)` is used since in this case all branches need to type-check properly.
+
+We might want to ammend this RFC with more concrete semantics about this as we improve the compiler.
+
+## How do we handle ABI issues with portable vector types? 
+
+The ABI of `#[target_feature]` functions does not change for all types currently available in stable Rust. However, there are types that we might want to add to the language at some point, like portable vector types, for which this is not the case. 
+
+The behavior of `#[target_feature]` for those types should be specified in the RFC that proposes to stabilize those types, and this RFC should be ammended as necessary.
+
+The following examples showcase some potential problems when calling functions with mismatching ABIs, or when using function pointers.
+
+Whether we can warn, or hard error at compile-time in these cases remains to be explored.
+
+**Example 8 (ABI):**
 
 ```rust
-#[target_feature="+sse3"]
-// -- sse3 boundary start (applies to fn arguments as well)
-unsafe fn baz() {
-  if std::cpuid::has_feature("avx") {
-    // -- sse3 boundary ends
-    // -- avx boundary starts
-    foo(); // might or might not be inlined, up to the inliner
-    // -- avx boundary ends
-    // -- avx boundary starts (the end and start of the boundary could be merged)
-    // bar is inlined here, its code cannot be reordered across the avx boudnary 
-    // -- avx boundary ends
-    // -- sse3 boundary starts
-    }
-  } 
+#[target_feature(enable = "sse2")] 
+unsafe fn foo_sse2(a: f32x8) -> f32x8 { a } // ABI: 2x 128bit registers
+
+#[target_feature(enable = "avx2")] 
+unsafe fn foo_avx2(a: f32x8) -> f32x8 { // ABI: 1x 256bit register
+  foo_sse2(a) // ABI mismatch: 
+  //^ should this perform an implicit conversion, produce a hard error, or just undefined behavior? 
 }
-// -- sse3 boundary ends (applies to drop as well)
+
+#[target_feature(enable = "sse2")]
+unsafe fn bar() {
+  type fn_ptr = fn(f32x8) -> f32x8;
+  let mut p0: fn_ptr = foo_sse2; // OK
+  let p1: fn_ptr = foo_avx2; // ERROR: mismatching ABI
+  let p2 = foo_avx2; // OK
+  p0 = p2; // ERROR: mismatching ABI
+}
 ```
 
-## No segfaults from `unsafe` code
+# Future Extensions
+
+## Mutually exclusive features
+
+In some cases, e.g., when enabling AVX but disabling SSE4 the compiler should probably produce an error, but for other features like `thumb_mode` the behavior is less clear. These issues should be addressed by the RFC proposing the stabilizaiton of the target features that need them, as future extensions to this RFC. 
+
+## Safely inlining `#[target_feature]` functions on more contexts
+
+The problem is the following:
+
+```rust
+#[target_feature(enable = "sse3")]
+unsafe fn baz() {
+    if some_opaque_code() {
+        unsafe { foo_avx2(); }
+    }
+}
+```
+
+If `foo_avx2` gets inlined into `baz`, optimizations that reorder its instructions 
+across the if condition might introduce undefined behavior. 
+
+Maybe, one could make `std::target_feature` a bit magical, so that when it is
+used in the typical ways the compiler can infer whether inlining is safe, e.g., 
+
+```rust
+#[target_feature(enable = "sse3")]
+unsafe fn baz() {
+  // -- sse3 boundary start (applies to fn arguments as well)
+  // -- sse3 boundary ends
+  if std::target_feature("avx") {
+    // -- avx boundary starts
+    unsafe { foo_avx(); }
+    //    can be inlined here, but its code cannot be 
+    //    reordered out of the avx boundary
+    // -- avx boundary ends
+  }
+  // -- sse3 boundary starts
+  // -- sse3 boundary ends (applies to drop as well)
+}
+```
+
+Whether this is worth it or can be done at all is an unresolved question. This RFC does not propose any of this, but leaves the door open for such an extension to be explored and proposed independently in a follow-up RFC.
+
+## Run-time diagnostics
 
 Calling a `#[target_feature]`-annotated function on a platform that does not
 support it invokes undefined behavior. A friendly compiler could use run-time
@@ -518,13 +525,13 @@ feature detection to check whether calling the function is safe and emit a nice
 This can be done, for example, by desugaring this: 
 
 ```rust
-#[target_feature = "+avx"] unsafe fn foo();
+#[target_feature(enable = "avx")] unsafe fn foo();
 ```
 
 into this:
 
 ```rust
-#[target_feature = "+avx"] unsafe fn foo_impl() { ...foo tokens... };
+#[target_feature(enable = "avx")] unsafe fn foo_impl() { ...foo tokens... };
 
 // this function will be called if avx is not available:
 fn foo_fallback() { 
@@ -532,7 +539,7 @@ fn foo_fallback() {
 }
 
 // run-time feature detection on initialization
-static foo_ptr: fn() -> () = if std::cpuid::has_feature("avx") { 
+static foo_ptr: fn() -> () = if std::target_feature("avx") { 
     unsafe { foo_impl }
 } else {
     foo_fallback
@@ -542,34 +549,17 @@ static foo_ptr: fn() -> () = if std::cpuid::has_feature("avx") {
 unsafe fn foo() { foo_ptr() }
 ```
 
-Since this is not required for safety, and can probably be done without an RFC,
-it is not proposed nor discussed further in this RFC.
+This is not required for safety and can be implemented into the compiler as an opt-in instrumentation pass without
+going through the RFC process. However, a proposal to enable this by default should go through the RFC process. 
 
-# Unresolved questions
-[unresolved]: #unresolved-questions
+## Disabling features
 
-- Do we need to stabilize some form of run-time feature detection together with
-  this RFC? If so, what is the best API for run-time feature detection (should
-  be pursued in a different RFC)?
-
-- Should calling a function from a context with a mismatching feature that
-  involves a mismatching ABI fail or implicitly convert values between the
-  different ABIs?
-
-- Does it make sense to support removing features from the default feature set
-  using `#[target_feature="-feature"]`? Can we do this while preventing
-  non-sensical examples [like this one](https://internals.rust-lang.org/t/pre-rfc-stabilization-of-target-feature/5176/26)?
-
-- What do we do about mutually exclusive features like `+/-thumb_mode` ?
-
-- Can we incrementally improve `-C --target-feature` without breaking backwards
-  compatibility? Or do we need to keep it as is and add a `-C
-  --stable-target-feature` (or similar) flag?
+This RFC does not allow disabling target features, but suggest an analogous syntax to do so (`#[target_feature(disable = "feature-list")]`, `--disable-feature=feature-list`). Disabling features can result in some [non-sensical situations](https://internals.rust-lang.org/t/pre-rfc-stabilization-of-target-feature/5176/26) and should be pursued as a future extension of this RFC once we want to stabilize a target feature for which it makes sense.
 
 # Acknowledgements
 [acknowledgments]: #acknowledgements
 
-@parched @burntsushi @alexcrichton @est31 @pedrocr @chandlerc
+@parched @burntsushi @alexcrichton @est31 @pedrocr @chandlerc @RalfJung @matthieu-m
 
 - `#[target_feature]` Pull-Request: https://github.com/rust-lang/rust/pull/38079
 - `cfg_target_feature` tracking issue: https://github.com/rust-lang/rust/issues/29717
