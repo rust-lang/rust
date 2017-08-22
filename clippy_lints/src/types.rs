@@ -730,7 +730,7 @@ pub struct TypeComplexityPass {
 
 impl TypeComplexityPass {
     pub fn new(threshold: u64) -> Self {
-        TypeComplexityPass { threshold: threshold }
+        Self { threshold: threshold }
     }
 }
 

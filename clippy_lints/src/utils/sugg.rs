@@ -1,5 +1,7 @@
 //! Contains utility functions to generate suggestions.
 #![deny(missing_docs_in_private_items)]
+// currently ignores lifetimes and generics
+#![allow(use_self)]
 
 use rustc::hir;
 use rustc::lint::{EarlyContext, LateContext, LintContext};
@@ -41,7 +43,7 @@ impl<'a> Display for Sugg<'a> {
 #[allow(wrong_self_convention)] // ok, because of the function `as_ty` method
 impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
-    pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Sugg<'a>> {
+    pub fn hir_opt(cx: &LateContext, expr: &hir::Expr) -> Option<Self> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             match expr.node {
@@ -80,12 +82,12 @@ impl<'a> Sugg<'a> {
 
     /// Convenience function around `hir_opt` for suggestions with a default
     /// text.
-    pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Sugg<'a> {
+    pub fn hir(cx: &LateContext, expr: &hir::Expr, default: &'a str) -> Self {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
     /// Prepare a suggestion from an expression.
-    pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Sugg<'a> {
+    pub fn ast(cx: &EarlyContext, expr: &ast::Expr, default: &'a str) -> Self {
         use syntax::ast::RangeLimits;
 
         let snippet = snippet(cx, expr.span, default);
@@ -218,7 +220,7 @@ struct ParenHelper<T> {
 impl<T> ParenHelper<T> {
     /// Build a `ParenHelper`.
     fn new(paren: bool, wrapped: T) -> Self {
-        ParenHelper {
+        Self {
             paren: paren,
             wrapped: wrapped,
         }

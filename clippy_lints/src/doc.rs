@@ -37,7 +37,7 @@ pub struct Doc {
 
 impl Doc {
     pub fn new(valid_idents: Vec<String>) -> Self {
-        Doc { valid_idents: valid_idents }
+        Self { valid_idents: valid_idents }
     }
 }
 
@@ -62,7 +62,7 @@ struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn new(parser: pulldown_cmark::Parser<'a>) -> Parser<'a> {
+    fn new(parser: pulldown_cmark::Parser<'a>) -> Self {
         Self { parser: parser }
     }
 }

@@ -95,7 +95,7 @@ struct DigitInfo<'a> {
 }
 
 impl<'a> DigitInfo<'a> {
-    pub fn new(lit: &str, float: bool) -> DigitInfo {
+    pub fn new(lit: &'a str, float: bool) -> Self {
         // Determine delimiter for radix prefix, if present, and radix.
         let radix = if lit.starts_with("0x") {
             Radix::Hexadecimal
@@ -120,7 +120,7 @@ impl<'a> DigitInfo<'a> {
             if !float && (d == 'i' || d == 'u') || float && d == 'f' {
                 let suffix_start = if last_d == '_' { d_idx - 1 } else { d_idx };
                 let (digits, suffix) = sans_prefix.split_at(suffix_start);
-                return DigitInfo {
+                return Self {
                     digits: digits,
                     radix: radix,
                     prefix: prefix,
@@ -132,7 +132,7 @@ impl<'a> DigitInfo<'a> {
         }
 
         // No suffix found
-        DigitInfo {
+        Self {
             digits: sans_prefix,
             radix: radix,
             prefix: prefix,
@@ -257,7 +257,7 @@ impl LiteralDigitGrouping {
             char::to_digit(firstch, 10).is_some()
         ], {
             let digit_info = DigitInfo::new(&src, false);
-            let _ = LiteralDigitGrouping::do_lint(digit_info.digits).map_err(|warning_type| {
+            let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
                 warning_type.display(&digit_info.grouping_hint(), cx, &lit.span)
             });
         }}
@@ -278,14 +278,14 @@ impl LiteralDigitGrouping {
 
             // Lint integral and fractional parts separately, and then check consistency of digit
             // groups if both pass.
-            let _ = LiteralDigitGrouping::do_lint(parts[0])
+            let _ = Self::do_lint(parts[0])
                 .map(|integral_group_size| {
                     if parts.len() > 1 {
                         // Lint the fractional part of literal just like integral part, but reversed.
                         let fractional_part = &parts[1].chars().rev().collect::<String>();
-                        let _ = LiteralDigitGrouping::do_lint(fractional_part)
+                        let _ = Self::do_lint(fractional_part)
                             .map(|fractional_group_size| {
-                                let consistent = LiteralDigitGrouping::parts_consistent(integral_group_size, fractional_group_size, parts[0].len(), parts[1].len());
+                                let consistent = Self::parts_consistent(integral_group_size, fractional_group_size, parts[0].len(), parts[1].len());
                                 if !consistent {
                                     WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(), cx, &lit.span);
                                 }

@@ -254,8 +254,8 @@ struct RefVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'v, 't> RefVisitor<'v, 't> {
-    fn new(cx: &'v LateContext<'v, 't>) -> RefVisitor<'v, 't> {
-        RefVisitor {
+    fn new(cx: &'v LateContext<'v, 't>) -> Self {
+        Self {
             cx: cx,
             lts: Vec::new(),
             abort: false,

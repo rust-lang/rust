@@ -29,7 +29,7 @@ struct ClippyCompilerCalls {
 
 impl ClippyCompilerCalls {
     fn new(run_lints: bool) -> Self {
-        ClippyCompilerCalls {
+        Self {
             default: RustcDefaultCalls,
             run_lints: run_lints,
         }

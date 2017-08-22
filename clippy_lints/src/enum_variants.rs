@@ -104,8 +104,8 @@ pub struct EnumVariantNames {
 }
 
 impl EnumVariantNames {
-    pub fn new(threshold: u64) -> EnumVariantNames {
-        EnumVariantNames {
+    pub fn new(threshold: u64) -> Self {
+        Self {
             modules: Vec::new(),
             threshold: threshold,
         }
