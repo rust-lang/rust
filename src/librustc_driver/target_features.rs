@@ -25,21 +25,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
         cfg.insert((tf, Some(feat)));
     }
 
-    let requested_features = sess.opts.cg.target_feature.split(',');
-    let found_negative = requested_features.clone().any(|r| r == "-crt-static");
-    let found_positive = requested_features.clone().any(|r| r == "+crt-static");
-
-    // If the target we're compiling for requests a static crt by default,
-    // then see if the `-crt-static` feature was passed to disable that.
-    // Otherwise if we don't have a static crt by default then see if the
-    // `+crt-static` feature was passed.
-    let crt_static = if sess.target.target.options.crt_static_default {
-        !found_negative
-    } else {
-        found_positive
-    };
-
-    if crt_static {
+    if sess.crt_static() {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
 }

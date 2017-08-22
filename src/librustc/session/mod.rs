@@ -429,6 +429,22 @@ impl Session {
             .unwrap_or(self.opts.debug_assertions)
     }
 
+    pub fn crt_static(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+
+        // If the target we're compiling for requests a static crt by default,
+        // then see if the `-crt-static` feature was passed to disable that.
+        // Otherwise if we don't have a static crt by default then see if the
+        // `+crt-static` feature was passed.
+        if self.target.target.options.crt_static_default {
+            !found_negative
+        } else {
+            found_positive
+        }
+    }
+
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         self.opts.debuginfo != DebugInfoLevel::NoDebugInfo ||
         !self.target.target.options.eliminate_frame_pointer
