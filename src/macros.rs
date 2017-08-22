@@ -19,6 +19,8 @@
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 
+use std::iter::repeat;
+
 use syntax::ast;
 use syntax::codemap::BytePos;
 use syntax::parse::new_parser_from_tts;
@@ -27,7 +29,7 @@ use syntax::symbol;
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 
-use Shape;
+use {Indent, Shape};
 use codemap::SpanUtils;
 use comment::{contains_comment, FindUncommented};
 use expr::{rewrite_array, rewrite_call_inner};
@@ -116,14 +118,14 @@ pub fn rewrite_macro(
                 Ok(expr) => {
                     // Recovered errors.
                     if context.parse_session.span_diagnostic.has_errors() {
-                        return Some(context.snippet(mac.span));
+                        return indent_macro_snippet(&context.snippet(mac.span), shape.indent);
                     }
 
                     expr
                 }
                 Err(mut e) => {
                     e.cancel();
-                    return Some(context.snippet(mac.span));
+                    return indent_macro_snippet(&context.snippet(mac.span), shape.indent);
                 }
             };
 
@@ -242,7 +244,7 @@ pub fn rewrite_macro(
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.
-            None
+            indent_macro_snippet(&context.snippet(mac.span), shape.indent)
         }
     }
 }
@@ -279,4 +281,59 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
     } else {
         MacroStyle::Braces
     }
+}
+
+/// Indent each line according to the specified `indent`.
+/// e.g.
+/// ```rust
+/// foo!{
+/// x,
+/// y,
+/// foo(
+///     a,
+///     b,
+///     c,
+/// ),
+/// }
+/// ```
+/// will become
+/// ```rust
+/// foo!{
+///     x,
+///     y,
+///     foo(
+///         a,
+///         b,
+///         c,
+//      ),
+/// }
+/// ```
+fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
+    let min_prefix_space_width =
+        try_opt!(macro_str.lines().skip(1).map(get_prefix_space_width).min());
+
+    let mut lines = macro_str.lines();
+    let first_line = try_opt!(lines.next());
+
+    Some(
+        String::from(first_line) + "\n" +
+            &lines
+                .map(|line| {
+                    let new_indent_width = indent.width() +
+                        get_prefix_space_width(line)
+                            .checked_sub(min_prefix_space_width)
+                            .unwrap_or(0);
+                    repeat_white_space(new_indent_width) + line.trim()
+                })
+                .collect::<Vec<_>>()
+                .join("\n"),
+    )
+}
+
+fn get_prefix_space_width(s: &str) -> usize {
+    s.chars().position(|c| c != ' ').unwrap_or(0)
+}
+
+fn repeat_white_space(ws_count: usize) -> String {
+    repeat(" ").take(ws_count).collect::<String>()
 }

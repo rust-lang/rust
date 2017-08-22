@@ -146,6 +146,7 @@ fn issue1178() {
         baz
     );
 }
+
 fn issue1739() {
     sql_function!(
         add_rss_item,
@@ -164,6 +165,17 @@ fn issue1739() {
         init_size[1] - extreeeeeeeeeeeeeeeeeeeeeeeem..init_size[1],
         ..
     ]).par_map_inplace(|el| *el = 0.);
+}
+
+fn issue_1885() {
+    let threads = people
+        .into_iter()
+        .map(|name| {
+            chan_select! {
+                rx.recv() => {}
+            }
+        })
+        .collect::<Vec<_>>();
 }
 
 // Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
