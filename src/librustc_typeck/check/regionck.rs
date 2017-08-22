@@ -1814,12 +1814,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     // check whether this predicate applies to our current projection
                     let cause = self.fcx.misc(span);
                     match self.at(&cause, self.fcx.param_env).eq(outlives.0, ty) {
-                        Ok(ok) => {
-                            self.register_infer_ok_obligations(ok);
-                            Ok(outlives.1)
-                        }
-                        Err(_) => { Err(()) }
+                        Ok(ok) => Ok((ok, outlives.1)),
+                        Err(_) => Err(())
                     }
+                }).map(|(ok, result)| {
+                    self.register_infer_ok_obligations(ok);
+                    result
                 });
 
                 debug!("projection_bounds: region_result={:?}",
