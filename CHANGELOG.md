@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.154
 * Fix [`use_self`] triggering inside derives
+* Add support for linting an entire workspace with `cargo clippy --all`
 
 ## 0.0.153
 * Update to *rustc 1.21.0-nightly (8c303ed87 2017-08-20)*
