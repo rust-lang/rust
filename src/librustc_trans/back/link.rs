@@ -15,7 +15,7 @@ use super::linker::Linker;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -647,13 +647,20 @@ fn link_staticlib(sess: &Session,
     ab.build();
 
     if !all_native_libs.is_empty() {
+        if sess.opts.prints.contains(&PrintRequest::NativeStaticLibs) {
+            print_native_static_libs(sess, &all_native_libs);
+        } else {
+            // Fallback for backwards compatibility only
             print_native_static_libs_legacy(sess, &all_native_libs);
+        }
     }
 }
 
 fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibrary]) {
     sess.note_without_error("link against the following native artifacts when linking against \
                              this static library");
+    sess.note_without_error("This list will not be printed by default. \
+        Please add --print=native-static-libs if you need this information");
 
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
@@ -664,6 +671,35 @@ fn print_native_static_libs_legacy(sess: &Session, all_native_libs: &[NativeLibr
             NativeLibraryKind::NativeStatic => continue,
         };
         sess.note_without_error(&format!("{}: {}", name, lib.name));
+    }
+}
+
+fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
+    let lib_args: Vec<_> = all_native_libs.iter()
+        .filter(|l| relevant_lib(sess, l))
+        .filter_map(|lib| match lib.kind {
+            NativeLibraryKind::NativeStaticNobundle |
+            NativeLibraryKind::NativeUnknown => {
+                if sess.target.target.options.is_like_msvc {
+                    Some(format!("{}.lib", lib.name))
+                } else {
+                    Some(format!("-l{}", lib.name))
+                }
+            },
+            NativeLibraryKind::NativeFramework => {
+                // ld-only syntax, since there are no frameworks in MSVC
+                Some(format!("-framework {}", lib.name))
+            },
+            // These are included, no need to print them
+            NativeLibraryKind::NativeStatic => None,
+        })
+        .collect();
+    if !lib_args.is_empty() {
+        sess.note_without_error("Link against the following native artifacts when linking \
+                                 against this static library. The order and any duplication \
+                                 can be significant on some platforms.");
+        // Prefix for greppability
+        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 

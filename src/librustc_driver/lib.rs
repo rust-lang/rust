@@ -742,7 +742,9 @@ impl RustcDefaultCalls {
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
                         -> Compilation {
-        if sess.opts.prints.is_empty() {
+        // PrintRequest::NativeStaticLibs is special - printed during linking
+        // (empty iterator returns true)
+        if sess.opts.prints.iter().all(|&p| p==PrintRequest::NativeStaticLibs) {
             return Compilation::Continue;
         }
 
@@ -851,6 +853,9 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
                     rustc_trans::print(*req, sess);
+                }
+                PrintRequest::NativeStaticLibs => {
+                    println!("Native static libs can be printed only during linking");
                 }
             }
         }
