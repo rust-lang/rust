@@ -335,6 +335,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ),
             IndexVec::new(),
             self.sig.output(),
+            None,
             self.local_decls,
             self.sig.inputs().len(),
             vec![],
