@@ -5,7 +5,7 @@ gathering references to the work that has been done during the Google Summer of 
 and which eventually led to the current working state of the project.
 
 ## Completion status
-All core functioanlity has been implemented. There are still some bugs present, whose
+All core functionality has been implemented. There are still some bugs present, whose
 fixes depend on changes to [`rustc`](https://github.com/rust-lang/rust) that are currently
 underway and possibly not yet merged at the time of submission.
 
@@ -30,7 +30,8 @@ the course of the program. Other possible enhancements are listed in the issue t
 On a different front, the cargo plugin could need some technical improvements to improve
 usability and code quality.
 
-An overview of the functionality, and it's implementation can be found [here](404).
+An overview of the functionality, and it's implementation can be found
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/IMPLEMENTATION_NOTES.md).
 
 ## Progress made
 The project provided a very through and challenging walkthrough to the internal working of

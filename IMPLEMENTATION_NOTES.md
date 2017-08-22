@@ -1,0 +1,95 @@
+# Implementation Notes
+This document provides a high-level overview over the project's structure and
+implementation, together with explanations of the various implementation decisions that
+have been taken.
+
+The toplevel directory of the repository is structured according to cargo's conventions:
+
+* `src` contains the main project source code.
+* `tests` contains integration tests (more on these in their dedicated section).
+* only one crate, `semverver` is provided. It provides two binaries, whose functionality
+  is elaborated later on. The actual functionality is currently not exposed as a library,
+  but this change is trivial to implement.
+
+## Source code structure
+Inside the `src` subdirectory, the main functionality can be found inside the `semcheck`
+directory, while the `bin` directory contains the two executables provided by the crate.
+
+### Execution overview
+The provided binaries are a cargo plugin and a custom `rustc` driver, respectively, and
+allow to analyze local and remote crate pairs for semver compatibility.
+
+A typical invocation, assuming that both binaries are on the user's `PATH`, is performed
+by invoking `cargo semver` in a source code repository that can be built with cargo. This
+invokes cargo's plugin mechanism, that then passes a set of command line arguments to
+`cargo-semver`. This is the binary responsible to determine and compile the analysis
+targets, whose inner workings are currently quite simplistic and allow for any combination
+of "local" and "remote" crates - that is, source code repositories available through the
+filesystem and from `crates.io`, defaulting to the current directory and the last
+published version on `crates.io`, respectively. When a fitting pair of crates has been
+compiled, the compiler driver, located in the `rust-semverver` binary, is invoked on a
+dummy crate linking both versions as `old` and `new`. All further analysis is performed in
+the compiler driver.
+
+To be more precise, the compiler driver runs the regular compilation machinery up to the
+type checking phase and passes control to our analysis code, aborting the compilation
+afterwards.
+
+This overall design has been chosen because it allows us to work on the data structures
+representing parts of both the old and the new crate from the same compiler instance,
+which simplifies the process by a great margin. Also, type information on all items being
+analyzed is vital and has to be without any contradiction - so basing the analysis on
+successfully compiled code is natural. The drawback, however, is that the needed
+information is only available in a slightly manipulated form, since it has been encoded in
+library metadata and decoded afterwards. This required some changes to the compiler's
+metadata handling that have been mostly upstreamed by now. Another weak point is the
+performance penalty imposed by two compilations and an analysis run on the target crate,
+but this is very hard to circumvent, as is the necessity of using a nightly rust compiler
+to use the tool - much alike to `rust-clippy`.
+
+### Analysis overview
+The actual analysis is separated in multiple passes, whose main entry point is the
+`run_analysis` function in the `traverse` submodule in `semverver::semcheck`. These passes
+are structured as follows:
+
+1. Named items are matched up and checked for structural changes in a module traversal
+   scheme. Structural changes are changes to ADT structure, or additions and removals of
+   items, type and region parameters, changes to item visibility and (re)export structure,
+   and similar miscellaneous changes to the code being analyzed.
+2. Not yet matched hidden items are opportunistically matched based on their usage in
+   public items' types. This is implemented in the `mismatch` submodule.
+3. All items which haven't undergone breaking changes are checked for changes to their
+   trait bounds and (if applicable) types. This requires a translation of the analyzed old
+   item into the new crate using the previously established correspondence between items.
+   That mechanism is implemented in the `translate` submodule, and used very intensively
+   throughout the last two passes. Translation is based on item correspondence, which is
+   kept track of in the `mapping` submodule.
+4. Inherent items and trait impls are matched up, if possible. This, too requires the
+   translation of bounds and types of the old item. However, to determine non-breaking
+   changes, bounds checks are generally performed in both direction, which is why the
+   translation machinery is largely agnostic to the distinction between target and source.
+
+During these four passes, all changes are recorded in a specialized data structure that
+then allows to filter items to be analyzed further and to render changes using the items'
+source spans, ultimately leading to deterministic output. The implementation is found in
+the `changes` submodule.
+
+### Type checks implementation
+TODO
+
+### Bounds checks implementation
+TODO
+
+## Tests
+The change recording structure has a suite of unit tests to ensure correct behaviour with
+regards to change categorization and storage, according to the usual convention, these
+unit tests are located in the same file as the implementation. Various invariants are
+tested using `quickecheck`, others are exercised as plain examples.
+
+Most of the functionality, however, especially the analysis implementation, is testes
+using an evergrowing integration test suite, which records the analysis results for mockup
+crates, normalizes the output with regards to paths and similar information contained, and
+compares it to a previously recorded version using `git`. Currently, regular crates are
+supported in a limited fashion in this set of tests as well. However, to use this
+functionality to the full extend, some changes to the compiler have yet to be upstreamed
+at the time of writing.
