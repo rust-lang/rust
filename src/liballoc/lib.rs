@@ -107,6 +107,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
+#![feature(rustc_attrs)]
 #![feature(shared)]
 #![feature(slice_get_slice)]
 #![feature(slice_patterns)]
