@@ -26,9 +26,9 @@ fn get_path_or(filename: &str) -> String {
         .expect("Couldn't read path from GCC").trim().into()
 }
 
-pub fn opts() -> TargetOptions {
-    let l4re_lib_path = env::var_os("L4RE_LIBDIR").expect("Unable to find L4Re \
-        library directory: L4RE_LIBDIR not set.").into_string().unwrap();
+pub fn opts() -> Result<TargetOptions, String> {
+    let l4re_lib_path = env::var_os("L4RE_LIBDIR").ok_or("Unable to find L4Re \
+        library directory: L4RE_LIBDIR not set.")?.into_string().unwrap();
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Ld, vec![
         format!("-T{}/main_stat.ld", l4re_lib_path),
@@ -68,7 +68,7 @@ pub fn opts() -> TargetOptions {
         format!("{}/crtn.o", l4re_lib_path),
     ]);
 
-    TargetOptions {
+    Ok(TargetOptions {
         executables: true,
         has_elf_tls: false,
         exe_allocation_crate: None,
@@ -78,5 +78,5 @@ pub fn opts() -> TargetOptions {
         post_link_args,
         target_family: Some("unix".to_string()),
         .. Default::default()
-    }
+    })
 }
