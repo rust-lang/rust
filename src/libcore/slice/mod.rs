@@ -212,6 +212,9 @@ pub trait SliceExt {
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
 
+    #[unstable(feature = "swap_with_slice", issue = "44030")]
+    fn swap_with_slice(&mut self, src: &mut [Self::Item]);
+
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     fn sort_unstable(&mut self)
         where Self::Item: Ord;
@@ -670,6 +673,16 @@ impl<T> SliceExt for [T] {
         unsafe {
             ptr::copy_nonoverlapping(
                 src.as_ptr(), self.as_mut_ptr(), self.len());
+        }
+    }
+
+    #[inline]
+    fn swap_with_slice(&mut self, src: &mut [T]) {
+        assert!(self.len() == src.len(),
+                "destination and source slices have different lengths");
+        unsafe {
+            ptr::swap_nonoverlapping(
+                self.as_mut_ptr(), src.as_mut_ptr(), self.len());
         }
     }
 
