@@ -515,6 +515,8 @@ actual:\n\
                 debug!("adb arg: {}", adb_arg);
                 let mut adb = Command::new(adb_path)
                     .args(&["shell", &adb_arg])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::inherit())
                     .spawn()
                     .expect(&format!("failed to exec `{:?}`", adb_path));
 
