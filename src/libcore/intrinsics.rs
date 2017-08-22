@@ -1369,7 +1369,7 @@ extern "rust-intrinsic" {
     /// let offset = align_offset(ptr as *const (), align_of::<u16>());
     /// if offset < x.len() - n - 1 {
     ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-    ///     *u16_ptr = 500;
+    ///     assert_ne!(*u16_ptr, 500);
     /// } else {
     ///     // while the pointer can be aligned via `offset`, it would point
     ///     // outside the allocation
@@ -1406,7 +1406,7 @@ extern "rust-intrinsic" {
 /// let offset = align_offset(ptr as *const (), align_of::<u16>());
 /// if offset < x.len() - n - 1 {
 ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-///     *u16_ptr = 500;
+///     assert_ne!(*u16_ptr, 500);
 /// } else {
 ///     // while the pointer can be aligned via `offset`, it would point
 ///     // outside the allocation
