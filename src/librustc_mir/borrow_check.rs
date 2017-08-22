@@ -948,14 +948,30 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         let mut err = match (loan1.kind, "immutable", "mutable",
                              loan2.kind, "immutable", "mutable") {
             (BorrowKind::Shared, lft, _, BorrowKind::Mut, _, rgt) |
-            (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) |
-            (BorrowKind::Mut, _, lft, BorrowKind::Mut, _, rgt) =>
+            (BorrowKind::Mut, _, lft, BorrowKind::Shared, rgt, _) =>
                 self.tcx.cannot_reborrow_already_borrowed(
                     span, &self.describe_lvalue(lvalue),
                     "", lft, "it", rgt, "", Origin::Mir),
 
-            _ =>  self.tcx.cannot_mutably_borrow_multiply(
-                span, &self.describe_lvalue(lvalue), "", Origin::Mir),
+            (BorrowKind::Mut, _, _, BorrowKind::Mut, _, _) =>
+                self.tcx.cannot_mutably_borrow_multiply(
+                    span, &self.describe_lvalue(lvalue), "", Origin::Mir),
+
+            (BorrowKind::Unique, _, _, BorrowKind::Unique, _, _) =>
+                self.tcx.cannot_uniquely_borrow_by_two_closures(
+                    span, &self.describe_lvalue(lvalue), Origin::Mir),
+
+            (BorrowKind::Unique, _, _, _, _, _) =>
+                self.tcx.cannot_uniquely_borrow_by_one_closure(
+                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+
+            (_, _, _, BorrowKind::Unique, _, _) =>
+                self.tcx.cannot_reborrow_already_uniquely_borrowed(
+                    span, &self.describe_lvalue(lvalue), "it", "", Origin::Mir),
+
+            (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _) =>
+                unreachable!(),
+
             // FIXME: add span labels for first and second mutable borrows, as well as
             // end point for first.
         };
