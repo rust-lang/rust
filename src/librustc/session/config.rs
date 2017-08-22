@@ -1481,6 +1481,7 @@ pub fn default_lib_output() -> CrateType {
 pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
+    let cpu = &sess.target.target.options.cpu;
     let wordsz = &sess.target.target.target_pointer_width;
     let os = &sess.target.target.target_os;
     let env = &sess.target.target.target_env;
@@ -1510,6 +1511,10 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
         Symbol::intern("target_vendor"),
         Some(Symbol::intern(vendor)),
     ));
+    if sess.target.target.options.is_specific_cpu() {
+        ret.insert((Symbol::intern("target_cpu"), Some(Symbol::intern(cpu))));
+    }
+
     if sess.target.target.options.has_elf_tls {
         ret.insert((sym::target_thread_local, None));
     }

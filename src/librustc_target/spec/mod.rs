@@ -885,6 +885,12 @@ impl Default for TargetOptions {
     }
 }
 
+impl TargetOptions {
+    pub fn is_specific_cpu(&self) -> bool {
+        self.cpu != "generic"
+    }
+}
+
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
