@@ -324,9 +324,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 }
 
 // Detect scheme on Redox
-#[inline]
-#[allow(unused_variables)]
-fn has_scheme(s: &[u8]) -> bool {
+fn has_redox_scheme(s: &[u8]) -> bool {
     cfg!(target_os = "redox") && s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
 }
 
@@ -612,9 +610,6 @@ pub struct Components<'a> {
     // normalization, e.g.  \\server\share == \\server\share\.
     has_physical_root: bool,
 
-    // For Redox
-    has_scheme: bool,
-
     // The iterator is double-ended, and these two states keep track of what has
     // been produced from either end
     front: State,
@@ -735,7 +730,7 @@ impl<'a> Components<'a> {
 
     /// Is the *original* path rooted?
     fn has_root(&self) -> bool {
-        if self.has_physical_root || self.has_scheme {
+        if self.has_physical_root {
             return true;
         }
         if let Some(p) = self.prefix {
@@ -1699,7 +1694,7 @@ impl Path {
             self.has_root() && (cfg!(unix) || self.prefix().is_some())
         } else {
             // FIXME: Allow Redox prefixes
-            has_scheme(self.as_u8_slice())
+            has_redox_scheme(self.as_u8_slice())
         }
     }
 
@@ -2064,8 +2059,8 @@ impl Path {
         Components {
             path: self.as_u8_slice(),
             prefix,
-            has_physical_root: has_physical_root(self.as_u8_slice(), prefix),
-            has_scheme: has_scheme(self.as_u8_slice()),
+            has_physical_root: has_physical_root(self.as_u8_slice(), prefix) ||
+                               has_redox_scheme(self.as_u8_slice()),
             front: State::Prefix,
             back: State::Body,
         }
