@@ -75,10 +75,34 @@ source spans, ultimately leading to deterministic output. The implementation is 
 the `changes` submodule.
 
 ### Type checks implementation
-TODO
+Checking the types of a matching pair of items is one of the most important and most
+complicated features of `rust-semverver`. Type checks are performed for type aliases,
+constants, statics, ADT fields, and function signatures. This is implemented using the
+type inference machinery of `rustc` and a custom `TypeComparisonContext`, located in
+in the `typeck` module, that performs the necessary heavy lifting when given two types.
+
+The general process is to translate one of the types to allow for comparison, and to use
+inference variables for items that usually invoke inference mechanisms in the compiler,
+like functions. Then, an equality check on the two types is performed, and a possible
+error is lifted and registered in the change store. If such a type check succeeds without
+error, bounds checks can be performed *in the same context*, even though they can be
+performed without a type check where appropriate.
 
 ### Bounds checks implementation
+Checking the bounds of a matching pair of items is performed for all items that are
+subject to type changes, as well as trait definitions, using the already mentioned
+`TypeComparisonContext`. The underlying mechanism is also used to match inherent, and --
+to a lesser extend -- trait impls.
+
+Bounds checks work in a similar manner to type checks. One of the items, in these case the
+set of bounds, gets translated, and passed to an inference context. However, to properly
+recognize all changes to trait bounds, this analysis step has to be performed in both
+directions, to catch both loosening and tightening of bounds.
+
+### Trait impl matching
 TODO
+
+### Inherent impl matching
 
 ## Tests
 The change recording structure has a suite of unit tests to ensure correct behaviour with
