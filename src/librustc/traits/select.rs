@@ -1442,7 +1442,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 normal_bound={:?}, \
                 additional inferred_obligations={:?}",
                normal_bound, obligations);
-        self.inferred_obligations.extend(obligations);
 
         let Normalized { value: normal_skol_trait_ref, obligations } =
             normalize_with_depth(
