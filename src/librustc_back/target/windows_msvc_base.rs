@@ -63,6 +63,7 @@ pub fn opts() -> TargetOptions {
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args: args,
+        crt_static_allows_dylibs: true,
         crt_static_respected: true,
 
         .. Default::default()

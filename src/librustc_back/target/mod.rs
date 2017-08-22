@@ -416,6 +416,8 @@ pub struct TargetOptions {
     /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
     pub abi_blacklist: Vec<Abi>,
 
+    /// Whether or not linking dylibs to a static CRT is allowed.
+    pub crt_static_allows_dylibs: bool,
     /// Whether or not the CRT is statically linked by default.
     pub crt_static_default: bool,
     /// Whether or not crt-static is respected by the compiler (or is a no-op).
@@ -480,6 +482,7 @@ impl Default for TargetOptions {
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
+            crt_static_allows_dylibs: false,
             crt_static_default: false,
             crt_static_respected: false,
             stack_probes: false,
@@ -717,6 +720,7 @@ impl Target {
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
+        key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
         key!(stack_probes, bool);
@@ -906,6 +910,7 @@ impl ToJson for Target {
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+        target_option_val!(crt_static_allows_dylibs);
         target_option_val!(crt_static_default);
         target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
