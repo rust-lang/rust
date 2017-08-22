@@ -46,6 +46,8 @@ impl LintPass for UseSelf {
     }
 }
 
+const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if in_macro(item.span) {
@@ -54,9 +56,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
         if_let_chain!([
             let ItemImpl(.., ref item_type, ref refs) = item.node,
             let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node,
-            let PathParameters::AngleBracketedParameters(ref angleBracketedParameterData)
-              = item_path.segments.last().unwrap().parameters,
-            angleBracketedParameterData.lifetimes.len() == 0,
+            let PathParameters::AngleBracketedParameters(ref param_data)
+              = item_path.segments.last().expect(SEGMENTS_MSG).parameters,
+            param_data.lifetimes.len() == 0,
         ], {
             let visitor = &mut UseSelfVisitor {
                 item_path: item_path,
@@ -79,7 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         if self.item_path.def == path.def &&
            path.segments
             .last()
-            .unwrap()
+            .expect(SEGMENTS_MSG)
             .name != SelfType.name() {
             span_lint_and_then(self.cx, USE_SELF, path.span, "unnecessary structure name repetition", |db| {
                 db.span_suggestion(path.span, "use the applicable keyword", "Self".to_owned());
