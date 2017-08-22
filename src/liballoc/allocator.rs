@@ -452,6 +452,27 @@ impl fmt::Display for CannotReallocInPlace {
 ///  * if a layout `k` fits a memory block (denoted by `ptr`)
 ///    currently allocated via an allocator `a`, then it is legal to
 ///    use that layout to deallocate it, i.e. `a.dealloc(ptr, k);`.
+///
+/// # Unsafety
+///
+/// The `Alloc` trait is an `unsafe` trait for a number of reasons, and
+/// implementors must ensure that they adhere to these contracts:
+///
+/// * Pointers returned from allocation functions must point to valid memory and
+///   retain their validity until at least the instance of `Alloc` is dropped
+///   itself.
+///
+/// * Implementations of `Alloc` are not currently memory safe if they unwind.
+///   This restriction may be lifted in the future, but currently an panic from
+///   any of these functions may lead to memory unsafety.
+///
+/// * `Layout` queries and calculations in general must be correct. Callers of
+///   this trait are allowed to rely on the contracts defined on each method,
+///   and implementors must ensure such contracts remain true.
+///
+/// Note that this list may get tweaked over time as clarifications are made in
+/// the future. Additionally global allocators may gain unique requirements for
+/// how to safely implement one in the future as well.
 pub unsafe trait Alloc {
 
     // (Note: existing allocators have unspecified but well-defined
