@@ -242,6 +242,15 @@ fn main() {
             cmd.arg("-C").arg("target-feature=+crt-static");
         }
 
+        if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
+            if s == "true" {
+                cmd.arg("-C").arg("target-feature=+crt-static");
+            }
+            if s == "false" {
+                cmd.arg("-C").arg("target-feature=-crt-static");
+            }
+        }
+
         // Force all crates compiled by this compiler to (a) be unstable and (b)
         // allow the `rustc_private` feature to link to other unstable crates
         // also in the sysroot.

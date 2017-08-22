@@ -292,6 +292,12 @@
 # build native code.
 #android-ndk = "/path/to/ndk"
 
+# Force static or dynamic linkage of the standard library for this target. If
+# this target is a host for rustc, this will also affect the linkage of the
+# compiler itself. This is useful for building rustc on targets that normally
+# only use static libraries. If unset, the target's default linkage is used.
+#crt-static = false
+
 # The root location of the MUSL installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note
 # that this option only makes sense for MUSL targets that produce statically
