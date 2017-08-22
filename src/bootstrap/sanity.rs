@@ -151,8 +151,15 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        // Make sure musl-root is valid if specified
+        // Make sure musl-root is valid
         if target.contains("musl") && !target.contains("mips") {
+            // If this is a native target (host is also musl) and no musl-root is given,
+            // fall back to the system toolchain in /usr before giving up
+            if build.musl_root(*target).is_none() && build.config.build == *target {
+                let target = build.config.target_config.entry(target.clone())
+                                 .or_insert(Default::default());
+                target.musl_root = Some("/usr".into());
+            }
             match build.musl_root(*target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
