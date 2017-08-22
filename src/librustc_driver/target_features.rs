@@ -25,7 +25,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
         cfg.insert((tf, Some(feat)));
     }
 
-    if sess.crt_static() {
+    if sess.crt_static_feature() {
         cfg.insert((tf, Some(Symbol::intern("crt-static"))));
     }
 }

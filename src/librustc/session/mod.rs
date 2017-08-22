@@ -430,6 +430,15 @@ impl Session {
     }
 
     pub fn crt_static(&self) -> bool {
+        // If the target does not opt in to crt-static support, use its default.
+        if self.target.target.options.crt_static_respected {
+            self.crt_static_feature()
+        } else {
+            self.target.target.options.crt_static_default
+        }
+    }
+
+    pub fn crt_static_feature(&self) -> bool {
         let requested_features = self.opts.cg.target_feature.split(',');
         let found_negative = requested_features.clone().any(|r| r == "-crt-static");
         let found_positive = requested_features.clone().any(|r| r == "+crt-static");
