@@ -8,7 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[must_use]
-fn need_to_use_it() -> bool { true } //~ ERROR `#[must_use]` on functions is experimental
+#![feature(rustc_attrs)]
 
-fn main() {}
+#[must_use]
+fn need_to_use_it() -> bool { true } //~ WARN `#[must_use]` on functions is experimental
+
+
+// Feature gates are tidy-required to have a specially named (or
+// comment-annotated) compile-fail test (which MUST fail), but for
+// backwards-compatibility reasons, we want `#[must_use]` on functions to be
+// compilable even if the `fn_must_use` feature is absent, thus necessitating
+// the usage of `#[rustc_error]` here, pragmatically if awkwardly solving this
+// dilemma until a superior solution can be devised.
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

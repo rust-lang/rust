@@ -680,7 +680,7 @@ mod must_use {
     mod inner { #![must_use="1400"] }
 
     #[must_use = "1400"] fn f() { }
-    //~^ ERROR `#[must_use]` on functions is experimental
+    //~^ WARN `#[must_use]` on functions is experimental
 
     #[must_use = "1400"] struct S;
 
