@@ -313,6 +313,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(doc_cfg)]
+#![feature(doc_masked)]
 #![cfg_attr(test, feature(update_panic_count))]
 
 #![default_lib_allocator]
