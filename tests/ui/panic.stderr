@@ -18,13 +18,5 @@ error: you probably are missing some parameter in your format string
 12 |         assert!(true, "here be missing values: {}");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: you probably are missing some parameter in your format string
-  --> $DIR/panic.rs:22:5
-   |
-22 |     assert!("foo bar".contains(&format!("foo {}", "bar")));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in a macro outside of the current crate
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 

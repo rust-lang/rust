@@ -34,10 +34,18 @@ fn ok_bracket() {
     }
 }
 
+const ONE : u32= 1;
+
+fn ok_nomsg() {
+    assert!({ 1 == ONE });
+    assert!(if 1 == ONE { ONE == 1 } else { false });
+}
+
 fn main() {
     missing();
     ok_single();
     ok_multiple();
     ok_bracket();
     ok_inner();
+    ok_nomsg();
 }
