@@ -212,16 +212,10 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         let PathParameters::AngleBracketedParameters(ref ab_data) = bx.parameters,
                         let [ref inner] = *ab_data.types
                     ], {
-                        if_let_chain! {[
-                            let TyTraitObject(ref traits, _) = inner.node,
-                            traits.len() >= 1,
-                            // Only Send/Sync can be used as additional traits, so it is enough to
-                            // check only the first trait.
-                            match_path_old(&traits[0].trait_ref.path, &paths::ANY_TRAIT)
-                        ], {
+                        if is_any_trait(inner) {
                             // Ignore `Box<Any>` types, see #1884 for details.
                             return;
-                        }}
+                        }
 
                         let ltopt = if lt.is_elided() {
                             "".to_owned()
@@ -258,6 +252,21 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
         },
         _ => {},
     }
+}
+
+// Returns true if given type is `Any` trait.
+fn is_any_trait(t: &hir::Ty) -> bool {
+    if_let_chain! {[
+        let TyTraitObject(ref traits, _) = t.node,
+        traits.len() >= 1,
+        // Only Send/Sync can be used as additional traits, so it is enough to
+        // check only the first trait.
+        match_path_old(&traits[0].trait_ref.path, &paths::ANY_TRAIT)
+    ], {
+        return true;
+    }}
+
+    false
 }
 
 #[allow(missing_copy_implementations)]
