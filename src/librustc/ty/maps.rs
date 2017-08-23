@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use errors::DiagnosticBuilder;
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -218,7 +219,9 @@ pub struct CycleError<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn report_cycle(self, CycleError { span, cycle }: CycleError) {
+    pub fn report_cycle(self, CycleError { span, cycle }: CycleError)
+        -> DiagnosticBuilder<'a>
+    {
         // Subtle: release the refcell lock before invoking `describe()`
         // below by dropping `cycle`.
         let stack = cycle.to_vec();
@@ -247,8 +250,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             err.note(&format!("...which then again requires {}, completing the cycle.",
                               stack[0].1.describe(self)));
 
-            err.emit();
-        });
+            return err
+        })
     }
 
     fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
@@ -704,8 +707,11 @@ macro_rules! define_maps {
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
-                           -> Result<$V, CycleError<'a, $tcx>> {
-                Self::try_get_with(tcx, span, key, Clone::clone)
+                           -> Result<$V, DiagnosticBuilder<'a>> {
+                match Self::try_get_with(tcx, span, key, Clone::clone) {
+                    Ok(e) => Ok(e),
+                    Err(e) => Err(tcx.report_cycle(e)),
+                }
             }
 
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
@@ -714,7 +720,7 @@ macro_rules! define_maps {
 
                 match Self::try_get_with(tcx, span, key, |_| ()) {
                     Ok(()) => {}
-                    Err(e) => tcx.report_cycle(e)
+                    Err(e) => tcx.report_cycle(e).emit(),
                 }
             }
         })*
@@ -751,8 +757,8 @@ macro_rules! define_maps {
         impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
             $($(#[$attr])*
             pub fn $name(self, key: $K) -> $V {
-                queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|e| {
-                    self.report_cycle(e);
+                queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|mut e| {
+                    e.emit();
                     Value::from_cycle_error(self.global_tcx())
                 })
             })*
