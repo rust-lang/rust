@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::intravisit::{FnKind, Visitor, walk_ty, NestedVisitorMap};
 use rustc::lint::*;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
@@ -479,17 +479,25 @@ declare_lint! {
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
-fn int_ty_to_nbits(typ: Ty) -> usize {
-    let n = match typ.sty {
-        ty::TyInt(i) => 4 << (i as usize),
-        ty::TyUint(u) => 4 << (u as usize),
+fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
+    match typ.sty {
+        ty::TyInt(i) => match i {
+            IntTy::Is => tcx.data_layout.pointer_size.bits(),
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
+        },
+        ty::TyUint(i) => match i {
+            UintTy::Us => tcx.data_layout.pointer_size.bits(),
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
+        },
         _ => 0,
-    };
-    // n == 4 is the usize/isize case
-    if n == 4 {
-        ::std::mem::size_of::<usize>() * 8
-    } else {
-        n
     }
 }
 
@@ -510,7 +518,7 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
     } else if is_isize_or_usize(cast_from) {
         "32 or 64".to_owned()
     } else {
-        int_ty_to_nbits(cast_from).to_string()
+        int_ty_to_nbits(cast_from, cx.tcx).to_string()
     };
     span_lint(
         cx,
@@ -542,7 +550,8 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, c
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
-    let (from_nbits, to_nbits) = (int_ty_to_nbits(cast_from), int_ty_to_nbits(cast_to));
+    let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
+    let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
     let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) =
         match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
             (true, true) | (false, false) => {
@@ -650,7 +659,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
-                        let from_nbits = int_ty_to_nbits(cast_from);
+                        let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
                         let to_nbits = if let ty::TyFloat(FloatTy::F32) = cast_to.sty {
                             32
                         } else {
