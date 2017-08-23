@@ -26,7 +26,7 @@ use super::VtableImplData;
 use super::util;
 
 use hir::def_id::DefId;
-use infer::{InferCtxt, InferOk};
+use infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use infer::type_variable::TypeVariableOrigin;
 use middle::const_val::ConstVal;
 use mir::interpret::{GlobalId};
@@ -1422,17 +1422,25 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    poly_projection: ty::PolyProjectionPredicate<'tcx>)
+    poly_cache_entry: ty::PolyProjectionPredicate<'tcx>)
     -> Progress<'tcx>
 {
     let infcx = selcx.infcx();
-    let cause = obligation.cause.clone();
+    let cause = &obligation.cause;
     let param_env = obligation.param_env;
-    let trait_ref = obligation.predicate.trait_ref(infcx.tcx);
-    match infcx.match_poly_projection_predicate(cause, param_env, poly_projection, trait_ref) {
-        Ok(InferOk { value: ty_match, obligations }) => {
+
+    let (cache_entry, _skol_map) =
+        infcx.replace_late_bound_regions_with_fresh_var(
+            cause.span,
+            LateBoundRegionConversionTime::HigherRankedType,
+            &poly_cache_entry);
+
+    let cache_trait_ref = cache_entry.projection_ty.trait_ref(infcx.tcx);
+    let obligation_trait_ref = obligation.predicate.trait_ref(infcx.tcx);
+    match infcx.at(cause, param_env).eq(cache_trait_ref, obligation_trait_ref) {
+        Ok(InferOk { value: _, obligations }) => {
             Progress {
-                ty: ty_match.value,
+                ty: cache_entry.ty,
                 obligations,
             }
         }
@@ -1442,7 +1450,7 @@ fn confirm_param_env_candidate<'cx, 'gcx, 'tcx>(
                 "Failed to unify obligation `{:?}` \
                  with poly_projection `{:?}`: {:?}",
                 obligation,
-                poly_projection,
+                poly_cache_entry,
                 e);
         }
     }
