@@ -619,6 +619,7 @@ create_config! {
         "Force multiline closure bodies to be wrapped in a block";
     multiline_match_arm_forces_block: bool, false,
         "Force multiline match arm bodies to be wrapped in a block";
+    merge_derives: bool, true, "Merge multiple `#[derive(...)]` into a single one";
 }
 
 #[cfg(test)]

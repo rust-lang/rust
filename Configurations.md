@@ -1230,7 +1230,7 @@ Put a match sub-patterns' separator (`|`) in front or back.
 - **Default value**: `"Back"`
 - **Possible values**: `"Back"`, `"Front"`
 
-#### `"Back"`
+#### `"Back"`:
 
 ```rust
 match m {
@@ -1243,7 +1243,7 @@ match m {
 }
 ```
 
-#### `Front`
+#### `Front`:
 
 ```rust
 match m {
@@ -1265,6 +1265,31 @@ Maximum width of each line
 
 See also [`error_on_line_overflow`](#error_on_line_overflow).
 
+## `merge_derives`
+
+Merge multiple derives into a single one.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+
+*Note*: The merged derives will be put after all other attributes or doc comments.
+
+#### `true`:
+
+```rust
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum Foo {}
+```
+
+#### `false`:
+
+```rust
+#[derive(Eq, PartialEq)]
+#[derive(Debug)]
+#[derive(Copy, Clone)]
+pub enum Foo {}
+```
+
 ## `multiline_closure_forces_block`
 
 Force multiline closure bodies to be wrapped in a block
@@ -1272,23 +1297,24 @@ Force multiline closure bodies to be wrapped in a block
 - **Default value**: `false`
 - **Possible values**: `false`, `true`
 
+#### `true`:
+
+```rust
+
+result.and_then(|maybe_value| {
+    match maybe_value {
+        None => ...,
+        Some(value) => ...,
+    }
+})
+```
+
 #### `false`:
 
 ```rust
 result.and_then(|maybe_value| match maybe_value {
     None => ...,
     Some(value) => ...,
-})
-```
-
-#### `true`:
-
-```rust
-result.and_then(|maybe_value| {
-    match maybe_value {
-        None => ...,
-        Some(value) => ...,
-    }
 })
 ```
 

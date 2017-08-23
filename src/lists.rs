@@ -19,10 +19,10 @@ use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
 use utils::{first_line_width, last_line_width, mk_sp};
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 /// Formatting tactic for lists. This will be cast down to a
 /// DefinitiveListTactic depending on the number and length of the items and
 /// their comments.
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
     // One item per row.
     Vertical,
@@ -144,8 +144,8 @@ impl ListItem {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 /// The definitive formatting tactic for lists.
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum DefinitiveListTactic {
     Vertical,
     Horizontal,

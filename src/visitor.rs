@@ -925,6 +925,8 @@ impl<'a> Rewrite for [ast::Attribute] {
         }
         let indent = shape.indent.to_string(context.config);
 
+        let mut derive_args = Vec::new();
+
         for (i, a) in self.iter().enumerate() {
             let a_str = try_opt!(a.rewrite(context, shape));
 
@@ -956,13 +958,51 @@ impl<'a> Rewrite for [ast::Attribute] {
             }
 
             // Write the attribute itself.
-            result.push_str(&a_str);
+            if context.config.merge_derives() {
+                if let Some(mut args) = get_derive_args(context, a) {
+                    // If the attribute is `#[derive(...)]`, take the arguments and skip rewriting.
+                    // We will merge the all arguments into a single `#[derive(...)]` at last.
+                    derive_args.append(&mut args);
+                } else {
+                    result.push_str(&a_str);
 
-            if i < self.len() - 1 {
+                    if i < self.len() - 1 {
+                        result.push('\n');
+                    }
+                }
+            } else {
+                result.push_str(&a_str);
+
+                if i < self.len() - 1 {
+                    result.push('\n');
+                }
+            }
+        }
+
+        // Add merged `#[derive(...)]` at last.
+        if context.config.merge_derives() && !derive_args.is_empty() {
+            if !result.is_empty() && !result.ends_with('\n') {
+                result.push_str(&indent);
                 result.push('\n');
             }
+            result.push_str(&format!("#[derive({})]", derive_args.join(", ")));
         }
 
         Some(result)
     }
+}
+
+/// Returns the arguments of `#[derive(...)]`.
+fn get_derive_args(context: &RewriteContext, attr: &ast::Attribute) -> Option<Vec<String>> {
+    attr.meta().and_then(|meta_item| match meta_item.node {
+        ast::MetaItemKind::List(ref args) if meta_item.name.as_str() == "derive" => {
+            // Every argument of `derive` should be `NestedMetaItemKind::Literal`.
+            Some(
+                args.iter()
+                    .map(|a| context.snippet(a.span))
+                    .collect::<Vec<_>>(),
+            )
+        }
+        _ => None,
+    })
 }
