@@ -100,15 +100,32 @@ recognize all changes to trait bounds, this analysis step has to be performed in
 directions, to catch both loosening and tightening of bounds.
 
 ### Trait impl matching
-TODO
+All trait impls are matched up in both directions, to determine whether impls for specific
+types have been added or removed (note that in this context, an impl refers to the
+*existence of a trait implementation matching a given type, not a specific trait impl*. If
+no match is found when checking an old impl, this implies that an impl has been removed,
+and that it has been addded when a new impl has no old matching counterpart.
+
+The actual matching is performed using the trait system. The translated bounds and trait
+definition of the impl being checked are registered in a specialized `BoundContext`, which
+is wrapping a fulfillment context that determines whether any matching impl exists.
 
 ### Inherent impl matching
+Matching inherent impls roughly follows the same principles as checking trait impls.
+However, there are a few vital differences, since different inherent impls of the same
+type don't need to declare the same set of associated items. Thus, each associated item is
+kept track of to determine the set of impls it is present in. Each of these impls needs to
+be matched in the other crate, to find a matching associated item in each. Then, regular
+type and structural checks are performed on the matching items.
+
+The actual impl matching is performed based on the trait bounds on the inherent impls, as
+described in a previous section.
 
 ## Tests
 The change recording structure has a suite of unit tests to ensure correct behaviour with
 regards to change categorization and storage, according to the usual convention, these
 unit tests are located in the same file as the implementation. Various invariants are
-tested using `quickecheck`, others are exercised as plain examples.
+tested using `quickcheck`, others are exercised as plain examples.
 
 Most of the functionality, however, especially the analysis implementation, is testes
 using an evergrowing integration test suite, which records the analysis results for mockup
