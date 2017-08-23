@@ -10,13 +10,15 @@ The toplevel directory of the repository is structured according to cargo's conv
 * only one crate, `semverver` is provided. It provides two binaries, whose functionality
   is elaborated later on. The actual functionality is currently not exposed as a library,
   but this change is trivial to implement.
+* a cargo manifest and lockfile, various documentation material you are currently reading,
+  etc. is also placed at the top level.
 
 ## Source code structure
 Inside the `src` subdirectory, the main functionality can be found inside the `semcheck`
 directory, while the `bin` directory contains the two executables provided by the crate.
 
 ### Execution overview
-The provided binaries are a cargo plugin and a custom `rustc` driver, respectively, and
+The provided binaries are a cargo plugin and a custom rustc driver, respectively, and
 allow to analyze local and remote crate pairs for semver compatibility.
 
 A typical invocation, assuming that both binaries are on the user's `PATH`, is performed
@@ -78,7 +80,7 @@ the `changes` submodule.
 Checking the types of a matching pair of items is one of the most important and most
 complicated features of `rust-semverver`. Type checks are performed for type aliases,
 constants, statics, ADT fields, and function signatures. This is implemented using the
-type inference machinery of `rustc` and a custom `TypeComparisonContext`, located in
+type inference machinery of rustc and a custom `TypeComparisonContext`, located in
 in the `typeck` module, that performs the necessary heavy lifting when given two types.
 
 The general process is to translate one of the types to allow for comparison, and to use
@@ -127,7 +129,7 @@ regards to change categorization and storage, according to the usual convention,
 unit tests are located in the same file as the implementation. Various invariants are
 tested using `quickcheck`, others are exercised as plain examples.
 
-Most of the functionality, however, especially the analysis implementation, is testes
+Most of the functionality, however, especially the analysis implementation, is tested
 using an evergrowing integration test suite, which records the analysis results for mockup
 crates, normalizes the output with regards to paths and similar information contained, and
 compares it to a previously recorded version using `git`. Currently, regular crates are

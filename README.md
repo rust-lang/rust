@@ -7,13 +7,17 @@ of Code 2017. The goal is to provide an automated command akin to `cargo clippy`
 analyzes the current crate's source code for changes compared to the most recent version
 on `crates.io`.
 
+Details on the work done during GSoC 2017 can be found
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/GSOC.md).
+
 ## Background
 The approach taken is to compile both versions of the crate to `rlib`s and to link them as
 dependencies of a third, empty, dummy crate. Then, a custom compiler driver is run on the
 said dummy and all necessary analysis is performed in that context, where type information
 and other resources are available.
 
-More information on the inner workings will be provided soon.
+More information on the inner workings of the tool can be found
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/IMPLEMENTATION_NOTES.md).
 
 ## Installation
 The tool is implemented as a cargo plugin. As of now, it can be obtained from this git
