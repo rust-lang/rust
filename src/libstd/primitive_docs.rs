@@ -188,9 +188,10 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
-/// Use the [`null`] function to create null pointers, and the [`is_null`] method
-/// of the `*const T` type  to check for null. The `*const T` type also defines
-/// the [`offset`] method, for pointer math.
+/// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
+/// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
+/// The `*const T` and `*mut T` types also define the [`offset`] method, for
+/// pointer math.
 ///
 /// # Common ways to create raw pointers
 ///
@@ -261,6 +262,7 @@ mod prim_unit { }
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// [`null`]: ../std/ptr/fn.null.html
+/// [`null_mut`]: ../std/ptr/fn.null_mut.html
 /// [`is_null`]: ../std/primitive.pointer.html#method.is_null
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw

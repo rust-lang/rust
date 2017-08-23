@@ -323,6 +323,11 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
     mem::transmute(s)
 }
 
+// Detect scheme on Redox
+fn has_redox_scheme(s: &[u8]) -> bool {
+    cfg!(target_os = "redox") && s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Cross-platform, iterator-independent parsing
 ////////////////////////////////////////////////////////////////////////////////
@@ -1685,8 +1690,12 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
-        // FIXME: Remove target_os = "redox" and allow Redox prefixes
-        self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
+        if !cfg!(target_os = "redox") {
+            self.has_root() && (cfg!(unix) || self.prefix().is_some())
+        } else {
+            // FIXME: Allow Redox prefixes
+            has_redox_scheme(self.as_u8_slice())
+        }
     }
 
     /// Returns `true` if the `Path` is relative, i.e. not absolute.
@@ -2050,7 +2059,8 @@ impl Path {
         Components {
             path: self.as_u8_slice(),
             prefix,
-            has_physical_root: has_physical_root(self.as_u8_slice(), prefix),
+            has_physical_root: has_physical_root(self.as_u8_slice(), prefix) ||
+                               has_redox_scheme(self.as_u8_slice()),
             front: State::Prefix,
             back: State::Body,
         }

@@ -246,9 +246,9 @@ pub enum TokenNode {
 pub enum Delimiter {
     /// `( ... )`
     Parenthesis,
-    /// `[ ... ]`
-    Brace,
     /// `{ ... }`
+    Brace,
+    /// `[ ... ]`
     Bracket,
     /// An implicit delimiter, e.g. `$var`, where $var is  `...`.
     None,
