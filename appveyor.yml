@@ -145,7 +145,8 @@ install:
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
-  - appveyor-retry choco install -y InnoSetup
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-08-22-is.exe
+  - 2017-08-22-is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor
