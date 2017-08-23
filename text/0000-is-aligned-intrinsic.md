@@ -12,10 +12,10 @@ pointer `ptr` to `align`.
 
 The intrinsic is reexported as a method on `*const T` and `*mut T`.
 
-Also add an `unsafe fn align_to<T, U>(&[U]) -> (&[U], &[T], &[U])` library function
-under `core::slice` and `std::slice` that simplifies the common use case, returning
+Also add an `unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T])` method to `[T]`.
+The method simplifies the common use case, returning
 the unaligned prefix, the aligned center part and the unaligned trailing elements.
-The function is unsafe because it produces a `&T` to the memory location of a `U`,
+The function is unsafe because it produces a `&U` to the memory location of a `T`,
 which might expose padding bytes or violate invariants of `T` or `U`.
 
 # Motivation
@@ -82,44 +82,46 @@ Usually one should pass in the result of an `align_of` call.
 Add a new method `align_offset` to `*const T` and `*mut T`, which forwards to the
 `align_offset` intrinsic.
 
-Add two new functions `align_to` and `align_to_mut` to `core::slice` and `std::slice`
-with the following signature:
+Add two new methods `align_to` and `align_to_mut` to the slice type.
 
 ```rust
-unsafe fn align_to<T, U>(&[U]) -> (&[U], &[T], &[U]) { /**/ }
-unsafe fn align_to_mut<T, U>(&mut [U]) -> (&mut [U], &mut [T], &mut [U]) { /**/ }
+impl<T> [T] {
+    /* ... other methods ... */
+    unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) { /**/ }
+    unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) { /**/ }
+}
 ```
 
 `align_to` can be implemented as
 
 ```rust
-unsafe fn align_to<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
+unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
     use core::mem::{size_of, align_of};
-    assert!(size_of::<T>() != 0 && size_of::<U>() != 0, "don't use `align_to` with zsts");
-    if size_of::<T>() % size_of::<U>() == 0 {
-        let align = align_of::<T>();
-        let size = size_of::<T>();
-        let source_size = size_of::<U>();
+    assert!(size_of::<U>() != 0 && size_of::<T>() != 0, "don't use `align_to` with zsts");
+    if size_of::<U>() % size_of::<T>() == 0 {
+        let align = align_of::<U>();
+        let size = size_of::<U>();
+        let source_size = size_of::<T>();
         // number of bytes that need to be skipped until the pointer is aligned
-        let offset = slice.as_ptr().align_offset(align);
-        // if `align_of::<T>() <= align_of::<U>()`, or if pointer is accidentally aligned, then `offset == 0`
+        let offset = self.as_ptr().align_offset(align);
+        // if `align_of::<U>() <= align_of::<T>()`, or if pointer is accidentally aligned, then `offset == 0`
         //
-        // due to `size_of::<T>() % size_of::<U>() == 0`,
-        // the fact that `size_of::<U>() > align_of::<U>()`,
-        // and the fact that `align_of::<T>() > align_of::<U>()` if `offset != 0` we know
+        // due to `size_of::<U>() % size_of::<T>() == 0`,
+        // the fact that `size_of::<T>() > align_of::<T>()`,
+        // and the fact that `align_of::<U>() > align_of::<T>()` if `offset != 0` we know
         // that `offset % source_size == 0`
         let head_count = offset / source_size;
-        let split_position = core::cmp::max(slice.len(), head_count);
-        let (head, tail) = slice.split_at(split_position);
+        let split_position = core::cmp::max(self.len(), head_count);
+        let (head, tail) = self.split_at(split_position);
         // might be zero if not enough elements
         let mid_count = tail.len() * source_size / size;
-        let mid = core::slice::from_raw_parts::<T>(tail.as_ptr() as *const _, mid_count);
-        let tail = &tail[mid_count * size_of::<T>()..];
+        let mid = core::slice::from_raw_parts::<U>(tail.as_ptr() as *const _, mid_count);
+        let tail = &tail[mid_count * size_of::<U>()..];
         (head, mid, tail)
     } else {
-        // can't properly fit a T into a sequence of `U`
-        // FIXME: use GCD(size_of::<T>(), size_of::<U>()) as minimum `mid` size
-        (slice, &[], &[])
+        // can't properly fit a U into a sequence of `T`
+        // FIXME: use GCD(size_of::<U>(), size_of::<T>()) as minimum `mid` size
+        (self, &[], &[])
     }
 }
 ```
@@ -127,7 +129,7 @@ unsafe fn align_to<T, U>(slice: &[U]) -> (&[U], &[T], &[U]) {
 on all current platforms. `align_to_mut` is expanded accordingly.
 
 Users of the functions must process all the returned slices and
-cannot rely on any behaviour except that the `&[T]`'s elements are correctly
+cannot rely on any behaviour except that the `&[U]`'s elements are correctly
 aligned and that all bytes of the original slice are present in the resulting
 three slices.
 
@@ -235,7 +237,7 @@ With the `align_to` function this could be written as
 let len = text.len();
 let ptr = text.as_ptr();
 
-let (head, mid, tail) = std::slice::align_to::<(usize, usize), _>(text);
+let (head, mid, tail) = text.align_to::<(usize, usize)>();
 
 // search up to an aligned boundary
 if let Some(index) = head.iter().position(|elt| *elt == x) {
@@ -266,7 +268,7 @@ tail.iter().position(|elt| *elt == x).map(|i| head.len() + mid.len() + i)
 A lint could be added to `clippy` which detects hand-written alignment checks and
 suggests to use the `align_to` function instead.
 
-The `std::mem::align` function's documentation should point to `std::slice::align_to`
+The `std::mem::align` function's documentation should point to `[T]::align_to`
 in order to increase the visibility of the function. The documentation of
 `std::mem::align` should note that it is unidiomatic to manually align pointers,
 since that might not be supported on all platforms and is prone to implementation
