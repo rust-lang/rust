@@ -1684,12 +1684,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
         match queries::adt_sized_constraint::try_get(tcx, DUMMY_SP, self.did) {
             Ok(tys) => tys,
-            Err(_) => {
+            Err(mut bug) => {
                 debug!("adt_sized_constraint: {:?} is recursive", self);
                 // This should be reported as an error by `check_representable`.
                 //
                 // Consider the type as Sized in the meanwhile to avoid
-                // further errors.
+                // further errors. Delay our `bug` diagnostic here to get
+                // emitted later as well in case we accidentally otherwise don't
+                // emit an error.
+                bug.delay_as_bug();
                 tcx.intern_type_list(&[tcx.types.err])
             }
         }
