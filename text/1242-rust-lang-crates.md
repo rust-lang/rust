@@ -88,8 +88,8 @@ as full rust-lang crates), increasing the chances that the crate is scrutinized
 before being promoted to the next stage.
 
 Eventually, a nursery crate will either fail (and move to rust-lang-deprecated)
-or reach a point where a 1.0 release would be appropriate. The failure case can
-be decided at any point by the library subteam.
+or reach a point where a 1.0 release would be appropriate. The failure case
+will be determined by means of an RFC.
 
 If, on the other hand, a library reaches the 1.0 point, it is ready to be
 promoted into rust-lang proper. To do so, an RFC must be written outlining the
@@ -141,9 +141,9 @@ way of importing them.
 ### Deprecation
 
 At some point a library may become stale -- either because it failed to make it
-out of the nursery, or else because it was supplanted by a superior library. The
-libs subteam can deprecate nursery crates at any time, and can deprecate
-rust-lang crates through an RFC. This is expected to be a rare occurrence.
+out of the nursery, or else because it was supplanted by a superior library.
+Nursery and rust-lang crates can be deprecated only through an RFC. This is
+expected to be a rare occurrence.
 
 Deprecated crates move to rust-lang-deprecated and are subsequently minimally
 maintained. Alternatively, if someone volunteers to maintain the crate,
