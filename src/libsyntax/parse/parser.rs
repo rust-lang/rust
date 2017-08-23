@@ -1752,7 +1752,7 @@ impl<'a> Parser<'a> {
         -> PResult<'a, ast::Path>
     {
         maybe_whole!(self, NtPath, |path| {
-            if style == PathStyle::Mod &&
+            if mode == PathStyle::Mod &&
                path.segments.iter().any(|segment| segment.parameters.is_some()) {
                 self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
             }

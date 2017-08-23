@@ -13,7 +13,7 @@ macro_rules! m {
 }
 
 struct S<T>(T);
-m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
+m!{ S<u8> } //~ ERROR unexpected generic arguments in path
 //~^ ERROR expected module, found struct `S`
 
 fn main() {}

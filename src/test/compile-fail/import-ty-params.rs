@@ -20,6 +20,6 @@ macro_rules! import {
     ($p: path) => (use $p;);
 }
 
-import! { a::b::c::S<u8> } //~ERROR type or lifetime parameters in import path
+import! { a::b::c::S<u8> } //~ERROR unexpected generic arguments in path
 
 fn main() {}
