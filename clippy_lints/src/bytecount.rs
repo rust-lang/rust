@@ -1,8 +1,8 @@
-use consts::{constant, Constant};
-use rustc_const_math::ConstInt;
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{match_type, paths, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use rustc::ty;
+use syntax::ast::{Name, UintTy};
+use utils::{contains_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for naive byte counts
 ///
@@ -47,14 +47,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
         ], {
             let body = cx.tcx.hir.body(body_id);
             if_let_chain!([
+                body.arguments.len() == 1,
+                let Some(argname) = get_pat_name(&body.arguments[0].pat),
                 let ExprBinary(ref op, ref l, ref r) = body.value.node,
                 op.node == BiEq,
                 match_type(cx,
                            walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
                            &paths::SLICE_ITER),
-                let Some((Constant::Int(ConstInt::U8(needle)), _)) =
-                        constant(cx, l).or_else(|| constant(cx, r))
             ], {
+                let needle = match get_path_name(l) {
+                    Some(name) if check_arg(name, argname, r) => r,
+                    _ => match get_path_name(r) {
+                        Some(name) if check_arg(name, argname, l) => l,
+                        _ => { return; }
+                    }
+                };
+                if ty::TyUint(UintTy::U8) != walk_ptrs_ty(cx.tables.expr_ty(needle)).sty {
+                    return;
+                }
                 let haystack = if let ExprMethodCall(ref path, _, ref args) =
                         filter_args[0].node {
                     let p = path.name;
@@ -73,8 +83,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                                    "Consider using the bytecount crate",
                                    format!("bytecount::count({}, {})",
                                             snippet(cx, haystack.span, ".."),
-                                            needle));
+                                            snippet(cx, needle.span, "..")));
             });
         });
     }
 }
+
+fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
+    name == arg && !contains_name(name, needle)
+}
+
+fn get_pat_name(pat: &Pat) -> Option<Name> {
+    match pat.node {
+        PatKind::Binding(_, _, ref spname, _) => Some(spname.node),
+        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
+        PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
+        _ => None
+    }
+}
+
+fn get_path_name(expr: &Expr) -> Option<Name> {
+    match expr.node {
+        ExprBox(ref e) | ExprAddrOf(_, ref e) | ExprUnary(UnOp::UnDeref, ref e) => get_path_name(e),
+        ExprBlock(ref b) => if b.stmts.is_empty() {
+            b.expr.as_ref().and_then(|p| get_path_name(p))
+        } else { None },
+        ExprPath(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
+        _ => None
+    }
+}
+
