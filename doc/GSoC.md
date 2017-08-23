@@ -31,7 +31,7 @@ On a different front, the cargo plugin could need some technical improvements to
 usability and code quality.
 
 An overview of the functionality, and it's implementation can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/IMPLEMENTATION_NOTES.md).
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/impl_notes.md).
 
 ## Progress made
 The project provided a very through and challenging walkthrough to the internal working of

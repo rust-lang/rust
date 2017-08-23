@@ -8,7 +8,7 @@ analyzes the current crate's source code for changes compared to the most recent
 on `crates.io`.
 
 Details on the work done during GSoC 2017 can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/GSOC.md).
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/GSoC.md).
 
 ## Background
 The approach taken is to compile both versions of the crate to `rlib`s and to link them as
@@ -17,7 +17,7 @@ said dummy and all necessary analysis is performed in that context, where type i
 and other resources are available.
 
 More information on the inner workings of the tool can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/IMPLEMENTATION_NOTES.md).
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/impl_notes.md).
 
 ## Installation
 The tool is implemented as a cargo plugin. As of now, it can be obtained from this git

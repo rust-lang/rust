@@ -10,8 +10,9 @@ The toplevel directory of the repository is structured according to cargo's conv
 * only one crate, `semverver` is provided. It provides two binaries, whose functionality
   is elaborated later on. The actual functionality is currently not exposed as a library,
   but this change is trivial to implement.
-* a cargo manifest and lockfile, various documentation material you are currently reading,
-  etc. is also placed at the top level.
+* `doc` contains documentation.
+* A cargo manifest and lockfile, license, and toplevel readme with an overview is placed
+  at the toplevel directory.
 
 ## Source code structure
 Inside the `src` subdirectory, the main functionality can be found inside the `semcheck`
