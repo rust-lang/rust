@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir;
 use hir::def_id::DefId;
 use hir::map::DefPathHash;
 use traits::specialization_graph;
 use ty::fast_reject;
 use ty::fold::TypeFoldable;
 use ty::{Ty, TyCtxt};
+
+use rustc_data_structures::fx::FxHashMap;
+
 use std::rc::Rc;
-use hir;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -36,59 +39,11 @@ pub struct TraitDef {
     pub def_path_hash: DefPathHash,
 }
 
-// We don't store the list of impls in a flat list because each cached list of
-// `relevant_impls_for` we would then duplicate all blanket impls. By keeping
-// blanket and non-blanket impls separate, we can share the list of blanket
-// impls.
-#[derive(Clone)]
 pub struct TraitImpls {
-    blanket_impls: Rc<Vec<DefId>>,
-    non_blanket_impls: Rc<Vec<DefId>>,
+    blanket_impls: Vec<DefId>,
+    /// Impls indexed by their simplified self-type, for fast lookup.
+    non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
 }
-
-impl TraitImpls {
-    pub fn iter(&self) -> TraitImplsIter {
-        TraitImplsIter {
-            blanket_impls: self.blanket_impls.clone(),
-            non_blanket_impls: self.non_blanket_impls.clone(),
-            index: 0
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct TraitImplsIter {
-    blanket_impls: Rc<Vec<DefId>>,
-    non_blanket_impls: Rc<Vec<DefId>>,
-    index: usize,
-}
-
-impl Iterator for TraitImplsIter {
-    type Item = DefId;
-
-    fn next(&mut self) -> Option<DefId> {
-        if self.index < self.blanket_impls.len() {
-            let bi_index = self.index;
-            self.index += 1;
-            Some(self.blanket_impls[bi_index])
-        } else {
-            let nbi_index = self.index - self.blanket_impls.len();
-            if nbi_index < self.non_blanket_impls.len() {
-                self.index += 1;
-                Some(self.non_blanket_impls[nbi_index])
-            } else {
-                None
-            }
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let items_left = (self.blanket_impls.len() + self.non_blanket_impls.len()) - self.index;
-        (items_left, Some(items_left))
-    }
-}
-
-impl ExactSizeIterator for TraitImplsIter {}
 
 impl<'a, 'gcx, 'tcx> TraitDef {
     pub fn new(def_id: DefId,
@@ -111,20 +66,36 @@ impl<'a, 'gcx, 'tcx> TraitDef {
                      -> specialization_graph::Ancestors {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
+}
 
-    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, mut f: F) {
-        for impl_def_id in tcx.trait_impls_of(self.def_id).iter() {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn for_each_impl<F: FnMut(DefId)>(self, def_id: DefId, mut f: F) {
+        let impls = self.trait_impls_of(def_id);
+
+        for &impl_def_id in impls.blanket_impls.iter() {
             f(impl_def_id);
+        }
+
+        for v in impls.non_blanket_impls.values() {
+            for &impl_def_id in v {
+                f(impl_def_id);
+            }
         }
     }
 
     /// Iterate over every impl that could possibly match the
     /// self-type `self_ty`.
-    pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
-                                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(self,
+                                                   def_id: DefId,
                                                    self_ty: Ty<'tcx>,
                                                    mut f: F)
     {
+        let impls = self.trait_impls_of(def_id);
+
+        for &impl_def_id in impls.blanket_impls.iter() {
+            f(impl_def_id);
+        }
+
         // simplify_type(.., false) basically replaces type parameters and
         // projections with infer-variables. This is, of course, done on
         // the impl trait-ref when it is instantiated, but not on the
@@ -137,15 +108,31 @@ impl<'a, 'gcx, 'tcx> TraitDef {
         // replace `S` with anything - this impl of course can't be
         // selected, and as there are hundreds of similar impls,
         // considering them would significantly harm performance.
-        let relevant_impls = if let Some(simplified_self_ty) =
-                fast_reject::simplify_type(tcx, self_ty, true) {
-            tcx.relevant_trait_impls_for((self.def_id, simplified_self_ty))
-        } else {
-            tcx.trait_impls_of(self.def_id)
-        };
 
-        for impl_def_id in relevant_impls.iter() {
-            f(impl_def_id);
+        // This depends on the set of all impls for the trait. That is
+        // unfortunate. When we get red-green recompilation, we would like
+        // to have a way of knowing whether the set of relevant impls
+        // changed. The most naive
+        // way would be to compute the Vec of relevant impls and see whether
+        // it differs between compilations. That shouldn't be too slow by
+        // itself - we do quite a bit of work for each relevant impl anyway.
+        //
+        // If we want to be faster, we could have separate queries for
+        // blanket and non-blanket impls, and compare them separately.
+        //
+        // I think we'll cross that bridge when we get to it.
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, true) {
+            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                for &impl_def_id in impls {
+                    f(impl_def_id);
+                }
+            }
+        } else {
+            for v in impls.non_blanket_impls.values() {
+                for &impl_def_id in v {
+                    f(impl_def_id);
+                }
+            }
         }
     }
 }
@@ -153,7 +140,7 @@ impl<'a, 'gcx, 'tcx> TraitDef {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> TraitImpls {
+                                                -> Rc<TraitImpls> {
     let remote_impls = if trait_id.is_local() {
         // Traits defined in the current crate can't have impls in upstream
         // crates, so we don't bother querying the cstore.
@@ -163,7 +150,7 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let mut blanket_impls = Vec::new();
-    let mut non_blanket_impls = Vec::new();
+    let mut non_blanket_impls = FxHashMap();
 
     let local_impls = tcx.hir
                          .trait_impls(trait_id)
@@ -176,47 +163,20 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             continue
         }
 
-        if fast_reject::simplify_type(tcx, impl_self_ty, false).is_some() {
-            non_blanket_impls.push(impl_def_id);
+        if let Some(simplified_self_ty) =
+            fast_reject::simplify_type(tcx, impl_self_ty, false)
+        {
+            non_blanket_impls
+                .entry(simplified_self_ty)
+                .or_insert(vec![])
+                .push(impl_def_id);
         } else {
             blanket_impls.push(impl_def_id);
         }
     }
 
-    TraitImpls {
-        blanket_impls: Rc::new(blanket_impls),
-        non_blanket_impls: Rc::new(non_blanket_impls),
-    }
-}
-
-// Query provider for `relevant_trait_impls_for`.
-pub(super) fn relevant_trait_impls_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    (trait_id, self_ty): (DefId, fast_reject::SimplifiedType))
-    -> TraitImpls
-{
-    let all_trait_impls = tcx.trait_impls_of(trait_id);
-
-    let relevant: Vec<DefId> = all_trait_impls
-        .non_blanket_impls
-        .iter()
-        .cloned()
-        .filter(|&impl_def_id| {
-            let impl_self_ty = tcx.type_of(impl_def_id);
-            let impl_simple_self_ty = fast_reject::simplify_type(tcx,
-                                                                 impl_self_ty,
-                                                                 false).unwrap();
-            impl_simple_self_ty == self_ty
-        })
-        .collect();
-
-    if all_trait_impls.non_blanket_impls.len() == relevant.len() {
-        // If we didn't filter anything out, re-use the existing vec.
-        all_trait_impls
-    } else {
-        TraitImpls {
-            blanket_impls: all_trait_impls.blanket_impls.clone(),
-            non_blanket_impls: Rc::new(relevant),
-        }
-    }
+    Rc::new(TraitImpls {
+        blanket_impls: blanket_impls,
+        non_blanket_impls: non_blanket_impls,
+    })
 }

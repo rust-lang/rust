@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! m {
-    ($p: path) => (pub(in $p) struct Z;)
+fn main() {
+    let mut y;
+    const C: u32 = 0;
+    macro_rules! m {
+        ($a:expr) => {
+            let $a = 0;
+        }
+    }
+    m!(y);
+    //~^ ERROR arbitrary expressions aren't allowed in patterns
+    m!(C);
+    //~^ ERROR arbitrary expressions aren't allowed in patterns
 }
-
-struct S<T>(T);
-m!{ S<u8> } //~ ERROR unexpected generic arguments in path
-//~^ ERROR expected module, found struct `S`
-
-fn main() {}

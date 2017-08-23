@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,19 +7,26 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+// no-system-llvm
+// compile-flags: -O
 
-mod a {
-    pub mod b {
-        pub mod c {
-            pub struct S<T>(T);
-        }
+#![crate_type="lib"]
+
+struct A;
+
+impl Drop for A {
+    fn drop(&mut self) {
+        extern { fn foo(); }
+        unsafe { foo(); }
     }
 }
 
-macro_rules! import {
-    ($p: path) => (use $p;);
+#[no_mangle]
+pub fn a(a: Box<i32>) {
+    // CHECK-LABEL: define void @a
+    // CHECK: call void @__rust_dealloc
+    // CHECK-NEXT: call void @foo
+    let _a = A;
+    drop(a);
 }
-
-import! { a::b::c::S<u8> } //~ERROR unexpected generic arguments in path
-
-fn main() {}

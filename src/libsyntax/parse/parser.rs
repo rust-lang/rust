@@ -1751,7 +1751,13 @@ impl<'a> Parser<'a> {
     fn parse_path_common(&mut self, mode: PathStyle, parse_generics: bool)
         -> PResult<'a, ast::Path>
     {
-        maybe_whole!(self, NtPath, |x| x);
+        maybe_whole!(self, NtPath, |path| {
+            if mode == PathStyle::Mod &&
+               path.segments.iter().any(|segment| segment.parameters.is_some()) {
+                self.diagnostic().span_err(path.span, "unexpected generic arguments in path");
+            }
+            path
+        });
 
         let lo = self.meta_var_span.unwrap_or(self.span);
         let is_global = self.eat(&token::ModSep);

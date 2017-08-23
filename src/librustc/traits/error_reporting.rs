@@ -278,8 +278,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut self_match_impls = vec![];
         let mut fuzzy_match_impls = vec![];
 
-        self.tcx.trait_def(trait_ref.def_id)
-            .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
+        self.tcx.for_each_relevant_impl(
+            trait_ref.def_id, trait_self_ty, |def_id| {
                 let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
@@ -396,10 +396,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                               trait_ref.skip_binder().self_ty(),
                                               true);
         let mut impl_candidates = Vec::new();
-        let trait_def = self.tcx.trait_def(trait_ref.def_id());
 
         match simp {
-            Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {
+            Some(simp) => self.tcx.for_each_impl(trait_ref.def_id(), |def_id| {
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap();
                 let imp_simp = fast_reject::simplify_type(self.tcx,
                                                           imp.self_ty(),
@@ -411,7 +410,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
                 impl_candidates.push(imp);
             }),
-            None => trait_def.for_each_impl(self.tcx, |def_id| {
+            None => self.tcx.for_each_impl(trait_ref.def_id(), |def_id| {
                 impl_candidates.push(
                     self.tcx.impl_trait_ref(def_id).unwrap());
             })
