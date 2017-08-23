@@ -16,6 +16,15 @@ use ty::{self, Region};
 use hir::def_id::DefId;
 use hir::map as hir_map;
 
+macro_rules! or_false {
+     ($v:expr) => {
+          match $v {
+               Some(v) => v,
+               None => return false,
+          }
+     }
+}
+
 // The struct contains the information about the anonymous region
 // we are searching for.
 pub struct AnonymousArgInfo<'tcx> {
@@ -59,7 +68,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                           -> Option<AnonymousArgInfo> {
 
         if let ty::ReFree(ref free_region) = *anon_region {
-
             let id = free_region.scope;
             let hir = &self.tcx.hir;
             if let Some(node_id) = hir.as_local_node_id(id) {

@@ -75,8 +75,10 @@ use errors::{DiagnosticBuilder, DiagnosticStyledString};
 mod note;
 
 mod need_type_info;
-mod util;
+
 mod named_anon_conflict;
+#[macro_use]
+mod util;
 mod anon_anon_conflict;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {

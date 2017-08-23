@@ -46,22 +46,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let (ty_sup, ty_sub, scope_def_id_sup, scope_def_id_sub, bregion_sup, bregion_sub) =
-            if let (Some(anon_reg_sup), Some(anon_reg_sub)) =
-                (self.is_suitable_anonymous_region(sup), self.is_suitable_anonymous_region(sub)) {
-                let (def_id_sup, br_sup, def_id_sub, br_sub) = (anon_reg_sup.def_id,
-                                                                anon_reg_sup.boundregion,
-                                                                anon_reg_sub.def_id,
-                                                                anon_reg_sub.boundregion);
-                if let (Some(anonarg_sup), Some(anonarg_sub)) =
-                    (self.find_anon_type(sup, &br_sup), self.find_anon_type(sub, &br_sub)) {
-                    (anonarg_sup, anonarg_sub, def_id_sup, def_id_sub, br_sup, br_sub)
-                } else {
-                    return false;
-                }
-            } else {
-                return false;
-            };
+        let anon_reg_sup = or_false!(self.is_suitable_anonymous_region(sup));
+
+        let anon_reg_sub = or_false!(self.is_suitable_anonymous_region(sub));
+        let scope_def_id_sup = anon_reg_sup.def_id;
+        let bregion_sup = anon_reg_sup.boundregion;
+        let scope_def_id_sub = anon_reg_sub.def_id;
+        let bregion_sub = anon_reg_sub.boundregion;
+
+        let ty_sup = or_false!(self.find_anon_type(sup, &bregion_sup));
+
+        let ty_sub = or_false!(self.find_anon_type(sub, &bregion_sub));
 
         let (main_label, label1, label2) = if let (Some(sup_arg), Some(sub_arg)) =
             (self.find_arg_with_anonymous_region(sup, sup),
@@ -104,7 +99,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         } else {
             return false;
         };
-
 
         struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
             .span_label(ty_sup.span, main_label)
