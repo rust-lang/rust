@@ -272,7 +272,7 @@ pub struct Handler {
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
-    delayed_span_bug: RefCell<Option<(MultiSpan, String)>>,
+    delayed_span_bug: RefCell<Option<Diagnostic>>,
     tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
 }
 
@@ -439,8 +439,9 @@ impl Handler {
         if self.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        let mut delayed = self.delayed_span_bug.borrow_mut();
-        *delayed = Some((sp.into(), msg.to_string()));
+        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        diagnostic.set_span(sp.into());
+        *self.delayed_span_bug.borrow_mut() = Some(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
@@ -507,14 +508,9 @@ impl Handler {
         let s;
         match self.err_count.get() {
             0 => {
-                let delayed_bug = self.delayed_span_bug.borrow();
-                match *delayed_bug {
-                    Some((ref span, ref errmsg)) => {
-                        self.span_bug(span.clone(), errmsg);
-                    }
-                    _ => {}
+                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
+                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
                 }
-
                 return;
             }
             1 => s = "aborting due to previous error".to_string(),
