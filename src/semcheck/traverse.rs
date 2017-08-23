@@ -3,7 +3,7 @@
 //! The changes get collected in multiple passes, and recorded in a `ChangeSet`.
 //! The initial pass matches items by name in the module hierarchy, registering item removal
 //! and addition, as well as structural changes to ADTs, type- or region parameters, and
-//! function signatures. The second pass then proceeds find non-public items that are named
+//! function signatures. The second pass then proceeds to find non-public items that are named
 //! differently, yet are compatible in their usage. The third pass now uses the information
 //! collected in the previous passes to compare the types and/or trait bounds of all item pairs
 //! that have been matched. Trait and inherent impls can't be matched by name, and are processed
@@ -27,7 +27,7 @@ use std::collections::{BTreeMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
 ///
-/// Set up the necessary data structures and run the analysis passes.
+/// Set up the necessary data structures and run the analysis passes and call the actual passes.
 pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefId)
     -> ChangeSet<'tcx>
 {
@@ -58,7 +58,7 @@ pub fn run_analysis<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, old: DefId, new: DefI
 // Below functions constitute the first pass of analysis, in which module structure, ADT
 // structure, public and private status of items, and generics are examined for changes.
 
-/// Given two crate root modules, compare their exports and their structure.
+/// Given two crate root modules, compare their exports and structure.
 ///
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
@@ -239,7 +239,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                             output);
                             },
                             // a non-matching item pair - register the change and abort further
-                            // analysis
+                            // analysis of it
                             _ => {
                                 changes.add_change(KindDifference, o_def_id, None);
                             },

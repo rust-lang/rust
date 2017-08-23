@@ -6,7 +6,8 @@
 //! ordering of changes and output generation is performed using the span information contained
 //! in these data structures. This means that we try to use the old span only when no other span
 //! is available, which leads to (complete) removals being displayed first. Matters are further
-//! complicated that we still group changes by the item they refer to, even if it's path changes.
+//! complicated by the fact that we still group changes by the item they refer to, even if it's
+//! path changes.
 
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
@@ -28,16 +29,16 @@ use syntax_pos::Span;
 /// These directly correspond to the semantic versioning spec, with the exception that some
 /// breaking changes are categorized as "technically breaking" - that is, [1] defines them as
 /// non-breaking when introduced to the standard libraries, because they only cause breakage in
-/// exotic and/or unlikely scenarios.
+/// exotic and/or unlikely scenarios, while we have a separate category for them.
 ///
 /// [1]: https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ChangeCategory {
-    /// Patch change - no change to the public API of a crate.
+    /// A patch-level change - no change to the public API of a crate.
     Patch,
-    /// A backwards-compatible change.
+    /// A non-breaking, backwards-compatible change.
     NonBreaking,
-    /// A breaking change that is very unlikely to cause breakage.
+    /// A breaking change that only causes breakage in well-known exotic cases.
     TechnicallyBreaking,
     /// A breaking, backwards-incompatible change.
     Breaking,
@@ -65,6 +66,8 @@ impl<'a> fmt::Display for ChangeCategory {
 }
 
 /// Different ways to refer to a changed item.
+///
+/// Used in the header of a change description to identify an item that was subject to change.
 pub enum Name {
     /// The changed item's name.
     Symbol(Symbol),
@@ -85,15 +88,15 @@ impl<'a> fmt::Display for Name {
 
 /// A change record of newly introduced or removed paths to an item.
 ///
-/// It is important to note that the `Eq` and `Ord` instances are constucted to only regard the
-/// span of the associated item definition. All other spans are only present for later display of
-/// the change record.
+/// NB: `Eq` and `Ord` instances are constructed to only regard the span of the associated item
+/// definition. All other spans are only present for later display of the change record.
 pub struct PathChange {
-    /// The name of the item.
+    /// The name of the item - this doesn't use `Name` because this change structure only gets
+    /// generated for removals and additions of named items, not impls.
     name: Symbol,
     /// The definition span of the item.
     def_span: Span,
-    /// The set of spans of newly added exports of the item.
+    /// The set of spans of added exports of the item.
     additions: BTreeSet<Span>,
     /// The set of spans of removed exports of the item.
     removals: BTreeSet<Span>,
@@ -135,7 +138,7 @@ impl PathChange {
         &self.def_span
     }
 
-    /// Report the change in a structured manner.
+    /// Report the change in a structured manner, using rustc's error reporting capabilities.
     fn report(&self, session: &Session) {
         let cat = self.to_category();
         if cat == Patch {
@@ -194,7 +197,7 @@ impl Ord for PathChange {
 pub enum ChangeType<'tcx> {
     /// An item has been made public.
     ItemMadePublic,
-    /// An item has been made private
+    /// An item has been made private.
     ItemMadePrivate,
     /// An item has changed it's kind.
     KindDifference,
@@ -204,45 +207,57 @@ pub enum ChangeType<'tcx> {
     RegionParameterAdded,
     /// A region parameter has been removed from an item.
     RegionParameterRemoved,
-    /// A type parameter has been added to an item.
+    /// A possibly defaulted type parameter has been added to an item.
     TypeParameterAdded { defaulted: bool },
-    /// A type parameter has been removed from an item.
+    /// A possibly defaulted type parameter has been removed from an item.
     TypeParameterRemoved { defaulted: bool },
     /// A variant has been added to an enum.
     VariantAdded,
     /// A variant has been removed from an enum.
     VariantRemoved,
-    /// A field hasb been added to a variant.
+    /// A possibly public field has been added to a variant or struct.
+    ///
+    /// This also records whether all fields are public were public before the change.
     VariantFieldAdded { public: bool, total_public: bool },
-    /// A field has been removed from a variant.
+    /// A possibly public field has been removed from a variant or struct.
+    ///
+    /// This also records whether all fields are public were public before the change.
     VariantFieldRemoved { public: bool, total_public: bool },
-    /// A variant has changed it's style.
+    /// A variant or struct has changed it's style.
+    ///
+    /// The style could have been changed from a tuple variant/struct to a regular
+    /// struct/struct variant or vice versa. Whether all fields were private prior to the change
+    /// is also recorded.
     VariantStyleChanged { now_struct: bool, total_private: bool },
     /// A function has changed it's constness.
     FnConstChanged { now_const: bool },
-    /// A method has changed whether it can be invoked as a method call.
+    /// A method either gained or lost a `self` parameter.
     MethodSelfChanged { now_self: bool },
-    /// A trait's definition added an item.
+    /// A trait's definition added a possibly defaulted item.
     TraitItemAdded { defaulted: bool },
-    /// A trait's definition removed an item.
+    /// A trait's definition removed a possibly defaulted item.
     TraitItemRemoved { defaulted: bool },
     /// A trait's definition changed it's unsafety.
     TraitUnsafetyChanged { now_unsafe: bool },
-    /// A field in a struct or enum has changed it's type.
+    /// An item's type has changed.
     TypeChanged { error: TypeError<'tcx> },
-    /// An item's bounds have been tightened.
+    /// An item's (trait) bounds have been tightened.
     BoundsTightened { pred: Predicate<'tcx> },
-    /// An item's bounds have been loosened.
+    /// An item's (trait) bounds have been loosened.
+    ///
+    /// This includes information on whether the affected item is a trait definition, since
+    /// removing trait bounds on those is *breaking* (as it invalidates the assumption that a
+    /// supertrait is implemented for each type implementing the traits).
     BoundsLoosened { pred: Predicate<'tcx>, trait_def: bool },
-    /// A trait impl has been specialized or removed for some types.
+    /// A trait impl has been specialized or removed for some type(s).
     TraitImplTightened,
-    /// A trait impl has been generalized or newly added for some types.
+    /// A trait impl has been generalized or newly added for some type(s).
     TraitImplLoosened,
     /// An associated item has been newly added to some inherent impls.
     AssociatedItemAdded,
     /// An associated item has been removed from some inherent impls.
     AssociatedItemRemoved,
-    /// An unknown change is any change we don't yet explicitly handle.
+    /// An unknown change we don't yet explicitly handle.
     Unknown,
 }
 
@@ -251,6 +266,7 @@ pub use self::ChangeType::*;
 impl<'tcx> ChangeType<'tcx> {
     /// Get the change type's category.
     pub fn to_category(&self) -> ChangeCategory {
+        // TODO: slightly messy and unreadable.
         match *self {
             ItemMadePrivate |
             KindDifference |
@@ -358,9 +374,8 @@ impl<'a> fmt::Display for ChangeType<'a> {
 
 /// A change record of an item present in both crate versions.
 ///
-/// It is important to note that the `Eq` and `Ord` instances are constucted to only
-/// regard the *new* span of the associated item definition. This allows us to sort them
-/// by appearance in the *new* source.
+/// NB: `Eq` and `Ord` instances are constucted to only regard the *new* span of the associated
+/// item definition. This allows us to sort them by appearance in the *new* source.
 pub struct Change<'tcx> {
     /// The types of changes affecting the item, with optional subspans.
     changes: Vec<(ChangeType<'tcx>, Option<Span>)>,
@@ -448,7 +463,7 @@ impl<'tcx> Change<'tcx> {
         &self.new_span
     }
 
-    /// Report the change in a structured manner.
+    /// Report the change in a structured manner, using rustc's error reporting capabilities.
     fn report(&self, session: &Session) {
         if self.max == Patch || !self.output {
             return;
@@ -504,9 +519,9 @@ impl<'tcx> Ord for Change<'tcx> {
 /// The total set of changes recorded for two crate versions.
 #[derive(Default)]
 pub struct ChangeSet<'tcx> {
-    /// The currently recorded path changes.
+    /// The set of currently recorded path changes.
     path_changes: HashMap<DefId, PathChange>,
-    /// The currently recorded regular changes.
+    /// The set of currently recorded regular changes.
     changes: HashMap<DefId, Change<'tcx>>,
     /// The mapping of spans to changes, for ordering purposes.
     spans: BTreeMap<Span, DefId>,
@@ -546,7 +561,7 @@ impl<'tcx> ChangeSet<'tcx> {
         self.path_changes.get_mut(&old).unwrap().insert(span, add);
     }
 
-    /// Add a new change entry for the given items.
+    /// Add a new change entry for the given item pair.
     pub fn new_change(&mut self,
                       old_def_id: DefId,
                       new_def_id: DefId,
@@ -561,6 +576,7 @@ impl<'tcx> ChangeSet<'tcx> {
         self.changes.insert(old_def_id, change);
     }
 
+    /// Add a new change entry for the given trait impl.
     pub fn new_change_impl(&mut self,
                            def_id: DefId,
                            desc: String,

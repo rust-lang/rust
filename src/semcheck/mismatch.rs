@@ -1,8 +1,8 @@
 //! The logic for the second analysis pass collecting mismatched non-public items to match them.
 //!
-//! Any two items' types found in the same place which are not matched yet with other items are
-//! essentially just renamed instances of the same item (as long as they are both unknown to us
-//! at the time of analysis). Thus, we may match them up to avoid some false positives.
+//! Any two items' types found in the same place which are not matched with other items yet are
+//! are treated as renamed instances of the same item (as long as they are both unknown to us at
+//! the time of analysis). Thus, we may match them up to avoid some false positives.
 
 use rustc::hir::def_id::DefId;
 use rustc::ty;
@@ -23,7 +23,7 @@ use std::collections::{HashMap, VecDeque};
 pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    /// The queue to append found item pairings.
+    /// The queue of found item pairings to be processed.
     item_queue: VecDeque<(DefId, DefId)>,
     /// The id mapping to use.
     id_mapping: &'a mut IdMapping,
@@ -40,7 +40,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Process the next pair of `DefId`s in the queue and return them.
+    /// Process the next pair of `DefId`s in the queue.
     pub fn process(&mut self) {
         use rustc::hir::def::Def::*;
 
@@ -56,7 +56,7 @@ impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Ensure that the pair of given `Substs` is suitable for being related.
+    /// Ensure that the pair of given `Substs` is suitable to be related.
     fn check_substs(&self, a_substs: &'tcx Substs<'tcx>, b_substs: &'tcx Substs<'tcx>) -> bool {
         for (a, b) in a_substs.iter().zip(b_substs) {
             if a.as_type().is_some() != b.as_type().is_some() {

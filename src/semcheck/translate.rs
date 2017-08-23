@@ -1,3 +1,6 @@
+//! The translation machinery used to lift items into the context of the other crate for
+//! comparison and inference.
+
 use rustc::hir::def_id::DefId;
 use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
@@ -83,7 +86,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Translate a `DefId` of any item and it's substs.
+    /// Translate the `DefId` and substs of an item.
     fn translate_orig_substs(&self,
                              index_map: &HashMap<u32, DefId>,
                              orig_def_id: DefId,
@@ -294,7 +297,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         self.translate(&self.construct_index_map(orig_def_id), &orig)
     }
 
-    /// Translate a predicate.
+    /// Translate a predicate using a type parameter index map.
     fn translate_predicate(&self, index_map: &HashMap<u32, DefId>, predicate: Predicate<'tcx>)
         -> Option<Predicate<'tcx>>
     {
@@ -373,7 +376,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Translate a slice of predicates.
+    /// Translate a slice of predicates in the context of an item.
     fn translate_predicates(&self, orig_def_id: DefId, orig_preds: &[Predicate<'tcx>])
         -> Option<Vec<Predicate<'tcx>>>
     {
@@ -391,7 +394,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         Some(target_preds)
     }
 
-    /// Translate a `ParamEnv`.
+    /// Translate a `ParamEnv` in the context of an item.
     pub fn translate_param_env(&self, orig_def_id: DefId, param_env: ParamEnv<'tcx>)
         -> Option<ParamEnv<'tcx>>
     {
@@ -402,7 +405,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             })
     }
 
-    /// Translate a `TraitRef`.
+    /// Translate a `TraitRef` in the context of an item.
     pub fn translate_trait_ref(&self, orig_def_id: DefId, orig_trait_ref: &TraitRef<'tcx>)
         -> TraitRef<'tcx>
     {
@@ -429,12 +432,17 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     }
 }
 
+/// A type folder that removes inference artifacts.
+///
+/// Used to lift type errors and predicates to wrap them in an error type.
 #[derive(Clone)]
 pub struct InferenceCleanupFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    /// The inference context used.
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 impl<'a, 'gcx, 'tcx> InferenceCleanupFolder<'a, 'gcx, 'tcx> {
+    /// Construct a new folder.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         InferenceCleanupFolder {
             infcx: infcx,

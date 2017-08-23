@@ -22,7 +22,7 @@ pub struct InherentEntry {
     pub name: Name,
 }
 
-/// A set of pairs of impl- and item `DefId` for inherent associated items.
+/// A set of pairs of impl- and item `DefId`s for inherent associated items.
 pub type InherentImplSet = BTreeSet<(DefId, DefId)>;
 
 /// A mapping from old to new `DefId`s, as well as associated definitions, if applicable.
@@ -48,9 +48,9 @@ pub struct IdMapping {
     child_mapping: HashMap<DefId, BTreeSet<DefId>>,
     /// New `DefId`s mapped to their old counterparts.
     reverse_mapping: HashMap<DefId, DefId>,
-    /// Map of type parameters' `DefId`s and their definitions.
+    /// Type parameters' `DefId`s mapped to their definitions.
     type_params: HashMap<DefId, TypeParameterDef>,
-    /// Map of items from inherent impls' descriptors to the impls they are declared in.
+    /// Map from inherent impls' descriptors to the impls they are declared in.
     inherent_items: HashMap<InherentEntry, InherentImplSet>,
 }
 
@@ -259,7 +259,7 @@ impl IdMapping {
 
 /// A mapping from names to pairs of old and new exports.
 ///
-/// Both old and new exports can be missing. Allows for reuse of the `HashMap`s used.
+/// Both old and new exports can be missing. Allows for reuse of the `HashMap`s used for storage.
 #[derive(Default)]
 pub struct NameMapping {
     /// The exports in the type namespace.

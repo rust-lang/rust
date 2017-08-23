@@ -172,7 +172,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Check for type mismatches for a pair of items.
+    /// Check for type mismatches in a pair of items.
     pub fn check_type_error<'b, 'tcx2>(&self,
                                        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
                                        target_def_id: DefId,
@@ -212,7 +212,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Check for trait bound mismatches for a pair of items.
+    /// Check for trait bound mismatches in a pair of items.
     pub fn check_bounds_error<'b, 'tcx2>(&self,
                                          lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
                                          orig_param_env: ParamEnv<'tcx>,
