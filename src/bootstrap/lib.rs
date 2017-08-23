@@ -656,6 +656,16 @@ impl Build {
         base
     }
 
+    /// Returns if this target should statically link the C runtime, if specified
+    fn crt_static(&self, target: Interned<String>) -> Option<bool> {
+        if target.contains("pc-windows-msvc") {
+            Some(true)
+        } else {
+            self.config.target_config.get(&target)
+                .and_then(|t| t.crt_static)
+        }
+    }
+
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
         self.config.target_config.get(&target)

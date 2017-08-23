@@ -902,7 +902,7 @@ fn link_args(cmd: &mut Linker,
         let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
 
         if get_reloc_model(sess) == llvm::RelocMode::PIC
-            && !args.any(|x| *x == "-static") {
+            && !sess.crt_static() && !args.any(|x| *x == "-static") {
             cmd.position_independent_executable();
         }
     }
@@ -966,10 +966,12 @@ fn link_args(cmd: &mut Linker,
     add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, crate_type);
 
-    // # Telling the linker what we're doing
-
+    // Tell the linker what we're doing.
     if crate_type != config::CrateTypeExecutable {
         cmd.build_dylib(out_filename);
+    }
+    if crate_type == config::CrateTypeExecutable && sess.crt_static() {
+        cmd.build_static_executable();
     }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to

@@ -503,6 +503,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
         }
 
+        if let Some(x) = self.crt_static(target) {
+            cargo.env("RUSTC_CRT_STATIC", x.to_string());
+        }
+
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
