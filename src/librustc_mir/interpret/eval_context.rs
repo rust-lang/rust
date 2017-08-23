@@ -2270,6 +2270,12 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs,
             }
         }
+        ::rustc::traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items.clone_trait() => {
+            ty::Instance {
+                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
+                substs: rcvr_substs
+            }
+        }
         _ => bug!("static call to invalid vtable: {:?}", vtbl),
     }
 }
