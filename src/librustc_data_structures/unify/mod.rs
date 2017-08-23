@@ -119,10 +119,10 @@ impl<K: UnifyKey> VarValue<K> {
     }
 }
 
-// We can't use V:LatticeValue, much as I would like to,
-// because frequently the pattern is that V=Option<U> for some
-// other type parameter U, and we have no way to say
-// Option<U>:LatticeValue.
+/// We can't use V:LatticeValue, much as I would like to,
+/// because frequently the pattern is that V=Option<U> for some
+/// other type parameter U, and we have no way to say
+/// Option<U>:LatticeValue.
 
 impl<K: UnifyKey> UnificationTable<K> {
     pub fn new() -> UnificationTable<K> {
@@ -249,7 +249,7 @@ impl<K: UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
     fn reverse(_: &mut Vec<VarValue<K>>, _: ()) {}
 }
 
-// # Base union-find algorithm, where we are just making sets
+/// # Base union-find algorithm, where we are just making sets
 
 impl<'tcx, K: UnifyKey> UnificationTable<K>
     where K::Value: Combine
@@ -281,11 +281,11 @@ impl<'tcx, K: UnifyKey> UnificationTable<K>
     }
 }
 
-// # Non-subtyping unification
-//
-// Code to handle keys which carry a value, like ints,
-// floats---anything that doesn't have a subtyping relationship we
-// need to worry about.
+/// # Non-subtyping unification
+///
+/// Code to handle keys which carry a value, like ints,
+/// floats---anything that doesn't have a subtyping relationship we
+/// need to worry about.
 
 impl<'tcx, K, V> UnificationTable<K>
     where K: UnifyKey<Value = Option<V>>,
