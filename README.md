@@ -135,7 +135,7 @@ Windows build triples are:
     - `i686-pc-windows-msvc`
     - `x86_64-pc-windows-msvc`
 
-The build triple can be specified by either specifying `--build=ABI` when
+The build triple can be specified by either specifying `--build=<triple>` when
 invoking `x.py` commands, or by copying the `config.toml` file (as described
 in Building From Source), and modifying the `build` option under the `[build]`
 section.
