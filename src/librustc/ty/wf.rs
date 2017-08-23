@@ -114,6 +114,29 @@ struct WfPredicates<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     out: Vec<traits::PredicateObligation<'tcx>>,
 }
 
+/// Controls whether we "elaborate" supertraits and so forth on the WF
+/// predicates. This is a kind of hack to address #43784. The
+/// underlying problem in that issue was a trait structure like:
+///
+/// ```
+/// trait Foo: Copy { }
+/// trait Bar: Foo { }
+/// impl<T: Bar> Foo for T { }
+/// impl<T> Bar for T { }
+/// ```
+///
+/// Here, in the `Foo` impl, we will check that `T: Copy` holds -- but
+/// we decide that this is true because `T: Bar` is in the
+/// where-clauses (and we can elaborate that to include `T:
+/// Copy`). This wouldn't be a problem, except that when we check the
+/// `Bar` impl, we decide that `T: Foo` must hold because of the `Foo`
+/// impl. And so nowhere did we check that `T: Copy` holds!
+///
+/// To resolve this, we elaborate the WF requirements that must be
+/// proven when checking impls. This means that (e.g.) the `impl Bar
+/// for T` will be forced to prove not only that `T: Foo` but also `T:
+/// Copy` (which it won't be able to do, because there is no `Copy`
+/// impl for `T`).
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum Elaborate {
     All,
