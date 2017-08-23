@@ -1318,7 +1318,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     and possibly buggy");
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, ref impl_items) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
@@ -1330,6 +1330,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, specialization,
                                        i.span,
                                        "specialization is unstable");
+                }
+
+                for impl_item in impl_items {
+                    if let ast::ImplItemKind::Method(..) = impl_item.node {
+                        if attr::contains_name(&impl_item.attrs[..], "must_use") {
+                            gate_feature_post!(&self, fn_must_use, impl_item.span,
+                                               "`#[must_use]` on methods is experimental",
+                                               GateStrength::Soft);
+                        }
+                    }
                 }
             }
 

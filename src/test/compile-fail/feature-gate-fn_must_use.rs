@@ -10,6 +10,13 @@
 
 #![feature(rustc_attrs)]
 
+struct MyStruct;
+
+impl MyStruct {
+    #[must_use]
+    fn need_to_use_method() -> bool { true } //~ WARN `#[must_use]` on methods is experimental
+}
+
 #[must_use]
 fn need_to_use_it() -> bool { true } //~ WARN `#[must_use]` on functions is experimental
 
