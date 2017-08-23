@@ -79,24 +79,6 @@ error: methods called `new` usually return `Self`
    = note: `-D new-ret-no-self` implied by `-D warnings`
 
 error: unnecessary structure name repetition
-  --> $DIR/methods.rs:40:35
-   |
-40 |     pub fn new<'b>(s: &'b str) -> Lt<'b> { unimplemented!() }
-   |                                   ^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:49:28
-   |
-49 |     pub fn new(s: &str) -> Lt2 { unimplemented!() }
-   |                            ^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
-  --> $DIR/methods.rs:58:21
-   |
-58 |     pub fn new() -> Lt3<'static> { unimplemented!() }
-   |                     ^^^^^^^^^^^^ help: use the applicable keyword: `Self`
-
-error: unnecessary structure name repetition
   --> $DIR/methods.rs:74:24
    |
 74 |     fn new() -> Option<V<T>> { None }
@@ -730,5 +712,5 @@ error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
 
-error: aborting due to 106 previous errors
+error: aborting due to 103 previous errors
 
