@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused)]
+
 macro_rules! m {
-    ($p: path) => (pub(in $p) struct Z;)
+    ($attr_path: path) => {
+        #[$attr_path]
+        fn f() {}
+    }
 }
 
-struct S<T>(T);
-m!{ S<u8> } //~ ERROR unexpected generic arguments in path
-//~^ ERROR expected module, found struct `S`
-
-mod m {
-    m!{ m<> } //~ ERROR unexpected generic arguments in path
-}
+m!(inline<u8>); //~ ERROR: unexpected generic arguments in path
 
 fn main() {}
