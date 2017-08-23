@@ -374,7 +374,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(util::min_stack());
+        let stack_size = stack_size.unwrap_or_else(util::min_stack);
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
