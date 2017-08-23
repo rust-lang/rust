@@ -297,6 +297,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 Ok(())
             }
+            ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
