@@ -256,6 +256,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.dump_local(ret);
                 Ok(())
             }
+            // FIXME: figure out why we can't just go through the shim
             ty::InstanceDef::ClosureOnceShim { .. } => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
@@ -297,6 +298,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 Ok(())
             }
+            ty::InstanceDef::FnPtrShim(..) |
+            ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
                 let mut args = Vec::new();
@@ -395,47 +398,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
                 Ok(())
             }
-            ty::InstanceDef::DropGlue(..) => {
-                assert_eq!(arg_operands.len(), 1);
-                assert_eq!(sig.abi, Abi::Rust);
-                let val = self.eval_operand(&arg_operands[0])?;
-                let ty = self.operand_ty(&arg_operands[0]);
-                let (_, target) = destination.expect("diverging drop glue");
-                self.goto_block(target);
-                // FIXME: deduplicate these matches
-                let pointee_type = match ty.sty {
-                    ty::TyRawPtr(ref tam) |
-                    ty::TyRef(_, ref tam) => tam.ty,
-                    ty::TyAdt(def, _) if def.is_box() => ty.boxed_ty(),
-                    _ => bug!("can only deref pointer types"),
-                };
-                self.drop(val, instance, pointee_type, span)
-            }
-            ty::InstanceDef::FnPtrShim(..) => {
-                trace!("ABI: {}", sig.abi);
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
-                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
-                    return Ok(());
-                }
-                let arg_locals = self.frame().mir.args_iter();
-                match sig.abi {
-                    Abi::Rust => {
-                        args.remove(0);
-                    }
-                    Abi::RustCall => {}
-                    _ => unimplemented!(),
-                };
-                for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                    self.write_value(arg_val, dest, arg_ty)?;
-                }
-                Ok(())
-            }
+            // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
                 let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(
