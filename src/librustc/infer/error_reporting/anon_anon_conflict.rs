@@ -48,8 +48,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let (ty_sup, ty_sub, scope_def_id_sup, scope_def_id_sub, bregion_sup, bregion_sub) =
             if let (Some(anon_reg_sup), Some(anon_reg_sub)) =
-                (self.is_suitable_anonymous_region(sup, true),
-                 self.is_suitable_anonymous_region(sub, true)) {
+                (self.is_suitable_anonymous_region(sup), self.is_suitable_anonymous_region(sub)) {
                 let (def_id_sup, br_sup, def_id_sub, br_sub) = (anon_reg_sup.def_id,
                                                                 anon_reg_sup.boundregion,
                                                                 anon_reg_sub.def_id,
@@ -64,7 +63,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 return false;
             };
 
-        let (label1, label2) = if let (Some(sup_arg), Some(sub_arg)) =
+        let (main_label, label1, label2) = if let (Some(sup_arg), Some(sub_arg)) =
             (self.find_arg_with_anonymous_region(sup, sup),
              self.find_arg_with_anonymous_region(sub, sub)) {
 
@@ -81,7 +80,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
 
             if anon_arg_sup == anon_arg_sub {
-                (format!(" with one lifetime"), format!(" into the other"))
+                (format!("this type was declared with multiple lifetimes..."),
+                 format!(" with one lifetime"),
+                 format!(" into the other"))
             } else {
                 let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
                     format!(" from `{}`", simple_name)
@@ -95,15 +96,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     format!("")
                 };
 
-                (span_label_var1, span_label_var2)
+                let span_label =
+                    format!("these two types are declared with different lifetimes...",);
+
+                (span_label, span_label_var1, span_label_var2)
             }
         } else {
             return false;
         };
 
+
         struct_span_err!(self.tcx.sess, span, E0623, "lifetime mismatch")
-            .span_label(ty_sup.span,
-                        format!("these two types are declared with different lifetimes..."))
+            .span_label(ty_sup.span, main_label)
             .span_label(ty_sub.span, format!(""))
             .span_label(span, format!("...but data{} flows{} here", label1, label2))
             .emit();
@@ -126,7 +130,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// The function returns the nested type corresponding to the anonymous region
     /// for e.g. `&u8` and Vec<`&u8`.
     pub fn find_anon_type(&self, region: Region<'tcx>, br: &ty::BoundRegion) -> Option<&hir::Ty> {
-        if let Some(anon_reg) = self.is_suitable_anonymous_region(region, true) {
+        if let Some(anon_reg) = self.is_suitable_anonymous_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
                 let ret_ty = self.tcx.type_of(def_id);

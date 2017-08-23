@@ -37,6 +37,8 @@ pub struct FreeRegionInfo {
     pub def_id: DefId,
     // the bound region corresponding to FreeRegion
     pub boundregion: ty::BoundRegion,
+    // checks if bound region is in Impl Item
+    pub is_impl_item: bool,
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
@@ -106,48 +108,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     // This method returns whether the given Region is Anonymous
     // and returns the DefId and the BoundRegion corresponding to the given region.
-    // The is_anon_anon is set true when we are dealing with cases where
-    // both the regions are anonymous i.e. E0623.
-    pub fn is_suitable_anonymous_region(&self,
-                                        region: Region<'tcx>,
-                                        is_anon_anon: bool)
-                                        -> Option<FreeRegionInfo> {
+    pub fn is_suitable_anonymous_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         if let ty::ReFree(ref free_region) = *region {
             if let ty::BrAnon(..) = free_region.bound_region {
                 let anonymous_region_binding_scope = free_region.scope;
-                let node_id = self.tcx
-                    .hir
-                    .as_local_node_id(anonymous_region_binding_scope)
-                    .unwrap();
-                match self.tcx.hir.find(node_id) {
-                    Some(hir_map::NodeItem(..)) |
-                    Some(hir_map::NodeTraitItem(..)) => {
-                        // Success -- proceed to return Some below
-                    }
-                    Some(hir_map::NodeImplItem(..)) => {
-                        if !is_anon_anon {
-                            let container_id = self.tcx
-                                .associated_item(anonymous_region_binding_scope)
-                                .container
-                                .id();
-                            if self.tcx.impl_trait_ref(container_id).is_some() {
-                                // For now, we do not try to target impls of traits. This is
-                                // because this message is going to suggest that the user
-                                // change the fn signature, but they may not be free to do so,
-                                // since the signature must match the trait.
-                                //
-                                // FIXME(#42706) -- in some cases, we could do better here.
-                                return None;
-                            }
-                        } else {
-                        }
-                    }
-                    _ => return None, // inapplicable
-                    // we target only top-level functions
-                }
                 return Some(FreeRegionInfo {
                                 def_id: anonymous_region_binding_scope,
                                 boundregion: free_region.bound_region,
+                                is_impl_item:
+                                self.is_bound_region_in_impl_item(anonymous_region_binding_scope),
                             });
             }
         }
@@ -177,12 +146,42 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // FIXME(#42700) - Need to format self properly to
     // enable E0621 for it.
     pub fn is_self_anon(&self, is_first: bool, scope_def_id: DefId) -> bool {
-        if is_first &&
-           self.tcx
-               .opt_associated_item(scope_def_id)
-               .map(|i| i.method_has_self_argument)
-               .unwrap_or(false) {
-            return true;
+        is_first &&
+        self.tcx
+            .opt_associated_item(scope_def_id)
+            .map(|i| i.method_has_self_argument) == Some(true)
+    }
+
+    // Here we check if the bound region is in Impl Item.
+    pub fn is_bound_region_in_impl_item(&self, anonymous_region_binding_scope: DefId) -> bool {
+        let node_id = self.tcx
+            .hir
+            .as_local_node_id(anonymous_region_binding_scope)
+            .unwrap();
+        match self.tcx.hir.find(node_id) {
+
+            Some(hir_map::NodeItem(..)) |
+            Some(hir_map::NodeTraitItem(..)) => {
+                // Success -- proceed to return Some below
+            }
+            Some(hir_map::NodeImplItem(..)) => {
+                let container_id = self.tcx
+                    .associated_item(anonymous_region_binding_scope)
+                    .container
+                    .id();
+                if self.tcx.impl_trait_ref(container_id).is_some() {
+                    // For now, we do not try to target impls of traits. This is
+                    // because this message is going to suggest that the user
+                    // change the fn signature, but they may not be free to do so,
+                    // since the signature must match the trait.
+                    //
+                    // FIXME(#42706) -- in some cases, we could do better here.
+                    return true;
+                }
+            }
+            _ => {
+                return false;
+            }
         }
         false
     }

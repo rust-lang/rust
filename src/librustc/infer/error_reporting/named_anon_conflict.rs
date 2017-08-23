@@ -31,24 +31,28 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.//scope_def_id
         let (named, anon_arg_info, region_info) =
-            if sub.is_named_region() && self.is_suitable_anonymous_region(sup, false).is_some() {
+            if sub.is_named_region() && self.is_suitable_anonymous_region(sup).is_some() {
                 (sub,
                  self.find_arg_with_anonymous_region(sup, sub).unwrap(),
-                 self.is_suitable_anonymous_region(sup, false).unwrap())
-            } else if sup.is_named_region() &&
-                      self.is_suitable_anonymous_region(sub, false).is_some() {
+                 self.is_suitable_anonymous_region(sup).unwrap())
+            } else if sup.is_named_region() && self.is_suitable_anonymous_region(sub).is_some() {
                 (sup,
                  self.find_arg_with_anonymous_region(sub, sup).unwrap(),
-                 self.is_suitable_anonymous_region(sub, false).unwrap())
+                 self.is_suitable_anonymous_region(sub).unwrap())
             } else {
                 return false; // inapplicable
             };
 
-        let (arg, new_ty, br, is_first, scope_def_id) = (anon_arg_info.arg,
-                                                         anon_arg_info.arg_ty,
-                                                         anon_arg_info.bound_region,
-                                                         anon_arg_info.is_first,
-                                                         region_info.def_id);
+        let (arg, new_ty, br, is_first, scope_def_id, is_impl_item) = (anon_arg_info.arg,
+                                                                       anon_arg_info.arg_ty,
+                                                                       anon_arg_info.bound_region,
+                                                                       anon_arg_info.is_first,
+                                                                       region_info.def_id,
+                                                                       region_info.is_impl_item);
+        if is_impl_item {
+            return false;
+        }
+
         if self.is_return_type_anon(scope_def_id, br) || self.is_self_anon(is_first, scope_def_id) {
             return false;
         } else {
