@@ -113,7 +113,7 @@ A possible documentation of the method:
 > - `None` if `predicate` returns `false`.
 >
 > This function works similar to `Iterator::filter()`. You can imagine the
-> `Option<T>` being an iterator over one or zero elements. `filter()` let's
+> `Option<T>` being an iterator over one or zero elements. `filter()` lets
 > you decide which elements to keep.
 >
 > # Examples
