@@ -84,6 +84,7 @@ correctly:
 * additions and removals of region parameters to and from an item's declaration
 * additions and removals of (possibly defaulted) type parameters to and from an item's
   declaration
+* changes to the variance of type and region parameters
 * additions and removals of enum variants
 * additions and removals of enum variant- or struct fields
 * changes from tuple structs or variants to struct variants and vice-versa
