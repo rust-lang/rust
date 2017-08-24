@@ -1,7 +1,7 @@
 use rustc::mir;
 use rustc::ty::Ty;
 
-use super::{EvalResult, EvalContext, Lvalue, Machine};
+use super::{EvalResult, EvalContext, Lvalue, Machine, ValTy};
 
 use super::value::{PrimVal, PrimValKind, Value, bytes_to_f32, bytes_to_f64, f32_to_bytes,
                    f64_to_bytes};
@@ -10,14 +10,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
+        left: ValTy<'tcx>,
+        right: ValTy<'tcx>,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        let left_ty = self.operand_ty(left);
-        let right_ty = self.operand_ty(right);
-        let left_val = self.eval_operand_to_primval(left)?;
-        let right_val = self.eval_operand_to_primval(right)?;
-        self.binary_op(op, left_val, left_ty, right_val, right_ty)
+        let left_val = self.value_to_primval(left)?;
+        let right_val = self.value_to_primval(right)?;
+        self.binary_op(op, left_val, left.ty, right_val, right.ty)
     }
 
     /// Applies the binary operation `op` to the two operands and writes a tuple of the result
@@ -25,14 +23,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn intrinsic_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
+        left: ValTy<'tcx>,
+        right: ValTy<'tcx>,
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binop_with_overflow(op, left, right)?;
         let val = Value::ByValPair(val, PrimVal::from_bool(overflowed));
-        self.write_value(val, dest, dest_ty)
+        let valty = ValTy {
+            value: val,
+            ty: dest_ty,
+        };
+        self.write_value(valty, dest)
     }
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
@@ -40,8 +42,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn intrinsic_overflowing(
         &mut self,
         op: mir::BinOp,
-        left: &mir::Operand<'tcx>,
-        right: &mir::Operand<'tcx>,
+        left: ValTy<'tcx>,
+        right: ValTy<'tcx>,
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, bool> {

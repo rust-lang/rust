@@ -23,7 +23,7 @@ mod value;
 pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
 pub use self::eval_context::{EvalContext, Frame, ResourceLimits, StackPopCleanup, DynamicLifetime,
-                             TyAndPacked, PtrAndAlign};
+                             TyAndPacked, PtrAndAlign, ValTy};
 
 pub use self::lvalue::{Lvalue, LvalueExtra, GlobalId};
 

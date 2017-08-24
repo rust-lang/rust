@@ -2,7 +2,7 @@
 //! This separation exists to ensure that no fancy miri features like
 //! interpreting common C functions leak into CTFE.
 
-use super::{EvalResult, EvalContext, Lvalue, PrimVal};
+use super::{EvalResult, EvalContext, Lvalue, PrimVal, ValTy};
 
 use rustc::{mir, ty};
 use syntax::codemap::Span;
@@ -29,7 +29,7 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
@@ -38,7 +38,7 @@ pub trait Machine<'tcx>: Sized {
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Lvalue,
         dest_ty: ty::Ty<'tcx>,
         dest_layout: &'tcx ty::layout::Layout,

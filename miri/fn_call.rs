@@ -19,7 +19,7 @@ pub trait EvalContextExt<'tcx> {
     fn call_c_abi(
         &mut self,
         def_id: DefId,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
@@ -31,7 +31,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
     ) -> EvalResult<'tcx>;
@@ -40,7 +40,7 @@ pub trait EvalContextExt<'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool>;
@@ -51,7 +51,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
@@ -63,7 +63,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.call_missing_fn(
                     instance,
                     destination,
-                    arg_operands,
+                    args,
                     sig,
                     path,
                 )?;
@@ -91,7 +91,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     fn call_c_abi(
         &mut self,
         def_id: DefId,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Lvalue,
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
@@ -102,17 +102,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             .unwrap_or(name)
             .as_str();
 
-        let args_res: EvalResult<Vec<Value>> = arg_operands
-            .iter()
-            .map(|arg| self.eval_operand(arg))
-            .collect();
-        let args = args_res?;
-
-        let usize = self.tcx.types.usize;
-
         match &link_name[..] {
             "malloc" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let size = self.value_to_primval(args[0])?.to_u64()?;
                 if size == 0 {
                     self.write_null(dest, dest_ty)?;
                 } else {
@@ -139,7 +131,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 //
                 // libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
                 // is called if a `HashMap` is created the regular way.
-                match self.value_to_primval(args[0], usize)?.to_u64()? {
+                match self.value_to_primval(args[0])?.to_u64()? {
                     318 | 511 => {
                         return err!(Unimplemented(
                             "miri does not support random number generators".to_owned(),
@@ -208,7 +200,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             "memcmp" => {
                 let left = args[0].into_ptr(&mut self.memory)?;
                 let right = args[1].into_ptr(&mut self.memory)?;
-                let n = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let n = self.value_to_primval(args[2])?.to_u64()?;
 
                 let result = {
                     let left_bytes = self.memory.read_bytes(left, n)?;
@@ -231,8 +223,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "memrchr" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?;
-                let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
-                let num = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let val = self.value_to_primval(args[1])?.to_u64()? as u8;
+                let num = self.value_to_primval(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().rev().position(
                     |&c| c == val,
                 )
@@ -246,8 +238,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             "memchr" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?;
-                let val = self.value_to_primval(args[1], usize)?.to_u64()? as u8;
-                let num = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let val = self.value_to_primval(args[1])?.to_u64()? as u8;
+                let num = self.value_to_primval(args[2])?.to_u64()?;
                 if let Some(idx) = self.memory.read_bytes(ptr, num)?.iter().position(
                     |&c| c == val,
                 )
@@ -329,9 +321,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "write" => {
-                let fd = self.value_to_primval(args[0], usize)?.to_u64()?;
+                let fd = self.value_to_primval(args[0])?.to_u64()?;
                 let buf = args[1].into_ptr(&mut self.memory)?;
-                let n = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let n = self.value_to_primval(args[2])?.to_u64()?;
                 trace!("Called write({:?}, {:?}, {:?})", fd, buf, n);
                 let result = if fd == 1 || fd == 2 {
                     // stdout/stderr
@@ -370,8 +362,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
 
             "sysconf" => {
-                let c_int = self.operand_ty(&arg_operands[0]);
-                let name = self.value_to_primval(args[0], c_int)?.to_u64()?;
+                let name = self.value_to_primval(args[0])?.to_u64()?;
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
                 let paths = &[
@@ -387,7 +378,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         };
                         // compute global if not cached
                         let val = match self.globals.get(&cid).cloned() {
-                            Some(ptr) => self.value_to_primval(Value::ByRef(ptr), c_int)?.to_u64()?,
+                            Some(ptr) => self.value_to_primval(ValTy { value: Value::ByRef(ptr), ty: args[0].ty })?.to_u64()?,
                             None => eval_body_as_primval(self.tcx, instance)?.0.to_u64()?,
                         };
                         if val == name {
@@ -418,7 +409,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_type = self.operand_ty(&arg_operands[0]).builtin_deref(true, ty::LvaluePreference::NoPreference)
+                let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = {
                     let layout = self.type_layout(key_type)?;
@@ -442,20 +433,20 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
             "pthread_key_delete" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
                 self.memory.delete_tls_key(key)?;
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
             }
             "pthread_getspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
                 let ptr = self.memory.load_tls(key)?;
                 self.write_ptr(dest, ptr, dest_ty)?;
             }
             "pthread_setspecific" => {
                 // The conversion into TlsKey here is a little fishy, but should work as long as usize >= libc::pthread_key_t
-                let key = self.value_to_primval(args[0], usize)?.to_u64()? as TlsKey;
+                let key = self.value_to_primval(args[0])?.to_u64()? as TlsKey;
                 let new_ptr = args[1].into_ptr(&mut self.memory)?;
                 self.memory.store_tls(key, new_ptr)?;
 
@@ -524,7 +515,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         sig: ty::FnSig<'tcx>,
         path: String,
     ) -> EvalResult<'tcx> {
@@ -546,7 +537,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             // unify these two mechanisms for "hooking into missing functions".
             self.call_c_abi(
                 instance.def_id(),
-                arg_operands,
+                args,
                 dest,
                 dest_ty,
                 dest_block,
@@ -554,19 +545,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             return Ok(());
         }
 
-        let args_res: EvalResult<Vec<Value>> = arg_operands
-            .iter()
-            .map(|arg| self.eval_operand(arg))
-            .collect();
-        let args = args_res?;
-
-        let usize = self.tcx.types.usize;
-
         match &path[..] {
             // Allocators are magic.  They have no MIR, even when the rest of libstd does.
             "alloc::heap::::__rust_alloc" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let size = self.value_to_primval(args[0])?.to_u64()?;
+                let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -577,8 +560,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
             "alloc::heap::::__rust_alloc_zeroed" => {
-                let size = self.value_to_primval(args[0], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[1], usize)?.to_u64()?;
+                let size = self.value_to_primval(args[0])?.to_u64()?;
+                let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -591,8 +574,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
             "alloc::heap::::__rust_dealloc" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
-                let align = self.value_to_primval(args[2], usize)?.to_u64()?;
+                let old_size = self.value_to_primval(args[1])?.to_u64()?;
+                let align = self.value_to_primval(args[2])?.to_u64()?;
                 if old_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
@@ -607,10 +590,10 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             }
             "alloc::heap::::__rust_realloc" => {
                 let ptr = args[0].into_ptr(&mut self.memory)?.to_ptr()?;
-                let old_size = self.value_to_primval(args[1], usize)?.to_u64()?;
-                let old_align = self.value_to_primval(args[2], usize)?.to_u64()?;
-                let new_size = self.value_to_primval(args[3], usize)?.to_u64()?;
-                let new_align = self.value_to_primval(args[4], usize)?.to_u64()?;
+                let old_size = self.value_to_primval(args[1])?.to_u64()?;
+                let old_align = self.value_to_primval(args[2])?.to_u64()?;
+                let new_size = self.value_to_primval(args[3])?.to_u64()?;
+                let new_align = self.value_to_primval(args[4])?.to_u64()?;
                 if old_size == 0 || new_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }

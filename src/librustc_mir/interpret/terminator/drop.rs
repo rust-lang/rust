@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
 use interpret::{EvalResult, EvalContext, StackPopCleanup, Lvalue, LvalueExtra, PrimVal, Value,
-                Machine};
+                Machine, ValTy};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub(crate) fn drop_lvalue(
@@ -79,6 +79,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let arg_local = arg_locals.next().unwrap();
         let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
         let arg_ty = self.tcx.mk_mut_ptr(ty);
-        self.write_value(arg, dest, arg_ty)
+        let valty = ValTy {
+            value: arg,
+            ty: arg_ty,
+        };
+        self.write_value(valty, dest)
     }
 }

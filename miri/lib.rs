@@ -94,9 +94,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let main_ty = main_instance.def.def_ty(ecx.tcx);
             let main_ptr_ty = ecx.tcx.mk_fn_ptr(main_ty.fn_sig(ecx.tcx));
             ecx.write_value(
-                Value::ByVal(PrimVal::Ptr(main_ptr)),
+                ValTy {
+                    value: Value::ByVal(PrimVal::Ptr(main_ptr)),
+                    ty: main_ptr_ty,
+                },
                 dest,
-                main_ptr_ty,
             )?;
 
             // Second argument (argc): 0
@@ -179,17 +181,17 @@ impl<'tcx> Machine<'tcx> for Evaluator {
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
-        ecx.eval_fn_call(instance, destination, arg_operands, span, sig)
+        ecx.eval_fn_call(instance, destination, args, span, sig)
     }
 
     fn call_intrinsic<'a>(
         ecx: &mut rustc_miri::interpret::EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Lvalue,
         dest_ty: ty::Ty<'tcx>,
         dest_layout: &'tcx Layout,
