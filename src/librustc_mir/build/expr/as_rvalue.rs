@@ -191,7 +191,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
                 let result = if let Some(interior) = interior {
-                    // Add the state operand
+                    // Add the state operand since it follows the upvars in the generator
+                    // struct. See librustc_mir/transform/generator.rs for more details.
                     operands.push(Operand::Constant(box Constant {
                         span: expr_span,
                         ty: this.hir.tcx().types.u32,

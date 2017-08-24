@@ -8,7 +8,57 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Transforms generators into state machines
+//! This is the implementation of the pass which transforms generators into state machines.
+//!
+//! MIR generation for generators creates a function which has a self argument which
+//! passes by value. This argument is effectively a generator type which only contains upvars and
+//! is only used for this argument inside the MIR for the generator.
+//! It is passed by value to enable upvars to be moved out of it. Drop elaboration runs on that
+//! MIR before this pass and creates drop flags for MIR locals.
+//! It will also drop the generator argument (which only consists of upvars) if any of the upvars
+//! are moved out of. This pass elaborates the drops of upvars / generator argument in the case
+//! that none of the upvars were moved out of. This is because we cannot have any drops of this
+//! generator in the MIR, since it is used to create the drop glue for the generator. We'd get
+//! infinite recursion otherwise.
+//!
+//! This pass creates the implementation for the Generator::resume function and the drop shim
+//! for the generator based on the MIR input. It converts the generator argument from Self to
+//! &mut Self adding derefs in the MIR as needed. It computes the final layout of the generator
+//! struct which looks like this:
+//!     First upvars are stored
+//!     It is followed by the generator state field.
+//!     Then finally the MIR locals which are live across a suspension point are stored.
+//!
+//!     struct Generator {
+//!         upvars...,
+//!         state: u32,
+//!         mir_locals...,
+//!     }
+//!
+//! This pass computes the meaning of the state field and the MIR locals which are live
+//! across a suspension point. There are however two hardcoded generator states:
+//!     0 - Generator have not been resumed yet
+//!     1 - Generator has been poisoned
+//!
+//! It also rewrites `return x` and `yield y` as setting a new generator state and returning
+//! GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
+//! MIR locals which are live across a suspension point are moved to the generator struct
+//! with references to them being updated with references to the generator struct.
+//!
+//! The pass creates two functions which have a switch on the generator state giving
+//! the action to take.
+//!
+//! One of them is the implementation of Generator::resume.
+//! For generators which have already returned it panics.
+//! For generators with state 0 (unresumed) it starts the execution of the generator.
+//! For generators with state 1 (poisoned) it panics.
+//! Otherwise it continues the execution from the last suspension point.
+//!
+//! The other function is the drop glue for the generator.
+//! For generators which have already returned it does nothing.
+//! For generators with state 0 (unresumed) it drops the upvars of the generator.
+//! For generators with state 1 (poisoned) it does nothing.
+//! Otherwise it drops all the values in scope at the last suspension point.
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -515,7 +565,7 @@ fn insert_panic_on_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 }
 
-fn creator_generator_resume_function<'a, 'tcx>(
+fn create_generator_resume_function<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mut transform: TransformVisitor<'a, 'tcx>,
         def_id: DefId,
@@ -731,6 +781,6 @@ impl MirPass for StateTransform {
         mir.generator_drop = Some(box drop_shim);
 
         // Create the Generator::resume function
-        creator_generator_resume_function(tcx, transform, def_id, source, mir);
+        create_generator_resume_function(tcx, transform, def_id, source, mir);
     }
 }

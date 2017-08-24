@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! This calculates the types which has storage which lives across a suspension point in a
+//! generator from the perspective of typeck. The actual types used at runtime
+//! is calculated in `rustc_mir::transform::generator` and may be a subset of the
+//! types computed here.
+
 use log;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
