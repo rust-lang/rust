@@ -203,6 +203,15 @@ pub enum ChangeType<'tcx> {
     KindDifference,
     /// A `static` item changed it's mutablity.
     StaticMutabilityChanged { now_mut: bool },
+    /// The variance of a type or region parameter has gone from invariant to co- or
+    /// contravariant or to bivariant.
+    VarianceLoosened,
+    /// The variance of a type or region parameter has gone from bivariant to co- or
+    /// contravariant or to invariant.
+    VarianceTightened,
+    /// The variance of a type or region parameter has changed from covariant to contravariant
+    /// or vice-versa.
+    VarianceChanged { now_contravariant: bool },
     /// A region parameter has been added to an item.
     RegionParameterAdded,
     /// A region parameter has been removed from an item.
@@ -271,6 +280,8 @@ impl<'tcx> ChangeType<'tcx> {
             ItemMadePrivate |
             KindDifference |
             StaticMutabilityChanged { now_mut: false } |
+            VarianceTightened |
+            VarianceChanged { .. } |
             RegionParameterAdded |
             RegionParameterRemoved |
             TypeParameterAdded { defaulted: false } |
@@ -298,6 +309,7 @@ impl<'tcx> ChangeType<'tcx> {
             AssociatedItemAdded |
             ItemMadePublic => TechnicallyBreaking,
             StaticMutabilityChanged { now_mut: true } |
+            VarianceLoosened |
             TypeParameterAdded { defaulted: true } |
             FnConstChanged { now_const: true } => NonBreaking,
         }
@@ -312,6 +324,12 @@ impl<'a> fmt::Display for ChangeType<'a> {
             KindDifference => "item kind changed",
             StaticMutabilityChanged { now_mut: true } => "static item made mutable",
             StaticMutabilityChanged { now_mut: false } => "static item made immutable",
+            VarianceLoosened => "variance loosened",
+            VarianceTightened => "variance tightened",
+            VarianceChanged { now_contravariant: true } =>
+                "variance changed from co- to contravariant",
+            VarianceChanged { now_contravariant: false } =>
+                "variance changed from contra- to covariant",
             RegionParameterAdded => "region parameter added",
             RegionParameterRemoved => "region parameter removed",
             TypeParameterAdded { defaulted: true } => "defaulted type parameter added",
@@ -438,6 +456,9 @@ impl<'tcx> Change<'tcx> {
                 TraitItemAdded { .. } |
                 TraitItemRemoved { .. } |
                 ItemMadePublic |
+                VarianceLoosened |
+                VarianceTightened |
+                VarianceChanged { .. } |
                 TypeParameterAdded { .. } |
                 TraitUnsafetyChanged { .. } |
                 FnConstChanged { now_const: true } |

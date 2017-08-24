@@ -5,6 +5,7 @@ error: breaking changes in `abc`
 1 | pub fn abc<A>(_: A) { }
   | ^^^^^^^^^^^^^^^^^^^^^^^
   |
+  = note: variance loosened (non-breaking)
   = warning: type error: expected type parameter, found () (breaking)
 
 error: breaking changes in `Abc`

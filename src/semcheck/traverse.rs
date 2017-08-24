@@ -16,6 +16,7 @@ use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::Visibility;
 use rustc::ty::Visibility::Public;
 
+use semcheck::changes::ChangeType;
 use semcheck::changes::ChangeType::*;
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::{IdMapping, NameMapping};
@@ -548,16 +549,43 @@ fn diff_generics(changes: &mut ChangeSet,
                  is_fn: bool,
                  old: DefId,
                  new: DefId) {
+    use rustc::ty::Variance;
+    use rustc::ty::Variance::*;
     use std::cmp::max;
+
+    fn diff_variance<'tcx>(old_var: Variance, new_var: Variance) -> Option<ChangeType<'tcx>> {
+        match (old_var, new_var) {
+            (Covariant, Covariant) |
+            (Invariant, Invariant) |
+            (Contravariant, Contravariant) |
+            (Bivariant, Bivariant) => None,
+            (Invariant, _) | (_, Bivariant) => Some(VarianceLoosened),
+            (_, Invariant) | (Bivariant, _) => Some(VarianceTightened),
+            (Covariant, Contravariant) => Some(VarianceChanged { now_contravariant: true }),
+            (Contravariant, Covariant) => Some(VarianceChanged { now_contravariant: false }),
+        }
+    }
 
     let mut found = Vec::new();
 
     let old_gen = tcx.generics_of(old);
     let new_gen = tcx.generics_of(new);
 
-    for i in 0..max(old_gen.regions.len(), new_gen.regions.len()) {
+    let old_var = tcx.variances_of(old);
+    let new_var = tcx.variances_of(new);
+
+    let old_regions_len = old_gen.regions.len();
+    let new_regions_len = new_gen.regions.len();
+
+    for i in 0..max(old_regions_len, new_regions_len) {
         match (old_gen.regions.get(i), new_gen.regions.get(i)) {
             (Some(old_region), Some(new_region)) => {
+                // type aliases don't have inferred variance, so we have to ignore that.
+                if let (Some(old_var), Some(new_var)) = (old_var.get(i), new_var.get(i)) {
+                    diff_variance(*old_var, *new_var)
+                        .map(|t| found.push(t));
+                }
+
                 id_mapping.add_internal_item(old_region.def_id, new_region.def_id);
             },
             (Some(_), None) => {
@@ -573,6 +601,14 @@ fn diff_generics(changes: &mut ChangeSet,
     for i in 0..max(old_gen.types.len(), new_gen.types.len()) {
         match (old_gen.types.get(i), new_gen.types.get(i)) {
             (Some(old_type), Some(new_type)) => {
+                // type aliases don't have inferred variance, so we have to ignore that.
+                if let (Some(old_var), Some(new_var)) =
+                    (old_var.get(i + old_regions_len), new_var.get(i + new_regions_len))
+                {
+                    diff_variance(*old_var, *new_var)
+                        .map(|t| found.push(t));
+                }
+
                 if old_type.has_default && !new_type.has_default {
                     found.push(TypeParameterRemoved { defaulted: true });
                     found.push(TypeParameterAdded { defaulted: false });
