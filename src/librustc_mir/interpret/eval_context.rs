@@ -1176,6 +1176,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 packed: false,
             }),
 
+            ty::TyClosure(def_id, ref closure_substs) => Ok(TyAndPacked {
+                ty: closure_substs.upvar_tys(def_id, self.tcx).nth(field_index).unwrap(),
+                packed: false,
+            }),
+
             _ => {
                 err!(Unimplemented(
                     format!("can't handle type: {:?}, {:?}", ty, ty.sty),
