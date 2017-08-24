@@ -725,13 +725,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
-        let kind = match self.tables.closure_kinds().get(fn_hir_id) {
-            Some(&(kind, _)) => kind,
-            None => {
-                let ty = self.node_ty(fn_hir_id)?;
-                match ty.sty {
-                    ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
-                    _ => span_bug!(span, "missing closure kind"),
+        let kind = match self.node_ty(fn_hir_id)?.sty {
+            ty::TyGenerator(..) => ty::ClosureKind::FnOnce,
+            _ => {
+                match self.tables.closure_kinds().get(fn_hir_id) {
+                    Some(&(kind, _)) => kind,
+                    None => span_bug!(span, "missing closure kind"),
                 }
             }
         };
