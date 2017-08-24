@@ -615,6 +615,10 @@ create_config! {
         "Try to put attributes on the same line as fields.";
     attributes_on_same_line_as_variant: bool, true,
         "Try to put attributes on the same line as variants in enum declarations.";
+    multiline_closure_forces_block: bool, false,
+        "Force multiline closure bodies to be wrapped in a block";
+    multiline_match_arm_forces_block: bool, false,
+        "Force multiline match arm bodies to be wrapped in a block";
 }
 
 #[cfg(test)]
