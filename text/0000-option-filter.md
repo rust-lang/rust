@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Add the method `Option::filter<P>(self, predicate: P) -> Option<T>` to the
+Add the method `Option::filter<P>(self, predicate: P) -> Self` to the
 standard library. This method makes it possible to easily throw away a `Some`
 value depending on a given predicate. The call `opt.filter(p)` is equivalent
 to `opt.into_iter().filter(p).next()`.
@@ -101,7 +101,7 @@ two main ways to achieve something equivalent to `filter(p)`:
 A possible documentation of the method:
 
 > ```rust
-> fn filter<P>(self, predicate: P) -> Option
+> fn filter<P>(self, predicate: P) -> Self
 >     where P: FnOnce(&T) -> bool
 > ```
 >
@@ -137,7 +137,7 @@ explanations above. Here is one example implementation:
 
 ```rust
 impl<T> Option<T> {
-    pub fn filter<P>(self, predicate: P) -> Option<T>
+    pub fn filter<P>(self, predicate: P) -> Self
         where P: FnOnce(&T) -> bool
     {
         match self {
