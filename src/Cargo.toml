@@ -32,6 +32,11 @@ members = [
   "tools/rls/test_data/multiple_bins",
   "tools/rls/test_data/bin_lib",
   "tools/rls/test_data/reformat_with_range",
+  "tools/rls/test_data/find_impls",
+  "tools/rls/test_data/infer_bin",
+  "tools/rls/test_data/infer_custom_bin",
+  "tools/rls/test_data/infer_lib",
+  "tools/rls/test_data/omit_init_build",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
