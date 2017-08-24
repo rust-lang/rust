@@ -104,6 +104,7 @@ use syntax_pos::{DUMMY_SP, MultiSpan};
 #[cfg(test)]
 mod test;
 
+pub mod profile;
 pub mod driver;
 pub mod pretty;
 pub mod target_features;

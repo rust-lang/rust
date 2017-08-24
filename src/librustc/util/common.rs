@@ -19,6 +19,11 @@ use std::iter::repeat;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use std::sync::mpsc::{Sender};
+use syntax_pos::{Span};
+use ty::maps::{QueryMsg};
+use dep_graph::{DepNode};
+
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
 
@@ -28,6 +33,72 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 pub struct ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
+
+/// Initialized for -Z profile-queries
+thread_local!(static PROFQ_CHAN: RefCell<Option<Sender<ProfileQueriesMsg>>> = RefCell::new(None));
+
+/// Parameters to the `Dump` variant of type `ProfileQueriesMsg`.
+#[derive(Clone,Debug)]
+pub struct ProfQDumpParams {
+    /// A base path for the files we will dump
+    pub path:String,
+    /// To ensure that the compiler waits for us to finish our dumps
+    pub ack:Sender<()>,
+    /// toggle dumping a log file with every `ProfileQueriesMsg`
+    pub dump_profq_msg_log:bool,
+}
+
+/// A sequence of these messages induce a trace of query-based incremental compilation.
+/// FIXME(matthewhammer): Determine whether we should include cycle detection here or not.
+#[derive(Clone,Debug)]
+pub enum ProfileQueriesMsg {
+    /// begin a timed pass
+    TimeBegin(String),
+    /// end a timed pass
+    TimeEnd,
+    /// begin a task (see dep_graph::graph::with_task)
+    TaskBegin(DepNode),
+    /// end a task
+    TaskEnd,
+    /// begin a new query
+    QueryBegin(Span, QueryMsg),
+    /// query is satisfied by using an already-known value for the given key
+    CacheHit,
+    /// query requires running a provider; providers may nest, permitting queries to nest.
+    ProviderBegin,
+    /// query is satisfied by a provider terminating with a value
+    ProviderEnd,
+    /// dump a record of the queries to the given path
+    Dump(ProfQDumpParams),
+    /// halt the profiling/monitoring background thread
+    Halt
+}
+
+/// If enabled, send a message to the profile-queries thread
+pub fn profq_msg(msg: ProfileQueriesMsg) {
+    PROFQ_CHAN.with(|sender|{
+        if let Some(s) = sender.borrow().as_ref() {
+            s.send(msg).unwrap()
+        } else {
+            // Do nothing.
+            //
+            // FIXME(matthewhammer): Multi-threaded translation phase triggers the panic below.
+            // From backtrace: rustc_trans::back::write::spawn_work::{{closure}}.
+            //
+            // panic!("no channel on which to send profq_msg: {:?}", msg)
+        }
+    })
+}
+
+/// Set channel for profile queries channel
+pub fn profq_set_chan(s: Sender<ProfileQueriesMsg>) -> bool {
+    PROFQ_CHAN.with(|chan|{
+        if chan.borrow().is_none() {
+            *chan.borrow_mut() = Some(s);
+            true
+        } else { false }
+    })
+}
 
 /// Read the current depth of `time()` calls. This is used to
 /// encourage indentation across threads.
@@ -53,9 +124,15 @@ pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
         r
     });
 
+    if cfg!(debug_assertions) {
+        profq_msg(ProfileQueriesMsg::TimeBegin(what.to_string()))
+    };
     let start = Instant::now();
     let rv = f();
     let dur = start.elapsed();
+    if cfg!(debug_assertions) {
+        profq_msg(ProfileQueriesMsg::TimeEnd)
+    };
 
     print_time_passes_entry_internal(what, dur);
 
