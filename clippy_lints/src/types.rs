@@ -10,7 +10,7 @@ use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
-            span_lint_and_sugg, opt_def_id, last_path_segment, type_size};
+            span_lint_and_sugg, opt_def_id, last_path_segment, type_size, match_path_old};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -212,6 +212,11 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         let PathParameters::AngleBracketedParameters(ref ab_data) = bx.parameters,
                         let [ref inner] = *ab_data.types
                     ], {
+                        if is_any_trait(inner) {
+                            // Ignore `Box<Any>` types, see #1884 for details.
+                            return;
+                        }
+
                         let ltopt = if lt.is_elided() {
                             "".to_owned()
                         } else {
@@ -247,6 +252,21 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
         },
         _ => {},
     }
+}
+
+// Returns true if given type is `Any` trait.
+fn is_any_trait(t: &hir::Ty) -> bool {
+    if_let_chain! {[
+        let TyTraitObject(ref traits, _) = t.node,
+        traits.len() >= 1,
+        // Only Send/Sync can be used as additional traits, so it is enough to
+        // check only the first trait.
+        match_path_old(&traits[0].trait_ref.path, &paths::ANY_TRAIT)
+    ], {
+        return true;
+    }}
+
+    false
 }
 
 #[allow(missing_copy_implementations)]
