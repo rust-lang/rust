@@ -411,14 +411,20 @@ pub struct LocalDecl<'tcx> {
     /// True if this corresponds to a user-declared local variable.
     pub is_user_variable: bool,
 
-    /// True if this is an internal local.
+    /// True if this is an internal local
+    ///
     /// These locals are not based on types in the source code and are only used
     /// for drop flags at the moment.
-    /// The generator transformation will sanity check the locals which are live across
-    /// a suspension point against the type components of the generator which
-    /// type checking knows are live across a suspension point.
-    /// We need to flag drop flags to avoid triggering this check as they are introduced
+    ///
+    /// The generator transformation will sanity check the locals which are live
+    /// across a suspension point against the type components of the generator
+    /// which type checking knows are live across a suspension point. We need to
+    /// flag drop flags to avoid triggering this check as they are introduced
     /// after typeck.
+    ///
+    /// This should be sound because the drop flags are fully algebraic, and
+    /// therefore don't affect the OIBIT or outlives properties of the
+    /// generator.
     pub internal: bool,
 
     /// Type of this local.
