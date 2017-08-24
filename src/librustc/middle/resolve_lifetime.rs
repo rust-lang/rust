@@ -915,18 +915,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 def: Def,
                                 depth: usize,
                                 params: &'tcx hir::PathParameters) {
-        let data = match *params {
-            hir::ParenthesizedParameters(ref data) => {
-                self.visit_fn_like_elision(&data.inputs, data.output.as_ref());
-                return;
-            }
-            hir::AngleBracketedParameters(ref data) => data
-        };
+        if params.parenthesized {
+            self.visit_fn_like_elision(params.inputs(), Some(&params.bindings[0].ty));
+            return;
+        }
 
-        if data.lifetimes.iter().all(|l| l.is_elided()) {
-            self.resolve_elided_lifetimes(&data.lifetimes);
+        if params.lifetimes.iter().all(|l| l.is_elided()) {
+            self.resolve_elided_lifetimes(&params.lifetimes);
         } else {
-            for l in &data.lifetimes { self.visit_lifetime(l); }
+            for l in &params.lifetimes { self.visit_lifetime(l); }
         }
 
         // Figure out if this is a type/trait segment,
@@ -995,13 +992,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             Some(Region::Static)
                         }
                     }
-                    Set1::One(r) => r.subst(&data.lifetimes, map),
+                    Set1::One(r) => r.subst(&params.lifetimes, map),
                     Set1::Many => None
                 }
             }).collect()
         });
 
-        for (i, ty) in data.types.iter().enumerate() {
+        for (i, ty) in params.types.iter().enumerate() {
             if let Some(&lt) = object_lifetime_defaults.get(i) {
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: lt,
@@ -1013,7 +1010,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
-        for b in &data.bindings { self.visit_assoc_type_binding(b); }
+        for b in &params.bindings { self.visit_assoc_type_binding(b); }
     }
 
     fn visit_fn_like_elision(&mut self, inputs: &'tcx [P<hir::Ty>],

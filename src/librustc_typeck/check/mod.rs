@@ -4620,11 +4620,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let lifetimes = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => &data.lifetimes[..],
-                Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => &[]
-            };
+            let lifetimes = segment.map_or(&[][..], |(s, _)| &s.parameters.lifetimes[..]);
 
             if let Some(lifetime) = lifetimes.get(i) {
                 AstConv::ast_region_to_region(self, lifetime, Some(def))
@@ -4647,13 +4643,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let (types, infer_types) = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => {
-                    (&data.types[..], data.infer_types)
-                }
-                Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => (&[][..], true)
-            };
+            let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
+                (&s.parameters.types[..], s.parameters.infer_types)
+            });
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
@@ -4727,19 +4719,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
                                   is_method_call: bool) {
-        let (lifetimes, types, infer_types, bindings) = {
-            match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => {
-                    (&data.lifetimes[..], &data.types[..], data.infer_types, &data.bindings[..])
-                }
-                Some(&hir::ParenthesizedParameters(_)) => {
-                    AstConv::prohibit_parenthesized_params(self, &segment.as_ref().unwrap().0,
-                                                           false);
-                    (&[][..], &[][..], true, &[][..])
-                }
-                None => (&[][..], &[][..], true, &[][..])
-            }
-        };
+        let (lifetimes, types, infer_types, bindings) = segment.map_or(
+            (&[][..], &[][..], true, &[][..]),
+            |(s, _)| (&s.parameters.lifetimes[..], &s.parameters.types[..],
+                      s.parameters.infer_types, &s.parameters.bindings[..]));
         let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {
@@ -4785,9 +4768,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         if !bindings.is_empty() {
-            span_err!(self.tcx.sess, bindings[0].span, E0182,
-                      "unexpected binding of associated item in expression path \
-                       (only allowed in type paths)");
+            AstConv::prohibit_projection(self, bindings[0].span);
         }
 
         // Check provided lifetime parameters.

@@ -26,7 +26,6 @@ pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
-pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
@@ -227,65 +226,7 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum PathParameters {
-    /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
-    AngleBracketedParameters(AngleBracketedParameterData),
-    /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    ParenthesizedParameters(ParenthesizedParameterData),
-}
-
-impl PathParameters {
-    pub fn none() -> PathParameters {
-        AngleBracketedParameters(AngleBracketedParameterData {
-            lifetimes: HirVec::new(),
-            types: HirVec::new(),
-            infer_types: true,
-            bindings: HirVec::new(),
-        })
-    }
-
-    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
-    /// parameters in the parenthesized case.
-    pub fn types(&self) -> HirVec<&P<Ty>> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.types.iter().collect()
-            }
-            ParenthesizedParameters(ref data) => {
-                data.inputs
-                    .iter()
-                    .chain(data.output.iter())
-                    .collect()
-            }
-        }
-    }
-
-    pub fn lifetimes(&self) -> HirVec<&Lifetime> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.lifetimes.iter().collect()
-            }
-            ParenthesizedParameters(_) => {
-                HirVec::new()
-            }
-        }
-    }
-
-    pub fn bindings(&self) -> HirVec<&TypeBinding> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.bindings.iter().collect()
-            }
-            ParenthesizedParameters(_) => {
-                HirVec::new()
-            }
-        }
-    }
-}
-
-/// A path like `Foo<'a, T>`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct AngleBracketedParameterData {
+pub struct PathParameters {
     /// The lifetime parameters for this path segment.
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
@@ -298,19 +239,33 @@ pub struct AngleBracketedParameterData {
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
+    /// Were parameters written in parenthesized form `Fn(T) -> U`?
+    /// This is required mostly for pretty-printing and diagnostics,
+    /// but also for changing lifetime elision rules to be "function-like".
+    pub parenthesized: bool,
 }
 
-/// A path like `Foo(A,B) -> C`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ParenthesizedParameterData {
-    /// Overall span
-    pub span: Span,
+impl PathParameters {
+    pub fn none() -> Self {
+        Self {
+            lifetimes: HirVec::new(),
+            types: HirVec::new(),
+            infer_types: true,
+            bindings: HirVec::new(),
+            parenthesized: false,
+        }
+    }
 
-    /// `(A,B)`
-    pub inputs: HirVec<P<Ty>>,
-
-    /// `C`
-    pub output: Option<P<Ty>>,
+    pub fn inputs(&self) -> &[P<Ty>] {
+        if self.parenthesized {
+            if let Some(ref ty) = self.types.get(0) {
+                if let TyTup(ref tys) = ty.node {
+                    return tys;
+                }
+            }
+        }
+        bug!("PathParameters::inputs: not a `Fn(T) -> U`");
+    }
 }
 
 /// The AST represents all type param bounds as types.

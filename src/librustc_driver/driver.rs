@@ -833,10 +833,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         })
     })?;
 
-    time(time_passes,
-         "early lint checks",
-         || lint::check_ast_crate(sess, &krate));
-
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, &krate, &mut resolver);
@@ -847,6 +843,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
+
+    time(time_passes,
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
