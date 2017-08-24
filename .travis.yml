@@ -10,6 +10,7 @@ before_script:
 - cargo install xargo
 - export RUST_SYSROOT=$HOME/rust
 script:
+- set -e
 - |
   # get ourselves a MIR-ful libstd
   xargo/build.sh
