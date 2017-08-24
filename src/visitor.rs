@@ -927,7 +927,8 @@ impl<'a> Rewrite for [ast::Attribute] {
 
         let mut derive_args = Vec::new();
 
-        for (i, a) in self.iter().enumerate() {
+        let mut iter = self.iter().enumerate().peekable();
+        while let Some((i, a)) = iter.next() {
             let a_str = try_opt!(a.rewrite(context, shape));
 
             // Write comments and blank lines between attributes.
@@ -954,41 +955,48 @@ impl<'a> Rewrite for [ast::Attribute] {
                 } else if multi_line {
                     result.push('\n');
                 }
-                result.push_str(&indent);
+                if derive_args.is_empty() {
+                    result.push_str(&indent);
+                }
             }
 
             // Write the attribute itself.
+            let mut insert_new_line = true;
             if context.config.merge_derives() {
+                // If the attribute is `#[derive(...)]`, take the arguments.
                 if let Some(mut args) = get_derive_args(context, a) {
-                    // If the attribute is `#[derive(...)]`, take the arguments and skip rewriting.
-                    // We will merge the all arguments into a single `#[derive(...)]` at last.
                     derive_args.append(&mut args);
+                    match iter.peek() {
+                        // If the next attribute is `#[derive(...)]` as well, skip rewriting.
+                        Some(&(_, next_attr)) if is_derive(next_attr) => insert_new_line = false,
+                        // If not, rewrite the merged derives.
+                        _ => {
+                            result.push_str(&format!("#[derive({})]", derive_args.join(", ")));
+                            derive_args.clear();
+                        }
+                    }
                 } else {
                     result.push_str(&a_str);
-
-                    if i < self.len() - 1 {
-                        result.push('\n');
-                    }
                 }
             } else {
                 result.push_str(&a_str);
-
-                if i < self.len() - 1 {
-                    result.push('\n');
-                }
             }
-        }
 
-        // Add merged `#[derive(...)]` at last.
-        if context.config.merge_derives() && !derive_args.is_empty() {
-            if !result.is_empty() && !result.ends_with('\n') {
-                result.push_str(&indent);
+            if insert_new_line && i < self.len() - 1 {
                 result.push('\n');
             }
-            result.push_str(&format!("#[derive({})]", derive_args.join(", ")));
         }
-
         Some(result)
+    }
+}
+
+fn is_derive(attr: &ast::Attribute) -> bool {
+    match attr.meta() {
+        Some(meta_item) => match meta_item.node {
+            ast::MetaItemKind::List(..) => meta_item.name.as_str() == "derive",
+            _ => false,
+        },
+        _ => false,
     }
 }
 

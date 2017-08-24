@@ -1272,8 +1272,6 @@ Merge multiple derives into a single one.
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
 
-*Note*: The merged derives will be put after all other attributes or doc comments.
-
 #### `true`:
 
 ```rust
