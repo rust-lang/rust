@@ -1,0 +1,26 @@
+error: You appear to be counting bytes the naive way
+ --> $DIR/bytecount.rs:8:13
+  |
+8 |     let _ = x.iter().filter(|&&a| a == 0).count(); // naive byte count
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, 0)`
+  |
+note: lint level defined here
+ --> $DIR/bytecount.rs:4:8
+  |
+4 | #[deny(naive_bytecount)]
+  |        ^^^^^^^^^^^^^^^
+
+error: You appear to be counting bytes the naive way
+  --> $DIR/bytecount.rs:10:13
+   |
+10 |     let _ = (&x[..]).iter().filter(|&a| *a == 0).count(); // naive byte count
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count((&x[..]), 0)`
+
+error: You appear to be counting bytes the naive way
+  --> $DIR/bytecount.rs:22:13
+   |
+22 |     let _ = x.iter().filter(|a| b + 1 == **a).count(); // naive byte count
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, b + 1)`
+
+error: aborting due to 3 previous errors
+

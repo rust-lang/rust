@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 205 lints included in this crate:
+There are 206 lints included in this crate:
 
 name                                                                                                                         | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -290,6 +290,7 @@ name                                                                            
 [mut_mut](https://github.com/rust-lang-nursery/rust-clippy/wiki#mut_mut)                                                     | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
 [mutex_atomic](https://github.com/rust-lang-nursery/rust-clippy/wiki#mutex_atomic)                                           | warn    | using a mutex where an atomic value could be used instead
 [mutex_integer](https://github.com/rust-lang-nursery/rust-clippy/wiki#mutex_integer)                                         | allow   | using a mutex for an integer type
+[naive_bytecount](https://github.com/rust-lang-nursery/rust-clippy/wiki#naive_bytecount)                                     | warn    | use of naive `<slice>.filter(|&x| x == y).count()` to count byte values
 [needless_bool](https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_bool)                                         | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 [needless_borrow](https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_borrow)                                     | warn    | taking a reference that is going to be automatically dereferenced
 [needless_borrowed_reference](https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_borrowed_reference)             | warn    | taking a needless borrowed reference

@@ -74,6 +74,7 @@ pub mod bit_mask;
 pub mod blacklisted_name;
 pub mod block_in_if_condition;
 pub mod booleans;
+pub mod bytecount;
 pub mod collapsible_if;
 pub mod copies;
 pub mod cyclomatic_complexity;
@@ -321,6 +322,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
     reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
     reg.register_late_lint_pass(box use_self::UseSelf);
+    reg.register_late_lint_pass(box bytecount::ByteCount);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -388,6 +390,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         booleans::LOGIC_BUG,
+        bytecount::NAIVE_BYTECOUNT,
         collapsible_if::COLLAPSIBLE_IF,
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,

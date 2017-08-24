@@ -69,6 +69,7 @@ pub const RESULT_ERR: [&'static str; 4] = ["core", "result", "Result", "Err"];
 pub const RESULT_OK: [&'static str; 4] = ["core", "result", "Result", "Ok"];
 pub const SERDE_DE_VISITOR: [&'static str; 3] = ["serde", "de", "Visitor"];
 pub const SLICE_INTO_VEC: [&'static str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec"];
+pub const SLICE_ITER: [&str; 3] = ["core", "slice", "Iter"];
 pub const STRING: [&'static str; 3] = ["alloc", "string", "String"];
 pub const TO_OWNED: [&'static str; 3] = ["alloc", "borrow", "ToOwned"];
 pub const TO_STRING: [&'static str; 3] = ["alloc", "string", "ToString"];

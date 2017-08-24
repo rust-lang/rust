@@ -3,6 +3,7 @@ use rustc::hir;
 use rustc::hir::*;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::map::Node;
 use rustc::lint::{LintContext, Level, LateContext, Lint};
 use rustc::session::Session;
@@ -392,6 +393,33 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
         _ => None,
     }
 }
+
+struct ContainsName {
+    name: Name,
+    result: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for ContainsName {
+    fn visit_name(&mut self, _: Span, name: Name) {
+        if self.name == name {
+            self.result = true;
+        }
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+/// check if an `Expr` contains a certain name
+pub fn contains_name(name: Name, expr: &Expr) -> bool {
+    let mut cn = ContainsName {
+        name: name,
+        result: false,
+    };
+    cn.visit_expr(expr);
+    cn.result
+}
+
 
 /// Convert a span to a code snippet if available, otherwise use default.
 ///

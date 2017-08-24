@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+* New lint: [`naive_bytecount`]
+
 ## 0.0.154
 * Fix [`use_self`] triggering inside derives
 * Add support for linting an entire workspace with `cargo clippy --all`
@@ -516,6 +518,7 @@ All notable changes to this project will be documented in this file.
 [`mut_mut`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#mut_mut
 [`mutex_atomic`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#mutex_atomic
 [`mutex_integer`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#mutex_integer
+[`naive_bytecount`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#naive_bytecount
 [`needless_bool`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_bool
 [`needless_borrow`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_borrow
 [`needless_borrowed_reference`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#needless_borrowed_reference
