@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use errors::DiagnosticBuilder;
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -213,13 +212,13 @@ impl<M: QueryDescription> QueryMap<M> {
     }
 }
 
-pub struct CycleError<'a, 'tcx: 'a> {
+struct CycleError<'a, 'tcx: 'a> {
     span: Span,
     cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn report_cycle(self, CycleError { span, cycle }: CycleError)
+    fn report_cycle(self, CycleError { span, cycle }: CycleError)
         -> DiagnosticBuilder<'a>
     {
         // Subtle: release the refcell lock before invoking `describe()`
