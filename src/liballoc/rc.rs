@@ -252,7 +252,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::Unsize;
-use core::mem::{self, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
@@ -358,7 +358,9 @@ impl<T> Rc<T> {
             Err(this)
         }
     }
+}
 
+impl<T: ?Sized> Rc<T> {
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -412,17 +414,21 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
-        // `value` field from the pointer.
+        // Align the unsized value to the end of the RcBox.
+        // Because it is ?Sized, it will always be the last field in memory.
+        let align = align_of_val(&*ptr);
+        let layout = Layout::new::<RcBox<()>>();
+        let offset = (layout.size() + layout.padding_needed_for(align)) as isize;
 
-        let ptr = (ptr as *const u8).offset(-offset_of!(RcBox<T>, value));
+        // Reverse the offset to find the original RcBox.
+        let fake_ptr = ptr as *mut RcBox<T>;
+        let rc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+
         Rc {
-            ptr: Shared::new_unchecked(ptr as *mut u8 as *mut _)
+            ptr: Shared::new_unchecked(rc_ptr),
         }
     }
-}
 
-impl<T: ?Sized> Rc<T> {
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
@@ -1479,6 +1485,28 @@ mod tests {
 
             assert_eq!(Rc::try_unwrap(x).map(|x| *x), Ok("hello"));
         }
+    }
+
+    #[test]
+    fn test_into_from_raw_unsized() {
+        use std::fmt::Display;
+        use std::string::ToString;
+
+        let rc: Rc<str> = Rc::from("foo");
+
+        let ptr = Rc::into_raw(rc.clone());
+        let rc2 = unsafe { Rc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }, "foo");
+        assert_eq!(rc, rc2);
+
+        let rc: Rc<Display> = Rc::new(123);
+
+        let ptr = Rc::into_raw(rc.clone());
+        let rc2 = unsafe { Rc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }.to_string(), "123");
+        assert_eq!(rc2.to_string(), "123");
     }
 
     #[test]
