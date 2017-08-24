@@ -11,6 +11,12 @@ standard library. This method makes it possible to easily throw away a `Some`
 value depending on a given predicate. The call `opt.filter(p)` is equivalent
 to `opt.into_iter().filter(p).next()`.
 
+```rust
+assert_eq!(Some(3).filter(|_| true)), Some(3));
+assert_eq!(Some(3).filter(|_| false)), None);
+assert_eq!(None.filter(|_| true), None);
+```
+
 # Motivation
 [motivation]: #motivation
 
