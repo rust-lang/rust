@@ -8,7 +8,7 @@ analyzes the current crate's source code for changes compared to the most recent
 on `crates.io`.
 
 Details on the work done during GSoC 2017 can be found
-[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/GSoC.md).
+[here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/gsoc.md).
 
 ## Background
 The approach taken is to compile both versions of the crate to `rlib`s and to link them as
