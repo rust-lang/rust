@@ -5,7 +5,7 @@ use syntax::codemap::Span;
 use syntax::abi::Abi;
 
 use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, eval_context, TyAndPacked,
-            PtrAndAlign, Lvalue, MemoryPointer, PrimVal, Value, Machine, HasMemory};
+            PtrAndAlign, Lvalue, MemoryPointer, PrimVal, Value, Machine, HasMemory, ValTy};
 use super::eval_context::IntegerExt;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -39,8 +39,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             } => {
                 // FIXME(CTFE): forbid branching
                 let discr_val = self.eval_operand(discr)?;
-                let discr_ty = self.operand_ty(discr);
-                let discr_prim = self.value_to_primval(discr_val, discr_ty)?;
+                let discr_prim = self.value_to_primval(discr_val)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
@@ -97,11 +96,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         return err!(Unimplemented(msg));
                     }
                 };
+                let args = self.operands_to_args(args)?;
                 let sig = self.erase_lifetimes(&sig);
                 self.eval_fn_call(
                     fn_def,
                     destination,
-                    args,
+                    &args,
                     terminator.source_info.span,
                     sig,
                 )?;
@@ -236,7 +236,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        arg_operands: &[mir::Operand<'tcx>],
+        args: &[ValTy<'tcx>],
         span: Span,
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx> {
@@ -252,28 +252,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     return err!(Unreachable);
                 }
                 let layout = self.type_layout(ty)?;
-                M::call_intrinsic(self, instance, arg_operands, ret, ty, layout, target)?;
+                M::call_intrinsic(self, instance, args, ret, ty, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
             }
             // FIXME: figure out why we can't just go through the shim
             ty::InstanceDef::ClosureOnceShim { .. } => {
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
-                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
+                if M::eval_fn_call(self, instance, destination, args, span, sig)? {
                     return Ok(());
                 }
                 let mut arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     // closure as closure once
                     Abi::RustCall => {
-                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                        for (arg_local, &valty) in arg_locals.zip(args) {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                            self.write_value(arg_val, dest, arg_ty)?;
+                            self.write_value(valty, dest)?;
                         }
                     }
                     // non capture closure as fn ptr
@@ -284,14 +278,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             "arg_locals: {:?}",
                             self.frame().mir.args_iter().collect::<Vec<_>>()
                         );
-                        trace!("arg_operands: {:?}", arg_operands);
+                        trace!("args: {:?}", args);
                         let local = arg_locals.nth(1).unwrap();
-                        for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
+                        for (i, &valty) in args.into_iter().enumerate() {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(local).field(
                                 mir::Field::new(i),
-                                arg_ty,
+                                valty.ty,
                             ))?;
-                            self.write_value(arg_val, dest, arg_ty)?;
+                            self.write_value(valty, dest)?;
                         }
                     }
                     _ => bug!("bad ABI for ClosureOnceShim: {:?}", sig.abi),
@@ -302,15 +296,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
-
                 // Push the stack frame, and potentially be entirely done if the call got hooked
-                if M::eval_fn_call(self, instance, destination, arg_operands, span, sig)? {
+                if M::eval_fn_call(self, instance, destination, args, span, sig)? {
                     return Ok(());
                 }
 
@@ -321,7 +308,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     "arg_locals: {:?}",
                     self.frame().mir.args_iter().collect::<Vec<_>>()
                 );
-                trace!("arg_operands: {:?}", arg_operands);
+                trace!("args: {:?}", args);
                 match sig.abi {
                     Abi::RustCall => {
                         assert_eq!(args.len(), 2);
@@ -330,20 +317,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             // write first argument
                             let first_local = arg_locals.next().unwrap();
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(first_local))?;
-                            let (arg_val, arg_ty) = args.remove(0);
-                            self.write_value(arg_val, dest, arg_ty)?;
+                            self.write_value(args[0], dest)?;
                         }
 
                         // unpack and write all other args
-                        let (arg_val, arg_ty) = args.remove(0);
-                        let layout = self.type_layout(arg_ty)?;
+                        let layout = self.type_layout(args[1].ty)?;
                         if let (&ty::TyTuple(fields, _),
-                                &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout)
+                                &Layout::Univariant { ref variant, .. }) = (&args[1].ty.sty, layout)
                         {
                             trace!("fields: {:?}", fields);
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
-                                match arg_val {
+                                match args[1].value {
                                     Value::ByRef(PtrAndAlign { ptr, aligned }) => {
                                         assert!(
                                             aligned,
@@ -361,7 +346,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                                 dest,
                                                 ty
                                             );
-                                            self.write_value(arg, dest, ty)?;
+                                            let valty = ValTy {
+                                                value: arg,
+                                                ty,
+                                            };
+                                            self.write_value(valty, dest)?;
                                         }
                                     }
                                     Value::ByVal(PrimVal::Undef) => {}
@@ -370,7 +359,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                         let dest = self.eval_lvalue(&mir::Lvalue::Local(
                                             arg_locals.next().unwrap(),
                                         ))?;
-                                        self.write_value(other, dest, fields[0])?;
+                                        let valty = ValTy {
+                                            value: other,
+                                            ty: fields[0],
+                                        };
+                                        self.write_value(valty, dest)?;
                                     }
                                 }
                             } else {
@@ -379,20 +372,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 let dest = self.eval_lvalue(
                                     &mir::Lvalue::Local(arg_locals.next().unwrap()),
                                 )?;
-                                self.write_value(arg_val, dest, arg_ty)?;
+                                self.write_value(args[1], dest)?;
                             }
                         } else {
                             bug!(
-                                "rust-call ABI tuple argument was {:?}, {:?}",
-                                arg_ty,
+                                "rust-call ABI tuple argument was {:#?}, {:#?}",
+                                args[1].ty,
                                 layout
                             );
                         }
                     }
                     _ => {
-                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                        for (arg_local, &valty) in arg_locals.zip(args) {
                             let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                            self.write_value(arg_val, dest, arg_ty)?;
+                            self.write_value(valty, dest)?;
                         }
                     }
                 }
@@ -401,24 +394,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
-                let (_, vtable) = self.eval_operand(&arg_operands[0])?.into_ptr_vtable_pair(
-                    &self.memory,
-                )?;
+                let (ptr, vtable) = args[0].into_ptr_vtable_pair(&self.memory)?;
                 let fn_ptr = self.memory.read_ptr(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
                 )?;
                 let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
-                let mut arg_operands = arg_operands.to_vec();
-                let ty = self.operand_ty(&arg_operands[0]);
-                let ty = self.get_field_ty(ty, 0)?.ty; // TODO: packed flag is ignored
-                match arg_operands[0] {
-                    mir::Operand::Consume(ref mut lval) => {
-                        *lval = lval.clone().field(mir::Field::new(0), ty)
-                    }
-                    _ => bug!("virtual call first arg cannot be a constant"),
-                }
+                let mut args = args.to_vec();
+                let ty = self.get_field_ty(args[0].ty, 0)?.ty; // TODO: packed flag is ignored
+                args[0].ty = ty;
+                args[0].value = ptr.to_value();
                 // recurse with concrete function
-                self.eval_fn_call(instance, destination, &arg_operands, span, sig)
+                self.eval_fn_call(instance, destination, &args, span, sig)
             }
         }
     }

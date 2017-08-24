@@ -6,7 +6,7 @@ use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use super::{EvalResult, EvalError, EvalErrorKind, GlobalId, Lvalue, Value, PrimVal, EvalContext,
-            StackPopCleanup, PtrAndAlign, MemoryKind};
+            StackPopCleanup, PtrAndAlign, MemoryKind, ValTy};
 
 use rustc_const_math::ConstInt;
 
@@ -69,7 +69,11 @@ pub fn eval_body_as_primval<'a, 'tcx>(
         while ecx.step()? {}
     }
     let value = Value::ByRef(*ecx.globals.get(&cid).expect("global not cached"));
-    Ok((ecx.value_to_primval(value, mir.return_ty)?, mir.return_ty))
+    let valty = ValTy {
+        value,
+        ty: mir.return_ty,
+    };
+    Ok((ecx.value_to_primval(valty)?, mir.return_ty))
 }
 
 pub fn eval_body_as_integer<'a, 'tcx>(
@@ -162,7 +166,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue, mir::BasicBlock)>,
-        _arg_operands: &[mir::Operand<'tcx>],
+        _args: &[ValTy<'tcx>],
         span: Span,
         _sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
@@ -201,7 +205,7 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
     fn call_intrinsic<'a>(
         _ecx: &mut EvalContext<'a, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _args: &[mir::Operand<'tcx>],
+        _args: &[ValTy<'tcx>],
         _dest: Lvalue,
         _dest_ty: Ty<'tcx>,
         _dest_layout: &'tcx layout::Layout,

@@ -435,10 +435,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             Index(ref operand) => {
-                // FIXME(solson)
                 let n_ptr = self.eval_operand(operand)?;
-                let usize = self.tcx.types.usize;
-                let n = self.value_to_primval(n_ptr, usize)?.to_u64()?;
+                let n = self.value_to_primval(n_ptr)?.to_u64()?;
                 return self.lvalue_index(base, base_ty, n);
             }
 
