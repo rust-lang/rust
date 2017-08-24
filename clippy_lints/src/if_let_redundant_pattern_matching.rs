@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::codemap::Span;
-use utils::{paths, span_lint_and_then, match_path, snippet};
+use utils::{paths, span_lint_and_then, match_qpath, snippet};
 
 /// **What it does:*** Lint for redundant pattern matching over `Result` or
 /// `Option`
@@ -53,18 +53,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
                 let good_method = match arms[0].pats[0].node {
                     PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 && pats[0].node == PatKind::Wild => {
-                        if match_path(path, &paths::RESULT_OK) {
+                        if match_qpath(path, &paths::RESULT_OK) {
                             "is_ok()"
-                        } else if match_path(path, &paths::RESULT_ERR) {
+                        } else if match_qpath(path, &paths::RESULT_ERR) {
                             "is_err()"
-                        } else if match_path(path, &paths::OPTION_SOME) {
+                        } else if match_qpath(path, &paths::OPTION_SOME) {
                             "is_some()"
                         } else {
                             return;
                         }
                     },
 
-                    PatKind::Path(ref path) if match_path(path, &paths::OPTION_NONE) => "is_none()",
+                    PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE) => "is_none()",
 
                     _ => return,
                 };

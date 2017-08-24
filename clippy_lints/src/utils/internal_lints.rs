@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
-use utils::{paths, match_path, span_lint};
+use utils::{paths, match_qpath, span_lint};
 use syntax::symbol::InternedString;
 use syntax::ast::{Name, NodeId, ItemKind, Crate as AstCrate};
 use syntax::codemap::Span;
@@ -167,7 +167,7 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
             return false;
         }
         if let TyPath(ref path) = inner.node {
-            return match_path(path, &paths::LINT);
+            return match_qpath(path, &paths::LINT);
         }
     }
     false
@@ -176,7 +176,7 @@ fn is_lint_ref_type(ty: &Ty) -> bool {
 
 fn is_lint_array_type(ty: &Ty) -> bool {
     if let TyPath(ref path) = ty.node {
-        match_path(path, &paths::LINT_ARRAY)
+        match_qpath(path, &paths::LINT_ARRAY)
     } else {
         false
     }

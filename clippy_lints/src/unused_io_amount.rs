@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
-use utils::{span_lint, match_path, match_trait_method, is_try, paths};
+use utils::{span_lint, match_qpath, match_trait_method, is_try, paths};
 
 /// **What it does:** Checks for unused written/read amount.
 ///
@@ -49,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
             hir::ExprMatch(ref res, _, _) if is_try(expr).is_some() => {
                 if let hir::ExprCall(ref func, ref args) = res.node {
                     if let hir::ExprPath(ref path) = func.node {
-                        if match_path(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
+                        if match_qpath(path, &paths::TRY_INTO_RESULT) && args.len() == 1 {
                             check_method_call(cx, &args[0], expr);
                         }
                     }

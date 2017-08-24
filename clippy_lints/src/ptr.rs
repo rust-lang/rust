@@ -7,7 +7,7 @@ use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax_pos::MultiSpan;
-use utils::{match_path, match_type, paths, span_lint, span_lint_and_then};
+use utils::{match_qpath, match_type, paths, span_lint, span_lint_and_then};
 
 /// **What it does:** This lint checks for function arguments of type `&String`
 /// or `&Vec` unless
@@ -190,7 +190,7 @@ fn is_null_path(expr: &Expr) -> bool {
     if let ExprCall(ref pathexp, ref args) = expr.node {
         if args.is_empty() {
             if let ExprPath(ref path) = pathexp.node {
-                return match_path(path, &paths::PTR_NULL) || match_path(path, &paths::PTR_NULL_MUT);
+                return match_qpath(path, &paths::PTR_NULL) || match_qpath(path, &paths::PTR_NULL_MUT);
             }
         }
     }

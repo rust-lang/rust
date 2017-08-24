@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{is_automatically_derived, span_lint_and_then, match_path_old, is_copy};
+use utils::{is_automatically_derived, span_lint_and_then, match_path, is_copy};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -92,7 +92,7 @@ fn check_hash_peq<'a, 'tcx>(
     hash_is_automatically_derived: bool,
 ) {
     if_let_chain! {[
-        match_path_old(&trait_ref.path, &paths::HASH),
+        match_path(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
         // Look for the PartialEq implementations for `ty`
@@ -132,7 +132,7 @@ fn check_hash_peq<'a, 'tcx>(
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: Ty<'tcx>) {
-    if match_path_old(&trait_ref.path, &paths::CLONE_TRAIT) {
+    if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         if !is_copy(cx, ty) {
             return;
         }

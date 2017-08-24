@@ -240,15 +240,15 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
 ///
 /// # Examples
 /// ```rust,ignore
-/// match_path(path, &["std", "rt", "begin_unwind"])
+/// match_qpath(path, &["std", "rt", "begin_unwind"])
 /// ```
-pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
+pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     match *path {
-        QPath::Resolved(_, ref path) => match_path_old(path, segments),
+        QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => {
             match ty.node {
                 TyPath(ref inner_path) => {
-                    !segments.is_empty() && match_path(inner_path, &segments[..(segments.len() - 1)]) &&
+                    !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)]) &&
                         segment.name == segments[segments.len() - 1]
                 },
                 _ => false,
@@ -257,7 +257,7 @@ pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
     }
 }
 
-pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
+pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
         |(a, b)| a.name == *b,
     )
@@ -267,7 +267,7 @@ pub fn match_path_old(path: &Path, segments: &[&str]) -> bool {
 ///
 /// # Examples
 /// ```rust,ignore
-/// match_path(path, &["std", "rt", "begin_unwind"])
+/// match_qpath(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
@@ -988,7 +988,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     fn is_ok(arm: &Arm) -> bool {
         if_let_chain! {[
             let PatKind::TupleStruct(ref path, ref pat, None) = arm.pats[0].node,
-            match_path(path, &paths::RESULT_OK[1..]),
+            match_qpath(path, &paths::RESULT_OK[1..]),
             let PatKind::Binding(_, defid, _, None) = pat[0].node,
             let ExprPath(QPath::Resolved(None, ref path)) = arm.body.node,
             path.def.def_id() == defid,
@@ -1000,7 +1000,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 
     fn is_err(arm: &Arm) -> bool {
         if let PatKind::TupleStruct(ref path, _, _) = arm.pats[0].node {
-            match_path(path, &paths::RESULT_ERR[1..])
+            match_qpath(path, &paths::RESULT_ERR[1..])
         } else {
             false
         }
