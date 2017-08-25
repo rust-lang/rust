@@ -6,7 +6,7 @@
 use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
-use utils::{is_expn_of, match_path, match_def_path, resolve_node, paths};
+use utils::{is_expn_of, match_qpath, match_def_path, resolve_node, paths};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
@@ -63,7 +63,7 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
 
     match expr.node {
         hir::ExprPath(ref path) => {
-            if match_path(path, &paths::RANGE_FULL_STD) || match_path(path, &paths::RANGE_FULL) {
+            if match_qpath(path, &paths::RANGE_FULL_STD) || match_qpath(path, &paths::RANGE_FULL) {
                 Some(Range {
                     start: None,
                     end: None,
@@ -74,31 +74,31 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
             }
         },
         hir::ExprStruct(ref path, ref fields, None) => {
-            if match_path(path, &paths::RANGE_FROM_STD) || match_path(path, &paths::RANGE_FROM) {
+            if match_qpath(path, &paths::RANGE_FROM_STD) || match_qpath(path, &paths::RANGE_FROM) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: None,
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_STD) || match_path(path, &paths::RANGE_INCLUSIVE) {
+            } else if match_qpath(path, &paths::RANGE_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_INCLUSIVE) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
                     limits: ast::RangeLimits::Closed,
                 })
-            } else if match_path(path, &paths::RANGE_STD) || match_path(path, &paths::RANGE) {
+            } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
                 Some(Range {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_path(path, &paths::RANGE_TO_INCLUSIVE) {
+            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE) {
                 Some(Range {
                     start: None,
                     end: get_field("end", fields),
                     limits: ast::RangeLimits::Closed,
                 })
-            } else if match_path(path, &paths::RANGE_TO_STD) || match_path(path, &paths::RANGE_TO) {
+            } else if match_qpath(path, &paths::RANGE_TO_STD) || match_qpath(path, &paths::RANGE_TO) {
                 Some(Range {
                     start: None,
                     end: get_field("end", fields),

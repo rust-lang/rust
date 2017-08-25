@@ -8,7 +8,7 @@ use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, ExpnFormat};
-use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
+use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_qpath, snippet,
             span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats, in_constant,
             match_trait_method, paths};
 use utils::sugg::Sugg;
@@ -486,7 +486,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
         },
         ExprCall(ref path, ref v) if v.len() == 1 => {
             if let ExprPath(ref path) = path.node {
-                if match_path(path, &["String", "from_str"]) || match_path(path, &["String", "from"]) {
+                if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
                     (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;

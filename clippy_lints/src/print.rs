@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::hir::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, resolve_node, span_lint, match_path_old};
+use utils::{is_expn_of, match_def_path, resolve_node, span_lint, match_path};
 use format::get_argument_fmtstr_parts;
 
 /// **What it does:** This lint warns when you using `print!()` with a format
@@ -144,7 +144,7 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
         // `Debug` impl
         if let Some(NodeItem(item)) = map.find(map.get_parent(item.id)) {
             if let ItemImpl(_, _, _, _, Some(ref tr), _, _) = item.node {
-                return match_path_old(&tr.path, &["Debug"]);
+                return match_path(&tr.path, &["Debug"]);
             }
         }
     }

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty;
 use syntax::ast;
-use utils::{is_adjusted, match_path, match_trait_method, match_type, remove_blocks, paths, snippet,
+use utils::{is_adjusted, match_qpath, match_trait_method, match_type, remove_blocks, paths, snippet,
             span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, iter_input_pats};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
@@ -74,7 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         }}
                     },
                     ExprPath(ref path) => {
-                        if match_path(path, &paths::CLONE) {
+                        if match_qpath(path, &paths::CLONE) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
                             span_help_and_lint(
                                 cx,

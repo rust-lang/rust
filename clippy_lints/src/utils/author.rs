@@ -428,7 +428,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
     }
 
     fn visit_qpath(&mut self, path: &QPath, _: NodeId, _: Span) {
-        print!("    match_path({}, &[", self.current);
+        print!("    match_qpath({}, &[", self.current);
         print_path(path, &mut true);
         println!("]),");
     }

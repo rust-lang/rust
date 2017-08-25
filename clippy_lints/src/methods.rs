@@ -8,10 +8,10 @@ use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_path, match_trait_method,
+use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_qpath, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
             span_lint_and_sugg, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment,
-            single_segment_path, match_def_path, is_self, is_self_ty, iter_input_pats, match_path_old};
+            single_segment_path, match_def_path, is_self, is_self_ty, iter_input_pats, match_path};
 use utils::paths;
 use utils::sugg;
 
@@ -1462,7 +1462,7 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
                 param.bounds.iter().any(|bound| {
                     if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
                         let path = &ptr.trait_ref.path;
-                        match_path_old(path, name) &&
+                        match_path(path, name) &&
                             path.segments.last().map_or(false, |s| {
                                 if let hir::PathParameters::AngleBracketedParameters(ref data) = s.parameters {
                                     data.types.len() == 1 &&
@@ -1540,7 +1540,7 @@ impl OutType {
 
 fn is_bool(ty: &hir::Ty) -> bool {
     if let hir::TyPath(ref p) = ty.node {
-        match_path(p, &["bool"])
+        match_qpath(p, &["bool"])
     } else {
         false
     }
