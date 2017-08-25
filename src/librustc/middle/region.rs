@@ -1175,13 +1175,18 @@ struct YieldFinder<'a> {
 
 impl<'a> YieldFinder<'a> {
     fn lookup<F: FnOnce(&mut Self)>(&mut self, id: NodeId, f: F) {
+        // Don't traverse further if we found a yield expression
+        if self.result.is_some() {
+            return;
+        }
+
+        // See if there's an entry in the cache
         if let Some(result) = self.cache.get(&id) {
             self.result = *result;
             return;
         }
-        if self.result.is_some() {
-            return;
-        }
+
+        // Otherwise calculate the result and insert it into the cache
         f(self);
         self.cache.insert(id, self.result);
     }
