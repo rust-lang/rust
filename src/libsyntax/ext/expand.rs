@@ -391,6 +391,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                 suggested_limit));
             err.emit();
+            self.cx.trace_macros_diag();
             panic!(FatalError);
         }
 
@@ -439,11 +440,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
+                self.cx.trace_macros_diag();
                 kind.dummy(attr.span)
             }
             _ => {
                 let msg = &format!("macro `{}` may not be used in attributes", attr.path);
                 self.cx.span_err(attr.span, msg);
+                self.cx.trace_macros_diag();
                 kind.dummy(attr.span)
             }
         }
@@ -482,6 +485,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if let Err(msg) = validate_and_set_expn_info(def_span.map(|(_, s)| s),
                                                              false, false) {
                     self.cx.span_err(path.span, &msg);
+                    self.cx.trace_macros_diag();
                     return kind.dummy(span);
                 }
                 kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
@@ -497,6 +501,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                              allow_internal_unstable,
                                                              allow_internal_unsafe) {
                     self.cx.span_err(path.span, &msg);
+                    self.cx.trace_macros_diag();
                     return kind.dummy(span);
                 }
                 kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
@@ -506,6 +511,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if ident.name == keywords::Invalid.name() {
                     self.cx.span_err(path.span,
                                     &format!("macro {}! expects an ident argument", path));
+                    self.cx.trace_macros_diag();
                     return kind.dummy(span);
                 };
 
@@ -526,11 +532,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             MultiDecorator(..) | MultiModifier(..) | AttrProcMacro(..) => {
                 self.cx.span_err(path.span,
                                  &format!("`{}` can only be used in attributes", path));
+                self.cx.trace_macros_diag();
                 return kind.dummy(span);
             }
 
             ProcMacroDerive(..) | BuiltinDerive(..) => {
                 self.cx.span_err(path.span, &format!("`{}` is a derive mode", path));
+                self.cx.trace_macros_diag();
                 return kind.dummy(span);
             }
 
@@ -539,6 +547,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
                     self.cx.span_err(path.span, &msg);
+                    self.cx.trace_macros_diag();
                     return kind.dummy(span);
                 }
 
@@ -564,6 +573,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let msg = format!("non-{kind} macro in {kind} position: {name}",
                               name = path.segments[0].identifier.name, kind = kind.name());
             self.cx.span_err(path.span, &msg);
+            self.cx.trace_macros_diag();
             kind.dummy(span)
         })
     }
@@ -617,6 +627,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             _ => {
                 let msg = &format!("macro `{}` may not be used for derive attributes", attr.path);
                 self.cx.span_err(span, msg);
+                self.cx.trace_macros_diag();
                 kind.dummy(span)
             }
         }
@@ -691,6 +702,7 @@ impl<'a> Parser<'a> {
                                of `{}!` is likely invalid in {} context",
                                macro_path, kind_name);
             err.span_note(span, &msg).emit();
+            self.cx.trace_macros_diag();
         }
     }
 }
@@ -739,6 +751,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if !traits.is_empty() &&
            (kind == ExpansionKind::TraitItems || kind == ExpansionKind::ImplItems) {
             self.cx.span_err(traits[0].span, "`derive` can be only be applied to items");
+            self.cx.trace_macros_diag();
             return kind.expect_from_annotatables(::std::iter::once(item));
         }
         self.collect(kind, InvocationKind::Attr { attr: attr, traits: traits, item: item })
