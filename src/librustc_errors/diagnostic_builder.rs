@@ -98,7 +98,7 @@ impl<'a> DiagnosticBuilder<'a> {
             }
         };
 
-        self.handler.emitter.borrow_mut().emit(&self);
+        self.handler.emit_db(&self);
         self.cancel();
 
         if is_error {
@@ -178,10 +178,13 @@ impl<'a> DiagnosticBuilder<'a> {
                          code: Option<String>,
                          message: &str)
                          -> DiagnosticBuilder<'a> {
-        DiagnosticBuilder {
-            handler,
-            diagnostic: Diagnostic::new_with_code(level, code, message)
-        }
+        let diagnostic = Diagnostic::new_with_code(level, code, message);
+        DiagnosticBuilder::new_diagnostic(handler, diagnostic)
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed diagnostic.
+    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
+        DiagnosticBuilder { handler, diagnostic }
     }
 }
 

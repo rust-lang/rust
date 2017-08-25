@@ -35,8 +35,9 @@ use emitter::{Emitter, EmitterWriter};
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
-use std::{error, fmt};
+use std::mem;
 use std::rc::Rc;
+use std::{error, fmt};
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -275,6 +276,7 @@ pub struct Handler {
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<(MultiSpan, String)>>,
+    tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
 }
 
 impl Handler {
@@ -298,6 +300,7 @@ impl Handler {
             treat_err_as_bug,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
+            tracked_diagnostics: RefCell::new(None),
         }
     }
 
@@ -546,6 +549,24 @@ impl Handler {
         if !self.continue_after_error.get() {
             self.abort_if_errors();
         }
+    }
+
+    pub fn track_diagnostics<F, R>(&self, f: F) -> (R, Vec<Diagnostic>)
+        where F: FnOnce() -> R
+    {
+        let prev = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(),
+                                Some(Vec::new()));
+        let ret = f();
+        let diagnostics = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(), prev)
+            .unwrap();
+        (ret, diagnostics)
+    }
+
+    fn emit_db(&self, db: &DiagnosticBuilder) {
+        if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
+            list.push((**db).clone());
+        }
+        self.emitter.borrow_mut().emit(db);
     }
 }
 
