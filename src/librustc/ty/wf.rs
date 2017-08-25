@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         // WF and (b) the trait-ref holds.  (It may also be
         // normalizable and be WF that way.)
         let trait_ref = data.trait_ref(self.infcx.tcx);
-        self.compute_trait_ref(&trait_ref, Elaborate::All);
+        self.compute_trait_ref(&trait_ref, Elaborate::None);
 
         if !data.has_escaping_regions() {
             let predicate = trait_ref.to_predicate();
