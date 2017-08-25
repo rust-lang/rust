@@ -338,22 +338,6 @@ struct ContainsFoo {
 }
 ```
 
-It's also possible to write generic `impl Trait` aliases:
-
-```rust
-#[derive(Debug)]
-struct MyStruct<T: Debug> {
-    inner: T
-};
-
-type Foo<T> = impl Debug;
-
-fn get_foo<T: Debug>(x: T) -> Foo<T> {
-    MyStruct {
-        inner: x
-    }
-}
-```
 
 `impl Trait` can also appear inside of another type in a type alias:
 
@@ -372,6 +356,48 @@ fn foo() -> Foo {
     ("Debuggable", || println!("Hello, world!"))
 }
 ```
+
+It's also possible to write generic `impl Trait` aliases:
+
+```rust
+#[derive(Debug)]
+struct MyStruct<T: Debug> {
+    inner: T
+};
+
+type Foo<T> = impl Debug;
+
+fn get_foo<T: Debug>(x: T) -> Foo<T> {
+    MyStruct {
+        inner: x
+    }
+}
+```
+
+As specified in
+[RFC 1951](https://github.com/rust-lang/rfcs/blob/master/text/1951-expand-impl-trait.md),
+`impl Trait` implicitly captures all generic types parameters in scope.
+In practice, this means that `impl Trait` associated types may contain generic
+types from an impl:
+
+```rust
+struct MyStruct;
+trait Foo<T> {
+    type Bar;
+    fn bar() -> Bar;
+}
+
+impl<T> Foo<T> for MyStruct {
+    type Bar = impl Trait;
+    fn bar() -> impl Trait {
+        ...
+        // Returns some type MyBar<T>
+    }
+}
+```
+
+However, as in 1951, `impl Trait` lifetime parameters must be explicitly
+annotated.
 
 # Reference-Level Explanation
 [reference]: #reference
@@ -395,7 +421,8 @@ manually would be impossible.
 [reference-aliases]: #reference-aliases
 
 `impl Trait` type aliases are similar to normal type aliases, except that their
-concrete type is determined from the module in which they are defined.
+concrete type is determined from the scope in which they are defined
+(usually a module or a trait impl).
 For example, the following code has to examine the body of `foo` in order to
 determine that the concrete type of `Foo` is `i32`:
 
@@ -423,6 +450,13 @@ fn add_to_foo_1(x: Foo) {
 fn add_to_foo_2(x: Foo) {
     let x: i32 = x;
     x + 1
+}
+
+fn return_foo(x: Foo) -> Foo {
+    // This is allowed.
+    // We don't need to know the concrete type of `Foo` for this function to
+    // typecheck.
+    x
 }
 ```
 
