@@ -4,7 +4,7 @@ use rustc::ty::layout::Layout;
 use rustc::ty::{self, Ty};
 
 use rustc_miri::interpret::{EvalResult, Lvalue, LvalueExtra, PrimVal, PrimValKind, Value, Pointer,
-                            HasMemory, EvalContext, PtrAndAlign, ValTy};
+                            HasMemory, AccessKind, EvalContext, PtrAndAlign, ValTy};
 
 use helpers::EvalContextExt as HelperEvalContextExt;
 
@@ -624,7 +624,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
-                    self.memory.check_align(ptr, ty_align)?;
+                    self.memory.check_align(ptr, ty_align, Some(AccessKind::Write))?;
                     self.memory.write_repeat(ptr, val_byte, size * count)?;
                 }
             }

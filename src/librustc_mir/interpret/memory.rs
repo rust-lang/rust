@@ -3,7 +3,7 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 use std::cell::Cell;
 
-use rustc::ty;
+use rustc::ty::Instance;
 use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
 use rustc::middle::region::CodeExtent;
@@ -250,10 +250,10 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
 
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
-    functions: Vec<ty::Instance<'tcx>>,
+    functions: Vec<Instance<'tcx>>,
 
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
-    function_alloc_cache: HashMap<ty::Instance<'tcx>, AllocId>,
+    function_alloc_cache: HashMap<Instance<'tcx>, AllocId>,
 
     /// Target machine data layout to emulate.
     pub layout: &'a TargetDataLayout,
@@ -297,7 +297,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         })
     }
 
-    pub fn create_fn_alloc(&mut self, instance: ty::Instance<'tcx>) -> MemoryPointer {
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> MemoryPointer {
         if let Some(&alloc_id) = self.function_alloc_cache.get(&instance) {
             return MemoryPointer::new(alloc_id, 0);
         }
@@ -476,27 +476,38 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     /// Check that the pointer is aligned AND non-NULL.
-    pub fn check_align(&self, ptr: Pointer, align: u64) -> EvalResult<'tcx> {
-        let offset = match ptr.into_inner_primval() {
+    pub fn check_align(&self, ptr: Pointer, align: u64, access: Option<AccessKind>) -> EvalResult<'tcx> {
+        // Check non-NULL/Undef, extract offset
+        let (offset, alloc_align) = match ptr.into_inner_primval() {
             PrimVal::Ptr(ptr) => {
                 let alloc = self.get(ptr.alloc_id)?;
-                if alloc.align < align {
-                    return err!(AlignmentCheckFailed {
-                        has: alloc.align,
-                        required: align,
-                    });
-                }
-                ptr.offset
+                (ptr.offset, alloc.align)
             }
             PrimVal::Bytes(bytes) => {
                 let v = ((bytes as u128) % (1 << self.pointer_size())) as u64;
                 if v == 0 {
                     return err!(InvalidNullPointerUsage);
                 }
-                v
+                (v, align) // the base address if the "integer allocation" is 0 and hence always aligned
             }
             PrimVal::Undef => return err!(ReadUndefBytes),
         };
+        // See if alignment checking is disabled
+        let enforce_alignment = match access {
+            Some(AccessKind::Read) => self.reads_are_aligned.get(),
+            Some(AccessKind::Write) => self.writes_are_aligned.get(),
+            None => true,
+        };
+        if !enforce_alignment {
+            return Ok(());
+        }
+        // Check alignment
+        if alloc_align < align {
+            return err!(AlignmentCheckFailed {
+                has: alloc_align,
+                required: align,
+            });
+        }
         if offset % align == 0 {
             Ok(())
         } else {
@@ -804,7 +815,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
+    fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
         let alloc = self.get_mut_unchecked(id)?;
         if alloc.mutable == Mutability::Mutable {
             Ok(alloc)
@@ -813,7 +824,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn get_fn(&self, ptr: MemoryPointer) -> EvalResult<'tcx, ty::Instance<'tcx>> {
+    pub fn get_fn(&self, ptr: MemoryPointer) -> EvalResult<'tcx, Instance<'tcx>> {
         if ptr.offset != 0 {
             return err!(InvalidFunctionPointer);
         }
@@ -933,9 +944,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         align: u64,
     ) -> EvalResult<'tcx, &[u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        if self.reads_are_aligned.get() {
-            self.check_align(ptr.into(), align)?;
-        }
+        self.check_align(ptr.into(), align, Some(AccessKind::Read))?;
         if size == 0 {
             return Ok(&[]);
         }
@@ -955,9 +964,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         align: u64,
     ) -> EvalResult<'tcx, &mut [u8]> {
         // Zero-sized accesses can use dangling pointers, but they still have to be aligned and non-NULL
-        if self.writes_are_aligned.get() {
-            self.check_align(ptr.into(), align)?;
-        }
+        self.check_align(ptr.into(), align, Some(AccessKind::Write))?;
         if size == 0 {
             return Ok(&mut []);
         }
@@ -995,7 +1002,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 /// Reading and writing
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     /// mark an allocation pointed to by a static as static and initialized
-    pub fn mark_inner_allocation(
+    fn mark_inner_allocation_initialized(
         &mut self,
         alloc: AllocId,
         mutability: Mutability,
@@ -1056,7 +1063,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            self.mark_inner_allocation(alloc, mutability)?;
+            self.mark_inner_allocation_initialized(alloc, mutability)?;
         }
         // put back the relocations
         self.alloc_map
@@ -1074,14 +1081,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         align: u64,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be aligned
+        self.check_align(src, align, Some(AccessKind::Read))?;
+        self.check_align(dest, align, Some(AccessKind::Write))?;
         if size == 0 {
-            // Empty accesses don't need to be valid pointers, but they should still be aligned
-            if self.reads_are_aligned.get() {
-                self.check_align(src, align)?;
-            }
-            if self.writes_are_aligned.get() {
-                self.check_align(dest, align)?;
-            }
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -1136,22 +1139,18 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     pub fn read_bytes(&self, ptr: Pointer, size: u64) -> EvalResult<'tcx, &[u8]> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        self.check_align(ptr, 1, Some(AccessKind::Read))?;
         if size == 0 {
-            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.reads_are_aligned.get() {
-                self.check_align(ptr, 1)?;
-            }
             return Ok(&[]);
         }
         self.get_bytes(ptr.to_ptr()?, size, 1)
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        self.check_align(ptr, 1, Some(AccessKind::Write))?;
         if src.is_empty() {
-            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.writes_are_aligned.get() {
-                self.check_align(ptr, 1)?;
-            }
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, src.len() as u64, 1)?;
@@ -1160,11 +1159,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: u64) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        self.check_align(ptr, 1, Some(AccessKind::Write))?;
         if count == 0 {
-            // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-            if self.writes_are_aligned.get() {
-                self.check_align(ptr, 1)?;
-            }
             return Ok(());
         }
         let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, 1)?;
