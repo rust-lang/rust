@@ -633,7 +633,7 @@ Actually this is now more natural for `core::panicking::panic_fmt` to take `Loca
 instead of tuples, so one should consider changing their signature. But this is out-of-scope for
 this RFC.
 
-`panic!` is often used about of `#[implicit_caller_location]` functions. In those cases, the
+`panic!` is often used outside of `#[implicit_caller_location]` functions. In those cases, the
 `caller_location()` intrinsic will pass unchanged through all MIR passes into trans. As a fallback,
 the intrinsic will expand to `Location { file: file!(), line: line!(), col: column!() }` during
 trans.
