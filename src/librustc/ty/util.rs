@@ -1124,6 +1124,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::TyClosure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
 
+        // Pessimistically assume that all generators will require destructors
+        // as we don't know if a destructor is a noop or not until after the MIR
+        // state transformation pass
         ty::TyGenerator(..) => true,
 
         ty::TyTuple(ref tys, _) => tys.iter().cloned().any(needs_drop),
