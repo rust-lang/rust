@@ -250,7 +250,7 @@ Note that these `use` declarations all begin with a crate name.
 Once an item is in scope, you can reference it directly within definitions:
 
 ```rust
-// Either of these work, because we brought `std` into scope:
+// Both of these work, because we brought `std` and `Vec` into scope:
 fn make_vec() -> Vec<u8> { ... }
 fn make_vec() -> std::vec::Vec<u8> { ... }
 
