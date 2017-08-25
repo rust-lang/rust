@@ -153,7 +153,7 @@ impl<'hir> MapEntry<'hir> {
             EntryLocal(_, _, n) => NodeLocal(n),
 
             NotPresent |
-            RootCrate => return None
+            RootCrate(_) => return None
         })
     }
 
