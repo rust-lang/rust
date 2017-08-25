@@ -50,7 +50,7 @@ fn mir_borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     debug!("run query mir_borrowck: {}", tcx.node_path_str(src.item_id()));
 
     let mir: &Mir<'tcx> = &mir.borrow();
-    if !tcx.has_attr(def_id, "rustc_mir_borrowck") || !tcx.sess.opts.debugging_opts.borrowck_mir {
+    if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.sess.opts.debugging_opts.borrowck_mir {
         return;
     }
 

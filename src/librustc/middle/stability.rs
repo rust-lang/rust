@@ -123,7 +123,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
-        if self.index.staged_api[&LOCAL_CRATE] {
+        if self.tcx.sess.features.borrow().staged_api {
+            // This crate explicitly wants staged API.
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             if let Some(..) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged api, \
@@ -201,6 +202,15 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
                                                          outside of the standard library");
+                }
+            }
+
+            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // -Zforce-unstable-if-unmarked is set.
+            if let Some(stab) = self.parent_stab {
+                if stab.level.is_unstable() {
+                    let def_id = self.tcx.hir.local_def_id(id);
+                    self.index.stab_map.insert(def_id, Some(stab));
                 }
             }
 

@@ -389,6 +389,13 @@ impl Session {
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
+    pub fn profile_queries(&self) -> bool {
+        self.opts.debugging_opts.profile_queries ||
+            self.opts.debugging_opts.profile_queries_and_keys
+    }
+    pub fn profile_queries_and_keys(&self) -> bool {
+        self.opts.debugging_opts.profile_queries_and_keys
+    }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
@@ -427,6 +434,31 @@ impl Session {
         self.opts.cg.overflow_checks
             .or(self.opts.debugging_opts.force_overflow_checks)
             .unwrap_or(self.opts.debug_assertions)
+    }
+
+    pub fn crt_static(&self) -> bool {
+        // If the target does not opt in to crt-static support, use its default.
+        if self.target.target.options.crt_static_respected {
+            self.crt_static_feature()
+        } else {
+            self.target.target.options.crt_static_default
+        }
+    }
+
+    pub fn crt_static_feature(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+
+        // If the target we're compiling for requests a static crt by default,
+        // then see if the `-crt-static` feature was passed to disable that.
+        // Otherwise if we don't have a static crt by default then see if the
+        // `+crt-static` feature was passed.
+        if self.target.target.options.crt_static_default {
+            !found_negative
+        } else {
+            found_positive
+        }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {

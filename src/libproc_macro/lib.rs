@@ -241,14 +241,14 @@ pub enum TokenNode {
 }
 
 /// Describes how a sequence of token trees is delimited.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Delimiter {
     /// `( ... )`
     Parenthesis,
-    /// `[ ... ]`
-    Brace,
     /// `{ ... }`
+    Brace,
+    /// `[ ... ]`
     Bracket,
     /// An implicit delimiter, e.g. `$var`, where $var is  `...`.
     None,
@@ -274,7 +274,7 @@ impl Term {
 }
 
 /// Whether an `Op` is either followed immediately by another `Op` or followed by whitespace.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Spacing {
     /// e.g. `+` is `Alone` in `+ =`.

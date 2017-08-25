@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashMap;
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
+use util::common::{ProfileQueriesMsg, profq_msg};
 
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
@@ -118,7 +119,13 @@ impl DepGraph {
     {
         if let Some(ref data) = self.data {
             data.edges.borrow_mut().push_task(key);
+            if cfg!(debug_assertions) {
+                profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
+            };
             let result = task(cx, arg);
+            if cfg!(debug_assertions) {
+                profq_msg(ProfileQueriesMsg::TaskEnd)
+            };
             let dep_node_index = data.edges.borrow_mut().pop_task(key);
             (result, dep_node_index)
         } else {
@@ -164,6 +171,14 @@ impl DepGraph {
     /// Only to be used during graph loading
     pub fn add_node_directly(&self, node: DepNode) {
         self.data.as_ref().unwrap().edges.borrow_mut().add_node(node);
+    }
+
+    pub fn alloc_input_node(&self, node: DepNode) -> DepNodeIndex {
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().add_node(node)
+        } else {
+            DepNodeIndex::INVALID
+        }
     }
 
     /// Indicates that a previous work product exists for `v`. This is

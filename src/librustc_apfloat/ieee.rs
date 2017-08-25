@@ -460,18 +460,15 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
             // rem <- sig % 10
             // sig <- sig / 10
             let mut rem = 0;
-            for limb in sig.iter_mut().rev() {
-                // We don't have an integer doubly wide than Limb,
-                // so we have to split the divrem on two halves.
-                const HALF_BITS: usize = LIMB_BITS / 2;
-                let mut halves = [*limb & ((1 << HALF_BITS) - 1), *limb >> HALF_BITS];
-                for half in halves.iter_mut().rev() {
-                    *half |= rem << HALF_BITS;
-                    rem = *half % 10;
-                    *half /= 10;
-                }
-                *limb = halves[0] | (halves[1] << HALF_BITS);
-            }
+
+            // Use 64-bit division and remainder, with 32-bit chunks from sig.
+            sig::each_chunk(&mut sig, 32, |chunk| {
+                let chunk = chunk as u32;
+                let combined = ((rem as u64) << 32) | (chunk as u64);
+                rem = (combined % 10) as u8;
+                (combined / 10) as u32 as Limb
+            });
+
             // Reduce the sigificand to avoid wasting time dividing 0's.
             while sig.last() == Some(&0) {
                 sig.pop();
@@ -491,7 +488,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
                 exp += 1;
             } else {
                 in_trail = false;
-                buffer.push(b'0' + digit as u8);
+                buffer.push(b'0' + digit);
             }
         }
 
@@ -2065,7 +2062,7 @@ impl<S: Semantics> IeeeFloat<S> {
         };
 
         // Attempt dec_sig * 10^dec_exp with increasing precision.
-        let mut attempt = 1;
+        let mut attempt = 0;
         loop {
             let calc_precision = (LIMB_BITS << attempt) - 1;
             attempt += 1;
@@ -2310,6 +2307,17 @@ mod sig {
         limbs.iter().all(|&l| l == 0)
     }
 
+    /// One, not zero, based LSB. That is, returns 0 for a zeroed significand.
+    pub(super) fn olsb(limbs: &[Limb]) -> usize {
+        for i in 0..limbs.len() {
+            if limbs[i] != 0 {
+                return i * LIMB_BITS + limbs[i].trailing_zeros() as usize + 1;
+            }
+        }
+
+        0
+    }
+
     /// One, not zero, based MSB. That is, returns 0 for a zeroed significand.
     pub(super) fn omsb(limbs: &[Limb]) -> usize {
         for i in (0..limbs.len()).rev() {
@@ -2465,6 +2473,20 @@ mod sig {
         } else {
             extract(dst, src, omsb, 0);
             (Loss::ExactlyZero, precision as ExpInt - 1)
+        }
+    }
+
+    /// For every consecutive chunk of `bits` bits from `limbs`,
+    /// going from most significant to the least significant bits,
+    /// call `f` to transform those bits and store the result back.
+    pub(super) fn each_chunk<F: FnMut(Limb) -> Limb>(limbs: &mut [Limb], bits: usize, mut f: F) {
+        assert_eq!(LIMB_BITS % bits, 0);
+        for limb in limbs.iter_mut().rev() {
+            let mut r = 0;
+            for i in (0..LIMB_BITS / bits).rev() {
+                r |= f((*limb >> (i * bits)) & ((1 << bits) - 1)) << (i * bits);
+            }
+            *limb = r;
         }
     }
 
@@ -2686,10 +2708,6 @@ mod sig {
         divisor: &mut [Limb],
         precision: usize,
     ) -> Loss {
-        // Zero the quotient before setting bits in it.
-        for x in &mut quotient[..limbs_for_bits(precision)] {
-            *x = 0;
-        }
 
         // Normalize the divisor.
         let bits = precision - omsb(divisor);
@@ -2700,12 +2718,71 @@ mod sig {
         let bits = precision - omsb(dividend);
         shift_left(dividend, exp, bits);
 
+        // Division by 1.
+        let olsb_divisor = olsb(divisor);
+        if olsb_divisor == precision {
+            quotient.copy_from_slice(dividend);
+            return Loss::ExactlyZero;
+        }
+
         // Ensure the dividend >= divisor initially for the loop below.
         // Incidentally, this means that the division loop below is
         // guaranteed to set the integer bit to one.
         if cmp(dividend, divisor) == Ordering::Less {
             shift_left(dividend, exp, 1);
             assert_ne!(cmp(dividend, divisor), Ordering::Less)
+        }
+
+        // Helper for figuring out the lost fraction.
+        let lost_fraction = |dividend: &[Limb], divisor: &[Limb]| {
+            match cmp(dividend, divisor) {
+                Ordering::Greater => Loss::MoreThanHalf,
+                Ordering::Equal => Loss::ExactlyHalf,
+                Ordering::Less => {
+                    if is_all_zeros(dividend) {
+                        Loss::ExactlyZero
+                    } else {
+                        Loss::LessThanHalf
+                    }
+                }
+            }
+        };
+
+        // Try to perform a (much faster) short division for small divisors.
+        let divisor_bits = precision - (olsb_divisor - 1);
+        macro_rules! try_short_div {
+            ($W:ty, $H:ty, $half:expr) => {
+                if divisor_bits * 2 <= $half {
+                    // Extract the small divisor.
+                    let _: Loss = shift_right(divisor, &mut 0, olsb_divisor - 1);
+                    let divisor = divisor[0] as $H as $W;
+
+                    // Shift the dividend to produce a quotient with the unit bit set.
+                    let top_limb = *dividend.last().unwrap();
+                    let mut rem = (top_limb >> (LIMB_BITS - (divisor_bits - 1))) as $H;
+                    shift_left(dividend, &mut 0, divisor_bits - 1);
+
+                    // Apply short division in place on $H (of $half bits) chunks.
+                    each_chunk(dividend, $half, |chunk| {
+                        let chunk = chunk as $H;
+                        let combined = ((rem as $W) << $half) | (chunk as $W);
+                        rem = (combined % divisor) as $H;
+                        (combined / divisor) as $H as Limb
+                    });
+                    quotient.copy_from_slice(dividend);
+
+                    return lost_fraction(&[(rem as Limb) << 1], &[divisor as Limb]);
+                }
+            }
+        }
+
+        try_short_div!(u32, u16, 16);
+        try_short_div!(u64, u32, 32);
+        try_short_div!(u128, u64, 64);
+
+        // Zero the quotient before setting bits in it.
+        for x in &mut quotient[..limbs_for_bits(precision)] {
+            *x = 0;
         }
 
         // Long division.
@@ -2717,17 +2794,6 @@ mod sig {
             shift_left(dividend, &mut 0, 1);
         }
 
-        // Figure out the lost fraction.
-        match cmp(dividend, divisor) {
-            Ordering::Greater => Loss::MoreThanHalf,
-            Ordering::Equal => Loss::ExactlyHalf,
-            Ordering::Less => {
-                if is_all_zeros(dividend) {
-                    Loss::ExactlyZero
-                } else {
-                    Loss::LessThanHalf
-                }
-            }
-        }
+        lost_fraction(dividend, divisor)
     }
 }

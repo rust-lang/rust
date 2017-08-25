@@ -122,7 +122,7 @@
 #![feature(unsize)]
 #![feature(allocator_internals)]
 
-#![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol))]
+#![cfg_attr(not(test), feature(fused, fn_traits, placement_new_protocol, swap_with_slice))]
 #![cfg_attr(test, feature(test, box_heap))]
 
 // Allow testing this library

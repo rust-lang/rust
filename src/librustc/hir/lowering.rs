@@ -45,15 +45,16 @@ use hir::map::{Definitions, DefKey, REGULAR_SPACE};
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
+use lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
 use rustc_data_structures::indexed_vec::IndexVec;
 use session::Session;
+use util::common::FN_OUTPUT_NAME;
 use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::iter;
 use std::mem;
-
 use syntax::attr;
 use syntax::ast::*;
 use syntax::errors;
@@ -161,6 +162,12 @@ enum ParamMode {
 struct LoweredNodeId {
     node_id: NodeId,
     hir_id: hir::HirId,
+}
+
+enum ParenthesizedGenericArgs {
+    Ok,
+    Warn,
+    Err,
 }
 
 impl<'a> LoweringContext<'a> {
@@ -761,6 +768,21 @@ impl<'a> LoweringContext<'a> {
                     Def::Trait(def_id) if i + 1 == proj_start => Some(def_id),
                     _ => None
                 };
+                let parenthesized_generic_args = match resolution.base_def() {
+                    // `a::b::Trait(Args)`
+                    Def::Trait(..) if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
+                    // `a::b::Trait(Args)::TraitItem`
+                    Def::Method(..) |
+                    Def::AssociatedConst(..) |
+                    Def::AssociatedTy(..) if i + 2 == proj_start => ParenthesizedGenericArgs::Ok,
+                    // Avoid duplicated errors
+                    Def::Err => ParenthesizedGenericArgs::Ok,
+                    // An error
+                    Def::Struct(..) | Def::Enum(..) | Def::Union(..) | Def::TyAlias(..) |
+                    Def::Variant(..) if i + 1 == proj_start => ParenthesizedGenericArgs::Err,
+                    // A warning for now, for compatibility reasons
+                    _ => ParenthesizedGenericArgs::Warn,
+                };
 
                 let num_lifetimes = type_def_id.map_or(0, |def_id| {
                     if let Some(&n) = self.type_def_lifetime_params.get(&def_id) {
@@ -771,7 +793,8 @@ impl<'a> LoweringContext<'a> {
                     self.type_def_lifetime_params.insert(def_id, n);
                     n
                 });
-                self.lower_path_segment(p.span, segment, param_mode, num_lifetimes)
+                self.lower_path_segment(p.span, segment, param_mode, num_lifetimes,
+                                        parenthesized_generic_args)
             }).collect(),
             span: p.span,
         });
@@ -806,7 +829,8 @@ impl<'a> LoweringContext<'a> {
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
         for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
-            let segment = P(self.lower_path_segment(p.span, segment, param_mode, 0));
+            let segment = P(self.lower_path_segment(p.span, segment, param_mode, 0,
+                                                    ParenthesizedGenericArgs::Warn));
             let qpath = hir::QPath::TypeRelative(ty, segment);
 
             // It's finished, return the extension of the right node type.
@@ -839,7 +863,8 @@ impl<'a> LoweringContext<'a> {
         hir::Path {
             def: self.expect_full_def(id),
             segments: segments.map(|segment| {
-                self.lower_path_segment(p.span, segment, param_mode, 0)
+                self.lower_path_segment(p.span, segment, param_mode, 0,
+                                        ParenthesizedGenericArgs::Err)
             }).chain(name.map(|name| {
                 hir::PathSegment {
                     name,
@@ -863,29 +888,37 @@ impl<'a> LoweringContext<'a> {
                           path_span: Span,
                           segment: &PathSegment,
                           param_mode: ParamMode,
-                          expected_lifetimes: usize)
+                          expected_lifetimes: usize,
+                          parenthesized_generic_args: ParenthesizedGenericArgs)
                           -> hir::PathSegment {
         let mut parameters = if let Some(ref parameters) = segment.parameters {
+            let msg = "parenthesized parameters may only be used with a trait";
             match **parameters {
                 PathParameters::AngleBracketed(ref data) => {
-                    let data = self.lower_angle_bracketed_parameter_data(data, param_mode);
-                    hir::AngleBracketedParameters(data)
+                    self.lower_angle_bracketed_parameter_data(data, param_mode)
                 }
-                PathParameters::Parenthesized(ref data) => {
-                    hir::ParenthesizedParameters(self.lower_parenthesized_parameter_data(data))
+                PathParameters::Parenthesized(ref data) => match parenthesized_generic_args {
+                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
+                    ParenthesizedGenericArgs::Warn => {
+                        self.sess.buffer_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+                                              CRATE_NODE_ID, data.span, msg.into());
+                        hir::PathParameters::none()
+                    }
+                    ParenthesizedGenericArgs::Err => {
+                        struct_span_err!(self.sess, data.span, E0214, "{}", msg)
+                            .span_label(data.span, "only traits may use parentheses").emit();
+                        hir::PathParameters::none()
+                    }
                 }
             }
         } else {
-            let data = self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode);
-            hir::AngleBracketedParameters(data)
+            self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode)
         };
 
-        if let hir::AngleBracketedParameters(ref mut data) = parameters {
-            if data.lifetimes.is_empty() {
-                data.lifetimes = (0..expected_lifetimes).map(|_| {
-                    self.elided_lifetime(path_span)
-                }).collect();
-            }
+        if !parameters.parenthesized && parameters.lifetimes.is_empty() {
+            parameters.lifetimes = (0..expected_lifetimes).map(|_| {
+                self.elided_lifetime(path_span)
+            }).collect();
         }
 
         hir::PathSegment {
@@ -897,24 +930,38 @@ impl<'a> LoweringContext<'a> {
     fn lower_angle_bracketed_parameter_data(&mut self,
                                             data: &AngleBracketedParameterData,
                                             param_mode: ParamMode)
-                                            -> hir::AngleBracketedParameterData {
+                                            -> hir::PathParameters {
         let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings, .. } = data;
-        hir::AngleBracketedParameterData {
+        hir::PathParameters {
             lifetimes: self.lower_lifetimes(lifetimes),
             types: types.iter().map(|ty| self.lower_ty(ty)).collect(),
             infer_types: types.is_empty() && param_mode == ParamMode::Optional,
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b)).collect(),
+            parenthesized: false,
         }
     }
 
     fn lower_parenthesized_parameter_data(&mut self,
                                           data: &ParenthesizedParameterData)
-                                          -> hir::ParenthesizedParameterData {
+                                          -> hir::PathParameters {
         let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
-        hir::ParenthesizedParameterData {
-            inputs: inputs.iter().map(|ty| self.lower_ty(ty)).collect(),
-            output: output.as_ref().map(|ty| self.lower_ty(ty)),
-            span,
+        let inputs = inputs.iter().map(|ty| self.lower_ty(ty)).collect();
+        let mk_tup = |this: &mut Self, tys, span| {
+            P(hir::Ty { node: hir::TyTup(tys), id: this.next_id().node_id, span })
+        };
+
+        hir::PathParameters {
+            lifetimes: hir::HirVec::new(),
+            types: hir_vec![mk_tup(self, inputs, span)],
+            infer_types: false,
+            bindings: hir_vec![hir::TypeBinding {
+                id: self.next_id().node_id,
+                name: Symbol::intern(FN_OUTPUT_NAME),
+                ty: output.as_ref().map(|ty| self.lower_ty(&ty))
+                                   .unwrap_or_else(|| mk_tup(self, hir::HirVec::new(), span)),
+                span: output.as_ref().map_or(span, |ty| ty.span),
+            }],
+            parenthesized: true,
         }
     }
 
@@ -1280,7 +1327,12 @@ impl<'a> LoweringContext<'a> {
                             path.span = span;
 
                             self.allocate_hir_id_counter(import.id, import);
-                            self.with_hir_id_owner(import.id, |this| {
+                            let LoweredNodeId {
+                                node_id: import_node_id,
+                                hir_id: import_hir_id,
+                            } = self.lower_node_id(import.id);
+
+                            self.with_hir_id_owner(import_node_id, |this| {
                                 let vis = match *vis {
                                     hir::Visibility::Public => hir::Visibility::Public,
                                     hir::Visibility::Crate => hir::Visibility::Crate,
@@ -1294,8 +1346,9 @@ impl<'a> LoweringContext<'a> {
                                     }
                                 };
 
-                                this.items.insert(import.id, hir::Item {
-                                    id: import.id,
+                                this.items.insert(import_node_id, hir::Item {
+                                    id: import_node_id,
+                                    hir_id: import_hir_id,
                                     name: import.rename.unwrap_or(ident).name,
                                     attrs: attrs.clone(),
                                     node: hir::ItemUse(P(path), hir::UseKind::Single),
@@ -1426,8 +1479,11 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
         self.with_parent_def(i.id, |this| {
+            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
+
             hir::TraitItem {
-                id: this.lower_node_id(i.id).node_id,
+                id: node_id,
+                hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
@@ -1487,8 +1543,11 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
         self.with_parent_def(i.id, |this| {
+            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
+
             hir::ImplItem {
-                id: this.lower_node_id(i.id).node_id,
+                id: node_id,
+                hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
                 vis: this.lower_visibility(&i.vis, None),
@@ -1579,8 +1638,11 @@ impl<'a> LoweringContext<'a> {
             this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
         });
 
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+
         Some(hir::Item {
-            id: self.lower_node_id(i.id).node_id,
+            id: node_id,
+            hir_id,
             name,
             attrs,
             node,
@@ -1889,7 +1951,8 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprCall(f, args.iter().map(|x| self.lower_expr(x)).collect())
             }
             ExprKind::MethodCall(ref seg, ref args) => {
-                let hir_seg = self.lower_path_segment(e.span, seg, ParamMode::Optional, 0);
+                let hir_seg = self.lower_path_segment(e.span, seg, ParamMode::Optional, 0,
+                                                      ParenthesizedGenericArgs::Err);
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
                 hir::ExprMethodCall(hir_seg, seg.span, args)
             }

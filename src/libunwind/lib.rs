@@ -15,6 +15,7 @@
 #![deny(warnings)]
 
 #![feature(cfg_target_vendor)]
+#![feature(link_cfg)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
 #![feature(static_nobundle)]
@@ -28,3 +29,8 @@ extern crate libc;
 mod libunwind;
 #[cfg(not(target_env = "msvc"))]
 pub use libunwind::*;
+
+#[cfg(all(target_env = "musl", not(target_arch = "mips")))]
+#[link(name = "unwind", kind = "static", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
+extern {}

@@ -64,6 +64,8 @@ use arena::DroplessArena;
 
 use derive_registrar;
 
+use profile;
+
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
                      input: &Input,
@@ -103,6 +105,10 @@ pub fn compile_input(sess: &Session,
         }
 
         sess.abort_if_errors();
+    }
+
+    if sess.profile_queries() {
+        profile::begin();
     }
 
     // We need nested scopes here, because the intermediate results can keep
@@ -537,6 +543,10 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
                                -> PResult<'a, ast::Crate> {
     sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
 
+    if sess.profile_queries() {
+        profile::begin();
+    }
+
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
@@ -833,10 +843,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         })
     })?;
 
-    time(time_passes,
-         "early lint checks",
-         || lint::check_ast_crate(sess, &krate));
-
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, &krate, &mut resolver);
@@ -847,6 +853,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
+
+    time(time_passes,
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
@@ -1121,6 +1131,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         time(time_passes,
              "translation",
              move || trans::trans_crate(tcx, analysis, incremental_hashes_map, output_filenames));
+
+    if tcx.sess.profile_queries() {
+        profile::dump("profile_queries".to_string())
+    }
 
     translation
 }
