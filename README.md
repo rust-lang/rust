@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 206 lints included in this crate:
+There are 208 lints included in this crate:
 
 name                                                                                                                         | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -252,6 +252,7 @@ name                                                                            
 [inconsistent_digit_grouping](https://github.com/rust-lang-nursery/rust-clippy/wiki#inconsistent_digit_grouping)             | warn    | integer literals with digits grouped inconsistently
 [indexing_slicing](https://github.com/rust-lang-nursery/rust-clippy/wiki#indexing_slicing)                                   | allow   | indexing/slicing usage
 [ineffective_bit_mask](https://github.com/rust-lang-nursery/rust-clippy/wiki#ineffective_bit_mask)                           | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
+[infinite_iter](https://github.com/rust-lang-nursery/rust-clippy/wiki#infinite_iter)                                         | warn    | infinite iteration
 [inline_always](https://github.com/rust-lang-nursery/rust-clippy/wiki#inline_always)                                         | warn    | use of `#[inline(always)]`
 [integer_arithmetic](https://github.com/rust-lang-nursery/rust-clippy/wiki#integer_arithmetic)                               | allow   | any integer arithmetic statement
 [invalid_regex](https://github.com/rust-lang-nursery/rust-clippy/wiki#invalid_regex)                                         | deny    | invalid regular expressions
@@ -279,6 +280,7 @@ name                                                                            
 [match_ref_pats](https://github.com/rust-lang-nursery/rust-clippy/wiki#match_ref_pats)                                       | warn    | a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression
 [match_same_arms](https://github.com/rust-lang-nursery/rust-clippy/wiki#match_same_arms)                                     | warn    | `match` with identical arm bodies
 [match_wild_err_arm](https://github.com/rust-lang-nursery/rust-clippy/wiki#match_wild_err_arm)                               | warn    | a match with `Err(_)` arm and take drastic actions
+[maybe_infinite_iter](https://github.com/rust-lang-nursery/rust-clippy/wiki#maybe_infinite_iter)                             | allow   | possible infinite iteration
 [mem_forget](https://github.com/rust-lang-nursery/rust-clippy/wiki#mem_forget)                                               | allow   | `mem::forget` usage on `Drop` types, likely to cause memory leaks
 [min_max](https://github.com/rust-lang-nursery/rust-clippy/wiki#min_max)                                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [misrefactored_assign_op](https://github.com/rust-lang-nursery/rust-clippy/wiki#misrefactored_assign_op)                     | warn    | having a variable on both sides of an assign op

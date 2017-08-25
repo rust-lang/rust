@@ -97,6 +97,7 @@ pub mod functions;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
+pub mod infinite_iter;
 pub mod items_after_statements;
 pub mod large_enum_variant;
 pub mod len_zero;
@@ -323,6 +324,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box literal_digit_grouping::LiteralDigitGrouping);
     reg.register_late_lint_pass(box use_self::UseSelf);
     reg.register_late_lint_pass(box bytecount::ByteCount);
+    reg.register_late_lint_pass(box infinite_iter::Pass);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -338,6 +340,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         enum_variants::PUB_ENUM_VARIANT_NAMES,
         enum_variants::STUTTER,
         if_not_else::IF_NOT_ELSE,
+        infinite_iter::MAYBE_INFINITE_ITER,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         matches::SINGLE_MATCH_ELSE,
         mem_forget::MEM_FORGET,
@@ -422,6 +425,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        infinite_iter::INFINITE_ITER,
         large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,

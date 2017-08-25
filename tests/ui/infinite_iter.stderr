@@ -1,0 +1,100 @@
+error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
+  --> $DIR/infinite_iter.rs:11:5
+   |
+11 |     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D unused-collect` implied by `-D warnings`
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:11:5
+   |
+11 |     repeat(0_u8).collect::<Vec<_>>(); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/infinite_iter.rs:9:8
+   |
+9  | #[deny(infinite_iter)]
+   |        ^^^^^^^^^^^^^
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:12:5
+   |
+12 |     (0..8_u32).take_while(square_is_lower_64).cycle().count(); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:13:5
+   |
+13 |     (0..8_u64).chain(0..).max(); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:15:5
+   |
+15 |     (0..8_u32).rev().cycle().map(|x| x + 1_u32).for_each(|x| println!("{}", x)); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:17:5
+   |
+17 |     (0_usize..).flat_map(|x| 0..x).product::<usize>();  // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: infinite iteration detected
+  --> $DIR/infinite_iter.rs:18:5
+   |
+18 |     (0_u64..).filter(|x| x % 2 == 0).last(); // infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:25:5
+   |
+25 |     (0..).zip((0..).take_while(square_is_lower_64)).count(); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/infinite_iter.rs:23:8
+   |
+23 | #[deny(maybe_infinite_iter)]
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:26:5
+   |
+26 |     repeat(42).take_while(|x| *x == 42).chain(0..42).max(); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:27:5
+   |
+27 |     (1..).scan(0, |state, x| { *state += x; Some(*state) }).min(); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:28:5
+   |
+28 |     (0..).find(|x| *x == 24); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:29:5
+   |
+29 |     (0..).position(|x| x == 24); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:30:5
+   |
+30 |     (0..).any(|x| x == 24); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: possible infinite iteration detected
+  --> $DIR/infinite_iter.rs:31:5
+   |
+31 |     (0..).all(|x| x == 24); // maybe infinite iter
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
+
