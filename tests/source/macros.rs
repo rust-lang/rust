@@ -134,6 +134,21 @@ fn issue_1885() {
     }).collect::<Vec<_>>();
 }
 
+fn issue_1917() {
+    mod x {
+        quickcheck! {
+            fn test(a: String, s: String, b: String) -> TestResult {
+                if a.find(&s).is_none() {
+
+                    TestResult::from_bool(true)
+                } else {
+                    TestResult::discard()
+                }
+            }
+        }
+    }
+}
+
 // Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
 // at the end of the file for now.
 

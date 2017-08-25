@@ -309,31 +309,51 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
 /// }
 /// ```
 fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
-    let min_prefix_space_width =
-        try_opt!(macro_str.lines().skip(1).map(get_prefix_space_width).min());
-
     let mut lines = macro_str.lines();
-    let first_line = try_opt!(lines.next());
+    let first_line = try_opt!(lines.next().map(|s| s.trim_right()));
+    let mut trimmed_lines = Vec::with_capacity(16);
+
+    let min_prefix_space_width = try_opt!(
+        lines
+            .filter_map(|line| {
+                let prefix_space_width = if is_empty_line(line) {
+                    None
+                } else {
+                    get_prefix_space_width(line)
+                };
+                trimmed_lines.push((line.trim(), prefix_space_width));
+                prefix_space_width
+            })
+            .min()
+    );
 
     Some(
         String::from(first_line) + "\n" +
-            &lines
-                .map(|line| {
-                    let new_indent_width = indent.width() +
-                        get_prefix_space_width(line)
-                            .checked_sub(min_prefix_space_width)
-                            .unwrap_or(0);
-                    repeat_white_space(new_indent_width) + line.trim()
+            &trimmed_lines
+                .iter()
+                .map(|&(line, prefix_space_width)| match prefix_space_width {
+                    Some(original_indent_width) => {
+                        let new_indent_width = indent.width() +
+                            original_indent_width
+                                .checked_sub(min_prefix_space_width)
+                                .unwrap_or(0);
+                        repeat_white_space(new_indent_width) + line.trim()
+                    }
+                    None => String::new(),
                 })
                 .collect::<Vec<_>>()
                 .join("\n"),
     )
 }
 
-fn get_prefix_space_width(s: &str) -> usize {
-    s.chars().position(|c| c != ' ').unwrap_or(0)
+fn get_prefix_space_width(s: &str) -> Option<usize> {
+    s.chars().position(|c| c != ' ')
 }
 
 fn repeat_white_space(ws_count: usize) -> String {
     repeat(" ").take(ws_count).collect::<String>()
+}
+
+fn is_empty_line(s: &str) -> bool {
+    s.is_empty() || s.chars().all(char::is_whitespace)
 }
