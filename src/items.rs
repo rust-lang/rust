@@ -185,64 +185,11 @@ impl<'a> FmtVisitor<'a> {
         self.format_item(item);
     }
 
+
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
-        self.format_missing_with_indent(item.span.lo);
-        // Drop semicolon or it will be interpreted as comment.
-        // FIXME: this may be a faulty span from libsyntax.
-        let span = mk_sp(item.span.lo, item.span.hi - BytePos(1));
-
-        match item.node {
-            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
-                let indent = self.block_indent;
-                let rewrite = rewrite_fn_base(
-                    &self.get_context(),
-                    indent,
-                    item.ident,
-                    fn_decl,
-                    generics,
-                    ast::Unsafety::Normal,
-                    ast::Constness::NotConst,
-                    ast::Defaultness::Final,
-                    // These are not actually rust functions,
-                    // but we format them as such.
-                    abi::Abi::Rust,
-                    &item.vis,
-                    span,
-                    false,
-                    false,
-                    false,
-                );
-
-                match rewrite {
-                    Some((new_fn, _)) => {
-                        self.buffer.push_str(&new_fn);
-                        self.buffer.push_str(";");
-                    }
-                    None => self.format_missing(item.span.hi),
-                }
-            }
-            ast::ForeignItemKind::Static(ref ty, is_mutable) => {
-                // FIXME(#21): we're dropping potential comments in between the
-                // function keywords here.
-                let vis = format_visibility(&item.vis);
-                let mut_str = if is_mutable { "mut " } else { "" };
-                let prefix = format!("{}static {}{}: ", vis, mut_str, item.ident);
-                let offset = self.block_indent + prefix.len();
-                // 1 = ;
-                let shape = Shape::indented(offset, self.config).sub_width(1).unwrap();
-                let rewrite = ty.rewrite(&self.get_context(), shape);
-
-                match rewrite {
-                    Some(result) => {
-                        self.buffer.push_str(&prefix);
-                        self.buffer.push_str(&result);
-                        self.buffer.push_str(";");
-                    }
-                    None => self.format_missing(item.span.hi),
-                }
-            }
-        }
-
+        let shape = Shape::indented(self.block_indent, self.config);
+        let rewrite = item.rewrite(&self.get_context(), shape);
+        self.push_rewrite(item.span(), rewrite);
         self.last_pos = item.span.hi;
     }
 
@@ -2836,4 +2783,69 @@ fn format_generics(
     result.push_str(opener);
 
     Some(result)
+}
+
+impl Rewrite for ast::ForeignItem {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        // Drop semicolon or it will be interpreted as comment.
+        // FIXME: this may be a faulty span from libsyntax.
+        let span = mk_sp(self.span.lo, self.span.hi - BytePos(1));
+
+        let item_str = try_opt!(match self.node {
+            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
+                rewrite_fn_base(
+                    context,
+                    shape.indent,
+                    self.ident,
+                    fn_decl,
+                    generics,
+                    ast::Unsafety::Normal,
+                    ast::Constness::NotConst,
+                    ast::Defaultness::Final,
+                    // These are not actually rust functions,
+                    // but we format them as such.
+                    abi::Abi::Rust,
+                    &self.vis,
+                    span,
+                    false,
+                    false,
+                    false,
+                ).map(|(s, _)| format!("{};", s))
+            }
+            ast::ForeignItemKind::Static(ref ty, is_mutable) => {
+                // FIXME(#21): we're dropping potential comments in between the
+                // function keywords here.
+                let vis = format_visibility(&self.vis);
+                let mut_str = if is_mutable { "mut " } else { "" };
+                let prefix = format!("{}static {}{}:", vis, mut_str, self.ident);
+                // 1 = ;
+                let shape = try_opt!(shape.sub_width(1));
+                ty.rewrite(context, shape).map(|ty_str| {
+                    // 1 = space between prefix and type.
+                    let sep = if prefix.len() + ty_str.len() + 1 <= shape.width {
+                        String::from(" ")
+                    } else {
+                        let nested_indent = shape.indent.block_indent(context.config);
+                        format!("\n{}", nested_indent.to_string(context.config))
+                    };
+                    format!("{}{}{};", prefix, sep, ty_str)
+                })
+            }
+        });
+
+        let missing_span = if self.attrs.is_empty() {
+            mk_sp(self.span.lo, self.span.lo)
+        } else {
+            mk_sp(self.attrs[self.attrs.len() - 1].span.hi, self.span.lo)
+        };
+        combine_strs_with_missing_comments(
+            context,
+            &attrs_str,
+            &item_str,
+            missing_span,
+            shape,
+            false,
+        )
+    }
 }

@@ -641,7 +641,7 @@ impl<'a> FmtVisitor<'a> {
         self.push_rewrite(mac.span, rewrite);
     }
 
-    fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
+    pub fn push_rewrite(&mut self, span: Span, rewrite: Option<String>) {
         self.format_missing_with_indent(source!(self, span).lo);
         let result = rewrite.unwrap_or_else(|| self.snippet(span));
         self.buffer.push_str(&result);

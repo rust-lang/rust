@@ -74,6 +74,7 @@ mod patterns;
 mod summary;
 mod vertical;
 
+/// Spanned returns a span including attributes, if available.
 pub trait Spanned {
     fn span(&self) -> Span;
 }
@@ -204,6 +205,12 @@ impl Spanned for ast::TyParamBound {
             ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span,
             ast::TyParamBound::RegionTyParamBound(ref l) => l.span,
         }
+    }
+}
+
+impl Spanned for ast::ForeignItem {
+    fn span(&self) -> Span {
+        span_with_attrs!(self)
     }
 }
 
