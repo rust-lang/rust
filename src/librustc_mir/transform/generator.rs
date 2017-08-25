@@ -331,11 +331,15 @@ fn insert_entry_point<'tcx>(mir: &mut Mir<'tcx>,
 }
 
 fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                      def_id: DefId,
-                                      mir: &mut Mir<'tcx>) {
+                                       def_id: DefId,
+                                       mir: &mut Mir<'tcx>) {
     use util::elaborate_drops::{elaborate_drop, Unwind};
     use util::patch::MirPatch;
     use shim::DropShimElaborator;
+
+    // Note that `elaborate_drops` only drops the upvars of a generator, and
+    // this is ok because `open_drop` can only be reached within that own
+    // generator's resume function.
 
     let param_env = tcx.param_env(def_id);
     let gen = self_arg();
