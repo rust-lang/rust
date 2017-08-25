@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{get_trait_def_id, implements_trait, higher, match_path, paths, span_lint};
+use utils::{get_trait_def_id, implements_trait, higher, match_qpath, paths, span_lint};
 
 /// **What it does:** Checks for iteration that is guaranteed to be infinite.
 ///
@@ -150,7 +150,7 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> TriState {
         ExprBox(ref e) | ExprAddrOf(_, ref e) => is_infinite(cx, e),
         ExprCall(ref path, _) => {
             if let ExprPath(ref qpath) = path.node {
-                match_path(qpath, &paths::REPEAT).into()
+                match_qpath(qpath, &paths::REPEAT).into()
             } else { False }
         },
         ExprStruct(..) => {
