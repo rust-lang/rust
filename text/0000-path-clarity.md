@@ -700,6 +700,9 @@ part of the argument in favor of improving the module system:
 * [The Rust module system is too confusing][too-confusing] by @withoutboats
 * [Revisiting Rust's modules][revisiting] by @aturon
 
+[too-confusing]: https://withoutboats.github.io/blog/rust/2017/01/04/the-rust-module-system-is-too-confusing.html
+[revisiting]: https://aturon.github.io/blog/2017/07/26/revisiting-rusts-modules/
+
 And in addition there's been extensive discussion on internals:
 
 - [Revisiting Rust’s modules](https://internals.rust-lang.org/t/revisiting-rusts-modules/5628) - aturon, Jul 26
