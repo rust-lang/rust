@@ -32,8 +32,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("check_expr_closure(expr={:?},expected={:?})",
                expr,
                expected);
-        // FIXME: Should we adapt deduce_expectations_from_expected_type to work with
-        // generator traits? It looks like it's conservative to add support for this later.
 
         // It's always helpful for inference if we know the kind of
         // closure sooner rather than later, so first examine the expected
