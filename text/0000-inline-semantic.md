@@ -13,7 +13,7 @@ the following changes:
 
 1. Support the `#[implicit_caller_location]` function attribute, which guarantees a function has
     access to the caller information.
-2. Adds an intrinsic function `caller_location()` (safe wrapper: `Location::caller()`) to retrieve
+2. Add an intrinsic function `caller_location()` (safe wrapper: `Location::caller()`) to retrieve
     the caller's source location.
 
 Example:
@@ -71,20 +71,20 @@ let m = n.unwrap();
 # Motivation
 [motivation]: #motivation
 
-It is well-known that the error message reported by `unwrap()` is useless.
+It is well-known that the error message reported by `unwrap()` is useless:
 
 ```text
 thread 'main' panicked at 'called `Option::unwrap()` on a `None` value', /checkout/src/libcore/option.rs:335
 note: Run with `RUST_BACKTRACE=1` for a backtrace.
 ```
 
-There have been numerous discussions ([a], [b], [c]) that wants `unwrap()` and friends to provide
-the better information to locate the panic. Previously, [RFC 1669] attempted to address this by
+There have been numerous discussions ([a], [b], [c]) that want `unwrap()` and friends to provide
+better information to locate the panic. [RFC 1669] attempted to address this by
 introducing the `unwrap!(x)` macro to the standard library, but it was closed since the `x.unwrap()`
 convention is too entrenched.
 
-This RFC tries to introduce line numbers into `unwrap()` without requiring users to adapt a new
-idiom, i.e. the user should be able to see the precise location without changing any of the source
+This RFC introduces line numbers into `unwrap()` without requiring users to adapt a new
+idiom, i.e. the user should be able to see the precise location without changing any source
 code.
 
 # Guide-level explanation
@@ -93,7 +93,7 @@ code.
 ## Let's reimplement `unwrap()`
 
 `unwrap()` and `expect()` are two methods on `Option` and `Result` that are commonly used when you
-are *absolutely sure* they only contains a successful value and you want to extract it.
+are *absolutely sure* they contain a successful value and you want to extract it.
 
 ```rust
 // 1.rs
@@ -148,8 +148,8 @@ fn main() {
 }
 ```
 
-This trivial implementation, however, will only report the panic happens inside `my_unwrap`. This is
-pretty useless, since it is the caller of `my_unwrap` that have made the wrong assumption!
+This trivial implementation, however, will only report the panic that happens inside `my_unwrap`. This is
+pretty useless since it is the caller of `my_unwrap` that made the wrong assumption!
 
 ```text
 $ ./2
@@ -173,8 +173,8 @@ args[2] = arg2
 args[3] = arg3
 ```
 
-The trivial solution would be requiring user to provide `file!()`, `line!()` and `column!()`. A
-slightly more ergonomic solution would be changing `my_unwrap` to a macro, thus these constants can
+The trivial solution would require the user to provide `file!()`, `line!()` and `column!()`. A
+slightly more ergonomic solution would be changing `my_unwrap` into a macro, allowing these constants to
 be automatically provided.
 
 ```rust
@@ -195,13 +195,13 @@ println!("args[1] = {}", my_unwrap!(args().nth(1)));
 ...
 ```
 
-But what if you have already published the `my_unwrap` crate that has thousands of users, and you
-want to maintain API stability? Before Rust 1.XX, the builtin `unwrap()` has the same problem!
+What if you have already published the `my_unwrap` crate that has thousands of users, and you
+want to maintain API stability? Before Rust 1.XX, the builtin `unwrap()` had the same problem!
 
 ## Adding caller location implicitly
 
-The reason a `my_unwrap!` macro works is because it copy-and-paste the entire content of its macro
-definition everytime it is used.
+The reason the `my_unwrap!` macro works is because it copy-and-pastes the entire content of its macro
+definition every time it is used.
 
 ```rust
 println!("args[1] = {}", my_unwrap!(args().nth(1)));
@@ -215,8 +215,8 @@ println!("args[1] = {}", my_unwrap(args().nth(2), file!(), line!(), column!()));
 ...
 ```
 
-What if we can instruct the compiler to automatically fill in the file-line-column? Rust supported
-this starting from 1.YY with the `#[implicit_caller_location]` attribute:
+What if we could instruct the compiler to automatically fill in the file, line, and column?
+Rust 1.YY introduced the `#[implicit_caller_location]` attribute for exactly this reason:
 
 ```rust
 // 3.rs
@@ -236,7 +236,7 @@ fn main() {
 }
 ```
 
-Now we magically have truly reproduced how the built-in `unwrap()` is implemented.
+Now we have truly reproduced how the built-in `unwrap()` is implemented.
 
 ```text
 $ ./3
@@ -260,16 +260,16 @@ args[2] = arg2
 args[3] = arg3
 ```
 
-What `#[implicit_caller_location]` does is an automated version of what you've seen last section.
-The attribute will copy `my_unwrap` into a new function `my_unwrap_at_source_location`, which will
-accept the caller's location as an additional argument. The attribute also instructs the compiler
-that, "whenever you see someone calls `my_unwrap(x)`, replace it with
-`my_unwrap_at_source_location(x, file!(), line!(), column!())` instead!". This allows us to maintain
-the stability guarantee, while allowing user to get the new behavior with just one recompile.
+`#[implicit_caller_location]` is an automated version of what you've seen in the last section. The
+attribute copies `my_unwrap` to a new function `my_unwrap_at_source_location` which accepts the
+caller's location as an additional argument. The attribute also instructs the compiler to replace
+`my_unwrap(x)` with `my_unwrap_at_source_location(x, file!(), line!(), column!())` whenever it sees
+it. This allows us to maintain the stability guarantee while allowing the user to get the new
+behavior with just one recompile.
 
 ## Location type
 
-Let's enhance `my_unwrap`, say, we also log a message to the log file before panicking? We would
+Let's enhance `my_unwrap` to also log a message to the log file before panicking. We would
 need to get the caller's location as a value. This is supported using the method
 `Location::caller()`:
 
@@ -291,29 +291,28 @@ pub fn my_unwrap<T>(input: Option<T>) -> T {
 ## Why do we use implicit caller location
 
 If you are learning Rust alongside other languages, you may wonder why Rust obtains the caller
-information in such a strange way. There are two restrictions that forces us to adapt this solution:
+information in such a strange way. There are two restrictions that force us to adopt this solution:
 
 1. Programmatic access to the stack backtrace is often used in interpreted or runtime-heavy
     languages like Python and Java. However, the stack backtrace is not suitable as the only
-    solution for systems languages like Rust, because optimization often collapses multiple levels
-    of function calls, and in some embedded system the backtrace may even be unavailable.
+    solution for systems languages like Rust because optimization often collapses multiple levels
+    of function calls.  In some embedded systems, the backtrace may even be unavailable!
 
-2. Rust does not (yet) support default function arguments or function overloading, because it badly
-    interferes with type inference. Therefore, solutions that uses default function arguments
-    alongside normal arguments are also ruled out. Default-function-arguments-based solutions are
-    often used in languages that does not perform inference higher than statement level, e.g. Swift
-    and C#.
+2. Solutions that use default function arguments alongside normal arguments are are often used in
+    languages that do not perform inference higher than statement level, e.g. Swift and C#. Rust
+    does not (yet) support default function arguments or function overloading because they interfere
+    with type inference, so such solutions are ruled out.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
 ## Survey of panicking standard functions
 
-Many standard functions may panic. These are divided into three categories, on whether they should
-receive caller information despite the inlining cost associated with it.
+Many standard functions may panic. These are divided into three categories depending on whether they
+should receive caller information despite the inlining cost associated with it.
 
-(The list of functions is not exhaustive. Only those with a "Panics" section in the documentation
-are included.)
+The list of functions is not exhaustive. Only those with a "Panics" section in the documentation
+are included.
 
 1. **Must have.** These functions are designed to generate a panic, or used so often that indicating
     a panic happening from them often gives no useful information.
@@ -336,7 +335,7 @@ are included.)
     | `VecDeque::index` | index out of bounds |
 
 2. **Nice to have.** These functions are not commonly used, or the panicking condition is pretty
-    rare. Often the panic information contains enough clue to fix the error without backtrace.
+    rare. Often the panic information contains enough clue to fix the error without a backtrace.
     Inlining them would bloat the binary size without much benefit.
 
     <details><summary>List of category 2 functions</summary>
@@ -411,8 +410,8 @@ are included.)
 
     </details>
 
-3. **Not needed.** Panics from these indicate silly programmer error and the panic itself have
-    enough clue to let programmers figure out where did the error comes from.
+3. **Not needed.** Panics from these indicate silly programmer error and the panic itself has
+    enough clue to let programmers figure out where the error comes from.
 
     <details><summary>List of category 3 functions</summary>
 
@@ -449,12 +448,12 @@ are included.)
 
 This RFC only advocates adding the `#[implicit_caller_location]` attribute to the `unwrap` and
 `expect` functions. The `index` and `index_mut` functions should also have it if possible, but
-currently blocked by lack of post-monomorphized MIR pass.
+this is currently blocked by a lack of a post-monomorphized MIR pass.
 
 ## Procedural attribute macro
 
-The `#[implicit_caller_location]` attribute will modify a function at AST level and MIR level,
-without touching type-checking (HIR level) or the low-level LLVM passes.
+The `#[implicit_caller_location]` attribute will modify a function at the AST and MIR levels
+without touching the type-checking (HIR level) or the low-level LLVM passes.
 
 It will first wrap the body of the function in a closure, and then call it:
 
@@ -475,18 +474,18 @@ fn foo<C>(x: A, y: B, z: C) -> R {
 }
 ```
 
-The reason for this is to split the function into two: the function `foo` itself, and the closure
-`foo::{{closure}}` in it. (Technically: it is the simplest way to create two `DefId` at HIR level as
-far as I know.)
+This is to split the function into two: the function `foo` itself, and the closure
+`foo::{{closure}}` in it. (Technically: it is the simplest way to create two `DefId`s at the HIR
+level as far as I know.)
 
 The function signature of `foo` remains unchanged, so typechecking can proceed normally. The
 attribute will be replaced by `#[rustc_implicit_caller_location]` to let the compiler internals
-continue to treat it specially. `#[inline]` is added so external crate can see through `foo` to find
+continue to treat it specially. `#[inline]` is added so external crates can see through `foo` to find
 `foo::{{closure}}`.
 
-The closure `foo::{{closure}}` is a proper function, that the compiler can write calls directly to
-`foo::{{closure}}`, skipping `foo`. Multiple calls to `foo` from different location can be done via
-calling `foo::{{closure}}` directly, instead of copying the function body everytime which will bloat
+The closure `foo::{{closure}}` is a proper function so that the compiler can write calls directly to
+`foo::{{closure}}`, skipping `foo`. Multiple calls to `foo` from different locations can be done via
+calling `foo::{{closure}}` directly, instead of copying the function body every time which would bloat
 the binary size.
 
 The intrinsic `caller_location()` is a placeholder which will be replaced by the actual caller
@@ -507,7 +506,7 @@ _c = call std::intrinsics::caller_location() -> 'bbt;
 _r = call foo::{{closure}} (&[closure: x: _1, y: _2], _c) -> 'bb1;
 ```
 
-Then, we will further replace the `caller_location()` intrinsic according to where `foo` is called.
+We will further replace the `caller_location()` intrinsic according to where `foo` is called.
 If it is called from an ordinary function, it would be replaced by the callsite's location:
 
 ```rust
@@ -521,9 +520,9 @@ _c = Location { file: file!(), line: line!(), column: column!() };
 goto -> 'bbt;
 ```
 
-On the other hand, if it is called from an `#[implicit_caller_location]`'s closure e.g.
+If it is called from an `#[implicit_caller_location]`'s closure e.g.
 `foo::{{closure}}`, the intrinsic will be replaced by the closure argument `__location` instead, so
-the caller location can propagate directly
+that the caller location can propagate directly
 
 ```rust
 // for #[implicit_caller_location] closures,
@@ -537,7 +536,7 @@ goto -> 'bbt;
 ```
 
 These steps are very similar to inlining, and thus the first proof-of-concept is implemented
-directly as a variant of MIR inliner (but a separate pass). This also means the redirection pass
+directly as a variant of the MIR inliner (but a separate pass). This also means the redirection pass
 currently suffers from all disadvantages of the MIR inliner, namely:
 
 * Locations will not be propagated into diverging functions (`fn() -> !`), since inlining them is
@@ -575,7 +574,7 @@ fn f100<T: Trait>() {
 }
 ```
 
-Currently the redirection pass always run before the inlining pass. If the redirection pass is run
+Currently the redirection pass always runs before the inlining pass. If the redirection pass is run
 after the normal MIR inlining pass, the normal MIR inliner must treat `#[implicit_caller_location]`
 as `#[inline(never)]`.
 
@@ -584,7 +583,7 @@ The closure `foo::{{closure}}` must never be inlined before the redirection pass
 When `#[implicit_caller_location]` functions are called dynamically, no inlining will occur, and
 thus it cannot take the location of the caller. Currently this will report where the function is
 declared. Taking the address of such functions must be allowed due to backward compatibility. (If
-post-monomorphized MIR pass exists, methods via trait objects would be another case of calling
+a post-monomorphized MIR pass exists, methods via trait objects would be another case of calling
 `#[implicit_caller_location]` functions without caller location.)
 
 ```rust
@@ -600,7 +599,7 @@ g(None); // The effect of these two calls must be the same.
 The `caller_location()` intrinsic returns the `Location` structure which encodes the file, line and
 column of the callsite. This shares the same structure as the existing type `std::panic::Location`.
 Therefore, the type is promoted to a lang-item, and moved into `core::panicking::Location`. It is
-re-exported in `libstd`.
+re-exported from `libstd`.
 
 Thanks to how `#[implicit_caller_location]` is implemented, we could provide a safe wrapper around
 the `caller_location()` intrinsic:
@@ -630,7 +629,7 @@ macro_rules! panic {
 ```
 
 Actually this is now more natural for `core::panicking::panic_fmt` to take `Location` directly
-instead of tuples, so one should consider changing their signature. But this is out-of-scope for
+instead of tuples, so one should consider changing their signature, but this is out-of-scope for
 this RFC.
 
 `panic!` is often used outside of `#[implicit_caller_location]` functions. In those cases, the
@@ -640,9 +639,9 @@ trans.
 
 ## Runtime-free backtrace for `?` operator
 
-The standard `Try` implementations could participate in specialization, so external crates like
+The standard `Try` implementations could participate in specialization so that external crates like
 `error_chain` could provide a specialized impl that prepends the caller location into the callstack
-everytime `?` is used.
+every time `?` is used.
 
 ```rust
 // libcore:
@@ -668,15 +667,15 @@ impl<T> Try for Result<T, my_crate::error::Error> {
 
 ## Location detail control
 
-An unstable flag `-Z location-detail` is added to `rustc` to control how much factural detail will
-be emitted when using `caller_location()`. User can toggle `file`, `line` and `column` separately,
+An unstable flag `-Z location-detail` is added to `rustc` to control how much factual detail will
+be emitted when using `caller_location()`. The user can toggle `file`, `line` and `column` separately,
 e.g. when compiling with:
 
 ```sh
 rustc -Zlocation-detail=line
 ```
 
-only the line number will be real, and the file and column will always be dummy value like
+only the line number will be real. The file and column will always be a dummy value like
 
     thread 'main' panicked at 'error message', <redacted>:192:0
 
@@ -686,14 +685,14 @@ only the line number will be real, and the file and column will always be dummy 
 
 ## Code bloat
 
-Previously, all call to `unwrap()` and `expect()` will refer to the same location. Therefore, the
-panicking branch will only need to reuse a pointer to a single global tuple.
+Previously, all calls to `unwrap()` and `expect()` referred to the same location. Therefore, the
+panicking branch will only needed to reuse a pointer to a single global tuple.
 
 After this RFC is implemented, the panicking branch will need to allocate space to store the varying caller location,
 so the number of instructions per `unwrap()`/`expect()` will increase.
 
-Also the optimizer will lose the opportunity to consolidate all jumps to the panicking branch, e.g. with the code
-`a.unwrap() + b.unwrap()`, before this RFC LLVM will optimize it to something like
+The optimizer will lose the opportunity to consolidate all jumps to the panicking branch. Before
+this RFC, LLVM would optimize `a.unwrap() + b.unwrap()`, to something like
 
 ```rust
 if (a.tag != SOME || b.tag != SOME) {
@@ -714,7 +713,7 @@ if (b.tag != SOME) {
 a.value_of_some + b.value_of_some
 ```
 
-(One could use `-Z location-detail` to get the old optimization behavior)
+One can use `-Z location-detail` to get the old optimization behavior.
 
 ## Narrow solution scope
 
@@ -738,8 +737,8 @@ fn foo() {
 }
 ```
 
-This is confusing, but if we don't support this, we will need two `panic!` macros which is not much
-better.
+This is confusing, but if we don't support this, we will need two `panic!` macros which is not a
+better solution.
 
 Clippy could provide a lint against using `Location::caller()` outside of
 `#[implicit_caller_location]`.
@@ -751,26 +750,26 @@ Clippy could provide a lint against using `Location::caller()` outside of
 
 This RFC tries to abide by the following restrictions:
 
-1. **Precise caller location**. Standard library functions which commonly panics will report the
-    source location at where the user call them. The source location should never point inside the
+1. **Precise caller location**. Standard library functions which commonly panic will report the
+    source location as where the user called them. The source location should never point inside the
     standard library. Examples of these functions include `Option::unwrap` and `HashMap::index`.
 
-2. **Source compatibility**. User should never need to modify existing source code to benefit from
+2. **Source compatibility**. Users should never need to modify existing source code to benefit from
     the improved precision.
 
 3. **Debug-info independence**. The precise caller location can still be reported even after
     stripping of debug information, which is very common on released software.
 
 4. **Interface independence**. The implementation of a trait should be able to decide whether to
-    accept a the caller information. It shouldn't require the trait itself to enforce it, i.e. it
+    accepts the caller information; it shouldn't require the trait itself to enforce it. It
     should not affect the signature of the function. This is an extension of rule 2, since the
     `Index` trait is involved in `HashMap::index`. The stability of `Index` must be upheld, e.g. it
     should remain object-safe, and existing implementions should not be forced to accept the caller
     location.
 
 Restriction 4 "interface independence" is currently not implemented due to lack of
-post-monomorphized MIR pass, but `#[implicit_caller_location]` itself as a language feature follows
-this restriction.
+post-monomorphized MIR pass, but implementing `#[implicit_caller_location]` as a language feature
+follows this restriction.
 
 ## Alternatives
 
@@ -779,7 +778,7 @@ this restriction.
 * Is `#[implicit_caller_location]` an accurate description?
 * Should we move `std::panic::Location` into `core`, or just use a 3-tuple to represent the
     location? Note that the former is advocated in [RFC 2070].
-* Should caller location propagation be implicit (currently) or explicit?
+* Should the caller location propagation be implicit (currently) or explicit?
 
 ### Using an ABI instead of an attribute
 
@@ -807,12 +806,12 @@ parameter, making it less competitive than just using an attribute.
 We could change the meaning of `file!()`, `line!()` and `column!()` so they are only converted to
 real constants after redirection (a MIR or trans pass) instead of early during macro expansion (an
 AST pass). Inside `#[implicit_caller_location]` functions, these macros behave as this RFC's
-`caller_location()`. The drawback is using these macro will have different values in compile time
+`caller_location()`. The drawback is using these macro will have different values at compile time
 (e.g. inside `include!(file!())`) vs. runtime.
 
 ### Inline MIR
 
-Introduced as [alternative to RFC 1669][inline_mir], instead of the `caller_location()` intrinsic,
+Introduced as an [alternative to RFC 1669][inline_mir], instead of the `caller_location()` intrinsic,
 we could provide a full-fledged inline MIR macro `mir!` similar to the inline assembler:
 
 ```rust
@@ -839,7 +838,7 @@ fn unwrap(self) -> T {
 ```
 
 The problem of `mir!` in this context is trying to kill a fly with a sledgehammer. `mir!` is a very
-generic mechanism, which requiring stabilizing the MIR syntax and considering the interaction with
+generic mechanism which requires stabilizing the MIR syntax and considering the interaction with
 the surrounding code. Besides, `#[implicit_caller_location]` itself still exists and the magic
 constants `$CallerFile` etc are still magic.
 
@@ -915,7 +914,7 @@ RFC, at least at the time being.
 The `unwrap!()` macro introduced in [RFC 1669] allows the user to write `unwrap!(x)` instead of
 `x.unwrap()`.
 
-Similar solution is introducing a `loc!()` macro that expands to
+A similar solution is introducing a `loc!()` macro that expands to
 `concat!(file!(), ":", line!(), ":", column!())`, so user writes `x.expect(loc!())` instead of
 `x.unwrap()`.
 
@@ -923,12 +922,12 @@ There is even the [`better_unwrap` crate](https://github.com/abonander/better_un
 automatically rewrites all `unwrap()` and `expect()` inside a module to provide the caller location
 through a procedural attribute.
 
-All of these are non-viable, since they require the user to actively change their source code, thus
+All of these are non-viable since they require the user to actively change their source code, thus
 violating restriction 2 "source compatibility", ~~unless we are willing to drop the `!` from
 macros~~.
 
-(Also, all pre-typeck rewrites are prone to false-positive affecting unrelated types that have an
-`unwrap()` method. Post-typeck rewrites are no different from this RFC.)
+All pre-typeck rewrites are prone to false-positive failures affecting unrelated types that have an
+`unwrap()` method. Post-typeck rewrites are no different from this RFC.
 
 ### Backtrace
 
@@ -947,10 +946,10 @@ For Rust, however:
 
     Even if this is generated, the debug symbols are generally not distributed to end-users, which
     means the error reports will only contain numerical addresses. This can be seen as a benefit, as
-    the implementation detail won't be exposed. But how to submit/analyze an error report would be
+    the implementation detail won't be exposed, but how to submit/analyze an error report would be
     out-of-scope for this RFC.
 
-* There are multiple issues preventing us to rely on debug info nowadays.
+* There are multiple issues preventing us from relying on debug info nowadays.
 
     Issues [24346]  (*Backtrace does not include file and line number on non-Linux platforms*) and
     [42295]  (*Slow backtrace on panic*) and are still not entirely fixed. Even after the debuginfo
