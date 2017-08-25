@@ -10,6 +10,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         src_ty: Ty<'tcx>,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, PrimVal> {
+        trace!("Casting {:?}: {:?} to {:?}", val, src_ty, dest_ty);
         let src_kind = self.ty_to_primval_kind(src_ty)?;
 
         match val {

@@ -998,16 +998,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr = self.force_allocation(lval)?.to_ptr()?;
                 let discr_val = self.read_discriminant_value(ptr, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
+                    trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(self.tcx).collect::<Vec<_>>());
                     if adt_def.discriminants(self.tcx).all(|v| {
                         discr_val != v.to_u128_unchecked()
                     })
                     {
                         return err!(InvalidDiscriminant);
                     }
+                    self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
                 } else {
                     bug!("rustc only generates Rvalue::Discriminant for enums");
                 }
-                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
             }
         }
 
@@ -1293,6 +1294,96 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 })
             }
         }
+    }
+
+    pub fn read_discriminant_value(
+        &self,
+        adt_ptr: MemoryPointer,
+        adt_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, u128> {
+        use rustc::ty::layout::Layout::*;
+        let adt_layout = self.type_layout(adt_ty)?;
+        //trace!("read_discriminant_value {:#?}", adt_layout);
+
+        let discr_val = match *adt_layout {
+            General { discr, .. } => {
+                let discr_size = discr.size().bytes();
+                self.memory.read_primval(adt_ptr, discr_size, false)?.to_bytes()?
+            }
+
+            CEnum {
+                discr,
+                signed,
+                ..
+            } => {
+                let discr_size = discr.size().bytes();
+                self.memory.read_primval(adt_ptr, discr_size, signed)?.to_bytes()?
+            }
+
+            RawNullablePointer { nndiscr, value } => {
+                let discr_size = value.size(&self.tcx.data_layout).bytes();
+                trace!("rawnullablepointer with size {}", discr_size);
+                self.read_nonnull_discriminant_value(
+                    adt_ptr,
+                    nndiscr as u128,
+                    discr_size,
+                )?
+            }
+
+            StructWrappedNullablePointer {
+                nndiscr,
+                ref discrfield_source,
+                ..
+            } => {
+                let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
+                    adt_ty,
+                    nndiscr,
+                    discrfield_source,
+                )?;
+                let nonnull = adt_ptr.offset(offset.bytes(), &*self)?;
+                trace!("struct wrapped nullable pointer type: {}", ty);
+                // only the pointer part of a fat pointer is used for this space optimization
+                let discr_size = self.type_size(ty)?.expect(
+                    "bad StructWrappedNullablePointer discrfield",
+                );
+                self.read_maybe_aligned(!packed, |ectx| {
+                    ectx.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size)
+                })?
+            }
+
+            // The discriminant_value intrinsic returns 0 for non-sum types.
+            Array { .. } |
+            FatPointer { .. } |
+            Scalar { .. } |
+            Univariant { .. } |
+            Vector { .. } |
+            UntaggedUnion { .. } => 0,
+        };
+
+        Ok(discr_val)
+    }
+
+    fn read_nonnull_discriminant_value(
+        &self,
+        ptr: MemoryPointer,
+        nndiscr: u128,
+        discr_size: u64,
+    ) -> EvalResult<'tcx, u128> {
+        trace!(
+            "read_nonnull_discriminant_value: {:?}, {}, {}",
+            ptr,
+            nndiscr,
+            discr_size
+        );
+        // We are only interested in 0 vs. non-0, the sign does not matter for this
+        let null = match self.memory.read_primval(ptr, discr_size, false)? {
+            PrimVal::Bytes(0) => true,
+            PrimVal::Bytes(_) |
+            PrimVal::Ptr(..) => false,
+            PrimVal::Undef => return err!(ReadUndefBytes),
+        };
+        assert!(nndiscr == 0 || nndiscr == 1);
+        Ok(if !null { nndiscr } else { 1 - nndiscr })
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId) -> Value {
@@ -1676,18 +1767,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         ptr: MemoryPointer,
         pointee_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
-        let p = self.memory.read_ptr(ptr)?;
+        let ptr_size = self.memory.pointer_size();
+        let p : Pointer = self.memory.read_ptr_sized_unsigned(ptr)?.into();
         if self.type_is_sized(pointee_ty) {
             Ok(p.to_value())
         } else {
             trace!("reading fat pointer extra of type {}", pointee_ty);
-            let extra = ptr.offset(self.memory.pointer_size(), self)?;
+            let extra = ptr.offset(ptr_size, self)?;
             match self.tcx.struct_tail(pointee_ty).sty {
                 ty::TyDynamic(..) => Ok(p.to_value_with_vtable(
-                    self.memory.read_ptr(extra)?.to_ptr()?,
+                    self.memory.read_ptr_sized_unsigned(extra)?.to_ptr()?,
                 )),
                 ty::TySlice(..) | ty::TyStr => Ok(
-                    p.to_value_with_len(self.memory.read_usize(extra)?),
+                    p.to_value_with_len(self.memory.read_ptr_sized_unsigned(extra)?.to_bytes()? as u64),
                 ),
                 _ => bug!("unsized primval ptr read from {:?}", pointee_ty),
             }
@@ -1697,10 +1789,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn try_read_value(&self, ptr: Pointer, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
+        let ptr = ptr.to_ptr()?;
         let val = match ty.sty {
-            ty::TyBool => PrimVal::from_bool(self.memory.read_bool(ptr.to_ptr()?)?),
+            ty::TyBool => PrimVal::from_bool(self.memory.read_bool(ptr)?),
             ty::TyChar => {
-                let c = self.memory.read_uint(ptr.to_ptr()?, 4)? as u32;
+                let c = self.memory.read_primval(ptr, 4, false)?.to_bytes()? as u32;
                 match ::std::char::from_u32(c) {
                     Some(ch) => PrimVal::from_char(ch),
                     None => return err!(InvalidChar(c as u128)),
@@ -1717,15 +1810,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     I128 => 16,
                     Is => self.memory.pointer_size(),
                 };
-                // if we transmute a ptr to an isize, reading it back into a primval shouldn't panic
-                // Due to read_ptr ignoring the sign, we need to jump around some hoops
-                match self.memory.read_int(ptr.to_ptr()?, size) {
-                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) if size == self.memory.pointer_size() =>
-                        // Reading as an int failed because we are seeing ptr bytes *and* we are actually reading at ptr size.
-                        // Let's try again, reading a ptr this time.
-                        self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
-                    other => PrimVal::from_i128(other?),
-                }
+                self.memory.read_primval(ptr, size, true)?
             }
 
             ty::TyUint(uint_ty) => {
@@ -1738,36 +1823,24 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     U128 => 16,
                     Us => self.memory.pointer_size(),
                 };
-                // if we transmute a ptr to an usize, reading it back into a primval shouldn't panic
-                // for consistency's sake, we use the same code as above
-                match self.memory.read_uint(ptr.to_ptr()?, size) {
-                    Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. })
-                        if size == self.memory.pointer_size() => {
-                        self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval()
-                    }
-                    other => PrimVal::from_u128(other?),
-                }
+                self.memory.read_primval(ptr, size, false)?
             }
 
-            ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr.to_ptr()?)?),
-            ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr.to_ptr()?)?),
+            ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
+            ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
 
-            ty::TyFnPtr(_) => self.memory.read_ptr(ptr.to_ptr()?)?.into_inner_primval(),
+            ty::TyFnPtr(_) => self.memory.read_ptr_sized_unsigned(ptr)?,
             ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr.to_ptr()?, tam.ty).map(Some),
+            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, tam.ty).map(Some),
 
             ty::TyAdt(def, _) => {
                 if def.is_box() {
-                    return self.read_ptr(ptr.to_ptr()?, ty.boxed_ty()).map(Some);
+                    return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
                 }
                 use rustc::ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
-                    if signed {
-                        PrimVal::from_i128(self.memory.read_int(ptr.to_ptr()?, size)?)
-                    } else {
-                        PrimVal::from_u128(self.memory.read_uint(ptr.to_ptr()?, size)?)
-                    }
+                    self.memory.read_primval(ptr, size, signed)?
                 } else {
                     return Ok(None);
                 }

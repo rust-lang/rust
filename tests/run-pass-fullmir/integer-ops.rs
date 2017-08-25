@@ -14,6 +14,10 @@
 use std::i32;
 
 pub fn main() {
+    // This tests that do (not) do sign extension properly when loading integers
+    assert_eq!(u32::max_value() as i64, 4294967295);
+    assert_eq!(i32::min_value() as i64, -2147483648);
+
     assert_eq!(i8::min_value(), -128);
 
     assert_eq!(i8::max_value(), 127);

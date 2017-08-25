@@ -1,12 +1,11 @@
 use rustc::mir;
-use rustc::ty::{self, TypeVariants, Ty};
+use rustc::ty::{self, TypeVariants};
 use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
-use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, eval_context, TyAndPacked,
-            PtrAndAlign, Lvalue, MemoryPointer, PrimVal, Value, Machine, HasMemory, ValTy};
-use super::eval_context::IntegerExt;
+use super::{EvalResult, EvalContext, eval_context,
+            PtrAndAlign, Lvalue, PrimVal, Value, Machine, ValTy};
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -395,10 +394,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.memory.pointer_size();
                 let (ptr, vtable) = args[0].into_ptr_vtable_pair(&self.memory)?;
-                let fn_ptr = self.memory.read_ptr(
-                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
-                )?;
-                let instance = self.memory.get_fn(fn_ptr.to_ptr()?)?;
+                let fn_ptr = self.memory.read_ptr_sized_unsigned(
+                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?
+                )?.to_ptr()?;
+                let instance = self.memory.get_fn(fn_ptr)?;
                 let mut args = args.to_vec();
                 let ty = self.get_field_ty(args[0].ty, 0)?.ty; // TODO: packed flag is ignored
                 args[0].ty = ty;
@@ -407,99 +406,5 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.eval_fn_call(instance, destination, &args, span, sig)
             }
         }
-    }
-
-    pub fn read_discriminant_value(
-        &self,
-        adt_ptr: MemoryPointer,
-        adt_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, u128> {
-        use rustc::ty::layout::Layout::*;
-        let adt_layout = self.type_layout(adt_ty)?;
-        //trace!("read_discriminant_value {:#?}", adt_layout);
-
-        let discr_val = match *adt_layout {
-            General { discr, .. } |
-            CEnum {
-                discr,
-                signed: false,
-                ..
-            } => {
-                let discr_size = discr.size().bytes();
-                self.memory.read_uint(adt_ptr, discr_size)?
-            }
-
-            CEnum {
-                discr,
-                signed: true,
-                ..
-            } => {
-                let discr_size = discr.size().bytes();
-                self.memory.read_int(adt_ptr, discr_size)? as u128
-            }
-
-            RawNullablePointer { nndiscr, value } => {
-                let discr_size = value.size(&self.tcx.data_layout).bytes();
-                trace!("rawnullablepointer with size {}", discr_size);
-                self.read_nonnull_discriminant_value(
-                    adt_ptr,
-                    nndiscr as u128,
-                    discr_size,
-                )?
-            }
-
-            StructWrappedNullablePointer {
-                nndiscr,
-                ref discrfield_source,
-                ..
-            } => {
-                let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
-                    adt_ty,
-                    nndiscr,
-                    discrfield_source,
-                )?;
-                let nonnull = adt_ptr.offset(offset.bytes(), &*self)?;
-                trace!("struct wrapped nullable pointer type: {}", ty);
-                // only the pointer part of a fat pointer is used for this space optimization
-                let discr_size = self.type_size(ty)?.expect(
-                    "bad StructWrappedNullablePointer discrfield",
-                );
-                self.read_maybe_aligned(!packed, |ectx| {
-                    ectx.read_nonnull_discriminant_value(nonnull, nndiscr as u128, discr_size)
-                })?
-            }
-
-            // The discriminant_value intrinsic returns 0 for non-sum types.
-            Array { .. } |
-            FatPointer { .. } |
-            Scalar { .. } |
-            Univariant { .. } |
-            Vector { .. } |
-            UntaggedUnion { .. } => 0,
-        };
-
-        Ok(discr_val)
-    }
-
-    fn read_nonnull_discriminant_value(
-        &self,
-        ptr: MemoryPointer,
-        nndiscr: u128,
-        discr_size: u64,
-    ) -> EvalResult<'tcx, u128> {
-        trace!(
-            "read_nonnull_discriminant_value: {:?}, {}, {}",
-            ptr,
-            nndiscr,
-            discr_size
-        );
-        let not_null = match self.memory.read_uint(ptr, discr_size) {
-            Ok(0) => false,
-            Ok(_) |
-            Err(EvalError { kind: EvalErrorKind::ReadPointerAsBytes, .. }) => true,
-            Err(e) => return Err(e),
-        };
-        assert!(nndiscr == 0 || nndiscr == 1);
-        Ok(if not_null { nndiscr } else { 1 - nndiscr })
     }
 }

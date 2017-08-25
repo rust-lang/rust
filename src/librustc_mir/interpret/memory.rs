@@ -1171,24 +1171,39 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_ptr(&self, ptr: MemoryPointer) -> EvalResult<'tcx, Pointer> {
-        let size = self.pointer_size();
+    pub fn read_primval(&self, ptr: MemoryPointer, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianess = self.endianess();
-        let bytes = self.get_bytes_unchecked(ptr, size, size)?;
+        let bytes = self.get_bytes_unchecked(ptr, size, self.int_align(size)?)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
             return Ok(PrimVal::Undef.into());
         }
-        let offset = read_target_uint(endianess, bytes).unwrap();
-        assert_eq!(offset as u64 as u128, offset);
-        let offset = offset as u64;
-        let alloc = self.get(ptr.alloc_id)?;
-        match alloc.relocations.get(&ptr.offset) {
-            Some(&alloc_id) => Ok(PrimVal::Ptr(MemoryPointer::new(alloc_id, offset)).into()),
-            None => Ok(PrimVal::Bytes(offset as u128).into()),
+        // Now we do the actual reading
+        let bytes = if signed {
+            read_target_int(endianess, bytes).unwrap() as u128
+        } else {
+            read_target_uint(endianess, bytes).unwrap()
+        };
+        // See if we got a pointer
+        if size != self.pointer_size() {
+            if self.relocations(ptr, size)?.count() != 0 {
+                return err!(ReadPointerAsBytes);
+            }
+        } else {
+            let alloc = self.get(ptr.alloc_id)?;
+            match alloc.relocations.get(&ptr.offset) {
+                Some(&alloc_id) => return Ok(PrimVal::Ptr(MemoryPointer::new(alloc_id, bytes as u64))),
+                None => {},
+            }
         }
+        // We don't. Just return the bytes.
+        Ok(PrimVal::Bytes(bytes))
+    }
+
+    pub fn read_ptr_sized_unsigned(&self, ptr: MemoryPointer) -> EvalResult<'tcx, PrimVal> {
+        self.read_primval(ptr, self.pointer_size(), false)
     }
 
     pub fn write_ptr(&mut self, dest: MemoryPointer, ptr: MemoryPointer) -> EvalResult<'tcx> {
@@ -1242,6 +1257,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     fn int_align(&self, size: u64) -> EvalResult<'tcx, u64> {
+        // We assume pointer-sized integers have the same alignment as pointers.
+        // We also assume singed and unsigned integers of the same size have the same alignment.
         match size {
             1 => Ok(self.layout.i8_align.abi()),
             2 => Ok(self.layout.i16_align.abi()),
@@ -1252,26 +1269,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    pub fn read_int(&self, ptr: MemoryPointer, size: u64) -> EvalResult<'tcx, i128> {
-        let align = self.int_align(size)?;
-        self.get_bytes(ptr, size, align).map(|b| {
-            read_target_int(self.endianess(), b).unwrap()
-        })
-    }
-
     pub fn write_int(&mut self, ptr: MemoryPointer, n: i128, size: u64) -> EvalResult<'tcx> {
         let align = self.int_align(size)?;
         let endianess = self.endianess();
         let b = self.get_bytes_mut(ptr, size, align)?;
         write_target_int(endianess, b, n).unwrap();
         Ok(())
-    }
-
-    pub fn read_uint(&self, ptr: MemoryPointer, size: u64) -> EvalResult<'tcx, u128> {
-        let align = self.int_align(size)?;
-        self.get_bytes(ptr, size, align).map(|b| {
-            read_target_uint(self.endianess(), b).unwrap()
-        })
     }
 
     pub fn write_uint(&mut self, ptr: MemoryPointer, n: u128, size: u64) -> EvalResult<'tcx> {
@@ -1282,17 +1285,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub fn read_isize(&self, ptr: MemoryPointer) -> EvalResult<'tcx, i64> {
-        self.read_int(ptr, self.pointer_size()).map(|i| i as i64)
-    }
-
     pub fn write_isize(&mut self, ptr: MemoryPointer, n: i64) -> EvalResult<'tcx> {
         let size = self.pointer_size();
         self.write_int(ptr, n as i128, size)
-    }
-
-    pub fn read_usize(&self, ptr: MemoryPointer) -> EvalResult<'tcx, u64> {
-        self.read_uint(ptr, self.pointer_size()).map(|i| i as u64)
     }
 
     pub fn write_usize(&mut self, ptr: MemoryPointer, n: u64) -> EvalResult<'tcx> {
@@ -1494,12 +1489,14 @@ fn read_target_uint(endianess: layout::Endian, mut source: &[u8]) -> Result<u128
         layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
+
 fn read_target_int(endianess: layout::Endian, mut source: &[u8]) -> Result<i128, io::Error> {
     match endianess {
         layout::Endian::Little => source.read_int128::<LittleEndian>(source.len()),
         layout::Endian::Big => source.read_int128::<BigEndian>(source.len()),
     }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Methods to access floats in the target endianess

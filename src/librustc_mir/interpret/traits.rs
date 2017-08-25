@@ -105,10 +105,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         vtable: MemoryPointer,
     ) -> EvalResult<'tcx, (u64, u64)> {
         let pointer_size = self.memory.pointer_size();
-        let size = self.memory.read_usize(vtable.offset(pointer_size, self)?)?;
-        let align = self.memory.read_usize(
-            vtable.offset(pointer_size * 2, self)?,
-        )?;
+        let size = self.memory.read_ptr_sized_unsigned(vtable.offset(pointer_size, self)?)?.to_bytes()? as u64;
+        let align = self.memory.read_ptr_sized_unsigned(
+            vtable.offset(pointer_size * 2, self)?
+        )?.to_bytes()? as u64;
         Ok((size, align))
     }
 
