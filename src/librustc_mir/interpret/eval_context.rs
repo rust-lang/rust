@@ -1610,7 +1610,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
-                // TODO: This fn gets called with sizes like 6, which cannot be a primitive type
+                // TODO: This fn gets called with sizes like 0 and 6, which cannot be a primitive type
                 // and hence is not supported by write_primval.
                 // (E.g. in the arrays.rs testcase.)  That seems to only happen for Undef though,
                 // so we special-case that here.
@@ -1808,7 +1808,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         let ptr = ptr.to_ptr()?;
         let val = match ty.sty {
-            ty::TyBool => PrimVal::from_bool(self.memory.read_bool(ptr)?),
+            ty::TyBool => {
+                let val = self.memory.read_primval(ptr, 1, false)?;
+                let val = match val {
+                    PrimVal::Bytes(0) => false,
+                    PrimVal::Bytes(1) => true,
+                    _ => return err!(InvalidBool),
+                };
+                PrimVal::from_bool(val)
+            }
             ty::TyChar => {
                 let c = self.memory.read_primval(ptr, 4, false)?.to_bytes()? as u32;
                 match ::std::char::from_u32(c) {
@@ -1843,8 +1851,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 self.memory.read_primval(ptr, size, false)?
             }
 
-            ty::TyFloat(FloatTy::F32) => PrimVal::from_f32(self.memory.read_f32(ptr)?),
-            ty::TyFloat(FloatTy::F64) => PrimVal::from_f64(self.memory.read_f64(ptr)?),
+            ty::TyFloat(FloatTy::F32) => PrimVal::Bytes(self.memory.read_primval(ptr, 4, false)?.to_bytes()?),
+            ty::TyFloat(FloatTy::F64) => PrimVal::Bytes(self.memory.read_primval(ptr, 8, false)?.to_bytes()?),
 
             ty::TyFnPtr(_) => self.memory.read_ptr_sized_unsigned(ptr)?,
             ty::TyRef(_, ref tam) |
