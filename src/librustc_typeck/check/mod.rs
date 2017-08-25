@@ -3331,15 +3331,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .join(", ");
 
             struct_span_err!(tcx.sess, span, E0063,
-                        "missing field{} {}{} in initializer of `{}`",
+                             "missing field{} {}{} in initializer of `{}`",
                              if remaining_fields.len() == 1 { "" } else { "s" },
-                        remaining_fields_names,
-                        truncated_fields_error,
-                        adt_ty)
-                        .span_label(span, format!("missing {}{}",
-                            remaining_fields_names,
-                            truncated_fields_error))
-                        .emit();
+                             remaining_fields_names,
+                             truncated_fields_error,
+                             adt_ty)
+                .span_label(span, format!("missing {}{}",
+                                          remaining_fields_names,
+                                          truncated_fields_error))
+                .emit();
         }
     }
 

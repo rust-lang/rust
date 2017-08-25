@@ -102,37 +102,37 @@ fn find_dead_unwinds<'a, 'tcx>(
             _ => continue,
         };
 
-                let mut init_data = InitializationData {
-                    live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
-                    dead: IdxSetBuf::new_empty(env.move_data.move_paths.len()),
-                };
-                debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
-                        bb, bb_data, init_data.live);
-                for stmt in 0..bb_data.statements.len() {
-                    let loc = Location { block: bb, statement_index: stmt };
-                    init_data.apply_location(tcx, mir, env, loc);
-                }
+        let mut init_data = InitializationData {
+            live: flow_inits.sets().on_entry_set_for(bb.index()).to_owned(),
+            dead: IdxSetBuf::new_empty(env.move_data.move_paths.len()),
+        };
+        debug!("find_dead_unwinds @ {:?}: {:?}; init_data={:?}",
+               bb, bb_data, init_data.live);
+        for stmt in 0..bb_data.statements.len() {
+            let loc = Location { block: bb, statement_index: stmt };
+            init_data.apply_location(tcx, mir, env, loc);
+        }
 
-                let path = match env.move_data.rev_lookup.find(location) {
-                    LookupResult::Exact(e) => e,
-                    LookupResult::Parent(..) => {
-                        debug!("find_dead_unwinds: has parent; skipping");
-                        continue
-                    }
-                };
+        let path = match env.move_data.rev_lookup.find(location) {
+            LookupResult::Exact(e) => e,
+            LookupResult::Parent(..) => {
+                debug!("find_dead_unwinds: has parent; skipping");
+                continue
+            }
+        };
 
-                debug!("find_dead_unwinds @ {:?}: path({:?})={:?}", bb, location, path);
+        debug!("find_dead_unwinds @ {:?}: path({:?})={:?}", bb, location, path);
 
-                let mut maybe_live = false;
-                on_all_drop_children_bits(tcx, mir, &env, path, |child| {
-                    let (child_maybe_live, _) = init_data.state(child);
-                    maybe_live |= child_maybe_live;
-                });
+        let mut maybe_live = false;
+        on_all_drop_children_bits(tcx, mir, &env, path, |child| {
+            let (child_maybe_live, _) = init_data.state(child);
+            maybe_live |= child_maybe_live;
+        });
 
-                debug!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
-                if !maybe_live {
-                    dead_unwinds.add(&bb);
-                }
+        debug!("find_dead_unwinds @ {:?}: maybe_live={}", bb, maybe_live);
+        if !maybe_live {
+            dead_unwinds.add(&bb);
+        }
     }
 
     dead_unwinds
