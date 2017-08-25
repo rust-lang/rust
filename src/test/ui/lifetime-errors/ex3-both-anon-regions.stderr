@@ -2,7 +2,7 @@ error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions.rs:12:12
    |
 11 | fn foo(x: &mut Vec<&u8>, y: &u8) {
-   |                    ---      --- these references are not declared with the same lifetime...
+   |                    ---      --- these two types are declared with different lifetimes...
 12 |     x.push(y);
    |            ^ ...but data from `y` flows into `x` here
 
