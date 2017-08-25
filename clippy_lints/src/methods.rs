@@ -1464,11 +1464,11 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
                         let path = &ptr.trait_ref.path;
                         match_path_old(path, name) &&
                             path.segments.last().map_or(false, |s| {
-                                if let hir::PathParameters::AngleBracketedParameters(ref data) = s.parameters {
-                                    data.types.len() == 1 &&
-                                        (is_self_ty(&data.types[0]) || is_ty(&*data.types[0], self_ty))
-                                } else {
+                                if s.parameters.parenthesized {
                                     false
+                                } else {
+                                    s.parameters.types.len() == 1 &&
+                                        (is_self_ty(&s.parameters.types[0]) || is_ty(&*s.parameters.types[0], self_ty))
                                 }
                             })
                     } else {

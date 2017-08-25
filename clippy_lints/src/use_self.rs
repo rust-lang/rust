@@ -56,16 +56,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
         if_let_chain!([
             let ItemImpl(.., ref item_type, ref refs) = item.node,
             let Ty_::TyPath(QPath::Resolved(_, ref item_path)) = item_type.node,
-            let PathParameters::AngleBracketedParameters(ref param_data)
-              = item_path.segments.last().expect(SEGMENTS_MSG).parameters,
-            param_data.lifetimes.len() == 0,
         ], {
-            let visitor = &mut UseSelfVisitor {
-                item_path: item_path,
-                cx: cx,
-            };
-            for impl_item_ref in refs {
-                visitor.visit_impl_item(cx.tcx.hir.impl_item(impl_item_ref.id));
+            let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).parameters;
+            if !parameters.parenthesized && parameters.lifetimes.len() == 0 {
+                let visitor = &mut UseSelfVisitor {
+                    item_path: item_path,
+                    cx: cx,
+                };
+                for impl_item_ref in refs {
+                    visitor.visit_impl_item(cx.tcx.hir.impl_item(impl_item_ref.id));
+                }
             }
         })
     }

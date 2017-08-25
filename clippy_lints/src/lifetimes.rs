@@ -104,14 +104,14 @@ fn check_fn_inner<'a, 'tcx>(
     for typ in &generics.ty_params {
         for bound in &typ.bounds {
             if let TraitTyParamBound(ref trait_ref, _) = *bound {
-                let bounds = trait_ref
+                let bounds = &trait_ref
                     .trait_ref
                     .path
                     .segments
                     .last()
                     .expect("a path must have at least one segment")
                     .parameters
-                    .lifetimes();
+                    .lifetimes;
                 for bound in bounds {
                     if bound.name != "'static" && !bound.is_elided() {
                         return;
@@ -282,25 +282,23 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
         let last_path_segment = &last_path_segment(qpath).parameters;
-        if let AngleBracketedParameters(ref params) = *last_path_segment {
-            if params.lifetimes.is_empty() {
-                let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
-                match self.cx.tables.qpath_def(qpath, hir_id) {
-                    Def::TyAlias(def_id) |
-                    Def::Struct(def_id) => {
-                        let generics = self.cx.tcx.generics_of(def_id);
-                        for _ in generics.regions.as_slice() {
-                            self.record(&None);
-                        }
-                    },
-                    Def::Trait(def_id) => {
-                        let trait_def = self.cx.tcx.trait_def(def_id);
-                        for _ in &self.cx.tcx.generics_of(trait_def.def_id).regions {
-                            self.record(&None);
-                        }
-                    },
-                    _ => (),
-                }
+        if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
+            let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
+            match self.cx.tables.qpath_def(qpath, hir_id) {
+                Def::TyAlias(def_id) |
+                Def::Struct(def_id) => {
+                    let generics = self.cx.tcx.generics_of(def_id);
+                    for _ in generics.regions.as_slice() {
+                        self.record(&None);
+                    }
+                },
+                Def::Trait(def_id) => {
+                    let trait_def = self.cx.tcx.trait_def(def_id);
+                    for _ in &self.cx.tcx.generics_of(trait_def.def_id).regions {
+                        self.record(&None);
+                    }
+                },
+                _ => (),
             }
         }
     }

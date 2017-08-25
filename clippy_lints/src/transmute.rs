@@ -208,8 +208,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
 fn get_type_snippet(cx: &LateContext, path: &QPath, to_rty: Ty) -> String {
     let seg = last_path_segment(path);
     if_let_chain!{[
-        let PathParameters::AngleBracketedParameters(ref ang) = seg.parameters,
-        let Some(to_ty) = ang.types.get(1),
+        !seg.parameters.parenthesized,
+        let Some(to_ty) = seg.parameters.types.get(1),
         let TyRptr(_, ref to_ty) = to_ty.node,
     ], {
         return snippet(cx, to_ty.ty.span, &to_rty.to_string()).to_string();
