@@ -1,8 +1,8 @@
-use rustc::mir;
+use rustc::mir::BasicBlock;
 use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 
-use interpret::{EvalResult, EvalContext, StackPopCleanup, Lvalue, LvalueExtra, PrimVal, Value,
+use interpret::{EvalResult, EvalContext, Lvalue, LvalueExtra, PrimVal, Value,
                 Machine, ValTy};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
@@ -12,6 +12,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         instance: ty::Instance<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
+        target: BasicBlock,
     ) -> EvalResult<'tcx> {
         trace!("drop_lvalue: {:#?}", lval);
         // We take the address of the object.  This may well be unaligned, which is fine for us here.
@@ -32,57 +33,51 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             } => ptr.ptr.to_value(),
             _ => bug!("force_allocation broken"),
         };
-        self.drop(val, instance, ty, span)
+        self.drop(val, instance, ty, span, target)
     }
-    pub(crate) fn drop(
+
+    fn drop(
         &mut self,
         arg: Value,
-        mut instance: ty::Instance<'tcx>,
+        instance: ty::Instance<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
+        target: BasicBlock,
     ) -> EvalResult<'tcx> {
         trace!("drop: {:#?}, {:?}, {:?}", arg, ty.sty, instance.def);
 
-        if let ty::InstanceDef::DropGlue(_, None) = instance.def {
-            trace!("nothing to do, aborting");
-            // we don't actually need to drop anything
-            return Ok(());
-        }
-        let mir = match ty.sty {
+        let instance = match ty.sty {
             ty::TyDynamic(..) => {
                 let vtable = match arg {
                     Value::ByValPair(_, PrimVal::Ptr(vtable)) => vtable,
                     _ => bug!("expected fat ptr, got {:?}", arg),
                 };
                 match self.read_drop_type_from_vtable(vtable)? {
-                    Some(func) => {
-                        instance = func;
-                        self.load_mir(func.def)?
-                    }
+                    Some(func) => func,
                     // no drop fn -> bail out
-                    None => return Ok(()),
+                    None => {
+                        self.goto_block(target);
+                        return Ok(())
+                    },
                 }
             }
-            _ => self.load_mir(instance.def)?,
+            _ => instance,
         };
 
-        self.push_stack_frame(
-            instance,
-            span,
-            mir,
-            Lvalue::undef(),
-            StackPopCleanup::None,
-        )?;
-
-        let mut arg_locals = self.frame().mir.args_iter();
-        assert_eq!(self.frame().mir.arg_count, 1);
-        let arg_local = arg_locals.next().unwrap();
-        let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-        let arg_ty = self.tcx.mk_mut_ptr(ty);
+        // the drop function expects a reference to the value
         let valty = ValTy {
             value: arg,
-            ty: arg_ty,
+            ty: self.tcx.mk_mut_ptr(ty),
         };
-        self.write_value(valty, dest)
+
+        let fn_sig = self.tcx.fn_sig(instance.def_id()).skip_binder().clone();
+
+        self.eval_fn_call(
+            instance,
+            Some((Lvalue::undef(), target)),
+            &vec![valty],
+            span,
+            fn_sig,
+        )
     }
 }

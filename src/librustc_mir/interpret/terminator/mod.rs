@@ -112,12 +112,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 target,
                 ..
             } => {
-                trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
                 // FIXME(CTFE): forbid drop in const eval
                 let lval = self.eval_lvalue(location)?;
                 let ty = self.lvalue_ty(location);
-                self.goto_block(target);
                 let ty = eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
+                trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = eval_context::resolve_drop_in_place(self.tcx, ty);
                 self.drop_lvalue(
@@ -125,6 +124,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     instance,
                     ty,
                     terminator.source_info.span,
+                    target,
                 )?;
             }
 
