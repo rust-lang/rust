@@ -209,10 +209,7 @@
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/first-edition/primitive-types.html
 
-#![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",

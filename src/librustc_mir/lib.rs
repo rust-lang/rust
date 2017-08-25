@@ -14,9 +14,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 */
 
-#![crate_name = "rustc_mir"]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![deny(warnings)]
 
 #![feature(box_patterns)]

@@ -56,13 +56,12 @@ struct Test {
 }
 
 struct TestCtxt<'a> {
-    sess: &'a ParseSess,
     span_diagnostic: &'a errors::Handler,
     path: Vec<Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
-    is_test_crate: bool,
+    is_libtest: bool,
     ctxt: SyntaxContext,
 
     // top-level re-export submodule, filled out after folding is finished
@@ -272,14 +271,15 @@ fn generate_test_harness(sess: &ParseSess,
     let krate = cleaner.fold_crate(krate);
 
     let mark = Mark::fresh(Mark::root());
+
     let mut cx: TestCtxt = TestCtxt {
-        sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main,
-        is_test_crate: is_test_crate(&krate),
+        // NB: doesn't consider the value of `--crate-name` passed on the command line.
+        is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
     };
@@ -454,7 +454,7 @@ mod __test {
 fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = Ident::from_str("test");
     let sp = ignored_span(cx, DUMMY_SP);
-    let (vi, vis, ident) = if cx.is_test_crate {
+    let (vi, vis, ident) = if cx.is_libtest {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec![id_test]))))),
@@ -606,13 +606,6 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
                    ecx.ident_of("TESTS"),
                    static_type,
                    test_descs)
-}
-
-fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crate_name(&krate.attrs) {
-        Some(s) if "test" == s.as_str() => true,
-        _ => false
-    }
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {

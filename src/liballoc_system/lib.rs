@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "alloc_system"]
-#![crate_type = "rlib"]
 #![no_std]
 #![deny(warnings)]
 #![unstable(feature = "alloc_system",

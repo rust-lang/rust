@@ -23,10 +23,7 @@
 //!
 //! See [the book](../book/first-edition/procedural-macros.html) for more.
 
-#![crate_name = "proc_macro"]
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![deny(warnings)]
 #![deny(missing_docs)]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
