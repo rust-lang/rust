@@ -155,8 +155,8 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                 if Some(def_id) == cx.tcx.lang_items.owned_box() {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
-                        let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
-                        let Some(vec) = ag.types.get(0),
+                        !last.parameters.parenthesized,
+                        let Some(vec) = last.parameters.types.get(0),
                         let TyPath(ref qpath) = vec.node,
                         let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, cx.tcx.hir.node_to_hir_id(vec.id))),
                         match_def_path(cx.tcx, did, &paths::VEC),
@@ -182,18 +182,18 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             match *qpath {
                 QPath::Resolved(Some(ref ty), ref p) => {
                     check_ty(cx, ty, is_local);
-                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types.iter()) {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => {
-                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types()) {
+                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types.iter()) {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
-                    for ty in seg.parameters.types() {
+                    for ty in seg.parameters.types.iter() {
                         check_ty(cx, ty, is_local);
                     }
                 },
@@ -209,8 +209,8 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         Some(def_id) == cx.tcx.lang_items.owned_box(),
                         let QPath::Resolved(None, ref path) = *qpath,
                         let [ref bx] = *path.segments,
-                        let PathParameters::AngleBracketedParameters(ref ab_data) = bx.parameters,
-                        let [ref inner] = *ab_data.types
+                        !bx.parameters.parenthesized,
+                        let [ref inner] = *bx.parameters.types
                     ], {
                         if is_any_trait(inner) {
                             // Ignore `Box<Any>` types, see #1884 for details.

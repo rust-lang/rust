@@ -195,18 +195,15 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     }
 
     fn eq_path_parameters(&self, left: &PathParameters, right: &PathParameters) -> bool {
-        match (left, right) {
-            (&AngleBracketedParameters(ref left), &AngleBracketedParameters(ref right)) => {
+        if !(left.parenthesized || right.parenthesized) {
                 over(&left.lifetimes, &right.lifetimes, |l, r| self.eq_lifetime(l, r)) &&
                     over(&left.types, &right.types, |l, r| self.eq_ty(l, r)) &&
                     over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
-            },
-            (&ParenthesizedParameters(ref left), &ParenthesizedParameters(ref right)) => {
-                over(&left.inputs, &right.inputs, |l, r| self.eq_ty(l, r)) &&
-                    both(&left.output, &right.output, |l, r| self.eq_ty(l, r))
-            },
-            (&AngleBracketedParameters(_), &ParenthesizedParameters(_)) |
-            (&ParenthesizedParameters(_), &AngleBracketedParameters(_)) => false,
+        } else if left.parenthesized && right.parenthesized {
+                over(left.inputs(), right.inputs(), |l, r| self.eq_ty(l, r)) &&
+                    both(&Some(&left.bindings[0].ty), &Some(&right.bindings[0].ty), |l, r| self.eq_ty(l, r))
+        } else {
+            false
         }
     }
 
