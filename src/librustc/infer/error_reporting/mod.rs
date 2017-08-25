@@ -79,7 +79,7 @@ mod need_type_info;
 mod named_anon_conflict;
 #[macro_use]
 mod util;
-mod anon_anon_conflict;
+mod different_lifetimes;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,

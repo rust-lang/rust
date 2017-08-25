@@ -46,9 +46,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
-        let anon_reg_sup = or_false!(self.is_suitable_anonymous_region(sup));
+        let anon_reg_sup = or_false!(self.is_suitable_region(sup));
 
-        let anon_reg_sub = or_false!(self.is_suitable_anonymous_region(sub));
+        let anon_reg_sub = or_false!(self.is_suitable_region(sub));
         let scope_def_id_sup = anon_reg_sup.def_id;
         let bregion_sup = anon_reg_sup.boundregion;
         let scope_def_id_sub = anon_reg_sub.def_id;
@@ -57,10 +57,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let ty_sup = or_false!(self.find_anon_type(sup, &bregion_sup));
 
         let ty_sub = or_false!(self.find_anon_type(sub, &bregion_sub));
+        debug!("try_report_anon_anon_conflict: found_arg1={:?} sup={:?} br1={:?}",
+               ty_sub,
+               sup,
+               bregion_sup);
+        debug!("try_report_anon_anon_conflict: found_arg2={:?} sub={:?} br2={:?}",
+               ty_sup,
+               sub,
+               bregion_sub);
 
         let (main_label, label1, label2) = if let (Some(sup_arg), Some(sub_arg)) =
-            (self.find_arg_with_anonymous_region(sup, sup),
-             self.find_arg_with_anonymous_region(sub, sub)) {
+            (self.find_arg_with_region(sup, sup), self.find_arg_with_region(sub, sub)) {
 
             let (anon_arg_sup, is_first_sup, anon_arg_sub, is_first_sub) =
                 (sup_arg.arg, sup_arg.is_first, sub_arg.arg, sub_arg.is_first);
@@ -97,6 +104,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 (span_label, span_label_var1, span_label_var2)
             }
         } else {
+            debug!("no arg with anon region found");
+            debug!("try_report_anon_anon_conflict: is_suitable(sub) = {:?}",
+                   self.is_suitable_region(sub));
+            debug!("try_report_anon_anon_conflict: is_suitable(sup) = {:?}",
+                   self.is_suitable_region(sup));
             return false;
         };
 
@@ -124,35 +136,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// The function returns the nested type corresponding to the anonymous region
     /// for e.g. `&u8` and Vec<`&u8`.
     pub fn find_anon_type(&self, region: Region<'tcx>, br: &ty::BoundRegion) -> Option<&hir::Ty> {
-        if let Some(anon_reg) = self.is_suitable_anonymous_region(region) {
+        if let Some(anon_reg) = self.is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let ret_ty = self.tcx.type_of(def_id);
-                if let ty::TyFnDef(_, _) = ret_ty.sty {
-                    let inputs: &[_] =
-                        match self.tcx.hir.get(node_id) {
-                            hir_map::NodeItem(&hir::Item {
-                                                  node: hir::ItemFn(ref fndecl, ..), ..
-                                              }) => &fndecl.inputs,
-                            hir_map::NodeTraitItem(&hir::TraitItem {
-                                                   node: hir::TraitItemKind::Method(ref fndecl, ..),
-                                                   ..
-                                               }) => &fndecl.decl.inputs,
-                            hir_map::NodeImplItem(&hir::ImplItem {
-                                                  node: hir::ImplItemKind::Method(ref fndecl, ..),
-                                                  ..
-                                              }) => &fndecl.decl.inputs,
+                let inputs: &[_] = match self.tcx.hir.get(node_id) {
+                    hir_map::NodeItem(&hir::Item { node: hir::ItemFn(ref fndecl, ..), .. }) => {
+                        &fndecl.inputs
+                    }
+                    hir_map::NodeTraitItem(&hir::TraitItem {
+                                               node: hir::TraitItemKind::Method(ref fndecl, ..), ..
+                                           }) => &fndecl.decl.inputs,
+                    hir_map::NodeImplItem(&hir::ImplItem {
+                                              node: hir::ImplItemKind::Method(ref fndecl, ..), ..
+                                          }) => &fndecl.decl.inputs,
 
-                            _ => &[],
-                        };
+                    _ => &[],
+                };
 
-                    return inputs
-                               .iter()
-                               .filter_map(|arg| {
-                                               self.find_component_for_bound_region(&**arg, br)
-                                           })
-                               .next();
-                }
+                return inputs
+                           .iter()
+                           .filter_map(|arg| self.find_component_for_bound_region(&**arg, br))
+                           .next();
             }
         }
         None
@@ -199,30 +203,62 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
-        // Find the index of the anonymous region that was part of the
-        // error. We will then search the function parameters for a bound
-        // region at the right depth with the same index.
-        let br_index = match self.bound_region {
-            ty::BrAnon(index) => index,
-            _ => return,
-        };
-
         match arg.node {
             hir::TyRptr(ref lifetime, _) => {
+                // the lifetime of the TyRptr
                 let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
-                match self.infcx.tcx.named_region(hir_id) {
-                    // the lifetime of the TyRptr
-                    Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
+                match (self.infcx.tcx.named_region(hir_id), self.bound_region) {
+                    // Find the index of the anonymous region that was part of the
+                    // error. We will then search the function parameters for a bound
+                    // region at the right depth with the same index
+                    (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)),
+                     ty::BrAnon(br_index)) => {
+                        debug!("LateBoundAnon depth = {:?} anon_index = {:?} br_index={:?}",
+                               debruijn_index.depth,
+                               anon_index,
+                               br_index);
                         if debruijn_index.depth == 1 && anon_index == br_index {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
                     }
-                    Some(rl::Region::Static) |
-                    Some(rl::Region::EarlyBound(_, _)) |
-                    Some(rl::Region::LateBound(_, _)) |
-                    Some(rl::Region::Free(_, _)) |
-                    None => {
+
+                    // Find the index of the named region that was part of the
+                    // error. We will then search the function parameters for a bound
+                    // region at the right depth with the same index
+                    (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+                        debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
+                                        def_id={:?}",
+                               self.infcx.tcx.hir.local_def_id(id),
+                               def_id);
+                        if self.infcx.tcx.hir.local_def_id(id) == def_id {
+                            self.found_type = Some(arg);
+                            return; // we can stop visiting now
+                        }
+                    }
+
+                    // Find the index of the named region that was part of the
+                    // error. We will then search the function parameters for a bound
+                    // region at the right depth with the same index
+                    (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
+                        debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
+                               debruijn_index.depth);
+                        debug!("self.infcx.tcx.hir.local_def_id(id)={:?}",
+                               self.infcx.tcx.hir.local_def_id(id));
+                        debug!("def_id={:?}", def_id);
+                        if debruijn_index.depth == 1 &&
+                           self.infcx.tcx.hir.local_def_id(id) == def_id {
+                            self.found_type = Some(arg);
+                            return; // we can stop visiting now
+                        }
+                    }
+
+                    (Some(rl::Region::Static), _) |
+                    (Some(rl::Region::Free(_, _)), _) |
+                    (Some(rl::Region::EarlyBound(_, _)), _) |
+                    (Some(rl::Region::LateBound(_, _)), _) |
+                    (Some(rl::Region::LateBoundAnon(_, _)), _) |
+                    (None, _) => {
                         debug!("no arg found");
                     }
                 }

@@ -16,8 +16,8 @@ fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 
 
 fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y; //~ ERROR E0312
-    *z = *y; //~ ERROR E0312
+    *x = *y; //~ ERROR E0623
+    *z = *y; //~ ERROR E0623
 }
 
 fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
