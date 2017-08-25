@@ -157,7 +157,7 @@ macro_rules! thread_local {
            issue = "0")]
 #[macro_export]
 #[allow_internal_unstable]
-#[cfg_attr(not(stage0), allow_internal_unsafe)]
+#[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
     ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
         $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
@@ -393,9 +393,6 @@ pub mod fast {
             f.pad("Key { .. }")
         }
     }
-
-    #[cfg(stage0)]
-    unsafe impl<T> ::marker::Sync for Key<T> { }
 
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
