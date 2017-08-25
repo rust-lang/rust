@@ -725,7 +725,8 @@ These essentially try to address the breaking change when removing a bound on a 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-@nikomatsakis pointed [here][niko] that implied bounds can interact badly with current inference rules.
+* Should we try to limit the range of implied bounds to be crate-local (or module-local, etc)?
+* @nikomatsakis pointed [here][niko] that implied bounds can interact badly with current inference rules.
 
 [#12]: https://github.com/nikomatsakis/chalk/issues/12
 
