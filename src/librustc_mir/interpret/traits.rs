@@ -63,19 +63,19 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         let drop = eval_context::resolve_drop_in_place(self.tcx, ty);
         let drop = self.memory.create_fn_alloc(drop);
-        self.memory.write_ptr(vtable, drop)?;
+        self.memory.write_ptr_sized_unsigned(vtable, PrimVal::Ptr(drop))?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
-        self.memory.write_usize(size_ptr, size)?;
+        self.memory.write_ptr_sized_unsigned(size_ptr, PrimVal::Bytes(size as u128))?;
         let align_ptr = vtable.offset(ptr_size * 2, &self)?;
-        self.memory.write_usize(align_ptr, align)?;
+        self.memory.write_ptr_sized_unsigned(align_ptr, PrimVal::Bytes(align as u128))?;
 
         for (i, method) in ::rustc::traits::get_vtable_methods(self.tcx, trait_ref).enumerate() {
             if let Some((def_id, substs)) = method {
                 let instance = eval_context::resolve(self.tcx, def_id, substs);
                 let fn_ptr = self.memory.create_fn_alloc(instance);
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &self)?;
-                self.memory.write_ptr(method_ptr, fn_ptr)?;
+                self.memory.write_ptr_sized_unsigned(method_ptr, PrimVal::Ptr(fn_ptr))?;
             }
         }
 

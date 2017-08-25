@@ -579,12 +579,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         discr_val: u128,
         variant_idx: usize,
         discr_size: u64,
+        discr_signed: bool,
     ) -> EvalResult<'tcx> {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
 
         let discr_dest = dest_ptr.offset(discr_offset, &self)?;
-        self.memory.write_uint(discr_dest, discr_val, discr_size)?;
+        self.memory.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr_size, discr_signed)?;
 
         let dest = Lvalue::Ptr {
             ptr: PtrAndAlign {
@@ -724,6 +725,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 discr_val,
                                 variant,
                                 discr_size,
+                                false,
                             )?;
                         } else {
                             bug!("tried to assign {:?} to Layout::General", kind);
@@ -783,7 +785,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 );
                                 self.memory.write_maybe_aligned_mut(
                                     !nonnull.packed,
-                                    |mem| mem.write_int(dest, 0, dest_size),
+                                    // The sign does not matter for 0
+                                    |mem| mem.write_primval(dest, PrimVal::Bytes(0), dest_size, false),
                                 )?;
                             }
                         } else {
@@ -1607,7 +1610,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
-                self.memory.write_primval(dest, primval, size)
+                // TODO: This fn gets called with sizes like 6, which cannot be a primitive type
+                // and hence is not supported by write_primval.
+                // (E.g. in the arrays.rs testcase.)  That seems to only happen for Undef though,
+                // so we special-case that here.
+                match primval {
+                    PrimVal::Undef => {
+                        self.memory.mark_definedness(dest, size, false)?;
+                    }
+                    _ => {
+                        // TODO: Do we need signedness?
+                        self.memory.write_primval(dest.to_ptr()?, primval, size, false)?;
+                    }
+                }
+                Ok(())
             }
             Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest.to_ptr()?, dest_ty),
         }
@@ -1645,11 +1661,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         );
         let field_0_ptr = ptr.offset(field_0.bytes(), &self)?.into();
         let field_1_ptr = ptr.offset(field_1.bytes(), &self)?.into();
+        // TODO: What about signedess?
         self.write_maybe_aligned_mut(!packed, |ectx| {
-            ectx.memory.write_primval(field_0_ptr, a, field_0_size)
+            ectx.memory.write_primval(field_0_ptr, a, field_0_size, false)
         })?;
         self.write_maybe_aligned_mut(!packed, |ectx| {
-            ectx.memory.write_primval(field_1_ptr, b, field_1_size)
+            ectx.memory.write_primval(field_1_ptr, b, field_1_size, false)
         })?;
         Ok(())
     }

@@ -12,7 +12,7 @@ use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
 use super::{EvalResult, EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign, GlobalId, Lvalue,
-            HasMemory, MemoryKind, Machine};
+            HasMemory, MemoryKind, Machine, PrimVal};
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -106,10 +106,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Layout::General { discr, .. } => {
                         let discr_size = discr.size().bytes();
                         let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
-                        self.memory.write_uint(
+                        self.memory.write_primval(
                             dest_ptr,
-                            variant_index as u128,
+                            PrimVal::Bytes(variant_index as u128),
                             discr_size,
+                            false
                         )?
                     }
 
@@ -124,6 +125,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         ref discrfield_source,
                         ..
                     } => {
+                        // TODO: There's some duplication between here and eval_rvalue_into_lvalue
                         if variant_index as u64 != nndiscr {
                             let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
                                 dest_ty,
@@ -140,7 +142,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 "bad StructWrappedNullablePointer discrfield",
                             );
                             self.write_maybe_aligned_mut(!packed, |ectx| {
-                                ectx.memory.write_uint(nonnull, 0, discr_size)
+                                // We're writing 0, signedness does not matter
+                                ectx.memory.write_primval(nonnull, PrimVal::Bytes(0), discr_size, false)
                             })?;
                         }
                     }
@@ -229,7 +232,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 ptr_size,
                 MemoryKind::UninitializedStatic,
             )?;
-            self.memory.write_usize(ptr, 0)?;
+            self.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
             self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
             self.globals.insert(
                 cid,

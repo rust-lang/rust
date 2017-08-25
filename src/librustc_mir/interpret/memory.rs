@@ -1206,20 +1206,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         self.read_primval(ptr, self.pointer_size(), false)
     }
 
-    pub fn write_ptr(&mut self, dest: MemoryPointer, ptr: MemoryPointer) -> EvalResult<'tcx> {
-        self.write_usize(dest, ptr.offset as u64)?;
-        self.get_mut(dest.alloc_id)?.relocations.insert(
-            dest.offset,
-            ptr.alloc_id,
-        );
-        Ok(())
-    }
+    pub fn write_primval(&mut self, ptr: MemoryPointer, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
+        trace!("Writing {:?}, size {}", val, size);
+        let align = self.int_align(size)?;
+        let endianess = self.endianess();
 
-    pub fn write_primval(&mut self, dest: Pointer, val: PrimVal, size: u64) -> EvalResult<'tcx> {
-        match val {
-            PrimVal::Ptr(ptr) => {
+        let bytes = match val {
+            PrimVal::Ptr(val) => {
                 assert_eq!(size, self.pointer_size());
-                self.write_ptr(dest.to_ptr()?, ptr)
+                val.offset as u128
             }
 
             PrimVal::Bytes(bytes) => {
@@ -1233,11 +1228,41 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                     16 => !0,
                     n => bug!("unexpected PrimVal::Bytes size: {}", n),
                 };
-                self.write_uint(dest.to_ptr()?, bytes & mask, size)
+                bytes & mask
             }
 
-            PrimVal::Undef => self.mark_definedness(dest, size, false),
+            PrimVal::Undef => {
+                self.mark_definedness(PrimVal::Ptr(ptr).into(), size, false)?;
+                return Ok(());
+            }
+        };
+
+        {
+            let dst = self.get_bytes_mut(ptr, size, align)?;
+            if signed {
+                write_target_int(endianess, dst, bytes as i128).unwrap();
+            } else {
+                write_target_uint(endianess, dst, bytes).unwrap();
+            }
         }
+
+        // See if we have to also write a relocation
+        match val {
+            PrimVal::Ptr(val) => {
+                self.get_mut(ptr.alloc_id)?.relocations.insert(
+                    ptr.offset,
+                    val.alloc_id,
+                );
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
+    pub fn write_ptr_sized_unsigned(&mut self, ptr: MemoryPointer, val: PrimVal) -> EvalResult<'tcx> {
+        let ptr_size = self.pointer_size();
+        self.write_primval(ptr, val, ptr_size, false)
     }
 
     pub fn read_bool(&self, ptr: MemoryPointer) -> EvalResult<'tcx, bool> {
@@ -1267,32 +1292,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             16 => Ok(self.layout.i128_align.abi()),
             _ => bug!("bad integer size: {}", size),
         }
-    }
-
-    pub fn write_int(&mut self, ptr: MemoryPointer, n: i128, size: u64) -> EvalResult<'tcx> {
-        let align = self.int_align(size)?;
-        let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, size, align)?;
-        write_target_int(endianess, b, n).unwrap();
-        Ok(())
-    }
-
-    pub fn write_uint(&mut self, ptr: MemoryPointer, n: u128, size: u64) -> EvalResult<'tcx> {
-        let align = self.int_align(size)?;
-        let endianess = self.endianess();
-        let b = self.get_bytes_mut(ptr, size, align)?;
-        write_target_uint(endianess, b, n).unwrap();
-        Ok(())
-    }
-
-    pub fn write_isize(&mut self, ptr: MemoryPointer, n: i64) -> EvalResult<'tcx> {
-        let size = self.pointer_size();
-        self.write_int(ptr, n as i128, size)
-    }
-
-    pub fn write_usize(&mut self, ptr: MemoryPointer, n: u64) -> EvalResult<'tcx> {
-        let size = self.pointer_size();
-        self.write_uint(ptr, n as u128, size)
     }
 
     pub fn write_f32(&mut self, ptr: MemoryPointer, f: f32) -> EvalResult<'tcx> {
