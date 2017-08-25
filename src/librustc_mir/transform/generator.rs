@@ -140,18 +140,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
     fn visit_basic_block_data(&mut self,
                               block: BasicBlock,
                               data: &mut BasicBlockData<'tcx>) {
-        let ret_val = match data.terminator().kind {
-            TerminatorKind::Return => Some((1,
-                self.return_block,
-                Operand::Consume(Lvalue::Local(self.new_ret_local)),
-                None)),
-            TerminatorKind::Yield { ref value, resume, drop } => Some((0,
-                resume,
-                value.clone(),
-                drop)),
-            _ => None
-        };
-
         // Remove StorageLive and StorageDead statements for remapped locals
         data.retain_statements(|s| {
             match s.kind {
@@ -165,6 +153,18 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                 _ => true
             }
         });
+
+        let ret_val = match data.terminator().kind {
+            TerminatorKind::Return => Some((1,
+                self.return_block,
+                Operand::Consume(Lvalue::Local(self.new_ret_local)),
+                None)),
+            TerminatorKind::Yield { ref value, resume, drop } => Some((0,
+                resume,
+                value.clone(),
+                drop)),
+            _ => None
+        };
 
         if let Some((state_idx, resume, v, drop)) = ret_val {
             let bb_idx = {
