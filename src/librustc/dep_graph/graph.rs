@@ -173,6 +173,14 @@ impl DepGraph {
         self.data.as_ref().unwrap().edges.borrow_mut().add_node(node);
     }
 
+    pub fn alloc_input_node(&self, node: DepNode) -> DepNodeIndex {
+        if let Some(ref data) = self.data {
+            data.edges.borrow_mut().add_node(node)
+        } else {
+            DepNodeIndex::INVALID
+        }
+    }
+
     /// Indicates that a previous work product exists for `v`. This is
     /// invoked during initial start-up based on what nodes are clean
     /// (and what files exist in the incr. directory).

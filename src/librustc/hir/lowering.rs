@@ -1315,7 +1315,12 @@ impl<'a> LoweringContext<'a> {
                             path.span = span;
 
                             self.allocate_hir_id_counter(import.id, import);
-                            self.with_hir_id_owner(import.id, |this| {
+                            let LoweredNodeId {
+                                node_id: import_node_id,
+                                hir_id: import_hir_id,
+                            } = self.lower_node_id(import.id);
+
+                            self.with_hir_id_owner(import_node_id, |this| {
                                 let vis = match *vis {
                                     hir::Visibility::Public => hir::Visibility::Public,
                                     hir::Visibility::Crate => hir::Visibility::Crate,
@@ -1329,8 +1334,9 @@ impl<'a> LoweringContext<'a> {
                                     }
                                 };
 
-                                this.items.insert(import.id, hir::Item {
-                                    id: import.id,
+                                this.items.insert(import_node_id, hir::Item {
+                                    id: import_node_id,
+                                    hir_id: import_hir_id,
                                     name: import.rename.unwrap_or(ident).name,
                                     attrs: attrs.clone(),
                                     node: hir::ItemUse(P(path), hir::UseKind::Single),
@@ -1461,8 +1467,11 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
         self.with_parent_def(i.id, |this| {
+            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
+
             hir::TraitItem {
-                id: this.lower_node_id(i.id).node_id,
+                id: node_id,
+                hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
@@ -1522,8 +1531,11 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
         self.with_parent_def(i.id, |this| {
+            let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
+
             hir::ImplItem {
-                id: this.lower_node_id(i.id).node_id,
+                id: node_id,
+                hir_id,
                 name: this.lower_ident(i.ident),
                 attrs: this.lower_attrs(&i.attrs),
                 vis: this.lower_visibility(&i.vis, None),
@@ -1614,8 +1626,11 @@ impl<'a> LoweringContext<'a> {
             this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
         });
 
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
+
         Some(hir::Item {
-            id: self.lower_node_id(i.id).node_id,
+            id: node_id,
+            hir_id,
             name,
             attrs,
             node,

@@ -244,8 +244,8 @@ impl DepGraphEdges {
         self.edges.insert((source, target));
     }
 
-    pub fn add_node(&mut self, node: DepNode) {
-        self.get_or_create_node(node);
+    pub fn add_node(&mut self, node: DepNode) -> DepNodeIndex {
+        self.get_or_create_node(node)
     }
 
     #[inline]
