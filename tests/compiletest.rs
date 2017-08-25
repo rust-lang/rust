@@ -174,17 +174,24 @@ fn get_host() -> String {
     String::from(host)
 }
 
-#[test]
-fn run_pass_miri() {
+fn run_pass_miri(opt: bool) {
     let sysroot = get_sysroot();
     let host = get_host();
 
-    for &opt in [false, true].iter() {
-        for_all_targets(&sysroot, |target| {
-            miri_pass("tests/run-pass", &target, &host, false, opt);
-        });
-        miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
-    }
+    for_all_targets(&sysroot, |target| {
+        miri_pass("tests/run-pass", &target, &host, false, opt);
+    });
+    miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
+}
+
+#[test]
+fn run_pass_miri_noopt() {
+    run_pass_miri(false);
+}
+
+#[test]
+fn run_pass_miri_opt() {
+    run_pass_miri(true);
 }
 
 #[test]
