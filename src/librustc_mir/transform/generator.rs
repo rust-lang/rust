@@ -52,7 +52,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
                     lvalue: &mut Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
                     location: Location) {
-        if *lvalue == Lvalue::Local(Local::new(1)) {
+        if *lvalue == Lvalue::Local(self_arg()) {
             *lvalue = Lvalue::Projection(Box::new(Projection {
                 base: lvalue.clone(),
                 elem: ProjectionElem::Deref,
@@ -61,6 +61,10 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
             self.super_lvalue(lvalue, context, location);
         }
     }
+}
+
+fn self_arg() -> Local {
+    Local::new(1)
 }
 
 struct TransformVisitor<'a, 'tcx: 'a> {
@@ -97,7 +101,7 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 
     // Create a Lvalue referencing a generator struct field
     fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Lvalue<'tcx> {
-        let base = Lvalue::Local(Local::new(1));
+        let base = Lvalue::Local(self_arg());
         let field = Projection {
             base: base,
             elem: ProjectionElem::Field(Field::new(idx), ty),
@@ -256,7 +260,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // The generator argument is ignored
-    set.remove(&Local::new(1));
+    set.remove(&self_arg());
 
     set
 }
@@ -334,7 +338,7 @@ fn elaborate_generator_drops<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     use shim::DropShimElaborator;
 
     let param_env = tcx.param_env(def_id);
-    let gen = Local::new(1);
+    let gen = self_arg();
 
     for block in mir.basic_blocks().indices() {
         let (target, unwind, source_info) = match mir.basic_blocks()[block].terminator() {
@@ -452,7 +456,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     make_generator_state_argument_indirect(tcx, def_id, &mut mir);
 
     // Change the generator argument from &mut to *mut
-    mir.local_decls[Local::new(1)] = LocalDecl {
+    mir.local_decls[self_arg()] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut {
             ty: gen_ty,
@@ -604,7 +608,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Drop {
-        location: Lvalue::Local(Local::new(1)),
+        location: Lvalue::Local(self_arg()),
         target: return_block,
         unwind: None,
     };
