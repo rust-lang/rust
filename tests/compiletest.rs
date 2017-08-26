@@ -37,9 +37,9 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
         path,
         target
     );
+    let build_dir = TempDir::new("miri-tests").unwrap();
     let mut config = compiletest::Config::default();
     config.mode = "compile-fail".parse().expect("Invalid mode");
-    let build_dir = TempDir::new("miri-tests").unwrap();
     config.build_base = build_dir.path().to_owned();
     config.rustc_path = miri_path();
     let mut flags = Vec::new();
@@ -70,9 +70,9 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
 
 fn run_pass(path: &str) {
     eprintln!("## Running run-pass tests in {} against rustc", path);
+    let build_dir = TempDir::new("miri-tests").unwrap();
     let mut config = compiletest::Config::default();
     config.mode = "run-pass".parse().expect("Invalid mode");
-    let build_dir = TempDir::new("miri-tests").unwrap();
     config.build_base = build_dir.path().to_owned();
     config.src_base = PathBuf::from(path);
     if let Some(rustc_path) = rustc_test_suite() {
@@ -95,9 +95,9 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         target,
         opt_str
     );
+    let build_dir = TempDir::new("miri-tests").unwrap();
     let mut config = compiletest::Config::default();
     config.mode = "mir-opt".parse().expect("Invalid mode");
-    let build_dir = TempDir::new("miri-tests").unwrap();
     config.build_base = build_dir.path().to_owned();
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
