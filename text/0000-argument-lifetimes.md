@@ -6,41 +6,42 @@
 # Summary
 [summary]: #summary
 
-Improves the clarity, ergonomics, and learnability around explicit lifetimes, so that instead of writing
+Eliminate the need for separately binding lifetime parameters in `fn`
+definitions and `impl` headers, so that instead of writing:
 
 ```rust
 fn two_args<'b>(arg1: &Foo, arg2: &'b Bar) -> &'b Baz
-fn two_lifetimes<'a, 'b: 'a>(arg1: &'a Foo, arg2: &'b Bar) -> &'a Quux<'b>
+fn two_lifetimes<'a, 'b>(arg1: &'a Foo, arg2: &'b Bar) -> &'a Quux<'b>
+
+fn nested_lifetime<'inner>(arg: &&'inner Foo) -> &'inner Bar
+fn outer_lifetime<'outer>(arg: &'outer &Foo) -> &'outer Bar
 ```
 
 you can write:
 
 ```rust
-fn two_args(arg1: &Foo, arg2: &Bar) -> &'arg2 Baz
-fn two_lifetimes(arg1: &Foo, arg2: &Bar) -> &'arg1 Quux<'arg2>
-```
+fn two_args(arg1: &Foo, arg2: &'b Bar) -> &'b Baz
+fn two_lifetimes(arg1: &'a Foo, arg2: &'b Bar) -> &'a Quux<'b>
 
-More generally, this RFC completely removes the need for listing lifetime parameters, instead binding them "in-place" (but with absolute clarity about *when* this binding is happening):
-
-```rust
-fn named_lifetime(arg: &'inner Foo) -> &'inner Bar
 fn nested_lifetime(arg: &&'inner Foo) -> &'inner Bar
 fn outer_lifetime(arg: &'outer &Foo) -> &'outer Bar
 ```
 
-It also proposes linting against leaving off lifetime parameters in structs (like `Ref` or `Iter`), instead nudging people to use explicit lifetimes in this case (but leveraging the other improvements to make it ergonomic to do so).
+It also proposes linting against leaving off lifetime parameters in structs
+(like `Ref` or `Iter`), instead nudging people to use explicit lifetimes in this
+case (but leveraging the other improvements to make it ergonomic to do so).
 
 The changes, in summary, are:
 
 - A signature is taken to bind any lifetimes it mentions that are not already bound.
-- If an argument has a single elided lifetime, that lifetime is bound to the name of the argument.
-- You can write `'_` to explicitly elide a lifetime.
-- It is deprecated to:
-  - Bind lifetimes within the generics list `<>` for `impl`s and `fn`s.
-  - Implicitly elide lifetimes for non `&` types.
-- The deprecations become errors at the next [epoch](https://github.com/rust-lang/rfcs/pull/2052).
+- A style lint checks that lifetimes bound in `impl` headers are capitalized, to
+  avoid confusion with lifetimes bound within functions. (There are some
+  additional, less important lints proposed as well.)
+- You can write `'_` to explicitly elide a lifetime, and it is deprecated to
+  entirely leave off lifetime arguments for non-`&` types
 
-**This RFC does not introduce any breaking changes**, but does deprecate some existing forms in favor of improved styles of expression.
+**This RFC does not introduce any breaking changes**, but does deprecate some
+existing forms in favor of improved styles of expression.
 
 # Motivation
 [motivation]: #motivation
@@ -61,15 +62,6 @@ requires changing three parts of the signature:
 fn two_args<'a, 'b: 'a>(arg1: &'a Foo, arg2: &'b Bar) -> &'a Baz<'b>
 ```
 
-In much idiomatic Rust code, these lifetime parameters are given meaningless
-names like `'a`, because they're serving merely to tie pieces of the signature
-together. This habit indicates a kind of design smell: we're forcing programmers
-to conjure up and name a parameter whose identity doesn't matter to them.
-
-Moreover, when reading a signature involving lifetime parameters, you need to
-scan the whole thing, keeping `'a` and `'b` in your head, to understand the
-pattern of borrowing at play.
-
 These concerns are just a papercut for advanced Rust users, but they also
 present a cliff in the learning curve, one affecting the most novel and
 difficult to learn part of Rust. In particular, when first explaining borrowing,
@@ -88,7 +80,7 @@ the next section, I'll show how this RFC provides a gentler learning curve
 around lifetimes and disambiguation.
 
 Another point of confusion for newcomers and old hands alike is the fact that
-you can leave lifetimes off when using types:
+you can leave off lifetime parameters for types:
 
 ```rust
 struct Iter<'a> { ... }
@@ -100,9 +92,10 @@ impl SomeType {
 
 As detailed in the [ergonomics initiative blog post], this bit of lifetime
 elision is considered a mistake: it makes it difficult to see at a glance that
-borrowing is occurring, especially if you're unfamiliar with the types involved.
-This RFC proposes some steps to rectify this situation without regressing
-ergonomics significantly.
+borrowing is occurring, especially if you're unfamiliar with the types
+involved. (The `&` types, by contrast, are universally known to involve
+borrowing.)  This RFC proposes some steps to rectify this situation without
+regressing ergonomics significantly.
 
 [ergonomics initiative blog post]: https://blog.rust-lang.org/2017/03/02/lang-ergonomics.html
 
@@ -217,15 +210,6 @@ which is a way of asking the compiler to determine their "intersection"
 returned `Item` borrow is valid for that period (which means it may incorporate
 data from both of the input borrows).
 
-In addition, when an argument has only one lifetime you could be referencing,
-like `&Data`, you can refer to that lifetime by the argument's name:
-
-```rust
-fn select(data: &Data, params: &Params) -> &'data Item;
-```
-
-Otherwise, you are not allowed to use an argument's name as a lifetime.
-
 ## `struct`s and lifetimes
 
 Sometimes you need to build data types that contain borrowed data. Since those
@@ -269,22 +253,19 @@ might not otherwise be clear.
 ## `impl` blocks and lifetimes
 
 When writing an `impl` block for a structure that takes a lifetime parameter,
-you can give that parameter a name:
+you can give that parameter a name, which by convention is capitalized (to
+clearly distinguish it from lifetimes introduced at the `fn` level):
 
 ```rust
-impl<T> VecIter<'vec, T> { ... }
+impl<T> VecIter<'Vec, T> { ... }
 ```
 
 This name can then be referred to in the body:
 
 ```rust
-impl<T> VecIter<'vec, T> {
-    fn foo(&self) -> &'vec T { ... }
-    fn bar(&self, arg: &Bar) -> &'arg Bar { ... }
-
-    // these two are the same:
-    fn baz(&self) -> &T { ... }
-    fn baz(&self) -> &'self T { ... }
+impl<T> VecIter<'Vec, T> {
+    fn foo(&self) -> &'Vec T { ... }
+    fn bar(&self, arg: &'a Bar) -> &'a Bar { ... }
 }
 ```
 
@@ -297,17 +278,15 @@ impl<T> VecIter<'_, T> { ... }
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-**Note: these changes are designed to *not* require a new epoch**. They
-introduce several deprecations, which are essentially style lints. The next
-epoch should turn these deprecations into errors.
+**Note: these changes are designed to *not* require a new epoch**. They do
+expand our naming style lint, however.
 
 ## Lifetimes in `impl` headers
 
-When writing an `impl` header, it is deprecated to bind a lifetime parameter
-within the generics specification (e.g. `impl<'a>`). Instead the `impl` header
-can mention lifetimes without adding them as generics. Any lifetimes that are
-not already in scope (which, today, means any lifetime whatsoever) is treated as
-being bound as a parameter of the `impl`.
+When writing an `impl` header, you can mention lifetimes without binding them in
+the generics list. Any lifetimes that are not already in scope (which, today,
+means any lifetime whatsoever) is treated as being bound as a parameter of the
+`impl`.
 
 Thus, where today you would write:
 
@@ -319,54 +298,51 @@ impl<'a, 'b> SomeTrait<'a> for SomeType<'a, 'b> { ... }
 tomorrow you would write:
 
 ```rust
-impl Iterator for MyIter<'a> { ... }
-impl SomeTrait<'a> for SomeType<'a, 'b> { ... }
+impl Iterator for MyIter<'A> { ... }
+impl SomeTrait<'A> for SomeType<'A, 'B> { ... }
 ```
+
+This change goes hand-in-hand with a convention that lifetimes introduced in
+`impl` headers (and perhaps someday, modules) are capitalized; this convention
+will be enforced through the existing naming style lints.
 
 ## Lifetimes in `fn` signatures
 
-When writing a `fn` declaration, it is deprecated to bind a lifetime parameter
-within the generics specification (e.g. `fn foo<'a>(arg: &'a str)`).
-
-Instead:
-
-- If a lifetime appears that is not already in scope, it is taken to be a new
-  binding, treated as a parameter to the function.
-- If an argument has exactly one elided lifetime, you can refer to that lifetime
-  by the argument's name preceded by `'`. Otherwise, it is not permitted to use
-  that lifetime name (unless it is already in scope, which generates a warning).
-- As with today's elision rules, lifetimes that appear *only* within `Fn`-style
-  bounds or trait object types are bound in higher-rank form (i.e., as if you'd
-  written them using a `for<'a>`).
+When writing a `fn` declaration, if a lifetime appears that is not already in
+scope, it is taken to be a new binding, i.e. treated as a parameter to the
+function. **This rule applies regardless of where the lifetime
+appears**. However, elision for higher-ranked types continues to work as today.
 
 Thus, where today you would write:
 
 ```rust
-fn elided(&self) -> &str;
+fn elided(&self) -> &str
 fn two_args<'b>(arg1: &Foo, arg2: &'b Bar) -> &'b Baz
 fn two_lifetimes<'a, 'b: 'a>(arg1: &'a Foo, arg2: &'b Bar) -> &'a Quux<'b>
 
 impl<'a> MyStruct<'a> {
-    fn foo(&self) -> &'a str;
-    fn bar<'b>(&self, arg: &'b str) -> &'b str;
+    fn foo(&self) -> &'a str
+    fn bar<'b>(&self, arg: &'b str) -> &'b str
 }
 
+fn take_fn_simple(f: fn(&Foo) -> &Bar)
 fn take_fn<'a>(x: &'a u32, y: for<'b> fn(&'a u32, &'b u32, &'b u32))
 ```
 
 tomorrow you would write:
 
 ```rust
-fn elided(&self) -> &str;
+fn elided(&self) -> &str
 fn two_args(arg1: &Foo, arg2: &Bar) -> &'arg2 Baz
 fn two_lifetimes(arg1: &Foo, arg2: &Bar) -> &'arg1 Quux<'arg2>
 
 impl MyStruct<'A> {
-    fn foo(&self) -> &'A str;
-    fn bar(&self, arg: &'b str) -> &'b str;
+    fn foo(&self) -> &'A str
+    fn bar(&self, arg: &'b str) -> &'b str
 }
 
-fn take_fn(x: &u32, y: fn(&'x u32, &'b u32, &'b u32));
+fn take_fn_simple(f: fn(&Foo) -> &Bar)
+fn take_fn(x: &'a u32, y: for<'b> fn(&'a u32, &'b u32, &'b u32))
 ```
 
 ## The wildcard lifetime
@@ -391,13 +367,26 @@ fn foo(&self) -> Ref<'_, SomeType>
 fn iter(&self) -> Iter<'_, T>
 ```
 
+## Additional lints
+
+Beyond the change to the style lint for capitalizing `impl` header lifetimes,
+two more lints are provided:
+
+- One deny-by-default lint against `fn` definitions in which a lifetime occurs
+  exactly once. Such lifetimes can always be replaced by `'_` (or for `&`,
+  elided altogether), and giving an explicit name is confusing at best, and
+  indicates a typo at worst.
+
+- An expansion of Clippy's lints so that they warn when a signature contains
+  other unnecessary elements, e.g. when it could be using elision or could leave
+  off lifetimes from its generics list.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The deprecations here involve some amount of churn (in the form of deleting
-lifetimes from `<>` blocks) if not ignored. Users exercise a lot of control over
-when they address that churn and can do so incrementally, and we can likely
-provide an automated tool for switching to the new style.
+The style lint for `impl` headers could introduce some amount of churn. This
+could be mitigated by only applying that lint for lifetimes not bound in the
+generics list.
 
 The fact that lifetime parameters are not bound in an out-of-band way is
 somewhat unusual and might be confusing---but then, so are lifetime parameters!
@@ -412,7 +401,7 @@ Cases where you could write `fn foo<'a, 'b: 'a>(...)` now need the `'b: 'a` to
 be given in a `where` clause, which might be slightly more verbose. These are
 relatively rare, though, due to our type well-formedness rule.
 
-Otherwise, it's a bit hard to see drawbacks here: nothings is made more explicit
+Otherwise, it's a bit hard to see drawbacks here: nothings is made less explicit
 or harder to determine, since the binding structure continues to be completely
 unambiguous; ergonomics and, arguably, learnability both improve. And
 signatures become less noisy and easier to read.
@@ -434,23 +423,48 @@ parameters is buying us very little today:
 While this might change if we ever allow modules to be parameterized by
 lifetimes, it won't change in any essential way: the point is that there are
 generally going to be *very* few in-scope lifetimes when writing a function
-signature. We can likely use conventions or some other mechanism to help
-distinguish between the `impl` header and `fn` bindings, if needed.
+signature. So the premise is that we can use naming conventions to distinguish
+between the `impl` header (or eventual module headers) and `fn` bindings.
 
-This RFC proposes to impose a strict distinction between lifetimes introduced in
-`impl` headers and `fn` signatures. We could instead impose a distinction
-through a convention, such as capitalization, and enforce the convention via a
-lint. Alternatively, we could instead distinguish it purely at
-the use-site, for example by writing `outer('a)` or some such to refer to the
-`impl` block bindings.
+Alternatively, we could instead distinguish these cases at the use-site, for
+example by writing `outer('a)` or some such to refer to the `impl` block
+bindings.
 
-## Alternatives
+## Possible extension or alternative: "backreferences"
+
+A different approach would be refering to elided lifetimes through their
+parameter name, like so:
+
+```rust
+fn scramble(&self, arg: &Foo) -> &'self Bar
+```
+
+The idea is that each parameter that involves a single, elided lifetime will be
+understood to *bind* a lifetime using that parameter's name.
+
+Earlier iterations of this RFC combined these "backreferences" with the rest of
+the proposal, but this was deemed too confusing and error-prone, and in
+particular harmed readability by requiring you to scan both lifetime mentions
+*and* parameter names.
 
 We could consider *only* allowing "backreferences" (i.e. references to argument
-names), and otherwise keeping binding as-is. However, that would forgo the
-benefits of eliminating out-of-band binding, which would still be needed in some
-cases. Conversely, we could drop "backreferences", but that would reduce the win
-for a lot of common cases.
+names), and otherwise keeping binding as-is. However, this has a few downsides:
+
+- It doesn't help with `impl` headers
+- It doesn't entirely eliminate the need for lifetimes in generics lists for
+  `fn` definitions, meaning that there's still *another* step of learning to
+  reach fully expressive lifetimes.
+- As @rpjohnst [argued](https://github.com/rust-lang/rfcs/pull/2115#issuecomment-324147717),
+  backreferences can end up reinforcing an importantly-wrong mental model, namely
+  that you're borrowing from an argument, rather than from its (already-borrowed)
+  contents. By contrast, requiring you to write the lifetime reinforces the opposite
+  idea: that borrowing has already occurred, and that what you're tying together is
+  that existing lifetime.
+- On a similar note, using backreferences to tie multiple arguments together is
+  often nonsensical, since there's no sense in which one argument is the "primary
+  definer" of the lifetime.
+
+## Alternatives
 
 We could consider using this as an opportunity to eliminate `'` altogether, by
 tying these improvements to a new way of providing lifetimes, e.g. `&ref(x) T`.
@@ -470,7 +484,5 @@ lifetimes from an `impl` header.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Should we go further and eliminate the need for `for<'a>` notation as well?
-
-- Should we introduce a style lint for imposing a convention distinguishing
-  between `impl` and `fn` lifetimes?
+- Should we introduce higher-ranked bounds automatically when using named
+  lifetimes in e.g. an embedded `fn` type?
