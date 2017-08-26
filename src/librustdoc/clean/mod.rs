@@ -323,6 +323,10 @@ impl Item {
     pub fn is_union(&self) -> bool {
         self.type_() == ItemType::Union
     }
+    pub fn is_import(&self) -> bool {
+        self.type_() == ItemType::Import
+    }
+
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
     }
