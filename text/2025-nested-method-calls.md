@@ -1,7 +1,7 @@
 - Feature Name: nested_method_call
 - Start Date: 2017-06-06
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2025
+- Rust Issue: https://github.com/rust-lang/rust/issues/44100
 
 # Summary
 [summary]: #summary
