@@ -110,7 +110,10 @@ Compatibility Notes
 - [Functions with `'static` in their return types will now not be as usable as
   if they were using lifetime parameters instead.][42417]
 - [The reimplementation of `{f32, f64}::is_sign_{negative, positive}` now
-  takes the sign of NaN into account where previously didn't.][42430] 
+  takes the sign of NaN into account where previously didn't.][42430]
+- [A `#[must_use]` attribute on a function, previously a no-op, will now
+  warn to note that this behavior will change given the unstable `fn_must_use`
+  feature.][43776]
 
 [42033]: https://github.com/rust-lang/rust/pull/42033
 [42155]: https://github.com/rust-lang/rust/pull/42155
@@ -140,6 +143,7 @@ Compatibility Notes
 [43178]: https://github.com/rust-lang/rust/pull/43178
 [43185]: https://github.com/rust-lang/rust/pull/43185
 [43228]: https://github.com/rust-lang/rust/pull/43228
+[43776]: https://github.com/rust-lang/rust/pull/43776
 [cargo/3978]: https://github.com/rust-lang/cargo/pull/3978
 [cargo/4214]: https://github.com/rust-lang/cargo/pull/4214
 [cargo/4229]: https://github.com/rust-lang/cargo/pull/4229
