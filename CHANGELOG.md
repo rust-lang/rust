@@ -481,6 +481,7 @@ All notable changes to this project will be documented in this file.
 [`inconsistent_digit_grouping`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#inconsistent_digit_grouping
 [`indexing_slicing`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#indexing_slicing
 [`ineffective_bit_mask`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#ineffective_bit_mask
+[`infinite_iter`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#infinite_iter
 [`inline_always`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#inline_always
 [`integer_arithmetic`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#integer_arithmetic
 [`invalid_regex`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#invalid_regex
@@ -508,6 +509,7 @@ All notable changes to this project will be documented in this file.
 [`match_ref_pats`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#match_ref_pats
 [`match_same_arms`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#match_same_arms
 [`match_wild_err_arm`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#match_wild_err_arm
+[`maybe_infinite_iter`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#maybe_infinite_iter
 [`mem_forget`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#mem_forget
 [`min_max`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#min_max
 [`misrefactored_assign_op`]: https://github.com/rust-lang-nursery/rust-clippy/wiki#misrefactored_assign_op
