@@ -437,12 +437,8 @@ match it like:
 let Unit { .. } = unit;
 ```
 
-To users of this crate, this will act exactly as if the struct were defined as:
-
-```
-#[non_exhaustive]
-pub struct Unit {}
-```
+Similarly to tuple structs, this will simply lower the visibility of the
+constructor to `pub(crate)` if it were marked as `pub`.
 
 ## Functional record updates
 
