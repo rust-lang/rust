@@ -1080,6 +1080,26 @@ impl f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
+    /// Returns max if self is greater than max, and min if self is less than min.
+    /// Otherwise this returns self.  Panics if min > max, min equals NaN, or max equals NaN.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
+    /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
+    /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
+    /// ```
+    #[unstable(feature = "clamp", issue = "44095")]
+    #[inline]
+    pub fn clamp(self, min: f32, max: f32) -> f32 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min { x = min; }
+        if x > max { x = max; }
+        x
+    }
+
     /// Raw transmutation to `u32`.
     ///
     /// Converts the `f32` into its raw memory representation,
