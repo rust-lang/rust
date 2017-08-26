@@ -73,6 +73,10 @@
 # controlled by rustbuild's -j parameter.
 #link-jobs = 0
 
+# When invoking `llvm-config` this configures whether the `--shared` argument is
+# passed to prefer linking to shared libraries.
+#link-shared = false
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -166,6 +170,15 @@
 # to +10 on Unix platforms, and by using a "low priority" job object on Windows.
 #low-priority = false
 
+# Arguments passed to the `./configure` script, used during distcheck. You
+# probably won't fill this in but rather it's filled in by the `./configure`
+# script.
+#configure-args = []
+
+# Indicates that a local rebuild is ocurring instead of a full bootstrap,
+# essentially skipping stage0 as the local compiler is recompiling itself again.
+#local-rebuild = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -194,6 +207,13 @@
 # Options for compiling Rust code itself
 # =============================================================================
 [rust]
+
+# Indicates that the build should be optimized for debugging Rust. Note that
+# this is typically not what you want as it takes an incredibly large amount of
+# time to have a debug-mode rustc compile any code (notably libstd). If this
+# value is set to `true` it will affect a number of configuration options below
+# as well, if unconfigured.
+#debug = false
 
 # Whether or not to optimize the compiler and standard library
 # Note: the slowness of the non optimized compiler compiling itself usually
@@ -249,6 +269,10 @@
 # desired in distributions, for example.
 #rpath = true
 
+# Suppresses extraneous output from tests to ensure the output of the test
+# harness is relatively clean.
+#quiet-tests = false
+
 # Flag indicating whether tests are compiled with optimizations (the -O flag) or
 # with debuginfo (the -g flag)
 #optimize-tests = true
@@ -260,6 +284,9 @@
 
 # Flag indicating whether git info will be retrieved from .git automatically.
 #ignore-git = false
+
+# When creating source tarballs whether or not to create a source tarball.
+#dist-src = false
 
 # =============================================================================
 # Options for specific targets
@@ -303,6 +330,10 @@
 # that this option only makes sense for MUSL targets that produce statically
 # linked binaries
 #musl-root = "..."
+
+# Used in testing for configuring where the QEMU images are located, you
+# probably don't want to use this.
+#qemu-rootfs = "..."
 
 # =============================================================================
 # Distribution options
