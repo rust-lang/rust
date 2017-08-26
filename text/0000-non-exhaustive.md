@@ -278,8 +278,8 @@ as well.
 # Detailed design
 
 An attribute `#[non_exhaustive]` is added to the language, which will (for now)
-fail to compile if it's used on anything other than an enum, struct definition,
-or enum variant.
+fail to compile if it's used on anything other than an enum or struct
+definition, or enum variant.
 
 ## Enums
 
@@ -417,6 +417,10 @@ Then we the only valid way of matching will be:
 let Config { 0: width, 1: height, .. } = config;
 ```
 
+We can think of this as lowering the visibility of the constructor to
+`pub(crate)` if it is marked as `pub`, then applying the standard structure
+rules.
+
 ## Unit structs
 
 Unit structs will work very similarly to tuple structs. Consider this struct:
@@ -431,6 +435,41 @@ match it like:
 
 ```rust
 let Unit { .. } = unit;
+```
+
+To users of this crate, this will act exactly as if the struct were defined as:
+
+```
+#[non_exhaustive]
+pub struct Unit {}
+```
+
+## Functional record updates
+
+Functional record updates will operate exactly the same regardless of whether
+structs are marked as non-exhaustive or not. For example, given this struct:
+
+```
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct Config {
+    pub width: u16,
+    pub height: u16,
+    pub fullscreen: bool,
+}
+impl Default for Config {
+    fn default() -> Config {
+        Config { width: 640, height: 480, fullscreen: false }
+    }
+}
+```
+
+The below code will print `Config { width: 1920, height: 1080, fullscreen:
+false }` regardless of which crate is calling it:
+
+```
+let c = Config { width: 1920, height: 1080, ..Config::default() };
+println!("{:?}", c);
 ```
 
 ## Changes to rustdoc
