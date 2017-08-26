@@ -442,8 +442,8 @@ constructor to `pub(crate)` if it were marked as `pub`.
 
 ## Functional record updates
 
-Functional record updates will operate exactly the same regardless of whether
-structs are marked as non-exhaustive or not. For example, given this struct:
+Functional record updates will operate very similarly to if the struct had an
+extra, private field. Take this example:
 
 ```
 #[derive(Debug)]
@@ -460,13 +460,15 @@ impl Default for Config {
 }
 ```
 
-The below code will print `Config { width: 1920, height: 1080, fullscreen:
-false }` regardless of which crate is calling it:
+We'd expect this code to work without the `non_exhaustive` attribute:
 
 ```
 let c = Config { width: 1920, height: 1080, ..Config::default() };
 println!("{:?}", c);
 ```
+
+Although outside of the defining crate, it will not, because `Config` could, in
+the future, contain private fields in the future.
 
 ## Changes to rustdoc
 
