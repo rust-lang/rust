@@ -998,7 +998,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// A method would interfere with methods of the same name on the contents
     /// of a `RefCell` used through `Deref`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::{RefCell, Ref};
@@ -1040,7 +1040,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// `RefMut::map(...)`.  A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::{RefCell, RefMut};

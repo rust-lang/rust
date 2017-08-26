@@ -807,7 +807,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
-/// # Example
+/// # Examples
 ///
 /// Waiting for the complete expiration of the timeout:
 ///

@@ -171,7 +171,7 @@ mod hack {
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -185,7 +185,7 @@ impl<T> [T] {
 
     /// Returns `true` if the slice has a length of 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -523,7 +523,7 @@ impl<T> [T] {
 
     /// Reverses the order of elements in the slice, in place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut v = [1, 2, 3];
@@ -580,7 +580,7 @@ impl<T> [T] {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let slice = ['r', 'u', 's', 't'];
@@ -613,7 +613,7 @@ impl<T> [T] {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
@@ -1040,7 +1040,7 @@ impl<T> [T] {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -1074,7 +1074,7 @@ impl<T> [T] {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -1419,7 +1419,7 @@ impl<T> [T] {
     ///
     /// This function will panic if the two slices have different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut dst = [0, 0, 0];
@@ -1445,7 +1445,7 @@ impl<T> [T] {
     ///
     /// This function will panic if the two slices have different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut dst = [0, 0, 0];
