@@ -82,7 +82,7 @@ use boxed::Box;
 ///
 /// # Examples
 ///
-/// You can create a `String` from a literal string with `String::from`:
+/// You can create a `String` from a literal string with [`String::from`]:
 ///
 /// ```
 /// let hello = String::from("Hello, world!");
@@ -98,6 +98,7 @@ use boxed::Box;
 /// hello.push_str("orld!");
 /// ```
 ///
+/// [`String::from`]: #method.from
 /// [`char`]: ../../std/primitive.char.html
 /// [`push`]: #method.push
 /// [`push_str`]: #method.push_str

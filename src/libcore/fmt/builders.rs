@@ -58,7 +58,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
 /// [`Formatter::debug_struct`](struct.Formatter.html#method.debug_struct)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -153,7 +153,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 /// [`Formatter::debug_tuple`](struct.Formatter.html#method.debug_tuple)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -290,7 +290,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 /// [`Formatter::debug_set`](struct.Formatter.html#method.debug_set)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -361,7 +361,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 /// [`Formatter::debug_list`](struct.Formatter.html#method.debug_list)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -432,7 +432,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 /// [`Formatter::debug_map`](struct.Formatter.html#method.debug_map)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
