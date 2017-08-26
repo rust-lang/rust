@@ -901,7 +901,7 @@ impl<T> ManuallyDrop<T> {
 
     /// Manually drops the contained value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the

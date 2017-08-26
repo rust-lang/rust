@@ -522,7 +522,7 @@ pub trait Read {
     /// `Read`er - the method only takes `&self` so that it can be used through
     /// trait objects.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This method is unsafe because a `Read`er could otherwise return a
     /// non-zeroing `Initializer` from another `Read` type without an `unsafe`
@@ -903,7 +903,7 @@ impl Initializer {
 
     /// Returns a new `Initializer` which will not zero out buffers.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This may only be called by `Read`ers which guarantee that they will not
     /// read from buffers passed to `Read` methods, and that the return value of
