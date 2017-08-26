@@ -591,15 +591,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
             Operand::Constant(ref constant) => {
-                if let Literal::Item { def_id, substs } = constant.literal {
-                    // Don't peek inside generic (associated) constants.
-                    if substs.types().next().is_some() {
+                if let Literal::Item { def_id, substs: _ } = constant.literal {
+                    // Don't peek inside trait associated constants.
+                    if self.tcx.trait_of_item(def_id).is_some() {
                         self.add_type(constant.ty);
                     } else {
                         let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
                         self.add(qualif);
+
+                        // Just in case the type is more specific than
+                        // the definition, e.g. impl associated const
+                        // with type parameters, take it into account.
+                        self.qualif.restrict(constant.ty, self.tcx, self.param_env);
                     }
 
                     // Let `const fn` transitively have destructors,
