@@ -10,10 +10,9 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
 use rustc::ty::subst::{Subst, Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
-use rustc::traits;
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::{self, DUMMY_SP, Span};
-use syntax::ast::{self, Mutability};
+use syntax::codemap::{self, DUMMY_SP};
+use syntax::ast::Mutability;
 use syntax::abi::Abi;
 
 use super::{EvalError, EvalResult, EvalErrorKind, GlobalId, Lvalue, LvalueExtra, Memory,
@@ -2312,7 +2311,7 @@ fn resolve_associated_item<'a, 'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = fulfill_obligation(tcx, DUMMY_SP, ty::Binder(trait_ref));
+    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -2417,85 +2416,6 @@ fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     // generics are weird, don't run this function on a generic
     assert!(!ty.needs_subst());
     ty.is_sized(tcx, ty::ParamEnv::empty(Reveal::All), DUMMY_SP)
-}
-
-/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
-/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
-/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-fn fulfill_obligation<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    span: Span,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> traits::Vtable<'tcx, ()> {
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(&trait_ref);
-
-    debug!(
-        "trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-        trait_ref,
-        trait_ref.def_id()
-    );
-
-    // Do the initial selection for the obligation. This yields the
-    // shallow result we are looking for -- that is, what specific impl.
-    tcx.infer_ctxt().enter(|infcx| {
-        let mut selcx = traits::SelectionContext::new(&infcx);
-
-        let obligation_cause = traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID);
-        let obligation = traits::Obligation::new(
-            obligation_cause,
-            ty::ParamEnv::empty(Reveal::All),
-            trait_ref.to_poly_trait_predicate(),
-        );
-
-        let selection = match selcx.select(&obligation) {
-            Ok(Some(selection)) => selection,
-            Ok(None) => {
-                // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
-                // leading to an ambiguous result. So report this as an
-                // overflow bug, since I believe this is the only case
-                // where ambiguity can result.
-                debug!(
-                    "Encountered ambiguity selecting `{:?}` during trans, \
-                        presuming due to overflow",
-                    trait_ref
-                );
-                tcx.sess.span_fatal(
-                    span,
-                    "reached the recursion limit during monomorphization \
-                        (selection ambiguity)",
-                );
-            }
-            Err(e) => {
-                span_bug!(
-                    span,
-                    "Encountered error `{:?}` selecting `{:?}` during trans",
-                    e,
-                    trait_ref
-                )
-            }
-        };
-
-        debug!("fulfill_obligation: selection={:?}", selection);
-
-        // Currently, we use a fulfillment context to completely resolve
-        // all nested obligations. This is because they can inform the
-        // inference of the impl's type parameters.
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-        let vtable = selection.map(|predicate| {
-            debug!(
-                "fulfill_obligation: register_predicate_obligation {:?}",
-                predicate
-            );
-            fulfill_cx.register_predicate_obligation(&infcx, predicate);
-        });
-        let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
-
-        debug!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-        vtable
-    })
 }
 
 pub fn resolve_drop_in_place<'a, 'tcx>(
