@@ -40,8 +40,7 @@ The changes, in summary, are:
 - You can write `'_` to explicitly elide a lifetime, and it is deprecated to
   entirely leave off lifetime arguments for non-`&` types
 
-**This RFC does not introduce any breaking changes**, but does deprecate some
-existing forms in favor of improved styles of expression.
+**This RFC does not introduce any breaking changes**.
 
 # Motivation
 [motivation]: #motivation
