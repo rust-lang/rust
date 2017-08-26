@@ -979,6 +979,7 @@ impl f64 {
     /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
     /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
     /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
+    /// assert!((NAN).clamp(-2.0f64, 1.0f64) == NAN);
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
