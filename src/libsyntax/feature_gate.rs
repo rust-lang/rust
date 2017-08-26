@@ -379,6 +379,9 @@ declare_features! (
 
     // allow `#[must_use]` on functions (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
+
+    // allow '|' at beginning of match arms (RFC 1925)
+    (active, match_beginning_vert, "1.21.0", Some(44101)),
 );
 
 declare_features! (
@@ -1433,6 +1436,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e);
+    }
+
+    fn visit_arm(&mut self, arm: &'a ast::Arm) {
+        if let Some(span) = arm.beginning_vert {
+            gate_feature_post!(&self, match_beginning_vert,
+                               span,
+                               "Use of a '|' at the beginning of a match arm is experimental")
+        }
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
