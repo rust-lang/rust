@@ -1,10 +1,12 @@
 #![feature(slice_concat_ext)]
 
 extern crate compiletest_rs as compiletest;
+extern crate tempdir;
 
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
 use std::io::Write;
+use tempdir::TempDir;
 
 macro_rules! eprintln {
     ($($arg:tt)*) => {
@@ -35,8 +37,10 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
         path,
         target
     );
-    let mut config = compiletest::default_config();
+    let mut config = compiletest::Config::default();
     config.mode = "compile-fail".parse().expect("Invalid mode");
+    let build_dir = TempDir::new("miri-tests").unwrap();
+    config.build_base = build_dir.path().to_owned();
     config.rustc_path = miri_path();
     let mut flags = Vec::new();
     if rustc_test_suite().is_some() {
@@ -66,8 +70,10 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
 
 fn run_pass(path: &str) {
     eprintln!("## Running run-pass tests in {} against rustc", path);
-    let mut config = compiletest::default_config();
+    let mut config = compiletest::Config::default();
     config.mode = "run-pass".parse().expect("Invalid mode");
+    let build_dir = TempDir::new("miri-tests").unwrap();
+    config.build_base = build_dir.path().to_owned();
     config.src_base = PathBuf::from(path);
     if let Some(rustc_path) = rustc_test_suite() {
         config.rustc_path = rustc_path;
@@ -89,8 +95,10 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         target,
         opt_str
     );
-    let mut config = compiletest::default_config();
+    let mut config = compiletest::Config::default();
     config.mode = "mir-opt".parse().expect("Invalid mode");
+    let build_dir = TempDir::new("miri-tests").unwrap();
+    config.build_base = build_dir.path().to_owned();
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
