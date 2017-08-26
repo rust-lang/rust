@@ -110,6 +110,22 @@ impl<'a> DiagnosticBuilder<'a> {
         // }
     }
 
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    pub fn delay_as_bug(&mut self) {
+        self.level = Level::Bug;
+        *self.handler.delayed_span_bug.borrow_mut() = Some(self.diagnostic.clone());
+        self.cancel();
+    }
+
     /// Add a span/label to be included in the resulting snippet.
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
@@ -182,8 +198,10 @@ impl<'a> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_diagnostic(handler, diagnostic)
     }
 
-    /// Creates a new `DiagnosticBuilder` with an already constructed diagnostic.
-    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic)
+                         -> DiagnosticBuilder<'a> {
         DiagnosticBuilder { handler, diagnostic }
     }
 }
