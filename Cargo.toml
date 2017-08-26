@@ -37,6 +37,7 @@ cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
 compiletest_rs = "0.2.6"
+tempdir = "0.3"
 
 [workspace]
 exclude = ["xargo", "cargo-miri-test", "rustc_tests"]
