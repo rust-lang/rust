@@ -468,7 +468,7 @@ println!("{:?}", c);
 ```
 
 Although outside of the defining crate, it will not, because `Config` could, in
-the future, contain private fields in the future.
+the future, contain private fields that the user didn't account for.
 
 ## Changes to rustdoc
 
