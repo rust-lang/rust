@@ -311,7 +311,9 @@ impl EmitterWriter {
         if line.annotations.len() == 1 {
             if let Some(ref ann) = line.annotations.get(0) {
                 if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                    if source_string[0..ann.start_col].trim() == "" {
+                    if source_string.chars()
+                                    .take(ann.start_col)
+                                    .all(|c| c.is_whitespace()) {
                         let style = if ann.is_primary {
                             Style::UnderlinePrimary
                         } else {
