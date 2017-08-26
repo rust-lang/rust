@@ -49,88 +49,98 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let (lint, msg) = match complete_infinite_iter(cx, expr) {
-            True => (INFINITE_ITER, "infinite iteration detected"),
-            Unknown => (MAYBE_INFINITE_ITER,
+            Infinite => (INFINITE_ITER, "infinite iteration detected"),
+            MaybeInfinite => (MAYBE_INFINITE_ITER,
                         "possible infinite iteration detected"),
-            False => { return; }
+            Finite => { return; }
         };
         span_lint(cx, lint, expr.span, msg)
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum TriState {
-    True,
-    Unknown,
-    False
+enum Finiteness {
+    Infinite,
+    MaybeInfinite,
+    Finite
 }
 
-use self::TriState::{True, Unknown, False};
+use self::Finiteness::{Infinite, MaybeInfinite, Finite};
 
-impl TriState {
+impl Finiteness {
     fn and(self, b: Self) -> Self {
         match (self, b) {
-            (False, _) | (_, False) => False,
-            (Unknown, _) | (_, Unknown) => Unknown,
-            _ => True
+            (Finite, _) | (_, Finite) => Finite,
+            (MaybeInfinite, _) | (_, MaybeInfinite) => MaybeInfinite,
+            _ => Infinite
         }
     }
 
     fn or(self, b: Self) -> Self {
         match (self, b) {
-            (True, _) | (_, True) => True,
-            (Unknown, _) | (_, Unknown) => Unknown,
-            _ => False
+            (Infinite, _) | (_, Infinite) => Infinite,
+            (MaybeInfinite, _) | (_, MaybeInfinite) => MaybeInfinite,
+            _ => Finite
         }
     }
 }
 
-impl From<bool> for TriState {
+impl From<bool> for Finiteness {
     fn from(b: bool) -> Self {
-        if b { True } else { False }
+        if b { Infinite } else { Finite }
     }
 }
 
+/// This tells us what to look for to know if the iterator returned by
+/// this method is infinite
 #[derive(Copy, Clone)]
 enum Heuristic {
+    /// infinite no matter what
     Always,
+    /// infinite if the first argument is
     First,
+    /// infinite if any of the supplied arguments is
     Any,
+    /// infinite if all of the supplied arguments are
     All
 }
 
 use self::Heuristic::{Always, First, Any, All};
 
-// here we use the `TriState` as (Finite, Possible Infinite, Infinite)
-static HEURISTICS : &[(&str, usize, Heuristic, TriState)] = &[
-    ("zip", 2, All, True),
-    ("chain", 2, Any, True),
-    ("cycle", 1, Always, True),
-    ("map", 2, First, True),
-    ("by_ref", 1, First, True),
-    ("cloned", 1, First, True),
-    ("rev", 1, First, True),
-    ("inspect", 1, First, True),
-    ("enumerate", 1, First, True),
-    ("peekable", 2, First, True),
-    ("fuse", 1, First, True),
-    ("skip", 2, First, True),
-    ("skip_while", 1, First, True),
-    ("filter", 2, First, True),
-    ("filter_map", 2, First, True),
-    ("flat_map", 2, First, True),
-    ("unzip", 1, First, True),
-    ("take_while", 2, First, Unknown),
-    ("scan", 3, First, Unknown)
+/// a slice of (method name, number of args, heuristic, bounds) tuples
+/// that will be used to determine whether the method in question
+/// returns an infinite or possibly infinite iterator. The finiteness
+/// is an upper bound, e.g. some methods can return a possibly
+/// infinite iterator at worst, e.g. `take_while`.
+static HEURISTICS : &[(&str, usize, Heuristic, Finiteness)] = &[
+    ("zip", 2, All, Infinite),
+    ("chain", 2, Any, Infinite),
+    ("cycle", 1, Always, Infinite),
+    ("map", 2, First, Infinite),
+    ("by_ref", 1, First, Infinite),
+    ("cloned", 1, First, Infinite),
+    ("rev", 1, First, Infinite),
+    ("inspect", 1, First, Infinite),
+    ("enumerate", 1, First, Infinite),
+    ("peekable", 2, First, Infinite),
+    ("fuse", 1, First, Infinite),
+    ("skip", 2, First, Infinite),
+    ("skip_while", 1, First, Infinite),
+    ("filter", 2, First, Infinite),
+    ("filter_map", 2, First, Infinite),
+    ("flat_map", 2, First, Infinite),
+    ("unzip", 1, First, Infinite),
+    ("take_while", 2, First, MaybeInfinite),
+    ("scan", 3, First, MaybeInfinite)
 ];
 
-fn is_infinite(cx: &LateContext, expr: &Expr) -> TriState {
+fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprMethodCall(ref method, _, ref args) => {
             for &(name, len, heuristic, cap) in HEURISTICS.iter() {
                 if method.name == name && args.len() == len {
                     return (match heuristic {
-                        Always => True,
+                        Always => Infinite,
                         First => is_infinite(cx, &args[0]),
                         Any => is_infinite(cx, &args[0]).or(is_infinite(cx, &args[1])),
                         All => is_infinite(cx, &args[0]).and(is_infinite(cx, &args[1])),
@@ -143,23 +153,25 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> TriState {
                     return is_infinite(cx, &body.value);
                 }
             }
-            False
+            Finite
         },
         ExprBlock(ref block) =>
-            block.expr.as_ref().map_or(False, |e| is_infinite(cx, e)),
+            block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprBox(ref e) | ExprAddrOf(_, ref e) => is_infinite(cx, e),
         ExprCall(ref path, _) => {
             if let ExprPath(ref qpath) = path.node {
                 match_qpath(qpath, &paths::REPEAT).into()
-            } else { False }
+            } else { Finite }
         },
         ExprStruct(..) => {
             higher::range(expr).map_or(false, |r| r.end.is_none()).into()
         },
-        _ => False
+        _ => Finite
     }
 }
 
+/// the names and argument lengths of methods that *may* exhaust their
+/// iterators
 static POSSIBLY_COMPLETING_METHODS : &[(&str, usize)] = &[
     ("find", 2),
     ("rfind", 2),
@@ -169,6 +181,8 @@ static POSSIBLY_COMPLETING_METHODS : &[(&str, usize)] = &[
     ("all", 2)
 ];
 
+/// the names and argument lengths of methods that *always* exhaust
+/// their iterators
 static COMPLETING_METHODS : &[(&str, usize)] = &[
     ("count", 1),
     ("collect", 1),
@@ -185,7 +199,7 @@ static COMPLETING_METHODS : &[(&str, usize)] = &[
     ("product", 1)
 ];
 
-fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> TriState {
+fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
     match expr.node {
         ExprMethodCall(ref method, _, ref args) => {
             for &(name, len) in COMPLETING_METHODS.iter() {
@@ -195,7 +209,7 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> TriState {
             }
             for &(name, len) in POSSIBLY_COMPLETING_METHODS.iter() {
                 if method.name == name && args.len() == len {
-                    return Unknown.and(is_infinite(cx, &args[0]));
+                    return MaybeInfinite.and(is_infinite(cx, &args[0]));
                 }
             }
             if method.name == "last" && args.len() == 1 &&
@@ -209,10 +223,10 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> TriState {
         },
         ExprBinary(op, ref l, ref r) => {
             if op.node.is_comparison() {
-                return is_infinite(cx, l).and(is_infinite(cx, r)).and(Unknown)
+                return is_infinite(cx, l).and(is_infinite(cx, r)).and(MaybeInfinite)
             }
         }, //TODO: ExprLoop + Match
         _ => ()
     }
-    False
+    Finite
 }
