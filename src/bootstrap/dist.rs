@@ -725,7 +725,6 @@ impl Step for Src {
         t!(fs::create_dir_all(&dst_src));
 
         let src_files = [
-            "src/Cargo.toml",
             "src/Cargo.lock",
         ];
         // This is the reduced set of paths which will become the rust-src component
