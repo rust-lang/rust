@@ -50,6 +50,7 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
+extern crate rustc_trans_utils;
 extern crate rustc_demangle;
 extern crate jobserver;
 extern crate num_cpus;

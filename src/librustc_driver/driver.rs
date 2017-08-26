@@ -69,7 +69,7 @@ use derive_registrar;
 
 use profile;
 
-pub fn compile_input(sess: &Session,
+pub fn compile_input(sess: &mut Session,
                      cstore: &CStore,
                      input: &Input,
                      outdir: &Option<PathBuf>,
@@ -100,16 +100,31 @@ pub fn compile_input(sess: &Session,
             sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
         }
 
-        if sess.opts.crate_types.iter().all(|&t|{
-            t != CrateType::CrateTypeRlib && t != CrateType::CrateTypeExecutable
-        }) && !sess.opts.crate_types.is_empty() {
-            sess.err(
-                "LLVM is not supported by this rustc, so non rlib libraries are not supported"
-            );
+        for cty in sess.opts.crate_types.iter_mut() {
+            match *cty {
+                CrateType::CrateTypeRlib | CrateType::CrateTypeExecutable => {},
+                CrateType::CrateTypeDylib | CrateType::CrateTypeCdylib |
+                CrateType::CrateTypeStaticlib => {
+                    sess.parse_sess.span_diagnostic.warn(
+                        &format!("LLVM unsupported, so non rlib output type {} \
+                                  will be treated like rlib lib", cty)
+                    );
+                    *cty = CrateType::CrateTypeRlib;
+                },
+                CrateType::CrateTypeProcMacro => {
+                    sess.parse_sess.span_diagnostic.err(
+                        "No LLVM support, so cant compile proc macros"
+                    );
+                }
+            }
         }
 
         sess.abort_if_errors();
     }
+
+    // Make sure nobody changes sess after crate types
+    // have optionally been adjusted for no llvm builds
+    let sess = &*sess;
 
     if sess.profile_queries() {
         profile::begin();
@@ -267,6 +282,10 @@ pub fn compile_input(sess: &Session,
 
     if cfg!(not(feature="llvm")) {
         let (_, _) = (outputs, trans);
+
+        if sess.opts.crate_types.contains(&CrateType::CrateTypeRlib) {
+            return Ok(())
+        }
         sess.fatal("LLVM is not supported by this rustc");
     }
 
@@ -300,9 +319,9 @@ pub fn compile_input(sess: &Session,
             CompileState::state_when_compilation_done(input, sess, outdir, output),
             Ok(())
         );
-
-        Ok(())
     }
+
+    Ok(())
 }
 
 fn keep_hygiene_data(sess: &Session) -> bool {

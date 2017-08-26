@@ -938,7 +938,7 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCrateTranslation {
-    use back::link::rustc_trans_utils::find_exported_symbols;
+    use rustc_trans_utils::find_exported_symbols;
 
     check_for_rustc_errors_attr(tcx);
 

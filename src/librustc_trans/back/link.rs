@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate rustc_trans_utils;
-
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::Linker;
 use super::command::Command;
@@ -27,7 +25,6 @@ use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel};
 use context::get_reloc_model;
@@ -88,9 +85,9 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
 pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
-pub use self::rustc_trans_utils::link::{find_crate_name, filename_for_input,
-                                        default_output_for_target, invalid_output_for_target,
-                                        build_link_meta};
+pub use rustc_trans_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
+                                  invalid_output_for_target, build_link_meta, out_filename,
+                                  check_file_is_writeable};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
@@ -218,13 +215,6 @@ pub fn link_binary(sess: &Session,
     out_filenames
 }
 
-fn is_writeable(p: &Path) -> bool {
-    match p.metadata() {
-        Err(..) => true,
-        Ok(m) => !m.permissions().readonly()
-    }
-}
-
 fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilenames) -> PathBuf {
     let out_filename = outputs.single_output_file.clone()
         .unwrap_or(outputs
@@ -286,32 +276,6 @@ pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
     // Similarly `#![compiler_builtins]` doesn't participate because we want
     // those builtins!
     info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
-}
-
-fn out_filename(sess: &Session,
-                crate_type: config::CrateType,
-                outputs: &OutputFilenames,
-                crate_name: &str)
-                -> PathBuf {
-    let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
-    let out_filename = outputs.outputs.get(&OutputType::Exe)
-                              .and_then(|s| s.to_owned())
-                              .or_else(|| outputs.single_output_file.clone())
-                              .unwrap_or(default_filename);
-
-    check_file_is_writeable(&out_filename, sess);
-
-    out_filename
-}
-
-// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
-// check this already -- however, the Linux linker will happily overwrite a
-// read-only file.  We should be consistent.
-fn check_file_is_writeable(file: &Path, sess: &Session) {
-    if !is_writeable(file) {
-        sess.fatal(&format!("output file {} is not writeable -- check its \
-                            permissions", file.display()));
-    }
 }
 
 fn link_binary_output(sess: &Session,

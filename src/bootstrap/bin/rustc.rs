@@ -159,6 +159,10 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
+        if cfg!(not(feature="llvm")) && stage != "0" {
+            cmd.arg("-Zno-trans");
+        }
+
         // Set various options from config.toml to configure how we're building
         // code.
         if env::var("RUSTC_DEBUGINFO") == Ok("true".to_string()) {

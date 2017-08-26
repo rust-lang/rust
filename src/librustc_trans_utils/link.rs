@@ -14,9 +14,42 @@ use rustc::middle::cstore::{self, LinkMeta};
 use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::svh::Svh;
 use rustc_incremental::IncrementalHashesMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax_pos::Span;
+
+pub fn out_filename(sess: &Session,
+                crate_type: config::CrateType,
+                outputs: &OutputFilenames,
+                crate_name: &str)
+                -> PathBuf {
+    let default_filename = filename_for_input(sess, crate_type, crate_name, outputs);
+    let out_filename = outputs.outputs.get(&OutputType::Exe)
+                              .and_then(|s| s.to_owned())
+                              .or_else(|| outputs.single_output_file.clone())
+                              .unwrap_or(default_filename);
+
+    check_file_is_writeable(&out_filename, sess);
+
+    out_filename
+}
+
+// Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+// check this already -- however, the Linux linker will happily overwrite a
+// read-only file.  We should be consistent.
+pub fn check_file_is_writeable(file: &Path, sess: &Session) {
+    if !is_writeable(file) {
+        sess.fatal(&format!("output file {} is not writeable -- check its \
+                            permissions", file.display()));
+    }
+}
+
+fn is_writeable(p: &Path) -> bool {
+    match p.metadata() {
+        Err(..) => true,
+        Ok(m) => !m.permissions().readonly()
+    }
+}
 
 pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
     let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
