@@ -25,11 +25,7 @@ fn weird_comment(
     // Does this work?
     y: World,
 ) {
-    simple(
-        // does this preserve comments now?
-        42,
-        NoWay,
-    )
+    simple(/* does this preserve comments now? */ 42, NoWay)
 }
 
 fn generic<T>(arg: T) -> &SomeType
