@@ -79,6 +79,8 @@ pub struct Config {
     pub llvm_experimental_targets: String,
     pub llvm_link_jobs: Option<u32>,
 
+    pub lld_enabled: bool,
+
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
@@ -288,6 +290,7 @@ struct Rust {
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
     wasm_syscall: Option<bool>,
+    lld: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -473,6 +476,7 @@ impl Config {
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
             set(&mut config.wasm_syscall, rust.wasm_syscall);
+            set(&mut config.lld_enabled, rust.lld);
             config.rustc_parallel_queries = rust.experimental_parallel_queries.unwrap_or(false);
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);

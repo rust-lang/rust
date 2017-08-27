@@ -17,6 +17,8 @@ use std::io;
 use std::mem;
 use std::process::{self, Output};
 
+use rustc_back::LldFlavor;
+
 #[derive(Clone)]
 pub struct Command {
     program: Program,
@@ -28,6 +30,7 @@ pub struct Command {
 enum Program {
     Normal(OsString),
     CmdBatScript(OsString),
+    Lld(OsString, LldFlavor)
 }
 
 impl Command {
@@ -37,6 +40,10 @@ impl Command {
 
     pub fn bat_script<P: AsRef<OsStr>>(program: P) -> Command {
         Command::_new(Program::CmdBatScript(program.as_ref().to_owned()))
+    }
+
+    pub fn lld<P: AsRef<OsStr>>(program: P, flavor: LldFlavor) -> Command {
+        Command::_new(Program::Lld(program.as_ref().to_owned(), flavor))
     }
 
     fn _new(program: Program) -> Command {
@@ -99,6 +106,13 @@ impl Command {
             Program::CmdBatScript(ref p) => {
                 let mut c = process::Command::new("cmd");
                 c.arg("/c").arg(p);
+                c
+            }
+            Program::Lld(ref p, flavor) => {
+                let mut c = process::Command::new(p);
+                c.arg("-flavor").arg(match flavor {
+                    LldFlavor::Wasm => "wasm",
+                });
                 c
             }
         };

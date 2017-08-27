@@ -49,7 +49,6 @@ extern crate rustc_mir;
 extern crate rustc_allocator;
 extern crate rustc_apfloat;
 extern crate rustc_back;
-extern crate rustc_binaryen;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_demangle;
