@@ -153,11 +153,10 @@ pub fn combine_strs_with_missing_comments(
     let mut one_line_width =
         last_line_width(prev_str) + first_line_width(next_str) + first_sep.len();
 
-    let original_snippet = context.snippet(span);
-    let trimmed_snippet = original_snippet.trim();
     let indent_str = shape.indent.to_string(context.config);
+    let missing_comment = try_opt!(rewrite_missing_comment(span, shape, context));
 
-    if trimmed_snippet.is_empty() {
+    if missing_comment.is_empty() {
         if allow_extend && prev_str.len() + first_sep.len() + next_str.len() <= shape.width {
             return Some(format!("{}{}{}", prev_str, first_sep, next_str));
         } else {
@@ -175,18 +174,13 @@ pub fn combine_strs_with_missing_comments(
     // Peek the the original source code and find out whether there is a newline between the first
     // expression and the second expression or the missing comment. We will preserve the orginal
     // layout whenever possible.
+    let original_snippet = context.snippet(span);
     let prefer_same_line = if let Some(pos) = original_snippet.chars().position(|c| c == '/') {
         !original_snippet[..pos].contains('\n')
     } else {
         !original_snippet.contains('\n')
     };
 
-    let missing_comment = try_opt!(rewrite_comment(
-        trimmed_snippet,
-        false,
-        shape,
-        context.config
-    ));
     one_line_width -= first_sep.len();
     let first_sep = if prev_str.is_empty() || missing_comment.is_empty() {
         String::new()

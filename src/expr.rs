@@ -20,7 +20,7 @@ use {Indent, Shape, Spanned};
 use chains::rewrite_chain;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              rewrite_comment, FindUncommented};
+              rewrite_comment, rewrite_missing_comment, FindUncommented};
 use config::{Config, ControlBraceStyle, IndentStyle, MultilineStyle, Style};
 use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
@@ -1195,9 +1195,13 @@ impl<'a> ControlFlow<'a> {
             mk_sp(self.block.span.lo, self.block.span.lo)
         };
 
-        // for event in event
+        // `for event in event`
+        // Do not include label in the span.
+        let lo = self.label.map_or(self.span.lo, |label| label.span.hi);
         let between_kwd_cond = mk_sp(
-            context.codemap.span_after(self.span, self.keyword.trim()),
+            context
+                .codemap
+                .span_after(mk_sp(lo, self.span.hi), self.keyword.trim()),
             self.pat
                 .map_or(cond_span.lo, |p| if self.matcher.is_empty() {
                     p.span.lo
@@ -1378,21 +1382,13 @@ fn rewrite_label(label: Option<ast::SpannedIdent>) -> String {
 }
 
 fn extract_comment(span: Span, context: &RewriteContext, shape: Shape) -> Option<String> {
-    let comment_str = context.snippet(span);
-    if contains_comment(&comment_str) {
-        let comment = try_opt!(rewrite_comment(
-            comment_str.trim(),
-            false,
-            shape,
-            context.config,
-        ));
-        Some(format!(
+    match rewrite_missing_comment(span, shape, context) {
+        Some(ref comment) if !comment.is_empty() => Some(format!(
             "\n{indent}{}\n{indent}",
             comment,
             indent = shape.indent.to_string(context.config)
-        ))
-    } else {
-        None
+        )),
+        _ => None,
     }
 }
 

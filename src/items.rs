@@ -19,7 +19,7 @@ use syntax::codemap::{BytePos, Span};
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              rewrite_comment, FindUncommented};
+              recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
@@ -2006,33 +2006,17 @@ fn rewrite_fn_base(
     // args and `{`.
     if where_clause_str.is_empty() {
         if let ast::FunctionRetTy::Default(ret_span) = fd.output {
-            let sp = mk_sp(args_span.hi, ret_span.hi);
-            let missing_snippet = context.snippet(sp);
-            let trimmed_snippet = missing_snippet.trim();
-            let missing_comment = if trimmed_snippet.is_empty() {
-                String::new()
-            } else {
-                try_opt!(rewrite_comment(
-                    trimmed_snippet,
-                    false,
-                    Shape::indented(indent, context.config),
-                    context.config,
-                ))
-            };
-            if !missing_comment.is_empty() {
-                let pos = missing_snippet.chars().position(|c| c == '/').unwrap_or(0);
-                // 1 = ` `
-                let total_width = missing_comment.len() + last_line_width(&result) + 1;
-                let force_new_line_before_comment = missing_snippet[..pos].contains('\n') ||
-                    total_width > context.config.max_width();
-                let sep = if force_new_line_before_comment {
-                    format!("\n{}", indent.to_string(context.config))
-                } else {
-                    String::from(" ")
-                };
-                result.push_str(&sep);
-                result.push_str(&missing_comment);
-                force_new_line_for_brace = true;
+            match recover_missing_comment_in_span(
+                mk_sp(args_span.hi, ret_span.hi),
+                shape,
+                context,
+                last_line_width(&result),
+            ) {
+                Some(ref missing_comment) if !missing_comment.is_empty() => {
+                    result.push_str(missing_comment);
+                    force_new_line_for_brace = true;
+                }
+                _ => (),
             }
         }
     }
@@ -2684,34 +2668,17 @@ fn missing_span_before_after_where(
     (missing_span_before, missing_span_after)
 }
 
-fn rewrite_missing_comment_in_where(
-    context: &RewriteContext,
-    comment: &str,
-    shape: Shape,
-) -> Option<String> {
-    let comment = comment.trim();
-    if comment.is_empty() {
-        Some(String::new())
-    } else {
-        rewrite_comment(comment, false, shape, context.config)
-    }
-}
-
 fn rewrite_comments_before_after_where(
     context: &RewriteContext,
     span_before_where: Span,
     span_after_where: Span,
     shape: Shape,
 ) -> Option<(String, String)> {
-    let before_comment = try_opt!(rewrite_missing_comment_in_where(
-        context,
-        &context.snippet(span_before_where),
-        shape,
-    ));
-    let after_comment = try_opt!(rewrite_missing_comment_in_where(
-        context,
-        &context.snippet(span_after_where),
+    let before_comment = try_opt!(rewrite_missing_comment(span_before_where, shape, context));
+    let after_comment = try_opt!(rewrite_missing_comment(
+        span_after_where,
         shape.block_indent(context.config.tab_spaces()),
+        context,
     ));
     Some((before_comment, after_comment))
 }
