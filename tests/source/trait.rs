@@ -53,3 +53,7 @@ trait FooBar<T> : Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
 
 trait WhereList<T, J> where T: Foo, J: Bar {}
 
+trait X /* comment */ {}
+trait Y // comment
+{
+}

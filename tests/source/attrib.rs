@@ -1,6 +1,19 @@
 // rustfmt-wrap_comments: true
 // Test attributes and doc comments are preserved.
 
+//! Doc comment
+
+#![attribute]
+
+//! Crate doc comment
+
+// Comment
+
+// Comment on attribute
+#![the(attribute)]
+
+// Another comment
+
 #[invalid attribute]
 fn foo() {}
 

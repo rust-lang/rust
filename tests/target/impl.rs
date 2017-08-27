@@ -18,6 +18,11 @@ where
     }
 }
 
+impl X<T> /* comment */ {}
+impl Y<T> // comment
+{
+}
+
 impl<T> Foo for T
 // comment1
 where

@@ -19,7 +19,7 @@ use syntax::codemap::{BytePos, Span};
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              rewrite_comment, FindUncommented};
+              recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
 use config::{BraceStyle, Config, Density, IndentStyle, ReturnIndent, Style};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_call_inner, ExprType};
@@ -66,7 +66,7 @@ impl Rewrite for ast::Local {
 
         // String that is placed within the assignment pattern and expression.
         let infix = {
-            let mut infix = String::new();
+            let mut infix = String::with_capacity(32);
 
             if let Some(ref ty) = self.ty {
                 let separator = type_annotation_separator(context.config);
@@ -517,8 +517,10 @@ pub fn format_impl(
     where_span_end: Option<BytePos>,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
         let ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset));
+        let indent_str = offset.to_string(context.config);
+        let sep = format!("\n{}", &indent_str);
         result.push_str(&ref_and_type);
 
         let where_budget = if result.contains('\n') {
@@ -543,6 +545,24 @@ pub fn format_impl(
             option,
         ));
 
+        // If there is no where clause, we may have missing comments between the trait name and
+        // the opening brace.
+        if generics.where_clause.predicates.is_empty() {
+            if let Some(hi) = where_span_end {
+                match recover_missing_comment_in_span(
+                    mk_sp(self_ty.span.hi, hi),
+                    Shape::indented(offset, context.config),
+                    context,
+                    last_line_width(&result),
+                ) {
+                    Some(ref missing_comment) if !missing_comment.is_empty() => {
+                        result.push_str(missing_comment);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         if try_opt!(is_impl_single_line(
             context,
             &items,
@@ -551,9 +571,8 @@ pub fn format_impl(
             &item,
         )) {
             result.push_str(&where_clause_str);
-            if where_clause_str.contains('\n') {
-                let white_space = offset.to_string(context.config);
-                result.push_str(&format!("\n{}{{\n{}}}", &white_space, &white_space));
+            if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
+                result.push_str(&format!("{}{{{}}}", &sep, &sep));
             } else {
                 result.push_str(" {}");
             }
@@ -569,14 +588,11 @@ pub fn format_impl(
         result.push_str(&where_clause_str);
 
         match context.config.item_brace_style() {
-            BraceStyle::AlwaysNextLine => {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
-            }
+            _ if last_line_contains_single_line_comment(&result) => result.push_str(&sep),
+            BraceStyle::AlwaysNextLine => result.push_str(&sep),
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => if !where_clause_str.is_empty() {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
+                result.push_str(&sep);
             } else {
                 result.push(' ');
             },
@@ -610,8 +626,7 @@ pub fn format_impl(
         }
 
         if result.chars().last().unwrap() == '{' {
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
+            result.push_str(&sep);
         }
         result.push('}');
 
@@ -632,7 +647,7 @@ fn is_impl_single_line(
     let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
     Some(
-        context.config.impl_empty_single_line() && items.is_empty() &&
+        context.config.impl_empty_single_line() && items.is_empty() && !result.contains('\n') &&
             result.len() + where_clause_str.len() <= context.config.max_width() &&
             !contains_comment(&snippet[open_pos..]),
     )
@@ -653,7 +668,7 @@ fn format_impl_ref_and_type(
         _,
     ) = item.node
     {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
 
         result.push_str(&format_visibility(&item.vis));
         result.push_str(&format_defaultness(defaultness));
@@ -853,7 +868,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
         item.node
     {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
         let header = format!(
             "{}{}trait {}",
             format_visibility(&item.vis),
@@ -910,14 +925,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 .checked_sub(last_line_width(&result))
         );
         let pos_before_where = if type_param_bounds.is_empty() {
-            if generics.where_clause.predicates.is_empty() {
-                // We do not use this, so it does not matter
-                item.span.lo
-            } else {
-                let snippet = context.snippet(item.span);
-                let where_pos = snippet.find_uncommented("where");
-                item.span.lo + where_pos.map_or(BytePos(0), |p| BytePos(p as u32))
-            }
+            generics.where_clause.span.lo
         } else {
             type_param_bounds[type_param_bounds.len() - 1].span().hi
         };
@@ -946,7 +954,33 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
         result.push_str(&where_clause_str);
 
+        if generics.where_clause.predicates.is_empty() {
+            let item_snippet = context.snippet(item.span);
+            if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
+                // 1 = `{`
+                let comment_hi = body_lo - BytePos(1);
+                let comment_lo = item.span.lo + BytePos(lo as u32);
+                if comment_lo < comment_hi {
+                    match recover_missing_comment_in_span(
+                        mk_sp(comment_lo, comment_hi),
+                        Shape::indented(offset, context.config),
+                        context,
+                        last_line_width(&result),
+                    ) {
+                        Some(ref missing_comment) if !missing_comment.is_empty() => {
+                            result.push_str(missing_comment);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+
         match context.config.item_brace_style() {
+            _ if last_line_contains_single_line_comment(&result) => {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            }
             BraceStyle::AlwaysNextLine => {
                 result.push('\n');
                 result.push_str(&offset.to_string(context.config));
@@ -1231,7 +1265,7 @@ pub fn rewrite_type_alias(
     vis: &ast::Visibility,
     span: Span,
 ) -> Option<String> {
-    let mut result = String::new();
+    let mut result = String::with_capacity(128);
 
     result.push_str(&format_visibility(vis));
     result.push_str("type ");
@@ -2006,33 +2040,17 @@ fn rewrite_fn_base(
     // args and `{`.
     if where_clause_str.is_empty() {
         if let ast::FunctionRetTy::Default(ret_span) = fd.output {
-            let sp = mk_sp(args_span.hi, ret_span.hi);
-            let missing_snippet = context.snippet(sp);
-            let trimmed_snippet = missing_snippet.trim();
-            let missing_comment = if trimmed_snippet.is_empty() {
-                String::new()
-            } else {
-                try_opt!(rewrite_comment(
-                    trimmed_snippet,
-                    false,
-                    Shape::indented(indent, context.config),
-                    context.config,
-                ))
-            };
-            if !missing_comment.is_empty() {
-                let pos = missing_snippet.chars().position(|c| c == '/').unwrap_or(0);
-                // 1 = ` `
-                let total_width = missing_comment.len() + last_line_width(&result) + 1;
-                let force_new_line_before_comment = missing_snippet[..pos].contains('\n') ||
-                    total_width > context.config.max_width();
-                let sep = if force_new_line_before_comment {
-                    format!("\n{}", indent.to_string(context.config))
-                } else {
-                    String::from(" ")
-                };
-                result.push_str(&sep);
-                result.push_str(&missing_comment);
-                force_new_line_for_brace = true;
+            match recover_missing_comment_in_span(
+                mk_sp(args_span.hi, ret_span.hi),
+                shape,
+                context,
+                last_line_width(&result),
+            ) {
+                Some(ref missing_comment) if !missing_comment.is_empty() => {
+                    result.push_str(missing_comment);
+                    force_new_line_for_brace = true;
+                }
+                _ => (),
             }
         }
     }
@@ -2683,34 +2701,17 @@ fn missing_span_before_after_where(
     (missing_span_before, missing_span_after)
 }
 
-fn rewrite_missing_comment_in_where(
-    context: &RewriteContext,
-    comment: &str,
-    shape: Shape,
-) -> Option<String> {
-    let comment = comment.trim();
-    if comment.is_empty() {
-        Some(String::new())
-    } else {
-        rewrite_comment(comment, false, shape, context.config)
-    }
-}
-
 fn rewrite_comments_before_after_where(
     context: &RewriteContext,
     span_before_where: Span,
     span_after_where: Span,
     shape: Shape,
 ) -> Option<(String, String)> {
-    let before_comment = try_opt!(rewrite_missing_comment_in_where(
-        context,
-        &context.snippet(span_before_where),
-        shape,
-    ));
-    let after_comment = try_opt!(rewrite_missing_comment_in_where(
-        context,
-        &context.snippet(span_after_where),
+    let before_comment = try_opt!(rewrite_missing_comment(span_before_where, shape, context));
+    let after_comment = try_opt!(rewrite_missing_comment(
+        span_after_where,
         shape.block_indent(context.config.tab_spaces()),
+        context,
     ));
     Some((before_comment, after_comment))
 }
