@@ -136,7 +136,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
             None => {
                 // No subcommand -- show the general usage and subcommand help
                 println!("{}\n", subcommand_help);
-                process::exit(0);
+                process::exit(1);
             }
         };
 
