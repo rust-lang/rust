@@ -868,7 +868,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
         item.node
     {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
         let header = format!(
             "{}{}trait {}",
             format_visibility(&item.vis),
@@ -925,14 +925,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 .checked_sub(last_line_width(&result))
         );
         let pos_before_where = if type_param_bounds.is_empty() {
-            if generics.where_clause.predicates.is_empty() {
-                // We do not use this, so it does not matter
-                item.span.lo
-            } else {
-                let snippet = context.snippet(item.span);
-                let where_pos = snippet.find_uncommented("where");
-                item.span.lo + where_pos.map_or(BytePos(0), |p| BytePos(p as u32))
-            }
+            generics.where_clause.span.lo
         } else {
             type_param_bounds[type_param_bounds.len() - 1].span().hi
         };
@@ -961,7 +954,33 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
         result.push_str(&where_clause_str);
 
+        if generics.where_clause.predicates.is_empty() {
+            let item_snippet = context.snippet(item.span);
+            if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
+                // 1 = `{`
+                let comment_hi = body_lo - BytePos(1);
+                let comment_lo = item.span.lo + BytePos(lo as u32);
+                if comment_lo < comment_hi {
+                    match recover_missing_comment_in_span(
+                        mk_sp(comment_lo, comment_hi),
+                        Shape::indented(offset, context.config),
+                        context,
+                        last_line_width(&result),
+                    ) {
+                        Some(ref missing_comment) if !missing_comment.is_empty() => {
+                            result.push_str(missing_comment);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+
         match context.config.item_brace_style() {
+            _ if last_line_contains_single_line_comment(&result) => {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            }
             BraceStyle::AlwaysNextLine => {
                 result.push('\n');
                 result.push_str(&offset.to_string(context.config));
