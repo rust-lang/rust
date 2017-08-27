@@ -79,3 +79,8 @@ where
     J: Bar,
 {
 }
+
+trait X /* comment */ {}
+trait Y // comment
+{
+}
