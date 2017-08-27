@@ -3,9 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/android-base-apt-get.sh /scripts/
 RUN sh /scripts/android-base-apt-get.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 # ndk
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
@@ -36,5 +33,3 @@ ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

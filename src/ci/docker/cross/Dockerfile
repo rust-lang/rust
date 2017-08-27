@@ -21,9 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 WORKDIR /tmp
 
 COPY cross/build-rumprun.sh /tmp/
@@ -71,5 +68,3 @@ ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 # sccache
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

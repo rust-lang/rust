@@ -17,13 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config
 
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV HOSTS=mips-unknown-linux-gnu
 
