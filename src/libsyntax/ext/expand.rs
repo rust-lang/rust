@@ -702,7 +702,6 @@ impl<'a> Parser<'a> {
                                of `{}!` is likely invalid in {} context",
                                macro_path, kind_name);
             err.span_note(span, &msg).emit();
-            self.cx.trace_macros_diag();
         }
     }
 }
