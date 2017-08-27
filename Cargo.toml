@@ -7,7 +7,7 @@ description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
-include = ["src/*.rs", "Cargo.toml", "build.rs", "LICENSE-*"]
+include = ["src/**", "Cargo.toml", "build.rs", "LICENSE-*"]
 build = "build.rs"
 categories = ["development-tools"]
 
