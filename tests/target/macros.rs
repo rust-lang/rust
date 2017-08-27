@@ -178,6 +178,36 @@ fn issue_1885() {
         .collect::<Vec<_>>();
 }
 
+fn issue_1917() {
+    mod x {
+        quickcheck! {
+            fn test(a: String, s: String, b: String) -> TestResult {
+                if a.find(&s).is_none() {
+
+                    TestResult::from_bool(true)
+                } else {
+                    TestResult::discard()
+                }
+            }
+        }
+    }
+}
+
+fn issue_1921() {
+    // Macro with tabs.
+    lazy_static! {
+        static ref ONE: u32 = 1;
+        static ref TWO: u32 = 2;
+        static ref THREE: u32 = 3;
+        static ref FOUR: u32 = {
+            let mut acc = 1;
+            acc += 1;
+            acc += 2;
+            acc
+        }
+    }
+}
+
 // Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
 // at the end of the file for now.
 
