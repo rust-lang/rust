@@ -18,12 +18,12 @@ impl Foo {
     /// # Panics
     pub fn bar() {}
 
-    // @has - '//*[@id="examples-1"]//a' 'Examples'
+    // @has - '//*[@id="examples-2"]//a' 'Examples'
     /// # Examples
     pub fn bar_1() {}
 
-    // @has - '//*[@id="examples-2"]//a' 'Examples'
-    // @has - '//*[@id="panics-1"]//a' 'Panics'
+    // @has - '//*[@id="examples-4"]//a' 'Examples'
+    // @has - '//*[@id="panics-2"]//a' 'Panics'
     /// # Examples
     /// # Panics
     pub fn bar_2() {}
