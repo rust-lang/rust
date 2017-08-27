@@ -16,6 +16,6 @@
 #![crate_type = "dylib"]
 
 #[macro_reexport(reexported)]
+//~^ ERROR macros reexports are experimental and possibly buggy
 #[macro_use] #[no_link]
 extern crate macro_reexport_1;
-//~^ ERROR macros reexports are experimental and possibly buggy
