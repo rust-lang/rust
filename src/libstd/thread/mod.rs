@@ -1230,6 +1230,11 @@ impl<T> JoinHandle<T> {
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`panic`]: ../../std/macro.panic.html
     ///
+    /// # Panics
+    ///
+    /// This function may panic on some platforms if a thread attempts to join
+    /// itself or otherwise may create a deadlock with joining threads.
+    ///
     /// # Examples
     ///
     /// ```
