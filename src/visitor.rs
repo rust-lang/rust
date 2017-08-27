@@ -18,7 +18,8 @@ use syntax::parse::ParseSess;
 
 use {Indent, Shape, Spanned};
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{contains_comment, CodeCharKind, CommentCodeSlices, FindUncommented};
+use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
+              FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
 use expr::{format_expr, ExprType};
@@ -928,6 +929,8 @@ impl<'a> Rewrite for [ast::Attribute] {
         let mut derive_args = Vec::new();
 
         let mut iter = self.iter().enumerate().peekable();
+        let mut insert_new_line = true;
+        let mut is_prev_sugared_doc = false;
         while let Some((i, a)) = iter.next() {
             let a_str = try_opt!(a.rewrite(context, shape));
 
@@ -937,31 +940,61 @@ impl<'a> Rewrite for [ast::Attribute] {
                 // This particular horror show is to preserve line breaks in between doc
                 // comments. An alternative would be to force such line breaks to start
                 // with the usual doc comment token.
-                let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
-                let comment = comment.trim();
+                let (multi_line_before, multi_line_after) = if a.is_sugared_doc ||
+                    is_prev_sugared_doc
+                {
+                    // Look at before and after comment and see if there are any empty lines.
+                    let comment_begin = comment.chars().position(|c| c == '/');
+                    let len = comment_begin.unwrap_or(comment.len());
+                    let mlb = comment.chars().take(len).filter(|c| *c == '\n').count() > 1;
+                    let mla = if comment_begin.is_none() {
+                        mlb
+                    } else {
+                        let comment_end = comment.chars().rev().position(|c| !c.is_whitespace());
+                        let len = comment_end.unwrap();
+                        comment
+                            .chars()
+                            .rev()
+                            .take(len)
+                            .filter(|c| *c == '\n')
+                            .count() > 1
+                    };
+                    (mlb, mla)
+                } else {
+                    (false, false)
+                };
+
+                let comment = try_opt!(recover_missing_comment_in_span(
+                    mk_sp(self[i - 1].span.hi, a.span.lo),
+                    shape.with_max_width(context.config),
+                    context,
+                    0,
+                ));
+
                 if !comment.is_empty() {
-                    let comment = try_opt!(rewrite_comment(
-                        comment,
-                        false,
-                        Shape::legacy(
-                            context.config.comment_width() - shape.indent.width(),
-                            shape.indent,
-                        ),
-                        context.config,
-                    ));
-                    result.push_str(&indent);
+                    if multi_line_before {
+                        result.push('\n');
+                    }
                     result.push_str(&comment);
                     result.push('\n');
-                } else if multi_line {
+                    if multi_line_after {
+                        result.push('\n')
+                    }
+                } else if insert_new_line {
                     result.push('\n');
+                    if multi_line_after {
+                        result.push('\n')
+                    }
                 }
+
                 if derive_args.is_empty() {
                     result.push_str(&indent);
                 }
+
+                insert_new_line = true;
             }
 
             // Write the attribute itself.
-            let mut insert_new_line = true;
             if context.config.merge_derives() {
                 // If the attribute is `#[derive(...)]`, take the arguments.
                 if let Some(mut args) = get_derive_args(context, a) {
@@ -982,9 +1015,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 result.push_str(&a_str);
             }
 
-            if insert_new_line && i < self.len() - 1 {
-                result.push('\n');
-            }
+            is_prev_sugared_doc = a.is_sugared_doc;
         }
         Some(result)
     }
