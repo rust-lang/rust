@@ -920,10 +920,10 @@ impl Rewrite for ast::Attribute {
 
 impl<'a> Rewrite for [ast::Attribute] {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let mut result = String::new();
         if self.is_empty() {
-            return Some(result);
+            return Some(String::new());
         }
+        let mut result = String::with_capacity(128);
         let indent = shape.indent.to_string(context.config);
 
         let mut derive_args = Vec::new();

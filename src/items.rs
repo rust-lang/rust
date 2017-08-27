@@ -66,7 +66,7 @@ impl Rewrite for ast::Local {
 
         // String that is placed within the assignment pattern and expression.
         let infix = {
-            let mut infix = String::new();
+            let mut infix = String::with_capacity(32);
 
             if let Some(ref ty) = self.ty {
                 let separator = type_annotation_separator(context.config);
@@ -668,7 +668,7 @@ fn format_impl_ref_and_type(
         _,
     ) = item.node
     {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
 
         result.push_str(&format_visibility(&item.vis));
         result.push_str(&format_defaultness(defaultness));
@@ -1265,7 +1265,7 @@ pub fn rewrite_type_alias(
     vis: &ast::Visibility,
     span: Span,
 ) -> Option<String> {
-    let mut result = String::new();
+    let mut result = String::with_capacity(128);
 
     result.push_str(&format_visibility(vis));
     result.push_str("type ");
