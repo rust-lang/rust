@@ -29,7 +29,7 @@ use type_of;
 use tvec;
 use value::Value;
 
-use super::MirContext;
+use super::{MirContext, LocalRef};
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
 use super::lvalue::LvalueRef;
@@ -381,9 +381,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Rvalue::Len(ref lvalue) => {
-                let tr_lvalue = self.trans_lvalue(&bcx, lvalue);
+                let size = self.evaluate_array_len(&bcx, lvalue);
                 let operand = OperandRef {
-                    val: OperandValue::Immediate(tr_lvalue.len(bcx.ccx)),
+                    val: OperandValue::Immediate(size),
                     ty: bcx.tcx().types.usize,
                 };
                 (bcx, operand)
@@ -510,6 +510,26 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 (bcx, OperandRef::new_zst(self.ccx, self.monomorphize(&ty)))
             }
         }
+    }
+
+    fn evaluate_array_len(&mut self,
+                          bcx: &Builder<'a, 'tcx>,
+                          lvalue: &mir::Lvalue<'tcx>) -> ValueRef
+    {
+        // ZST are passed as operands and require special handling
+        // because trans_lvalue() panics if Local is operand.
+        if let mir::Lvalue::Local(index) = *lvalue {
+            if let LocalRef::Operand(Some(op)) = self.locals[index] {
+                if common::type_is_zero_size(bcx.ccx, op.ty) {
+                    if let ty::TyArray(_, n) = op.ty.sty {
+                        return common::C_uint(bcx.ccx, n);
+                    }
+                }
+            }
+        }
+        // use common size calculation for non zero-sized types
+        let tr_value = self.trans_lvalue(&bcx, lvalue);
+        return tr_value.len(bcx.ccx);
     }
 
     pub fn trans_scalar_binop(&mut self,
