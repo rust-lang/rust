@@ -2284,8 +2284,7 @@ fn compute_budgets_for_args(
                 }
                 IndentStyle::Visual => {
                     let indent = indent + result.len() + 1;
-                    let multi_line_overhead =
-                        indent.width() + result.len() + if newline_brace { 2 } else { 4 };
+                    let multi_line_overhead = indent.width() + if newline_brace { 2 } else { 4 };
                     let budget =
                         try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
                     (indent, budget)
