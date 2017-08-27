@@ -208,12 +208,7 @@ fn arrays() {
         0,
     ];
 
-    let y = [
-        // comment
-        1,
-        2, // post comment
-        3,
-    ];
+    let y = [/* comment */ 1, 2 /* post comment */, 3];
 
     let xy = [
         strukt {
