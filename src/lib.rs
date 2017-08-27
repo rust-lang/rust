@@ -231,6 +231,16 @@ impl Indent {
         }
     }
 
+    pub fn from_width(config: &Config, width: usize) -> Indent {
+        if config.hard_tabs() {
+            let tab_num = width / config.tab_spaces();
+            let alignment = width % config.tab_spaces();
+            Indent::new(config.tab_spaces() * tab_num, alignment)
+        } else {
+            Indent::new(width, 0)
+        }
+    }
+
     pub fn empty() -> Indent {
         Indent::new(0, 0)
     }

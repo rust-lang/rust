@@ -19,8 +19,6 @@
 // List-like invocations with parentheses will be formatted as function calls,
 // and those with brackets will be formatted as array literals.
 
-use std::iter::repeat;
-
 use syntax::ast;
 use syntax::codemap::BytePos;
 use syntax::parse::new_parser_from_tts;
@@ -118,14 +116,18 @@ pub fn rewrite_macro(
                 Ok(expr) => {
                     // Recovered errors.
                     if context.parse_session.span_diagnostic.has_errors() {
-                        return indent_macro_snippet(&context.snippet(mac.span), shape.indent);
+                        return indent_macro_snippet(
+                            context,
+                            &context.snippet(mac.span),
+                            shape.indent,
+                        );
                     }
 
                     expr
                 }
                 Err(mut e) => {
                     e.cancel();
-                    return indent_macro_snippet(&context.snippet(mac.span), shape.indent);
+                    return indent_macro_snippet(context, &context.snippet(mac.span), shape.indent);
                 }
             };
 
@@ -244,7 +246,7 @@ pub fn rewrite_macro(
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.
-            indent_macro_snippet(&context.snippet(mac.span), shape.indent)
+            indent_macro_snippet(context, &context.snippet(mac.span), shape.indent)
         }
     }
 }
@@ -308,7 +310,11 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
 //      ),
 /// }
 /// ```
-fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
+fn indent_macro_snippet(
+    context: &RewriteContext,
+    macro_str: &str,
+    indent: Indent,
+) -> Option<String> {
     let mut lines = macro_str.lines();
     let first_line = try_opt!(lines.next().map(|s| s.trim_right()));
     let mut trimmed_lines = Vec::with_capacity(16);
@@ -319,7 +325,7 @@ fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
                 let prefix_space_width = if is_empty_line(line) {
                     None
                 } else {
-                    get_prefix_space_width(line)
+                    Some(get_prefix_space_width(context, line))
                 };
                 trimmed_lines.push((line.trim(), prefix_space_width));
                 prefix_space_width
@@ -337,7 +343,8 @@ fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
                             original_indent_width
                                 .checked_sub(min_prefix_space_width)
                                 .unwrap_or(0);
-                        repeat_white_space(new_indent_width) + line.trim()
+                        let new_indent = Indent::from_width(context.config, new_indent_width);
+                        new_indent.to_string(context.config) + line.trim()
                     }
                     None => String::new(),
                 })
@@ -346,12 +353,17 @@ fn indent_macro_snippet(macro_str: &str, indent: Indent) -> Option<String> {
     )
 }
 
-fn get_prefix_space_width(s: &str) -> Option<usize> {
-    s.chars().position(|c| c != ' ')
-}
-
-fn repeat_white_space(ws_count: usize) -> String {
-    repeat(" ").take(ws_count).collect::<String>()
+fn get_prefix_space_width(context: &RewriteContext, s: &str) -> usize {
+    let mut width = 0;
+    let mut iter = s.chars();
+    while let Some(c) = iter.next() {
+        match c {
+            ' ' => width += 1,
+            '\t' => width += context.config.tab_spaces(),
+            _ => return width,
+        }
+    }
+    width
 }
 
 fn is_empty_line(s: &str) -> bool {
