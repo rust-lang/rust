@@ -16,13 +16,8 @@ extern crate syntax;
 extern crate syntax_pos;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
 
 extern crate toml;
-
-// Only for the compile time checking of paths
-extern crate core;
-extern crate alloc;
 
 // for unicode nfc normalization
 extern crate unicode_normalization;
