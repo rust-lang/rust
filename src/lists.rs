@@ -117,8 +117,18 @@ impl ListItem {
         self.item.as_ref().map_or("", |s| &*s)
     }
 
-    pub fn is_multiline(&self) -> bool {
+    pub fn is_different_group(&self) -> bool {
         self.inner_as_ref().contains('\n') || self.pre_comment.is_some() ||
+            self.post_comment
+                .as_ref()
+                .map_or(false, |s| s.contains('\n'))
+    }
+
+    pub fn is_multiline(&self) -> bool {
+        self.inner_as_ref().contains('\n') ||
+            self.pre_comment
+                .as_ref()
+                .map_or(false, |s| s.contains('\n')) ||
             self.post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
@@ -469,7 +479,7 @@ where
         let item = item.as_ref();
         let inner_item_width = item.inner_as_ref().len();
         if !first &&
-            (item.is_multiline() || !item.post_comment.is_some() ||
+            (item.is_different_group() || !item.post_comment.is_some() ||
                 inner_item_width + overhead > max_budget)
         {
             return max_width;
