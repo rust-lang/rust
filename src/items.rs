@@ -517,8 +517,10 @@ pub fn format_impl(
     where_span_end: Option<BytePos>,
 ) -> Option<String> {
     if let ast::ItemKind::Impl(_, _, _, ref generics, _, ref self_ty, ref items) = item.node {
-        let mut result = String::new();
+        let mut result = String::with_capacity(128);
         let ref_and_type = try_opt!(format_impl_ref_and_type(context, item, offset));
+        let indent_str = offset.to_string(context.config);
+        let sep = format!("\n{}", &indent_str);
         result.push_str(&ref_and_type);
 
         let where_budget = if result.contains('\n') {
@@ -543,6 +545,24 @@ pub fn format_impl(
             option,
         ));
 
+        // If there is no where clause, we may have missing comments between the trait name and
+        // the opening brace.
+        if generics.where_clause.predicates.is_empty() {
+            if let Some(hi) = where_span_end {
+                match recover_missing_comment_in_span(
+                    mk_sp(self_ty.span.hi, hi),
+                    Shape::indented(offset, context.config),
+                    context,
+                    last_line_width(&result),
+                ) {
+                    Some(ref missing_comment) if !missing_comment.is_empty() => {
+                        result.push_str(missing_comment);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         if try_opt!(is_impl_single_line(
             context,
             &items,
@@ -551,9 +571,8 @@ pub fn format_impl(
             &item,
         )) {
             result.push_str(&where_clause_str);
-            if where_clause_str.contains('\n') {
-                let white_space = offset.to_string(context.config);
-                result.push_str(&format!("\n{}{{\n{}}}", &white_space, &white_space));
+            if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
+                result.push_str(&format!("{}{{{}}}", &sep, &sep));
             } else {
                 result.push_str(" {}");
             }
@@ -569,14 +588,11 @@ pub fn format_impl(
         result.push_str(&where_clause_str);
 
         match context.config.item_brace_style() {
-            BraceStyle::AlwaysNextLine => {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
-            }
+            _ if last_line_contains_single_line_comment(&result) => result.push_str(&sep),
+            BraceStyle::AlwaysNextLine => result.push_str(&sep),
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => if !where_clause_str.is_empty() {
-                result.push('\n');
-                result.push_str(&offset.to_string(context.config));
+                result.push_str(&sep);
             } else {
                 result.push(' ');
             },
@@ -610,8 +626,7 @@ pub fn format_impl(
         }
 
         if result.chars().last().unwrap() == '{' {
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
+            result.push_str(&sep);
         }
         result.push('}');
 
@@ -632,7 +647,7 @@ fn is_impl_single_line(
     let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
     Some(
-        context.config.impl_empty_single_line() && items.is_empty() &&
+        context.config.impl_empty_single_line() && items.is_empty() && !result.contains('\n') &&
             result.len() + where_clause_str.len() <= context.config.max_width() &&
             !contains_comment(&snippet[open_pos..]),
     )
