@@ -10,7 +10,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(conservative_impl_trait)]
 
-#![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
+#![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 
 extern crate syntax;
 extern crate syntax_pos;
