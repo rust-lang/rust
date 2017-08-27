@@ -3,9 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/android-base-apt-get.sh /scripts/
 RUN sh /scripts/android-base-apt-get.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
     download_and_make_toolchain android-ndk-r13b-linux-x86_64.zip arm64 21
@@ -28,5 +25,3 @@ ENV SCRIPT python2.7 ../x.py dist --target $HOSTS --host $HOSTS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

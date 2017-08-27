@@ -19,11 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY dist-i686-freebsd/build-toolchain.sh /tmp/
 RUN /tmp/build-toolchain.sh i686
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

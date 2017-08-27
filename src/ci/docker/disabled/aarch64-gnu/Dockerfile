@@ -70,13 +70,8 @@ RUN chmod +x rootfs/etc/init.d/rcS
 COPY scripts/qemu-bare-bones-addentropy.c /tmp/addentropy.c
 RUN aarch64-linux-gnu-gcc addentropy.c -o rootfs/addentropy -static
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS \
       --target=aarch64-unknown-linux-gnu \

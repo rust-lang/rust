@@ -73,13 +73,8 @@ RUN arm-linux-gnueabihf-gcc addentropy.c -o rootfs/addentropy -static
 # TODO: What is this?!
 RUN curl -O http://ftp.nl.debian.org/debian/dists/jessie/main/installer-armhf/current/images/device-tree/vexpress-v2p-ca15-tc1.dtb
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV RUST_CONFIGURE_ARGS \
       --target=arm-unknown-linux-gnueabihf \
