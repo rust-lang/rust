@@ -1659,7 +1659,15 @@ fn get_html_diff(w: &mut fmt::Formatter, md_text: &str, render_type: RenderType,
         println!("Differences spotted in {:?}:\n{}",
                  md_text,
                  differences.iter()
-                            .map(|s| format!("=> {}", s.to_string()))
+                            .filter_map(|s| {
+                                match *s {
+                                    html_diff::Difference::NodeText { ref elem_text,
+                                                                      ref opposite_elem_text,
+                                                                      .. }
+                                        if elem_text.trim() == opposite_elem_text.trim() => None,
+                                    _ => Some(format!("=> {}", s.to_string())),
+                                }
+                            })
                             .collect::<Vec<String>>()
                             .join("\n"));
     }
