@@ -365,6 +365,50 @@ fn rewrite_comment_inner(
     Some(result)
 }
 
+/// Given the span, rewrite the missing comment inside it if available.
+/// Note that the given span must only include comments (or leading/trailing whitespaces).
+pub fn rewrite_missing_comment(
+    span: Span,
+    shape: Shape,
+    context: &RewriteContext,
+) -> Option<String> {
+    let missing_snippet = context.snippet(span);
+    let trimmed_snippet = missing_snippet.trim();
+    if !trimmed_snippet.is_empty() {
+        rewrite_comment(trimmed_snippet, false, shape, context.config)
+    } else {
+        Some(String::new())
+    }
+}
+
+/// Recover the missing comments in the specified span, if available.
+/// The layout of the comments will be preserved as long as it does not break the code
+/// and its total width does not exceed the max width.
+pub fn recover_missing_comment_in_span(
+    span: Span,
+    shape: Shape,
+    context: &RewriteContext,
+    used_width: usize,
+) -> Option<String> {
+    let missing_comment = try_opt!(rewrite_missing_comment(span, shape, context));
+    if missing_comment.is_empty() {
+        Some(String::new())
+    } else {
+        let missing_snippet = context.snippet(span);
+        let pos = missing_snippet.chars().position(|c| c == '/').unwrap_or(0);
+        // 1 = ` `
+        let total_width = missing_comment.len() + used_width + 1;
+        let force_new_line_before_comment =
+            missing_snippet[..pos].contains('\n') || total_width > context.config.max_width();
+        let sep = if force_new_line_before_comment {
+            format!("\n{}", shape.indent.to_string(context.config))
+        } else {
+            String::from(" ")
+        };
+        Some(format!("{}{}", sep, missing_comment))
+    }
+}
+
 /// Trims whitespace and aligns to indent, but otherwise does not change comments.
 fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<String> {
     let lines: Vec<&str> = orig.lines()
