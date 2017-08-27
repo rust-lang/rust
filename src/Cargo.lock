@@ -1819,15 +1819,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_binaryen"
-version = "0.0.0"
-dependencies = [
- "cc 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
@@ -2107,7 +2098,6 @@ dependencies = [
  "rustc_allocator 0.0.0",
  "rustc_apfloat 0.0.0",
  "rustc_back 0.0.0",
- "rustc_binaryen 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",

@@ -641,6 +641,10 @@ class RustBuild(object):
                     continue
                 if self.get_toml('jemalloc'):
                     continue
+            if module.endswith("lld"):
+                config = self.get_toml('lld')
+                if config is None or config == 'false':
+                    continue
             filtered_submodules.append(module)
         run(["git", "submodule", "update",
              "--init", "--recursive"] + filtered_submodules,

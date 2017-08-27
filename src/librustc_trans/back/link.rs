@@ -15,6 +15,7 @@ use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
+use rustc_back::LinkerFlavor;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, PrintRequest};
 use rustc::session::config::{RUST_CGU_EXT, Lto};
 use rustc::session::filesearch;
@@ -27,7 +28,7 @@ use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
 use tempdir::TempDir;
-use rustc_back::{PanicStrategy, RelroLevel, LinkerFlavor};
+use rustc_back::{PanicStrategy, RelroLevel};
 use context::get_reloc_model;
 use llvm;
 
@@ -82,6 +83,10 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command, Vec<(OsString, OsString)
     } else if sess.target.target.options.is_like_msvc {
         let (cmd, envs) = msvc_link_exe_cmd(sess);
         (PathBuf::from("link.exe"), cmd, envs)
+    } else if let LinkerFlavor::Lld(f) = sess.linker_flavor() {
+        let linker = PathBuf::from(&sess.target.target.options.linker);
+        let cmd = Command::lld(&linker, f);
+        (linker, cmd, envs)
     } else {
         let linker = PathBuf::from(&sess.target.target.options.linker);
         let cmd = cmd(&linker);
@@ -611,11 +616,6 @@ fn link_natively(sess: &Session,
                  tmpdir: &Path) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let flavor = sess.linker_flavor();
-
-    // The "binaryen linker" is massively special, so skip everything below.
-    if flavor == LinkerFlavor::Binaryen {
-        return link_binaryen(sess, crate_type, out_filename, trans, tmpdir);
-    }
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, envs) = get_linker(sess);
@@ -1482,33 +1482,6 @@ fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
     match lib.cfg {
         Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
         None => true,
-    }
-}
-
-/// For now "linking with binaryen" is just "move the one module we generated in
-/// the backend to the final output"
-///
-/// That is, all the heavy lifting happens during the `back::write` phase. Here
-/// we just clean up after that.
-///
-/// Note that this is super temporary and "will not survive the night", this is
-/// guaranteed to get removed as soon as a linker for wasm exists. This should
-/// not be used for anything other than wasm.
-fn link_binaryen(sess: &Session,
-                 _crate_type: config::CrateType,
-                 out_filename: &Path,
-                 trans: &CrateTranslation,
-                 _tmpdir: &Path) {
-    assert!(trans.allocator_module.is_none());
-    assert_eq!(trans.modules.len(), 1);
-
-    let object = trans.modules[0].object.as_ref().expect("object must exist");
-    let res = fs::hard_link(object, out_filename)
-        .or_else(|_| fs::copy(object, out_filename).map(|_| ()));
-    if let Err(e) = res {
-        sess.fatal(&format!("failed to create `{}`: {}",
-                            out_filename.display(),
-                            e));
     }
 }
 

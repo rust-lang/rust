@@ -107,6 +107,8 @@ imports.env = {
   exp2f: function(x) { return Math.pow(2, x); },
   ldexp: function(x, y) { return x * Math.pow(2, y); },
   ldexpf: function(x, y) { return x * Math.pow(2, y); },
+  log: Math.log,
+  log2: Math.log2,
   log10: Math.log10,
   log10f: Math.log10,
 

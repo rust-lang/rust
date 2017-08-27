@@ -329,6 +329,10 @@
 # target, as without this option the test output will not be captured.
 #wasm-syscall = false
 
+# Indicates whether LLD will be compiled and made available in the sysroot for
+# rustc to execute.
+#lld = false
+
 # =============================================================================
 # Options for specific targets
 #
