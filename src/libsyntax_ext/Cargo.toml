@@ -10,7 +10,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 fmt_macros = { path = "../libfmt_macros" }
-log = "0.3"
 proc_macro = { path = "../libproc_macro" }
 rustc_errors = { path = "../librustc_errors" }
 syntax = { path = "../libsyntax" }

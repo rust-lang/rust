@@ -12,8 +12,6 @@
 
 #![feature(placement_in_syntax)]
 
-extern crate core;
-
 fn main() {
     use std::boxed::HEAP; //~ ERROR use of unstable library feature
 

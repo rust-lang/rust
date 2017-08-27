@@ -14,6 +14,7 @@
 
 #![deny(warnings)]
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 extern crate libc;
 extern crate test;
 extern crate getopts;

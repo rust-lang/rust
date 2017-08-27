@@ -34,7 +34,9 @@
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![feature(panic_unwind)]
+#![cfg_attr(not(any(target_env = "msvc",
+                    all(windows, target_arch = "x86_64", target_env = "gnu"))),
+            feature(panic_unwind))]
 #![feature(raw)]
 #![feature(staged_api)]
 #![feature(unwind_attributes)]
@@ -45,6 +47,7 @@
 
 extern crate alloc;
 extern crate libc;
+#[cfg(not(any(target_env = "msvc", all(windows, target_arch = "x86_64", target_env = "gnu"))))]
 extern crate unwind;
 
 use core::intrinsics;

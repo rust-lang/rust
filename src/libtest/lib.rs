@@ -35,13 +35,14 @@
 #![deny(warnings)]
 
 #![feature(asm)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 
 extern crate getopts;
 extern crate term;
+#[cfg(unix)]
 extern crate libc;
 extern crate panic_unwind;
 

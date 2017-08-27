@@ -20,7 +20,7 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
@@ -29,6 +29,7 @@ extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
+#[cfg(unix)]
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;

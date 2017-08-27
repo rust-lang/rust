@@ -16,6 +16,7 @@
 #![deny(non_snake_case)] // To trigger a hard error
 
 // Shouldn't generate a warning about unstable features
+#[allow(unused_extern_crates)]
 extern crate stability_cfg2;
 
 pub fn BOGUS() { } //~ ERROR

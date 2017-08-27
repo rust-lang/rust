@@ -358,6 +358,7 @@ extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[allow(unused_extern_crates)]
 extern crate unwind;
 
 // compiler-rt intrinsics

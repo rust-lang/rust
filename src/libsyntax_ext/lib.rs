@@ -18,7 +18,6 @@
 #![feature(proc_macro_internals)]
 
 extern crate fmt_macros;
-extern crate log;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;

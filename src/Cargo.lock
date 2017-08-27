@@ -1327,7 +1327,6 @@ dependencies = [
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_mir 0.0.0",
  "syntax 0.0.0",
@@ -1464,7 +1463,6 @@ dependencies = [
  "proc_macro 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "serialize 0.0.0",
@@ -1605,6 +1603,7 @@ dependencies = [
 name = "rustc_tsan"
 version = "0.0.0"
 dependencies = [
+ "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1859,7 +1858,6 @@ name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
- "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",

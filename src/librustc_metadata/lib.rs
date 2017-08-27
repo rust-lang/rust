@@ -39,7 +39,6 @@ extern crate proc_macro;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
-extern crate rustc_const_math;
 extern crate rustc_data_structures;
 
 mod diagnostics;

@@ -516,6 +516,18 @@ impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_compiler_builtins<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_compiler_builtins".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::has_global_allocator<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate has_global_allocator".to_string()
+    }
+}
+
 impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         "getting crate's ExternCrateData".to_string()
@@ -1079,6 +1091,8 @@ define_maps! { <'tcx>
 
     [] is_allocator: IsAllocator(DefId) -> bool,
     [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
+    [] is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
+    [] has_global_allocator: HasGlobalAllocator(DefId) -> bool,
 
     [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 

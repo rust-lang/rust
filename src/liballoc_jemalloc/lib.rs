@@ -19,7 +19,7 @@
 #![feature(libc)]
 #![feature(linkage)]
 #![feature(staged_api)]
-#![cfg_attr(dummy_jemalloc, allow(dead_code))]
+#![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 
 extern crate alloc;

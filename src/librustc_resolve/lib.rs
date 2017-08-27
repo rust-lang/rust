@@ -1250,6 +1250,7 @@ pub struct Resolver<'a> {
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
     pub maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// privacy errors are delayed until the end in order to deduplicate them
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1457,6 +1458,7 @@ impl<'a> Resolver<'a> {
 
             used_imports: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
+            maybe_unused_extern_crates: Vec::new(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),

@@ -16,10 +16,11 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(range_contains)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
 
 extern crate term;
+#[cfg(unix)]
 extern crate libc;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
