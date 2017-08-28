@@ -17,13 +17,6 @@ The expected outcome is for irrefutable patterns to be compiled to a tautology a
 To support this, currently you must do something roughly the following, which seems to counteract the benefit of having if-let and while-let in the spec.
 
 ```rust
-if let $p = $val {
-    $b
-}
-```
-Cannot be used, so the original match must be. The `allow` is forced so that the warning does not appear to the user of it since `_` won't be matched if `$p` is irrefutable.
-
-```rust
 #[allow(unreachable_patterns)]
 match $val {
     $p => { $b; },
@@ -31,6 +24,12 @@ match $val {
 }
 ```
 
+```rust
+if let $p = $val {
+    $b
+}
+```
+Cannot be used, so the original match must be. The `allow` is forced so that the warning does not appear to the user of it since `_` won't be matched if `$p` is irrefutable.
 
 # Detailed design
 [design]: #detailed-design
@@ -67,9 +66,9 @@ Adding that it is a lint that can be disabled.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-It allows programmers to manually write the line `if let _ = expr { } else { }` which is generally obfuscating and not desirable. However, this will not be explicitly allowed with the `#[allow]`.
+It allows programmers to manually write the line `if let _ = expr { } else { }` which is generally obfuscating and not desirable. However, this will only be allowed with an explicit `#[allow(irrefutable_let_pattern)]`.
 
-# Alternatives
+# Alternatives4
 [alternatives]: #alternatives
 
 * The trivial alternative: Do nothing. As your motivation explains, this only matters for macros anyways plus there already is an acceptable workaround (match). Code that needs this frequently can just package this workaround in its own macro and be done.
