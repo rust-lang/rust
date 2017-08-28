@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_borrowck"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -31,9 +28,7 @@ extern crate rustc_errors as errors;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_data_structures;
 extern crate rustc_mir;
-extern crate core; // for NonZero
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;

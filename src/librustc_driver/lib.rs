@@ -14,16 +14,13 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_driver"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
@@ -32,6 +29,7 @@ extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
+#[cfg(unix)]
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;

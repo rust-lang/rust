@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "alloc_jemalloc"]
-#![crate_type = "rlib"]
 #![no_std]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
@@ -21,7 +19,7 @@
 #![feature(libc)]
 #![feature(linkage)]
 #![feature(staged_api)]
-#![cfg_attr(dummy_jemalloc, allow(dead_code))]
+#![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 
 extern crate alloc;

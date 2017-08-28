@@ -523,6 +523,8 @@ define_dep_nodes!( <'tcx>
     [] DylibDepFormats(DefId),
     [] IsAllocator(DefId),
     [] IsPanicRuntime(DefId),
+    [] IsCompilerBuiltins(DefId),
+    [] HasGlobalAllocator(DefId),
     [] ExternCrate(DefId),
     [] LintLevels,
 );

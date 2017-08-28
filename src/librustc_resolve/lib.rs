@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_resolve"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -1253,6 +1250,7 @@ pub struct Resolver<'a> {
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
     pub maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
     /// privacy errors are delayed until the end in order to deduplicate them
     privacy_errors: Vec<PrivacyError<'a>>,
@@ -1460,6 +1458,7 @@ impl<'a> Resolver<'a> {
 
             used_imports: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
+            maybe_unused_extern_crates: Vec::new(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),

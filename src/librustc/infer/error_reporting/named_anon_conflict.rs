@@ -11,7 +11,6 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
 use infer::InferCtxt;
-use ty;
 use infer::region_inference::RegionResolutionError::*;
 use infer::region_inference::RegionResolutionError;
 
@@ -30,8 +29,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // where the anonymous region appears (there must always be one; we
         // only introduced anonymous regions in parameters) as well as a
         // version new_ty of its type where the anonymous region is replaced
-        // with the named one.
-        let (named, (arg, new_ty, br, is_first), (scope_def_id, _)) =
+        // with the named one.//scope_def_id
+        let (named, anon_arg_info, region_info) =
             if sub.is_named_region() && self.is_suitable_anonymous_region(sup).is_some() {
                 (sub,
                  self.find_arg_with_anonymous_region(sup, sub).unwrap(),
@@ -44,50 +43,38 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 return false; // inapplicable
             };
 
-        // Here, we check for the case where the anonymous region
-        // is in the return type.
-        // FIXME(#42703) - Need to handle certain cases here.
-        let ret_ty = self.tcx.type_of(scope_def_id);
-        match ret_ty.sty {
-            ty::TyFnDef(_, _) => {
-                let sig = ret_ty.fn_sig(self.tcx);
-                let late_bound_regions = self.tcx
-                    .collect_referenced_late_bound_regions(&sig.output());
-                if late_bound_regions.iter().any(|r| *r == br) {
-                    return false;
-                }
-            }
-            _ => {}
-        }
-
-        // Here we check for the case where anonymous region
-        // corresponds to self and if yes, we display E0312.
-        // FIXME(#42700) - Need to format self properly to
-        // enable E0621 for it.
-        if is_first &&
-           self.tcx
-               .opt_associated_item(scope_def_id)
-               .map(|i| i.method_has_self_argument)
-               .unwrap_or(false) {
+        let (arg, new_ty, br, is_first, scope_def_id, is_impl_item) = (anon_arg_info.arg,
+                                                                       anon_arg_info.arg_ty,
+                                                                       anon_arg_info.bound_region,
+                                                                       anon_arg_info.is_first,
+                                                                       region_info.def_id,
+                                                                       region_info.is_impl_item);
+        if is_impl_item {
             return false;
         }
 
-        let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
-            (format!("the type of `{}`", simple_name), format!("the type of `{}`", simple_name))
+        if self.is_return_type_anon(scope_def_id, br) || self.is_self_anon(is_first, scope_def_id) {
+            return false;
         } else {
-            ("parameter type".to_owned(), "type".to_owned())
-        };
 
-        struct_span_err!(self.tcx.sess,
-                         span,
-                         E0621,
-                         "explicit lifetime required in {}",
-                         error_var)
-                .span_label(arg.pat.span,
-                            format!("consider changing {} to `{}`", span_label_var, new_ty))
-                .span_label(span, format!("lifetime `{}` required", named))
-                .emit();
+            let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
+                (format!("the type of `{}`", simple_name), format!("the type of `{}`", simple_name))
+            } else {
+                ("parameter type".to_owned(), "type".to_owned())
+            };
 
+            struct_span_err!(self.tcx.sess,
+                             span,
+                             E0621,
+                             "explicit lifetime required in {}",
+                             error_var)
+                    .span_label(arg.pat.span,
+                                format!("consider changing {} to `{}`", span_label_var, new_ty))
+                    .span_label(span, format!("lifetime `{}` required", named))
+                    .emit();
+
+
+        }
         return true;
     }
 }

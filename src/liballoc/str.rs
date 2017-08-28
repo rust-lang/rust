@@ -1714,7 +1714,7 @@ impl str {
     ///
     /// [`Err`]: str/trait.FromStr.html#associatedtype.Err
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Basic usage
     ///

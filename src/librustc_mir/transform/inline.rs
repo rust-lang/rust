@@ -115,8 +115,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     Ok(ref callee_mir) if self.should_inline(callsite, callee_mir) => {
                         callee_mir.subst(self.tcx, callsite.substs)
                     }
+                    Ok(_) => continue,
 
-                    _ => continue,
+                    Err(mut bug) => {
+                        // FIXME(#43542) shouldn't have to cancel an error
+                        bug.cancel();
+                        continue
+                    }
                 };
 
                 let start = caller_mir.basic_blocks().len();

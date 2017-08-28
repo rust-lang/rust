@@ -807,7 +807,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
-/// # Example
+/// # Examples
 ///
 /// Waiting for the complete expiration of the timeout:
 ///
@@ -1229,6 +1229,11 @@ impl<T> JoinHandle<T> {
     ///
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`panic`]: ../../std/macro.panic.html
+    ///
+    /// # Panics
+    ///
+    /// This function may panic on some platforms if a thread attempts to join
+    /// itself or otherwise may create a deadlock with joining threads.
     ///
     /// # Examples
     ///

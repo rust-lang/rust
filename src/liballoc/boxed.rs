@@ -633,7 +633,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 /// that `FnBox` may be deprecated in the future if `Box<FnOnce()>`
 /// closures become directly usable.)
 ///
-/// ### Example
+/// # Examples
 ///
 /// Here is a snippet of code which creates a hashmap full of boxed
 /// once closures and then removes them one by one, calling each

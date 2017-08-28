@@ -20,11 +20,6 @@ WORKDIR /build/
 COPY dist-i586-gnu-i686-musl/musl-libunwind-patch.patch dist-i586-gnu-i686-musl/build-musl.sh /build/
 RUN sh /build/build-musl.sh && rm -rf /build
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

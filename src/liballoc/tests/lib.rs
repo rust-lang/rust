@@ -10,7 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(alloc)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
@@ -27,14 +26,10 @@
 #![feature(splice)]
 #![feature(str_escape)]
 #![feature(string_retain)]
-#![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 
-extern crate alloc;
-extern crate test;
 extern crate std_unicode;
-extern crate core;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

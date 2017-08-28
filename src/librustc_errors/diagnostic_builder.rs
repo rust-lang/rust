@@ -98,7 +98,7 @@ impl<'a> DiagnosticBuilder<'a> {
             }
         };
 
-        self.handler.emitter.borrow_mut().emit(&self);
+        self.handler.emit_db(&self);
         self.cancel();
 
         if is_error {
@@ -108,6 +108,22 @@ impl<'a> DiagnosticBuilder<'a> {
         // if self.is_fatal() {
         //     panic!(FatalError);
         // }
+    }
+
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    pub fn delay_as_bug(&mut self) {
+        self.level = Level::Bug;
+        *self.handler.delayed_span_bug.borrow_mut() = Some(self.diagnostic.clone());
+        self.cancel();
     }
 
     /// Add a span/label to be included in the resulting snippet.
@@ -178,10 +194,15 @@ impl<'a> DiagnosticBuilder<'a> {
                          code: Option<String>,
                          message: &str)
                          -> DiagnosticBuilder<'a> {
-        DiagnosticBuilder {
-            handler,
-            diagnostic: Diagnostic::new_with_code(level, code, message)
-        }
+        let diagnostic = Diagnostic::new_with_code(level, code, message);
+        DiagnosticBuilder::new_diagnostic(handler, diagnostic)
+    }
+
+    /// Creates a new `DiagnosticBuilder` with an already constructed
+    /// diagnostic.
+    pub fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic)
+                         -> DiagnosticBuilder<'a> {
+        DiagnosticBuilder { handler, diagnostic }
     }
 }
 

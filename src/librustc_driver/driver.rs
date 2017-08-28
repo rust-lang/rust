@@ -877,6 +877,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
             export_map: resolver.export_map,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
         },
         hir_forest,
     })

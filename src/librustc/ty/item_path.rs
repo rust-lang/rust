@@ -13,7 +13,6 @@ use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::DUMMY_SP;
 
 use std::cell::Cell;
 
@@ -222,11 +221,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let use_types = !self.is_default_impl(impl_def_id) && (!impl_def_id.is_local() || {
             // Otherwise, use filename/line-number if forced.
             let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-            !force_no_types && {
-                // Otherwise, use types if we can query them without inducing a cycle.
-                ty::queries::impl_trait_ref::try_get(self, DUMMY_SP, impl_def_id).is_ok() &&
-                    ty::queries::type_of::try_get(self, DUMMY_SP, impl_def_id).is_ok()
-            }
+            !force_no_types
         });
 
         if !use_types {

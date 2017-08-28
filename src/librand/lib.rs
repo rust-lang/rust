@@ -16,8 +16,6 @@
 //! is not recommended to use this library directly, but rather the official
 //! interface through `std::rand`.
 
-#![crate_name = "rand"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",

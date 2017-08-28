@@ -76,11 +76,6 @@ RUN ./build-cmake.sh
 COPY dist-x86_64-linux/build-headers.sh /tmp/
 RUN ./build-headers.sh
 
-RUN curl -Lo /rustroot/dumb-init \
-      https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
-      chmod +x /rustroot/dumb-init
-ENTRYPOINT ["/rustroot/dumb-init", "--"]
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

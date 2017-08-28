@@ -160,21 +160,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         };
 
         let mut fn_warned = false;
-        let maybe_def = match expr.node {
-            hir::ExprCall(ref callee, _) => {
-                match callee.node {
-                    hir::ExprPath(ref qpath) => Some(cx.tables.qpath_def(qpath, callee.hir_id)),
-                    _ => None
-                }
-            },
-            hir::ExprMethodCall(..) => {
-                cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
-            },
-            _ => { None }
-        };
-        if let Some(def) = maybe_def {
-            let def_id = def.def_id();
-            fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+        if cx.tcx.sess.features.borrow().fn_must_use {
+            let maybe_def = match expr.node {
+                hir::ExprCall(ref callee, _) => {
+                    match callee.node {
+                        hir::ExprPath(ref qpath) => {
+                            Some(cx.tables.qpath_def(qpath, callee.hir_id))
+                        },
+                        _ => None
+                    }
+                },
+                hir::ExprMethodCall(..) => {
+                    cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
+                },
+                _ => None
+            };
+            if let Some(def) = maybe_def {
+                let def_id = def.def_id();
+                fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+            }
         }
 
         if !(ty_warned || fn_warned) {

@@ -24,11 +24,6 @@ WORKDIR /tmp
 COPY dist-fuchsia/shared.sh dist-fuchsia/build-toolchain.sh dist-fuchsia/compiler-rt-dso-handle.patch /tmp/
 RUN /tmp/build-toolchain.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 

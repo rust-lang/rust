@@ -93,10 +93,27 @@ pub fn check(build: &mut Build) {
     }
 
     // Ninja is currently only used for LLVM itself.
-    // Some Linux distros rename `ninja` to `ninja-build`.
-    // CMake can work with either binary name.
-    if building_llvm && build.config.ninja && cmd_finder.maybe_have("ninja-build").is_none() {
-        cmd_finder.must_have("ninja");
+    if building_llvm {
+        if build.config.ninja {
+            // Some Linux distros rename `ninja` to `ninja-build`.
+            // CMake can work with either binary name.
+            if cmd_finder.maybe_have("ninja-build").is_none() {
+                cmd_finder.must_have("ninja");
+            }
+        }
+
+        // If ninja isn't enabled but we're building for MSVC then we try
+        // doubly hard to enable it. It was realized in #43767 that the msbuild
+        // CMake generator for MSVC doesn't respect configuration options like
+        // disabling LLVM assertions, which can often be quite important!
+        //
+        // In these cases we automatically enable Ninja if we find it in the
+        // environment.
+        if !build.config.ninja && build.config.build.contains("msvc") {
+            if cmd_finder.maybe_have("ninja").is_some() {
+                build.config.ninja = true;
+            }
+        }
     }
 
     build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))

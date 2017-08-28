@@ -20,7 +20,6 @@ pub fn opts() -> TargetOptions {
         target_family: Some("unix".to_string()),
         relro_level: RelroLevel::Full,
         linker_is_gnu: true,
-        no_integrated_as: true,
         .. Default::default()
     }
 }

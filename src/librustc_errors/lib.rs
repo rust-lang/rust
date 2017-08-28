@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_errors"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -19,10 +16,11 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(range_contains)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
 
 extern crate term;
+#[cfg(unix)]
 extern crate libc;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
@@ -35,8 +33,9 @@ use emitter::{Emitter, EmitterWriter};
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
-use std::{error, fmt};
+use std::mem;
 use std::rc::Rc;
+use std::{error, fmt};
 
 mod diagnostic;
 mod diagnostic_builder;
@@ -274,7 +273,8 @@ pub struct Handler {
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
-    delayed_span_bug: RefCell<Option<(MultiSpan, String)>>,
+    delayed_span_bug: RefCell<Option<Diagnostic>>,
+    tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
 }
 
 impl Handler {
@@ -298,6 +298,7 @@ impl Handler {
             treat_err_as_bug,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
+            tracked_diagnostics: RefCell::new(None),
         }
     }
 
@@ -439,8 +440,9 @@ impl Handler {
         if self.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        let mut delayed = self.delayed_span_bug.borrow_mut();
-        *delayed = Some((sp.into(), msg.to_string()));
+        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        diagnostic.set_span(sp.into());
+        *self.delayed_span_bug.borrow_mut() = Some(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
@@ -507,14 +509,9 @@ impl Handler {
         let s;
         match self.err_count.get() {
             0 => {
-                let delayed_bug = self.delayed_span_bug.borrow();
-                match *delayed_bug {
-                    Some((ref span, ref errmsg)) => {
-                        self.span_bug(span.clone(), errmsg);
-                    }
-                    _ => {}
+                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
+                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
                 }
-
                 return;
             }
             1 => s = "aborting due to previous error".to_string(),
@@ -546,6 +543,24 @@ impl Handler {
         if !self.continue_after_error.get() {
             self.abort_if_errors();
         }
+    }
+
+    pub fn track_diagnostics<F, R>(&self, f: F) -> (R, Vec<Diagnostic>)
+        where F: FnOnce() -> R
+    {
+        let prev = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(),
+                                Some(Vec::new()));
+        let ret = f();
+        let diagnostics = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(), prev)
+            .unwrap();
+        (ret, diagnostics)
+    }
+
+    fn emit_db(&self, db: &DiagnosticBuilder) {
+        if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
+            list.push((**db).clone());
+        }
+        self.emitter.borrow_mut().emit(db);
     }
 }
 

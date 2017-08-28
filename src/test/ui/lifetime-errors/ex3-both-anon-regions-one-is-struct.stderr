@@ -1,0 +1,10 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-one-is-struct.rs:17:11
+   |
+16 | fn foo(mut x: Ref, y: &u32) {
+   |               ---     ---- these two types are declared with different lifetimes...
+17 |     x.b = y;
+   |           ^ ...but data from `y` flows into `x` here
+
+error: aborting due to previous error
+

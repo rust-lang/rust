@@ -3,11 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 COPY scripts/crosstool-ng.sh /scripts/
 RUN sh /scripts/crosstool-ng.sh
 

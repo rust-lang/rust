@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_platform_intrinsics"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![deny(warnings)]
 #![allow(bad_style)]
 
