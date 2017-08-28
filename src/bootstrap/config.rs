@@ -111,6 +111,7 @@ pub struct Config {
     pub low_priority: bool,
     pub channel: String,
     pub quiet_tests: bool,
+    pub test_miri: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
@@ -269,6 +270,7 @@ struct Rust {
     debug: Option<bool>,
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
+    test_miri: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -304,6 +306,7 @@ impl Config {
         config.codegen_tests = true;
         config.ignore_git = false;
         config.rust_dist_src = true;
+        config.test_miri = false;
 
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
@@ -444,6 +447,7 @@ impl Config {
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
+            set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);

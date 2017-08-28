@@ -39,3 +39,6 @@
 [submodule "src/tools/rustfmt"]
 	path = src/tools/rustfmt
 	url = https://github.com/rust-lang-nursery/rustfmt.git
+[submodule "src/tools/miri"]
+	path = src/tools/miri
+	url = https://github.com/solson/miri.git

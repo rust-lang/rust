@@ -479,6 +479,41 @@ impl Step for Rustfmt {
     }
 }
 
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Miri {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for Miri {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/tools/miri").default_condition(builder.build.config.test_miri)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Miri {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "miri",
+            mode: Mode::Librustc,
+            path: "src/tools/miri",
+        })
+    }
+}
+
 impl<'a> Builder<'a> {
     /// Get a `Command` which is ready to run `tool` in `stage` built for
     /// `host`.

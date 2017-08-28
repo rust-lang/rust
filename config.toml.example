@@ -291,6 +291,10 @@
 # When creating source tarballs whether or not to create a source tarball.
 #dist-src = false
 
+# Whether to also run the Miri tests suite when running tests.
+# As a side-effect also generates MIR for all libraries.
+#test-miri = false
+
 # =============================================================================
 # Options for specific targets
 #
