@@ -1622,20 +1622,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             Value::ByVal(primval) => {
                 let size = self.type_size(dest_ty)?.expect("dest type must be sized");
-                // TODO: This fn gets called with sizes like 0 and 6, which cannot be a primitive type
-                // and hence is not supported by write_primval.
-                // (E.g. in the arrays.rs testcase.)  That seems to only happen for Undef though,
-                // so we special-case that here.
-                match primval {
-                    PrimVal::Undef => {
-                        self.memory.mark_definedness(dest, size, false)?;
-                    }
-                    _ => {
-                        // TODO: Do we need signedness?
-                        self.memory.write_primval(dest.to_ptr()?, primval, size, false)?;
-                    }
+                if size == 0 {
+                    assert!(primval.is_undef());
+                    Ok(())
+                } else {
+                    // TODO: Do we need signedness?
+                    self.memory.write_primval(dest.to_ptr()?, primval, size, false)
                 }
-                Ok(())
             }
             Value::ByValPair(a, b) => self.write_pair_to_ptr(a, b, dest.to_ptr()?, dest_ty),
         }
