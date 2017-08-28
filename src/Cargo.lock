@@ -1038,6 +1038,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
+ "rustc_errors 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

@@ -42,6 +42,12 @@
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
+extern crate rustc_errors;
+
+mod diagnostic;
+
+#[unstable(feature = "proc_macro", issue = "38356")]
+pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
 use std::str::FromStr;
@@ -191,12 +197,28 @@ pub fn quote_span(span: Span) -> TokenStream {
     TokenStream(quote::Quote::quote(&span.0))
 }
 
+macro_rules! diagnostic_method {
+    ($name:ident, $level:expr) => (
+        /// Create a new `Diagnostic` with the given `message` at the span
+        /// `self`.
+        #[unstable(feature = "proc_macro", issue = "38356")]
+        pub fn $name<T: Into<String>>(self, message: T) -> Diagnostic {
+            Diagnostic::spanned(self, $level, message)
+        }
+    )
+}
+
 impl Span {
     /// The span of the invocation of the current procedural macro.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn call_site() -> Span {
         ::__internal::with_sess(|(_, mark)| Span(mark.expn_info().unwrap().call_site))
     }
+
+    diagnostic_method!(error, Level::Error);
+    diagnostic_method!(warning, Level::Warning);
+    diagnostic_method!(note, Level::Note);
+    diagnostic_method!(help, Level::Help);
 }
 
 /// A single token or a delimited sequence of token trees (e.g. `[1, (), ..]`).
