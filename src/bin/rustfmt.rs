@@ -13,9 +13,7 @@
 
 extern crate env_logger;
 extern crate getopts;
-extern crate log;
 extern crate rustfmt_nightly as rustfmt;
-extern crate toml;
 
 use std::{env, error};
 use std::fs::File;
