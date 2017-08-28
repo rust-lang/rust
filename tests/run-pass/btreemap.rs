@@ -1,3 +1,6 @@
+// mir validation can't cope with `mem::uninitialized::<SomeEnum>()`
+// compile-flags: -Zmir-emit-validate=0
+
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum Foo {
     A(&'static str),
