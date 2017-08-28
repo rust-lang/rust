@@ -31,7 +31,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableGenerator
 use super::util;
 
 use dep_graph::{DepNodeIndex, DepKind};
-use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::def_id::DefId;
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener};
 use ty::subst::{Kind, Subst, Substs};
@@ -1075,9 +1075,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     None
                 };
-                let cause = if
-                    trait_ref.def_id.krate != LOCAL_CRATE &&
-                    !self.tcx().has_attr(trait_ref.def_id, "fundamental") {
+                let cause = if !coherence::trait_ref_is_local_or_fundamental(self.tcx(),
+                                                                             trait_ref) {
                     IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
                 } else {
                     IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
@@ -1205,7 +1204,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // ok to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
         // bound regions
-        let trait_ref = &predicate.skip_binder().trait_ref;
+        let trait_ref = predicate.skip_binder().trait_ref;
 
         coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
     }
