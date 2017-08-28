@@ -388,7 +388,8 @@ impl Step for Openssl {
         drop(fs::remove_dir_all(&dst));
         build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
 
-        let mut configure = Command::new(obj.join("Configure"));
+        let mut configure = Command::new("perl");
+        configure.arg(obj.join("Configure"));
         configure.arg(format!("--prefix={}", dst.display()));
         configure.arg("no-dso");
         configure.arg("no-ssl2");
