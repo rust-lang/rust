@@ -79,7 +79,7 @@ impl LockInfo {
 pub struct AllocId(u64);
 
 #[derive(Debug)]
-enum AllocIdKind {
+pub enum AllocIdKind {
     /// We can't ever have more than `usize::max_value` functions at the same time
     /// since we never "deallocate" functions
     Function(usize),
@@ -89,7 +89,7 @@ enum AllocIdKind {
 }
 
 impl AllocIdKind {
-    fn into_alloc_id(self) -> AllocId {
+    pub fn into_alloc_id(self) -> AllocId {
         match self {
             AllocIdKind::Function(n) => AllocId(n as u64),
             AllocIdKind::Runtime(n) => AllocId((1 << 63) | n),
@@ -103,10 +103,10 @@ impl AllocId {
         self.0 >> 63
     }
     /// Yields everything but the discriminant bits
-    fn index(self) -> u64 {
+    pub fn index(self) -> u64 {
         self.0 & ((1 << 63) - 1)
     }
-    fn into_alloc_id_kind(self) -> AllocIdKind {
+    pub fn into_alloc_id_kind(self) -> AllocIdKind {
         match self.discriminant() {
             0 => AllocIdKind::Function(self.index() as usize),
             1 => AllocIdKind::Runtime(self.index()),
