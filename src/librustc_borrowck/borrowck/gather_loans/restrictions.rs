@@ -34,10 +34,10 @@ pub fn compute_restrictions<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       loan_region: ty::Region<'tcx>)
                                       -> RestrictionResult<'tcx> {
     let ctxt = RestrictionsContext {
-        bccx: bccx,
-        span: span,
-        cause: cause,
-        loan_region: loan_region,
+        bccx,
+        span,
+        cause,
+        loan_region,
     };
 
     ctxt.restrict(cmt)

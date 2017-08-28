@@ -123,8 +123,11 @@ pub fn invalid_output_for_target(sess: &Session,
     match (sess.target.target.options.dynamic_linking,
            sess.target.target.options.executables, crate_type) {
         (false, _, config::CrateTypeCdylib) |
-        (false, _, config::CrateTypeProcMacro) |
-        (false, _, config::CrateTypeDylib) => true,
+        (false, _, config::CrateTypeDylib) |
+        (false, _, config::CrateTypeProcMacro) => true,
+        (true, _, config::CrateTypeCdylib) |
+        (true, _, config::CrateTypeDylib) => sess.crt_static() &&
+            !sess.target.target.options.crt_static_allows_dylibs,
         (_, false, config::CrateTypeExecutable) => true,
         _ => false
     }

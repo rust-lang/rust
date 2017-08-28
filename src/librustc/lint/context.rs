@@ -101,7 +101,7 @@ pub struct FutureIncompatibleInfo {
     pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
 }
 
-/// The targed of the `by_name` map, which accounts for renaming/deprecation.
+/// The target of the `by_name` map, which accounts for renaming/deprecation.
 enum TargetLint {
     /// A direct lint target
     Id(LintId),
@@ -121,10 +121,10 @@ pub enum FindLintError {
 
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
-    // Lint doesn't exist
+    /// Lint doesn't exist
     NoLint,
-    // The lint is either renamed or removed. This is the warning
-    // message.
+    /// The lint is either renamed or removed. This is the warning
+    /// message.
     Warning(String),
 }
 
@@ -253,7 +253,7 @@ impl LintStore {
         }
     }
 
-    // Checks the validity of lint names derived from the command line
+    /// Checks the validity of lint names derived from the command line
     pub fn check_lint_name_cmdline(&self,
                                    sess: &Session,
                                    lint_name: &str,

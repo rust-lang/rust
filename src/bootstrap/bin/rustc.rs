@@ -237,9 +237,13 @@ fn main() {
             }
         }
 
-        if target.contains("pc-windows-msvc") {
-            cmd.arg("-Z").arg("unstable-options");
-            cmd.arg("-C").arg("target-feature=+crt-static");
+        if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
+            if s == "true" {
+                cmd.arg("-C").arg("target-feature=+crt-static");
+            }
+            if s == "false" {
+                cmd.arg("-C").arg("target-feature=-crt-static");
+            }
         }
 
         // Force all crates compiled by this compiler to (a) be unstable and (b)

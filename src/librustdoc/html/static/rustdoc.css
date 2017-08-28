@@ -126,6 +126,10 @@ p {
 	margin: 0 0 .6em 0;
 }
 
+summary {
+	outline: none;
+}
+
 code, pre {
 	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
 	white-space: pre-wrap;
@@ -439,6 +443,10 @@ a {
 }
 
 .small-section-header:hover > .anchor {
+	display: initial;
+}
+
+.in-band:hover > .anchor {
 	display: initial;
 }
 .anchor {

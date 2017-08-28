@@ -470,7 +470,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
-        tcx: tcx,
+        tcx,
         tables: &ty::TypeckTables::empty(None),
         in_fn: false,
         promotable: false,

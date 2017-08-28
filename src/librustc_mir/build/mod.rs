@@ -121,7 +121,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
         // Convert the Mir to global types.
         let mut globalizer = GlobalizeMir {
-            tcx: tcx,
+            tcx,
             span: mir.span
         };
         globalizer.visit_mir(&mut mir);
@@ -179,7 +179,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Convert the Mir to global types.
             let tcx = infcx.tcx.global_tcx();
             let mut globalizer = GlobalizeMir {
-                tcx: tcx,
+                tcx,
                 span: mir.span
             };
             globalizer.visit_mir(&mut mir);
@@ -380,9 +380,9 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             };
             let mut decl = UpvarDecl {
                 debug_name: keywords::Invalid.name(),
-                by_ref: by_ref
+                by_ref,
             };
-            if let Some(hir::map::NodeLocal(pat)) = tcx.hir.find(var_node_id) {
+            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_node_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }
@@ -437,10 +437,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            return_ty: Ty<'tcx>)
            -> Builder<'a, 'gcx, 'tcx> {
         let mut builder = Builder {
-            hir: hir,
+            hir,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
-            arg_count: arg_count,
+            arg_count,
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
@@ -500,12 +500,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Not,
-                ty: ty,
+                ty,
                 source_info: SourceInfo {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
-                name: name,
+                name,
                 is_user_variable: false,
             });
         }

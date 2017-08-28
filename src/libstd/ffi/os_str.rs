@@ -123,7 +123,7 @@ impl OsString {
 
     /// Creates a new `OsString` with the given capacity.
     ///
-    /// The string will be able to hold exactly `capacity` lenth units of other
+    /// The string will be able to hold exactly `capacity` length units of other
     /// OS strings without reallocating. If `capacity` is 0, the string will not
     /// allocate.
     ///

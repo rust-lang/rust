@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_resolve"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -581,6 +578,55 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
     }
 }
 
+struct UsePlacementFinder {
+    target_module: NodeId,
+    span: Option<Span>,
+    found_use: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_mod(
+        &mut self,
+        module: &'tcx ast::Mod,
+        _: Span,
+        _: &[ast::Attribute],
+        node_id: NodeId,
+    ) {
+        if self.span.is_some() {
+            return;
+        }
+        if node_id != self.target_module {
+            visit::walk_mod(self, module);
+            return;
+        }
+        // find a use statement
+        for item in &module.items {
+            match item.node {
+                ItemKind::Use(..) => {
+                    // don't suggest placing a use before the prelude
+                    // import or other generated ones
+                    if item.span == DUMMY_SP {
+                        let mut span = item.span;
+                        span.hi = span.lo;
+                        self.span = Some(span);
+                        self.found_use = true;
+                        return;
+                    }
+                },
+                // don't place use before extern crate
+                ItemKind::ExternCrate(_) => {}
+                // but place them before the first other item
+                _ => if self.span.map_or(true, |span| item.span < span ) {
+                    let mut span = item.span;
+                    span.hi = span.lo;
+                    self.span = Some(span);
+                },
+            }
+        }
+        assert!(self.span.is_some(), "a file can't have no items and emit suggestions");
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
@@ -733,8 +779,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     }
 }
 
-pub type ErrorMessage = Option<(Span, String)>;
-
 #[derive(Copy, Clone)]
 enum TypeParameters<'a, 'b> {
     NoTypeParameters,
@@ -793,7 +837,7 @@ impl<'a> Rib<'a> {
     fn new(kind: RibKind<'a>) -> Rib<'a> {
         Rib {
             bindings: FxHashMap(),
-            kind: kind,
+            kind,
         }
     }
 }
@@ -866,7 +910,7 @@ pub struct ModuleData<'a> {
     expansion: Mark,
 }
 
-pub type Module<'a> = &'a ModuleData<'a>;
+type Module<'a> = &'a ModuleData<'a>;
 
 impl<'a> ModuleData<'a> {
     fn new(parent: Option<Module<'a>>,
@@ -875,9 +919,9 @@ impl<'a> ModuleData<'a> {
            expansion: Mark,
            span: Span) -> Self {
         ModuleData {
-            parent: parent,
-            kind: kind,
-            normal_ancestor_id: normal_ancestor_id,
+            parent,
+            kind,
+            normal_ancestor_id,
             resolutions: RefCell::new(FxHashMap()),
             legacy_macro_resolutions: RefCell::new(Vec::new()),
             macro_resolutions: RefCell::new(Vec::new()),
@@ -887,8 +931,8 @@ impl<'a> ModuleData<'a> {
             globs: RefCell::new((Vec::new())),
             traits: RefCell::new(None),
             populated: Cell::new(normal_ancestor_id.is_local()),
-            span: span,
-            expansion: expansion,
+            span,
+            expansion,
         }
     }
 
@@ -989,6 +1033,16 @@ enum NameBindingKind<'a> {
 }
 
 struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
+
+struct UseError<'a> {
+    err: DiagnosticBuilder<'a>,
+    /// Attach `use` statements for these candidates
+    candidates: Vec<ImportSuggestion>,
+    /// The node id of the module to place the use statements in
+    node_id: NodeId,
+    /// Whether the diagnostic should state that it's "better"
+    better: bool,
+}
 
 struct AmbiguityError<'a> {
     span: Span,
@@ -1190,15 +1244,21 @@ pub struct Resolver<'a> {
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
 
     pub make_glob_map: bool,
-    // Maps imports to the names of items actually imported (this actually maps
-    // all imports, but only glob imports are actually interesting).
+    /// Maps imports to the names of items actually imported (this actually maps
+    /// all imports, but only glob imports are actually interesting).
     pub glob_map: GlobMap,
 
     used_imports: FxHashSet<(NodeId, Namespace)>,
     pub maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
 
+    /// privacy errors are delayed until the end in order to deduplicate them
     privacy_errors: Vec<PrivacyError<'a>>,
+    /// ambiguity errors are delayed for deduplication
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    /// `use` injections are delayed for better placement and deduplication
+    use_injections: Vec<UseError<'a>>,
+
     gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
@@ -1356,13 +1416,13 @@ impl<'a> Resolver<'a> {
         macro_defs.insert(Mark::root(), root_def_id);
 
         Resolver {
-            session: session,
+            session,
 
-            definitions: definitions,
+            definitions,
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
-            graph_root: graph_root,
+            graph_root,
             prelude: None,
 
             has_self: FxHashSet(),
@@ -1389,7 +1449,7 @@ impl<'a> Resolver<'a> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
-            module_map: module_map,
+            module_map,
             block_map: NodeMap(),
             extern_module_map: FxHashMap(),
 
@@ -1398,13 +1458,15 @@ impl<'a> Resolver<'a> {
 
             used_imports: FxHashSet(),
             maybe_unused_trait_imports: NodeSet(),
+            maybe_unused_extern_crates: Vec::new(),
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            use_injections: Vec::new(),
             gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
-            arenas: arenas,
+            arenas,
             dummy_binding: arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
                 expansion: Mark::root(),
@@ -1416,14 +1478,14 @@ impl<'a> Resolver<'a> {
             use_extern_macros:
                 features.use_extern_macros || features.proc_macro || features.decl_macro,
 
-            crate_loader: crate_loader,
+            crate_loader,
             macro_names: FxHashSet(),
             global_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
-            invocations: invocations,
-            macro_defs: macro_defs,
+            invocations,
+            macro_defs,
             local_macro_def_scopes: FxHashMap(),
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
@@ -1465,10 +1527,11 @@ impl<'a> Resolver<'a> {
         ImportResolver { resolver: self }.finalize_imports();
         self.current_module = self.graph_root;
         self.finalize_current_module_macro_resolutions();
+
         visit::walk_crate(self, krate);
 
         check_unused::check_crate(self, krate);
-        self.report_errors();
+        self.report_errors(krate);
         self.crate_loader.postprocess(krate);
     }
 
@@ -1502,7 +1565,7 @@ impl<'a> Resolver<'a> {
             NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { b1, b2, legacy } => {
                 self.ambiguity_errors.push(AmbiguityError {
-                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy: legacy,
+                    span: span, name: ident.name, lexical: false, b1: b1, b2: b2, legacy,
                 });
                 if legacy {
                     self.record_use(ident, ns, b1, span);
@@ -2413,25 +2476,20 @@ impl<'a> Resolver<'a> {
                 __diagnostic_used!(E0411);
                 err.code("E0411".into());
                 err.span_label(span, "`Self` is only available in traits and impls");
-                return err;
+                return (err, Vec::new());
             }
             if is_self_value(path, ns) {
                 __diagnostic_used!(E0424);
                 err.code("E0424".into());
                 err.span_label(span, format!("`self` value is only available in \
                                                methods with `self` parameter"));
-                return err;
+                return (err, Vec::new());
             }
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
             let ident = *path.last().unwrap();
             let candidates = this.lookup_import_candidates(ident.node.name, ns, is_expected);
-            if !candidates.is_empty() {
-                let mut module_span = this.current_module.span;
-                module_span.hi = module_span.lo;
-                // Report import candidates as help and proceed searching for labels.
-                show_candidates(&mut err, module_span, &candidates, def.is_some());
-            } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
+            if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
                     this.lookup_import_candidates(ident.node.name, ns, is_enum_variant);
                 let mut enum_candidates = enum_candidates.iter()
@@ -2471,7 +2529,7 @@ impl<'a> Resolver<'a> {
                                                 format!("Self::{}", path_str));
                         }
                     }
-                    return err;
+                    return (err, candidates);
                 }
             }
 
@@ -2488,22 +2546,22 @@ impl<'a> Resolver<'a> {
                 match (def, source) {
                     (Def::Macro(..), _) => {
                         err.span_label(span, format!("did you mean `{}!(...)`?", path_str));
-                        return err;
+                        return (err, candidates);
                     }
                     (Def::TyAlias(..), PathSource::Trait) => {
                         err.span_label(span, "type aliases cannot be used for traits");
-                        return err;
+                        return (err, candidates);
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
                             err.span_label(parent.span, format!("did you mean `{}::{}`?",
                                                                  path_str, ident.node));
-                            return err;
+                            return (err, candidates);
                         }
                         ExprKind::MethodCall(ref segment, ..) => {
                             err.span_label(parent.span, format!("did you mean `{}::{}(...)`?",
                                                                  path_str, segment.identifier));
-                            return err;
+                            return (err, candidates);
                         }
                         _ => {}
                     },
@@ -2519,7 +2577,7 @@ impl<'a> Resolver<'a> {
                         }
                         err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?",
                                                        path_str));
-                        return err;
+                        return (err, candidates);
                     }
                     _ => {}
                 }
@@ -2530,10 +2588,14 @@ impl<'a> Resolver<'a> {
                 err.span_label(base_span, fallback_label);
                 this.type_ascription_suggestion(&mut err, base_span);
             }
-            err
+            (err, candidates)
         };
         let report_errors = |this: &mut Self, def: Option<Def>| {
-            report_errors(this, def).emit();
+            let (err, candidates) = report_errors(this, def);
+            let def_id = this.current_module.normal_ancestor_id;
+            let node_id = this.definitions.as_local_node_id(def_id).unwrap();
+            let better = def.is_some();
+            this.use_injections.push(UseError { err, candidates, node_id, better });
             err_path_resolution()
         };
 
@@ -2915,7 +2977,7 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 vec.push(Freevar {
                                     def: prev_def,
-                                    span: span,
+                                    span,
                                 });
                                 seen.insert(node_id, depth);
                             }
@@ -2964,31 +3026,6 @@ impl<'a> Resolver<'a> {
             _ => {}
         }
         return def;
-    }
-
-    // Calls `f` with a `Resolver` whose current lexical scope is `module`'s lexical scope,
-    // i.e. the module's items and the prelude (unless the module is `#[no_implicit_prelude]`).
-    // FIXME #34673: This needs testing.
-    pub fn with_module_lexical_scope<T, F>(&mut self, module: Module<'a>, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        self.with_empty_ribs(|this| {
-            this.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
-            this.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
-            f(this)
-        })
-    }
-
-    fn with_empty_ribs<T, F>(&mut self, f: F) -> T
-        where F: FnOnce(&mut Resolver<'a>) -> T,
-    {
-        let ribs = replace(&mut self.ribs, PerNS::<Vec<Rib>>::default());
-        let label_ribs = replace(&mut self.label_ribs, Vec::new());
-
-        let result = f(self);
-        self.ribs = ribs;
-        self.label_ribs = label_ribs;
-        result
     }
 
     fn lookup_assoc_candidate<FilterFn>(&mut self,
@@ -3458,8 +3495,9 @@ impl<'a> Resolver<'a> {
         vis.is_accessible_from(module.normal_ancestor_id, self)
     }
 
-    fn report_errors(&mut self) {
+    fn report_errors(&mut self, krate: &Crate) {
         self.report_shadowing_errors();
+        self.report_with_use_injections(krate);
         let mut reported_spans = FxHashSet();
 
         for &AmbiguityError { span, name, b1, b2, lexical, legacy } in &self.ambiguity_errors {
@@ -3504,6 +3542,22 @@ impl<'a> Resolver<'a> {
         for &PrivacyError(span, name, binding) in &self.privacy_errors {
             if !reported_spans.insert(span) { continue }
             span_err!(self.session, span, E0603, "{} `{}` is private", binding.descr(), name);
+        }
+    }
+
+    fn report_with_use_injections(&mut self, krate: &Crate) {
+        for UseError { mut err, candidates, node_id, better } in self.use_injections.drain(..) {
+            let mut finder = UsePlacementFinder {
+                target_module: node_id,
+                span: None,
+                found_use: false,
+            };
+            visit::walk_crate(&mut finder, krate);
+            if !candidates.is_empty() {
+                let span = finder.span.expect("did not find module");
+                show_candidates(&mut err, span, &candidates, better, finder.found_use);
+            }
+            err.emit();
         }
     }
 
@@ -3697,7 +3751,8 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, St
 fn show_candidates(err: &mut DiagnosticBuilder,
                    span: Span,
                    candidates: &[ImportSuggestion],
-                   better: bool) {
+                   better: bool,
+                   found_use: bool) {
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
@@ -3713,7 +3768,14 @@ fn show_candidates(err: &mut DiagnosticBuilder,
     let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
     for candidate in &mut path_strings {
-        *candidate = format!("use {};\n", candidate);
+        // produce an additional newline to separate the new use statement
+        // from the directly following item.
+        let additional_newline = if found_use {
+            ""
+        } else {
+            "\n"
+        };
+        *candidate = format!("use {};\n{}", candidate, additional_newline);
     }
 
     err.span_suggestions(span, &msg, path_strings);

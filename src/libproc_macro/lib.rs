@@ -23,10 +23,7 @@
 //!
 //! See [the book](../book/first-edition/procedural-macros.html) for more.
 
-#![crate_name = "proc_macro"]
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![deny(warnings)]
 #![deny(missing_docs)]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -241,14 +238,14 @@ pub enum TokenNode {
 }
 
 /// Describes how a sequence of token trees is delimited.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Delimiter {
     /// `( ... )`
     Parenthesis,
-    /// `[ ... ]`
-    Brace,
     /// `{ ... }`
+    Brace,
+    /// `[ ... ]`
     Bracket,
     /// An implicit delimiter, e.g. `$var`, where $var is  `...`.
     None,
@@ -274,7 +271,7 @@ impl Term {
 }
 
 /// Whether an `Op` is either followed immediately by another `Op` or followed by whitespace.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Spacing {
     /// e.g. `+` is `Alone` in `+ =`.

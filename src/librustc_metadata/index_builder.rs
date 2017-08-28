@@ -92,7 +92,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
             items: Index::new(ecx.tcx.hir.definitions().def_index_counts_lo_hi()),
-            ecx: ecx,
+            ecx,
         }
     }
 
@@ -137,7 +137,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         if let Some(hash) = fingerprint {
             ecx.metadata_hashes.hashes.push(EncodedMetadataHash {
                 def_index: id.index,
-                hash: hash,
+                hash,
             });
         }
 

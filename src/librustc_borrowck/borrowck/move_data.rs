@@ -53,10 +53,6 @@ pub struct MoveData<'tcx> {
     /// kill move bits.
     pub path_assignments: RefCell<Vec<Assignment>>,
 
-    /// Enum variant matched within a pattern on some match arm, like
-    /// `SomeStruct{ f: Variant1(x, y) } => ...`
-    pub variant_matches: RefCell<Vec<VariantMatch>>,
-
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
     pub assignee_ids: RefCell<NodeSet>,
 }
@@ -161,21 +157,6 @@ pub struct Assignment {
     pub assignee_id: ast::NodeId,
 }
 
-#[derive(Copy, Clone)]
-pub struct VariantMatch {
-    /// downcast to the variant.
-    pub path: MovePathIndex,
-
-    /// path being downcast to the variant.
-    pub base_path: MovePathIndex,
-
-    /// id where variant's pattern occurs
-    pub id: ast::NodeId,
-
-    /// says if variant established by move (and why), by copy, or by borrow.
-    pub mode: euv::MatchMode
-}
-
 #[derive(Clone, Copy)]
 pub struct MoveDataFlowOperator;
 
@@ -215,7 +196,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
             moves: RefCell::new(Vec::new()),
             path_assignments: RefCell::new(Vec::new()),
             var_assignments: RefCell::new(Vec::new()),
-            variant_matches: RefCell::new(Vec::new()),
             assignee_ids: RefCell::new(NodeSet()),
         }
     }
@@ -310,7 +290,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                     parent: parent_index,
                     first_move: InvalidMoveIndex,
                     first_child: InvalidMovePathIndex,
-                    next_sibling: next_sibling,
+                    next_sibling,
                 });
 
                 index
@@ -408,9 +388,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
         self.moves.borrow_mut().push(Move {
             path: path_index,
-            id: id,
-            kind: kind,
-            next_move: next_move
+            id,
+            kind,
+            next_move,
         });
     }
 
@@ -468,8 +448,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let assignment = Assignment {
             path: path_index,
             id: assign_id,
-            span: span,
-            assignee_id: assignee_id,
+            span,
+            assignee_id,
         };
 
         if self.is_var_path(path_index) {
@@ -483,31 +463,6 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
             self.path_assignments.borrow_mut().push(assignment);
         }
-    }
-
-    /// Adds a new record for a match of `base_lp`, downcast to
-    /// variant `lp`, that occurs at location `pattern_id`.  (One
-    /// should be able to recover the span info from the
-    /// `pattern_id` and the hir_map, I think.)
-    pub fn add_variant_match(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             lp: Rc<LoanPath<'tcx>>,
-                             pattern_id: ast::NodeId,
-                             base_lp: Rc<LoanPath<'tcx>>,
-                             mode: euv::MatchMode) {
-        debug!("add_variant_match(lp={:?}, pattern_id={})",
-               lp, pattern_id);
-
-        let path_index = self.move_path(tcx, lp.clone());
-        let base_path_index = self.move_path(tcx, base_lp.clone());
-
-        let variant_match = VariantMatch {
-            path: path_index,
-            base_path: base_path_index,
-            id: pattern_id,
-            mode: mode,
-        };
-
-        self.variant_matches.borrow_mut().push(variant_match);
     }
 
     /// Adds the gen/kills for the various moves and
@@ -680,9 +635,9 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         dfcx_assign.propagate(cfg, body);
 
         FlowedMoveData {
-            move_data: move_data,
-            dfcx_moves: dfcx_moves,
-            dfcx_assign: dfcx_assign,
+            move_data,
+            dfcx_moves,
+            dfcx_assign,
         }
     }
 

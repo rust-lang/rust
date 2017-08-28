@@ -91,7 +91,7 @@ pub fn load_plugins(sess: &Session,
 impl<'a> PluginLoader<'a> {
     fn new(sess: &'a Session, cstore: &'a CStore, crate_name: &str) -> Self {
         PluginLoader {
-            sess: sess,
+            sess,
             reader: CrateLoader::new(sess, cstore, crate_name),
             plugins: vec![],
         }
@@ -104,8 +104,8 @@ impl<'a> PluginLoader<'a> {
             let symbol = self.sess.generate_plugin_registrar_symbol(disambiguator, index);
             let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.push(PluginRegistrar {
-                fun: fun,
-                args: args,
+                fun,
+                args,
             });
         }
     }

@@ -1482,12 +1482,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 };
 
                 if is_assigned {
-                    self.ir.tcx.lint_node(lint::builtin::UNUSED_VARIABLES, id, sp,
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
                         &format!("variable `{}` is assigned to, but never used",
+                                 name),
+                        &format!("to disable this warning, consider using `_{}` instead",
                                  name));
                 } else if name != "self" {
-                    self.ir.tcx.lint_node(lint::builtin::UNUSED_VARIABLES, id, sp,
-                        &format!("unused variable: `{}`", name));
+                    self.ir.tcx.lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,
+                        &format!("unused variable: `{}`", name),
+                        &format!("to disable this warning, consider using `_{}` instead",
+                                 name));
                 }
             }
             true

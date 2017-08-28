@@ -121,6 +121,41 @@
             "llvm": "vavg{0.kind}{0.data_type_short}",
             "ret": "i(8-32)",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "packs{0.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vpk{0.kind}{1.data_type_short}{0.kind}s",
+            "ret": "i(8-16)",
+            "args": ["0W", "1"]
+        },
+        {
+            "intrinsic": "packsu{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vpk{1.kind}{1.data_type_short}{0.kind}s",
+            "ret": "u(8-16)",
+            "args": ["0Ws", "1"]
+        },
+        {
+            "intrinsic": "packpx",
+            "width": [128],
+            "llvm": "vpkpx",
+            "ret": "s16",
+            "args": ["s32", "s32"]
+        },
+        {
+            "intrinsic": "unpackl{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vupkl{1.kind}{1.data_type_short}",
+            "ret": "s(16-32)",
+            "args": ["0N"]
+        },
+        {
+            "intrinsic": "unpackh{1.kind}{1.data_type_short}",
+            "width": [128],
+            "llvm": "vupkh{1.kind}{1.data_type_short}",
+            "ret": "s(16-32)",
+            "args": ["0N"]
         }
     ]
 }

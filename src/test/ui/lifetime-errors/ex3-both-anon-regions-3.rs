@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo((v, w): (&u8, &u8), (x, y): (&u8, &u8)) {
-    v = x;
+fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+    z.push((x,y));
 }
 
 fn main() { }
+

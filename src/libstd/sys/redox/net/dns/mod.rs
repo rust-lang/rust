@@ -206,10 +206,10 @@ impl Dns {
         }
 
         Ok(Dns {
-            transaction_id: transaction_id,
-            flags: flags,
-            queries: queries,
-            answers: answers,
+            transaction_id,
+            flags,
+            queries,
+            answers,
         })
     }
 }

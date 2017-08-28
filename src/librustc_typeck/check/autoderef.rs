@@ -217,7 +217,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             cur_ty: self.resolve_type_vars_if_possible(&base_ty),
             obligations: vec![],
             at_start: true,
-            span: span,
+            span,
         }
     }
 

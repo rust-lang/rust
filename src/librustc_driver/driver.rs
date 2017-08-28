@@ -64,6 +64,8 @@ use arena::DroplessArena;
 
 use derive_registrar;
 
+use profile;
+
 pub fn compile_input(sess: &Session,
                      cstore: &CStore,
                      input: &Input,
@@ -103,6 +105,10 @@ pub fn compile_input(sess: &Session,
         }
 
         sess.abort_if_errors();
+    }
+
+    if sess.profile_queries() {
+        profile::begin();
     }
 
     // We need nested scopes here, because the intermediate results can keep
@@ -306,7 +312,7 @@ pub fn source_name(input: &Input) -> String {
     }
 }
 
-/// CompileController is used to customise compilation, it allows compilation to
+/// CompileController is used to customize compilation, it allows compilation to
 /// be stopped and/or to call arbitrary code at various points in compilation.
 /// It also allows for various flags to be set to influence what information gets
 /// collected during compilation.
@@ -401,8 +407,8 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
              out_dir: &'a Option<PathBuf>)
              -> Self {
         CompileState {
-            input: input,
-            session: session,
+            input,
+            session,
             out_dir: out_dir.as_ref().map(|s| &**s),
             out_file: None,
             arena: None,
@@ -536,6 +542,10 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
                                input: &Input)
                                -> PResult<'a, ast::Crate> {
     sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
+
+    if sess.profile_queries() {
+        profile::begin();
+    }
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
@@ -833,10 +843,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         })
     })?;
 
-    time(time_passes,
-         "early lint checks",
-         || lint::check_ast_crate(sess, &krate));
-
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, &krate, &mut resolver);
@@ -847,6 +853,10 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         hir_map::Forest::new(hir_crate, &sess.dep_graph)
     });
+
+    time(time_passes,
+         "early lint checks",
+         || lint::check_ast_crate(sess, &krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
@@ -867,8 +877,9 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
             export_map: resolver.export_map,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: resolver.maybe_unused_extern_crates,
         },
-        hir_forest: hir_forest,
+        hir_forest,
     })
 }
 
@@ -970,7 +981,12 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // We compute "constant qualifications" between MIR_CONST and MIR_VALIDATED.
 
     // What we need to run borrowck etc.
+
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
+
+    // FIXME: ariel points SimplifyBranches should run after
+    // mir-borrowck; otherwise code within `if false { ... }` would
+    // not be checked.
     passes.push_pass(MIR_VALIDATED,
                      mir::transform::simplify_branches::SimplifyBranches::new("initial"));
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
@@ -1066,6 +1082,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "borrow checking",
              || borrowck::check_crate(tcx));
 
+        time(time_passes,
+             "MIR borrow checking",
+             || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
+
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
         // a
@@ -1110,6 +1130,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         time(time_passes,
              "translation",
              move || trans::trans_crate(tcx, analysis, incremental_hashes_map, output_filenames));
+
+    if tcx.sess.profile_queries() {
+        profile::dump("profile_queries".to_string())
+    }
 
     translation
 }

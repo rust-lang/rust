@@ -69,9 +69,9 @@ pub fn modify(sess: &ParseSess,
             attr_macros: Vec::new(),
             bang_macros: Vec::new(),
             in_root: true,
-            handler: handler,
-            is_proc_macro_crate: is_proc_macro_crate,
-            is_test_crate: is_test_crate,
+            handler,
+            is_proc_macro_crate,
+            is_test_crate,
         };
         visit::walk_crate(&mut collect, &krate);
         (collect.derives, collect.attr_macros, collect.bang_macros)
@@ -183,7 +183,7 @@ impl<'a> CollectProcMacros<'a> {
         if self.in_root && item.vis == ast::Visibility::Public {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
-                trait_name: trait_name,
+                trait_name,
                 function_name: item.ident,
                 attrs: proc_attrs,
             });

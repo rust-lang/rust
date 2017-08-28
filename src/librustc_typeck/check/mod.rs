@@ -393,8 +393,8 @@ impl UnsafetyState {
                     hir::DefaultBlock =>
                         (unsafety, self.def, self.unsafe_push_count),
                 };
-                UnsafetyState{ def: def,
-                               unsafety: unsafety,
+                UnsafetyState{ def,
+                               unsafety,
                                unsafe_push_count: count,
                                from_fn: false }
             }
@@ -609,7 +609,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             tables: MaybeInProgressTables {
                 maybe_tables: infcx.in_progress_tables,
             },
-            infcx: infcx,
+            infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
@@ -1646,11 +1646,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                                         poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
-        let item = self.tcx().associated_item(item_def_id);
         let (trait_ref, _) =
             self.replace_late_bound_regions_with_fresh_var(
                 span,
-                infer::LateBoundRegionConversionTime::AssocTypeProjection(item.name),
+                infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
                 &poly_trait_ref);
 
         self.tcx().mk_projection(item_def_id, trait_ref.substs)
@@ -1697,7 +1696,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
-            body_id: body_id,
+            body_id,
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
@@ -1709,7 +1708,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 stack: Vec::new(),
                 by_id: NodeMap(),
             }),
-            inh: inh,
+            inh,
         }
     }
 
@@ -2968,8 +2967,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
                               "attempted to take value of method `{}` on type `{}`",
                               field.node, expr_t)
-                .help("maybe a `()` to call it is missing? \
-                       If not, try an anonymous function")
+                .help("maybe a `()` to call it is missing?")
                 .emit();
             self.tcx().types.err
         } else {
@@ -3783,7 +3781,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               };
 
               let ctxt = BreakableCtxt {
-                  coerce: coerce,
+                  coerce,
                   may_break: false, // will get updated if/when we find a `break`
               };
 
@@ -4622,11 +4620,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let lifetimes = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => &data.lifetimes[..],
-                Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => &[]
-            };
+            let lifetimes = segment.map_or(&[][..], |(s, _)| &s.parameters.lifetimes[..]);
 
             if let Some(lifetime) = lifetimes.get(i) {
                 AstConv::ast_region_to_region(self, lifetime, Some(def))
@@ -4649,13 +4643,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let (types, infer_types) = match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => {
-                    (&data.types[..], data.infer_types)
-                }
-                Some(&hir::ParenthesizedParameters(_)) => bug!(),
-                None => (&[][..], true)
-            };
+            let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
+                (&s.parameters.types[..], s.parameters.infer_types)
+            });
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
@@ -4729,19 +4719,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   segment: &mut Option<(&hir::PathSegment, &ty::Generics)>,
                                   is_method_call: bool) {
-        let (lifetimes, types, infer_types, bindings) = {
-            match segment.map(|(s, _)| &s.parameters) {
-                Some(&hir::AngleBracketedParameters(ref data)) => {
-                    (&data.lifetimes[..], &data.types[..], data.infer_types, &data.bindings[..])
-                }
-                Some(&hir::ParenthesizedParameters(_)) => {
-                    AstConv::prohibit_parenthesized_params(self, &segment.as_ref().unwrap().0,
-                                                           false);
-                    (&[][..], &[][..], true, &[][..])
-                }
-                None => (&[][..], &[][..], true, &[][..])
-            }
-        };
+        let (lifetimes, types, infer_types, bindings) = segment.map_or(
+            (&[][..], &[][..], true, &[][..]),
+            |(s, _)| (&s.parameters.lifetimes[..], &s.parameters.types[..],
+                      s.parameters.infer_types, &s.parameters.bindings[..]));
         let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {
@@ -4787,9 +4768,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         if !bindings.is_empty() {
-            span_err!(self.tcx.sess, bindings[0].span, E0182,
-                      "unexpected binding of associated item in expression path \
-                       (only allowed in type paths)");
+            AstConv::prohibit_projection(self, bindings[0].span);
         }
 
         // Check provided lifetime parameters.

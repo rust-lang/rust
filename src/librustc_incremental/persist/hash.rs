@@ -38,8 +38,8 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                incremental_hashes_map: &'a IncrementalHashesMap)
                -> Self {
         HashContext {
-            tcx: tcx,
-            incremental_hashes_map: incremental_hashes_map,
+            tcx,
+            incremental_hashes_map,
             metadata_hashes: FxHashMap(),
             crate_hashes: FxHashMap(),
         }

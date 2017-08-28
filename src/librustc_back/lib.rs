@@ -21,9 +21,6 @@
 //! one that doesn't; the one that doesn't might get decent parallel
 //! build speedups.
 
-#![crate_name = "rustc_back"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]

@@ -133,7 +133,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     // Add the error to the map.
     with_registered_diagnostics(|diagnostics| {
         let info = ErrorInfo {
-            description: description,
+            description,
             use_site: None
         };
         if diagnostics.insert(code.name, info).is_some() {
@@ -235,7 +235,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 expr,
             ),
             vis: ast::Visibility::Public,
-            span: span,
+            span,
             tokens: None,
         })
     ]))

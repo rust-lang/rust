@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -8,8 +9,15 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# ignore-tidy-linelength
+
 set -ex
 
-curl -fOL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb
-dpkg -i dumb-init_*.deb
-rm dumb-init_*.deb
+apt-get update
+apt-get install -y --no-install-recommends software-properties-common apt-transport-https
+
+apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys AA12E97F0881517F
+add-apt-repository -y 'deb https://static.redox-os.org/toolchain/apt /'
+
+apt-get update
+apt-get install -y x86-64-unknown-redox-gcc

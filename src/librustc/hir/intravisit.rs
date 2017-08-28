@@ -617,17 +617,9 @@ pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
                                                 _path_span: Span,
                                                 path_parameters: &'v PathParameters) {
-    match *path_parameters {
-        AngleBracketedParameters(ref data) => {
-            walk_list!(visitor, visit_ty, &data.types);
-            walk_list!(visitor, visit_lifetime, &data.lifetimes);
-            walk_list!(visitor, visit_assoc_type_binding, &data.bindings);
-        }
-        ParenthesizedParameters(ref data) => {
-            walk_list!(visitor, visit_ty, &data.inputs);
-            walk_list!(visitor, visit_ty, &data.output);
-        }
-    }
+    walk_list!(visitor, visit_lifetime, &path_parameters.lifetimes);
+    walk_list!(visitor, visit_ty, &path_parameters.types);
+    walk_list!(visitor, visit_assoc_type_binding, &path_parameters.bindings);
 }
 
 pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
@@ -835,7 +827,16 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
     // NB: Deliberately force a compilation error if/when new fields are added.
-    let ImplItem { id: _, name, ref vis, ref defaultness, ref attrs, ref node, span } = *impl_item;
+    let ImplItem {
+        id: _,
+        hir_id: _,
+        name,
+        ref vis,
+        ref defaultness,
+        ref attrs,
+        ref node,
+        span
+    } = *impl_item;
 
     visitor.visit_name(span, name);
     visitor.visit_vis(vis);

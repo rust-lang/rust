@@ -103,26 +103,31 @@ mod prim_bool { }
 /// [`String`]: string/struct.String.html
 ///
 /// As always, remember that a human intuition for 'character' may not map to
-/// Unicode's definitions. For example, emoji symbols such as '❤️' can be more
-/// than one Unicode code point; this ❤️ in particular is two:
+/// Unicode's definitions. For example, despite looking similar, the 'é'
+/// character is one Unicode code point while 'é' is two Unicode code points:
 ///
 /// ```
-/// let s = String::from("❤️");
+/// let mut chars = "é".chars();
+/// // U+00e9: 'latin small letter e with acute'
+/// assert_eq!(Some('\u{00e9}'), chars.next());
+/// assert_eq!(None, chars.next());
 ///
-/// // we get two chars out of a single ❤️
-/// let mut iter = s.chars();
-/// assert_eq!(Some('\u{2764}'), iter.next());
-/// assert_eq!(Some('\u{fe0f}'), iter.next());
-/// assert_eq!(None, iter.next());
+/// let mut chars = "é".chars();
+/// // U+0065: 'latin small letter e'
+/// assert_eq!(Some('\u{0065}'), chars.next());
+/// // U+0301: 'combining acute accent'
+/// assert_eq!(Some('\u{0301}'), chars.next());
+/// assert_eq!(None, chars.next());
 /// ```
 ///
-/// This means it won't fit into a `char`. Trying to create a literal with
-/// `let heart = '❤️';` gives an error:
+/// This means that the contents of the first string above _will_ fit into a
+/// `char` while the contents of the second string _will not_. Trying to create
+/// a `char` literal with the contents of the second string gives an error:
 ///
 /// ```text
-/// error: character literal may only contain one codepoint: '❤
-/// let heart = '❤️';
-///             ^~
+/// error: character literal may only contain one codepoint: 'é'
+/// let c = 'é';
+///         ^^^^
 /// ```
 ///
 /// Another implication of the 4-byte fixed size of a `char` is that
@@ -183,9 +188,10 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
-/// Use the [`null`] function to create null pointers, and the [`is_null`] method
-/// of the `*const T` type  to check for null. The `*const T` type also defines
-/// the [`offset`] method, for pointer math.
+/// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
+/// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
+/// The `*const T` and `*mut T` types also define the [`offset`] method, for
+/// pointer math.
 ///
 /// # Common ways to create raw pointers
 ///
@@ -256,6 +262,7 @@ mod prim_unit { }
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// [`null`]: ../std/ptr/fn.null.html
+/// [`null_mut`]: ../std/ptr/fn.null_mut.html
 /// [`is_null`]: ../std/primitive.pointer.html#method.is_null
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw

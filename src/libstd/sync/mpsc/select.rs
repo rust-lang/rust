@@ -148,12 +148,12 @@ impl Select {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
         Handle {
-            id: id,
+            id,
             selector: self.inner.get(),
             next: ptr::null_mut(),
             prev: ptr::null_mut(),
             added: false,
-            rx: rx,
+            rx,
             packet: rx,
         }
     }

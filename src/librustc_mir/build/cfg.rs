@@ -49,7 +49,7 @@ impl<'tcx> CFG<'tcx> {
                            source_info: SourceInfo,
                            extent: CodeExtent) {
         self.push(block, Statement {
-            source_info: source_info,
+            source_info,
             kind: StatementKind::EndRegion(extent),
         });
     }
@@ -60,7 +60,7 @@ impl<'tcx> CFG<'tcx> {
                        lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
-            source_info: source_info,
+            source_info,
             kind: StatementKind::Assign(lvalue.clone(), rvalue)
         });
     }
@@ -93,8 +93,8 @@ impl<'tcx> CFG<'tcx> {
                       block,
                       self.block_data(block));
         self.block_data_mut(block).terminator = Some(Terminator {
-            source_info: source_info,
-            kind: kind,
+            source_info,
+            kind,
         });
     }
 }

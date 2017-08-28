@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(alloc, libc)]
+#![allow(unused_extern_crates)]
 
 extern crate alloc;
 //~^ NOTE previous import of the extern crate `alloc` here

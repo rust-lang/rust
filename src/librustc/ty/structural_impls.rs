@@ -137,7 +137,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
         tcx.lift(&self.substs).map(|substs| {
             ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs: substs,
+                substs,
             }
         })
     }

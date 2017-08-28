@@ -26,6 +26,7 @@ h1.fqn {
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
 	border-bottom-color: #DDDDDD;
 }
+
 .in-band {
 	background-color: white;
 }
@@ -83,6 +84,11 @@ pre {
 }
 
 :target { background: #FDFFD3; }
+
+:target > .in-band {
+	background: #FDFFD3;
+}
+
 .content .highlighted {
 	color: #000 !important;
 	background-color: #ccc;

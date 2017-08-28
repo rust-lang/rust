@@ -49,8 +49,8 @@ impl<'tcx> MoveError<'tcx> {
                           move_to: Option<MovePlace<'tcx>>)
                           -> MoveError<'tcx> {
         MoveError {
-            move_from: move_from,
-            move_to: move_to,
+            move_from,
+            move_to,
         }
     }
 }
@@ -153,20 +153,19 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         }
 
         Categorization::Interior(ref b, mc::InteriorElement(ik)) => {
-            match (&b.ty.sty, ik) {
-                (&ty::TySlice(..), _) |
-                (_, Kind::Index) => {
-                    let mut err = struct_span_err!(bccx, move_from.span, E0508,
-                                                   "cannot move out of type `{}`, \
-                                                    a non-copy array",
-                                                   b.ty);
-                    err.span_label(move_from.span, "cannot move out of here");
-                    err
-                }
-                (_, Kind::Pattern) => {
+            let type_name = match (&b.ty.sty, ik) {
+                (&ty::TyArray(_, _), Kind::Index) => "array",
+                (&ty::TySlice(_), _) => "slice",
+                _ => {
                     span_bug!(move_from.span, "this path should not cause illegal move");
-                }
-            }
+                },
+            };
+            let mut err = struct_span_err!(bccx, move_from.span, E0508,
+                                           "cannot move out of type `{}`, \
+                                            a non-copy {}",
+                                           b.ty, type_name);
+            err.span_label(move_from.span, "cannot move out of here");
+            err
         }
 
         Categorization::Downcast(ref b, _) |

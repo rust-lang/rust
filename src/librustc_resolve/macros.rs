@@ -273,7 +273,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
                         is_sugared_doc: false,
-                        span: span,
+                        span,
                     });
                 }
             }
@@ -491,7 +491,7 @@ impl<'a> Resolver<'a> {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
-                                name: name,
+                                name,
                                 b1: shadower,
                                 b2: binding,
                                 lexical: true,

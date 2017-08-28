@@ -83,9 +83,9 @@ impl Diagnostic {
 
     pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            code: code,
+            code,
             span: MultiSpan::new(),
             children: vec![],
             suggestions: vec![],
@@ -93,9 +93,9 @@ impl Diagnostic {
     }
 
     /// Cancel the diagnostic (a structured diagnostic must either be emitted or
-    /// cancelled or it will panic when dropped).
+    /// canceled or it will panic when dropped).
     /// BEWARE: if this DiagnosticBuilder is an error, then creating it will
-    /// bump the error count on the Handler and cancelling it won't undo that.
+    /// bump the error count on the Handler and canceling it won't undo that.
     /// If you want to decrement the error count you should use `Handler::cancel`.
     pub fn cancel(&mut self) {
         self.level = Level::Cancelled;
@@ -103,10 +103,6 @@ impl Diagnostic {
 
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
-    }
-
-    pub fn is_fatal(&self) -> bool {
-        self.level == Level::Fatal
     }
 
     /// Add a span/label to be included in the resulting snippet.
@@ -278,16 +274,8 @@ impl Diagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
-    pub fn set_message(&mut self, message: &str) {
-        self.message = vec![(message.to_owned(), Style::NoStyle)];
-    }
-
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
-    }
-
-    pub fn level(&self) -> Level {
-        self.level
     }
 
     /// Used by a lint. Copies over all details *but* the "main
@@ -306,10 +294,10 @@ impl Diagnostic {
            span: MultiSpan,
            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            span: span,
-            render_span: render_span,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }
@@ -322,10 +310,10 @@ impl Diagnostic {
                            span: MultiSpan,
                            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
-            message: message,
-            span: span,
-            render_span: render_span,
+            level,
+            message,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }

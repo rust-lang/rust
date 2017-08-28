@@ -112,8 +112,8 @@ macro_rules! declare_features {
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
 //
-// NB: The featureck.py script parses this information directly out of the source
-// so take care when modifying it.
+// NB: tools/tidy/src/features.rs parses this information directly out of the
+// source, so take care when modifying it.
 
 declare_features! (
     (active, asm, "1.0.0", Some(29722)),
@@ -345,9 +345,6 @@ declare_features! (
     // Allows `repr(align(u16))` struct attribute (RFC 1358)
     (active, repr_align, "1.17.0", Some(33626)),
 
-    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
-    (active, rvalue_static_promotion, "1.15.1", Some(38865)),
-
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289)),
 
@@ -375,6 +372,9 @@ declare_features! (
 
     // #[doc(cfg(...))]
     (active, doc_cfg, "1.21.0", Some(43781)),
+
+    // allow `#[must_use]` on functions (RFC 1940)
+    (active, fn_must_use, "1.21.0", Some(43302)),
 );
 
 declare_features! (
@@ -457,6 +457,8 @@ declare_features! (
     (accepted, associated_consts, "1.20.0", Some(29646)),
     // Usage of the `compile_error!` macro
     (accepted, compile_error, "1.20.0", Some(40872)),
+    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
+    (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -916,20 +918,27 @@ struct Context<'a> {
 }
 
 macro_rules! gate_feature_fn {
-    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (cx, has_feature, span, name, explain) = ($cx, $has_feature, $span, $name, $explain);
+    ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
+        let (cx, has_feature, span,
+             name, explain, level) = ($cx, $has_feature, $span, $name, $explain, $level);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
         if !has_feature && !span.allows_unstable() {
-            emit_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain);
+            leveled_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain, level)
+                .emit();
         }
     }}
 }
 
 macro_rules! gate_feature {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!($cx, |x:&Features| x.$feature, $span, stringify!($feature), $explain)
-    }
+        gate_feature_fn!($cx, |x:&Features| x.$feature, $span,
+                         stringify!($feature), $explain, GateStrength::Hard)
+    };
+    ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {
+        gate_feature_fn!($cx, |x:&Features| x.$feature, $span,
+                         stringify!($feature), $explain, $level)
+    };
 }
 
 impl<'a> Context<'a> {
@@ -939,7 +948,7 @@ impl<'a> Context<'a> {
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
-                    gate_feature_fn!(self, has_feature, attr.span, name, desc);
+                    gate_feature_fn!(self, has_feature, attr.span, name, desc, GateStrength::Hard);
                 }
                 debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
                 return;
@@ -1009,13 +1018,26 @@ pub enum GateIssue {
     Library(Option<u32>)
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum GateStrength {
+    /// A hard error. (Most feature gates should use this.)
+    Hard,
+    /// Only a warning. (Use this only as backwards-compatibility demands.)
+    Soft,
+}
+
 pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: GateIssue,
                         explain: &str) {
     feature_err(sess, feature, span, issue, explain).emit();
 }
 
 pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
-                   explain: &str) -> DiagnosticBuilder<'a> {
+                       explain: &str) -> DiagnosticBuilder<'a> {
+    leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
+}
+
+fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
+                           explain: &str, level: GateStrength) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
 
     let issue = match issue {
@@ -1023,10 +1045,15 @@ pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: Ga
         GateIssue::Library(lib) => lib,
     };
 
-    let mut err = if let Some(n) = issue {
-        diag.struct_span_err(span, &format!("{} (see issue #{})", explain, n))
+    let explanation = if let Some(n) = issue {
+        format!("{} (see issue #{})", explain, n)
     } else {
-        diag.struct_span_err(span, explain)
+        explain.to_owned()
+    };
+
+    let mut err = match level {
+        GateStrength::Hard => diag.struct_span_err(span, &explanation),
+        GateStrength::Soft => diag.struct_span_warn(span, &explanation),
     };
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
@@ -1036,7 +1063,15 @@ pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: Ga
                           feature));
     }
 
+    // If we're on stable and only emitting a "soft" warning, add a note to
+    // clarify that the feature isn't "on" (rather than being on but
+    // warning-worthy).
+    if !sess.unstable_features.is_nightly_build() && level == GateStrength::Soft {
+        err.help("a nightly build of the compiler is required to enable this feature");
+    }
+
     err
+
 }
 
 const EXPLAIN_BOX_SYNTAX: &'static str =
@@ -1092,6 +1127,12 @@ macro_rules! gate_feature_post {
         let (cx, span) = ($cx, $span);
         if !span.allows_unstable() {
             gate_feature!(cx.context, $feature, span, $explain)
+        }
+    }};
+    ($cx: expr, $feature: ident, $span: expr, $explain: expr, $level: expr) => {{
+        let (cx, span) = ($cx, $span);
+        if !span.allows_unstable() {
+            gate_feature!(cx.context, $feature, span, $explain, $level)
         }
     }}
 }
@@ -1235,6 +1276,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
                 }
+                if attr::contains_name(&i.attrs[..], "must_use") {
+                    gate_feature_post!(&self, fn_must_use, i.span,
+                                       "`#[must_use]` on functions is experimental",
+                                       GateStrength::Soft);
+                }
             }
 
             ast::ItemKind::Struct(..) => {
@@ -1272,7 +1318,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     and possibly buggy");
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, ref impl_items) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
@@ -1284,6 +1330,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, specialization,
                                        i.span,
                                        "specialization is unstable");
+                }
+
+                for impl_item in impl_items {
+                    if let ast::ImplItemKind::Method(..) = impl_item.node {
+                        if attr::contains_name(&impl_item.attrs[..], "must_use") {
+                            gate_feature_post!(&self, fn_must_use, impl_item.span,
+                                               "`#[must_use]` on methods is experimental",
+                                               GateStrength::Soft);
+                        }
+                    }
                 }
             }
 
@@ -1576,9 +1632,9 @@ pub fn check_crate(krate: &ast::Crate,
                    unstable: UnstableFeatures) {
     maybe_stage_features(&sess.span_diagnostic, krate, unstable);
     let ctx = Context {
-        features: features,
+        features,
         parse_sess: sess,
-        plugin_attributes: plugin_attributes,
+        plugin_attributes,
     };
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
 }

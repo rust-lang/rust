@@ -392,7 +392,7 @@ pub struct CycleIter<'a, T: 'a> {
 pub fn cycle<T>(data: &[T]) -> CycleIter<T> {
     CycleIter {
         index: 0,
-        data: data,
+        data,
     }
 }
 

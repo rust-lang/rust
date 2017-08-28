@@ -48,7 +48,7 @@ pub fn parameters_for<'tcx, T>(t: &T,
 
     let mut collector = ParameterCollector {
         parameters: vec![],
-        include_nonconstraining: include_nonconstraining
+        include_nonconstraining,
     };
     t.visit_with(&mut collector);
     collector.parameters

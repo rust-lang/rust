@@ -1,0 +1,10 @@
+error: unterminated double quote string
+  --> $DIR/issue-44078.rs:12:8
+   |
+12 |       "😊"";
+   |  ________^
+13 | | }
+   | |__^
+
+error: aborting due to previous error
+

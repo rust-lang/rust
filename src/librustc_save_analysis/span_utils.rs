@@ -32,7 +32,7 @@ pub struct SpanUtils<'a> {
 impl<'a> SpanUtils<'a> {
     pub fn new(sess: &'a Session) -> SpanUtils<'a> {
         SpanUtils {
-            sess: sess,
+            sess,
             err_count: Cell::new(0),
         }
     }

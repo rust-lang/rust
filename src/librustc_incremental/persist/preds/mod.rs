@@ -103,8 +103,8 @@ impl<'q> Predecessors<'q> {
 
         Predecessors {
             reduced_graph: graph,
-            bootstrap_outputs: bootstrap_outputs,
-            hashes: hashes,
+            bootstrap_outputs,
+            hashes,
         }
     }
 }

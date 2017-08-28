@@ -50,10 +50,6 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         &self.info[local]
     }
 
-    pub fn local_info_mut(&mut self, local: Local) -> &mut Info<'tcx> {
-        &mut self.info[local]
-    }
-
     fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Lvalue<'tcx>,
                                                       LvalueContext<'tcx>,
@@ -97,8 +93,8 @@ impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
                     location: Location) {
         if let Some(ref mut info) = self.lvalue_mut_info(lvalue) {
             info.defs_and_uses.push(Use {
-                context: context,
-                location: location,
+                context,
+                location,
             })
         }
         self.super_lvalue(lvalue, context, location)
@@ -140,8 +136,8 @@ impl<'tcx, F> MutateUseVisitor<'tcx, F> {
            -> MutateUseVisitor<'tcx, F>
            where F: for<'a> FnMut(&'a mut Lvalue<'tcx>, LvalueContext<'tcx>, Location) {
         MutateUseVisitor {
-            query: query,
-            callback: callback,
+            query,
+            callback,
             phantom: PhantomData,
         }
     }

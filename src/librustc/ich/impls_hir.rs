@@ -133,22 +133,12 @@ impl_stable_hash_for!(struct hir::PathSegment {
     parameters
 });
 
-impl_stable_hash_for!(enum hir::PathParameters {
-    AngleBracketedParameters(data),
-    ParenthesizedParameters(data)
-});
-
-impl_stable_hash_for!(struct hir::AngleBracketedParameterData {
+impl_stable_hash_for!(struct hir::PathParameters {
     lifetimes,
     types,
     infer_types,
-    bindings
-});
-
-impl_stable_hash_for!(struct hir::ParenthesizedParameterData {
-    span,
-    inputs,
-    output
+    bindings,
+    parenthesized
 });
 
 impl_stable_hash_for!(enum hir::TyParamBound {
@@ -741,6 +731,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::T
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
             id,
+            hir_id: _,
             name,
             ref attrs,
             ref node,
@@ -774,6 +765,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
             id,
+            hir_id: _,
             name,
             ref vis,
             defaultness,
@@ -930,6 +922,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
             name,
             ref attrs,
             id,
+            hir_id: _,
             ref node,
             ref vis,
             span

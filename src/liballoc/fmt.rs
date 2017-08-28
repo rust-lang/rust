@@ -211,7 +211,7 @@
 //!
 //! - [`fmt::Display`][`Display`] implementations assert that the type can be faithfully
 //!   represented as a UTF-8 string at all times. It is **not** expected that
-//!   all types implement the `Display` trait.
+//!   all types implement the [`Display`] trait.
 //! - [`fmt::Debug`][`Debug`] implementations should be implemented for **all** public types.
 //!   Output will typically represent the internal state as faithfully as possible.
 //!   The purpose of the [`Debug`] trait is to facilitate debugging Rust code. In

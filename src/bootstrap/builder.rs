@@ -193,7 +193,7 @@ pub struct ShouldRun<'a> {
 impl<'a> ShouldRun<'a> {
     fn new(builder: &'a Builder) -> ShouldRun<'a> {
         ShouldRun {
-            builder: builder,
+            builder,
             paths: BTreeSet::new(),
             is_really_default: true, // by default no additional conditions
         }
@@ -257,7 +257,7 @@ impl<'a> Builder<'a> {
             Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
-                doc::Reference, doc::Rustdoc),
+                doc::Reference, doc::Rustdoc, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
                 dist::Rls, dist::Extended, dist::HashSign),
@@ -278,9 +278,9 @@ impl<'a> Builder<'a> {
         };
 
         let builder = Builder {
-            build: build,
+            build,
             top_stage: build.config.stage.unwrap_or(2),
-            kind: kind,
+            kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
         };
@@ -309,9 +309,9 @@ impl<'a> Builder<'a> {
         };
 
         let builder = Builder {
-            build: build,
+            build,
             top_stage: build.config.stage.unwrap_or(2),
-            kind: kind,
+            kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
         };
@@ -501,6 +501,10 @@ impl<'a> Builder<'a> {
             // wrapper around the actual rustc will detect -C metadata being
             // passed and frob it with this extra string we're passing in.
             cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
+        }
+
+        if let Some(x) = self.crt_static(target) {
+            cargo.env("RUSTC_CRT_STATIC", x.to_string());
         }
 
         // Enable usage of unstable features

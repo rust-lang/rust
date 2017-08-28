@@ -69,7 +69,7 @@ impl ParseSess {
             config: HashSet::new(),
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
             included_mod_stack: RefCell::new(vec![]),
-            code_map: code_map
+            code_map,
         }
     }
 

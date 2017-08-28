@@ -374,7 +374,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(util::min_stack());
+        let stack_size = stack_size.unwrap_or_else(util::min_stack);
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
@@ -560,7 +560,7 @@ pub fn current() -> Thread {
 /// implementing low-level shared resources or synchronization primitives.
 ///
 /// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
+/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
 /// thinking about thread scheduling.
 ///
 /// Note that [`channel`]s for example are implemented using this primitive.
@@ -807,7 +807,7 @@ pub fn park_timeout_ms(ms: u32) {
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
-/// # Example
+/// # Examples
 ///
 /// Waiting for the complete expiration of the timeout:
 ///
@@ -1229,6 +1229,11 @@ impl<T> JoinHandle<T> {
     ///
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`panic`]: ../../std/macro.panic.html
+    ///
+    /// # Panics
+    ///
+    /// This function may panic on some platforms if a thread attempts to join
+    /// itself or otherwise may create a deadlock with joining threads.
     ///
     /// # Examples
     ///

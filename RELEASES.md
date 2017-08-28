@@ -92,7 +92,7 @@ Stabilized APIs
 Cargo
 -----
 - [Cargo API token location moved from `~/.cargo/config` to
-  `~/cargo/credentials`.][cargo/3978]
+  `~/.cargo/credentials`.][cargo/3978]
 - [Cargo will now build `main.rs` binaries that are in sub-directories of
   `src/bin`.][cargo/4214] ie. Having `src/bin/server/main.rs` and
   `src/bin/client/main.rs` generates `target/debug/server` and `target/debug/client`
@@ -171,7 +171,6 @@ Compatibility Notes
 [`slice::sort_unstable_by`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
 [`slice::sort_unstable`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable
 [`ste::from_boxed_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_boxed_utf8_unchecked.html
-[`str::as_bytes_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes_mut
 [`str::as_bytes_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes_mut
 [`str::from_utf8_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_mut.html
 [`str::from_utf8_unchecked_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked_mut.html
@@ -898,6 +897,9 @@ Compatibility Notes
 * [Ctrl-Z returns from `Stdin.read()` when reading from the console on
   Windows][38274]
 * [Clean up semantics of `self` in an import list][38313]
+* Reimplemented lifetime elision. This change was almost entirely compatible
+  with existing code, but it did close a number of small bugs and loopholes,
+  as well as being more accepting in some other [cases][41105].
 
 [37057]: https://github.com/rust-lang/rust/pull/37057
 [37761]: https://github.com/rust-lang/rust/pull/37761
@@ -932,6 +934,7 @@ Compatibility Notes
 [39048]: https://github.com/rust-lang/rust/pull/39048
 [39282]: https://github.com/rust-lang/rust/pull/39282
 [39379]: https://github.com/rust-lang/rust/pull/39379
+[41105]: https://github.com/rust-lang/rust/issues/41105
 [`<*const T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
 [`<*mut T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
 [`Duration::checked_add`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_add

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {LinkerFlavor, PanicStrategy};
+use LinkerFlavor;
 use target::{LinkArgs, TargetOptions};
 use std::default::Default;
 
@@ -37,7 +37,6 @@ pub fn opts() -> TargetOptions {
         target_family: None,
         linker_is_gnu: true,
         has_elf_tls: true,
-        panic_strategy: PanicStrategy::Abort,
         .. Default::default()
     }
 }

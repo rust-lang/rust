@@ -121,18 +121,18 @@ pub fn run_core(search_paths: SearchPaths,
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
     let sessopts = config::Options {
-        maybe_sysroot: maybe_sysroot,
-        search_paths: search_paths,
+        maybe_sysroot,
+        search_paths,
         crate_types: vec![config::CrateTypeRlib],
         lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
-        externs: externs,
+        externs,
         target_triple: triple.unwrap_or(config::host_triple().to_string()),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
-            force_unstable_if_unmarked: force_unstable_if_unmarked,
+            force_unstable_if_unmarked,
             ..config::basic_debugging_options()
         },
         ..config::basic_options().clone()
@@ -203,7 +203,7 @@ pub fn run_core(search_paths: SearchPaths,
         };
 
         let ctxt = DocContext {
-            tcx: tcx,
+            tcx,
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),

@@ -55,10 +55,10 @@ impl<'a> Path<'a> {
                     global: bool)
                     -> Path<'r> {
         Path {
-            path: path,
-            lifetime: lifetime,
-            params: params,
-            global: global,
+            path,
+            lifetime,
+            params,
+            global,
         }
     }
 
@@ -211,14 +211,14 @@ fn mk_ty_param(cx: &ExtCtxt,
 fn mk_generics(lifetimes: Vec<ast::LifetimeDef>, ty_params: Vec<ast::TyParam>, span: Span)
                -> Generics {
     Generics {
-        lifetimes: lifetimes,
-        ty_params: ty_params,
+        lifetimes,
+        ty_params,
         where_clause: ast::WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
-            span: span,
+            span,
         },
-        span: span,
+        span,
     }
 }
 

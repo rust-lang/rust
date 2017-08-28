@@ -438,7 +438,7 @@ pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 /// Returns an inner attribute with the given value and span.
 pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
-        id: id,
+        id,
         style: ast::AttrStyle::Inner,
         path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
         tokens: item.node.tokens(item.span),
@@ -456,7 +456,7 @@ pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
 /// Returns an outer attribute with the given value and span.
 pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute {
     Attribute {
-        id: id,
+        id,
         style: ast::AttrStyle::Outer,
         path: ast::Path::from_ident(item.span, ast::Ident::with_empty_ctxt(item.name)),
         tokens: item.node.tokens(item.span),
@@ -469,12 +469,12 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
     let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
-        id: id,
-        style: style,
+        id,
+        style,
         path: ast::Path::from_ident(span, ast::Ident::from_str("doc")),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
-        span: span,
+        span,
     }
 }
 
@@ -718,8 +718,8 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     match (since, reason) {
                         (Some(since), Some(reason)) => {
                             rustc_depr = Some(RustcDeprecation {
-                                since: since,
-                                reason: reason,
+                                since,
+                                reason,
                             })
                         }
                         (None, _) => {
@@ -763,7 +763,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                         (Some(feature), reason, Some(issue)) => {
                             stab = Some(Stability {
                                 level: Unstable {
-                                    reason: reason,
+                                    reason,
                                     issue: {
                                         if let Ok(issue) = issue.as_str().parse() {
                                             issue
@@ -774,7 +774,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                         }
                                     }
                                 },
-                                feature: feature,
+                                feature,
                                 rustc_depr: None,
                             })
                         }
@@ -817,9 +817,9 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                         (Some(feature), Some(since)) => {
                             stab = Some(Stability {
                                 level: Stable {
-                                    since: since,
+                                    since,
                                 },
-                                feature: feature,
+                                feature,
                                 rustc_depr: None,
                             })
                         }
@@ -1064,26 +1064,21 @@ impl MetaItem {
             },
             _ => return None,
         };
+        let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi);
         let node = match MetaItemKind::from_tokens(tokens) {
             Some(node) => node,
             _ => return None,
         };
-        if let Some(last_span) = node.last_span() {
-            span.hi = last_span.hi;
-        }
+        span.hi = match node {
+            MetaItemKind::NameValue(ref lit) => lit.span.hi,
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi),
+            _ => span.hi,
+        };
         Some(MetaItem { name: name, span: span, node: node })
     }
 }
 
 impl MetaItemKind {
-    fn last_span(&self) -> Option<Span> {
-        match *self {
-            MetaItemKind::Word => None,
-            MetaItemKind::List(ref list) => list.last().map(NestedMetaItem::span),
-            MetaItemKind::NameValue(ref lit) => Some(lit.span),
-        }
-    }
-
     pub fn tokens(&self, span: Span) -> TokenStream {
         match *self {
             MetaItemKind::Word => TokenStream::empty(),
@@ -1130,7 +1125,7 @@ impl MetaItemKind {
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
             match NestedMetaItemKind::from_tokens(&mut tokens) {
-                Some(item) => result.push(Spanned { span: item.span(), node: item }),
+                Some(item) => result.push(respan(item.span(), item)),
                 None => return None,
             }
             match tokens.next() {
@@ -1163,7 +1158,7 @@ impl NestedMetaItemKind {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
             if let Some(node) = LitKind::from_token(token) {
                 tokens.next();
-                return Some(NestedMetaItemKind::Literal(Spanned { node: node, span: span }));
+                return Some(NestedMetaItemKind::Literal(respan(span, node)));
             }
         }
 
@@ -1256,7 +1251,7 @@ pub trait HasAttrs: Sized {
 impl<T: HasAttrs> HasAttrs for Spanned<T> {
     fn attrs(&self) -> &[ast::Attribute] { self.node.attrs() }
     fn map_attrs<F: FnOnce(Vec<ast::Attribute>) -> Vec<ast::Attribute>>(self, f: F) -> Self {
-        Spanned { node: self.node.map_attrs(f), span: self.span }
+        respan(self.span, self.node.map_attrs(f))
     }
 }
 

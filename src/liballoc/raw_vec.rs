@@ -60,8 +60,8 @@ impl<T, A: Alloc> RawVec<T, A> {
         // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
         RawVec {
             ptr: Unique::empty(),
-            cap: cap,
-            a: a,
+            cap,
+            a,
         }
     }
 
@@ -104,8 +104,8 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             RawVec {
                 ptr: Unique::new_unchecked(ptr as *mut _),
-                cap: cap,
-                a: a,
+                cap,
+                a,
             }
         }
     }
@@ -159,8 +159,8 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub unsafe fn from_raw_parts_in(ptr: *mut T, cap: usize, a: A) -> Self {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
-            cap: cap,
-            a: a,
+            cap,
+            a,
         }
     }
 }
@@ -176,7 +176,7 @@ impl<T> RawVec<T, Heap> {
     pub unsafe fn from_raw_parts(ptr: *mut T, cap: usize) -> Self {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
-            cap: cap,
+            cap,
             a: Heap,
         }
     }
@@ -544,12 +544,12 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// Attempts to ensure that the buffer contains at least enough space to hold
     /// `used_cap + needed_extra_cap` elements. If it doesn't already have
     /// enough capacity, will reallocate in place enough space plus comfortable slack
-    /// space to get amortized `O(1)` behaviour. Will limit this behaviour
+    /// space to get amortized `O(1)` behavior. Will limit this behaviour
     /// if it would needlessly cause itself to panic.
     ///
     /// If `used_cap` exceeds `self.cap()`, this may fail to actually allocate
     /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behaviour of this function may break.
+    /// code *you* write that relies on the behavior of this function may break.
     ///
     /// Returns true if the reallocation attempt has succeeded, or false otherwise.
     ///

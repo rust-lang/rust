@@ -81,7 +81,7 @@
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
 //! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
-//! coercions].
+//! coercions][deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
 //! of items - mostly traits - that are imported into every module of every
@@ -203,16 +203,13 @@
 //! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
 //! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
-//! [deref coercions]: ../book/first-edition/deref-coercions.html
+//! [deref-coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/first-edition/primitive-types.html
 
-#![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -361,6 +358,7 @@ extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[allow(unused_extern_crates)]
 extern crate unwind;
 
 // compiler-rt intrinsics

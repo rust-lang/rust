@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod borrowck_errors;
 pub mod elaborate_drops;
 pub mod def_use;
 pub mod patch;

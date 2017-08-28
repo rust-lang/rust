@@ -136,12 +136,12 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                span: Span)
                -> Result<CastCheck<'tcx>, ErrorReported> {
         let check = CastCheck {
-            expr: expr,
-            expr_ty: expr_ty,
-            expr_diverges: expr_diverges,
-            cast_ty: cast_ty,
-            cast_span: cast_span,
-            span: span,
+            expr,
+            expr_ty,
+            expr_diverges,
+            cast_ty,
+            cast_span,
+            span,
         };
 
         // For better error messages, check for some obviously unsized

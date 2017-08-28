@@ -73,16 +73,18 @@ The script accepts commands, flags, and arguments to determine what to do:
 
 ## Configuring rustbuild
 
-There are currently two primary methods for configuring the rustbuild build
-system. First, the `./configure` options serialized in `config.mk` will be
-parsed and read. That is, if any `./configure` options are passed, they'll be
-handled naturally.
+There are currently two methods for configuring the rustbuild build system.
 
-Next, rustbuild offers a TOML-based configuration system with a `config.toml`
-file in the same location as `config.mk`. An example of this configuration can
-be found at `config.toml.example`, and the configuration file
-can also be passed as `--config path/to/config.toml` if the build system is
-being invoked manually (via the python script).
+First, rustbuild offers a TOML-based configuration system with a `config.toml`
+file. An example of this configuration can be found at `config.toml.example`,
+and the configuration file can also be passed as `--config path/to/config.toml`
+if the build system is being invoked manually (via the python script).
+
+Next, the `./configure` options serialized in `config.mk` will be
+parsed and read. That is, if any `./configure` options are passed, they'll be
+handled naturally. `./configure` should almost never be used for local
+installations, and is primarily useful for CI. Prefer to customize behavior
+using `config.toml`.
 
 Finally, rustbuild makes use of the [gcc-rs crate] which has [its own
 method][env-vars] of configuring C compilers and C flags via environment
@@ -310,17 +312,18 @@ After that, each module in rustbuild should have enough documentation to keep
 you up and running. Some general areas that you may be interested in modifying
 are:
 
-* Adding a new build tool? Take a look at `bootstrap/step.rs` for examples of
+* Adding a new build tool? Take a look at `bootstrap/tool.rs` for examples of
   other tools.
 * Adding a new compiler crate? Look no further! Adding crates can be done by
   adding a new directory with `Cargo.toml` followed by configuring all
   `Cargo.toml` files accordingly.
-* Adding a new dependency from crates.io? We're still working on that, so hold
-  off on that for now.
-* Adding a new configuration option? Take a look at `bootstrap/config.rs` or
-  perhaps `bootstrap/flags.rs` and then modify the build elsewhere to read that
-  option.
+* Adding a new dependency from crates.io? This should just work inside the
+  compiler artifacts stage (everything other than libtest and libstd).
+* Adding a new configuration option? You'll want to modify `bootstrap/flags.rs`
+  for command line flags and then `bootstrap/config.rs` to copy the flags to the
+  `Config` struct.
 * Adding a sanity check? Take a look at `bootstrap/sanity.rs`.
 
-If you have any questions feel free to reach out on `#rust-internals` on IRC or
-open an issue in the bug tracker!
+If you have any questions feel free to reach out on `#rust-infra` on IRC or ask on
+internals.rust-lang.org. When you encounter bugs, please file issues on the
+rust-lang/rust issue tracker.

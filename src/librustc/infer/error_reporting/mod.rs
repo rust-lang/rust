@@ -24,7 +24,7 @@
 //! a span, but also more information so that we can generate a meaningful
 //! error message.
 //!
-//! Having a catalogue of all the different reasons an error can arise is
+//! Having a catalog of all the different reasons an error can arise is
 //! also useful for other reasons, like cross-referencing FAQs etc, though
 //! we are not really taking advantage of this yet.
 //!
@@ -75,8 +75,10 @@ use errors::{DiagnosticBuilder, DiagnosticStyledString};
 mod note;
 
 mod need_type_info;
-mod util;
+
 mod named_anon_conflict;
+#[macro_use]
+mod util;
 mod anon_anon_conflict;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -899,9 +901,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
                 format!(" for lifetime parameter {}in generic type", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(type_name)) => {
+            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => {
                 format!(" for lifetime parameter {}in trait containing associated type `{}`",
-                        br_string(br), type_name)
+                        br_string(br), self.tcx.associated_item(def_id).name)
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",

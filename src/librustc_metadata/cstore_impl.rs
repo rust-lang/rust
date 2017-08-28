@@ -137,6 +137,8 @@ provide! { <'tcx> tcx, def_id, cdata,
 
     dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
     is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
+    is_compiler_builtins => { cdata.is_compiler_builtins(&tcx.dep_graph) }
+    has_global_allocator => { cdata.has_global_allocator(&tcx.dep_graph) }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
 }
 
@@ -282,7 +284,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 
@@ -290,7 +292,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 

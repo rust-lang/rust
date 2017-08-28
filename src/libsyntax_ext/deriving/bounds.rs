@@ -34,9 +34,9 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt,
     let path = Path::new(v);
 
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
-        path: path,
+        path,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,

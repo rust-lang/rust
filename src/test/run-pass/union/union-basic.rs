@@ -10,10 +10,6 @@
 
 // aux-build:union.rs
 
-// FIXME: This test case makes little-endian assumptions.
-// ignore-s390x
-// ignore-sparc
-
 extern crate union;
 use std::mem::{size_of, align_of, zeroed};
 
@@ -39,7 +35,7 @@ fn local() {
         assert_eq!(w.b, 0);
         w.a = 1;
         assert_eq!(w.a, 1);
-        assert_eq!(w.b, 1);
+        assert_eq!(w.b.to_le(), 1);
     }
 }
 
@@ -60,7 +56,7 @@ fn xcrate() {
         assert_eq!(w.b, 0);
         w.a = 1;
         assert_eq!(w.a, 1);
-        assert_eq!(w.b, 1);
+        assert_eq!(w.b.to_le(), 1);
     }
 }
 

@@ -362,6 +362,10 @@ Here are some simple examples of where you'll run into this error:
 struct Foo { x: &bool }        // error
 struct Foo<'a> { x: &'a bool } // correct
 
+struct Bar { x: Foo }
+               ^^^ expected lifetime parameter
+struct Bar<'a> { x: Foo<'a> } // correct
+
 enum Bar { A(u8), B(&bool), }        // error
 enum Bar<'a> { A(u8), B(&'a bool), } // correct
 
@@ -681,6 +685,21 @@ attributes:
 ```
 
 See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
+"##,
+
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```compile_fail,E0214
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
 "##,
 
 E0261: r##"

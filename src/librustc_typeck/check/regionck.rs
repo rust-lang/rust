@@ -232,8 +232,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
         let region_maps = fcx.tcx.region_maps(subject);
         RegionCtxt {
-            fcx: fcx,
-            region_maps: region_maps,
+            fcx,
+            region_maps,
             repeating_scope: initial_repeating_scope,
             body_id: initial_body_id,
             call_site_scope: None,
@@ -1805,8 +1805,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     let (outlives, _) =
                         self.replace_late_bound_regions_with_fresh_var(
                             span,
-                            infer::AssocTypeProjection(
-                                self.tcx.associated_item(projection_ty.item_def_id).name),
+                            infer::AssocTypeProjection(projection_ty.item_def_id),
                             &outlives);
 
                     debug!("projection_bounds: outlives={:?} (3)",
@@ -1815,12 +1814,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     // check whether this predicate applies to our current projection
                     let cause = self.fcx.misc(span);
                     match self.at(&cause, self.fcx.param_env).eq(outlives.0, ty) {
-                        Ok(ok) => {
-                            self.register_infer_ok_obligations(ok);
-                            Ok(outlives.1)
-                        }
-                        Err(_) => { Err(()) }
+                        Ok(ok) => Ok((ok, outlives.1)),
+                        Err(_) => Err(())
                     }
+                }).map(|(ok, result)| {
+                    self.register_infer_ok_obligations(ok);
+                    result
                 });
 
                 debug!("projection_bounds: region_result={:?}",

@@ -99,9 +99,9 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
         let istart = ccx.stats().n_llvm_insns.get();
         StatRecorder {
-            ccx: ccx,
+            ccx,
             name: Some(name),
-            istart: istart,
+            istart,
         }
     }
 }
@@ -664,7 +664,7 @@ fn check_for_rustc_errors_attr(tcx: TyCtxt) {
     }
 }
 
-/// Create the `main` function which will initialise the rust runtime and call
+/// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
 fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
@@ -1058,8 +1058,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let (llcx, llmod) =
                 context::create_context_and_module(tcx.sess, "allocator");
             let modules = ModuleLlvm {
-                llmod: llmod,
-                llcx: llcx,
+                llmod,
+                llcx,
             };
             time(tcx.sess.time_passes(), "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)

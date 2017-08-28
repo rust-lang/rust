@@ -14,9 +14,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_passes"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -36,13 +33,13 @@ extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
 
-pub mod diagnostics;
+mod diagnostics;
 
 pub mod ast_validation;
 pub mod consts;
 pub mod hir_stats;
 pub mod loops;
-pub mod mir_stats;
+mod mir_stats;
 pub mod no_asm;
 pub mod static_recursion;
 

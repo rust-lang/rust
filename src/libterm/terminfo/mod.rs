@@ -231,7 +231,7 @@ impl<T: Write + Send> TerminfoTerminal<T> {
         };
 
         TerminfoTerminal {
-            out: out,
+            out,
             ti: terminfo,
             num_colors: nc,
         }

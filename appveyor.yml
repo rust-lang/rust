@@ -16,7 +16,7 @@ environment:
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i686-pc-windows-msvc
     SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc
 
   # MSVC aux tests
@@ -145,7 +145,8 @@ install:
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
-  - appveyor-retry choco install -y InnoSetup
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-08-22-is.exe
+  - 2017-08-22-is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor

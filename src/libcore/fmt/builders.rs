@@ -18,7 +18,7 @@ struct PadAdapter<'a, 'b: 'a> {
 impl<'a, 'b: 'a> PadAdapter<'a, 'b> {
     fn new(fmt: &'a mut fmt::Formatter<'b>) -> PadAdapter<'a, 'b> {
         PadAdapter {
-            fmt: fmt,
+            fmt,
             on_newline: false,
         }
     }
@@ -58,7 +58,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
 /// [`Formatter::debug_struct`](struct.Formatter.html#method.debug_struct)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -94,8 +94,8 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
                                 -> DebugStruct<'a, 'b> {
     let result = fmt.write_str(name);
     DebugStruct {
-        fmt: fmt,
-        result: result,
+        fmt,
+        result,
         has_fields: false,
     }
 }
@@ -153,7 +153,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 /// [`Formatter::debug_tuple`](struct.Formatter.html#method.debug_tuple)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -185,8 +185,8 @@ pub struct DebugTuple<'a, 'b: 'a> {
 pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> DebugTuple<'a, 'b> {
     let result = fmt.write_str(name);
     DebugTuple {
-        fmt: fmt,
-        result: result,
+        fmt,
+        result,
         fields: 0,
         empty_name: name.is_empty(),
     }
@@ -290,7 +290,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 /// [`Formatter::debug_set`](struct.Formatter.html#method.debug_set)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -317,8 +317,8 @@ pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b
     let result = write!(fmt, "{{");
     DebugSet {
         inner: DebugInner {
-            fmt: fmt,
-            result: result,
+            fmt,
+            result,
             has_fields: false,
         },
     }
@@ -361,7 +361,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 /// [`Formatter::debug_list`](struct.Formatter.html#method.debug_list)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -388,8 +388,8 @@ pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 
     let result = write!(fmt, "[");
     DebugList {
         inner: DebugInner {
-            fmt: fmt,
-            result: result,
+            fmt,
+            result,
             has_fields: false,
         },
     }
@@ -432,7 +432,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 /// [`Formatter::debug_map`](struct.Formatter.html#method.debug_map)
 /// method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt;
@@ -460,8 +460,8 @@ pub struct DebugMap<'a, 'b: 'a> {
 pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
     let result = write!(fmt, "{{");
     DebugMap {
-        fmt: fmt,
-        result: result,
+        fmt,
+        result,
         has_fields: false,
     }
 }

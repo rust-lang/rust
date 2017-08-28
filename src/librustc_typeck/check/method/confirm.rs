@@ -69,10 +69,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
            call_expr: &'gcx hir::Expr)
            -> ConfirmContext<'a, 'gcx, 'tcx> {
         ConfirmContext {
-            fcx: fcx,
-            span: span,
-            self_expr: self_expr,
-            call_expr: call_expr,
+            fcx,
+            span,
+            self_expr,
+            call_expr,
         }
     }
 
@@ -311,17 +311,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        let (supplied_types, supplied_lifetimes) = match segment.parameters {
-            hir::AngleBracketedParameters(ref data) => (&data.types, &data.lifetimes),
-            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
-        };
         assert_eq!(method_generics.parent_count(), parent_substs.len());
+        let provided = &segment.parameters;
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.region_at(i)
-            } else if let Some(lifetime) =
-                    supplied_lifetimes.get(i - parent_substs.len()) {
+            } else if let Some(lifetime)
+                    = provided.lifetimes.get(i - parent_substs.len()) {
                 AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
@@ -330,8 +327,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.type_at(i)
-            } else if let Some(ast_ty) =
-                    supplied_types.get(i - parent_substs.len() - method_generics.regions.len()) {
+            } else if let Some(ast_ty)
+                    = provided.types.get(i - parent_substs.len() - method_generics.regions.len()) {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)

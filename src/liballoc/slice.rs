@@ -171,7 +171,7 @@ mod hack {
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -185,7 +185,7 @@ impl<T> [T] {
 
     /// Returns `true` if the slice has a length of 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -523,7 +523,7 @@ impl<T> [T] {
 
     /// Reverses the order of elements in the slice, in place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut v = [1, 2, 3];
@@ -580,7 +580,7 @@ impl<T> [T] {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let slice = ['r', 'u', 's', 't'];
@@ -613,7 +613,7 @@ impl<T> [T] {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let slice = ['l', 'o', 'r', 'e', 'm'];
@@ -1040,7 +1040,7 @@ impl<T> [T] {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -1074,7 +1074,7 @@ impl<T> [T] {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -1419,7 +1419,7 @@ impl<T> [T] {
     ///
     /// This function will panic if the two slices have different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut dst = [0, 0, 0];
@@ -1445,7 +1445,7 @@ impl<T> [T] {
     ///
     /// This function will panic if the two slices have different lengths.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut dst = [0, 0, 0];
@@ -1459,6 +1459,31 @@ impl<T> [T] {
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
+    }
+
+    /// Swaps all elements in `self` with those in `src`.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two slices have different lengths.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(swap_with_slice)]
+    ///
+    /// let mut src = [1, 2, 3];
+    /// let mut dst = [7, 8, 9];
+    ///
+    /// src.swap_with_slice(&mut dst);
+    /// assert_eq!(src, [7, 8, 9]);
+    /// assert_eq!(dst, [1, 2, 3]);
+    /// ```
+    #[unstable(feature = "swap_with_slice", issue = "44030")]
+    pub fn swap_with_slice(&mut self, src: &mut [T]) {
+        core_slice::SliceExt::swap_with_slice(self, src)
     }
 
     /// Copies `self` into a new `Vec`.
@@ -1886,7 +1911,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 
         // Push this run onto the stack.
         runs.push(Run {
-            start: start,
+            start,
             len: end - start,
         });
         end = start;

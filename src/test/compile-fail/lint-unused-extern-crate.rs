@@ -12,12 +12,15 @@
 // aux-build:lint_unused_extern_crate2.rs
 // aux-build:lint_unused_extern_crate3.rs
 // aux-build:lint_unused_extern_crate4.rs
+// aux-build:lint_unused_extern_crate5.rs
 
 #![deny(unused_extern_crates)]
 #![allow(unused_variables)]
 #![allow(deprecated)]
 
-extern crate lint_unused_extern_crate4; //~ ERROR: unused extern crate
+extern crate lint_unused_extern_crate5; //~ ERROR: unused extern crate
+
+pub extern crate lint_unused_extern_crate4; // no error, it is reexported
 
 extern crate lint_unused_extern_crate3; // no error, it is used
 

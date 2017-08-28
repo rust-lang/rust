@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(unused_variables)]
-fn main() {
-    let x: &'static u32 = &42; //~ error: does not live long enough
-    let y: &'static Option<u32> = &None; //~ error: does not live long enough
+struct Foo {
+    field: i32,
 }
+
+impl Foo {
+    fn foo<'a>(&self, x: &Foo) -> &Foo {
+        if true { x } else { self }
+    }
+}
+
+fn main() {}
+

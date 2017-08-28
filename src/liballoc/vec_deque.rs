@@ -459,9 +459,11 @@ impl<T> VecDeque<T> {
     ///
     /// `i` and `j` may be equal.
     ///
-    /// Fails if there is no element with either index.
-    ///
     /// Element at index 0 is the front of the queue.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either index is out of bounds.
     ///
     /// # Examples
     ///
@@ -2442,7 +2444,7 @@ impl<T> From<Vec<T>> for VecDeque<T> {
             VecDeque {
                 tail: 0,
                 head: len,
-                buf: buf,
+                buf,
             }
         }
     }

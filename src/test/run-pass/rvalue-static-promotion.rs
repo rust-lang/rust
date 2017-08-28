@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rvalue_static_promotion)]
-
 #[allow(unused_variables)]
 fn main() {
     let x: &'static u32 = &42;

@@ -29,6 +29,7 @@ use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
+use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 
 use std::rc::Rc;
 
@@ -194,10 +195,10 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let def_id = bccx.tcx.hir.body_owner_def_id(body.id());
     let param_env = bccx.tcx.param_env(def_id);
     let mut clcx = CheckLoanCtxt {
-        bccx: bccx,
-        dfcx_loans: dfcx_loans,
-        move_data: move_data,
-        all_loans: all_loans,
+        bccx,
+        dfcx_loans,
+        move_data,
+        all_loans,
         param_env,
     };
     euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
@@ -465,10 +466,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
-                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0499,
-                                                      "cannot borrow `{}`{} as mutable \
-                                                      more than once at a time",
-                                                      nl, new_loan_msg);
+                    let mut err = self.bccx.cannot_mutably_borrow_multiply(
+                        new_loan.span, &nl, &new_loan_msg, Origin::Ast);
 
                     if new_loan.span == old_loan.span {
                         // Both borrows are happening in the same place
@@ -496,10 +495,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 }
 
                 (ty::UniqueImmBorrow, ty::UniqueImmBorrow) => {
-                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0524,
-                                     "two closures require unique access to `{}` \
-                                      at the same time",
-                                     nl);
+                    let mut err = self.bccx.cannot_uniquely_borrow_by_two_closures(
+                        new_loan.span, &nl, Origin::Ast);
                     err.span_label(
                             old_loan.span,
                             "first closure is constructed here");
@@ -513,10 +510,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 }
 
                 (ty::UniqueImmBorrow, _) => {
-                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0500,
-                                                   "closure requires unique access to `{}` \
-                                                   but {} is already borrowed{}",
-                                                   nl, ol_pronoun, old_loan_msg);
+                    let mut err = self.bccx.cannot_uniquely_borrow_by_one_closure(
+                        new_loan.span, &nl, &ol_pronoun, &old_loan_msg, Origin::Ast);
                     err.span_label(
                             new_loan.span,
                             format!("closure construction occurs here{}", new_loan_msg));
@@ -530,10 +525,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 }
 
                 (_, ty::UniqueImmBorrow) => {
-                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0501,
-                                                   "cannot borrow `{}`{} as {} because \
-                                                   previous closure requires unique access",
-                                                   nl, new_loan_msg, new_loan.kind.to_user_str());
+                    let new_loan_str = &new_loan.kind.to_user_str();
+                    let mut err = self.bccx.cannot_reborrow_already_uniquely_borrowed(
+                        new_loan.span, &nl, &new_loan_msg, new_loan_str, Origin::Ast);
                     err.span_label(
                             new_loan.span,
                             format!("borrow occurs here{}", new_loan_msg));
@@ -547,15 +541,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 }
 
                 (..) => {
-                    let mut err = struct_span_err!(self.bccx, new_loan.span, E0502,
-                                                   "cannot borrow `{}`{} as {} because \
-                                                   {} is also borrowed as {}{}",
-                                                   nl,
-                                                   new_loan_msg,
-                                                   new_loan.kind.to_user_str(),
-                                                   ol_pronoun,
-                                                   old_loan.kind.to_user_str(),
-                                                   old_loan_msg);
+                    let mut err = self.bccx.cannot_reborrow_already_borrowed(
+                        new_loan.span,
+                        &nl, &new_loan_msg, &new_loan.kind.to_user_str(),
+                        &ol_pronoun, &old_loan.kind.to_user_str(), &old_loan_msg, Origin::Ast);
                     err.span_label(
                             new_loan.span,
                             format!("{} borrow occurs here{}",
@@ -645,9 +634,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         match self.analyze_restrictions_on_use(id, copy_path, ty::ImmBorrow) {
             UseOk => { }
             UseWhileBorrowed(loan_path, loan_span) => {
-                struct_span_err!(self.bccx, span, E0503,
-                                 "cannot use `{}` because it was mutably borrowed",
-                                 &self.bccx.loan_path_to_string(copy_path))
+                let desc = self.bccx.loan_path_to_string(copy_path);
+                self.bccx.cannot_use_when_mutably_borrowed(span, &desc, Origin::Ast)
                     .span_label(loan_span,
                                format!("borrow of `{}` occurs here",
                                        &self.bccx.loan_path_to_string(&loan_path))
@@ -673,9 +661,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             UseWhileBorrowed(loan_path, loan_span) => {
                 let mut err = match move_kind {
                     move_data::Captured => {
-                        let mut err = struct_span_err!(self.bccx, span, E0504,
-                                         "cannot move `{}` into closure because it is borrowed",
-                                         &self.bccx.loan_path_to_string(move_path));
+                        let mut err = self.bccx.cannot_move_into_closure(
+                            span, &self.bccx.loan_path_to_string(move_path), Origin::Ast);
                         err.span_label(
                             loan_span,
                             format!("borrow of `{}` occurs here",
@@ -690,9 +677,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     move_data::Declared |
                     move_data::MoveExpr |
                     move_data::MovePat => {
-                        let mut err = struct_span_err!(self.bccx, span, E0505,
-                                         "cannot move out of `{}` because it is borrowed",
-                                         &self.bccx.loan_path_to_string(move_path));
+                        let desc = self.bccx.loan_path_to_string(move_path);
+                        let mut err = self.bccx.cannot_move_when_borrowed(span, &desc, Origin::Ast);
                         err.span_label(
                             loan_span,
                             format!("borrow of `{}` occurs here",
@@ -874,9 +860,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                    span: Span,
                                    loan_path: &LoanPath<'tcx>,
                                    loan: &Loan) {
-        struct_span_err!(self.bccx, span, E0506,
-                         "cannot assign to `{}` because it is borrowed",
-                         self.bccx.loan_path_to_string(loan_path))
+        self.bccx.cannot_assign_to_borrowed(
+            span, &self.bccx.loan_path_to_string(loan_path), Origin::Ast)
             .span_label(loan.span,
                        format!("borrow of `{}` occurs here",
                                self.bccx.loan_path_to_string(loan_path)))

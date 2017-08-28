@@ -23,10 +23,11 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
+// NB: this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
+// cargo) to detect this crate.
 #![crate_name = "test"]
 #![unstable(feature = "test", issue = "27812")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -34,12 +35,14 @@
 #![deny(warnings)]
 
 #![feature(asm)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
+#![feature(staged_api)]
 
 extern crate getopts;
 extern crate term;
+#[cfg(unix)]
 extern crate libc;
 extern crate panic_unwind;
 
@@ -235,8 +238,8 @@ pub struct Metric {
 impl Metric {
     pub fn new(value: f64, noise: f64) -> Metric {
         Metric {
-            value: value,
-            noise: noise,
+            value,
+            noise,
         }
     }
 }
@@ -492,17 +495,17 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     let test_opts = TestOpts {
-        list: list,
-        filter: filter,
+        list,
+        filter,
         filter_exact: exact,
-        run_ignored: run_ignored,
-        run_tests: run_tests,
-        bench_benchmarks: bench_benchmarks,
-        logfile: logfile,
-        nocapture: nocapture,
-        color: color,
-        quiet: quiet,
-        test_threads: test_threads,
+        run_ignored,
+        run_tests,
+        bench_benchmarks,
+        logfile,
+        nocapture,
+        color,
+        quiet,
+        test_threads,
         skip: matches.opt_strs("skip"),
         options: Options::new(),
     };
@@ -565,8 +568,8 @@ impl<T: Write> ConsoleTestState<T> {
         };
 
         Ok(ConsoleTestState {
-            out: out,
-            log_out: log_out,
+            out,
+            log_out,
             use_color: use_color(opts),
             quiet: opts.quiet,
             total: 0,
@@ -1330,7 +1333,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                 let TestDescAndFn {desc, testfn} = test;
                 Some(TestDescAndFn {
                     desc: TestDesc { ignore: false, ..desc },
-                    testfn: testfn,
+                    testfn,
                 })
             } else {
                 None
@@ -1367,7 +1370,7 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         };
         TestDescAndFn {
             desc: x.desc,
-            testfn: testfn,
+            testfn,
         }
     }).collect()
 }
@@ -1527,8 +1530,8 @@ impl MetricMap {
     /// negative direction represents a regression.
     pub fn insert_metric(&mut self, name: &str, value: f64, noise: f64) {
         let m = Metric {
-            value: value,
-            noise: noise,
+            value,
+            noise,
         };
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_owned(), m);
@@ -1689,7 +1692,7 @@ pub mod bench {
                 let mb_s = bs.bytes * 1000 / ns_iter;
 
                 BenchSamples {
-                    ns_iter_summ: ns_iter_summ,
+                    ns_iter_summ,
                     mb_s: mb_s as usize,
                 }
             }

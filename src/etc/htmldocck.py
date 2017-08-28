@@ -29,7 +29,7 @@ showing the expected renderings.
 
 In order to avoid one-off dependencies for this task, this script uses
 a reasonably working HTML parser and the existing XPath implementation
-from Python 2's standard library. Hopefully we won't render
+from Python's standard library. Hopefully we won't render
 non-well-formed HTML.
 
 # Commands
@@ -110,11 +110,17 @@ import os.path
 import re
 import shlex
 from collections import namedtuple
-from HTMLParser import HTMLParser
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
 from xml.etree import cElementTree as ET
 
 # &larrb;/&rarrb; are not in HTML 4 but are in HTML 5
-from htmlentitydefs import entitydefs
+try:
+    from html.entities import entitydefs
+except ImportError:
+    from htmlentitydefs import entitydefs
 entitydefs['larrb'] = u'\u21e4'
 entitydefs['rarrb'] = u'\u21e5'
 entitydefs['nbsp'] = ' '
@@ -123,6 +129,11 @@ entitydefs['nbsp'] = ' '
 VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
                      'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'])
 
+# Python 2 -> 3 compatibility
+try:
+    unichr
+except NameError:
+    unichr = chr
 
 class CustomHTMLParser(HTMLParser):
     """simplified HTML parser.
@@ -184,12 +195,8 @@ def concat_multi_lines(f):
 
         # strip the common prefix from the current line if needed
         if lastline is not None:
-            maxprefix = 0
-            for i in xrange(min(len(line), len(lastline))):
-                if line[i] != lastline[i]:
-                    break
-                maxprefix += 1
-            line = line[maxprefix:].lstrip()
+            common_prefix = os.path.commonprefix([line, lastline])
+            line = line[len(common_prefix):].lstrip()
 
         firstlineno = firstlineno or lineno
         if line.endswith('\\'):
@@ -213,7 +220,7 @@ LINE_PATTERN = re.compile(r'''
 
 
 def get_commands(template):
-    with open(template, 'rUb') as f:
+    with open(template, 'rU') as f:
         for lineno, line in concat_multi_lines(f):
             m = LINE_PATTERN.search(line)
             if not m:
@@ -372,7 +379,7 @@ def check_command(c, cache):
                     cache.get_file(c.args[0])
                     ret = True
                 except FailedCheck as err:
-                    cerr = err.message
+                    cerr = str(err)
                     ret = False
             elif len(c.args) == 2: # @has/matches <path> <pat> = string test
                 cerr = "`PATTERN` did not match"
@@ -413,9 +420,9 @@ def check_command(c, cache):
 
     except FailedCheck as err:
         message = '@{}{} check failed'.format('!' if c.negated else '', c.cmd)
-        print_err(c.lineno, c.context, err.message, message)
+        print_err(c.lineno, c.context, str(err), message)
     except InvalidCheck as err:
-        print_err(c.lineno, c.context, err.message)
+        print_err(c.lineno, c.context, str(err))
 
 def check(target, commands):
     cache = CachedFiles(target)

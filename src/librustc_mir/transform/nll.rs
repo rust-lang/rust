@@ -27,7 +27,7 @@ struct NLLVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> NLLVisitor<'a, 'gcx, 'tcx> {
     pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         NLLVisitor {
-            infcx: infcx,
+            infcx,
             lookup_map: HashMap::new(),
         }
     }

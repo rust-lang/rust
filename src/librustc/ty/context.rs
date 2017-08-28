@@ -797,6 +797,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub maybe_unused_trait_imports: NodeSet,
 
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
@@ -851,7 +853,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
-    /// error reporting, and so is lazily initialised and generally
+    /// error reporting, and so is lazily initialized and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<Vec<DefId>>>,
 }
@@ -1038,6 +1040,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             mir_passes,
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
+            maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
@@ -1695,8 +1698,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                          substs: &'tcx Substs<'tcx>)
         -> Ty<'tcx> {
             self.mk_ty(TyProjection(ProjectionTy {
-                item_def_id: item_def_id,
-                substs: substs,
+                item_def_id,
+                substs,
             }))
         }
 
@@ -1838,6 +1841,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                          span: S,
                                          msg: &str) {
         self.struct_span_lint_node(lint, id, span.into(), msg).emit()
+    }
+
+    pub fn lint_node_note<S: Into<MultiSpan>>(self,
+                                              lint: &'static Lint,
+                                              id: NodeId,
+                                              span: S,
+                                              msg: &str,
+                                              note: &str) {
+        let mut err = self.struct_span_lint_node(lint, id, span.into(), msg);
+        err.note(note);
+        err.emit()
     }
 
     pub fn lint_level_at_node(self, lint: &'static Lint, mut id: NodeId)

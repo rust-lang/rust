@@ -314,19 +314,19 @@ impl Build {
             hosts: config.hosts.clone(),
             targets: config.targets.clone(),
 
-            config: config,
-            src: src,
-            out: out,
+            config,
+            src,
+            out,
 
-            rust_info: rust_info,
-            cargo_info: cargo_info,
-            rls_info: rls_info,
+            rust_info,
+            cargo_info,
+            rls_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
-            is_sudo: is_sudo,
+            is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: Cell::new(0),
         }
@@ -444,7 +444,7 @@ impl Build {
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
-    /// running a particular compiler, wehther or not we're building the
+    /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
                  compiler: Compiler,
@@ -654,6 +654,16 @@ impl Build {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         base
+    }
+
+    /// Returns if this target should statically link the C runtime, if specified
+    fn crt_static(&self, target: Interned<String>) -> Option<bool> {
+        if target.contains("pc-windows-msvc") {
+            Some(true)
+        } else {
+            self.config.target_config.get(&target)
+                .and_then(|t| t.crt_static)
+        }
     }
 
     /// Returns the "musl root" for this `target`, if defined

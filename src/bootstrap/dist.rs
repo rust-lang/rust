@@ -822,6 +822,7 @@ impl Step for PlainSourceTarball {
             "RELEASES.md",
             "configure",
             "x.py",
+            "config.toml.example",
         ];
         let src_dirs = [
             "man",

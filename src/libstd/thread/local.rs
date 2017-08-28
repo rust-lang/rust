@@ -258,8 +258,8 @@ impl<T: 'static> LocalKey<T> {
     pub const unsafe fn new(inner: unsafe fn() -> Option<&'static UnsafeCell<Option<T>>>,
                             init: fn() -> T) -> LocalKey<T> {
         LocalKey {
-            inner: inner,
-            init: init,
+            inner,
+            init,
         }
     }
 

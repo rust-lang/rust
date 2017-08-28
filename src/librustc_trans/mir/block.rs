@@ -673,8 +673,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         Ref(ptr, align)
                     };
                     let op = OperandRef {
-                        val: val,
-                        ty: ty
+                        val,
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }
@@ -697,7 +697,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty: ty
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }
@@ -713,7 +713,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // Pair is always made up of immediates
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty: ty
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }

@@ -3,9 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/android-base-apt-get.sh /scripts/
 RUN sh /scripts/android-base-apt-get.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
     download_ndk android-ndk-r13b-linux-x86_64.zip && \
@@ -46,5 +43,3 @@ ENV SCRIPT \
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

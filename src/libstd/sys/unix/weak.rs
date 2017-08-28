@@ -49,7 +49,7 @@ pub struct Weak<F> {
 impl<F> Weak<F> {
     pub const fn new(name: &'static str) -> Weak<F> {
         Weak {
-            name: name,
+            name,
             addr: AtomicUsize::new(1),
             _marker: marker::PhantomData,
         }

@@ -12,6 +12,8 @@
 // are treated as rvalues and their lifetime is not bounded to
 // the static scope.
 
+fn id<T>(x: T) -> T { x }
+
 struct Test;
 
 enum MyEnum {
@@ -19,12 +21,14 @@ enum MyEnum {
 }
 
 fn structLifetime<'a>() -> &'a Test {
-  let testValue = &Test; //~ ERROR borrowed value does not live long enough
+  let testValue = &id(Test);
+  //~^ ERROR borrowed value does not live long enough
   testValue
 }
 
 fn variantLifetime<'a>() -> &'a MyEnum {
-  let testValue = &MyEnum::Variant1; //~ ERROR borrowed value does not live long enough
+  let testValue = &id(MyEnum::Variant1);
+  //~^ ERROR borrowed value does not live long enough
   testValue
 }
 

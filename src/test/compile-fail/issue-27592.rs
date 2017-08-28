@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #27591.
+// Regression test for issue #27592.
 
 fn write<'a, F: ::std::ops::FnOnce()->::std::fmt::Arguments<'a> + 'a>(fcn: F) {
     use std::fmt::Write;
@@ -23,7 +23,7 @@ impl ::std::fmt::Write for Stream {
 }
 
 fn main() {
-    write(|| format_args!("{}", "Hello world"));
+    write(|| format_args!("{}", String::from("Hello world")));
     //~^ ERROR borrowed value does not live long enough
     //~| ERROR borrowed value does not live long enough
 }

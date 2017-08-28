@@ -411,6 +411,8 @@ define_dep_nodes!( <'tcx>
 
     [] BorrowCheckKrate,
     [] BorrowCheck(DefId),
+    [] MirBorrowCheck(DefId),
+
     [] RvalueCheck(DefId),
     [] Reachability,
     [] MirKeys,
@@ -520,6 +522,8 @@ define_dep_nodes!( <'tcx>
     [] DylibDepFormats(DefId),
     [] IsAllocator(DefId),
     [] IsPanicRuntime(DefId),
+    [] IsCompilerBuiltins(DefId),
+    [] HasGlobalAllocator(DefId),
     [] ExternCrate(DefId),
     [] LintLevels,
 );

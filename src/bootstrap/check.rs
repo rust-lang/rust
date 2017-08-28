@@ -872,7 +872,7 @@ impl Step for CrateLibrustc {
             builder.ensure(CrateLibrustc {
                 compiler,
                 target: run.target,
-                test_kind: test_kind,
+                test_kind,
                 krate: name,
             });
         };
@@ -934,8 +934,8 @@ impl Step for Crate {
             builder.ensure(Crate {
                 compiler,
                 target: run.target,
-                mode: mode,
-                test_kind: test_kind,
+                mode,
+                test_kind,
                 krate: name,
             });
         };

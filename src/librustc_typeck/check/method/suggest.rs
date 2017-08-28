@@ -260,6 +260,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note("found the following associated functions; to be used as methods, \
                               functions must have a `self` parameter");
+                    err.help(&format!("try with `{}::{}`", self.ty_to_string(actual), item_name));
 
                     report_candidates(&mut err, static_sources);
                 }
@@ -584,7 +585,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
     let borrow = tcx.all_traits.borrow();
     assert!(borrow.is_some());
     AllTraits {
-        borrow: borrow,
+        borrow,
         idx: 0,
     }
 }

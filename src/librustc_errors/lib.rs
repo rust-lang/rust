@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustc_errors"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -19,10 +16,11 @@
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(range_contains)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(conservative_impl_trait)]
 
 extern crate term;
+#[cfg(unix)]
 extern crate libc;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
@@ -35,11 +33,12 @@ use emitter::{Emitter, EmitterWriter};
 
 use std::borrow::Cow;
 use std::cell::{RefCell, Cell};
-use std::{error, fmt};
+use std::mem;
 use std::rc::Rc;
+use std::{error, fmt};
 
-pub mod diagnostic;
-pub mod diagnostic_builder;
+mod diagnostic;
+mod diagnostic_builder;
 pub mod emitter;
 mod snippet;
 pub mod registry;
@@ -111,7 +110,7 @@ impl CodeSuggestion {
     }
 
     /// Returns the number of substitutions
-    pub fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
+    fn substitution_spans<'a>(&'a self) -> impl Iterator<Item = Span> + 'a {
         self.substitution_parts.iter().map(|sub| sub.span)
     }
 
@@ -155,8 +154,8 @@ impl CodeSuggestion {
         let lo = primary_spans.iter().map(|sp| sp.0.lo).min().unwrap();
         let hi = primary_spans.iter().map(|sp| sp.0.hi).min().unwrap();
         let bounding_span = Span {
-            lo: lo,
-            hi: hi,
+            lo,
+            hi,
             ctxt: NO_EXPANSION,
         };
         let lines = cm.span_to_lines(bounding_span).unwrap();
@@ -217,8 +216,10 @@ impl CodeSuggestion {
             if !buf.ends_with('\n') {
                 push_trailing(buf, prev_line.as_ref(), &prev_hi, None);
             }
-            // remove trailing newline
-            buf.pop();
+            // remove trailing newlines
+            while buf.ends_with('\n') {
+                buf.pop();
+            }
         }
         bufs
     }
@@ -260,7 +261,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, StringPart};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors
@@ -272,7 +273,8 @@ pub struct Handler {
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
     continue_after_error: Cell<bool>,
-    delayed_span_bug: RefCell<Option<(MultiSpan, String)>>,
+    delayed_span_bug: RefCell<Option<Diagnostic>>,
+    tracked_diagnostics: RefCell<Option<Vec<Diagnostic>>>,
 }
 
 impl Handler {
@@ -292,10 +294,11 @@ impl Handler {
         Handler {
             err_count: Cell::new(0),
             emitter: RefCell::new(e),
-            can_emit_warnings: can_emit_warnings,
-            treat_err_as_bug: treat_err_as_bug,
+            can_emit_warnings,
+            treat_err_as_bug,
             continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
+            tracked_diagnostics: RefCell::new(None),
         }
     }
 
@@ -437,8 +440,9 @@ impl Handler {
         if self.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        let mut delayed = self.delayed_span_bug.borrow_mut();
-        *delayed = Some((sp.into(), msg.to_string()));
+        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        diagnostic.set_span(sp.into());
+        *self.delayed_span_bug.borrow_mut() = Some(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.emit(&sp.into(), msg, Bug);
@@ -489,7 +493,7 @@ impl Handler {
         self.bug(&format!("unimplemented {}", msg));
     }
 
-    pub fn bump_err_count(&self) {
+    fn bump_err_count(&self) {
         self.panic_if_treat_err_as_bug();
         self.err_count.set(self.err_count.get() + 1);
     }
@@ -505,14 +509,9 @@ impl Handler {
         let s;
         match self.err_count.get() {
             0 => {
-                let delayed_bug = self.delayed_span_bug.borrow();
-                match *delayed_bug {
-                    Some((ref span, ref errmsg)) => {
-                        self.span_bug(span.clone(), errmsg);
-                    }
-                    _ => {}
+                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
+                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
                 }
-
                 return;
             }
             1 => s = "aborting due to previous error".to_string(),
@@ -545,6 +544,24 @@ impl Handler {
             self.abort_if_errors();
         }
     }
+
+    pub fn track_diagnostics<F, R>(&self, f: F) -> (R, Vec<Diagnostic>)
+        where F: FnOnce() -> R
+    {
+        let prev = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(),
+                                Some(Vec::new()));
+        let ret = f();
+        let diagnostics = mem::replace(&mut *self.tracked_diagnostics.borrow_mut(), prev)
+            .unwrap();
+        (ret, diagnostics)
+    }
+
+    fn emit_db(&self, db: &DiagnosticBuilder) {
+        if let Some(ref mut list) = *self.tracked_diagnostics.borrow_mut() {
+            list.push((**db).clone());
+        }
+        self.emitter.borrow_mut().emit(db);
+    }
 }
 
 
@@ -569,7 +586,7 @@ impl fmt::Display for Level {
 }
 
 impl Level {
-    pub fn color(self) -> term::color::Color {
+    fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
             Warning => {
@@ -594,14 +611,5 @@ impl Level {
             Help => "help",
             Cancelled => panic!("Shouldn't call on cancelled error"),
         }
-    }
-}
-
-pub fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T
-    where M: FnOnce() -> String
-{
-    match opt {
-        Some(t) => t,
-        None => diag.bug(&msg()),
     }
 }

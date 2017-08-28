@@ -127,9 +127,9 @@ impl GammaLargeShape {
     fn new_raw(shape: f64, scale: f64) -> GammaLargeShape {
         let d = shape - 1. / 3.;
         GammaLargeShape {
-            scale: scale,
+            scale,
             c: 1. / (9. * d).sqrt(),
-            d: d,
+            d,
         }
     }
 }
@@ -254,7 +254,7 @@ impl IndependentSample<f64> for ChiSquared {
 
 /// The Fisher F distribution `F(m, n)`.
 ///
-/// This distribution is equivalent to the ratio of two normalised
+/// This distribution is equivalent to the ratio of two normalized
 /// chi-squared distributions, that is, `F(m,n) = (χ²(m)/m) /
 /// (χ²(n)/n)`.
 pub struct FisherF {

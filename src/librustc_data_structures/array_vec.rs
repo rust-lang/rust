@@ -281,8 +281,8 @@ impl<A: Array> IntoIterator for ArrayVec<A> {
         let indices = 0..self.count;
         mem::forget(self);
         Iter {
-            indices: indices,
-            store: store,
+            indices,
+            store,
         }
     }
 }

@@ -110,7 +110,7 @@ impl Layout {
 
     /// Creates a layout, bypassing all checks.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe as it does not verify that `align` is
     /// a power-of-two that is also less than or equal to 2^31, nor
@@ -293,7 +293,7 @@ impl Layout {
     /// Creates a layout describing the record for `self` followed by
     /// `next` with no additional padding between the two. Since no
     /// padding is inserted, the alignment of `next` is irrelevant,
-    /// and is not incoporated *at all* into the resulting layout.
+    /// and is not incorporated *at all* into the resulting layout.
     ///
     /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
@@ -485,7 +485,7 @@ pub unsafe trait Alloc {
     /// behavior, e.g. to ensure initialization to particular sets of
     /// bit patterns.)
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure that `layout` has non-zero size.
@@ -513,7 +513,7 @@ pub unsafe trait Alloc {
 
     /// Deallocate the memory referenced by `ptr`.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
@@ -528,7 +528,7 @@ pub unsafe trait Alloc {
     ///   to allocate that block of memory.
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout);
 
-    /// Allocator-specific method for signalling an out-of-memory
+    /// Allocator-specific method for signaling an out-of-memory
     /// condition.
     ///
     /// `oom` aborts the thread or process, optionally performing
@@ -539,7 +539,7 @@ pub unsafe trait Alloc {
     /// unsatisfied allocation request (signaled by an error such as
     /// `AllocErr::Exhausted`), and wish to abandon computation rather
     /// than attempt to recover locally. Such clients should pass the
-    /// signalling error value back into `oom`, where the allocator
+    /// signaling error value back into `oom`, where the allocator
     /// may incorporate that error value into its diagnostic report
     /// before aborting.
     ///
@@ -617,7 +617,7 @@ pub unsafe trait Alloc {
     /// behavior is well-defined (though underspecified) when this
     /// constraint is violated; further discussion below.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
@@ -688,7 +688,7 @@ pub unsafe trait Alloc {
     /// Behaves like `alloc`, but also ensures that the contents
     /// are set to zero before being returned.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe for the same reasons that `alloc` is.
     ///
@@ -714,7 +714,7 @@ pub unsafe trait Alloc {
     /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe for the same reasons that `alloc` is.
     ///
@@ -736,7 +736,7 @@ pub unsafe trait Alloc {
     /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe for the same reasons that `realloc` is.
     ///
@@ -770,7 +770,7 @@ pub unsafe trait Alloc {
     /// memory block referenced by `ptr` has not been transferred, and
     /// the contents of the memory block are unaltered.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
@@ -827,7 +827,7 @@ pub unsafe trait Alloc {
     /// the memory block has not been transferred, and the contents of
     /// the memory block are unaltered.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
@@ -920,7 +920,7 @@ pub unsafe trait Alloc {
     ///
     /// Captures a common usage pattern for allocators.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure both:
@@ -993,7 +993,7 @@ pub unsafe trait Alloc {
     /// The returned block is suitable for passing to the
     /// `alloc`/`realloc` methods of this allocator.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure all of the following:
@@ -1037,7 +1037,7 @@ pub unsafe trait Alloc {
     ///
     /// Captures a common usage pattern for allocators.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
     /// if the caller does not ensure both:

@@ -744,7 +744,7 @@ impl<I, T, E> ResultShunt<I, E>
 
     fn new(iter: I) -> Self {
         ResultShunt {
-            iter: iter,
+            iter,
             error: None,
         }
     }

@@ -3,11 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-
 # Ubuntu 16.04 (this container) ships with make 4, but something in the
 # toolchains we build below chokes on that, so go back to make 3
 COPY scripts/make3.sh /scripts/

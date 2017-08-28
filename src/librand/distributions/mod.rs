@@ -149,7 +149,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
                 "WeightedChoice::new called with a total weight of 0");
 
         WeightedChoice {
-            items: items,
+            items,
             // we're likely to be generating numbers in this range
             // relatively often, so might as well cache it
             weight_range: Range::new(0, running_total),

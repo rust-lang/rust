@@ -38,7 +38,7 @@
 //! let message = s + " world!";
 //! ```
 //!
-//! If you have a vector of valid UTF-8 bytes, you can make a `String` out of
+//! If you have a vector of valid UTF-8 bytes, you can make a [`String`] out of
 //! it. You can do the reverse too.
 //!
 //! ```
@@ -82,7 +82,7 @@ use boxed::Box;
 ///
 /// # Examples
 ///
-/// You can create a `String` from a literal string with `String::from`:
+/// You can create a `String` from a literal string with [`String::from`]:
 ///
 /// ```
 /// let hello = String::from("Hello, world!");
@@ -98,6 +98,7 @@ use boxed::Box;
 /// hello.push_str("orld!");
 /// ```
 ///
+/// [`String::from`]: #method.from
 /// [`char`]: ../../std/primitive.char.html
 /// [`push`]: #method.push
 /// [`push_str`]: #method.push_str
@@ -155,17 +156,14 @@ use boxed::Box;
 /// takes_str(&s);
 /// ```
 ///
-/// [`&str`]: ../../std/primitive.str.html
-/// [`Deref`]: ../../std/ops/trait.Deref.html
-///
 /// This will create a [`&str`] from the `String` and pass it in. This
 /// conversion is very inexpensive, and so generally, functions will accept
 /// [`&str`]s as arguments unless they need a `String` for some specific
 /// reason.
 ///
 /// In certain cases Rust doesn't have enough information to make this
-/// conversion, known as `Deref` coercion. In the following example a string
-/// slice `&'a str` implements the trait `TraitExample`, and the function
+/// conversion, known as [`Deref`] coercion. In the following example a string
+/// slice [`&'a str`][`&str`] implements the trait `TraitExample`, and the function
 /// `example_func` takes anything that implements the trait. In this case Rust
 /// would need to make two implicit conversions, which Rust doesn't have the
 /// means to do. For that reason, the following example will not compile.
@@ -185,13 +183,13 @@ use boxed::Box;
 ///
 /// There are two options that would work instead. The first would be to
 /// change the line `example_func(&example_string);` to
-/// `example_func(example_string.as_str());`, using the method `as_str()`
+/// `example_func(example_string.as_str());`, using the method [`as_str()`]
 /// to explicitly extract the string slice containing the string. The second
 /// way changes `example_func(&example_string);` to
 /// `example_func(&*example_string);`. In this case we are dereferencing a
-/// `String` to a `str`, then referencing the `str` back to `&str`. The
-/// second way is more idiomatic, however both work to do the conversion
-/// explicitly rather than relying on the implicit conversion.
+/// `String` to a [`str`][`&str`], then referencing the [`str`][`&str`] back to
+/// [`&str`]. The second way is more idiomatic, however both work to do the
+/// conversion explicitly rather than relying on the implicit conversion.
 ///
 /// # Representation
 ///
@@ -287,6 +285,10 @@ use boxed::Box;
 /// ```
 ///
 /// Here, there's no need to allocate more memory inside the loop.
+///
+/// [`&str`]: ../../std/primitive.str.html
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`as_str()`]: struct.String.html#method.as_str
 #[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
@@ -443,32 +445,22 @@ impl String {
     /// requires that it is valid UTF-8. `from_utf8()` checks to ensure that
     /// the bytes are valid UTF-8, and then does the conversion.
     ///
-    /// [`&str`]: ../../std/primitive.str.html
-    /// [`u8`]: ../../std/primitive.u8.html
-    /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
-    ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the validity check, there is an unsafe version
     /// of this function, [`from_utf8_unchecked`], which has the same behavior
     /// but skips the check.
     ///
-    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
-    ///
     /// This method will take care to not copy the vector, for efficiency's
     /// sake.
     ///
-    /// If you need a `&str` instead of a `String`, consider
+    /// If you need a [`&str`] instead of a `String`, consider
     /// [`str::from_utf8`].
-    ///
-    /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     ///
     /// The inverse of this method is [`as_bytes`].
     ///
-    /// [`as_bytes`]: #method.as_bytes
-    ///
     /// # Errors
     ///
-    /// Returns `Err` if the slice is not UTF-8 with a description as to why the
+    /// Returns [`Err`] if the slice is not UTF-8 with a description as to why the
     /// provided bytes are not UTF-8. The vector you moved in is also included.
     ///
     /// # Examples
@@ -497,7 +489,14 @@ impl String {
     /// See the docs for [`FromUtf8Error`] for more details on what you can do
     /// with this error.
     ///
+    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
+    /// [`&str`]: ../../std/primitive.str.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
+    /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
+    /// [`as_bytes`]: struct.String.html#method.as_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
+    /// [`Err`]: ../../stdresult/enum.Result.html#variant.Err
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
@@ -594,8 +593,10 @@ impl String {
         Cow::Owned(res)
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a `String`, returning `Err`
+    /// Decode a UTF-16 encoded vector `v` into a `String`, returning [`Err`]
     /// if `v` contains any invalid data.
+    ///
+    /// [`Err`]: ../../std/result/enum.Result.htlm#variant.Err
     ///
     /// # Examples
     ///
@@ -618,7 +619,7 @@ impl String {
         decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
     }
 
-    /// Decode a UTF-16 encoded vector `v` into a string, replacing
+    /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
     /// invalid data with the replacement character (U+FFFD).
     ///
     /// # Examples
@@ -800,11 +801,12 @@ impl String {
     /// If you do not want this "at least" behavior, see the [`reserve_exact`]
     /// method.
     ///
-    /// [`reserve_exact`]: #method.reserve_exact
-    ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
+    ///
+    /// [`reserve_exact`]: struct.String.html#method.reserve_exact
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -909,7 +911,9 @@ impl String {
         self.vec.shrink_to_fit()
     }
 
-    /// Appends the given `char` to the end of this `String`.
+    /// Appends the given [`char`] to the end of this `String`.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -990,7 +994,9 @@ impl String {
 
     /// Removes the last character from the string buffer and returns it.
     ///
-    /// Returns `None` if this `String` is empty.
+    /// Returns [`None`] if this `String` is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1019,7 +1025,7 @@ impl String {
         Some(ch)
     }
 
-    /// Removes a `char` from this `String` at a byte position and returns it.
+    /// Removes a [`char`] from this `String` at a byte position and returns it.
     ///
     /// This is an `O(n)` operation, as it requires copying every element in the
     /// buffer.
@@ -1059,6 +1065,57 @@ impl String {
             self.vec.set_len(len - (next - idx));
         }
         ch
+    }
+
+    /// Retains only the characters specified by the predicate.
+    ///
+    /// In other words, remove all characters `c` such that `f(c)` returns `false`.
+    /// This method operates in place and preserves the order of the retained
+    /// characters.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(string_retain)]
+    ///
+    /// let mut s = String::from("f_o_ob_ar");
+    ///
+    /// s.retain(|c| c != '_');
+    ///
+    /// assert_eq!(s, "foobar");
+    /// ```
+    #[inline]
+    #[unstable(feature = "string_retain", issue = "43874")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(char) -> bool
+    {
+        let len = self.len();
+        let mut del_bytes = 0;
+        let mut idx = 0;
+
+        while idx < len {
+            let ch = unsafe {
+                self.slice_unchecked(idx, len).chars().next().unwrap()
+            };
+            let ch_len = ch.len_utf8();
+
+            if !f(ch) {
+                del_bytes += ch_len;
+            } else if del_bytes > 0 {
+                unsafe {
+                    ptr::copy(self.vec.as_ptr().offset(idx as isize),
+                              self.vec.as_mut_ptr().offset((idx - del_bytes) as isize),
+                              ch_len);
+                }
+            }
+
+            // Point idx to the next char
+            idx += ch_len;
+        }
+
+        if del_bytes > 0 {
+            unsafe { self.vec.set_len(len - del_bytes); }
+        }
     }
 
     /// Inserts a character into this `String` at a byte position.
@@ -1327,8 +1384,8 @@ impl String {
         let chars_iter = self[start..end].chars();
 
         Drain {
-            start: start,
-            end: end,
+            start,
+            end,
             iter: chars_iter,
             string: self_ptr,
         }
@@ -1338,7 +1395,7 @@ impl String {
     /// replaces with the given string, and yields the removed chars.
     /// The given string doesn’t need to be the same length as the range.
     ///
-    /// Note: The element range is removed when the `Splice` is dropped,
+    /// Note: The element range is removed when the [`Splice`] is dropped,
     /// even if the iterator is not consumed until the end.
     ///
     /// # Panics
@@ -1347,6 +1404,7 @@ impl String {
     /// boundary, or if they're out of bounds.
     ///
     /// [`char`]: ../../std/primitive.char.html
+    /// [`Splice`]: ../../std/string/struct.Splice.html
     ///
     /// # Examples
     ///
@@ -1391,17 +1449,20 @@ impl String {
         let chars_iter = self[start..end].chars();
 
         Splice {
-            start: start,
-            end: end,
+            start,
+            end,
             iter: chars_iter,
             string: self_ptr,
-            replace_with: replace_with
+            replace_with,
         }
     }
 
-    /// Converts this `String` into a `Box<str>`.
+    /// Converts this `String` into a [`Box`]`<`[`str`]`>`.
     ///
     /// This will drop any excess capacity.
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///

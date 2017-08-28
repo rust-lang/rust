@@ -433,7 +433,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
     fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
         ArgType {
             kind: ArgKind::Direct,
-            layout: layout,
+            layout,
             cast: None,
             pad: None,
             attrs: ArgAttributes::default()
@@ -808,10 +808,10 @@ impl<'a, 'tcx> FnType<'tcx> {
         }
 
         FnType {
-            args: args,
-            ret: ret,
+            args,
+            ret,
             variadic: sig.variadic,
-            cconv: cconv
+            cconv,
         }
     }
 

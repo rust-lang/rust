@@ -2233,7 +2233,7 @@ impl StrExt for str {
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
         SplitN(SplitNInternal {
             iter: self.split(pat).0,
-            count: count,
+            count,
         })
     }
 

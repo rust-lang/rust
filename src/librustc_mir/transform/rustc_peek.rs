@@ -13,7 +13,7 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{self, Mir};
+use rustc::mir::{self, Mir, Location};
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
@@ -202,7 +202,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // reset GEN and KILL sets before emulating their effect.
         for e in sets.gen_set.words_mut() { *e = 0; }
         for e in sets.kill_set.words_mut() { *e = 0; }
-        results.0.operator.statement_effect(&mut sets, bb, j);
+        results.0.operator.statement_effect(&mut sets, Location { block: bb, statement_index: j });
         sets.on_entry.union(sets.gen_set);
         sets.on_entry.subtract(sets.kill_set);
     }

@@ -1194,9 +1194,9 @@ impl<'a> State<'a> {
         self.print_expr(&args[0])?;
         self.s.word(".")?;
         self.print_name(segment.name)?;
-        if !segment.parameters.lifetimes().is_empty() ||
-                !segment.parameters.types().is_empty() ||
-                !segment.parameters.bindings().is_empty() {
+        if !segment.parameters.lifetimes.is_empty() ||
+                !segment.parameters.types.is_empty() ||
+                !segment.parameters.bindings.is_empty() {
             self.print_path_parameters(&segment.parameters, true)?;
         }
         self.print_call_post(base_args)
@@ -1581,61 +1581,55 @@ impl<'a> State<'a> {
                              parameters: &hir::PathParameters,
                              colons_before_params: bool)
                              -> io::Result<()> {
-        match *parameters {
-            hir::AngleBracketedParameters(ref data) => {
-                let start = if colons_before_params { "::<" } else { "<" };
-                let empty = Cell::new(true);
-                let start_or_comma = |this: &mut Self| {
-                    if empty.get() {
-                        empty.set(false);
-                        this.s.word(start)
-                    } else {
-                        this.word_space(",")
-                    }
-                };
+        if parameters.parenthesized {
+            self.s.word("(")?;
+            self.commasep(Inconsistent, parameters.inputs(), |s, ty| s.print_type(&ty))?;
+            self.s.word(")")?;
 
-                if !data.lifetimes.iter().all(|lt| lt.is_elided()) {
-                    for lifetime in &data.lifetimes {
-                        start_or_comma(self)?;
-                        self.print_lifetime(lifetime)?;
-                    }
+            self.space_if_not_bol()?;
+            self.word_space("->")?;
+            self.print_type(&parameters.bindings[0].ty)?;
+        } else {
+            let start = if colons_before_params { "::<" } else { "<" };
+            let empty = Cell::new(true);
+            let start_or_comma = |this: &mut Self| {
+                if empty.get() {
+                    empty.set(false);
+                    this.s.word(start)
+                } else {
+                    this.word_space(",")
                 }
+            };
 
-                if !data.types.is_empty() {
+            if !parameters.lifetimes.iter().all(|lt| lt.is_elided()) {
+                for lifetime in &parameters.lifetimes {
                     start_or_comma(self)?;
-                    self.commasep(Inconsistent, &data.types, |s, ty| s.print_type(&ty))?;
-                }
-
-                // FIXME(eddyb) This would leak into error messages, e.g.:
-                // "non-exhaustive patterns: `Some::<..>(_)` not covered".
-                if data.infer_types && false {
-                    start_or_comma(self)?;
-                    self.s.word("..")?;
-                }
-
-                for binding in data.bindings.iter() {
-                    start_or_comma(self)?;
-                    self.print_name(binding.name)?;
-                    self.s.space()?;
-                    self.word_space("=")?;
-                    self.print_type(&binding.ty)?;
-                }
-
-                if !empty.get() {
-                    self.s.word(">")?
+                    self.print_lifetime(lifetime)?;
                 }
             }
 
-            hir::ParenthesizedParameters(ref data) => {
-                self.s.word("(")?;
-                self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(&ty))?;
-                self.s.word(")")?;
+            if !parameters.types.is_empty() {
+                start_or_comma(self)?;
+                self.commasep(Inconsistent, &parameters.types, |s, ty| s.print_type(&ty))?;
+            }
 
-                if let Some(ref ty) = data.output {
-                    self.space_if_not_bol()?;
-                    self.word_space("->")?;
-                    self.print_type(&ty)?;
-                }
+            // FIXME(eddyb) This would leak into error messages, e.g.:
+            // "non-exhaustive patterns: `Some::<..>(_)` not covered".
+            if parameters.infer_types && false {
+                start_or_comma(self)?;
+                self.s.word("..")?;
+            }
+
+            for binding in parameters.bindings.iter() {
+                start_or_comma(self)?;
+                self.print_name(binding.name)?;
+                self.s.space()?;
+                self.word_space("=")?;
+                self.print_type(&binding.ty)?;
+            }
+
+            if !empty.get() {
+                self.s.word(">")?
             }
         }
 

@@ -15,10 +15,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   jq \
   bzip2
 
-# dumb-init
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 # emscripten
 COPY scripts/emscripten-wasm.sh /scripts/
 COPY disabled/wasm32-exp/node.sh /usr/local/bin/node
@@ -37,6 +33,3 @@ ENV TARGETS=wasm32-experimental-emscripten
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS --experimental-targets=WebAssembly
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
-
-# init
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]

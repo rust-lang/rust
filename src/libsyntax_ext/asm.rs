@@ -152,8 +152,8 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     outputs.push(ast::InlineAsmOutput {
                         constraint: output.unwrap_or(constraint),
                         expr: out,
-                        is_rw: is_rw,
-                        is_indirect: is_indirect,
+                        is_rw,
+                        is_indirect,
                     });
                 }
             }
@@ -242,14 +242,14 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(ast::InlineAsm {
-            asm: asm,
+            asm,
             asm_str_style: asm_str_style.unwrap(),
-            outputs: outputs,
-            inputs: inputs,
+            outputs,
+            inputs,
             clobbers: clobs,
-            volatile: volatile,
-            alignstack: alignstack,
-            dialect: dialect,
+            volatile,
+            alignstack,
+            dialect,
             ctxt: cx.backtrace(),
         })),
         span: sp,

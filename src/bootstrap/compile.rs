@@ -74,13 +74,21 @@ impl Step for Std {
             let from = builder.compiler(1, build.build);
             builder.ensure(Std {
                 compiler: from,
-                target: target,
+                target,
             });
             println!("Uplifting stage1 std ({} -> {})", from.host, target);
+
+            // Even if we're not building std this stage, the new sysroot must
+            // still contain the musl startup objects.
+            if target.contains("musl") && !target.contains("mips") {
+                let libdir = builder.sysroot_libdir(compiler, target);
+                copy_musl_third_party_objects(build, target, &libdir);
+            }
+
             builder.ensure(StdLink {
                 compiler: from,
                 target_compiler: compiler,
-                target: target,
+                target,
             });
             return;
         }
@@ -88,6 +96,11 @@ impl Step for Std {
         let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
         println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target);
+
+        if target.contains("musl") && !target.contains("mips") {
+            let libdir = builder.sysroot_libdir(compiler, target);
+            copy_musl_third_party_objects(build, target, &libdir);
+        }
 
         let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
@@ -100,8 +113,22 @@ impl Step for Std {
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, build.build),
             target_compiler: compiler,
-            target: target,
+            target,
         });
+    }
+}
+
+/// Copies the crt(1,i,n).o startup objects
+///
+/// Since musl supports fully static linking, we can cross link for it even
+/// with a glibc-targeting toolchain, given we have the appropriate startup
+/// files. As those shipped with glibc won't work, copy the ones provided by
+/// musl so we have them on linux-gnu hosts.
+fn copy_musl_third_party_objects(build: &Build,
+                                 target: Interned<String>,
+                                 into: &Path) {
+    for &obj in &["crt1.o", "crti.o", "crtn.o"] {
+        copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
@@ -189,10 +216,6 @@ impl Step for StdLink {
         let libdir = builder.sysroot_libdir(target_compiler, target);
         add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
 
-        if target.contains("musl") && !target.contains("mips") {
-            copy_musl_third_party_objects(build, target, &libdir);
-        }
-
         if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
             // The sanitizers are only built in stage1 or above, so the dylibs will
             // be missing in stage0 and causes panic. See the `std()` function above
@@ -202,18 +225,9 @@ impl Step for StdLink {
 
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Libstd,
         });
-    }
-}
-
-/// Copies the crt(1,i,n).o startup objects
-///
-/// Only required for musl targets that statically link to libc
-fn copy_musl_third_party_objects(build: &Build, target: Interned<String>, into: &Path) {
-    for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
@@ -326,13 +340,13 @@ impl Step for Test {
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Test {
                 compiler: builder.compiler(1, build.build),
-                target: target,
+                target,
             });
             println!("Uplifting stage1 test ({} -> {})", &build.build, target);
             builder.ensure(TestLink {
                 compiler: builder.compiler(1, build.build),
                 target_compiler: compiler,
-                target: target,
+                target,
             });
             return;
         }
@@ -351,7 +365,7 @@ impl Step for Test {
         builder.ensure(TestLink {
             compiler: builder.compiler(compiler.stage, build.build),
             target_compiler: compiler,
-            target: target,
+            target,
         });
     }
 }
@@ -398,7 +412,7 @@ impl Step for TestLink {
                     &libtest_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Libtest,
         });
     }
@@ -445,7 +459,7 @@ impl Step for Rustc {
         if build.force_use_stage1(compiler, target) {
             builder.ensure(Rustc {
                 compiler: builder.compiler(1, build.build),
-                target: target,
+                target,
             });
             println!("Uplifting stage1 rustc ({} -> {})", &build.build, target);
             builder.ensure(RustcLink {
@@ -581,7 +595,7 @@ impl Step for RustcLink {
                        &librustc_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
-            target: target,
+            target,
             mode: Mode::Librustc,
         });
     }

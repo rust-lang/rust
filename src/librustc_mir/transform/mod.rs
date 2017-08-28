@@ -93,7 +93,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         }
     }
     tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
-        tcx: tcx,
+        tcx,
         set: &mut set,
     }.as_deep_visitor());
 
@@ -122,8 +122,9 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 }
 
 fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Mir<'tcx> {
-    // Borrowck uses `mir_validated`, so we have to force it to
+    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
+    ty::queries::mir_borrowck::force(tcx, DUMMY_SP, def_id);
     ty::queries::borrowck::force(tcx, DUMMY_SP, def_id);
 
     let mut mir = tcx.mir_validated(def_id).steal();
@@ -147,6 +148,14 @@ fn run_suite<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         pass.run_pass(tcx, source, mir);
+
+        for (index, promoted_mir) in mir.promoted.iter_enumerated_mut() {
+            let promoted_source = MirSource::Promoted(source.item_id(), index);
+            pass.run_pass(tcx, promoted_source, promoted_mir);
+
+            // Let's make sure we don't miss any nested instances
+            assert!(promoted_mir.promoted.is_empty());
+        }
 
         for hook in tcx.mir_passes.hooks() {
             hook.on_mir_pass(tcx, suite, pass_num, &pass.name(), source, &mir, true);

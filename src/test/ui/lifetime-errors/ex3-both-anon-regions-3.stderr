@@ -1,10 +1,18 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-3.rs:12:9
+  --> $DIR/ex3-both-anon-regions-3.rs:12:13
    |
-11 | fn foo((v, w): (&u8, &u8), (x, y): (&u8, &u8)) {
-   |                 ---                 --- these references are not declared with the same lifetime...
-12 |     v = x;
-   |         ^ ...but data flows here
+11 | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                     ---                 --- these two types are declared with different lifetimes...
+12 |     z.push((x,y));
+   |             ^ ...but data flows into `z` here
 
-error: aborting due to previous error
+error[E0623]: lifetime mismatch
+  --> $DIR/ex3-both-anon-regions-3.rs:12:15
+   |
+11 | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                         ---                  --- these two types are declared with different lifetimes...
+12 |     z.push((x,y));
+   |               ^ ...but data flows into `z` here
+
+error: aborting due to 2 previous errors
 

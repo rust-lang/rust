@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                   .map(|(idx, subpattern)| {
                       let elem = ProjectionElem::ConstantIndex {
                           offset: idx as u32,
-                          min_length: min_length,
+                          min_length,
                           from_end: false,
                       };
                       let lvalue = lvalue.clone().elem(elem);
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                   .map(|(idx, subpattern)| {
                       let elem = ProjectionElem::ConstantIndex {
                           offset: (idx+1) as u32,
-                          min_length: min_length,
+                          min_length,
                           from_end: true,
                       };
                       let lvalue = lvalue.clone().elem(elem);
@@ -80,8 +80,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
     pub fn new(lvalue: Lvalue<'tcx>, pattern: &'pat Pattern<'tcx>) -> MatchPair<'pat, 'tcx> {
         MatchPair {
-            lvalue: lvalue,
-            pattern: pattern,
+            lvalue,
+            pattern,
             slice_len_checked: false,
         }
     }

@@ -717,7 +717,7 @@ impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
     pub fn new(writer: &'a mut fmt::Write) -> PrettyEncoder<'a> {
         PrettyEncoder {
-            writer: writer,
+            writer,
             curr_indent: 0,
             indent: 2,
             is_emitting_map_key: false,
@@ -1451,7 +1451,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     /// Creates the JSON parser.
     pub fn new(rdr: T) -> Parser<T> {
         let mut p = Parser {
-            rdr: rdr,
+            rdr,
             ch: Some('\x00'),
             line: 1,
             col: 0,

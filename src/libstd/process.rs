@@ -126,7 +126,7 @@ impl AsInner<imp::Process> for Child {
 impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
     fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
         Child {
-            handle: handle,
+            handle,
             stdin: io.stdin.map(ChildStdin::from_inner),
             stdout: io.stdout.map(ChildStdout::from_inner),
             stderr: io.stderr.map(ChildStderr::from_inner),
@@ -1035,9 +1035,9 @@ impl Child {
 
         let status = self.wait()?;
         Ok(Output {
-            status: status,
-            stdout: stdout,
-            stderr: stderr,
+            status,
+            stdout,
+            stderr,
         })
     }
 }
