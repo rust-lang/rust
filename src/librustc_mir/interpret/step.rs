@@ -11,8 +11,8 @@ use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
-use super::{EvalResult, EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign, GlobalId, Lvalue,
-            HasMemory, MemoryKind, Machine, PrimVal};
+use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Lvalue,
+            MemoryKind, Machine, PrimVal};
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -125,26 +125,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         ref discrfield_source,
                         ..
                     } => {
-                        // TODO: There's some duplication between here and eval_rvalue_into_lvalue
                         if variant_index as u64 != nndiscr {
-                            let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
+                            self.write_struct_wrapped_null_pointer(
                                 dest_ty,
                                 nndiscr,
                                 discrfield_source,
+                                dest,
                             )?;
-                            let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(
-                                offset.bytes(),
-                                &self,
-                            )?;
-                            trace!("struct wrapped nullable pointer type: {}", ty);
-                            // only the pointer part of a fat pointer is used for this space optimization
-                            let discr_size = self.type_size(ty)?.expect(
-                                "bad StructWrappedNullablePointer discrfield",
-                            );
-                            self.write_maybe_aligned_mut(!packed, |ectx| {
-                                // We're writing 0, signedness does not matter
-                                ectx.memory.write_primval(nonnull, PrimVal::Bytes(0), discr_size, false)
-                            })?;
                         }
                     }
 

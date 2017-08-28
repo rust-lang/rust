@@ -767,25 +767,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                     let operand_ty = self.operand_ty(operand);
                                     assert_eq!(self.type_size(operand_ty)?, Some(0));
                                 }
-                                let (offset, TyAndPacked { ty, packed: _ }) =
-                                    self.nonnull_offset_and_ty(
-                                        dest_ty,
-                                        nndiscr,
-                                        discrfield_source,
-                                    )?;
-                                // TODO: The packed flag is ignored
-
-                                // FIXME(solson)
-                                let dest = self.force_allocation(dest)?.to_ptr()?;
-
-                                let dest = dest.offset(offset.bytes(), &self)?;
-                                let dest_size = self.type_size(ty)?.expect(
-                                    "bad StructWrappedNullablePointer discrfield",
-                                );
-                                self.memory.write_maybe_aligned_mut(
-                                    !nonnull.packed,
-                                    // The sign does not matter for 0
-                                    |mem| mem.write_primval(dest, PrimVal::Bytes(0), dest_size, false),
+                                self.write_struct_wrapped_null_pointer(
+                                    dest_ty,
+                                    nndiscr,
+                                    discrfield_source,
+                                    dest,
                                 )?;
                             }
                         } else {
@@ -1019,6 +1005,33 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn write_struct_wrapped_null_pointer(
+        &mut self,
+        dest_ty: ty::Ty<'tcx>,
+        nndiscr: u64,
+        discrfield_source: &layout::FieldPath,
+        dest: Lvalue,
+    ) -> EvalResult<'tcx> {
+        let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
+            dest_ty,
+            nndiscr,
+            discrfield_source,
+        )?;
+        let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(
+            offset.bytes(),
+            &self,
+        )?;
+        trace!("struct wrapped nullable pointer type: {}", ty);
+        // only the pointer part of a fat pointer is used for this space optimization
+        let discr_size = self.type_size(ty)?.expect(
+            "bad StructWrappedNullablePointer discrfield",
+        );
+        self.memory.write_maybe_aligned_mut(!packed, |mem| {
+            // We're writing 0, signedness does not matter
+            mem.write_primval(nonnull, PrimVal::Bytes(0), discr_size, false)
+        })
     }
 
     pub(super) fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
