@@ -49,8 +49,8 @@ fn main() {
 //     bb2: {
 //         _0 = ();
 //         StorageDead(_5);
-//         StorageDead(_3);
 //         EndRegion('26_1rs);
+//         StorageDead(_3);
 //         StorageDead(_1);
 //         return;
 //     }
@@ -60,10 +60,10 @@ fn main() {
 //         StorageLive(_7);
 //         _7 = &'26_3rs _1;
 //         _2 = ();
-//         StorageDead(_7);
 //         EndRegion('26_3rs);
-//         StorageDead(_3);
+//         StorageDead(_7);
 //         EndRegion('26_1rs);
+//         StorageDead(_3);
 //         goto -> bb1;
 //     }
 // END rustc.node4.SimplifyCfg-qualify-consts.after.mir

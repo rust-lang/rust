@@ -50,8 +50,8 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //    bb1: {
 //        StorageDead(_4);
 //        _0 = ();
-//        StorageDead(_2);
 //        EndRegion('21_1rs);
+//        StorageDead(_2);
 //        drop(_1) -> bb4;
 //    }
 //    bb2: {

@@ -68,8 +68,8 @@ fn main() {
 //         _5 = (*_4);
 //         _0 = _5;
 //         StorageDead(_5);
-//         StorageDead(_4);
 //         EndRegion(ReScope(Remainder(BlockRemainder { block: ItemLocalId(22), first_statement_index: 0 })));
+//         StorageDead(_4);
 //         StorageDead(_3);
 //         return;
 //     }
