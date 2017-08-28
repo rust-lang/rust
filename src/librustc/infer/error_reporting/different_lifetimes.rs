@@ -60,6 +60,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn try_report_anon_anon_conflict(&self, error: &RegionResolutionError<'tcx>) -> bool {
         let (span, sub, sup) = match *error {
             ConcreteFailure(ref origin, sub, sup) => (origin.span(), sub, sup),
+            SubSupConflict(_, ref origin, sub, _, sup) => (origin.span(), sub, sup),
             _ => return false, // inapplicable
         };
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast<'a> {
-    num(usize),
-    add(&'a ast<'a>, &'a ast<'a>)
+struct Foo {
+    field: i32,
 }
 
-fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {
-    ast::add(x, y) //~ ERROR 17:5: 17:19: lifetime mismatch [E0623]
+fn foo2<'a>(a: &'a Foo, x: &i32) -> &'a i32 {
+    if true {
+        let p: &i32 = &a.field;
+        &*p
+    } else {
+        &*x
+    }
 }
 
-fn main() {
-}
+fn main() { }

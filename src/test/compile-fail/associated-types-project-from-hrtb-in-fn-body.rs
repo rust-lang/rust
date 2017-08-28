@@ -30,7 +30,7 @@ fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
 {
     // x and y here have two distinct lifetimes:
     let z: I::A = if cond { x } else { y };
-    //~^ ERROR cannot infer
+    //~^ ERROR lifetime mismatch
 }
 
 pub fn main() {}
