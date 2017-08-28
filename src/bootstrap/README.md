@@ -76,10 +76,9 @@ The script accepts commands, flags, and arguments to determine what to do:
 There are currently two methods for configuring the rustbuild build system.
 
 First, rustbuild offers a TOML-based configuration system with a `config.toml`
-file in the same location as `config.mk`. An example of this configuration can
-be found at `config.toml.example`, and the configuration file can also be passed
-as `--config path/to/config.toml` if the build system is being invoked manually
-(via the python script).
+file. An example of this configuration can be found at `config.toml.example`,
+and the configuration file can also be passed as `--config path/to/config.toml`
+if the build system is being invoked manually (via the python script).
 
 Next, the `./configure` options serialized in `config.mk` will be
 parsed and read. That is, if any `./configure` options are passed, they'll be
