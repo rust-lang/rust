@@ -68,7 +68,20 @@ fn main() {
 }
 ```
 
-The reason (I think) is that there is no good way to write a variable-length array expression in macros. This wouldn't be fixed by the first iteration of const generics.
+~~The reason (I think) is that there is no good way to write a variable-length array expression in macros. This wouldn't be fixed by the first iteration of const generics.~~ Actually, this can be done using a for-loop (`ArrayVec` is used here instead of a manual panic guard for simplicity, but it can be easily implemented given const generics).
+```Rust
+impl<const n: usize; T> Clone for [T; n] {
+    fn clone(&self) -> Self {
+        unsafe {
+            let result : ArrayVec<Self> = ArrayVec::new();
+            for elem in (self as &[T]) {
+                result.push(elem.clone());
+            }
+            result.into_inner().unwrap()
+        }
+    }
+}
+```
 
 OTOH, this means that making non-`Copy` arrays `Clone` is less of a bugfix and more of a new feature. It's however a nice feature - `[Box<u32>; 1]` not being `Clone` is an annoying and seemingly-pointless edge case.
 
