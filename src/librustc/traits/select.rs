@@ -1077,9 +1077,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 } else {
                     None
                 };
-                let cause = if
-                    trait_ref.def_id.krate != LOCAL_CRATE &&
-                    !self.tcx().has_attr(trait_ref.def_id, "fundamental") {
+                let cause = if !coherence::trait_ref_is_local_or_fundamental(self.tcx(),
+                                                                             trait_ref) {
                     IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
                 } else {
                     IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }

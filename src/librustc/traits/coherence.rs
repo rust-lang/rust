@@ -140,10 +140,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // if the trait is not marked fundamental, then it's always possible that
     // an ancestor crate will impl this in the future, if they haven't
     // already
-    if
-        trait_ref.def_id.krate != LOCAL_CRATE &&
-        !tcx.has_attr(trait_ref.def_id, "fundamental")
-    {
+    if !trait_ref_is_local_or_fundamental(tcx, trait_ref) {
         debug!("trait_ref_is_knowable: trait is neither local nor fundamental");
         return false;
     }
@@ -155,6 +152,11 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // must be visible to us, and -- since the trait is fundamental
     // -- we can test.
     orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(true)).is_err()
+}
+
+pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                         trait_ref: &ty::TraitRef<'tcx>) {
+    trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, "fundamental")
 }
 
 pub enum OrphanCheckErr<'tcx> {
