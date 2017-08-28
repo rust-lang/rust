@@ -1,8 +1,8 @@
 error: useless lint attribute
  --> $DIR/useless_attribute.rs:5:1
   |
-5 | #[allow(dead_code)]
-  | ^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code)]`
+5 | #[allow(dead_code, unused_extern_crates)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: if you just forgot a `!`, use: `#![allow(dead_code, unused_extern_crates)]`
   |
   = note: `-D useless-attribute` implied by `-D warnings`
 

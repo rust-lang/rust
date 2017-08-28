@@ -1,7 +1,6 @@
 // error-pattern:cargo-clippy
 
 #![feature(box_syntax)]
-#![feature(alloc)]
 #![feature(custom_attribute)]
 #![feature(i128_type)]
 #![feature(i128)]
