@@ -128,8 +128,7 @@ impl ExportedSymbols {
             // Down below we'll hardwire all of the symbols to the `Rust` export
             // level instead.
             let special_runtime_crate =
-                tcx.is_panic_runtime(cnum.as_def_id()) ||
-                tcx.sess.cstore.is_compiler_builtins(cnum);
+                tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
             let crate_exports = tcx
                 .sess

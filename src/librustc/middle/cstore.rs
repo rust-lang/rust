@@ -44,7 +44,6 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
 use hir;
-use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::*;
 
@@ -252,10 +251,6 @@ pub trait CrateStore {
     fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool;
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
@@ -267,7 +262,6 @@ pub trait CrateStore {
     fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -366,12 +360,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("missing_lang_items") }
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool { bug!("is_profiler_runtime") }
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
-        bug!("panic_strategy")
-    }
     fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
@@ -386,7 +374,6 @@ impl CrateStore for DummyCrateStore {
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

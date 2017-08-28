@@ -65,6 +65,8 @@ pub use back::symbol_names::provide;
 
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
+use rustc::hir::def_id::CrateNum;
+use rustc::util::nodemap::FxHashSet;
 
 pub mod back {
     mod archive;
@@ -216,7 +218,17 @@ pub struct CrateTranslation {
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
-    linker_info: back::linker::LinkerInfo
+    linker_info: back::linker::LinkerInfo,
+    crate_info: CrateInfo,
+}
+
+// Misc info we load from metadata to persist beyond the tcx
+pub struct CrateInfo {
+    panic_runtime: Option<CrateNum>,
+    compiler_builtins: Option<CrateNum>,
+    profiler_runtime: Option<CrateNum>,
+    sanitizer_runtime: Option<CrateNum>,
+    is_no_builtins: FxHashSet<CrateNum>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

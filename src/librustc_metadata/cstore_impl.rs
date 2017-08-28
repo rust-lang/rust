@@ -27,7 +27,6 @@ use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
-use rustc_back::PanicStrategy;
 
 use std::any::Any;
 use std::rc::Rc;
@@ -45,9 +44,12 @@ use rustc::hir;
 macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
+            $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
-                                        QueryConfig>::Value {
+                                        QueryConfig>::Value
+                where T: IntoDefId,
+            {
+                let $def_id = def_id_arg.into_def_id();
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);
@@ -67,6 +69,18 @@ macro_rules! provide {
             };
         }
     }
+}
+
+trait IntoDefId {
+    fn into_def_id(self) -> DefId;
+}
+
+impl IntoDefId for DefId {
+    fn into_def_id(self) -> DefId { self }
+}
+
+impl IntoDefId for CrateNum {
+    fn into_def_id(self) -> DefId { self.as_def_id() }
 }
 
 provide! { <'tcx> tcx, def_id, cdata,
@@ -143,7 +157,11 @@ provide! { <'tcx> tcx, def_id, cdata,
     is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
     is_compiler_builtins => { cdata.is_compiler_builtins(&tcx.dep_graph) }
     has_global_allocator => { cdata.has_global_allocator(&tcx.dep_graph) }
+    is_sanitizer_runtime => { cdata.is_sanitizer_runtime(&tcx.dep_graph) }
+    is_profiler_runtime => { cdata.is_profiler_runtime(&tcx.dep_graph) }
+    panic_strategy => { cdata.panic_strategy(&tcx.dep_graph) }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
+    is_no_builtins => { cdata.is_no_builtins(&tcx.dep_graph) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -248,22 +266,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_compiler_builtins(&self.dep_graph)
-    }
-
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_sanitizer_runtime(&self.dep_graph)
-    }
-
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_profiler_runtime(&self.dep_graph)
-    }
-
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
-        self.get_crate_data(cnum).panic_strategy(&self.dep_graph)
-    }
-
     fn crate_name(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
@@ -308,10 +310,6 @@ impl CrateStore for cstore::CStore {
     fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
     {
         self.get_crate_data(cnum).get_exported_symbols(&self.dep_graph)
-    }
-
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

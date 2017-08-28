@@ -22,6 +22,7 @@ use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
+use CrateInfo;
 use rustc::hir::def_id::CrateNum;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
 use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
@@ -675,6 +676,7 @@ pub fn start_async_translation(sess: &Session,
                                no_builtins: bool,
                                windows_subsystem: Option<String>,
                                linker_info: LinkerInfo,
+                               crate_info: CrateInfo,
                                no_integrated_as: bool)
                                -> OngoingCrateTranslation {
     let output_types_override = if no_integrated_as {
@@ -774,6 +776,7 @@ pub fn start_async_translation(sess: &Session,
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
+                                                  &crate_info,
                                                   shared_emitter,
                                                   trans_worker_send,
                                                   coordinator_send.clone(),
@@ -788,6 +791,7 @@ pub fn start_async_translation(sess: &Session,
         windows_subsystem,
         linker_info,
         no_integrated_as,
+        crate_info,
 
         regular_module_config: modules_config,
         metadata_module_config: metadata_config,
@@ -1101,6 +1105,7 @@ enum MainThreadWorkerState {
 }
 
 fn start_executing_work(sess: &Session,
+                        crate_info: &CrateInfo,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
                         coordinator_send: Sender<Message>,
@@ -1126,7 +1131,7 @@ fn start_executing_work(sess: &Session,
 
     let mut each_linked_rlib_for_lto = Vec::new();
     drop(link::each_linked_rlib(sess, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, cnum) {
+        if link::ignored_for_lto(crate_info, cnum) {
             return
         }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
@@ -1802,6 +1807,7 @@ pub struct OngoingCrateTranslation {
     windows_subsystem: Option<String>,
     linker_info: LinkerInfo,
     no_integrated_as: bool,
+    crate_info: CrateInfo,
 
     output_filenames: OutputFilenames,
     regular_module_config: ModuleConfig,
@@ -1850,6 +1856,7 @@ impl OngoingCrateTranslation {
             metadata: self.metadata,
             windows_subsystem: self.windows_subsystem,
             linker_info: self.linker_info,
+            crate_info: self.crate_info,
 
             modules: compiled_modules.modules,
             allocator_module: compiled_modules.allocator_module,

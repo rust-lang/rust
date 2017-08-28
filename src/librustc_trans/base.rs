@@ -75,6 +75,7 @@ use type_::Type;
 use type_of;
 use value::Value;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet};
+use CrateInfo;
 
 use libc::c_uint;
 use std::ffi::{CStr, CString};
@@ -970,6 +971,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         None
     };
+    let crate_info = CrateInfo::new(tcx);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -987,6 +989,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             no_builtins,
             None,
             linker_info,
+            crate_info,
             false);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
@@ -1039,6 +1042,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         no_builtins,
         windows_subsystem,
         linker_info,
+        crate_info,
         no_integrated_as);
 
     // Translate an allocator shim, if any
@@ -1501,4 +1505,36 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     (translation_items, codegen_units)
+}
+
+impl CrateInfo {
+    pub fn new(tcx: TyCtxt) -> CrateInfo {
+        let mut info = CrateInfo {
+            panic_runtime: None,
+            compiler_builtins: None,
+            profiler_runtime: None,
+            sanitizer_runtime: None,
+            is_no_builtins: FxHashSet(),
+        };
+
+        for cnum in tcx.sess.cstore.crates() {
+            if tcx.is_panic_runtime(cnum) {
+                info.panic_runtime = Some(cnum);
+            }
+            if tcx.is_compiler_builtins(cnum) {
+                info.compiler_builtins = Some(cnum);
+            }
+            if tcx.is_profiler_runtime(cnum) {
+                info.profiler_runtime = Some(cnum);
+            }
+            if tcx.is_sanitizer_runtime(cnum) {
+                info.sanitizer_runtime = Some(cnum);
+            }
+            if tcx.is_no_builtins(cnum) {
+                info.is_no_builtins.insert(cnum);
+            }
+        }
+
+        return info
+    }
 }

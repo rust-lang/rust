@@ -32,6 +32,7 @@ use util::nodemap::{DefIdSet, NodeSet};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::{RefCell, RefMut, Cell};
@@ -509,31 +510,25 @@ impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
 }
 
 impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "dylib dependency formats of crate".to_string()
     }
 }
 
-impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
-        "checking if the crate is_allocator".to_string()
-    }
-}
-
 impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate is_panic_runtime".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::is_compiler_builtins<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate is_compiler_builtins".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::has_global_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate has_global_allocator".to_string()
     }
 }
@@ -565,6 +560,30 @@ impl<'tcx> QueryDescription for queries::in_scope_traits<'tcx> {
 impl<'tcx> QueryDescription for queries::module_exports<'tcx> {
     fn describe(_tcx: TyCtxt, _: HirId) -> String {
         format!("fetching the exported items for a module")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_no_builtins<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("test whether a crate has #![no_builtins]")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::panic_strategy<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate's configured panic strategy")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_profiler_runtime<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate is #![profiler_runtime]")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_sanitizer_runtime<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate is #![sanitizer_runtime]")
     }
 }
 
@@ -1125,21 +1144,23 @@ define_maps! { <'tcx>
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
 
-    [] fn dylib_dependency_formats: DylibDepFormats(DefId)
+    [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] fn is_allocator: IsAllocator(DefId) -> bool,
-    [] fn is_panic_runtime: IsPanicRuntime(DefId) -> bool,
-    [] fn is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
-    [] fn has_global_allocator: HasGlobalAllocator(DefId) -> bool,
+    [] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
+    [] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
+    [] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
+    [] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
+    [] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
+    [] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
+    [] fn is_no_builtins: IsNoBuiltins(CrateNum) -> bool,
 
     [] fn extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
-
-    [] fn lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] fn specializes: specializes_node((DefId, DefId)) -> bool,
     [] fn in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
     [] fn module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
+    [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1212,7 +1233,7 @@ fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'
     DepConstructor::Layout
 }
 
-fn lint_levels<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::LintLevels
 }
 

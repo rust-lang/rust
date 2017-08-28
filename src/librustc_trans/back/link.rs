@@ -22,7 +22,7 @@ use rustc::session::Session;
 use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, LinkagePreference,
                             NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
-use CrateTranslation;
+use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::dep_graph::{DepKind, DepNode};
@@ -260,12 +260,12 @@ pub fn each_linked_rlib(sess: &Session,
 /// It's unusual for a crate to not participate in LTO. Typically only
 /// compiler-specific and unstable crates have a reason to not participate in
 /// LTO.
-pub fn ignored_for_lto(sess: &Session, cnum: CrateNum) -> bool {
+pub fn ignored_for_lto(info: &CrateInfo, cnum: CrateNum) -> bool {
     // `#![no_builtins]` crates don't participate in LTO because the state
     // of builtins gets messed up (our crate isn't tagged with no builtins).
     // Similarly `#![compiler_builtins]` doesn't participate because we want
     // those builtins!
-    sess.cstore.is_no_builtins(cnum) || sess.cstore.is_compiler_builtins(cnum)
+    info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum)
 }
 
 fn out_filename(sess: &Session,
@@ -634,7 +634,7 @@ fn link_staticlib(sess: &Session,
         });
         ab.add_rlib(path,
                     &name.as_str(),
-                    sess.lto() && !ignored_for_lto(sess, cnum),
+                    sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
         all_native_libs.extend(sess.cstore.native_libraries(cnum));
@@ -1001,7 +1001,7 @@ fn link_args(cmd: &mut Linker,
     // in this DAG so far because they're only dylibs and dylibs can only depend
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
-    add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
+    add_upstream_rust_crates(cmd, sess, trans, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, crate_type);
 
     // Tell the linker what we're doing.
@@ -1088,6 +1088,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
 // the intermediate rlib version)
 fn add_upstream_rust_crates(cmd: &mut Linker,
                             sess: &Session,
+                            trans: &CrateTranslation,
                             crate_type: config::CrateType,
                             tmpdir: &Path) {
     // All of the heavy lifting has previously been accomplished by the
@@ -1113,22 +1114,22 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
-            _ if sess.cstore.is_profiler_runtime(cnum) => {
-                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+            _ if trans.crate_info.profiler_runtime == Some(cnum) => {
+                add_static_crate(cmd, sess, trans, tmpdir, crate_type, cnum);
             }
-            _ if sess.cstore.is_sanitizer_runtime(cnum) => {
+            _ if trans.crate_info.sanitizer_runtime == Some(cnum) => {
                 link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
-            _ if sess.cstore.is_compiler_builtins(cnum) => {
+            _ if trans.crate_info.compiler_builtins == Some(cnum) => {
                 assert!(compiler_builtins.is_none());
                 compiler_builtins = Some(cnum);
             }
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
             Linkage::Static => {
-                add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+                add_static_crate(cmd, sess, trans, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => {
                 add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
@@ -1142,7 +1143,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate(cmd, sess, tmpdir, crate_type, cnum);
+        add_static_crate(cmd, sess, trans, tmpdir, crate_type, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -1228,6 +1229,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // we're at the end of the dependency chain.
     fn add_static_crate(cmd: &mut Linker,
                         sess: &Session,
+                        trans: &CrateTranslation,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
                         cnum: CrateNum) {
@@ -1242,7 +1244,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
-        if (!sess.lto() || ignored_for_lto(sess, cnum)) &&
+        if (!sess.lto() || ignored_for_lto(&trans.crate_info, cnum)) &&
            crate_type != config::CrateTypeDylib &&
            !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
@@ -1284,7 +1286,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 // LTO module. Note that `#![no_builtins]` is excluded from LTO,
                 // though, so we let that object file slide.
                 let skip_because_lto = sess.lto() && is_rust_object &&
-                                        !sess.cstore.is_no_builtins(cnum);
+                                        !trans.crate_info.is_no_builtins.contains(&cnum);
 
                 if skip_because_cfg_say_so || skip_because_lto {
                     archive.remove_file(&f);
@@ -1306,7 +1308,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             // compiler-builtins crate (e.g. compiler-rt) because it'll get
             // repeatedly linked anyway.
             if crate_type == config::CrateTypeDylib &&
-               !sess.cstore.is_compiler_builtins(cnum) {
+                trans.crate_info.compiler_builtins != Some(cnum) {
                 cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
             } else {
                 cmd.link_rlib(&fix_windows_verbatim_for_gcc(&dst));

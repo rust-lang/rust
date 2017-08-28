@@ -172,7 +172,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
             add_library(sess, cnum, RequireDynamic, &mut formats);
-            let deps = tcx.dylib_dependency_formats(cnum.as_def_id());
+            let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
                 info!("adding {:?}: {}", style,
                       sess.cstore.crate_name(depnum));
@@ -215,7 +215,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+                          &|cnum| tcx.is_panic_runtime(cnum));
     activate_injected_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
@@ -295,7 +295,7 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
     activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
-                          &|cnum| tcx.is_panic_runtime(cnum.as_def_id()));
+                          &|cnum| tcx.is_panic_runtime(cnum));
     activate_injected_allocator(sess, &mut ret);
 
     Some(ret)
@@ -355,7 +355,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
         }
         let cnum = CrateNum::new(i + 1);
 
-        if tcx.is_panic_runtime(cnum.as_def_id()) {
+        if tcx.is_panic_runtime(cnum) {
             if let Some((prev, _)) = panic_runtime {
                 let prev_name = sess.cstore.crate_name(prev);
                 let cur_name = sess.cstore.crate_name(cnum);
@@ -363,7 +363,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
                                    panic runtimes: {} and {}",
                                   prev_name, cur_name));
             }
-            panic_runtime = Some((cnum, sess.cstore.panic_strategy(cnum)));
+            panic_runtime = Some((cnum, tcx.panic_strategy(cnum)));
         }
     }
 
@@ -395,8 +395,8 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
                 continue
             }
             let cnum = CrateNum::new(i + 1);
-            let found_strategy = sess.cstore.panic_strategy(cnum);
-            let is_compiler_builtins = sess.cstore.is_compiler_builtins(cnum);
+            let found_strategy = tcx.panic_strategy(cnum);
+            let is_compiler_builtins = tcx.is_compiler_builtins(cnum);
             if is_compiler_builtins || desired_strategy == found_strategy {
                 continue
             }
