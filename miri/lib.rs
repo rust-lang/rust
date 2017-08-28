@@ -6,11 +6,8 @@
 // From rustc.
 #[macro_use]
 extern crate log;
-extern crate log_settings;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_const_math;
-extern crate rustc_data_structures;
 extern crate syntax;
 
 use rustc::ty::{self, TyCtxt};
@@ -146,9 +143,9 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 }
 
-struct Evaluator;
+pub struct Evaluator;
 #[derive(Default)]
-struct EvaluatorData {
+pub struct EvaluatorData {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
     pub(crate) env_vars: HashMap<Vec<u8>, MemoryPointer>,
@@ -163,7 +160,7 @@ pub struct TlsEntry<'tcx> {
 }
 
 #[derive(Default)]
-struct MemoryData<'tcx> {
+pub struct MemoryData<'tcx> {
     /// The Key to use for the next thread-local allocation.
     next_thread_local: TlsKey,
 

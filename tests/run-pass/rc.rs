@@ -1,6 +1,3 @@
-// FIXME: Due to https://github.com/rust-lang/rust/issues/43457 we have to disable validation
-// compile-flags: -Zmir-emit-validate=0
-
 use std::cell::RefCell;
 use std::rc::Rc;
 

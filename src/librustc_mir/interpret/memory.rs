@@ -79,7 +79,7 @@ impl LockInfo {
 pub struct AllocId(u64);
 
 #[derive(Debug)]
-enum AllocIdKind {
+pub enum AllocIdKind {
     /// We can't ever have more than `usize::max_value` functions at the same time
     /// since we never "deallocate" functions
     Function(usize),
@@ -89,7 +89,7 @@ enum AllocIdKind {
 }
 
 impl AllocIdKind {
-    fn into_alloc_id(self) -> AllocId {
+    pub fn into_alloc_id(self) -> AllocId {
         match self {
             AllocIdKind::Function(n) => AllocId(n as u64),
             AllocIdKind::Runtime(n) => AllocId((1 << 63) | n),
@@ -103,10 +103,10 @@ impl AllocId {
         self.0 >> 63
     }
     /// Yields everything but the discriminant bits
-    fn index(self) -> u64 {
+    pub fn index(self) -> u64 {
         self.0 & ((1 << 63) - 1)
     }
-    fn into_alloc_id_kind(self) -> AllocIdKind {
+    pub fn into_alloc_id_kind(self) -> AllocIdKind {
         match self.discriminant() {
             0 => AllocIdKind::Function(self.index() as usize),
             1 => AllocIdKind::Runtime(self.index()),
@@ -1091,6 +1091,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         let dest = dest.to_ptr()?;
         self.check_relocation_edges(src, size)?;
 
+        // first copy the relocations to a temporary buffer, because
+        // `get_bytes_mut` will clear the relocations, which is correct,
+        // since we don't want to keep any relocations at the target.
+
+        let relocations: Vec<_> = self.relocations(src, size)?
+            .map(|(&offset, &alloc_id)| {
+                // Update relocation offsets for the new positions in the destination allocation.
+                (offset + dest.offset - src.offset, alloc_id)
+            })
+            .collect();
+
         let src_bytes = self.get_bytes_unchecked(src, size, align)?.as_ptr();
         let dest_bytes = self.get_bytes_mut(dest, size, align)?.as_mut_ptr();
 
@@ -1116,7 +1127,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
 
         self.copy_undef_mask(src, dest, size)?;
-        self.copy_relocations(src, dest, size)?;
+        // copy back the relocations
+        self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
 
         Ok(())
     }
@@ -1328,22 +1340,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         if overlapping_start + overlapping_end != 0 {
             return err!(ReadPointerAsBytes);
         }
-        Ok(())
-    }
-
-    fn copy_relocations(
-        &mut self,
-        src: MemoryPointer,
-        dest: MemoryPointer,
-        size: u64,
-    ) -> EvalResult<'tcx> {
-        let relocations: Vec<_> = self.relocations(src, size)?
-            .map(|(&offset, &alloc_id)| {
-                // Update relocation offsets for the new positions in the destination allocation.
-                (offset + dest.offset - src.offset, alloc_id)
-            })
-            .collect();
-        self.get_mut(dest.alloc_id)?.relocations.extend(relocations);
         Ok(())
     }
 }
