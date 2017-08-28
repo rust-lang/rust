@@ -534,6 +534,7 @@ define_dep_nodes!( <'tcx>
     [] IsProfilerRuntime(CrateNum),
     [] GetPanicStrategy(CrateNum),
     [] IsNoBuiltins(CrateNum),
+    [] ImplDefaultness(DefId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

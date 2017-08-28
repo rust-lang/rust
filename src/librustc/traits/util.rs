@@ -538,8 +538,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             None => {
                 self.global_tcx()
-                    .sess
-                    .cstore
                     .impl_defaultness(node_item_def_id)
                     .is_default()
             }

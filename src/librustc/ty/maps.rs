@@ -1161,6 +1161,8 @@ define_maps! { <'tcx>
     [] fn in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
     [] fn module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
     [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
+
+    [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

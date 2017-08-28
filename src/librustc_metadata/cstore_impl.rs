@@ -162,6 +162,7 @@ provide! { <'tcx> tcx, def_id, cdata,
     panic_strategy => { cdata.panic_strategy(&tcx.dep_graph) }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins(&tcx.dep_graph) }
+    impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -209,12 +210,6 @@ impl CrateStore for cstore::CStore {
             cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
         });
         result
-    }
-
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness
-    {
-        self.read_dep_node(def);
-        self.get_crate_data(def.krate).get_impl_defaultness(def.index)
     }
 
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem

@@ -236,9 +236,6 @@ pub trait CrateStore {
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
-    // impl info
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
-
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
@@ -341,9 +338,6 @@ impl CrateStore for DummyCrateStore {
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
-
-    // impl info
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
 
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
