@@ -88,7 +88,6 @@
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(stage0), lang = "clone")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
     ///
@@ -132,7 +131,6 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData
 pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
 impl<'a, T: ?Sized> Clone for &'a T {
     /// Returns a shallow copy of the reference.
     #[inline]
@@ -142,7 +140,6 @@ impl<'a, T: ?Sized> Clone for &'a T {
 macro_rules! clone_impl {
     ($t:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(stage0)]
         impl Clone for $t {
             /// Returns a deep copy of the value.
             #[inline]

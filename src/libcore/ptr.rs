@@ -876,7 +876,6 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
 impl<T: ?Sized> Clone for *const T {
     #[inline]
     fn clone(&self) -> *const T {
@@ -885,7 +884,6 @@ impl<T: ?Sized> Clone for *const T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
 impl<T: ?Sized> Clone for *mut T {
     #[inline]
     fn clone(&self) -> *mut T {
@@ -897,7 +895,6 @@ impl<T: ?Sized> Clone for *mut T {
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(stage0)]
         impl<Ret, $($Arg),*> Clone for $FnTy {
             #[inline]
             fn clone(&self) -> Self {
