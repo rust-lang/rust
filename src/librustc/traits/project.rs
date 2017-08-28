@@ -122,11 +122,13 @@ struct ProjectionTyCandidateSet<'tcx> {
 ///
 ///     for<...> <T as Trait>::U == V
 ///
-/// If successful, this may result in additional obligations.
+/// If successful, this may result in additional obligations. Also returns
+/// the projection cache key used to track these additional obligations.
 pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &PolyProjectionObligation<'tcx>)
-    -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
+    -> Result<Option<Vec<PredicateObligation<'tcx>>>,
+              MismatchedProjectionTypes<'tcx>>
 {
     debug!("poly_project_and_unify_type(obligation={:?})",
            obligation);
@@ -162,7 +164,8 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
 fn project_and_unify_type<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>)
-    -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
+    -> Result<Option<Vec<PredicateObligation<'tcx>>>,
+              MismatchedProjectionTypes<'tcx>>
 {
     debug!("project_and_unify_type(obligation={:?})",
            obligation);
@@ -397,6 +400,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     let infcx = selcx.infcx();
 
     let projection_ty = infcx.resolve_type_vars_if_possible(&projection_ty);
+    let cache_key = ProjectionCacheKey { ty: projection_ty };
 
     debug!("opt_normalize_projection_type(\
            projection_ty={:?}, \
@@ -412,7 +416,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    match infcx.projection_cache.borrow_mut().try_start(projection_ty) {
+    match infcx.projection_cache.borrow_mut().try_start(cache_key) {
         Ok(()) => { }
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that generally
@@ -523,7 +527,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                     obligations,
                 }
             };
-            infcx.projection_cache.borrow_mut().complete(projection_ty, &result);
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, &result);
             Some(result)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
@@ -534,14 +538,14 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 value: projected_ty,
                 obligations: vec![]
             };
-            infcx.projection_cache.borrow_mut().complete(projection_ty, &result);
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, &result);
             Some(result)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("opt_normalize_projection_type: \
                     too many candidates");
             infcx.projection_cache.borrow_mut()
-                                  .ambiguous(projection_ty);
+                                  .ambiguous(cache_key);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -552,7 +556,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // reported later
 
             infcx.projection_cache.borrow_mut()
-                                  .error(projection_ty);
+                                  .error(cache_key);
             Some(normalize_to_error(selcx, param_env, projection_ty, cause, depth))
         }
     }
@@ -1381,8 +1385,62 @@ fn assoc_ty_def<'cx, 'gcx, 'tcx>(
 
 // # Cache
 
+/// The projection cache. Unlike the standard caches, this can
+/// include infcx-dependent type variables - therefore, we have to roll
+/// the cache back each time we roll a snapshot back, to avoid assumptions
+/// on yet-unresolved inference variables. Types with skolemized regions
+/// also have to be removed when the respective snapshot ends.
+///
+/// Because of that, projection cache entries can be "stranded" and left
+/// inaccessible when type variables inside the key are resolved. We make no
+/// attempt to recover or remove "stranded" entries, but rather let them be
+/// (for the lifetime of the infcx).
+///
+/// Entries in the projection cache might contain inference variables
+/// that will be resolved by obligations on the projection cache entry - e.g.
+/// when a type parameter in the associated type is constrained through
+/// an "RFC 447" projection on the impl.
+///
+/// When working with a fulfillment context, the derived obligations of each
+/// projection cache entry will be registered on the fulfillcx, so any users
+/// that can wait for a fulfillcx fixed point need not care about this. However,
+/// users that don't wait for a fixed point (e.g. trait evaluation) have to
+/// resolve the obligations themselves to make sure the projected result is
+/// ok and avoid issues like #43132.
+///
+/// If that is done, after evaluation the obligations, it is a good idea to
+/// call `ProjectionCache::complete` to make sure the obligations won't be
+/// re-evaluated and avoid an exponential worst-case.
+///
+/// FIXME: we probably also want some sort of cross-infcx cache here to
+/// reduce the amount of duplication. Let's see what we get with the Chalk
+/// reforms.
 pub struct ProjectionCache<'tcx> {
-    map: SnapshotMap<ty::ProjectionTy<'tcx>, ProjectionCacheEntry<'tcx>>,
+    map: SnapshotMap<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub struct ProjectionCacheKey<'tcx> {
+    ty: ty::ProjectionTy<'tcx>
+}
+
+impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
+    pub fn from_poly_projection_predicate(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+                                          predicate: &ty::PolyProjectionPredicate<'tcx>)
+                                          -> Option<Self>
+    {
+        let infcx = selcx.infcx();
+        // We don't do cross-snapshot caching of obligations with escaping regions,
+        // so there's no cache key to use
+        infcx.tcx.no_late_bound_regions(&predicate)
+            .map(|predicate| ProjectionCacheKey {
+                // We don't attempt to match up with a specific type-variable state
+                // from a specific call to `opt_normalize_projection_type` - if
+                // there's no precise match, the original cache entry is "stranded"
+                // anyway.
+                ty: infcx.resolve_type_vars_if_possible(&predicate.projection_ty)
+            })
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1395,7 +1453,7 @@ enum ProjectionCacheEntry<'tcx> {
 
 // NB: intentionally not Clone
 pub struct ProjectionCacheSnapshot {
-    snapshot: Snapshot
+    snapshot: Snapshot,
 }
 
 impl<'tcx> ProjectionCache<'tcx> {
@@ -1414,7 +1472,7 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     pub fn rollback_skolemized(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.partial_rollback(&snapshot.snapshot, &|k| k.has_re_skol());
+        self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_skol());
     }
 
     pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
@@ -1424,7 +1482,7 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// Try to start normalize `key`; returns an error if
     /// normalization already occurred (this error corresponds to a
     /// cache hit, so it's actually a good thing).
-    fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
+    fn try_start(&mut self, key: ProjectionCacheKey<'tcx>)
                  -> Result<(), ProjectionCacheEntry<'tcx>> {
         if let Some(entry) = self.map.get(&key) {
             return Err(entry.clone());
@@ -1435,25 +1493,51 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     /// Indicates that `key` was normalized to `value`.
-    fn complete(&mut self, key: ty::ProjectionTy<'tcx>, value: &NormalizedTy<'tcx>) {
-        debug!("ProjectionCacheEntry::complete: adding cache entry: key={:?}, value={:?}",
+    fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: &NormalizedTy<'tcx>) {
+        debug!("ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
                key, value);
         let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.clone()));
         assert!(!fresh_key, "never started projecting `{:?}`", key);
+    }
+
+    /// Mark the relevant projection cache key as having its derived obligations
+    /// complete, so they won't have to be re-computed (this is OK to do in a
+    /// snapshot - if the snapshot is rolled back, the obligations will be
+    /// marked as incomplete again).
+    pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>) {
+        let ty = match self.map.get(&key) {
+            Some(&ProjectionCacheEntry::NormalizedTy(ref ty)) => {
+                debug!("ProjectionCacheEntry::complete({:?}) - completing {:?}",
+                       key, ty);
+                ty.value
+            }
+            ref value => {
+                // Type inference could "strand behind" old cache entries. Leave
+                // them alone for now.
+                debug!("ProjectionCacheEntry::complete({:?}) - ignoring {:?}",
+                       key, value);
+                return
+            }
+        };
+
+        self.map.insert(key, ProjectionCacheEntry::NormalizedTy(Normalized {
+            value: ty,
+            obligations: vec![]
+        }));
     }
 
     /// Indicates that trying to normalize `key` resulted in
     /// ambiguity. No point in trying it again then until we gain more
     /// type information (in which case, the "fully resolved" key will
     /// be different).
-    fn ambiguous(&mut self, key: ty::ProjectionTy<'tcx>) {
+    fn ambiguous(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
         assert!(!fresh, "never started projecting `{:?}`", key);
     }
 
     /// Indicates that trying to normalize `key` resulted in
     /// error.
-    fn error(&mut self, key: ty::ProjectionTy<'tcx>) {
+    fn error(&mut self, key: ProjectionCacheKey<'tcx>) {
         let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
         assert!(!fresh, "never started projecting `{:?}`", key);
     }
