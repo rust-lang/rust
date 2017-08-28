@@ -125,6 +125,16 @@ impl HasWrongIsEmpty {
     }
 }
 
+pub trait Empty {
+    fn is_empty(&self) -> bool;
+}
+
+pub trait InheritingEmpty: Empty { //must not trigger LEN_WITHOUT_IS_EMPTY
+    fn len(&self) -> isize;
+}
+
+
+
 fn main() {
     let x = [1, 2];
     if x.len() == 0 {
