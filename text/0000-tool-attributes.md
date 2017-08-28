@@ -1,4 +1,4 @@
-- Feature Name: tool_attributes
+- Feature Name: tool_attributes, tool_lints
 - Start Date: 2016-09-22
 - RFC PR:
 - Rust Issue:
@@ -32,6 +32,9 @@ This would be allowed by the compiler but ignored. When Rustfmt is run on the
 crate, it will read the attibute and skip formatting `foo` (note that we make no
 provision for reading the attribute or doing anything with it, that is all up to
 the tool).
+
+This RFC proposes a second mechanism for scoping lints for tools. Similar to
+attributes, we propose a subset of a hypothetical long-term solution.
 
 This RFC supersedes #1755.
 
@@ -70,9 +73,15 @@ Rustfmt is mostly ready to move towards stabilisation, but requires some kind of
 reasonable long-term solution and addresses the needs of some important tools
 today.
 
+Similarly, tools (e.g., Clippy) may want to use their own lints without the
+compiler warning about unused lints. E.g., we want a user to be able to write
+`#![allow(clippy::some_lint)]` in their crate without warning.
+
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
+
+### Attributes
 
 This section assumes that attributes (e.g., `#[test]`) have already been taught.
 
@@ -98,6 +107,21 @@ mod baz {
     // Rustfmt will skip this whole module.
 }
 ```
+
+### Lints
+
+This section assumes lints have already been taught.
+
+Lints can be defined hierarchically as a path, as well as just a single name.
+For example, `nonstandard_style::non_snake_case_functions` and
+`nonstandard_style::uppercase_variables`. Note this RFC is not proposing
+changing any existing lints, just extending the current lint naming system. Lint
+names cannot be imported using `use`.
+
+Lints can be enforced by tools other than the compiler. For example, Clippy
+provides a large suite of lints to catch common mistakes and improve your Rust
+code. Lints for tools are prefixed with the tool name, e.g., `clippy::box_vec`.
+
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
@@ -127,6 +151,8 @@ tries to find a macro using the [macro name resolution rules](https://github.com
 If this fails, then it reports a macro not found error. The compiler *may*
 suggest mis-typed attributes (declared or built-in).
 
+A similar opt-in mechanism will exist for lints.
+
 
 ## Proposed for immediate implementation
 
@@ -138,12 +164,12 @@ feature gate.
 E.g., `#[rustdoc::foo]` will be permitted in stable Rust code; `#[rustdoc]` will
 still be treated as a custom attribute.
 
-The initial list of allowed prefixes is `rustc`, `rustdoc`, and `rls`. As tools
-are added to the distribution, they will be allowed as path prefixes in
-attributes. We expect to add `rustfmt` and `clippy` in the near future. Note
-that whether one of these names can be used does not depend on whether the
-relevant component is installed on the user's system; this is a simple,
-universal white list.
+The initial list of allowed prefixes is `rustc`, `rustdoc`, and `rls` (but see
+note below on activation). As tools are added to the distribution, they will be
+allowed as path prefixes in attributes. We expect to add `rustfmt` and `clippy`
+in the near future. Note that whether one of these names can be used does not
+depend on whether the relevant component is installed on the user's system; this
+is a simple, universal white list.
 
 Given the earlier rules on name resolution, these attributes would shadow any
 attribute macro with the same name. This is not problematic because a macro
@@ -154,6 +180,29 @@ by using an import (`use`).
 Tool-scoped attributes should be preserved by the compiler for as long as
 possible through compilation. This allows tools which plug into the compiler
 (like Clippy) to observe these attributes on items during type checking, etc.
+
+Likewise, white-listed tools may be used a prefix for lints. So for example,
+`rustfmt::foo` and `clippy::bar` are both valid lint names, from the compiler's
+perspective.
+
+
+### Activation and unused attibutes/lints
+
+For each name on the whitelist, it is indicated if the name is active for
+attributes or lints. A name is only activated if required. So for example,
+`rustdoc` will not be activated at all until it takes advantage of this feature.
+I expect `clippy` will be activated only for lints, and `rustfmt` only for
+attributes.
+
+A tool that has an active name *must* check for unused lints/attibutes. For
+example, if `rustfmt` becomes active for attributes, and only recognises
+`rustfmt::skip`, it must produce a warning if a user uses `rustfmt::foo` in
+their code.
+
+These two requirements together mean that we do not lose checking of unused
+attributes/lints in any circumstance and we can move to having the compiler
+check for unused attributes/lints as part of a possible long-term solution
+without introducing new warnings or errors.
 
 
 ### Forward and backward compatability
@@ -174,13 +223,6 @@ term solution? One could imagine either leaving them implicit (similar to the
 libraries prelude) or using warning cycles or an epoch to move them to explicit
 opt-in.
 
-Another hazard is that if in the long-term solution, the compiler checks
-attribute paths for validity rather than only the prefix. For example, if
-Rustfmt only defines `skip`, then `#[rustfmt::foo]` would not give an error
-under this proposal, but would in the long term. Given that `#[rustfmt::foo]` is
-almost certainly a mistake today, it seems easy to migrate to a stricter system
-with a warning cycle.
-
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -190,9 +232,9 @@ attributes (I consider this a feature, not a bug, but others may differ).
 
 Some tools are clearly given special treatment.
 
-We permit some useless attributes without warning (e.g., `#[rustfmt::foo]`,
-assuming Rustfmt does nothing with `foo`). Tools could (and probably should)
-warn or error on such attributes.
+We permit some useless attributes without warning from the compiler (e.g.,
+`#[rustfmt::foo]`, assuming Rustfmt does nothing with `foo`). However, tools
+should warn or error on such attributes.
 
 We are not planning any infrastructure to help tools use these attributes. That
 seems fine for now, I imagine a long-term solution should include some library
@@ -216,3 +258,5 @@ Are there other tools that should be included on the whitelist (`#[test]` perhap
 
 Should we try and move some top-level attributes that are compiler-specific
 (rather than language-specific) to use `#[rustc::]`? (E.g., `crate_type`).
+
+How should the compiler expose path lints to lint plugins/lint tools?
