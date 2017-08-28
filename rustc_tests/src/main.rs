@@ -180,7 +180,10 @@ fn main() {
         let buf = BufWriter::default();
         let output = buf.clone();
         let result = std::panic::catch_unwind(|| {
-            rustc_driver::run_compiler(&args, &mut MiriCompilerCalls(RustcDefaultCalls), None, Some(Box::new(buf)));
+            rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
+                default: RustcDefaultCalls,
+                host_target,
+            }, None, Some(Box::new(buf)));
         });
 
         match result {
