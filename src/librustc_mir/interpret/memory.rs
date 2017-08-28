@@ -1174,7 +1174,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     pub fn read_primval(&self, ptr: MemoryPointer, size: u64, signed: bool) -> EvalResult<'tcx, PrimVal> {
         self.check_relocation_edges(ptr, size)?; // Make sure we don't read part of a pointer as a pointer
         let endianess = self.endianess();
-        let bytes = self.get_bytes_unchecked(ptr, size, self.int_align(size)?)?;
+        let bytes = self.get_bytes_unchecked(ptr, size, self.int_align(size))?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -1207,7 +1207,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     }
 
     pub fn write_primval(&mut self, ptr: MemoryPointer, val: PrimVal, size: u64, signed: bool) -> EvalResult<'tcx> {
-        let align = self.int_align(size)?;
         let endianess = self.endianess();
 
         let bytes = match val {
@@ -1237,6 +1236,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         };
 
         {
+            let align = self.int_align(size);
             let dst = self.get_bytes_mut(ptr, size, align)?;
             if signed {
                 write_target_int(endianess, dst, bytes as i128).unwrap();
@@ -1264,15 +1264,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         self.write_primval(ptr, val, ptr_size, false)
     }
 
-    fn int_align(&self, size: u64) -> EvalResult<'tcx, u64> {
+    fn int_align(&self, size: u64) -> u64 {
         // We assume pointer-sized integers have the same alignment as pointers.
-        // We also assume singed and unsigned integers of the same size have the same alignment.
+        // We also assume signed and unsigned integers of the same size have the same alignment.
         match size {
-            1 => Ok(self.layout.i8_align.abi()),
-            2 => Ok(self.layout.i16_align.abi()),
-            4 => Ok(self.layout.i32_align.abi()),
-            8 => Ok(self.layout.i64_align.abi()),
-            16 => Ok(self.layout.i128_align.abi()),
+            1 => self.layout.i8_align.abi(),
+            2 => self.layout.i16_align.abi(),
+            4 => self.layout.i32_align.abi(),
+            8 => self.layout.i64_align.abi(),
+            16 => self.layout.i128_align.abi(),
             _ => bug!("bad integer size: {}", size),
         }
     }
