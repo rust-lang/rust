@@ -2222,6 +2222,14 @@ impl<'a> Parser<'a> {
                     };
                     ex = ExprKind::Break(lt, e);
                     hi = self.prev_span;
+                } else if self.eat_keyword(keywords::Yield) {
+                    if self.token.can_begin_expr() {
+                        let e = self.parse_expr()?;
+                        hi = e.span;
+                        ex = ExprKind::Yield(Some(e));
+                    } else {
+                        ex = ExprKind::Yield(None);
+                    }
                 } else if self.token.is_keyword(keywords::Let) {
                     // Catch this syntax error here, instead of in `parse_ident`, so
                     // that we can explicitly mention that let is not to be used as an expression

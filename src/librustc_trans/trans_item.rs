@@ -504,6 +504,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     self.push_type_name(sig.output(), output);
                 }
             },
+            ty::TyGenerator(def_id, ref closure_substs, _) |
             ty::TyClosure(def_id, ref closure_substs) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));

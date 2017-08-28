@@ -147,6 +147,11 @@ for ty::UpvarCapture<'gcx> {
     }
 }
 
+impl_stable_hash_for!(struct ty::GenSig<'tcx> {
+    yield_ty,
+    return_ty
+});
+
 impl_stable_hash_for!(struct ty::FnSig<'tcx> {
     inputs_and_output,
     variadic,
@@ -320,6 +325,8 @@ for ::middle::const_val::ConstVal<'gcx> {
 }
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
+
+impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
@@ -546,6 +553,12 @@ for ty::TypeVariants<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
+            TyGenerator(def_id, closure_substs, interior)
+             => {
+                def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
+                interior.hash_stable(hcx, hasher);
+            }
             TyTuple(inner_tys, from_diverging_type_var) => {
                 inner_tys.hash_stable(hcx, hasher);
                 from_diverging_type_var.hash_stable(hcx, hasher);
@@ -625,6 +638,7 @@ impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
     TupleSimplifiedType(size),
     TraitSimplifiedType(def_id),
     ClosureSimplifiedType(def_id),
+    GeneratorSimplifiedType(def_id),
     AnonSimplifiedType(def_id),
     FunctionSimplifiedType(params),
     ParameterSimplifiedType

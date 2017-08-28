@@ -77,6 +77,12 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
             if variant_index > 0 { bug!("{} is a closure, which only has one variant", t);}
             substs.upvar_tys(def_id, cx.tcx()).collect()
         },
+        ty::TyGenerator(def_id, substs, _) => {
+            if variant_index > 0 { bug!("{} is a generator, which only has one variant", t);}
+            substs.field_tys(def_id, cx.tcx()).map(|t| {
+                cx.tcx().normalize_associated_type(&t)
+            }).collect()
+        },
         _ => bug!("{} is not a type that can have fields.", t)
     }
 }

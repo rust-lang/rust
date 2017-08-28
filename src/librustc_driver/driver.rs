@@ -1015,6 +1015,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::deaggregator::Deaggregator);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::copy_prop::CopyPropagation);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::simplify::SimplifyLocals);
+
+    passes.push_pass(MIR_OPTIMIZED, mir::transform::generator::StateTransform);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
 

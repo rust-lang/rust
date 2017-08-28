@@ -29,6 +29,15 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     }
 }
 
+impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>, C: Lift<'tcx>> Lift<'tcx> for (A, B, C) {
+    type Lifted = (A::Lifted, B::Lifted, C::Lifted);
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.0).and_then(|a| {
+            tcx.lift(&self.1).and_then(|b| tcx.lift(&self.2).map(|c| (a, b, c)))
+        })
+    }
+}
+
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -220,6 +229,15 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorInterior<'a> {
+    type Lifted = ty::GeneratorInterior<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.witness).map(|witness| {
+            ty::GeneratorInterior { witness }
+        })
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjustment<'a> {
     type Lifted = ty::adjustment::Adjustment<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
@@ -280,6 +298,19 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoBorrow<'a> {
                 Some(ty::adjustment::AutoBorrow::RawPtr(m))
             }
         }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::GenSig<'a> {
+    type Lifted = ty::GenSig<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&(self.yield_ty, self.return_ty))
+            .map(|(yield_ty, return_ty)| {
+                ty::GenSig {
+                    yield_ty,
+                    return_ty,
+                }
+            })
     }
 }
 
@@ -539,6 +570,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRef(ref r, tm) => {
                 ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
             }
+            ty::TyGenerator(did, substs, interior) => {
+                ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder))
+            }
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
             ty::TyProjection(ref data) => ty::TyProjection(data.fold_with(folder)),
             ty::TyAnon(did, substs) => ty::TyAnon(did, substs.fold_with(folder)),
@@ -570,6 +604,9 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
+            ty::TyGenerator(_did, ref substs, ref interior) => {
+                substs.visit_with(visitor) || interior.visit_with(visitor)
+            }
             ty::TyClosure(_did, ref substs) => substs.visit_with(visitor),
             ty::TyProjection(ref data) => data.visit_with(visitor),
             ty::TyAnon(_, ref substs) => substs.visit_with(visitor),
@@ -591,6 +628,20 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.ty.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::GenSig<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::GenSig {
+            yield_ty: self.yield_ty.fold_with(folder),
+            return_ty: self.return_ty.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.yield_ty.visit_with(visitor) ||
+        self.return_ty.visit_with(visitor)
     }
 }
 
@@ -681,6 +732,16 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.substs.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorInterior<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        ty::GeneratorInterior::new(self.witness.fold_with(folder))
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.witness.visit_with(visitor)
     }
 }
 

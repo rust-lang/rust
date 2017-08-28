@@ -207,6 +207,9 @@ impl<'tcx> Rvalue<'tcx> {
                     AggregateKind::Closure(did, substs) => {
                         tcx.mk_closure_from_closure_substs(did, substs)
                     }
+                    AggregateKind::Generator(did, substs, interior) => {
+                        tcx.mk_generator(did, substs, interior)
+                    }
                 }
             }
         }

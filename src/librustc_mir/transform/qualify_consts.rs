@@ -375,6 +375,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume |
+                TerminatorKind::GeneratorDrop |
+                TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable => None,
 
                 TerminatorKind::Return => {
@@ -978,6 +980,7 @@ impl MirPass for QualifyAndPromoteConstants {
             }
             MirSource::Static(_, hir::MutImmutable) => Mode::Static,
             MirSource::Static(_, hir::MutMutable) => Mode::StaticMut,
+            MirSource::GeneratorDrop(_) |
             MirSource::Const(_) |
             MirSource::Promoted(..) => return
         };

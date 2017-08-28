@@ -70,14 +70,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // inference phase (`upvar.rs`).
         let base_substs = Substs::identity_for_item(self.tcx,
             self.tcx.closure_base_def_id(expr_def_id));
-        let closure_type = self.tcx.mk_closure(expr_def_id,
-            base_substs.extend_to(self.tcx, expr_def_id,
+        let substs = base_substs.extend_to(self.tcx, expr_def_id,
                 |_, _| span_bug!(expr.span, "closure has region param"),
                 |_, _| self.infcx.next_ty_var(TypeVariableOrigin::TransformedUpvar(expr.span))
-            )
         );
-
-        debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         let fn_sig = self.liberate_late_bound_regions(expr_def_id, &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
@@ -85,7 +81,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                             self.param_env,
                                                             &fn_sig);
 
-        check_fn(self, self.param_env, fn_sig, decl, expr.id, body);
+        let interior = check_fn(self, self.param_env, fn_sig, decl, expr.id, body, true).1;
+
+        if let Some(interior) = interior {
+            let closure_substs = ty::ClosureSubsts {
+                substs: substs,
+            };
+            return self.tcx.mk_generator(expr_def_id, closure_substs, interior);
+        }
+
+        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
+
+        debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         // Tuple up the arguments and insert the resulting function type into
         // the `closures` table.

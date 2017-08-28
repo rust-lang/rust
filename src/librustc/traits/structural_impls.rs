@@ -53,6 +53,9 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
             super::VtableClosure(ref d) =>
                 write!(f, "{:?}", d),
 
+            super::VtableGenerator(ref d) =>
+                write!(f, "{:?}", d),
+
             super::VtableFnPointer(ref d) =>
                 write!(f, "VtableFnPointer({:?})", d),
 
@@ -72,6 +75,15 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableImplData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VtableImpl(impl_def_id={:?}, substs={:?}, nested={:?})",
                self.impl_def_id,
+               self.substs,
+               self.nested)
+    }
+}
+
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableGeneratorData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VtableGenerator(closure_def_id={:?}, substs={:?}, nested={:?})",
+               self.closure_def_id,
                self.substs,
                self.nested)
     }
@@ -278,6 +290,19 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
                 })
             }
             traits::VtableDefaultImpl(t) => Some(traits::VtableDefaultImpl(t)),
+            traits::VtableGenerator(traits::VtableGeneratorData {
+                closure_def_id,
+                substs,
+                nested
+            }) => {
+                tcx.lift(&substs).map(|substs| {
+                    traits::VtableGenerator(traits::VtableGeneratorData {
+                        closure_def_id: closure_def_id,
+                        substs: substs,
+                        nested: nested
+                    })
+                })
+            }
             traits::VtableClosure(traits::VtableClosureData {
                 closure_def_id,
                 substs,
@@ -341,6 +366,20 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableImplData {
             impl_def_id: self.impl_def_id,
+            substs: self.substs.fold_with(folder),
+            nested: self.nested.fold_with(folder),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.substs.visit_with(visitor) || self.nested.visit_with(visitor)
+    }
+}
+
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableGeneratorData<'tcx, N> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        traits::VtableGeneratorData {
+            closure_def_id: self.closure_def_id,
             substs: self.substs.fold_with(folder),
             nested: self.nested.fold_with(folder),
         }
@@ -422,6 +461,9 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
             traits::VtableDefaultImpl(ref t) => traits::VtableDefaultImpl(t.fold_with(folder)),
+            traits::VtableGenerator(ref d) => {
+                traits::VtableGenerator(d.fold_with(folder))
+            }
             traits::VtableClosure(ref d) => {
                 traits::VtableClosure(d.fold_with(folder))
             }
@@ -438,6 +480,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
         match *self {
             traits::VtableImpl(ref v) => v.visit_with(visitor),
             traits::VtableDefaultImpl(ref t) => t.visit_with(visitor),
+            traits::VtableGenerator(ref d) => d.visit_with(visitor),
             traits::VtableClosure(ref d) => d.visit_with(visitor),
             traits::VtableFnPointer(ref d) => d.visit_with(visitor),
             traits::VtableParam(ref n) => n.visit_with(visitor),

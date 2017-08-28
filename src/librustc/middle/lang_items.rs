@@ -316,6 +316,9 @@ language_item_table! {
     FnMutTraitLangItem,              "fn_mut",                  fn_mut_trait;
     FnOnceTraitLangItem,             "fn_once",                 fn_once_trait;
 
+    GeneratorStateLangItem,          "generator_state",         gen_state;
+    GeneratorTraitLangItem,          "generator",               gen_trait;
+
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;
 

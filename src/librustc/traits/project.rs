@@ -19,6 +19,7 @@ use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
 use super::VtableClosureData;
+use super::VtableGeneratorData;
 use super::VtableFnPointerData;
 use super::VtableImplData;
 use super::util;
@@ -882,6 +883,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
 
         match vtable {
             super::VtableClosure(_) |
+            super::VtableGenerator(_) |
             super::VtableFnPointer(_) |
             super::VtableObject(_) => {
                 debug!("assemble_candidates_from_impls: vtable={:?}",
@@ -1041,6 +1043,8 @@ fn confirm_select_candidate<'cx, 'gcx, 'tcx>(
     match vtable {
         super::VtableImpl(data) =>
             confirm_impl_candidate(selcx, obligation, data),
+        super::VtableGenerator(data) =>
+            confirm_generator_candidate(selcx, obligation, data),
         super::VtableClosure(data) =>
             confirm_closure_candidate(selcx, obligation, data),
         super::VtableFnPointer(data) =>
@@ -1121,6 +1125,60 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
     };
 
     confirm_param_env_candidate(selcx, obligation, env_predicate)
+}
+
+fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>)
+    -> Progress<'tcx>
+{
+    let gen_sig = selcx.infcx().generator_sig(vtable.closure_def_id).unwrap()
+        .subst(selcx.tcx(), vtable.substs.substs);
+    let Normalized {
+        value: gen_sig,
+        obligations
+    } = normalize_with_depth(selcx,
+                             obligation.param_env,
+                             obligation.cause.clone(),
+                             obligation.recursion_depth+1,
+                             &gen_sig);
+
+    debug!("confirm_generator_candidate: obligation={:?},gen_sig={:?},obligations={:?}",
+           obligation,
+           gen_sig,
+           obligations);
+
+    let tcx = selcx.tcx();
+
+    let gen_def_id = tcx.lang_items.gen_trait().unwrap();
+
+    // Note: we unwrap the binder here but re-create it below (1)
+    let ty::Binder((trait_ref, yield_ty, return_ty)) =
+        tcx.generator_trait_ref_and_outputs(gen_def_id,
+                                            obligation.predicate.self_ty(),
+                                            gen_sig);
+
+    let name = tcx.associated_item(obligation.predicate.item_def_id).name;
+    let ty = if name == Symbol::intern("Return") {
+        return_ty
+    } else if name == Symbol::intern("Yield") {
+        yield_ty
+    } else {
+        bug!()
+    };
+
+    let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
+        projection_ty: ty::ProjectionTy {
+            substs: trait_ref.substs,
+            item_def_id: obligation.predicate.item_def_id,
+        },
+        ty: ty
+    });
+
+    confirm_param_env_candidate(selcx, obligation, predicate)
+        .with_addl_obligations(vtable.nested)
+        .with_addl_obligations(obligations)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'gcx, 'tcx>(

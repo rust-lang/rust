@@ -979,7 +979,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprClosure(_, ref function_declaration, body, _fn_decl_span) => {
+        ExprClosure(_, ref function_declaration, body, _fn_decl_span, _gen) => {
             visitor.visit_fn(FnKind::Closure(&expression.attrs),
                              function_declaration,
                              body,
@@ -1042,6 +1042,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             for input in inputs {
                 visitor.visit_expr(input)
             }
+        }
+        ExprYield(ref subexpression) => {
+            visitor.visit_expr(subexpression);
         }
     }
 }

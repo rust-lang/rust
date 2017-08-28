@@ -115,6 +115,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            ty::TyGenerator(def_id, ref substs, ref interior) => {
+                // Same as the closure case
+                for upvar_ty in substs.upvar_tys(def_id, *self) {
+                    self.compute_components(upvar_ty, out);
+                }
+
+                // But generators can have additional interior types
+                self.compute_components(interior.witness, out);
+            }
+
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
             ty::TyParam(p) => {

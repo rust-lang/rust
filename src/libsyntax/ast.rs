@@ -1016,6 +1016,9 @@ pub enum ExprKind {
 
     /// `expr?`
     Try(P<Expr>),
+
+    /// A `yield`, with an optional value to be yielded
+    Yield(Option<P<Expr>>),
 }
 
 /// The explicit Self type in a "qualified path". The actual

@@ -24,6 +24,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
 use syntax::ast;
+use syntax::ast::NodeId;
 use syntax_pos::Span;
 use ty::TyCtxt;
 use ty::maps::Providers;
@@ -32,6 +33,7 @@ use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use hir::map::Node;
 use mir::transform::MirSource;
 
 /// CodeExtent represents a statically-describable extent that can be
@@ -789,7 +791,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprClosure(.., body, _) => {
+        hir::ExprClosure(.., body, _, _) => {
             let body = visitor.tcx.hir.body(body);
             visitor.visit_body(body);
         }
@@ -1164,6 +1166,102 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     };
 
     Rc::new(maps)
+}
+
+struct YieldFinder<'a> {
+    cache: &'a mut FxHashMap<NodeId, Option<Span>>,
+    result: Option<Span>,
+}
+
+impl<'a> YieldFinder<'a> {
+    fn lookup<F: FnOnce(&mut Self)>(&mut self, id: NodeId, f: F) {
+        // Don't traverse further if we found a yield expression
+        if self.result.is_some() {
+            return;
+        }
+
+        // See if there's an entry in the cache
+        if let Some(result) = self.cache.get(&id) {
+            self.result = *result;
+            return;
+        }
+
+        // Otherwise calculate the result and insert it into the cache
+        f(self);
+        self.cache.insert(id, self.result);
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for YieldFinder<'a> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        if let hir::ExprYield(..) = expr.node {
+            self.result = Some(expr.span);
+            return;
+        }
+
+        self.lookup(expr.id, |this| {
+            intravisit::walk_expr(this, expr);
+        });
+    }
+
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
+        self.lookup(block.id, |this| {
+            intravisit::walk_block(this, block);
+        });
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Checks whether the given code extent contains a `yield`. If so,
+    /// returns `Some(span)` with the span of a yield we found.
+    pub fn yield_in_extent(self,
+                          extent: CodeExtent,
+                          cache: &mut FxHashMap<NodeId, Option<Span>>) -> Option<Span> {
+        let mut finder = YieldFinder {
+            cache,
+            result: None,
+        };
+
+        match extent {
+            CodeExtent::DestructionScope(node_id) |
+            CodeExtent::Misc(node_id) => {
+                match self.hir.get(node_id) {
+                    Node::NodeItem(_) |
+                    Node::NodeTraitItem(_) |
+                    Node::NodeImplItem(_) => {
+                        let body = self.hir.body(self.hir.body_owned_by(node_id));
+                        finder.visit_body(body);
+                    }
+                    Node::NodeExpr(expr) => finder.visit_expr(expr),
+                    Node::NodeStmt(stmt) => finder.visit_stmt(stmt),
+                    Node::NodeBlock(block) => finder.visit_block(block),
+                    _ => bug!(),
+                }
+            }
+
+            CodeExtent::CallSiteScope(body_id) |
+            CodeExtent::ParameterScope(body_id) => {
+                finder.visit_body(self.hir.body(body_id))
+            }
+
+            CodeExtent::Remainder(r) => {
+                if let Node::NodeBlock(block) = self.hir.get(r.block) {
+                    for stmt in &block.stmts[(r.first_statement_index as usize + 1)..] {
+                        finder.visit_stmt(stmt);
+                    }
+                    block.expr.as_ref().map(|e| finder.visit_expr(e));
+                } else {
+                    bug!()
+                }
+            }
+        }
+
+        finder.result
+    }
 }
 
 pub fn provide(providers: &mut Providers) {

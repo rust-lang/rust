@@ -76,10 +76,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, body_id, _) => {
+            hir::ExprClosure(cc, _, body_id, _, is_generator) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
-                self.fcx.analyze_closure((expr.id, expr.hir_id), expr.span, body, cc);
+                self.fcx.analyze_closure((expr.id, expr.hir_id),
+                                         expr.span,
+                                         body,
+                                         cc,
+                                         is_generator);
             }
 
             _ => { }
@@ -94,22 +98,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                        (closure_node_id, closure_hir_id): (ast::NodeId, hir::HirId),
                        span: Span,
                        body: &hir::Body,
-                       capture_clause: hir::CaptureClause) {
+                       capture_clause: hir::CaptureClause,
+                       gen: bool) {
         /*!
          * Analysis starting point.
          */
 
         debug!("analyze_closure(id={:?}, body.id={:?})", closure_node_id, body.id());
 
-        let infer_kind = match self.tables
-                                   .borrow_mut()
-                                   .closure_kinds_mut()
-                                   .entry(closure_hir_id) {
-            Entry::Occupied(_) => false,
-            Entry::Vacant(entry) => {
-                debug!("check_closure: adding closure {:?} as Fn", closure_node_id);
-                entry.insert((ty::ClosureKind::Fn, None));
-                true
+        let infer_kind = if gen {
+            false
+        } else {
+            match self.tables
+                      .borrow_mut()
+                      .closure_kinds_mut()
+                      .entry(closure_hir_id) {
+                Entry::Occupied(_) => false,
+                Entry::Vacant(entry) => {
+                    debug!("check_closure: adding closure {:?} as Fn", closure_node_id);
+                    entry.insert((ty::ClosureKind::Fn, None));
+                    true
+                }
             }
         };
 
@@ -184,7 +193,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Extract the type variables UV0...UVn.
         let (def_id, closure_substs) = match self.node_ty(closure_hir_id).sty {
-            ty::TyClosure(def_id, substs) => (def_id, substs),
+            ty::TyClosure(def_id, substs) |
+            ty::TyGenerator(def_id, substs, _) => (def_id, substs),
             ref t => {
                 span_bug!(
                     span,

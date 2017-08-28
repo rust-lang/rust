@@ -38,7 +38,7 @@ impl Idx for u32 {
     fn index(self) -> usize { self as usize }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
     _marker: PhantomData<Fn(&I)>

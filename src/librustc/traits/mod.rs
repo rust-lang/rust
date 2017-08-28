@@ -310,6 +310,9 @@ pub enum Vtable<'tcx, N> {
 
     /// Same as above, but for a fn pointer type with the given signature.
     VtableFnPointer(VtableFnPointerData<'tcx, N>),
+
+    /// Vtable automatically generated for a generator
+    VtableGenerator(VtableGeneratorData<'tcx, N>),
 }
 
 /// Identifies a particular impl in the source, along with a set of
@@ -326,6 +329,15 @@ pub enum Vtable<'tcx, N> {
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
+    pub nested: Vec<N>
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct VtableGeneratorData<'tcx, N> {
+    pub closure_def_id: DefId,
+    pub substs: ty::ClosureSubsts<'tcx>,
+    /// Nested obligations. This can be non-empty if the generator
+    /// signature contains associated types.
     pub nested: Vec<N>
 }
 
@@ -743,6 +755,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableBuiltin(i) => i.nested,
             VtableDefaultImpl(d) => d.nested,
             VtableClosure(c) => c.nested,
+            VtableGenerator(c) => c.nested,
             VtableObject(d) => d.nested,
             VtableFnPointer(d) => d.nested,
         }
@@ -754,6 +767,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             &mut VtableParam(ref mut n) => n,
             &mut VtableBuiltin(ref mut i) => &mut i.nested,
             &mut VtableDefaultImpl(ref mut d) => &mut d.nested,
+            &mut VtableGenerator(ref mut c) => &mut c.nested,
             &mut VtableClosure(ref mut c) => &mut c.nested,
             &mut VtableObject(ref mut d) => &mut d.nested,
             &mut VtableFnPointer(ref mut d) => &mut d.nested,
@@ -783,6 +797,11 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableFnPointer(p) => VtableFnPointer(VtableFnPointerData {
                 fn_ty: p.fn_ty,
                 nested: p.nested.into_iter().map(f).collect(),
+            }),
+            VtableGenerator(c) => VtableGenerator(VtableGeneratorData {
+                closure_def_id: c.closure_def_id,
+                substs: c.substs,
+                nested: c.nested.into_iter().map(f).collect(),
             }),
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,

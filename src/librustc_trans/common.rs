@@ -28,12 +28,13 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, LayoutTyper};
-use rustc::ty::subst::{Subst, Substs};
+use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
 use std::iter;
 
+use syntax::abi::Abi;
 use syntax::attr;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
@@ -83,6 +84,16 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
         }
         ty::TyClosure(def_id, substs) => {
             let mut tys = substs.upvar_tys(def_id, ccx.tcx());
+            tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
+                if tys.next().is_some() {
+                    None
+                } else {
+                    Some([first_ty, second_ty])
+                }
+            }))
+        }
+        ty::TyGenerator(def_id, substs, _) => {
+            let mut tys = substs.field_tys(def_id, ccx.tcx());
             tys.next().and_then(|first_ty| tys.next().and_then(|second_ty| {
                 if tys.next().is_some() {
                     None
@@ -510,6 +521,28 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 sig.unsafety,
                 sig.abi
             ))
+        }
+        ty::TyGenerator(def_id, substs, _) => {
+            let tcx = ccx.tcx();
+            let sig = tcx.generator_sig(def_id).unwrap().subst(tcx, substs.substs);
+
+            let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+            sig.map_bound(|sig| {
+                let state_did = tcx.lang_items.gen_state().unwrap();
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.mk_substs([Kind::from(sig.yield_ty),
+                    Kind::from(sig.return_ty)].iter());
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                tcx.mk_fn_sig(iter::once(env_ty),
+                    ret_ty,
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                )
+            })
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }

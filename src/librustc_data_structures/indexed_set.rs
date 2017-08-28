@@ -9,9 +9,11 @@
 // except according to those terms.
 
 use std::fmt;
+use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, DerefMut, Range};
+use std::slice;
 use bitslice::{BitSlice, Word};
 use bitslice::{bitwise, Union, Subtract};
 use indexed_vec::Idx;
@@ -21,6 +23,7 @@ use indexed_vec::Idx;
 ///
 /// In other words, `T` is the type used to index into the bitvector
 /// this type uses to represent the set of object it holds.
+#[derive(Eq, PartialEq)]
 pub struct IdxSetBuf<T: Idx> {
     _pd: PhantomData<fn(&T)>,
     bits: Vec<Word>,
@@ -109,6 +112,13 @@ impl<T: Idx> IdxSet<T> {
         }
     }
 
+    /// Removes all elements
+    pub fn clear(&mut self) {
+        for b in &mut self.bits {
+            *b = 0;
+        }
+    }
+
     /// Removes `elem` from the set `self`; returns true iff this changed `self`.
     pub fn remove(&mut self, elem: &T) -> bool {
         self.bits.clear_bit(elem.index())
@@ -152,6 +162,14 @@ impl<T: Idx> IdxSet<T> {
 
     pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Subtract)
+    }
+
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            cur: None,
+            iter: self.words().iter().enumerate(),
+            _pd: PhantomData,
+        }
     }
 
     /// Calls `f` on each index value held in this set, up to the
@@ -214,6 +232,35 @@ fn each_bit<T: Idx, F>(words: &IdxSet<T>, max_bits: usize, mut f: F) where F: Fn
                         f(Idx::new(bit_index));
                     }
                 }
+            }
+        }
+    }
+}
+
+pub struct Iter<'a, T: Idx> {
+    cur: Option<(Word, usize)>,
+    iter: iter::Enumerate<slice::Iter<'a, Word>>,
+    _pd: PhantomData<fn(&T)>,
+}
+
+impl<'a, T: Idx> Iterator for Iter<'a, T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        let word_bits = mem::size_of::<Word>() * 8;
+        loop {
+            if let Some((ref mut word, offset)) = self.cur {
+                let bit_pos = word.trailing_zeros() as usize;
+                if bit_pos != word_bits {
+                    let bit = 1 << bit_pos;
+                    *word ^= bit;
+                    return Some(T::new(bit_pos + offset))
+                }
+            }
+
+            match self.iter.next() {
+                Some((i, word)) => self.cur = Some((*word, word_bits * i)),
+                None => return None,
             }
         }
     }

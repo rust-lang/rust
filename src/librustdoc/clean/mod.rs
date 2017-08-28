@@ -1984,7 +1984,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 }).collect())
             }
 
-            ty::TyClosure(..) => Tuple(vec![]), // FIXME(pcwalton)
+            ty::TyClosure(..) | ty::TyGenerator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
             ty::TyInfer(..) => panic!("TyInfer"),
             ty::TyError => panic!("TyError"),

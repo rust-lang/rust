@@ -151,7 +151,9 @@ impl<'hir> MapEntry<'hir> {
             EntryTyParam(_, _, n) => NodeTyParam(n),
             EntryVisibility(_, _, n) => NodeVisibility(n),
             EntryLocal(_, _, n) => NodeLocal(n),
-            _ => return None
+
+            NotPresent |
+            RootCrate(_) => return None
         })
     }
 
@@ -184,7 +186,7 @@ impl<'hir> MapEntry<'hir> {
 
             EntryExpr(_, _, expr) => {
                 match expr.node {
-                    ExprClosure(.., body, _) => Some(body),
+                    ExprClosure(.., body, _, _) => Some(body),
                     _ => None,
                 }
             }

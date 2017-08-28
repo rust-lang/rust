@@ -2281,6 +2281,16 @@ impl<'a> State<'a> {
                 self.print_expr(e)?;
                 self.pclose()?;
             },
+            ast::ExprKind::Yield(ref e) => {
+                self.s.word("yield")?;
+                match *e {
+                    Some(ref expr) => {
+                        self.s.space()?;
+                        self.print_expr(&expr)?;
+                    }
+                    _ => ()
+                }
+            }
             ast::ExprKind::Try(ref e) => {
                 self.print_expr(e)?;
                 self.s.word("?")?

@@ -17,7 +17,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::mem;
 
-
+impl_stable_hash_for!(struct mir::GeneratorLayout<'tcx> { fields });
 impl_stable_hash_for!(struct mir::SourceInfo { span, scope });
 impl_stable_hash_for!(enum mir::Mutability { Mut, Not });
 impl_stable_hash_for!(enum mir::BorrowKind { Shared, Unique, Mut });
@@ -27,6 +27,7 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
     ty,
     name,
     source_info,
+    internal,
     is_user_variable
 });
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
@@ -54,9 +55,11 @@ for mir::Terminator<'gcx> {
             mir::TerminatorKind::SwitchInt { .. } |
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
+            mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable |
             mir::TerminatorKind::Drop { .. } |
             mir::TerminatorKind::DropAndReplace { .. } |
+            mir::TerminatorKind::Yield { .. } |
             mir::TerminatorKind::Call { .. } => false,
         };
 
@@ -146,6 +149,7 @@ for mir::TerminatorKind<'gcx> {
             }
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
+            mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 location.hash_stable(hcx, hasher);
@@ -160,6 +164,13 @@ for mir::TerminatorKind<'gcx> {
                 value.hash_stable(hcx, hasher);
                 target.hash_stable(hcx, hasher);
                 unwind.hash_stable(hcx, hasher);
+            }
+            mir::TerminatorKind::Yield { ref value,
+                                        resume,
+                                        drop } => {
+                value.hash_stable(hcx, hasher);
+                resume.hash_stable(hcx, hasher);
+                drop.hash_stable(hcx, hasher);
             }
             mir::TerminatorKind::Call { ref func,
                                         ref args,
@@ -200,6 +211,8 @@ for mir::AssertMessage<'gcx> {
             mir::AssertMessage::Math(ref const_math_err) => {
                 const_math_err.hash_stable(hcx, hasher);
             }
+            mir::AssertMessage::GeneratorResumedAfterReturn => (),
+            mir::AssertMessage::GeneratorResumedAfterPanic => (),
         }
     }
 }
@@ -432,6 +445,11 @@ for mir::AggregateKind<'gcx> {
             mir::AggregateKind::Closure(def_id, ref substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
+            }
+            mir::AggregateKind::Generator(def_id, ref substs, ref interior) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+                interior.hash_stable(hcx, hasher);
             }
         }
     }

@@ -292,6 +292,15 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     }
 }
 
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Box<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
+    }
+}
+
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ::std::rc::Rc<T> {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,

@@ -180,6 +180,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
+        // Cannot inline generators which haven't been transformed yet
+        if callee_mir.yield_ty.is_some() {
+            return false;
+        }
 
         let attrs = tcx.get_attrs(callsite.callee);
         let hint = attr::find_inline_attr(None, &attrs[..]);
@@ -657,6 +661,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.super_terminator_kind(block, kind, loc);
 
         match *kind {
+            TerminatorKind::GeneratorDrop |
+            TerminatorKind::Yield { .. } => bug!(),
             TerminatorKind::Goto { ref mut target} => {
                 *target = self.update_target(*target);
             }

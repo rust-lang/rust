@@ -125,6 +125,12 @@ fn resolve_associated_item<'a, 'tcx>(
             let substs = tcx.erase_regions(&substs);
             ty::Instance::new(def_id, substs)
         }
+        traits::VtableGenerator(closure_data) => {
+            Instance {
+                def: ty::InstanceDef::Item(closure_data.closure_def_id),
+                substs: closure_data.substs.substs
+            }
+        }
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
             resolve_closure(scx, closure_data.closure_def_id, closure_data.substs,

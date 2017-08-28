@@ -726,6 +726,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             self.assemble_closure_candidates(import_id, trait_def_id, item.clone())?;
 
+            self.assemble_generator_candidates(import_id, trait_def_id, item.clone())?;
+
             self.assemble_projection_candidates(import_id, trait_def_id, item.clone());
 
             self.assemble_where_clause_candidates(import_id, trait_def_id, item.clone());
@@ -886,6 +888,48 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             if !closure_kind.extends(kind) {
                 continue;
             }
+
+            // create some substitutions for the argument/return type;
+            // for the purposes of our method lookup, we only take
+            // receiver type into account, so we can just substitute
+            // fresh types here to use during substitution and subtyping.
+            let substs = Substs::for_item(self.tcx,
+                                          trait_def_id,
+                                          |def, _| self.region_var_for_def(self.span, def),
+                                          |def, substs| {
+                if def.index == 0 {
+                    step.self_ty
+                } else {
+                    self.type_var_for_def(self.span, def, substs)
+                }
+            });
+
+            let xform_self_ty = self.xform_self_ty(&item, step.self_ty, substs);
+            self.push_inherent_candidate(xform_self_ty, item, TraitCandidate, import_id);
+        }
+
+        Ok(())
+    }
+
+    fn assemble_generator_candidates(&mut self,
+                                   import_id: Option<ast::NodeId>,
+                                   trait_def_id: DefId,
+                                   item: ty::AssociatedItem)
+                                   -> Result<(), MethodError<'tcx>> {
+        // Check if this is the Generator trait.
+        let tcx = self.tcx;
+        if Some(trait_def_id) != tcx.lang_items.gen_trait() {
+            return Ok(());
+        }
+
+        // Check if there is an generator self-type in the list of receivers.
+        // If so, add "synthetic impls".
+        let steps = self.steps.clone();
+        for step in steps.iter() {
+            match step.self_ty.sty {
+                ty::TyGenerator(..) => (),
+                _ => continue,
+            };
 
             // create some substitutions for the argument/return type;
             // for the purposes of our method lookup, we only take

@@ -389,6 +389,18 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
+        (&ty::TyGenerator(a_id, a_substs, a_interior),
+         &ty::TyGenerator(b_id, b_substs, b_interior))
+            if a_id == b_id =>
+        {
+            // All TyGenerator types with the same id represent
+            // the (anonymous) type of the same generator expression. So
+            // all of their regions should be equated.
+            let substs = relation.relate(&a_substs, &b_substs)?;
+            let interior = relation.relate(&a_interior, &b_interior)?;
+            Ok(tcx.mk_generator(a_id, substs, interior))
+        }
+
         (&ty::TyClosure(a_id, a_substs),
          &ty::TyClosure(b_id, b_substs))
             if a_id == b_id =>
@@ -509,6 +521,18 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
     {
         let substs = relate_substs(relation, None, a.substs, b.substs)?;
         Ok(ty::ClosureSubsts { substs: substs })
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &ty::GeneratorInterior<'tcx>,
+                           b: &ty::GeneratorInterior<'tcx>)
+                           -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        let interior = relation.relate(&a.witness, &b.witness)?;
+        Ok(ty::GeneratorInterior::new(interior))
     }
 }
 

@@ -93,6 +93,8 @@ pub struct LoweringContext<'a> {
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
 
+    is_generator: bool,
+
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
@@ -145,6 +147,7 @@ pub fn lower_crate(sess: &Session,
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
         item_local_id_counters: NodeMap(),
         node_id_to_hir_id: IndexVec::new(),
+        is_generator: false,
     }.lower_crate(krate)
 }
 
@@ -393,6 +396,7 @@ impl<'a> LoweringContext<'a> {
             arguments: decl.map_or(hir_vec![], |decl| {
                 decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
             }),
+            is_generator: self.is_generator,
             value,
         };
         let id = body.id();
@@ -451,6 +455,16 @@ impl<'a> LoweringContext<'a> {
         self.catch_scopes.pop().unwrap();
 
         result
+    }
+
+    fn lower_body<F>(&mut self, decl: Option<&FnDecl>, f: F) -> hir::BodyId
+        where F: FnOnce(&mut LoweringContext) -> hir::Expr
+    {
+        let prev = mem::replace(&mut self.is_generator, false);
+        let result = f(self);
+        let r = self.record_body(result, decl);
+        self.is_generator = prev;
+        return r
     }
 
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
@@ -637,13 +651,12 @@ impl<'a> LoweringContext<'a> {
                 })))
             }
             TyKind::Array(ref ty, ref length) => {
-                let length = self.lower_expr(length);
-                hir::TyArray(self.lower_ty(ty),
-                             self.record_body(length, None))
+                let length = self.lower_body(None, |this| this.lower_expr(length));
+                hir::TyArray(self.lower_ty(ty), length)
             }
             TyKind::Typeof(ref expr) => {
-                let expr = self.lower_expr(expr);
-                hir::TyTypeof(self.record_body(expr, None))
+                let expr = self.lower_body(None, |this| this.lower_expr(expr));
+                hir::TyTypeof(expr)
             }
             TyKind::TraitObject(ref bounds) => {
                 let mut lifetime_bound = None;
@@ -700,8 +713,7 @@ impl<'a> LoweringContext<'a> {
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node.disr_expr.as_ref().map(|e| {
-                    let e = self.lower_expr(e);
-                    self.record_body(e, None)
+                    self.lower_body(None, |this| this.lower_expr(e))
                 }),
             },
             span: v.span,
@@ -1368,21 +1380,21 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemUse(path, kind)
             }
             ItemKind::Static(ref t, m, ref e) => {
-                let value = self.lower_expr(e);
+                let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemStatic(self.lower_ty(t),
                                 self.lower_mutability(m),
-                                self.record_body(value, None))
+                                value)
             }
             ItemKind::Const(ref t, ref e) => {
-                let value = self.lower_expr(e);
-                hir::ItemConst(self.lower_ty(t),
-                               self.record_body(value, None))
+                let value = self.lower_body(None, |this| this.lower_expr(e));
+                hir::ItemConst(self.lower_ty(t), value)
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.with_new_scopes(|this| {
-                    let body = this.lower_block(body, false);
-                    let body = this.expr_block(body, ThinVec::new());
-                    let body_id = this.record_body(body, Some(decl));
+                    let body_id = this.lower_body(Some(decl), |this| {
+                        let body = this.lower_block(body, false);
+                        this.expr_block(body, ThinVec::new())
+                    });
                     hir::ItemFn(this.lower_fn_decl(decl),
                                               this.lower_unsafety(unsafety),
                                               this.lower_constness(constness),
@@ -1478,8 +1490,7 @@ impl<'a> LoweringContext<'a> {
                     TraitItemKind::Const(ref ty, ref default) => {
                         hir::TraitItemKind::Const(this.lower_ty(ty),
                                                   default.as_ref().map(|x| {
-                            let value = this.lower_expr(x);
-                            this.record_body(value, None)
+                            this.lower_body(None, |this| this.lower_expr(x))
                         }))
                     }
                     TraitItemKind::Method(ref sig, None) => {
@@ -1488,9 +1499,10 @@ impl<'a> LoweringContext<'a> {
                                                    hir::TraitMethod::Required(names))
                     }
                     TraitItemKind::Method(ref sig, Some(ref body)) => {
-                        let body = this.lower_block(body, false);
-                        let expr = this.expr_block(body, ThinVec::new());
-                        let body_id = this.record_body(expr, Some(&sig.decl));
+                        let body_id = this.lower_body(Some(&sig.decl), |this| {
+                            let body = this.lower_block(body, false);
+                            this.expr_block(body, ThinVec::new())
+                        });
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
                                                    hir::TraitMethod::Provided(body_id))
                     }
@@ -1542,14 +1554,14 @@ impl<'a> LoweringContext<'a> {
                 defaultness: this.lower_defaultness(i.defaultness, true /* [1] */),
                 node: match i.node {
                     ImplItemKind::Const(ref ty, ref expr) => {
-                        let value = this.lower_expr(expr);
-                        let body_id = this.record_body(value, None);
+                        let body_id = this.lower_body(None, |this| this.lower_expr(expr));
                         hir::ImplItemKind::Const(this.lower_ty(ty), body_id)
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
-                        let body = this.lower_block(body, false);
-                        let expr = this.expr_block(body, ThinVec::new());
-                        let body_id = this.record_body(expr, Some(&sig.decl));
+                        let body_id = this.lower_body(Some(&sig.decl), |this| {
+                            let body = this.lower_block(body, false);
+                            this.expr_block(body, ThinVec::new())
+                        });
                         hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
                     }
                     ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(this.lower_ty(ty)),
@@ -1928,8 +1940,8 @@ impl<'a> LoweringContext<'a> {
             }
             ExprKind::Repeat(ref expr, ref count) => {
                 let expr = P(self.lower_expr(expr));
-                let count = self.lower_expr(count);
-                hir::ExprRepeat(expr, self.record_body(count, None))
+                let count = self.lower_body(None, |this| this.lower_expr(count));
+                hir::ExprRepeat(expr, count)
             }
             ExprKind::Tup(ref elts) => {
                 hir::ExprTup(elts.iter().map(|x| self.lower_expr(x)).collect())
@@ -2027,11 +2039,22 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
                 self.with_new_scopes(|this| {
                     this.with_parent_def(e.id, |this| {
-                        let expr = this.lower_expr(body);
+                        let mut is_generator = false;
+                        let body_id = this.lower_body(Some(decl), |this| {
+                            let e = this.lower_expr(body);
+                            is_generator = this.is_generator;
+                            e
+                        });
+                        if is_generator && !decl.inputs.is_empty() {
+                            span_err!(this.sess, fn_decl_span, E0628,
+                                      "generators cannot have explicit arguments");
+                            this.sess.abort_if_errors();
+                        }
                         hir::ExprClosure(this.lower_capture_clause(capture_clause),
                                          this.lower_fn_decl(decl),
-                                         this.record_body(expr, Some(decl)),
-                                         fn_decl_span)
+                                         body_id,
+                                         fn_decl_span,
+                                         is_generator)
                     })
                 })
             }
@@ -2170,6 +2193,14 @@ impl<'a> LoweringContext<'a> {
                 attrs.extend::<Vec<_>>(ex.attrs.into());
                 ex.attrs = attrs;
                 return ex;
+            }
+
+            ExprKind::Yield(ref opt_expr) => {
+                self.is_generator = true;
+                let expr = opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| {
+                    self.expr(e.span, hir::ExprTup(hir_vec![]), ThinVec::new())
+                });
+                hir::ExprYield(P(expr))
             }
 
             // Desugar ExprIfLet

@@ -296,7 +296,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ImplItemKind::Type(_) => {}
                 }
             }
-            hir_map::NodeExpr(&hir::Expr { node: hir::ExprClosure(.., body, _), .. }) => {
+            hir_map::NodeExpr(&hir::Expr { node: hir::ExprClosure(.., body, _, _), .. }) => {
                 self.visit_nested_body(body);
             }
             // Nothing to recurse on for these

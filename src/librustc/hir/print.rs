@@ -1312,7 +1312,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span) => {
+            hir::ExprClosure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_closure_args(&decl, body)?;
@@ -1460,6 +1460,10 @@ impl<'a> State<'a> {
                 }
 
                 self.pclose()?;
+            }
+            hir::ExprYield(ref expr) => {
+                self.s.word("yield")?;
+                self.print_expr(&expr)?;
             }
         }
         self.ann.post(self, NodeExpr(expr))?;

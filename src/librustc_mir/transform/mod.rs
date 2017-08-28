@@ -40,6 +40,7 @@ pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
 pub mod copy_prop;
+pub mod generator;
 pub mod inline;
 pub mod nll;
 

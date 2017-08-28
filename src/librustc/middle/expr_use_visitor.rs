@@ -517,12 +517,16 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&base);
             }
 
-            hir::ExprClosure(.., fn_decl_span) => {
+            hir::ExprClosure(.., fn_decl_span, _) => {
                 self.walk_captures(expr, fn_decl_span)
             }
 
             hir::ExprBox(ref base) => {
                 self.consume_expr(&base);
+            }
+
+            hir::ExprYield(ref value) => {
+                self.consume_expr(&value);
             }
         }
     }

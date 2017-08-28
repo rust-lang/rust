@@ -294,6 +294,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyFnDef(..) |
+            ty::TyGenerator(..) |
             ty::TyClosure(..) => {
                 bug!("Unexpected closure type in variance computation");
             }

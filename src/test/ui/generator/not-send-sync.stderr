@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `std::cell::Cell<i32>: std::marker::Sync` is not satisfied
+  --> $DIR/not-send-sync.rs:26:5
+   |
+26 |     assert_send(|| {
+   |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `std::cell::Cell<i32>`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `&std::cell::Cell<i32>`
+   = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:26:17: 30:6 a:&std::cell::Cell<i32> _]`
+   = note: required by `main::assert_send`
+
+error[E0277]: the trait bound `std::cell::Cell<i32>: std::marker::Sync` is not satisfied in `[generator@$DIR/not-send-sync.rs:19:17: 23:6 ((), std::cell::Cell<i32>)]`
+  --> $DIR/not-send-sync.rs:19:5
+   |
+19 |     assert_sync(|| {
+   |     ^^^^^^^^^^^ `std::cell::Cell<i32>` cannot be shared between threads safely
+   |
+   = help: within `[generator@$DIR/not-send-sync.rs:19:17: 23:6 ((), std::cell::Cell<i32>)]`, the trait `std::marker::Sync` is not implemented for `std::cell::Cell<i32>`
+   = note: required because it appears within the type `((), std::cell::Cell<i32>)`
+   = note: required because it appears within the type `[generator@$DIR/not-send-sync.rs:19:17: 23:6 ((), std::cell::Cell<i32>)]`
+   = note: required by `main::assert_sync`
+
+error: aborting due to 2 previous errors
+

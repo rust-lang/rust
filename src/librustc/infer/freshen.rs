@@ -166,6 +166,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::TyFnPtr(_) |
             ty::TyDynamic(..) |
             ty::TyClosure(..) |
+            ty::TyGenerator(..) |
             ty::TyNever |
             ty::TyTuple(..) |
             ty::TyProjection(..) |

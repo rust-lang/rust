@@ -185,12 +185,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
-                let upvars =
+            ExprKind::Closure { closure_id, substs, upvars, interior } => { // see (*) above
+                let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                block.and(Rvalue::Aggregate(box AggregateKind::Closure(closure_id, substs), upvars))
+                let result = if let Some(interior) = interior {
+                    // Add the state operand since it follows the upvars in the generator
+                    // struct. See librustc_mir/transform/generator.rs for more details.
+                    operands.push(Operand::Constant(box Constant {
+                        span: expr_span,
+                        ty: this.hir.tcx().types.u32,
+                        literal: Literal::Value {
+                            value: ConstVal::Integral(ConstInt::U32(0)),
+                        },
+                    }));
+                    box AggregateKind::Generator(closure_id, substs, interior)
+                } else {
+                    box AggregateKind::Closure(closure_id, substs)
+                };
+                block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
@@ -231,6 +245,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr));
                 block.and(this.unit_rvalue())
+            }
+            ExprKind::Yield { value } => {
+                let value = unpack!(block = this.as_operand(block, scope, value));
+                let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup();
+                this.cfg.terminate(block, source_info, TerminatorKind::Yield {
+                    value: value,
+                    resume: resume,
+                    drop: cleanup,
+                });
+                resume.and(this.unit_rvalue())
             }
             ExprKind::Literal { .. } |
             ExprKind::Block { .. } |

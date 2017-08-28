@@ -374,6 +374,27 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                          vec![msg_file_line_col],
                          Some(ErrKind::Math(err.clone())))
                     }
+                    mir::AssertMessage::GeneratorResumedAfterReturn |
+                    mir::AssertMessage::GeneratorResumedAfterPanic => {
+                        let str = if let mir::AssertMessage::GeneratorResumedAfterReturn = *msg {
+                            "generator resumed after completion"
+                        } else {
+                            "generator resumed after panicking"
+                        };
+                        let msg_str = Symbol::intern(str).as_str();
+                        let msg_str = C_str_slice(bcx.ccx, msg_str);
+                        let msg_file_line = C_struct(bcx.ccx,
+                                                     &[msg_str, filename, line],
+                                                     false);
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line));
+                        let msg_file_line = consts::addr_of(bcx.ccx,
+                                                            msg_file_line,
+                                                            align,
+                                                            "panic_loc");
+                        (lang_items::PanicFnLangItem,
+                         vec![msg_file_line],
+                         None)
+                    }
                 };
 
                 // If we know we always panic, and the error message
@@ -557,6 +578,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         destination.as_ref().map(|&(_, target)| (ret_dest, sig.output(), target)),
                         cleanup);
             }
+            mir::TerminatorKind::GeneratorDrop |
+            mir::TerminatorKind::Yield { .. } => bug!("generator ops in trans"),
         }
     }
 

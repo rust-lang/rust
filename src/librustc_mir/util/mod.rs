@@ -15,6 +15,7 @@ pub mod patch;
 
 mod graphviz;
 mod pretty;
+pub mod liveness;
 
 pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty};
 pub use self::graphviz::{write_mir_graphviz};

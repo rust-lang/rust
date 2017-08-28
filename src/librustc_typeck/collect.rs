@@ -1153,7 +1153,12 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeField(field) => icx.to_ty(&field.ty),
 
-        NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) => {
+        NodeExpr(&hir::Expr { node: hir::ExprClosure(.., is_generator), .. }) => {
+            if is_generator {
+                let hir_id = tcx.hir.node_to_hir_id(node_id);
+                return tcx.typeck_tables_of(def_id).node_id_to_type(hir_id);
+            }
+
             tcx.mk_closure(def_id, Substs::for_item(
                 tcx, def_id,
                 |def, _| {

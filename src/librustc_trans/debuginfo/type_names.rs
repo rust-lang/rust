@@ -165,6 +165,9 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyClosure(..) => {
             output.push_str("closure");
         }
+        ty::TyGenerator(..) => {
+            output.push_str("generator");
+        }
         ty::TyError |
         ty::TyInfer(_) |
         ty::TyProjection(..) |

@@ -460,7 +460,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprAgain(_) | hir::ExprLit(_) | hir::ExprRet(..) |
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
-      hir::ExprInlineAsm(..) | hir::ExprBox(..) |
+      hir::ExprInlineAsm(..) | hir::ExprBox(..) | hir::ExprYield(..) |
       hir::ExprType(..) | hir::ExprPath(hir::QPath::TypeRelative(..)) => {
           intravisit::walk_expr(ir, expr);
       }
@@ -881,7 +881,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match expr.node {
           // Interesting cases with control flow or which gen/kill
-
           hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
               self.access_path(expr.id, path, succ, ACC_READ | ACC_USE)
           }
@@ -894,7 +893,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprClosure(.., blk_id, _) => {
+          hir::ExprClosure(.., blk_id, _, _) => {
               debug!("{} is an ExprClosure", self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
               /*
@@ -1116,6 +1115,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprCast(ref e, _) |
           hir::ExprType(ref e, _) |
           hir::ExprUnary(_, ref e) |
+          hir::ExprYield(ref e) |
           hir::ExprRepeat(ref e, _) => {
             self.propagate_through_expr(&e, succ)
           }
@@ -1224,18 +1224,23 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
+    fn access_var(&mut self, id: NodeId, nid: NodeId, succ: LiveNode, acc: u32, span: Span)
+                  -> LiveNode {
+        let ln = self.live_node(id, span);
+        if acc != 0 {
+            self.init_from_succ(ln, succ);
+            let var = self.variable(nid, span);
+            self.acc(ln, var, acc);
+        }
+        ln
+    }
+
     fn access_path(&mut self, id: NodeId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match path.def {
           Def::Local(def_id) => {
             let nid = self.ir.tcx.hir.as_local_node_id(def_id).unwrap();
-            let ln = self.live_node(id, path.span);
-            if acc != 0 {
-                self.init_from_succ(ln, succ);
-                let var = self.variable(nid, path.span);
-                self.acc(ln, var, acc);
-            }
-            ln
+            self.access_var(id, nid, succ, acc, path.span)
           }
           _ => succ
         }
@@ -1398,7 +1403,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
-      hir::ExprClosure(..) | hir::ExprPath(_) |
+      hir::ExprClosure(..) | hir::ExprPath(_) | hir::ExprYield(..) |
       hir::ExprBox(..) | hir::ExprType(..) => {
         intravisit::walk_expr(this, expr);
       }

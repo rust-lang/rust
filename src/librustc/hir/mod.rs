@@ -929,7 +929,8 @@ pub struct BodyId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
-    pub value: Expr
+    pub value: Expr,
+    pub is_generator: bool,
 }
 
 impl Body {
@@ -1007,7 +1008,10 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span),
+    ///
+    /// This may also be a generator literal, indicated by the final boolean,
+    /// in that case there is an GeneratorClause.
+    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, bool),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1052,6 +1056,9 @@ pub enum Expr_ {
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, BodyId),
+
+    /// A suspension point for generators. This is `yield <expr>` in Rust.
+    ExprYield(P<Expr>),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.

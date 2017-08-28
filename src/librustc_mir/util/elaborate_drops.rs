@@ -752,7 +752,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.lvalue_ty(self.lvalue);
         match ty.sty {
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, substs) |
+            // Note that `elaborate_drops` only drops the upvars of a generator,
+            // and this is ok because `open_drop` here can only be reached
+            // within that own generator's resume function.
+            // This should only happen for the self argument on the resume function.
+            // It effetively only contains upvars until the generator transformation runs.
+            // See librustc_mir/transform/generator.rs for more details.
+            ty::TyGenerator(def_id, substs, _) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }

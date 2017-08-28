@@ -653,14 +653,20 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
             mir::TerminatorKind::Resume |
+            mir::TerminatorKind::GeneratorDrop |
             mir::TerminatorKind::Unreachable => {}
             mir::TerminatorKind::Goto { ref target } |
             mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
+            mir::TerminatorKind::Yield { resume: ref target, drop: None, .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: None
             } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
+            }
+            mir::TerminatorKind::Yield { resume: ref target, drop: Some(ref drop), .. } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(in_out, changed, drop);
             }
             mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |

@@ -524,15 +524,15 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
 
             // Or is it the closure environment?
-            let (closure_ty, env_ref) = if let ty::TyRef(_, mt) = arg_ty.sty {
-                (mt.ty, true)
-            } else {
-                (arg_ty, false)
+            let (closure_ty, env_ref) = match arg_ty.sty {
+                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (mt.ty, true),
+                _ => (arg_ty, false)
             };
-            let upvar_tys = if let ty::TyClosure(def_id, substs) = closure_ty.sty {
-                substs.upvar_tys(def_id, tcx)
-            } else {
-                bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty);
+
+            let upvar_tys = match closure_ty.sty {
+                ty::TyClosure(def_id, substs) |
+                ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),
+                _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty)
             };
 
             // Store the pointer to closure data in an alloca for debuginfo

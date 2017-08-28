@@ -66,7 +66,7 @@ use core::hash::{self, Hash};
 use core::iter::FusedIterator;
 use core::marker::{self, Unsize};
 use core::mem;
-use core::ops::{CoerceUnsized, Deref, DerefMut};
+use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
 use core::convert::From;
@@ -782,5 +782,16 @@ impl<T: ?Sized> AsRef<T> for Box<T> {
 impl<T: ?Sized> AsMut<T> for Box<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut **self
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<T> Generator for Box<T>
+    where T: Generator + ?Sized
+{
+    type Yield = T::Yield;
+    type Return = T::Return;
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+        (**self).resume()
     }
 }
