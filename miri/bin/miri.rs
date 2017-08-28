@@ -19,7 +19,11 @@ use rustc::ty::TyCtxt;
 use syntax::ast::{self, MetaItemKind, NestedMetaItemKind};
 use std::path::PathBuf;
 
-struct MiriCompilerCalls(RustcDefaultCalls);
+struct MiriCompilerCalls {
+    default: RustcDefaultCalls,
+    /// whether we are building for the host
+    host_target: bool,
+}
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     fn early_callback(
@@ -30,7 +34,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         descriptions: &rustc_errors::registry::Registry,
         output: ErrorOutputType,
     ) -> Compilation {
-        self.0.early_callback(
+        self.default.early_callback(
             matches,
             sopts,
             cfg,
@@ -47,7 +51,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         ofile: &Option<PathBuf>,
         descriptions: &rustc_errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.0.no_input(
+        self.default.no_input(
             matches,
             sopts,
             cfg,
@@ -64,17 +68,17 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.0.late_callback(matches, sess, input, odir, ofile)
+        self.default.late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(
         &mut self,
         sess: &Session,
         matches: &getopts::Matches,
     ) -> CompileController<'a> {
-        let mut control = self.0.build_controller(sess, matches);
+        let mut control = self.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        if std::env::var("MIRI_HOST_TARGET") != Ok("yes".to_owned()) {
+        if !self.host_target {
             // only fully compile targets on the host
             control.after_analysis.stop = Compilation::Stop;
         }
@@ -254,6 +258,16 @@ fn main() {
 
     // for auxilary builds in unit tests
     args.push("-Zalways-encode-mir".to_owned());
+    let mut host_target = false;
+    args.retain(|arg| if arg == "--miri_host_target" {
+        host_target = true;
+        false // remove the flag, rustc doesn't know it
+    } else {
+        true
+    });
 
-    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls(RustcDefaultCalls), None, None);
+    rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
+        default: RustcDefaultCalls,
+        host_target,
+    }, None, None);
 }

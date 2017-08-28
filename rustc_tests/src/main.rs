@@ -20,7 +20,11 @@ use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
-struct MiriCompilerCalls(RustcDefaultCalls);
+struct MiriCompilerCalls {
+    default: RustcDefaultCalls,
+    /// whether we are building for the host
+    host_target: bool,
+}
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     fn early_callback(
@@ -31,7 +35,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         descriptions: &rustc_errors::registry::Registry,
         output: ErrorOutputType
     ) -> Compilation {
-        self.0.early_callback(matches, sopts, cfg, descriptions, output)
+        self.default.early_callback(matches, sopts, cfg, descriptions, output)
     }
     fn no_input(
         &mut self,
@@ -42,7 +46,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         ofile: &Option<PathBuf>,
         descriptions: &rustc_errors::registry::Registry
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.0.no_input(matches, sopts, cfg, odir, ofile, descriptions)
+        self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
     fn late_callback(
         &mut self,
@@ -52,13 +56,13 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>
     ) -> Compilation {
-        self.0.late_callback(matches, sess, input, odir, ofile)
+        self.default.late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
-        let mut control = self.0.build_controller(sess, matches);
+        let mut control = self.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        if std::env::var("MIRI_HOST_TARGET") != Ok("yes".to_owned()) {
+        if !self.host_target {
             // only fully compile targets on the host
             control.after_analysis.stop = Compilation::Stop;
         }
@@ -139,7 +143,15 @@ fn main() {
         }
         let stderr = std::io::stderr();
         write!(stderr.lock(), "test [miri-pass] {} ... ", path.display()).unwrap();
-        let mut args: Vec<String> = std::env::args().collect();
+        let mut host_target = false;
+        let mut args: Vec<String> = std::env::args().filter(|arg| {
+            if arg == "--miri_host_target" {
+                host_target = true;
+                false // remove the flag, rustc doesn't know it
+            } else {
+                true
+            }
+        }).collect();
         // file to process
         args.push(path.display().to_string());
 
