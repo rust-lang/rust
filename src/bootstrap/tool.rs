@@ -198,7 +198,7 @@ tool!(
     Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::Libstd;
     CargoTest, "src/tools/cargotest", "cargotest", Mode::Libstd;
     Compiletest, "src/tools/compiletest", "compiletest", Mode::Libtest;
-    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Librustc;
+    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Libstd;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::Libstd;
     RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::Libstd;
 );
