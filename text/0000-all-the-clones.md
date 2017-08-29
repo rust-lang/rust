@@ -44,7 +44,7 @@ And add the obvious implementations of `Clone::clone` and `Clone::clone_from` as
 
 Remove the macro implementations in libcore. We still have macro implementations for other "derived" traits, such as `PartialEq`, `Hash`, etc.
 
-Note that independently of this RFC, we're adding builtin `Clone` impls for all "scalar" types, most importantly fn pointer and fn item types (where manual impls are impossible in the foreseeable future because of HRTBs, e.g. `for<'a> fn(SomeLocalStruct<'a>)`), which are already `Copy`:
+Note that independently of this RFC, we're adding builtin `Clone` impls for all "scalar" types, most importantly fn pointer and fn item types (where manual impls are impossible in the foreseeable future because of higher-ranked types, e.g. `for<'a> fn(SomeLocalStruct<'a>)`), which are already `Copy`:
 ```
 T fn pointer type
 ----------
