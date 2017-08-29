@@ -194,7 +194,7 @@ macro_rules! println {
 /// # Examples
 ///
 /// ```
-/// eprint("Error: Could not complete task");
+/// eprint!("Error: Could not complete task");
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
@@ -222,7 +222,7 @@ macro_rules! eprint {
 /// # Examples
 ///
 /// ```
-/// eprint("Error: Could not complete task");
+/// eprintln!("Error: Could not complete task");
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
