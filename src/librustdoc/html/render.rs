@@ -2710,7 +2710,8 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "must_use",
     "no_mangle",
     "repr",
-    "unsafe_destructor_blind_to_params"
+    "unsafe_destructor_blind_to_params",
+    "cfg"
 ];
 
 fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
