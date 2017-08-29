@@ -239,7 +239,12 @@ impl Builder {
         self.package("rust-std", &mut manifest.pkg, TARGETS);
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
-        self.package("rls", &mut manifest.pkg, HOSTS);
+        let rls_package_name = if self.rust_release == "nightly" {
+            "rls"
+        } else {
+            "rls-preview"
+        };
+        self.package(rls_package_name, &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
 
         let mut pkg = Package {
@@ -276,7 +281,7 @@ impl Builder {
             }
 
             extensions.push(Component {
-                pkg: "rls".to_string(),
+                pkg: rls_package_name.to_string(),
                 target: host.to_string(),
             });
             extensions.push(Component {
@@ -353,7 +358,7 @@ impl Builder {
             format!("rust-src-{}.tar.gz", self.rust_release)
         } else if component == "cargo" {
             format!("cargo-{}-{}.tar.gz", self.cargo_release, target)
-        } else if component == "rls" {
+        } else if component == "rls" || component == "rls-preview" {
             format!("rls-{}-{}.tar.gz", self.rls_release, target)
         } else {
             format!("{}-{}-{}.tar.gz", component, self.rust_release, target)
@@ -363,7 +368,7 @@ impl Builder {
     fn cached_version(&self, component: &str) -> &str {
         if component == "cargo" {
             &self.cargo_version
-        } else if component == "rls" {
+        } else if component == "rls" || component == "rls-preview" {
             &self.rls_version
         } else {
             &self.rust_version
