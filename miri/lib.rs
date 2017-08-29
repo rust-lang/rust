@@ -15,6 +15,7 @@ use rustc::ty::layout::Layout;
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
+use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
 use std::collections::{HashMap, BTreeMap};
@@ -98,15 +99,21 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 dest,
             )?;
 
-            // Second argument (argc): 0
+            // Second argument (argc): 1
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.types.isize;
-            ecx.write_null(dest, ty)?;
+            ecx.write_primval(dest, PrimVal::Bytes(1), ty)?;
 
-            // Third argument (argv): 0
+            // FIXME: extract main source file path
+            // Third argument (argv): &[b"foo"]
             let dest = ecx.eval_lvalue(&mir::Lvalue::Local(args.next().unwrap()))?;
             let ty = ecx.tcx.mk_imm_ptr(ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8));
-            ecx.write_null(dest, ty)?;
+            let foo = ecx.memory.allocate_cached(b"foo\0")?;
+            let ptr_size = ecx.memory.pointer_size();
+            let foo_ptr = ecx.memory.allocate(ptr_size * 1, ptr_size, MemoryKind::UninitializedStatic)?;
+            ecx.memory.write_primval(foo_ptr.into(), PrimVal::Ptr(foo.into()), ptr_size, false)?;
+            ecx.memory.mark_static_initalized(foo_ptr.alloc_id, Mutability::Immutable)?;
+            ecx.write_ptr(dest, foo_ptr.into(), ty)?;
         } else {
             ecx.push_stack_frame(
                 main_instance,
