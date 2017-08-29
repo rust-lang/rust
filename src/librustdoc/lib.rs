@@ -267,6 +267,9 @@ pub fn main_args(args: &[String]) -> isize {
     // Check for unstable options.
     nightly_options::check_nightly_options(&matches, &opts());
 
+    // check for deprecated options
+    check_deprecated_options(&matches);
+
     if matches.opt_present("h") || matches.opt_present("help") {
         usage("rustdoc");
         return 0;
@@ -537,4 +540,17 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     });
     rx.recv().unwrap()
+}
+
+/// Prints deprecation warnings for deprecated options
+fn check_deprecated_options(matches: &getopts::Matches) {
+    if matches.opt_present("input-format") ||
+       matches.opt_present("output-format") ||
+       matches.opt_present("plugin-path") ||
+       matches.opt_present("plugins") ||
+       matches.opt_present("no-defaults") ||
+       matches.opt_present("passes") {
+        eprintln!("WARNING: this flag is considered deprecated");
+        eprintln!("WARNING: please see https://github.com/rust-lang/rust/issues/44136");
+    }
 }
