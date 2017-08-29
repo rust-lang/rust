@@ -133,7 +133,11 @@ fn main() {
         assert_eq!(sret_byval_struct(1, 2, 3, 4, s), t);
         assert_eq!(sret_split_struct(1, 2, s), t);
         assert_eq!(float_point(p), p);
-        assert_eq!(float_one(f1), f1);
         assert_eq!(int_odd(i), i);
+
+        // mingw64-gcc uses the wrong ABI:
+        // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82028
+        #[cfg(not(all(windows, target_arch = "x86_64", target_env = "gnu")))]
+        assert_eq!(float_one(f1), f1);
     }
 }
