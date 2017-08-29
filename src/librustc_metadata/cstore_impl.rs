@@ -175,6 +175,9 @@ provide! { <'tcx> tcx, def_id, cdata,
             DefId { krate: def_id.krate, index }
         })
     }
+    crate_disambiguator => { cdata.disambiguator() }
+    crate_hash => { cdata.hash() }
+    original_crate_name => { cdata.name() }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -286,11 +289,6 @@ impl CrateStore for cstore::CStore {
     fn crate_hash(&self, cnum: CrateNum) -> Svh
     {
         self.get_crate_hash(cnum)
-    }
-
-    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol
-    {
-        self.get_crate_data(cnum).disambiguator()
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

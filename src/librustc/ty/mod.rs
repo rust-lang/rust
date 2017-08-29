@@ -2510,6 +2510,12 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
 
+fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 crate_num: CrateNum) -> Symbol {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.sess.local_crate_disambiguator()
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
@@ -2521,6 +2527,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         def_span,
         param_env,
         trait_of_item,
+        crate_disambiguator,
         trait_impls_of: trait_def::trait_impls_of_provider,
         ..*providers
     };
