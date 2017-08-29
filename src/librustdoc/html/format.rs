@@ -228,7 +228,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
         }
 
         if end_newline {
-            //add a space so stripping <br> tags and breaking spaces still renders properly
+            // add a space so stripping <br> tags and breaking spaces still renders properly
             if f.alternate() {
                 clause.push(' ');
             } else {
