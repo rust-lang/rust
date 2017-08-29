@@ -1064,7 +1064,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
         };
 
         let prfn = match cx.sess().cstore.extern_mod_stmt_cnum(it.id) {
-            Some(cnum) => cx.sess().cstore.plugin_registrar_fn(cnum),
+            Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
                 //

@@ -537,6 +537,8 @@ define_dep_nodes!( <'tcx>
     [] ImplDefaultness(DefId),
     [] ExportedSymbols(CrateNum),
     [] NativeLibraries(CrateNum),
+    [] PluginRegistrarFn(CrateNum),
+    [] DeriveRegistrarFn(CrateNum),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

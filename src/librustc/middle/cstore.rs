@@ -255,8 +255,6 @@ pub trait CrateStore {
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
     fn crate_hash(&self, cnum: CrateNum) -> Svh;
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -359,10 +357,6 @@ impl CrateStore for DummyCrateStore {
     fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
     fn crate_disambiguator(&self, cnum: CrateNum)
                            -> Symbol { bug!("crate_disambiguator") }
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-        { bug!("plugin_registrar_fn") }
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-        { bug!("derive_registrar_fn") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

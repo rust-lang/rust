@@ -165,6 +165,16 @@ provide! { <'tcx> tcx, def_id, cdata,
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     exported_symbols => { Rc::new(cdata.get_exported_symbols(&tcx.dep_graph)) }
     native_libraries => { Rc::new(cdata.get_native_libraries(&tcx.dep_graph)) }
+    plugin_registrar_fn => {
+        cdata.root.plugin_registrar_fn.map(|index| {
+            DefId { krate: def_id.krate, index }
+        })
+    }
+    derive_registrar_fn => {
+        cdata.root.macro_derive_registrar.map(|index| {
+            DefId { krate: def_id.krate, index }
+        })
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -281,22 +291,6 @@ impl CrateStore for cstore::CStore {
     fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).disambiguator()
-    }
-
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-    {
-        self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
-            krate: cnum,
-            index,
-        })
-    }
-
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-    {
-        self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
-            krate: cnum,
-            index,
-        })
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

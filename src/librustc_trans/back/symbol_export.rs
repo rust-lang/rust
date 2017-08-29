@@ -115,8 +115,8 @@ impl ExportedSymbols {
 
             // If this crate is a plugin and/or a custom derive crate, then
             // we're not even going to link those in so we skip those crates.
-            if tcx.sess.cstore.plugin_registrar_fn(cnum).is_some() ||
-               tcx.sess.cstore.derive_registrar_fn(cnum).is_some() {
+            if tcx.plugin_registrar_fn(cnum).is_some() ||
+               tcx.derive_registrar_fn(cnum).is_some() {
                 continue;
             }
 
