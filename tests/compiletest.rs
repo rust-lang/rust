@@ -126,15 +126,14 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         // For now, only validate without optimizations.  Inlining breaks validation.
         flags.push("-Zmir-emit-validate=1".to_owned());
     }
+    if target == host {
+        flags.push("--miri_host_target".to_owned());
+    }
     config.target_rustcflags = Some(flags.join(" "));
     // don't actually execute the final binary, it might be for other targets and we only care
     // about running miri, not the binary.
     config.runtool = Some("echo \"\" || ".to_owned());
-    if target == host {
-        std::env::set_var("MIRI_HOST_TARGET", "yes");
-    }
     compiletest::run_tests(&config);
-    std::env::set_var("MIRI_HOST_TARGET", "");
 }
 
 fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
@@ -182,17 +181,24 @@ fn get_host() -> String {
     String::from(host)
 }
 
-#[test]
-fn run_pass_miri() {
+fn run_pass_miri(opt: bool) {
     let sysroot = get_sysroot();
     let host = get_host();
 
-    for &opt in [false, true].iter() {
-        for_all_targets(&sysroot, |target| {
-            miri_pass("tests/run-pass", &target, &host, false, opt);
-        });
-        miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
-    }
+    for_all_targets(&sysroot, |target| {
+        miri_pass("tests/run-pass", &target, &host, false, opt);
+    });
+    miri_pass("tests/run-pass-fullmir", &host, &host, true, opt);
+}
+
+#[test]
+fn run_pass_miri_noopt() {
+    run_pass_miri(false);
+}
+
+#[test]
+fn run_pass_miri_opt() {
+    run_pass_miri(true);
 }
 
 #[test]

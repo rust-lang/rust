@@ -27,9 +27,9 @@ pub use self::eval_context::{EvalContext, Frame, ResourceLimits, StackPopCleanup
 
 pub use self::lvalue::{Lvalue, LvalueExtra, GlobalId};
 
-pub use self::memory::{AllocId, Memory, MemoryPointer, MemoryKind, HasMemory, AllocIdKind};
+pub use self::memory::{AllocId, Memory, MemoryPointer, MemoryKind, HasMemory, AccessKind, AllocIdKind};
 
-use self::memory::{PointerArithmetic, Lock, AccessKind};
+use self::memory::{PointerArithmetic, Lock};
 
 use self::range_map::RangeMap;
 

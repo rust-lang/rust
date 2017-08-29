@@ -1,4 +1,4 @@
 fn main() {
-    let x: i32 = unsafe { *std::ptr::null() }; //~ ERROR: a memory access tried to interpret some bytes as a pointer
+    let x: i32 = unsafe { *std::ptr::null() }; //~ ERROR: invalid use of NULL pointer
     panic!("this should never print: {}", x);
 }

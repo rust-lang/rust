@@ -176,13 +176,13 @@ impl<'a, 'tcx: 'a> Value {
         mem: &Memory<'a, 'tcx, M>,
     ) -> EvalResult<'tcx, Pointer> {
         use self::Value::*;
-        match *self {
+        Ok(match *self {
             ByRef(PtrAndAlign { ptr, aligned }) => {
-                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr(ptr.to_ptr()?))
+                mem.read_maybe_aligned(aligned, |mem| mem.read_ptr_sized_unsigned(ptr.to_ptr()?))?
             }
             ByVal(ptr) |
-            ByValPair(ptr, _) => Ok(ptr.into()),
-        }
+            ByValPair(ptr, _) => ptr,
+        }.into())
     }
 
     pub(super) fn into_ptr_vtable_pair<M: Machine<'tcx>>(
@@ -196,11 +196,11 @@ impl<'a, 'tcx: 'a> Value {
                       aligned,
                   }) => {
                 mem.read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                    let vtable = mem.read_ptr(
+                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
+                    let vtable = mem.read_ptr_sized_unsigned(
                         ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?,
-                    )?;
-                    Ok((ptr, vtable.to_ptr()?))
+                    )?.to_ptr()?;
+                    Ok((ptr, vtable))
                 })
             }
 
@@ -222,10 +222,10 @@ impl<'a, 'tcx: 'a> Value {
                       aligned,
                   }) => {
                 mem.read_maybe_aligned(aligned, |mem| {
-                    let ptr = mem.read_ptr(ref_ptr.to_ptr()?)?;
-                    let len = mem.read_usize(
+                    let ptr = mem.read_ptr_sized_unsigned(ref_ptr.to_ptr()?)?.into();
+                    let len = mem.read_ptr_sized_unsigned(
                         ref_ptr.offset(mem.pointer_size(), mem.layout)?.to_ptr()?,
-                    )?;
+                    )?.to_bytes()? as u64;
                     Ok((ptr, len))
                 })
             }

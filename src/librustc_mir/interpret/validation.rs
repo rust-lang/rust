@@ -275,7 +275,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // Check alignment and non-NULLness
         let (_, align) = self.size_and_align_of_dst(pointee_ty, val)?;
         let ptr = val.into_ptr(&self.memory)?;
-        self.memory.check_align(ptr, align)?;
+        self.memory.check_align(ptr, align, None)?;
 
         // Recurse
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;

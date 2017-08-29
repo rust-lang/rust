@@ -11,8 +11,8 @@ use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 
-use super::{EvalResult, EvalContext, StackPopCleanup, TyAndPacked, PtrAndAlign, GlobalId, Lvalue,
-            HasMemory, MemoryKind, Machine};
+use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Lvalue,
+            MemoryKind, Machine, PrimVal};
 
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
@@ -106,10 +106,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     Layout::General { discr, .. } => {
                         let discr_size = discr.size().bytes();
                         let dest_ptr = self.force_allocation(dest)?.to_ptr()?;
-                        self.memory.write_uint(
+                        self.memory.write_primval(
                             dest_ptr,
-                            variant_index as u128,
+                            PrimVal::Bytes(variant_index as u128),
                             discr_size,
+                            false
                         )?
                     }
 
@@ -125,23 +126,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                         ..
                     } => {
                         if variant_index as u64 != nndiscr {
-                            let (offset, TyAndPacked { ty, packed }) = self.nonnull_offset_and_ty(
+                            self.write_struct_wrapped_null_pointer(
                                 dest_ty,
                                 nndiscr,
                                 discrfield_source,
+                                dest,
                             )?;
-                            let nonnull = self.force_allocation(dest)?.to_ptr()?.offset(
-                                offset.bytes(),
-                                &self,
-                            )?;
-                            trace!("struct wrapped nullable pointer type: {}", ty);
-                            // only the pointer part of a fat pointer is used for this space optimization
-                            let discr_size = self.type_size(ty)?.expect(
-                                "bad StructWrappedNullablePointer discrfield",
-                            );
-                            self.write_maybe_aligned_mut(!packed, |ectx| {
-                                ectx.memory.write_uint(nonnull, 0, discr_size)
-                            })?;
                         }
                     }
 
@@ -229,7 +219,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 ptr_size,
                 MemoryKind::UninitializedStatic,
             )?;
-            self.memory.write_usize(ptr, 0)?;
+            self.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
             self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
             self.globals.insert(
                 cid,
