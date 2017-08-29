@@ -430,17 +430,17 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
             FloatTy::F32 => {
                 let zero = ConstFloat {
                     ty: FloatTy::F32,
-                    bits: 0.0_f32.to_bits() as u128,
+                    bits: u128::from(0.0_f32.to_bits()),
                 };
 
                 let infinity = ConstFloat {
                     ty: FloatTy::F32,
-                    bits: ::std::f32::INFINITY.to_bits() as u128,
+                    bits: u128::from(::std::f32::INFINITY.to_bits()),
                 };
 
                 let neg_infinity = ConstFloat {
                     ty: FloatTy::F32,
-                    bits: ::std::f32::NEG_INFINITY.to_bits() as u128,
+                    bits: u128::from(::std::f32::NEG_INFINITY.to_bits()),
                 };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
@@ -449,17 +449,17 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
             FloatTy::F64 => {
                 let zero = ConstFloat {
                     ty: FloatTy::F64,
-                    bits: 0.0_f64.to_bits() as u128,
+                    bits: u128::from(0.0_f64.to_bits()),
                 };
 
                 let infinity = ConstFloat {
                     ty: FloatTy::F64,
-                    bits: ::std::f64::INFINITY.to_bits() as u128,
+                    bits: u128::from(::std::f64::INFINITY.to_bits()),
                 };
 
                 let neg_infinity = ConstFloat {
                     ty: FloatTy::F64,
-                    bits: ::std::f64::NEG_INFINITY.to_bits() as u128,
+                    bits: u128::from(::std::f64::NEG_INFINITY.to_bits()),
                 };
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||

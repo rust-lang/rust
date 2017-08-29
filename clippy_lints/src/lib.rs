@@ -358,6 +358,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         shadow::SHADOW_UNRELATED,
         strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
+        types::CAST_LOSSLESS,
         types::CAST_POSSIBLE_TRUNCATION,
         types::CAST_POSSIBLE_WRAP,
         types::CAST_PRECISION_LOSS,

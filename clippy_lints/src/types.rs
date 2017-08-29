@@ -481,6 +481,28 @@ declare_lint! {
      and `x > i32::MAX`"
 }
 
+/// **What it does:** Checks for on casts between numerical types that may
+/// be replaced by safe conversion functions.
+///
+/// **Why is this bad?** Rust's `as` keyword will perform many kinds of
+/// conversions, including silently lossy conversions. Conversion functions such
+/// as `i32::from` will only perform lossless conversions. Using the conversion
+/// functions prevents conversions from turning into silent lossy conversions if
+/// the types of the input expressions ever change, and make it easier for
+/// people reading the code to know that the conversion is lossless.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// fn as_u64(x: u8) -> u64 { x as u64 }
+/// ```
+declare_lint! {
+    pub CAST_LOSSLESS,
+    Allow,
+    "casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`"
+}
+
 /// **What it does:** Checks for casts to the same type.
 ///
 /// **Why is this bad?** It's just unnecessary.
@@ -558,6 +580,17 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
             mantissa_nbits
         ),
     );
+}
+
+fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+    span_lint_and_sugg(cx,
+                       CAST_LOSSLESS,
+                       expr.span,
+                       &format!("casting {} to {} may become silently lossy if types change",
+                               cast_from,
+                               cast_to),
+                       "try",
+                       format!("{}::from({})", cast_to, &snippet(cx, op.span, "..")));
 }
 
 enum ArchSuffix {
@@ -643,6 +676,16 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, c
     }
 }
 
+fn check_lossless(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+    let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
+    let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
+    let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
+    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) &&
+       from_nbits < to_nbits && !cast_signed_to_unsigned {
+        span_lossless_lint(cx, expr, op, cast_from, cast_to);
+    }
+}
+
 impl LintPass for CastPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
@@ -650,6 +693,7 @@ impl LintPass for CastPass {
             CAST_SIGN_LOSS,
             CAST_POSSIBLE_TRUNCATION,
             CAST_POSSIBLE_WRAP,
+            CAST_LOSSLESS,
             UNNECESSARY_CAST
         )
     }
@@ -688,6 +732,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
+                        if from_nbits < to_nbits {
+                            span_lossless_lint(cx, expr, ex, cast_from, cast_to);
+                        }
                     },
                     (false, true) => {
                         span_lint(
@@ -715,6 +762,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             );
                         }
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
+                        check_lossless(cx, expr, ex, cast_from, cast_to);
                     },
                     (false, false) => {
                         if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) =
@@ -726,6 +774,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                 expr.span,
                                 "casting f64 to f32 may truncate the value",
                             );
+                        }
+                        if let (&ty::TyFloat(FloatTy::F32), &ty::TyFloat(FloatTy::F64)) =
+                            (&cast_from.sty, &cast_to.sty) {
+                            span_lossless_lint(cx, expr, ex, cast_from, cast_to);
                         }
                     },
                 }
@@ -1233,20 +1285,20 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
         match pre_cast_ty.sty {
             ty::TyInt(int_ty) => {
                 Some(match int_ty {
-                    IntTy::I8 => (FullInt::S(i8::min_value() as i128), FullInt::S(i8::max_value() as i128)),
-                    IntTy::I16 => (FullInt::S(i16::min_value() as i128), FullInt::S(i16::max_value() as i128)),
-                    IntTy::I32 => (FullInt::S(i32::min_value() as i128), FullInt::S(i32::max_value() as i128)),
-                    IntTy::I64 => (FullInt::S(i64::min_value() as i128), FullInt::S(i64::max_value() as i128)),
+                    IntTy::I8 => (FullInt::S(i128::from(i8::min_value())), FullInt::S(i128::from(i8::max_value()))),
+                    IntTy::I16 => (FullInt::S(i128::from(i16::min_value())), FullInt::S(i128::from(i16::max_value()))),
+                    IntTy::I32 => (FullInt::S(i128::from(i32::min_value())), FullInt::S(i128::from(i32::max_value()))),
+                    IntTy::I64 => (FullInt::S(i128::from(i64::min_value())), FullInt::S(i128::from(i64::max_value()))),
                     IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
                     IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
                 })
             },
             ty::TyUint(uint_ty) => {
                 Some(match uint_ty {
-                    UintTy::U8 => (FullInt::U(u8::min_value() as u128), FullInt::U(u8::max_value() as u128)),
-                    UintTy::U16 => (FullInt::U(u16::min_value() as u128), FullInt::U(u16::max_value() as u128)),
-                    UintTy::U32 => (FullInt::U(u32::min_value() as u128), FullInt::U(u32::max_value() as u128)),
-                    UintTy::U64 => (FullInt::U(u64::min_value() as u128), FullInt::U(u64::max_value() as u128)),
+                    UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
+                    UintTy::U16 => (FullInt::U(u128::from(u16::min_value())), FullInt::U(u128::from(u16::max_value()))),
+                    UintTy::U32 => (FullInt::U(u128::from(u32::min_value())), FullInt::U(u128::from(u32::max_value()))),
+                    UintTy::U64 => (FullInt::U(u128::from(u64::min_value())), FullInt::U(u128::from(u64::max_value()))),
                     UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
                     UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
                 })
