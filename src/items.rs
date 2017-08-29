@@ -533,11 +533,7 @@ pub fn format_impl(
         let where_budget = if result.contains('\n') {
             context.config.max_width()
         } else {
-            context
-                .config
-                .max_width()
-                .checked_sub(last_line_width(&result))
-                .unwrap_or(0)
+            context.budget(last_line_width(&result))
         };
         let option = WhereClauseOption::snuggled(&ref_and_type);
         let where_clause_str = try_opt!(rewrite_where_clause(
@@ -756,11 +752,7 @@ fn format_impl_ref_and_type(
         };
         let used_space = last_line_width(&result) + trait_ref_overhead + curly_brace_overhead;
         // 1 = space before the type.
-        let budget = context
-            .config
-            .max_width()
-            .checked_sub(used_space + 1)
-            .unwrap_or(0);
+        let budget = context.budget(used_space + 1);
         if let Some(self_ty_str) = self_ty.rewrite(context, Shape::legacy(budget, offset)) {
             if !self_ty_str.contains('\n') {
                 if trait_ref.is_some() {
@@ -781,7 +773,7 @@ fn format_impl_ref_and_type(
         if trait_ref.is_some() {
             result.push_str("for ");
         }
-        let budget = context.config.max_width() - last_line_width(&result);
+        let budget = context.budget(last_line_width(&result));
         let type_offset = match context.config.where_style() {
             Style::Legacy => new_line_offset + trait_ref_overhead,
             Style::Rfc => new_line_offset,
@@ -925,12 +917,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             Density::Tall
         };
 
-        let where_budget = try_opt!(
-            context
-                .config
-                .max_width()
-                .checked_sub(last_line_width(&result))
-        );
+        let where_budget = context.budget(last_line_width(&result));
         let pos_before_where = if type_param_bounds.is_empty() {
             generics.where_clause.span.lo()
         } else {
@@ -1076,11 +1063,7 @@ pub fn format_struct_struct(
             let overhead = if fields.is_empty() { 3 } else { 2 };
             if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine &&
                 !fields.is_empty()) ||
-                context
-                    .config
-                    .max_width()
-                    .checked_sub(result.len())
-                    .unwrap_or(0) < overhead
+                context.config.max_width() < overhead + result.len()
             {
                 format!("\n{}{{", offset.block_only().to_string(context.config))
             } else {
@@ -1118,11 +1101,7 @@ pub fn format_struct_struct(
     }
 
     // 3 = ` ` and ` }`
-    let one_line_budget = context
-        .config
-        .max_width()
-        .checked_sub(result.len() + 3 + offset.width())
-        .unwrap_or(0);
+    let one_line_budget = context.budget(result.len() + 3 + offset.width());
     let one_line_budget =
         one_line_width.map_or(0, |one_line_width| min(one_line_width, one_line_budget));
 
@@ -1282,12 +1261,7 @@ pub fn rewrite_type_alias(
     let generics_str = try_opt!(rewrite_generics(context, generics, shape, g_span));
     result.push_str(&generics_str);
 
-    let where_budget = try_opt!(
-        context
-            .config
-            .max_width()
-            .checked_sub(last_line_width(&result))
-    );
+    let where_budget = context.budget(last_line_width(&result));
     let option = WhereClauseOption::snuggled(&result);
     let where_clause_str = try_opt!(rewrite_where_clause(
         context,
@@ -1310,11 +1284,7 @@ pub fn rewrite_type_alias(
     let line_width = last_line_width(&result);
     // This checked_sub may fail as the extra space after '=' is not taken into account
     // In that case the budget is set to 0 which will make ty.rewrite retry on a new line
-    let budget = context
-        .config
-        .max_width()
-        .checked_sub(indent.width() + line_width + ";".len())
-        .unwrap_or(0);
+    let budget = context.budget(indent.width() + line_width + ";".len());
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
     let ty_str = try_opt!(
@@ -1327,12 +1297,7 @@ pub fn rewrite_type_alias(
                 let type_indent = indent.block_indent(context.config);
                 result.push('\n');
                 result.push_str(&type_indent.to_string(context.config));
-                let budget = try_opt!(
-                    context
-                        .config
-                        .max_width()
-                        .checked_sub(type_indent.width() + ";".len())
-                );
+                let budget = context.budget(type_indent.width() + ";".len());
                 ty.rewrite(context, Shape::legacy(budget, type_indent))
             })
     );
@@ -1516,7 +1481,7 @@ pub fn rewrite_static(
     if let Some(expr) = expr_opt {
         let lhs = format!("{}{} =", prefix, ty_str);
         // 1 = ;
-        let remaining_width = context.config.max_width() - offset.block_indent - 1;
+        let remaining_width = context.budget(offset.block_indent + 1);
         rewrite_assign_rhs(
             context,
             lhs,
@@ -1563,7 +1528,7 @@ pub fn rewrite_associated_type(
         let ty_str = try_opt!(ty.rewrite(
             context,
             Shape::legacy(
-                context.config.max_width() - indent.block_indent - prefix.len() - 2,
+                context.budget(indent.block_indent + prefix.len() + 2),
                 indent.block_only(),
             ),
         ));
@@ -1771,11 +1736,7 @@ fn rewrite_fn_base(
         2
     };
     let used_width = last_line_used_width(&result, indent.width());
-    let one_line_budget = context
-        .config
-        .max_width()
-        .checked_sub(used_width + overhead)
-        .unwrap_or(0);
+    let one_line_budget = context.budget(used_width + overhead);
     let shape = Shape {
         width: one_line_budget,
         indent: indent,
@@ -2011,11 +1972,7 @@ fn rewrite_fn_base(
     };
 
     if where_clause.predicates.len() == 1 && should_compress_where {
-        let budget = context
-            .config
-            .max_width()
-            .checked_sub(last_line_used_width(&result, indent.width()))
-            .unwrap_or(0);
+        let budget = context.budget(last_line_used_width(&result, indent.width()));
         if let Some(where_clause_str) = rewrite_where_clause(
             context,
             where_clause,
@@ -2294,27 +2251,19 @@ fn compute_budgets_for_args(
             // 1 = `;`
             used_space += 1;
         }
-        let one_line_budget = context
-            .config
-            .max_width()
-            .checked_sub(used_space)
-            .unwrap_or(0);
+        let one_line_budget = context.budget(used_space);
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
             let (indent, multi_line_budget) = match context.config.fn_args_layout() {
                 IndentStyle::Block => {
                     let indent = indent.block_indent(context.config);
-                    let budget =
-                        try_opt!(context.config.max_width().checked_sub(indent.width() + 1));
-                    (indent, budget)
+                    (indent, context.budget(indent.width() + 1))
                 }
                 IndentStyle::Visual => {
                     let indent = indent + result.len() + 1;
                     let multi_line_overhead = indent.width() + if newline_brace { 2 } else { 4 };
-                    let budget =
-                        try_opt!(context.config.max_width().checked_sub(multi_line_overhead));
-                    (indent, budget)
+                    (indent, context.budget(multi_line_overhead))
                 }
             };
 
@@ -2330,8 +2279,7 @@ fn compute_budgets_for_args(
         // Account for `)` and possibly ` {`.
         IndentStyle::Visual => new_indent.width() + if ret_str_len == 0 { 1 } else { 3 },
     };
-    let max_space = try_opt!(context.config.max_width().checked_sub(used_space));
-    Some((0, max_space, new_indent))
+    Some((0, context.budget(used_space), new_indent))
 }
 
 fn newline_for_brace(config: &Config, where_clause: &ast::WhereClause, has_body: bool) -> bool {
@@ -2744,11 +2692,7 @@ fn format_generics(
     let mut result = try_opt!(rewrite_generics(context, generics, shape, span));
 
     let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
-        let budget = context
-            .config
-            .max_width()
-            .checked_sub(last_line_used_width(&result, offset.width()))
-            .unwrap_or(0);
+        let budget = context.budget(last_line_used_width(&result, offset.width()));
         let option = WhereClauseOption::snuggled(&result);
         let where_clause_str = try_opt!(rewrite_where_clause(
             context,
@@ -2769,11 +2713,7 @@ fn format_generics(
             brace_style != BraceStyle::AlwaysNextLine
     };
     let total_used_width = last_line_used_width(&result, used_width);
-    let remaining_budget = context
-        .config
-        .max_width()
-        .checked_sub(total_used_width)
-        .unwrap_or(0);
+    let remaining_budget = context.budget(total_used_width);
     // If the same line brace if forced, it indicates that we are rewriting an item with empty body,
     // and hence we take the closer into account as well for one line budget.
     // We assume that the closer has the same length as the opener.
