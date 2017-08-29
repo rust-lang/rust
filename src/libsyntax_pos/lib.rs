@@ -25,6 +25,7 @@
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
+#![feature(staged_api)]
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
@@ -60,13 +61,20 @@ pub type FileName = String;
 /// range between files.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub struct Span {
-    lo: BytePos,
-    hi: BytePos,
+    #[unstable(feature = "rustc_private", issue = "27812")]
+    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
+    pub lo: BytePos,
+    #[unstable(feature = "rustc_private", issue = "27812")]
+    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
+    pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    ctxt: SyntaxContext,
+    #[unstable(feature = "rustc_private", issue = "27812")]
+    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
+    pub ctxt: SyntaxContext,
 }
 
+#[allow(deprecated)]
 pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), ctxt: NO_EXPANSION };
 
 /// A collection of spans. Spans have two orthogonal attributes:
@@ -82,11 +90,13 @@ pub struct MultiSpan {
 }
 
 impl Span {
+    #[allow(deprecated)]
     #[inline]
     pub fn new(lo: BytePos, hi: BytePos, ctxt: SyntaxContext) -> Self {
         if lo <= hi { Span { lo, hi, ctxt } } else { Span { lo: hi, hi: lo, ctxt } }
     }
 
+    #[allow(deprecated)]
     #[inline]
     pub fn lo(self) -> BytePos {
         self.lo
@@ -95,6 +105,7 @@ impl Span {
     pub fn with_lo(self, lo: BytePos) -> Span {
         Span::new(lo, self.hi(), self.ctxt())
     }
+    #[allow(deprecated)]
     #[inline]
     pub fn hi(self) -> BytePos {
         self.hi
@@ -103,6 +114,7 @@ impl Span {
     pub fn with_hi(self, hi: BytePos) -> Span {
         Span::new(self.lo(), hi, self.ctxt())
     }
+    #[allow(deprecated)]
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
         self.ctxt
