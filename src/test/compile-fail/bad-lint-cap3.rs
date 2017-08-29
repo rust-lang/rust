@@ -10,6 +10,7 @@
 
 // compile-flags: --cap-lints warn
 
+#![warn(unused)]
 #![deny(warnings)]
 #![feature(rustc_attrs)]
 

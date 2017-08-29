@@ -566,7 +566,7 @@ assume_usize_width! {
     );
 }
 
-/// Conversinos where neither the min nor the max of $source can be represented by
+/// Conversions where neither the min nor the max of $source can be represented by
 /// $target, but max/min of the target can be represented by the source.
 macro_rules! test_impl_try_from_signed_to_unsigned_err {
     ($fn_name:ident, $source:ty, $target:ty) => {

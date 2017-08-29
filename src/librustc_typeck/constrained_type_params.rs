@@ -48,7 +48,7 @@ pub fn parameters_for<'tcx, T>(t: &T,
 
     let mut collector = ParameterCollector {
         parameters: vec![],
-        include_nonconstraining: include_nonconstraining
+        include_nonconstraining,
     };
     t.visit_with(&mut collector);
     collector.parameters
@@ -98,7 +98,7 @@ pub fn identify_constrained_type_params<'tcx>(tcx: ty::TyCtxt,
 
 /// Order the predicates in `predicates` such that each parameter is
 /// constrained before it is used, if that is possible, and add the
-/// paramaters so constrained to `input_parameters`. For example,
+/// parameters so constrained to `input_parameters`. For example,
 /// imagine the following impl:
 ///
 ///     impl<T: Debug, U: Iterator<Item=T>> Trait for U

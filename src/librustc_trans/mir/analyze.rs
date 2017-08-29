@@ -216,8 +216,10 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
                 TerminatorKind::Return |
+                TerminatorKind::GeneratorDrop |
                 TerminatorKind::Unreachable |
-                TerminatorKind::SwitchInt { .. } => {
+                TerminatorKind::SwitchInt { .. } |
+                TerminatorKind::Yield { .. }  => {
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |

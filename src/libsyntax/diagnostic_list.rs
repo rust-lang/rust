@@ -42,7 +42,7 @@ The `inline` attribute was malformed.
 
 Erroneous code example:
 
-```compile_fail,E0534
+```ignore (compile_fail not working here; see Issue #43707)
 #[inline()] // error: expected one argument
 pub fn something() {}
 
@@ -80,7 +80,7 @@ An unknown argument was given to the `inline` attribute.
 
 Erroneous code example:
 
-```compile_fail,E0535
+```ignore (compile_fail not working here; see Issue #43707)
 #[inline(unknown)] // error: invalid argument
 pub fn something() {}
 
@@ -162,6 +162,63 @@ For more information about the cfg attribute, read:
 https://doc.rust-lang.org/reference.html#conditional-compilation
 "##,
 
+E0552: r##"
+A unrecognized representation attribute was used.
+
+Erroneous code example:
+
+```compile_fail,E0552
+#[repr(D)] // error: unrecognized representation hint
+struct MyStruct {
+    my_field: usize
+}
+```
+
+You can use a `repr` attribute to tell the compiler how you want a struct or
+enum to be laid out in memory.
+
+Make sure you're using one of the supported options:
+
+```
+#[repr(C)] // ok!
+struct MyStruct {
+    my_field: usize
+}
+```
+
+For more information about specifying representations, see the ["Alternative
+Representations" section] of the Rustonomicon.
+
+["Alternative Representations" section]: https://doc.rust-lang.org/nomicon/other-reprs.html
+"##,
+
+E0554: r##"
+Feature attributes are only allowed on the nightly release channel. Stable or
+beta compilers will not comply.
+
+Example of erroneous code (on a stable compiler):
+
+```ignore (depends on release channel)
+#![feature(non_ascii_idents)] // error: #![feature] may not be used on the
+                              //        stable release channel
+```
+
+If you need the feature, make sure to use a nightly release of the compiler
+(but be warned that the feature may be removed or altered in the future).
+"##,
+
+E0557: r##"
+A feature attribute named a feature that has been removed.
+
+Erroneous code example:
+
+```compile_fail,E0557
+#![feature(managed_boxes)] // error: feature has been removed
+```
+
+Delete the offending feature attribute.
+"##,
+
 E0558: r##"
 The `export_name` attribute was malformed.
 
@@ -190,7 +247,9 @@ A literal was used in an attribute that doesn't support literals.
 
 Erroneous code example:
 
-```compile_fail,E0565
+```ignore (compile_fail not working here; see Issue #43707)
+#![feature(attr_literals)]
+
 #[inline("always")] // error: unsupported literal
 pub fn something() {}
 ```
@@ -209,7 +268,7 @@ A file wasn't found for an out-of-line module.
 
 Erroneous code example:
 
-```compile_fail,E0583
+```ignore (compile_fail not working here; see Issue #43707)
 mod file_that_doesnt_exist; // error: file not found for module
 
 fn main() {}
@@ -251,23 +310,33 @@ An inclusive range was used with no end.
 Erroneous code example:
 
 ```compile_fail,E0586
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1...]; // error: inclusive range was used with no end
+#![feature(inclusive_range_syntax)]
+
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1...]; // error: inclusive range was used with no end
+}
 ```
 
 An inclusive range needs an end in order to *include* it. If you just need a
 start and no end, use a non-inclusive range (with `..`):
 
 ```
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1..]; // ok!
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1..]; // ok!
+}
 ```
 
 Or put an end to your inclusive range:
 
 ```
-let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
-let x = &tmp[1...3]; // ok!
+#![feature(inclusive_range_syntax)]
+
+fn main() {
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1...3]; // ok!
+}
 ```
 "##,
 
@@ -288,11 +357,8 @@ register_diagnostics! {
     E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
-    E0552, // unrecognized representation hint
-    E0554, // #[feature] may not be used on the [] release channel
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
-    E0557, // feature has been removed
     E0584, // file for module `..` found at both .. and ..
     E0589, // invalid `repr(align)` attribute
 }

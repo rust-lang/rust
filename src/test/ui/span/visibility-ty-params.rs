@@ -13,11 +13,11 @@ macro_rules! m {
 }
 
 struct S<T>(T);
-m!{ S<u8> } //~ ERROR generic arguments in visibility path
+m!{ S<u8> } //~ ERROR unexpected generic arguments in path
 //~^ ERROR expected module, found struct `S`
 
 mod m {
-    m!{ m<> } //~ ERROR generic arguments in visibility path
+    m!{ m<> } //~ ERROR unexpected generic arguments in path
 }
 
 fn main() {}

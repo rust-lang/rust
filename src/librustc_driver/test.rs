@@ -106,7 +106,7 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
     let sess = session::build_session_(options,
                                        &dep_graph,
                                        None,
@@ -119,7 +119,9 @@ fn test_env<F>(source_string: &str,
         name: driver::anon_src(),
         input: source_string.to_string(),
     };
-    let krate = driver::phase_1_parse_input(&sess, &input).unwrap();
+    let krate = driver::phase_1_parse_input(&driver::CompileController::basic(),
+                                            &sess,
+                                            &input).unwrap();
     let driver::ExpansionResult { defs, resolutions, mut hir_forest, .. } = {
         driver::phase_2_configure_and_expand(&sess,
                                              &cstore,

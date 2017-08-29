@@ -27,10 +27,9 @@ use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -39,7 +38,6 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use std::marker::PhantomData;
-use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
 use abi::Abi;
@@ -124,12 +122,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     /// Cache of emitted const globals (value -> global)
     const_globals: RefCell<FxHashMap<ValueRef, ValueRef>>,
 
-    /// Cache of emitted const values
-    const_values: RefCell<FxHashMap<(ast::NodeId, &'tcx Substs<'tcx>), ValueRef>>,
-
-    /// Cache of external const values
-    extern_const_values: RefCell<DefIdMap<ValueRef>>,
-
     /// Mapping from static definitions to their DefId's.
     statics: RefCell<FxHashMap<ValueRef, DefId>>,
 
@@ -144,7 +136,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    type_hashcodes: RefCell<FxHashMap<Ty<'tcx>, String>>,
     int_type: Type,
     opaque_vec_type: Type,
     str_slice_type: Type,
@@ -156,9 +147,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FxHashMap<&'static str, ValueRef>>,
-
-    /// Depth of the current type-of computation - used to bail out
-    type_of_depth: Cell<usize>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
@@ -323,10 +311,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
         SharedCrateContext {
-            tcx: tcx,
-            check_overflow: check_overflow,
-            use_dll_storage_attrs: use_dll_storage_attrs,
-            output_filenames: output_filenames,
+            tcx,
+            check_overflow,
+            use_dll_storage_attrs,
+            output_filenames,
         }
     }
 
@@ -395,10 +383,10 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
             };
 
             let local_ccx = LocalCrateContext {
-                llmod: llmod,
-                llcx: llcx,
+                llmod,
+                llcx,
                 stats: Stats::default(),
-                codegen_unit: codegen_unit,
+                codegen_unit,
                 crate_trans_items,
                 exported_symbols,
                 instances: RefCell::new(FxHashMap()),
@@ -406,22 +394,18 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 const_cstr_cache: RefCell::new(FxHashMap()),
                 const_unsized: RefCell::new(FxHashMap()),
                 const_globals: RefCell::new(FxHashMap()),
-                const_values: RefCell::new(FxHashMap()),
-                extern_const_values: RefCell::new(DefIdMap()),
                 statics: RefCell::new(FxHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
-                type_hashcodes: RefCell::new(FxHashMap()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
-                dbg_cx: dbg_cx,
+                dbg_cx,
                 eh_personality: Cell::new(None),
                 eh_unwind_resume: Cell::new(None),
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
-                type_of_depth: Cell::new(0),
                 local_gen_sym_counter: Cell::new(0),
                 placeholder: PhantomData,
             };
@@ -462,7 +446,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                  -> CrateContext<'a, 'tcx> {
         assert!(local_ccxs.len() == 1);
         CrateContext {
-            shared: shared,
+            shared,
             local_ccx: &local_ccxs[0]
         }
     }
@@ -545,15 +529,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().const_globals
     }
 
-    pub fn const_values<'a>(&'a self) -> &'a RefCell<FxHashMap<(ast::NodeId, &'tcx Substs<'tcx>),
-                                                               ValueRef>> {
-        &self.local().const_values
-    }
-
-    pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
-        &self.local().extern_const_values
-    }
-
     pub fn statics<'a>(&'a self) -> &'a RefCell<FxHashMap<ValueRef, DefId>> {
         &self.local().statics
     }
@@ -570,20 +545,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().lltypes
     }
 
-    pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, String>> {
-        &self.local().type_hashcodes
-    }
-
     pub fn stats<'a>(&'a self) -> &'a Stats {
         &self.local().stats
     }
 
     pub fn int_type(&self) -> Type {
         self.local().int_type
-    }
-
-    pub fn opaque_vec_type(&self) -> Type {
-        self.local().opaque_vec_type
     }
 
     pub fn str_slice_type(&self) -> Type {
@@ -602,39 +569,12 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().intrinsics
     }
 
-    pub fn obj_size_bound(&self) -> u64 {
-        self.tcx().data_layout.obj_size_bound()
-    }
-
-    pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
-        self.sess().fatal(
-            &format!("the type `{:?}` is too big for the current architecture",
-                    obj))
-    }
-
-    pub fn enter_type_of(&self, ty: Ty<'tcx>) -> TypeOfDepthLock<'b, 'tcx> {
-        let current_depth = self.local().type_of_depth.get();
-        debug!("enter_type_of({:?}) at depth {:?}", ty, current_depth);
-        if current_depth > self.sess().recursion_limit.get() {
-            self.sess().fatal(
-                &format!("overflow representing the type `{}`", ty))
-        }
-        self.local().type_of_depth.set(current_depth + 1);
-        TypeOfDepthLock(self.local())
-    }
-
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
-    }
-
-    /// Given the def-id of some item that has no type parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        self.tcx().empty_substs_for_def_id(item_def_id)
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -773,14 +713,6 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
 
     fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.shared.normalize_projections(ty)
-    }
-}
-
-pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'a, 'tcx>);
-
-impl<'a, 'tcx> Drop for TypeOfDepthLock<'a, 'tcx> {
-    fn drop(&mut self) {
-        self.0.type_of_depth.set(self.0.type_of_depth.get() - 1);
     }
 }
 

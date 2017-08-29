@@ -260,6 +260,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if !static_sources.is_empty() {
                     err.note("found the following associated functions; to be used as methods, \
                               functions must have a `self` parameter");
+                    err.help(&format!("try with `{}::{}`", self.ty_to_string(actual), item_name));
 
                     report_candidates(&mut err, static_sources);
                 }
@@ -311,9 +312,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.sess().span_err(span, &msg);
             }
 
-            MethodError::PrivateMatch(def) => {
-                let msg = format!("{} `{}` is private", def.kind_name(), item_name);
-                self.tcx.sess.span_err(span, &msg);
+            MethodError::PrivateMatch(def, out_of_scope_traits) => {
+                let mut err = struct_span_err!(self.tcx.sess, span, E0624,
+                                               "{} `{}` is private", def.kind_name(), item_name);
+                self.suggest_valid_traits(&mut err, out_of_scope_traits);
+                err.emit();
             }
 
             MethodError::IllegalSizedBound(candidates) => {
@@ -353,13 +356,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err.note(&msg[..]);
     }
 
-    fn suggest_traits_to_import(&self,
-                                err: &mut DiagnosticBuilder,
-                                span: Span,
-                                rcvr_ty: Ty<'tcx>,
-                                item_name: ast::Name,
-                                rcvr_expr: Option<&hir::Expr>,
-                                valid_out_of_scope_traits: Vec<DefId>) {
+    fn suggest_valid_traits(&self,
+                            err: &mut DiagnosticBuilder,
+                            valid_out_of_scope_traits: Vec<DefId>) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
             candidates.sort();
@@ -379,6 +378,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             });
 
             self.suggest_use_candidates(err, msg, candidates);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn suggest_traits_to_import(&self,
+                                err: &mut DiagnosticBuilder,
+                                span: Span,
+                                rcvr_ty: Ty<'tcx>,
+                                item_name: ast::Name,
+                                rcvr_expr: Option<&hir::Expr>,
+                                valid_out_of_scope_traits: Vec<DefId>) {
+        if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
 
@@ -572,7 +585,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
     let borrow = tcx.all_traits.borrow();
     assert!(borrow.is_some());
     AllTraits {
-        borrow: borrow,
+        borrow,
         idx: 0,
     }
 }

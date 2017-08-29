@@ -442,7 +442,7 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
         }
         FullDecoded::Finite(ref decoded) => {
             let (len, exp) = format_shortest(decoded, buf);
-            Formatted { sign: sign,
+            Formatted { sign,
                         parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
         }
     }
@@ -581,7 +581,7 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 
             let trunc = if ndigits < maxlen { ndigits } else { maxlen };
             let (len, exp) = format_exact(decoded, &mut buf[..trunc], i16::MIN);
-            Formatted { sign: sign,
+            Formatted { sign,
                         parts: digits_to_exp_str(&buf[..len], exp, ndigits, upper, parts) }
         }
     }
@@ -652,7 +652,7 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
                     Formatted { sign: sign, parts: &parts[..1] }
                 }
             } else {
-                Formatted { sign: sign,
+                Formatted { sign,
                             parts: digits_to_dec_str(&buf[..len], exp, frac_digits, parts) }
             }
         }

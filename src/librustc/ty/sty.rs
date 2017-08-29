@@ -135,6 +135,10 @@ pub enum TypeVariants<'tcx> {
     /// `|a| a`.
     TyClosure(DefId, ClosureSubsts<'tcx>),
 
+    /// The anonymous type of a generator. Used to represent the type of
+    /// `|a| yield a`.
+    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
+
     /// The never type `!`
     TyNever,
 
@@ -258,6 +262,51 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         self.substs[self.substs.len()-generics.own_count()..].iter().map(
             |t| t.as_type().expect("unexpected region in upvars"))
+    }
+}
+
+impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
+    /// This returns the types of the MIR locals which had to be stored across suspension points.
+    /// It is calculated in rustc_mir::transform::generator::StateTransform.
+    /// All the types here must be in the tuple in GeneratorInterior.
+    pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'a
+    {
+        let state = tcx.generator_layout(def_id).fields.iter();
+        state.map(move |d| d.ty.subst(tcx, self.substs))
+    }
+
+    /// This is the types of all the fields stored in a generator.
+    /// It includes the upvars, state types and the state discriminant which is u32.
+    pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'a
+    {
+        let upvars = self.upvar_tys(def_id, tcx);
+        let state = self.state_tys(def_id, tcx);
+        upvars.chain(iter::once(tcx.types.u32)).chain(state)
+    }
+}
+
+/// This describes the types that can be contained in a generator.
+/// It will be a type variable initially and unified in the last stages of typeck of a body.
+/// It contains a tuple of all the types that could end up on a generator frame.
+/// The state transformation MIR pass may only produce layouts which mention types in this tuple.
+/// Upvars are not counted here.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct GeneratorInterior<'tcx> {
+    pub witness: Ty<'tcx>,
+}
+
+impl<'tcx> GeneratorInterior<'tcx> {
+    pub fn new(witness: Ty<'tcx>) -> GeneratorInterior<'tcx> {
+        GeneratorInterior { witness }
+    }
+
+    pub fn as_slice(&self) -> &'tcx Slice<Ty<'tcx>> {
+        match self.witness.sty {
+            ty::TyTuple(s, _) => s,
+            _ => bug!(),
+        }
     }
 }
 
@@ -569,7 +618,7 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     pub fn trait_ref(&self, tcx: TyCtxt) -> ty::TraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::TraitRef {
-            def_id: def_id,
+            def_id,
             substs: self.substs,
         }
     }
@@ -579,6 +628,22 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct GenSig<'tcx> {
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+}
+
+pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
+
+impl<'tcx> PolyGenSig<'tcx> {
+    pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.yield_ty)
+    }
+    pub fn return_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.return_ty)
+    }
+}
 
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
@@ -739,7 +804,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// The process of doing that is called "skolemization". The bound regions
 /// are replaced by skolemized markers, which don't satisfy any relation
-/// not explicity provided.
+/// not explicitly provided.
 ///
 /// There are 2 kinds of skolemized regions in rustc: `ReFree` and
 /// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
@@ -874,7 +939,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
     pub fn trait_ref(&self, tcx: TyCtxt) -> ty::ExistentialTraitRef<'tcx> {
         let def_id = tcx.associated_item(self.item_def_id).container.id();
         ty::ExistentialTraitRef{
-            def_id: def_id,
+            def_id,
             substs: self.substs,
         }
     }
@@ -1379,7 +1444,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
-            TyClosure(_, ref substs) => {
+            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _) => {
                 substs.substs.regions().collect()
             }
             TyProjection(ref data) => {

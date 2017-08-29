@@ -41,11 +41,11 @@
 #[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Not {
-    /// The resulting type after applying the `!` operator
+    /// The resulting type after applying the `!` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the unary `!` operator
+    /// Performs the unary `!` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn not(self) -> Self::Output;
 }
@@ -68,9 +68,11 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise AND operator `&`.
 ///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
-/// In this example, the `&` operator is lifted to a trivial `Scalar` type.
+/// An implementation of `BitAnd` for a wrapper around `bool`.
 ///
 /// ```
 /// use std::ops::BitAnd;
@@ -87,16 +89,13 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     assert_eq!(Scalar(true) & Scalar(true), Scalar(true));
-///     assert_eq!(Scalar(true) & Scalar(false), Scalar(false));
-///     assert_eq!(Scalar(false) & Scalar(true), Scalar(false));
-///     assert_eq!(Scalar(false) & Scalar(false), Scalar(false));
-/// }
+/// assert_eq!(Scalar(true) & Scalar(true), Scalar(true));
+/// assert_eq!(Scalar(true) & Scalar(false), Scalar(false));
+/// assert_eq!(Scalar(false) & Scalar(true), Scalar(false));
+/// assert_eq!(Scalar(false) & Scalar(false), Scalar(false));
 /// ```
 ///
-/// In this example, the `BitAnd` trait is implemented for a `BooleanVector`
-/// struct.
+/// An implementation of `BitAnd` for a wrapper around `Vec<bool>`.
 ///
 /// ```
 /// use std::ops::BitAnd;
@@ -114,22 +113,20 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     let bv1 = BooleanVector(vec![true, true, false, false]);
-///     let bv2 = BooleanVector(vec![true, false, true, false]);
-///     let expected = BooleanVector(vec![true, false, false, false]);
-///     assert_eq!(bv1 & bv2, expected);
-/// }
+/// let bv1 = BooleanVector(vec![true, true, false, false]);
+/// let bv2 = BooleanVector(vec![true, false, true, false]);
+/// let expected = BooleanVector(vec![true, false, false, false]);
+/// assert_eq!(bv1 & bv2, expected);
 /// ```
 #[lang = "bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} & {RHS}`"]
 pub trait BitAnd<RHS=Self> {
-    /// The resulting type after applying the `&` operator
+    /// The resulting type after applying the `&` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `&` operator
+    /// Performs the `&` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitand(self, rhs: RHS) -> Self::Output;
 }
@@ -152,9 +149,11 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise OR operator `|`.
 ///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
-/// In this example, the `|` operator is lifted to a trivial `Scalar` type.
+/// An implementation of `BitOr` for a wrapper around `bool`.
 ///
 /// ```
 /// use std::ops::BitOr;
@@ -171,16 +170,13 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     assert_eq!(Scalar(true) | Scalar(true), Scalar(true));
-///     assert_eq!(Scalar(true) | Scalar(false), Scalar(true));
-///     assert_eq!(Scalar(false) | Scalar(true), Scalar(true));
-///     assert_eq!(Scalar(false) | Scalar(false), Scalar(false));
-/// }
+/// assert_eq!(Scalar(true) | Scalar(true), Scalar(true));
+/// assert_eq!(Scalar(true) | Scalar(false), Scalar(true));
+/// assert_eq!(Scalar(false) | Scalar(true), Scalar(true));
+/// assert_eq!(Scalar(false) | Scalar(false), Scalar(false));
 /// ```
 ///
-/// In this example, the `BitOr` trait is implemented for a `BooleanVector`
-/// struct.
+/// An implementation of `BitOr` for a wrapper around `Vec<bool>`.
 ///
 /// ```
 /// use std::ops::BitOr;
@@ -198,22 +194,20 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     let bv1 = BooleanVector(vec![true, true, false, false]);
-///     let bv2 = BooleanVector(vec![true, false, true, false]);
-///     let expected = BooleanVector(vec![true, true, true, false]);
-///     assert_eq!(bv1 | bv2, expected);
-/// }
+/// let bv1 = BooleanVector(vec![true, true, false, false]);
+/// let bv2 = BooleanVector(vec![true, false, true, false]);
+/// let expected = BooleanVector(vec![true, true, true, false]);
+/// assert_eq!(bv1 | bv2, expected);
 /// ```
 #[lang = "bitor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} | {RHS}`"]
 pub trait BitOr<RHS=Self> {
-    /// The resulting type after applying the `|` operator
+    /// The resulting type after applying the `|` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `|` operator
+    /// Performs the `|` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitor(self, rhs: RHS) -> Self::Output;
 }
@@ -236,9 +230,11 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise XOR operator `^`.
 ///
+/// Note that `RHS` is `Self` by default, but this is not mandatory.
+///
 /// # Examples
 ///
-/// In this example, the `^` operator is lifted to a trivial `Scalar` type.
+/// An implementation of `BitXor` that lifts `^` to a wrapper around `bool`.
 ///
 /// ```
 /// use std::ops::BitXor;
@@ -255,16 +251,13 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     assert_eq!(Scalar(true) ^ Scalar(true), Scalar(false));
-///     assert_eq!(Scalar(true) ^ Scalar(false), Scalar(true));
-///     assert_eq!(Scalar(false) ^ Scalar(true), Scalar(true));
-///     assert_eq!(Scalar(false) ^ Scalar(false), Scalar(false));
-/// }
+/// assert_eq!(Scalar(true) ^ Scalar(true), Scalar(false));
+/// assert_eq!(Scalar(true) ^ Scalar(false), Scalar(true));
+/// assert_eq!(Scalar(false) ^ Scalar(true), Scalar(true));
+/// assert_eq!(Scalar(false) ^ Scalar(false), Scalar(false));
 /// ```
 ///
-/// In this example, the `BitXor` trait is implemented for a `BooleanVector`
-/// struct.
+/// An implementation of `BitXor` trait for a wrapper around `Vec<bool>`.
 ///
 /// ```
 /// use std::ops::BitXor;
@@ -285,22 +278,20 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     let bv1 = BooleanVector(vec![true, true, false, false]);
-///     let bv2 = BooleanVector(vec![true, false, true, false]);
-///     let expected = BooleanVector(vec![false, true, true, false]);
-///     assert_eq!(bv1 ^ bv2, expected);
-/// }
+/// let bv1 = BooleanVector(vec![true, true, false, false]);
+/// let bv2 = BooleanVector(vec![true, false, true, false]);
+/// let expected = BooleanVector(vec![false, true, true, false]);
+/// assert_eq!(bv1 ^ bv2, expected);
 /// ```
 #[lang = "bitxor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} ^ {RHS}`"]
 pub trait BitXor<RHS=Self> {
-    /// The resulting type after applying the `^` operator
+    /// The resulting type after applying the `^` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `^` operator
+    /// Performs the `^` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitxor(self, rhs: RHS) -> Self::Output;
 }
@@ -326,7 +317,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// # Examples
 ///
 /// An implementation of `Shl` that lifts the `<<` operation on integers to a
-/// `Scalar` struct.
+/// wrapper around `usize`.
 ///
 /// ```
 /// use std::ops::Shl;
@@ -342,9 +333,8 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///         Scalar(lhs << rhs)
 ///     }
 /// }
-/// fn main() {
-///     assert_eq!(Scalar(4) << Scalar(2), Scalar(16));
-/// }
+///
+/// assert_eq!(Scalar(4) << Scalar(2), Scalar(16));
 /// ```
 ///
 /// An implementation of `Shl` that spins a vector leftward by a given amount.
@@ -361,7 +351,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     type Output = Self;
 ///
 ///     fn shl(self, rhs: usize) -> SpinVector<T> {
-///         // rotate the vector by `rhs` places
+///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(rhs);
 ///         let mut spun_vector: Vec<T> = vec![];
 ///         spun_vector.extend_from_slice(b);
@@ -370,20 +360,18 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
-///                SpinVector { vec: vec![2, 3, 4, 0, 1] });
-/// }
+/// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
+///            SpinVector { vec: vec![2, 3, 4, 0, 1] });
 /// ```
 #[lang = "shl"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} << {RHS}`"]
 pub trait Shl<RHS> {
-    /// The resulting type after applying the `<<` operator
+    /// The resulting type after applying the `<<` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `<<` operator
+    /// Performs the `<<` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shl(self, rhs: RHS) -> Self::Output;
 }
@@ -430,7 +418,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// # Examples
 ///
 /// An implementation of `Shr` that lifts the `>>` operation on integers to a
-/// `Scalar` struct.
+/// wrapper around `usize`.
 ///
 /// ```
 /// use std::ops::Shr;
@@ -446,9 +434,8 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///         Scalar(lhs >> rhs)
 ///     }
 /// }
-/// fn main() {
-///     assert_eq!(Scalar(16) >> Scalar(2), Scalar(4));
-/// }
+///
+/// assert_eq!(Scalar(16) >> Scalar(2), Scalar(4));
 /// ```
 ///
 /// An implementation of `Shr` that spins a vector rightward by a given amount.
@@ -465,7 +452,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///     type Output = Self;
 ///
 ///     fn shr(self, rhs: usize) -> SpinVector<T> {
-///         // rotate the vector by `rhs` places
+///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
 ///         let mut spun_vector: Vec<T> = vec![];
 ///         spun_vector.extend_from_slice(b);
@@ -474,20 +461,18 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 ///     }
 /// }
 ///
-/// fn main() {
-///     assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
-///                SpinVector { vec: vec![3, 4, 0, 1, 2] });
-/// }
+/// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
+///            SpinVector { vec: vec![3, 4, 0, 1, 2] });
 /// ```
 #[lang = "shr"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} >> {RHS}`"]
 pub trait Shr<RHS> {
-    /// The resulting type after applying the `>>` operator
+    /// The resulting type after applying the `>>` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
-    /// The method for the `>>` operator
+    /// Performs the `>>` operation.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shr(self, rhs: RHS) -> Self::Output;
 }
@@ -533,7 +518,8 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///
 /// # Examples
 ///
-/// In this example, the `&=` operator is lifted to a trivial `Scalar` type.
+/// An implementation of `BitAndAssign` that lifts the `&=` operator to a
+/// wrapper around `bool`.
 ///
 /// ```
 /// use std::ops::BitAndAssign;
@@ -548,27 +534,25 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///     }
 /// }
 ///
-/// fn main() {
-///     let mut scalar = Scalar(true);
-///     scalar &= Scalar(true);
-///     assert_eq!(scalar, Scalar(true));
+/// let mut scalar = Scalar(true);
+/// scalar &= Scalar(true);
+/// assert_eq!(scalar, Scalar(true));
 ///
-///     let mut scalar = Scalar(true);
-///     scalar &= Scalar(false);
-///     assert_eq!(scalar, Scalar(false));
+/// let mut scalar = Scalar(true);
+/// scalar &= Scalar(false);
+/// assert_eq!(scalar, Scalar(false));
 ///
-///     let mut scalar = Scalar(false);
-///     scalar &= Scalar(true);
-///     assert_eq!(scalar, Scalar(false));
+/// let mut scalar = Scalar(false);
+/// scalar &= Scalar(true);
+/// assert_eq!(scalar, Scalar(false));
 ///
-///     let mut scalar = Scalar(false);
-///     scalar &= Scalar(false);
-///     assert_eq!(scalar, Scalar(false));
-/// }
+/// let mut scalar = Scalar(false);
+/// scalar &= Scalar(false);
+/// assert_eq!(scalar, Scalar(false));
 /// ```
 ///
-/// In this example, the `BitAndAssign` trait is implemented for a
-/// `BooleanVector` struct.
+/// Here, the `BitAndAssign` trait is implemented for a wrapper around
+/// `Vec<bool>`.
 ///
 /// ```
 /// use std::ops::BitAndAssign;
@@ -577,7 +561,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 /// struct BooleanVector(Vec<bool>);
 ///
 /// impl BitAndAssign for BooleanVector {
-///     // rhs is the "right-hand side" of the expression `a &= b`
+///     // `rhs` is the "right-hand side" of the expression `a &= b`.
 ///     fn bitand_assign(&mut self, rhs: Self) {
 ///         assert_eq!(self.0.len(), rhs.0.len());
 ///         *self = BooleanVector(self.0
@@ -588,18 +572,16 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///     }
 /// }
 ///
-/// fn main() {
-///     let mut bv = BooleanVector(vec![true, true, false, false]);
-///     bv &= BooleanVector(vec![true, false, true, false]);
-///     let expected = BooleanVector(vec![true, false, false, false]);
-///     assert_eq!(bv, expected);
-/// }
+/// let mut bv = BooleanVector(vec![true, true, false, false]);
+/// bv &= BooleanVector(vec![true, false, true, false]);
+/// let expected = BooleanVector(vec![true, false, false, false]);
+/// assert_eq!(bv, expected);
 /// ```
 #[lang = "bitand_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} &= {Rhs}`"]
 pub trait BitAndAssign<Rhs=Self> {
-    /// The method for the `&=` operator
+    /// Performs the `&=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitand_assign(&mut self, rhs: Rhs);
 }
@@ -620,31 +602,31 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `BitOrAssign`. When `Foo |= Foo` happens, it ends up
-/// calling `bitor_assign`, and therefore, `main` prints `Bitwise Or-ing!`.
-///
 /// ```
 /// use std::ops::BitOrAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct PersonalPreferences {
+///     likes_cats: bool,
+///     likes_dogs: bool,
+/// }
 ///
-/// impl BitOrAssign for Foo {
-///     fn bitor_assign(&mut self, _rhs: Foo) {
-///         println!("Bitwise Or-ing!");
+/// impl BitOrAssign for PersonalPreferences {
+///     fn bitor_assign(&mut self, rhs: Self) {
+///         self.likes_cats |= rhs.likes_cats;
+///         self.likes_dogs |= rhs.likes_dogs;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo |= Foo;
-/// }
+/// let mut prefs = PersonalPreferences { likes_cats: true, likes_dogs: false };
+/// prefs |= PersonalPreferences { likes_cats: false, likes_dogs: true };
+/// assert_eq!(prefs, PersonalPreferences { likes_cats: true, likes_dogs: true });
 /// ```
 #[lang = "bitor_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} |= {Rhs}`"]
 pub trait BitOrAssign<Rhs=Self> {
-    /// The method for the `|=` operator
+    /// Performs the `|=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitor_assign(&mut self, rhs: Rhs);
 }
@@ -665,31 +647,31 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `BitXorAssign`. When `Foo ^= Foo` happens, it ends up
-/// calling `bitxor_assign`, and therefore, `main` prints `Bitwise Xor-ing!`.
-///
 /// ```
 /// use std::ops::BitXorAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Personality {
+///     has_soul: bool,
+///     likes_knitting: bool,
+/// }
 ///
-/// impl BitXorAssign for Foo {
-///     fn bitxor_assign(&mut self, _rhs: Foo) {
-///         println!("Bitwise Xor-ing!");
+/// impl BitXorAssign for Personality {
+///     fn bitxor_assign(&mut self, rhs: Self) {
+///         self.has_soul ^= rhs.has_soul;
+///         self.likes_knitting ^= rhs.likes_knitting;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo ^= Foo;
-/// }
+/// let mut personality = Personality { has_soul: false, likes_knitting: true };
+/// personality ^= Personality { has_soul: true, likes_knitting: true };
+/// assert_eq!(personality, Personality { has_soul: true, likes_knitting: false});
 /// ```
 #[lang = "bitxor_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} ^= {Rhs}`"]
 pub trait BitXorAssign<Rhs=Self> {
-    /// The method for the `^=` operator
+    /// Performs the `^=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn bitxor_assign(&mut self, rhs: Rhs);
 }
@@ -710,31 +692,29 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `ShlAssign`. When `Foo <<= Foo` happens, it ends up
-/// calling `shl_assign`, and therefore, `main` prints `Shifting left!`.
+/// An implementation of `ShlAssign` for a wrapper around `usize`.
 ///
 /// ```
 /// use std::ops::ShlAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Scalar(usize);
 ///
-/// impl ShlAssign<Foo> for Foo {
-///     fn shl_assign(&mut self, _rhs: Foo) {
-///         println!("Shifting left!");
+/// impl ShlAssign<usize> for Scalar {
+///     fn shl_assign(&mut self, rhs: usize) {
+///         self.0 <<= rhs;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo <<= Foo;
-/// }
+/// let mut scalar = Scalar(4);
+/// scalar <<= 2;
+/// assert_eq!(scalar, Scalar(16));
 /// ```
 #[lang = "shl_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} <<= {Rhs}`"]
 pub trait ShlAssign<Rhs> {
-    /// The method for the `<<=` operator
+    /// Performs the `<<=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shl_assign(&mut self, rhs: Rhs);
 }
@@ -776,31 +756,29 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 ///
 /// # Examples
 ///
-/// A trivial implementation of `ShrAssign`. When `Foo >>= Foo` happens, it ends up
-/// calling `shr_assign`, and therefore, `main` prints `Shifting right!`.
+/// An implementation of `ShrAssign` for a wrapper around `usize`.
 ///
 /// ```
 /// use std::ops::ShrAssign;
 ///
-/// struct Foo;
+/// #[derive(Debug, PartialEq)]
+/// struct Scalar(usize);
 ///
-/// impl ShrAssign<Foo> for Foo {
-///     fn shr_assign(&mut self, _rhs: Foo) {
-///         println!("Shifting right!");
+/// impl ShrAssign<usize> for Scalar {
+///     fn shr_assign(&mut self, rhs: usize) {
+///         self.0 >>= rhs;
 ///     }
 /// }
 ///
-/// # #[allow(unused_assignments)]
-/// fn main() {
-///     let mut foo = Foo;
-///     foo >>= Foo;
-/// }
+/// let mut scalar = Scalar(16);
+/// scalar >>= 2;
+/// assert_eq!(scalar, Scalar(4));
 /// ```
 #[lang = "shr_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented = "no implementation for `{Self} >>= {Rhs}`"]
 pub trait ShrAssign<Rhs=Self> {
-    /// The method for the `>>=` operator
+    /// Performs the `>>=` operation.
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
     fn shr_assign(&mut self, rhs: Rhs);
 }

@@ -61,6 +61,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let constness = match src {
             MirSource::Const(_) |
             MirSource::Static(..) => hir::Constness::Const,
+            MirSource::GeneratorDrop(..) => hir::Constness::NotConst,
             MirSource::Fn(id) => {
                 let fn_like = FnLikeNode::from_node(infcx.tcx.hir.get(id));
                 fn_like.map_or(hir::Constness::NotConst, |f| f.constness())

@@ -197,8 +197,8 @@ impl Duration {
             }
             debug_assert!(nanos < NANOS_PER_SEC);
             Some(Duration {
-                secs: secs,
-                nanos: nanos,
+                secs,
+                nanos,
             })
         } else {
             None
@@ -268,8 +268,8 @@ impl Duration {
             .and_then(|s| s.checked_add(extra_secs)) {
             debug_assert!(nanos < NANOS_PER_SEC);
             Some(Duration {
-                secs: secs,
-                nanos: nanos,
+                secs,
+                nanos,
             })
         } else {
             None

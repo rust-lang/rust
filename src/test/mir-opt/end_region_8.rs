@@ -35,7 +35,6 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //    let mut _3: ();
 //    let mut _4: [closure@NodeId(22) r:&'6_1rce D];
 //    let mut _5: &'6_1rce D;
-//    let mut _6: ();
 //    bb0: {
 //        StorageLive(_1);
 //        _1 = D::{{constructor}}(const 0i32,);

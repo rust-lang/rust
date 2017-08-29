@@ -66,7 +66,7 @@ pub trait Place<Data: ?Sized> {
 /// or `Copy`, since the `make_place` method takes `self` by value.
 #[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait Placer<Data: ?Sized> {
-    /// `Place` is the intermedate agent guarding the
+    /// `Place` is the intermediate agent guarding the
     /// uninitialized state for `Data`.
     type Place: InPlace<Data>;
 

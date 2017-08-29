@@ -13,7 +13,7 @@
 //! For now, this module is limited to extracting file descriptors,
 //! but its functionality will grow over time.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```no_run
 //! use std::fs::File;
@@ -28,6 +28,7 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(cfg(target_os = "redox"))]
 
 pub mod ffi;
 pub mod fs;

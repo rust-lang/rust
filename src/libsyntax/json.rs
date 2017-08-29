@@ -11,7 +11,7 @@
 //! A JSON emitter for errors.
 //!
 //! This works by converting errors to a simplified structural format (see the
-//! structs at the start of the file) and then serialising them. These should
+//! structs at the start of the file) and then serializing them. These should
 //! contain as much information about the error as possible.
 //!
 //! The format of the JSON output should be considered *unstable*. For now the
@@ -42,7 +42,7 @@ impl JsonEmitter {
                   code_map: Rc<CodeMap>) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
-            registry: registry,
+            registry,
             cm: code_map,
         }
     }
@@ -56,8 +56,8 @@ impl JsonEmitter {
                registry: Option<Registry>,
                code_map: Rc<CodeMap>) -> JsonEmitter {
         JsonEmitter {
-            dst: dst,
-            registry: registry,
+            dst,
+            registry,
             cm: code_map,
         }
     }
@@ -251,7 +251,7 @@ impl DiagnosticSpan {
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.macro_decl_name,
-                def_site_span: def_site_span,
+                def_site_span,
             })
         });
         DiagnosticSpan {
@@ -262,11 +262,11 @@ impl DiagnosticSpan {
             line_end: end.line,
             column_start: start.col.0 + 1,
             column_end: end.col.0 + 1,
-            is_primary: is_primary,
+            is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
             suggested_replacement: suggestion.cloned(),
             expansion: backtrace_step,
-            label: label,
+            label,
         }
     }
 
@@ -351,7 +351,7 @@ impl DiagnosticCode {
 
             DiagnosticCode {
                 code: s,
-                explanation: explanation,
+                explanation,
             }
         })
     }

@@ -345,7 +345,7 @@ pub trait Extend<A> {
 /// In a similar fashion to the [`Iterator`] protocol, once a
 /// `DoubleEndedIterator` returns `None` from a `next_back()`, calling it again
 /// may or may not ever return `Some` again. `next()` and `next_back()` are
-/// interchangable for this purpose.
+/// interchangeable for this purpose.
 ///
 /// [`Iterator`]: trait.Iterator.html
 ///
@@ -744,7 +744,7 @@ impl<I, T, E> ResultShunt<I, E>
 
     fn new(iter: I) -> Self {
         ResultShunt {
-            iter: iter,
+            iter,
             error: None,
         }
     }

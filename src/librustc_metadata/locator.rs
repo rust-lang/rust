@@ -306,10 +306,6 @@ impl<'a> Context<'a> {
         self.find_library_crate()
     }
 
-    pub fn load_library_crate(&mut self) -> Library {
-        self.find_library_crate().unwrap_or_else(|| self.report_errs())
-    }
-
     pub fn report_errs(&mut self) -> ! {
         let add = match self.root {
             &None => String::new(),
@@ -518,9 +514,9 @@ impl<'a> Context<'a> {
             if let Some((h, m)) = slot {
                 libraries.insert(h,
                                  Library {
-                                     dylib: dylib,
-                                     rlib: rlib,
-                                     rmeta: rmeta,
+                                     dylib,
+                                     rlib,
+                                     rmeta,
                                      metadata: m,
                                  });
             }
@@ -808,10 +804,10 @@ impl<'a> Context<'a> {
         match slot {
             Some((_, metadata)) => {
                 Some(Library {
-                    dylib: dylib,
-                    rlib: rlib,
-                    rmeta: rmeta,
-                    metadata: metadata,
+                    dylib,
+                    rlib,
+                    rmeta,
+                    metadata,
                 })
             }
             None => None,

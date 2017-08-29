@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
+pub use self::SyntaxExtension::*;
 
 use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
@@ -532,10 +532,16 @@ pub enum SyntaxExtension {
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
-    ///
-    /// The `bool` dictates whether the contents of the macro can
-    /// directly use `#[unstable]` things (true == yes).
-    NormalTT(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>, bool),
+    NormalTT {
+        expander: Box<TTMacroExpander>,
+        def_info: Option<(ast::NodeId, Span)>,
+        /// Whether the contents of the macro can
+        /// directly use `#[unstable]` things (true == yes).
+        allow_internal_unstable: bool,
+        /// Whether the contents of the macro can use `unsafe`
+        /// without triggering the `unsafe_code` lint.
+        allow_internal_unsafe: bool,
+    },
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
@@ -562,7 +568,7 @@ impl SyntaxExtension {
     pub fn kind(&self) -> MacroKind {
         match *self {
             SyntaxExtension::DeclMacro(..) |
-            SyntaxExtension::NormalTT(..) |
+            SyntaxExtension::NormalTT { .. } |
             SyntaxExtension::IdentTT(..) |
             SyntaxExtension::ProcMacro(..) =>
                 MacroKind::Bang,
@@ -671,10 +677,10 @@ impl<'a> ExtCtxt<'a> {
                resolver: &'a mut Resolver)
                -> ExtCtxt<'a> {
         ExtCtxt {
-            parse_sess: parse_sess,
-            ecfg: ecfg,
+            parse_sess,
+            ecfg,
             crate_root: None,
-            resolver: resolver,
+            resolver,
             resolve_err_count: 0,
             current_expansion: ExpansionData {
                 mark: Mark::root(),

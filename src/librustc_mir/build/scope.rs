@@ -89,10 +89,7 @@ should go to.
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
-use rustc::middle::lang_items;
-use rustc::middle::const_val::ConstVal;
-use rustc::ty::subst::{Kind, Subst};
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::Ty;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use syntax_pos::{Span};
@@ -116,7 +113,7 @@ pub struct Scope<'tcx> {
     /// for unwinding, for several reasons:
     ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
     ///  * LLVM's memory dependency analysis can't handle it atm
-    ///  * pollutting the cleanup MIR with StorageDead creates
+    ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
     needs_cleanup: bool,
@@ -127,23 +124,11 @@ pub struct Scope<'tcx> {
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData<'tcx>>,
 
-    /// A scope may only have one associated free, because:
-    ///
-    /// 1. We require a `free` to only be scheduled in the scope of
-    ///    `EXPR` in `box EXPR`;
-    /// 2. It only makes sense to have it translated into the diverge-path.
-    ///
-    /// This kind of drop will be run *after* all the regular drops
-    /// scheduled onto this scope, because drops may have dependencies
-    /// on the allocated memory.
-    ///
-    /// This is expected to go away once `box EXPR` becomes a sugar
-    /// for placement protocol and gets desugared in some earlier
-    /// stage.
-    free: Option<FreeData<'tcx>>,
-
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
     cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
+
+    /// The cache for drop chain on "generator drop" exit.
+    cached_generator_drop: Option<BasicBlock>,
 }
 
 #[derive(Debug)]
@@ -158,32 +143,24 @@ struct DropData<'tcx> {
     kind: DropKind
 }
 
-#[derive(Debug)]
-enum DropKind {
-    Value {
-        /// The cached block for the cleanups-on-diverge path. This block
-        /// contains code to run the current drop and all the preceding
-        /// drops (i.e. those having lower index in Drop’s Scope drop
-        /// array)
-        cached_block: Option<BasicBlock>
-    },
-    Storage
+#[derive(Debug, Default, Clone, Copy)]
+struct CachedBlock {
+    /// The cached block for the cleanups-on-diverge path. This block
+    /// contains code to run the current drop and all the preceding
+    /// drops (i.e. those having lower index in Drop’s Scope drop
+    /// array)
+    unwind: Option<BasicBlock>,
+
+    /// The cached block for unwinds during cleanups-on-generator-drop path
+    generator_drop: Option<BasicBlock>,
 }
 
 #[derive(Debug)]
-struct FreeData<'tcx> {
-    /// span where free obligation was incurred
-    span: Span,
-
-    /// Lvalue containing the allocated box.
-    value: Lvalue<'tcx>,
-
-    /// type of item for which the box was allocated for (i.e. the T in Box<T>).
-    item_ty: Ty<'tcx>,
-
-    /// The cached block containing code to run the free. The block will also execute all the drops
-    /// in the scope.
-    cached_block: Option<BasicBlock>
+enum DropKind {
+    Value {
+        cached_block: CachedBlock,
+    },
+    Storage
 }
 
 #[derive(Clone, Debug)]
@@ -198,6 +175,29 @@ pub struct BreakableScope<'tcx> {
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
     pub break_destination: Lvalue<'tcx>,
+}
+
+impl CachedBlock {
+    fn invalidate(&mut self) {
+        self.generator_drop = None;
+        self.unwind = None;
+    }
+
+    fn get(&self, generator_drop: bool) -> Option<BasicBlock> {
+        if generator_drop {
+            self.generator_drop
+        } else {
+            self.unwind
+        }
+    }
+
+    fn ref_mut(&mut self, generator_drop: bool) -> &mut Option<BasicBlock> {
+        if generator_drop {
+            &mut self.generator_drop
+        } else {
+            &mut self.unwind
+        }
+    }
 }
 
 impl DropKind {
@@ -221,11 +221,8 @@ impl<'tcx> Scope<'tcx> {
         if !unwind { return; }
         for dropdata in &mut self.drops {
             if let DropKind::Value { ref mut cached_block } = dropdata.kind {
-                *cached_block = None;
+                cached_block.invalidate();
             }
-        }
-        if let Some(ref mut freedata) = self.free {
-            freedata.cached_block = None;
         }
     }
 
@@ -233,17 +230,17 @@ impl<'tcx> Scope<'tcx> {
     ///
     /// Precondition: the caches must be fully filled (i.e. diverge_cleanup is called) in order for
     /// this method to work correctly.
-    fn cached_block(&self) -> Option<BasicBlock> {
+    fn cached_block(&self, generator_drop: bool) -> Option<BasicBlock> {
         let mut drops = self.drops.iter().rev().filter_map(|data| {
             match data.kind {
-                DropKind::Value { cached_block } => Some(cached_block),
+                DropKind::Value { cached_block } => {
+                    Some(cached_block.get(generator_drop))
+                }
                 DropKind::Storage => None
             }
         });
         if let Some(cached_block) = drops.next() {
             Some(cached_block.expect("drop cache is not filled"))
-        } else if let Some(ref data) = self.free {
-            Some(data.cached_block.expect("free cache is not filled"))
         } else {
             None
         }
@@ -252,7 +249,7 @@ impl<'tcx> Scope<'tcx> {
     /// Given a span and this scope's visibility scope, make a SourceInfo.
     fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
-            span: span,
+            span,
             scope: self.visibility_scope
         }
     }
@@ -274,10 +271,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     {
         let extent = self.topmost_scope();
         let scope = BreakableScope {
-            extent: extent,
+            extent,
             continue_block: loop_block,
-            break_block: break_block,
-            break_destination: break_destination,
+            break_block,
+            break_destination,
         };
         self.breakable_scopes.push(scope);
         let res = f(self);
@@ -333,7 +330,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             extent_span: extent.1.span,
             needs_cleanup: false,
             drops: vec![],
-            free: None,
+            cached_generator_drop: None,
             cached_exits: FxHashMap()
         });
     }
@@ -359,7 +356,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                           &scope,
                                           &self.scopes,
                                           block,
-                                          self.arg_count));
+                                          self.arg_count,
+                                          false));
 
         self.cfg.push_end_region(block, extent.1, scope.extent);
         block.unit()
@@ -382,7 +380,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         });
         let len = self.scopes.len();
         assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
-        let tmp = self.get_unit_temp();
 
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
@@ -411,17 +408,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               scope,
                                               rest,
                                               block,
-                                              self.arg_count));
+                                              self.arg_count,
+                                              false));
 
             // End all regions for scopes out of which we are breaking.
             self.cfg.push_end_region(block, extent.1, scope.extent);
-
-            if let Some(ref free_data) = scope.free {
-                let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.source_info(span), free);
-                block = next;
-            }
         }
         }
         let scope = &self.scopes[len - scope_count];
@@ -429,12 +420,61 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            TerminatorKind::Goto { target: target });
     }
 
+    /// Creates a path that performs all required cleanup for dropping a generator.
+    ///
+    /// This path terminates in GeneratorDrop. Returns the start of the path.
+    /// None indicates there’s no cleanup to do at this point.
+    pub fn generator_drop_cleanup(&mut self) -> Option<BasicBlock> {
+        if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
+            return None;
+        }
+
+        // Fill in the cache
+        self.diverge_cleanup_gen(true);
+
+        let src_info = self.scopes[0].source_info(self.fn_span);
+        let mut block = self.cfg.start_new_block();
+        let result = block;
+        let mut rest = &mut self.scopes[..];
+
+        while let Some((scope, rest_)) = {rest}.split_last_mut() {
+            rest = rest_;
+            if !scope.needs_cleanup {
+                continue;
+            }
+            block = if let Some(b) = scope.cached_generator_drop {
+                self.cfg.terminate(block, src_info,
+                                   TerminatorKind::Goto { target: b });
+                return Some(result);
+            } else {
+                let b = self.cfg.start_new_block();
+                scope.cached_generator_drop = Some(b);
+                self.cfg.terminate(block, src_info,
+                                   TerminatorKind::Goto { target: b });
+                b
+            };
+            unpack!(block = build_scope_drops(&mut self.cfg,
+                                              scope,
+                                              rest,
+                                              block,
+                                              self.arg_count,
+                                              true));
+
+            // End all regions for scopes out of which we are breaking.
+            self.cfg.push_end_region(block, src_info, scope.extent);
+        }
+
+        self.cfg.terminate(block, src_info, TerminatorKind::GeneratorDrop);
+
+        Some(result)
+    }
+
     /// Creates a new visibility scope, nested in the current one.
     pub fn new_visibility_scope(&mut self, span: Span) -> VisibilityScope {
         let parent = self.visibility_scope;
         let scope = VisibilityScope::new(self.visibility_scopes.len());
         self.visibility_scopes.push(VisibilityScopeData {
-            span: span,
+            span,
             parent_scope: Some(parent),
         });
         scope
@@ -459,7 +499,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Given a span and the current visibility scope, make a SourceInfo.
     pub fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
-            span: span,
+            span,
             scope: self.visibility_scope
         }
     }
@@ -513,7 +553,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 None,
             MirSource::Fn(_) =>
                 Some(self.topmost_scope()),
-            MirSource::Promoted(..) =>
+            MirSource::Promoted(..) |
+            MirSource::GeneratorDrop(..) =>
                 bug!(),
         }
     }
@@ -529,7 +570,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                          lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
         let drop_kind = if needs_drop {
-            DropKind::Value { cached_block: None }
+            DropKind::Value { cached_block: CachedBlock::default() }
         } else {
             // Only temps and vars need their storage dead.
             match *lvalue {
@@ -607,36 +648,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
     }
 
-    /// Schedule dropping of a not-yet-fully-initialised box.
-    ///
-    /// This cleanup will only be translated into unwind branch.
-    /// The extent should be for the `EXPR` inside `box EXPR`.
-    /// There may only be one “free” scheduled in any given scope.
-    pub fn schedule_box_free(&mut self,
-                             span: Span,
-                             extent: CodeExtent,
-                             value: &Lvalue<'tcx>,
-                             item_ty: Ty<'tcx>) {
-        for scope in self.scopes.iter_mut().rev() {
-            // See the comment in schedule_drop above. The primary difference is that we invalidate
-            // the unwind blocks unconditionally. That’s because the box free may be considered
-            // outer-most cleanup within the scope.
-            scope.invalidate_cache(true);
-            if scope.extent == extent {
-                assert!(scope.free.is_none(), "scope already has a scheduled free!");
-                scope.needs_cleanup = true;
-                scope.free = Some(FreeData {
-                    span: span,
-                    value: value.clone(),
-                    item_ty: item_ty,
-                    cached_block: None
-                });
-                return;
-            }
-        }
-        span_bug!(span, "extent {:?} not in scope to free {:?}", extent, value);
-    }
-
     // Other
     // =====
     /// Creates a path that performs all required cleanup for unwinding.
@@ -645,13 +656,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
     pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+        self.diverge_cleanup_gen(false)
+    }
+
+    fn diverge_cleanup_gen(&mut self, generator_drop: bool) -> Option<BasicBlock> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
         assert!(!self.scopes.is_empty()); // or `any` above would be false
 
-        let unit_temp = self.get_unit_temp();
-        let Builder { ref mut hir, ref mut cfg, ref mut scopes,
+        let Builder { ref mut cfg, ref mut scopes,
                       ref mut cached_resume_block, .. } = *self;
 
         // Build up the drops in **reverse** order. The end result will
@@ -678,8 +692,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(
-                hir.tcx(), cfg, &unit_temp, scope.extent_span, scope, target);
+            target = build_diverge_scope(cfg, scope.extent_span, scope, target, generator_drop);
         }
         Some(target)
     }
@@ -698,7 +711,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Drop {
-                               location: location,
+                               location,
                                target: next_target,
                                unwind: diverge_target,
                            });
@@ -716,8 +729,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let diverge_target = self.diverge_cleanup();
         self.cfg.terminate(block, source_info,
                            TerminatorKind::DropAndReplace {
-                               location: location,
-                               value: value,
+                               location,
+                               value,
                                target: next_target,
                                unwind: diverge_target,
                            });
@@ -740,11 +753,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         self.cfg.terminate(block, source_info,
                            TerminatorKind::Assert {
-                               cond: cond,
-                               expected: expected,
-                               msg: msg,
+                               cond,
+                               expected,
+                               msg,
                                target: success_block,
-                               cleanup: cleanup
+                               cleanup,
                            });
 
         success_block
@@ -756,7 +769,8 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            scope: &Scope<'tcx>,
                            earlier_scopes: &[Scope<'tcx>],
                            mut block: BasicBlock,
-                           arg_count: usize)
+                           arg_count: usize,
+                           generator_drop: bool)
                            -> BlockAnd<()> {
     debug!("build_scope_drops({:?} -> {:?})", block, scope);
     let mut iter = scope.drops.iter().rev().peekable();
@@ -768,16 +782,20 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                 // for us to diverge into in case the drop panics.
                 let on_diverge = iter.peek().iter().filter_map(|dd| {
                     match dd.kind {
-                        DropKind::Value { cached_block: None } =>
-                            span_bug!(drop_data.span, "cached block not present?"),
-                        DropKind::Value { cached_block } => cached_block,
+                        DropKind::Value { cached_block } => {
+                            let result = cached_block.get(generator_drop);
+                            if result.is_none() {
+                                span_bug!(drop_data.span, "cached block not present?")
+                            }
+                            result
+                        },
                         DropKind::Storage => None
                     }
                 }).next();
                 // If there’s no `cached_block`s within current scope,
                 // we must look for one in the enclosing scope.
                 let on_diverge = on_diverge.or_else(|| {
-                    earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
+                    earlier_scopes.iter().rev().flat_map(|s| s.cached_block(generator_drop)).next()
                 });
                 let next = cfg.start_new_block();
                 cfg.terminate(block, source_info, TerminatorKind::Drop {
@@ -790,12 +808,17 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             DropKind::Storage => {}
         }
 
+        // We do not need to emit StorageDead for generator drops
+        if generator_drop {
+            continue
+        }
+
         // Drop the storage for both value and storage drops.
         // Only temps and vars need their storage dead.
         match drop_data.location {
             Lvalue::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
-                    source_info: source_info,
+                    source_info,
                     kind: StatementKind::StorageDead(drop_data.location.clone())
                 });
             }
@@ -805,12 +828,11 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       cfg: &mut CFG<'tcx>,
-                                       unit_temp: &Lvalue<'tcx>,
+fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
                                        span: Span,
                                        scope: &mut Scope<'tcx>,
-                                       mut target: BasicBlock)
+                                       mut target: BasicBlock,
+                                       generator_drop: bool)
                                        -> BasicBlock
 {
     // Build up the drops in **reverse** order. The end result will
@@ -824,26 +846,13 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // The code in this function reads from right to left. At each
     // point, we check for cached blocks representing the
     // remainder. If everything is cached, we'll just walk right to
-    // left reading the cached results but never created anything.
+    // left reading the cached results but never create anything.
 
     let visibility_scope = scope.visibility_scope;
     let source_info = |span| SourceInfo {
-        span: span,
+        span,
         scope: visibility_scope
     };
-
-    // Next, build up any free.
-    if let Some(ref mut free_data) = scope.free {
-        target = if let Some(cached_block) = free_data.cached_block {
-            cached_block
-        } else {
-            let into = cfg.start_new_cleanup_block();
-            cfg.terminate(into, source_info(free_data.span),
-                          build_free(tcx, unit_temp, free_data, target));
-            free_data.cached_block = Some(into);
-            into
-        };
-    }
 
     // Next, build up the drops. Here we iterate the vector in
     // *forward* order, so that we generate drops[0] first (right to
@@ -859,7 +868,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         // match the behavior of clang, but on inspection eddyb says
         // this is not what clang does.
         let cached_block = match drop_data.kind {
-            DropKind::Value { ref mut cached_block } => cached_block,
+            DropKind::Value { ref mut cached_block } => cached_block.ref_mut(generator_drop),
             DropKind::Storage => continue
         };
         target = if let Some(cached_block) = *cached_block {
@@ -869,7 +878,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cfg.terminate(block, source_info(drop_data.span),
                           TerminatorKind::Drop {
                               location: drop_data.location.clone(),
-                              target: target,
+                              target,
                               unwind: None
                           });
             *cached_block = Some(block);
@@ -887,25 +896,4 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 
     target
-}
-
-fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                              unit_temp: &Lvalue<'tcx>,
-                              data: &FreeData<'tcx>,
-                              target: BasicBlock)
-                              -> TerminatorKind<'tcx> {
-    let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
-    let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
-    TerminatorKind::Call {
-        func: Operand::Constant(box Constant {
-            span: data.span,
-            ty: tcx.type_of(free_func).subst(tcx, substs),
-            literal: Literal::Value {
-                value: ConstVal::Function(free_func, substs),
-            }
-        }),
-        args: vec![Operand::Consume(data.value.clone())],
-        destination: Some((unit_temp.clone(), target)),
-        cleanup: None
-    }
 }

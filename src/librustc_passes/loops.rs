@@ -51,7 +51,7 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 pub fn check_crate(sess: &Session, map: &Map) {
     let krate = map.krate();
     krate.visit_all_item_likes(&mut CheckLoopVisitor {
-        sess: sess,
+        sess,
         hir_map: map,
         cx: Normal,
     }.as_deep_visitor());
@@ -81,7 +81,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprLoop(ref b, _, source) => {
                 self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
             }
-            hir::ExprClosure(.., b, _) => {
+            hir::ExprClosure(.., b, _, _) => {
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {

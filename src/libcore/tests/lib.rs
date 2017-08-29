@@ -26,11 +26,11 @@
 #![feature(inclusive_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(iter_rfind)]
-#![feature(libc)]
 #![feature(nonzero)]
 #![feature(ord_max_min)]
 #![feature(rand)]
 #![feature(raw)]
+#![feature(refcell_replace_swap)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
 #![feature(slice_rotate)]
@@ -40,13 +40,10 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_from)]
-#![feature(unicode)]
 #![feature(unique)]
 
 extern crate core;
 extern crate test;
-extern crate libc;
-extern crate std_unicode;
 extern crate rand;
 
 mod any;

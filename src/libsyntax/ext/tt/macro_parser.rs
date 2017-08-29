@@ -178,7 +178,7 @@ fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
         sep: None,
         idx: 0,
         up: None,
-        matches: matches,
+        matches,
         match_lo: 0,
         match_cur: 0,
         match_hi: match_idx_hi,
@@ -211,7 +211,7 @@ pub enum NamedMatch {
 
 fn nameize<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, ms: &[TokenTree], mut res: I)
                                              -> NamedParseResult {
-    fn n_rec<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, m: &TokenTree, mut res: &mut I,
+    fn n_rec<I: Iterator<Item=NamedMatch>>(sess: &ParseSess, m: &TokenTree, res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
@@ -374,7 +374,7 @@ fn inner_parse_loop(sess: &ParseSess,
                         stack: vec![],
                         sep: seq.separator.clone(),
                         idx: 0,
-                        matches: matches,
+                        matches,
                         match_lo: item.match_cur,
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
@@ -400,7 +400,7 @@ fn inner_parse_loop(sess: &ParseSess,
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
                         elts: lower_elts,
-                        idx: idx,
+                        idx,
                     });
                     item.idx = 0;
                     cur_items.push(item);
@@ -445,7 +445,7 @@ pub fn parse(sess: &ParseSess,
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_items.len() == 1 {
-                let matches = eof_items[0].matches.iter_mut().map(|mut dv| {
+                let matches = eof_items[0].matches.iter_mut().map(|dv| {
                     Rc::make_mut(dv).pop().unwrap()
                 });
                 return nameize(sess, ms, matches);
@@ -599,9 +599,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
                 panic!(FatalError)
             }
         },
-        "path" => {
-            token::NtPath(panictry!(p.parse_path(PathStyle::Type)))
-        },
+        "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
         // this is not supposed to happen, since it has been checked

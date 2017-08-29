@@ -14,16 +14,13 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_driver"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(libc)]
+#![cfg_attr(unix, feature(libc))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
@@ -32,6 +29,7 @@ extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
+#[cfg(unix)]
 extern crate libc;
 extern crate rustc;
 extern crate rustc_allocator;
@@ -49,7 +47,9 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+#[cfg(feature="llvm")]
 extern crate rustc_trans;
+extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use]
@@ -64,8 +64,6 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_trans::back::link;
-use rustc_trans::back::write::{RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
@@ -102,8 +100,9 @@ use syntax::parse::{self, PResult};
 use syntax_pos::{DUMMY_SP, MultiSpan};
 
 #[cfg(test)]
-pub mod test;
+mod test;
 
+pub mod profile;
 pub mod driver;
 pub mod pretty;
 pub mod target_features;
@@ -149,6 +148,104 @@ pub fn run<F>(run_compiler: F) -> isize
         }
     });
     0
+}
+
+#[cfg(not(feature="llvm"))]
+pub use no_llvm_metadata_loader::NoLLvmMetadataLoader as MetadataLoader;
+#[cfg(feature="llvm")]
+pub use rustc_trans::LlvmMetadataLoader as MetadataLoader;
+
+#[cfg(not(feature="llvm"))]
+mod no_llvm_metadata_loader {
+    extern crate ar;
+    extern crate owning_ref;
+
+    use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
+    use rustc_back::target::Target;
+    use std::io;
+    use std::fs::File;
+    use std::path::Path;
+
+    use self::ar::Archive;
+    use self::owning_ref::{OwningRef, ErasedBoxRef};
+
+    pub struct NoLLvmMetadataLoader;
+
+    impl MetadataLoaderTrait for NoLLvmMetadataLoader {
+        fn get_rlib_metadata(
+            &self,
+            _: &Target,
+            filename: &Path
+        ) -> Result<ErasedBoxRef<[u8]>, String> {
+            let file = File::open(filename).map_err(|e| {
+                format!("metadata file open err: {:?}", e)
+            })?;
+            let mut archive = Archive::new(file);
+
+            while let Some(entry_result) = archive.next_entry() {
+                let mut entry = entry_result.map_err(|e| {
+                    format!("metadata section read err: {:?}", e)
+                })?;
+                if entry.header().identifier() == "rust.metadata.bin" {
+                    let mut buf = Vec::new();
+                    io::copy(&mut entry, &mut buf).unwrap();
+                    let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                    return Ok(buf.map_owner_box().erase_owner());
+                }
+            }
+
+            Err("Couldnt find metadata section".to_string())
+        }
+
+        fn get_dylib_metadata(&self,
+                            _target: &Target,
+                            _filename: &Path)
+                            -> Result<ErasedBoxRef<[u8]>, String> {
+            panic!("Dylib metadata loading not supported without LLVM")
+        }
+    }
+}
+
+#[cfg(not(feature="llvm"))]
+mod rustc_trans {
+    use syntax_pos::symbol::Symbol;
+    use rustc::session::Session;
+    use rustc::session::config::{PrintRequest, OutputFilenames};
+    use rustc::ty::{TyCtxt, CrateAnalysis};
+    use rustc::ty::maps::Providers;
+    use rustc_incremental::IncrementalHashesMap;
+
+    use self::back::write::OngoingCrateTranslation;
+
+    pub fn init(_sess: &Session) {}
+    pub fn enable_llvm_debug() {}
+    pub fn provide(_providers: &mut Providers) {}
+    pub fn print_version() {}
+    pub fn print_passes() {}
+    pub fn print(_req: PrintRequest, _sess: &Session) {}
+    pub fn target_features(_sess: &Session) -> Vec<Symbol> { vec![] }
+
+    pub fn trans_crate<'a, 'tcx>(
+        _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _analysis: CrateAnalysis,
+        _incr_hashes_map: IncrementalHashesMap,
+        _output_filenames: &OutputFilenames
+    ) -> OngoingCrateTranslation {
+        OngoingCrateTranslation(())
+    }
+
+    pub struct CrateTranslation(());
+
+    pub mod back {
+        pub mod write {
+            pub struct OngoingCrateTranslation(pub (in ::rustc_trans) ());
+
+            pub const RELOC_MODEL_ARGS: [(&'static str, ()); 0] = [];
+            pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
+        }
+    }
+
+    __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
@@ -197,7 +294,7 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
@@ -422,7 +519,7 @@ fn show_content_with_pager(content: &String) {
 
     match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
         Ok(mut pager) => {
-            if let Some(mut pipe) = pager.stdin.as_mut() {
+            if let Some(pipe) = pager.stdin.as_mut() {
                 if pipe.write_all(content.as_bytes()).is_err() {
                     fallback_to_println = true;
                 }
@@ -477,7 +574,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+                let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
                 let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
@@ -518,7 +615,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         -> CompileController<'a> {
         let mut control = CompileController::basic();
 
-        control.keep_ast = sess.opts.debugging_opts.keep_ast || save_analysis(sess);
+        control.keep_ast = sess.opts.debugging_opts.keep_ast;
+        control.continue_parse_after_error = sess.opts.debugging_opts.continue_parse_after_error;
 
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
             if ppm.needs_ast_map(&opt_uii) {
@@ -574,19 +672,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if save_analysis(sess) {
-            control.after_analysis.callback = box |state| {
-                time(state.session.time_passes(), "save analysis", || {
-                    save::process_crate(state.tcx.unwrap(),
-                                        state.expanded_crate.unwrap(),
-                                        state.analysis.unwrap(),
-                                        state.crate_name.unwrap(),
-                                        None,
-                                        DumpHandler::new(state.out_dir,
-                                                         state.crate_name.unwrap()))
-                });
-            };
-            control.after_analysis.run_callback_on_error = true;
-            control.make_glob_map = resolve::MakeGlobMap::Yes;
+            enable_save_analysis(&mut control);
         }
 
         if sess.print_fuel_crate.is_some() {
@@ -601,6 +687,23 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
         control
     }
+}
+
+pub fn enable_save_analysis(control: &mut CompileController) {
+    control.keep_ast = true;
+    control.after_analysis.callback = box |state| {
+        time(state.session.time_passes(), "save analysis", || {
+            save::process_crate(state.tcx.unwrap(),
+                                state.expanded_crate.unwrap(),
+                                state.analysis.unwrap(),
+                                state.crate_name.unwrap(),
+                                None,
+                                DumpHandler::new(state.out_dir,
+                                                 state.crate_name.unwrap()))
+        });
+    };
+    control.after_analysis.run_callback_on_error = true;
+    control.make_glob_map = resolve::MakeGlobMap::Yes;
 }
 
 fn save_analysis(sess: &Session) -> bool {
@@ -672,14 +775,19 @@ impl RustcDefaultCalls {
                     };
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input, odir, ofile, attrs, sess);
-                    let id = link::find_crate_name(Some(sess), attrs, input);
+                    let id = rustc_trans_utils::link::find_crate_name(Some(sess), attrs, input);
                     if *req == PrintRequest::CrateName {
                         println!("{}", id);
                         continue;
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
                     for &style in &crate_types {
-                        let fname = link::filename_for_input(sess, style, &id, &t_outputs);
+                        let fname = rustc_trans_utils::link::filename_for_input(
+                            sess,
+                            style,
+                            &id,
+                            &t_outputs
+                        );
                         println!("{}",
                                  fname.file_name()
                                       .unwrap()
@@ -693,7 +801,7 @@ impl RustcDefaultCalls {
                     let mut cfgs = Vec::new();
                     for &(name, ref value) in sess.parse_sess.config.iter() {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            name: name,
+                            name,
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
@@ -728,14 +836,14 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::RelocationModels => {
                     println!("Available relocation models:");
-                    for &(name, _) in RELOC_MODEL_ARGS.iter() {
+                    for &(name, _) in rustc_trans::back::write::RELOC_MODEL_ARGS.iter() {
                         println!("    {}", name);
                     }
                     println!("");
                 }
                 PrintRequest::CodeModels => {
                     println!("Available code models:");
-                    for &(name, _) in CODE_GEN_MODEL_ARGS.iter(){
+                    for &(name, _) in rustc_trans::back::write::CODE_GEN_MODEL_ARGS.iter(){
                         println!("    {}", name);
                     }
                     println!("");
@@ -750,17 +858,17 @@ impl RustcDefaultCalls {
 }
 
 /// Returns a version string such as "0.12.0-dev".
-pub fn release_str() -> Option<&'static str> {
+fn release_str() -> Option<&'static str> {
     option_env!("CFG_RELEASE")
 }
 
 /// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-pub fn commit_hash_str() -> Option<&'static str> {
+fn commit_hash_str() -> Option<&'static str> {
     option_env!("CFG_VER_HASH")
 }
 
 /// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-pub fn commit_date_str() -> Option<&'static str> {
+fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
@@ -1207,11 +1315,15 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_mir::DIAGNOSTICS);
+    all_errors.extend_from_slice(&syntax::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }
 
-fn get_args() -> Vec<String> {
+pub fn get_args() -> Vec<String> {
     env::args_os().enumerate()
         .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
              early_error(ErrorOutputType::default(),

@@ -63,9 +63,6 @@ This API is completely unstable and subject to change.
 
 */
 
-#![crate_name = "rustc_typeck"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -95,12 +92,11 @@ extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
-pub use rustc::dep_graph;
-pub use rustc::hir;
-pub use rustc::lint;
-pub use rustc::middle;
-pub use rustc::session;
-pub use rustc::util;
+use rustc::hir;
+use rustc::lint;
+use rustc::middle;
+use rustc::session;
+use rustc::util;
 
 use hir::map as hir_map;
 use rustc::infer::InferOk;
@@ -118,7 +114,7 @@ use syntax_pos::Span;
 use std::iter;
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+mod diagnostics;
 
 mod check;
 mod check_unused;
@@ -130,8 +126,8 @@ mod coherence;
 mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
-    pub substs: &'tcx Substs<'tcx>,
-    pub ty: Ty<'tcx>,
+    substs: &'tcx Substs<'tcx>,
+    ty: Ty<'tcx>,
 }
 
 fn require_c_abi_if_variadic(tcx: TyCtxt,

@@ -126,6 +126,10 @@ p {
 	margin: 0 0 .6em 0;
 }
 
+summary {
+	outline: none;
+}
+
 code, pre {
 	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
 	white-space: pre-wrap;
@@ -438,14 +442,24 @@ a {
 	background: transparent;
 }
 
+.small-section-header:hover > .anchor {
+	display: initial;
+}
+
+.in-band:hover > .anchor {
+	display: initial;
+}
+.anchor {
+	display: none;
+}
+.anchor:after {
+	content: '\2002\00a7\2002';
+}
+
 .docblock a:hover, .docblock-short a:hover, .stability a {
 	text-decoration: underline;
 }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #5e9766; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #df3600; }
-.content span.type, .content a.type, .block a.current.type { color: #e57300; }
-.content span.macro, .content a.macro, .block a.current.macro { color: #068000; }
 .block a.current.crate { font-weight: 500; }
 
 .search-input {
@@ -681,6 +695,10 @@ span.since {
 	left: 0;
 }
 
+.variant + .toggle-wrapper + .docblock > p {
+	margin-top: 5px;
+}
+
 .variant + .toggle-wrapper > a {
 	margin-top: 5px;
 }
@@ -699,7 +717,7 @@ span.since {
 	margin-bottom: 25px;
 }
 
-.enum .variant, .struct .structfield, .union .structfield {
+#main > .variant, #main > .structfield {
 	display: block;
 }
 

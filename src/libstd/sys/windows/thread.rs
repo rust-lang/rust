@@ -61,7 +61,11 @@ impl Thread {
     }
 
     pub fn join(self) {
-        unsafe { c::WaitForSingleObject(self.handle.raw(), c::INFINITE); }
+        let rc = unsafe { c::WaitForSingleObject(self.handle.raw(), c::INFINITE) };
+        if rc == c::WAIT_FAILED {
+            panic!("failed to join on thread: {}",
+                   io::Error::last_os_error());
+        }
     }
 
     pub fn yield_now() {

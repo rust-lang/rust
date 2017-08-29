@@ -240,8 +240,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let cleanup = this.diverge_cleanup();
                     this.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: fun,
-                        args: args,
-                        cleanup: cleanup,
+                        args,
+                        cleanup,
                         destination: if diverges {
                             None
                         } else {
@@ -284,6 +284,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Index { .. } |
             ExprKind::Deref { .. } |
             ExprKind::Literal { .. } |
+            ExprKind::Yield { .. } |
             ExprKind::Field { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,

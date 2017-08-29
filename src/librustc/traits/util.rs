@@ -513,6 +513,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty::Binder((trait_ref, sig.skip_binder().output()))
     }
 
+    pub fn generator_trait_ref_and_outputs(self,
+        fn_trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        sig: ty::PolyGenSig<'tcx>)
+        -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)>
+    {
+        let trait_ref = ty::TraitRef {
+            def_id: fn_trait_def_id,
+            substs: self.mk_substs_trait(self_ty, &[]),
+        };
+        ty::Binder((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
+    }
+
     pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
         match self.hir.as_local_node_id(node_item_def_id) {
             Some(node_id) => {

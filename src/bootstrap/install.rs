@@ -28,7 +28,7 @@ pub fn install_docs(builder: &Builder, stage: u32, host: Interned<String>) {
 }
 
 pub fn install_std(builder: &Builder, stage: u32) {
-    for target in builder.build.config.target.iter() {
+    for target in &builder.build.targets {
         install_sh(builder, "std", "rust-std", stage, Some(*target));
     }
 }

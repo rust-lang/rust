@@ -23,7 +23,7 @@ use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::lint;
-use rustc_errors::{Diagnostic, Level, DiagnosticBuilder};
+use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
@@ -188,7 +188,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_id_to_type(scrut.id);
+            let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
@@ -217,7 +217,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![pat.0])
                 .collect();
-            let scrut_ty = self.tables.node_id_to_type(scrut.id);
+            let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
@@ -269,7 +269,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, name, None) = p.node {
-            let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(p.hir_id)
+                        .expect("missing binding mode");
+
             if bm != ty::BindByValue(hir::MutImmutable) {
                 // Nothing to check.
                 return true;
@@ -351,12 +355,10 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
-                                    let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                         "unreachable pattern");
-                                    diagnostic.set_span(pat.span);
-                                    cx.tcx.sess.add_lint_diagnostic(
+                                    cx.tcx.lint_node(
                                             lint::builtin::UNREACHABLE_PATTERNS,
-                                            hir_pat.id, diagnostic);
+                                        hir_pat.id, pat.span,
+                                        "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
@@ -371,16 +373,18 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                 "unreachable pattern");
-                            diagnostic.set_span(pat.span);
+                            let mut err = cx.tcx.struct_span_lint_node(
+                                lint::builtin::UNREACHABLE_PATTERNS,
+                                hir_pat.id,
+                                pat.span,
+                                "unreachable pattern",
+                            );
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                diagnostic.span_label(pat.span, "this is an unreachable pattern");
-                                diagnostic.span_note(catchall, "this pattern matches any value");
+                                err.span_label(pat.span, "this is an unreachable pattern");
+                                err.span_note(catchall, "this pattern matches any value");
                             }
-                            cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
-                                                            hir_pat.id, diagnostic);
+                            err.emit();
                         },
 
                         // Unreachable patterns in try expressions occur when one of the arms
@@ -458,7 +462,11 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     let mut by_ref_span = None;
     for pat in pats {
         pat.each_binding(|_, id, span, _path| {
-            let bm = *cx.tables.pat_binding_modes.get(&id).expect("missing binding mode");
+            let hir_id = cx.tcx.hir.node_to_hir_id(id);
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(hir_id)
+                        .expect("missing binding mode");
             if let ty::BindByReference(..) = bm {
                 by_ref_span = Some(span);
             }
@@ -491,10 +499,13 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
     for pat in pats {
         pat.walk(|p| {
             if let PatKind::Binding(_, _, _, ref sub) = p.node {
-                let bm = *cx.tables.pat_binding_modes.get(&p.id).expect("missing binding mode");
+                let bm = *cx.tables
+                            .pat_binding_modes()
+                            .get(p.hir_id)
+                            .expect("missing binding mode");
                 match bm {
                     ty::BindByValue(..) => {
-                        let pat_ty = cx.tables.node_id_to_type(p.id);
+                        let pat_ty = cx.tables.node_id_to_type(p.hir_id);
                         if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
@@ -513,7 +524,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     let mut checker = MutationChecker {
-        cx: cx,
+        cx,
     };
     ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_maps, cx.tables)
         .walk_expr(guard);

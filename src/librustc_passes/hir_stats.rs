@@ -125,6 +125,11 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         self.visit_impl_item(nested_impl_item)
     }
 
+    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
+        let nested_body = self.krate.unwrap().body(body_id);
+        self.visit_body(nested_body)
+    }
+
     fn visit_item(&mut self, i: &'v hir::Item) {
         self.record("Item", Id::Node(i.id), i);
         hir_visit::walk_item(self, i)

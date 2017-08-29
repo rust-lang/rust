@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "rustdoc"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -26,6 +23,7 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]
+#![feature(ascii_ctype)]
 
 extern crate arena;
 extern crate getopts;
@@ -410,7 +408,7 @@ pub fn main_args(args: &[String]) -> isize {
     })
 }
 
-/// Prints an uniformised error message on the standard error output
+/// Prints an uniformized error message on the standard error output
 fn print_error<T>(error_message: T) where T: Display {
     writeln!(
         &mut io::stderr(),

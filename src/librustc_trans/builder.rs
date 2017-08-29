@@ -70,8 +70,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             llvm::LLVMCreateBuilderInContext(ccx.llcx())
         };
         Builder {
-            llbuilder: llbuilder,
-            ccx: ccx,
+            llbuilder,
+            ccx,
         }
     }
 

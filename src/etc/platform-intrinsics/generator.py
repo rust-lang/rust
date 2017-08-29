@@ -19,7 +19,7 @@ import itertools
 SPEC = re.compile(
     r'^(?:(?P<void>V)|(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
     r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
-    r'|(?P<reference>\d+))(?P<index>\.\d+)?(?P<modifiers>[vShdnwusfDMC]*)(?P<force_width>x\d+)?'
+    r'|(?P<reference>\d+))(?P<index>\.\d+)?(?P<modifiers>[vShdnwusfDMCNW]*)(?P<force_width>x\d+)?'
     r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?|(?P<bitcast>->.*))?$'
 )
 
@@ -246,6 +246,12 @@ class Vector(Type):
             return Vector(self._elem, self._length // 2)
         elif spec == 'd':
             return Vector(self._elem, self._length * 2)
+        elif spec == 'N':
+            elem = self._elem.__class__(self._elem.bitwidth() // 2)
+            return Vector(elem, self._length * 2)
+        elif spec == 'W':
+            elem = self._elem.__class__(self._elem.bitwidth() * 2)
+            return Vector(elem, self._length // 2)
         elif spec.startswith('x'):
             new_bitwidth = int(spec[1:])
             return Vector(self._elem, new_bitwidth // self._elem.bitwidth())
@@ -714,6 +720,8 @@ def parse_args():
         - 'd': double the length of the vector (u32x2 -> u32x4)
         - 'n': narrow the element of the vector (u32x4 -> u16x4)
         - 'w': widen the element of the vector (u16x4 -> u32x4)
+        - 'N': half the length of the vector element (u32x4 -> u16x8)
+        - 'W': double the length of the vector element (u16x8 -> u32x4)
         - 'u': force a number (vector or scalar) to be unsigned int (f32x4 -> u32x4)
         - 's': force a number (vector or scalar) to be signed int (u32x4 -> i32x4)
         - 'f': force a number (vector or scalar) to be float (u32x4 -> f32x4)

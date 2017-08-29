@@ -43,6 +43,8 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             TerminatorKind::Resume |
             TerminatorKind::Return |
             TerminatorKind::Unreachable |
+            TerminatorKind::GeneratorDrop |
+            TerminatorKind::Yield { .. } |
             TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },

@@ -18,9 +18,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// the rustc crate store interface. This also includes types that
-// are *mostly* used as a part of that interface, but these should
-// probably get a better home if someone can find one.
+//! the rustc crate store interface. This also includes types that
+//! are *mostly* used as a part of that interface, but these should
+//! probably get a better home if someone can find one.
 
 use hir::def;
 use hir::def_id::{CrateNum, DefId, DefIndex};
@@ -55,8 +55,8 @@ pub struct LinkMeta {
     pub crate_hash: Svh,
 }
 
-// Where a crate came from on the local filesystem. One of these three options
-// must be non-None.
+/// Where a crate came from on the local filesystem. One of these three options
+/// must be non-None.
 #[derive(PartialEq, Clone, Debug)]
 pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
@@ -120,10 +120,14 @@ pub enum LinkagePreference {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum NativeLibraryKind {
-    NativeStatic,    // native static library (.a archive)
-    NativeStaticNobundle, // native static library, which doesn't get bundled into .rlibs
-    NativeFramework, // macOS-specific
-    NativeUnknown,   // default way to specify a dynamic library
+    /// native static library (.a archive)
+    NativeStatic,
+    /// native static library, which doesn't get bundled into .rlibs
+    NativeStaticNobundle,
+    /// macOS-specific
+    NativeFramework,
+    /// default way to specify a dynamic library
+    NativeUnknown,
 }
 
 #[derive(Clone, Hash, RustcEncodable, RustcDecodable)]

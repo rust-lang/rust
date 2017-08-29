@@ -3,9 +3,6 @@ FROM ubuntu:16.04
 COPY scripts/android-base-apt-get.sh /scripts/
 RUN sh /scripts/android-base-apt-get.sh
 
-COPY scripts/dumb-init.sh /scripts/
-RUN sh /scripts/dumb-init.sh
-
 COPY scripts/android-ndk.sh /scripts/
 RUN . /scripts/android-ndk.sh && \
     download_and_make_toolchain android-ndk-r13b-linux-x86_64.zip arm 9
@@ -38,4 +35,4 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 COPY scripts/android-start-emulator.sh /scripts/
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "/scripts/android-start-emulator.sh"]
+ENTRYPOINT ["/scripts/android-start-emulator.sh"]

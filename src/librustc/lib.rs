@@ -14,9 +14,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -29,7 +26,7 @@
 #![feature(core_intrinsics)]
 #![feature(discriminant_value)]
 #![feature(i128_type)]
-#![feature(libc)]
+#![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(nonzero)]
 #![feature(quote)]
@@ -48,6 +45,7 @@ extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
+#[cfg(windows)]
 extern crate libc;
 extern crate owning_ref;
 extern crate rustc_back;
@@ -65,7 +63,9 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 // Note that librustc doesn't actually depend on these crates, see the note in
 // `Cargo.toml` for this crate about why these are here.
+#[allow(unused_extern_crates)]
 extern crate flate2;
+#[allow(unused_extern_crates)]
 extern crate test;
 
 #[macro_use]

@@ -167,6 +167,141 @@ def format_build_time(duration):
     return str(datetime.timedelta(seconds=int(duration)))
 
 
+def default_build_triple():
+    """Build triple as in LLVM"""
+    default_encoding = sys.getdefaultencoding()
+    try:
+        ostype = subprocess.check_output(
+            ['uname', '-s']).strip().decode(default_encoding)
+        cputype = subprocess.check_output(
+            ['uname', '-m']).strip().decode(default_encoding)
+    except (subprocess.CalledProcessError, OSError):
+        if sys.platform == 'win32':
+            return 'x86_64-pc-windows-msvc'
+        err = "uname not found"
+        sys.exit(err)
+
+    # The goal here is to come up with the same triple as LLVM would,
+    # at least for the subset of platforms we're willing to target.
+    ostype_mapper = {
+        'Bitrig': 'unknown-bitrig',
+        'Darwin': 'apple-darwin',
+        'DragonFly': 'unknown-dragonfly',
+        'FreeBSD': 'unknown-freebsd',
+        'Haiku': 'unknown-haiku',
+        'NetBSD': 'unknown-netbsd',
+        'OpenBSD': 'unknown-openbsd'
+    }
+
+    # Consider the direct transformation first and then the special cases
+    if ostype in ostype_mapper:
+        ostype = ostype_mapper[ostype]
+    elif ostype == 'Linux':
+        os_from_sp = subprocess.check_output(
+            ['uname', '-o']).strip().decode(default_encoding)
+        if os_from_sp == 'Android':
+            ostype = 'linux-android'
+        else:
+            ostype = 'unknown-linux-gnu'
+    elif ostype == 'SunOS':
+        ostype = 'sun-solaris'
+        # On Solaris, uname -m will return a machine classification instead
+        # of a cpu type, so uname -p is recommended instead.  However, the
+        # output from that option is too generic for our purposes (it will
+        # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
+        # must be used instead.
+        try:
+            cputype = subprocess.check_output(
+                ['isainfo', '-k']).strip().decode(default_encoding)
+        except (subprocess.CalledProcessError, OSError):
+            err = "isainfo not found"
+            sys.exit(err)
+    elif ostype.startswith('MINGW'):
+        # msys' `uname` does not print gcc configuration, but prints msys
+        # configuration. so we cannot believe `uname -m`:
+        # msys1 is always i686 and msys2 is always x86_64.
+        # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
+        # MINGW64 on x86_64.
+        ostype = 'pc-windows-gnu'
+        cputype = 'i686'
+        if os.environ.get('MSYSTEM') == 'MINGW64':
+            cputype = 'x86_64'
+    elif ostype.startswith('MSYS'):
+        ostype = 'pc-windows-gnu'
+    elif ostype.startswith('CYGWIN_NT'):
+        cputype = 'i686'
+        if ostype.endswith('WOW64'):
+            cputype = 'x86_64'
+        ostype = 'pc-windows-gnu'
+    else:
+        err = "unknown OS type: {}".format(ostype)
+        sys.exit(err)
+
+    cputype_mapper = {
+        'BePC': 'i686',
+        'aarch64': 'aarch64',
+        'amd64': 'x86_64',
+        'arm64': 'aarch64',
+        'i386': 'i686',
+        'i486': 'i686',
+        'i686': 'i686',
+        'i786': 'i686',
+        'powerpc': 'powerpc',
+        'powerpc64': 'powerpc64',
+        'powerpc64le': 'powerpc64le',
+        'ppc': 'powerpc',
+        'ppc64': 'powerpc64',
+        'ppc64le': 'powerpc64le',
+        's390x': 's390x',
+        'x64': 'x86_64',
+        'x86': 'i686',
+        'x86-64': 'x86_64',
+        'x86_64': 'x86_64'
+    }
+
+    # Consider the direct transformation first and then the special cases
+    if cputype in cputype_mapper:
+        cputype = cputype_mapper[cputype]
+    elif cputype in {'xscale', 'arm'}:
+        cputype = 'arm'
+        if ostype == 'linux-android':
+            ostype = 'linux-androideabi'
+    elif cputype == 'armv6l':
+        cputype = 'arm'
+        if ostype == 'linux-android':
+            ostype = 'linux-androideabi'
+        else:
+            ostype += 'eabihf'
+    elif cputype in {'armv7l', 'armv8l'}:
+        cputype = 'armv7'
+        if ostype == 'linux-android':
+            ostype = 'linux-androideabi'
+        else:
+            ostype += 'eabihf'
+    elif cputype == 'mips':
+        if sys.byteorder == 'big':
+            cputype = 'mips'
+        elif sys.byteorder == 'little':
+            cputype = 'mipsel'
+        else:
+            raise ValueError("unknown byteorder: {}".format(sys.byteorder))
+    elif cputype == 'mips64':
+        if sys.byteorder == 'big':
+            cputype = 'mips64'
+        elif sys.byteorder == 'little':
+            cputype = 'mips64el'
+        else:
+            raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
+        # only the n64 ABI is supported, indicate it
+        ostype += 'abi64'
+    elif cputype == 'sparcv9':
+        pass
+    else:
+        err = "unknown cpu type: {}".format(cputype)
+        sys.exit(err)
+
+    return "{}-{}".format(cputype, ostype)
+
 class RustBuild(object):
     """Provide all the methods required to build Rust"""
     def __init__(self):
@@ -177,7 +312,6 @@ class RustBuild(object):
         self.build = ''
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
-        self.config_mk = ''
         self.config_toml = ''
         self.printed = False
         self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
@@ -374,26 +508,6 @@ class RustBuild(object):
                 return self.get_string(value) or value.strip()
         return None
 
-    def get_mk(self, key):
-        """Returns the value of the given key in config.mk, otherwise returns None
-
-        >>> rb = RustBuild()
-        >>> rb.config_mk = 'key := value\\n'
-        >>> rb.get_mk('key')
-        'value'
-
-        If the key does not exists, the result is None:
-
-        >>> rb.get_mk('does_not_exists') == None
-        True
-        """
-        for line in iter(self.config_mk.splitlines()):
-            if line.startswith(key + ' '):
-                var = line[line.find(':=') + 2:].strip()
-                if var != '':
-                    return var
-        return None
-
     def cargo(self):
         """Return config path for cargo"""
         return self.program_config('cargo')
@@ -407,7 +521,6 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.config_toml = 'rustc = "rustc"\\n'
-        >>> rb.config_mk = 'CFG_LOCAL_RUST_ROOT := /tmp/rust\\n'
         >>> rb.program_config('rustc')
         'rustc'
         >>> cargo_path = rb.program_config('cargo')
@@ -415,7 +528,6 @@ class RustBuild(object):
         ... "bin", "cargo")
         True
         >>> rb.config_toml = ''
-        >>> rb.config_mk = ''
         >>> cargo_path = rb.program_config('cargo')
         >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
         ... "bin", "cargo")
@@ -424,10 +536,6 @@ class RustBuild(object):
         config = self.get_toml(program)
         if config:
             return config
-        config = self.get_mk('CFG_LOCAL_RUST_ROOT')
-        if config:
-            return os.path.join(config, "bin", "{}{}".format(
-                program, self.exe_suffix()))
         return os.path.join(self.bin_root(), "bin", "{}{}".format(
             program, self.exe_suffix()))
 
@@ -439,10 +547,14 @@ class RustBuild(object):
         'devel'
         """
         start = line.find('"')
-        if start == -1:
-            return None
-        end = start + 1 + line[start + 1:].find('"')
-        return line[start + 1:end]
+        if start != -1:
+            end = start + 1 + line[start + 1:].find('"')
+            return line[start + 1:end]
+        start = line.find('\'')
+        if start != -1:
+            end = start + 1 + line[start + 1:].find('\'')
+            return line[start + 1:end]
+        return None
 
     @staticmethod
     def exe_suffix():
@@ -521,154 +633,12 @@ class RustBuild(object):
         config = self.get_toml('build')
         if config:
             return config
-        config = self.get_mk('CFG_BUILD')
-        if config:
-            return config
-        try:
-            ostype = subprocess.check_output(
-                ['uname', '-s']).strip().decode(default_encoding)
-            cputype = subprocess.check_output(
-                ['uname', '-m']).strip().decode(default_encoding)
-        except (subprocess.CalledProcessError, OSError):
-            if sys.platform == 'win32':
-                return 'x86_64-pc-windows-msvc'
-            err = "uname not found"
-            if self.verbose:
-                raise Exception(err)
-            sys.exit(err)
-
-        # The goal here is to come up with the same triple as LLVM would,
-        # at least for the subset of platforms we're willing to target.
-        ostype_mapper = {
-            'Bitrig': 'unknown-bitrig',
-            'Darwin': 'apple-darwin',
-            'DragonFly': 'unknown-dragonfly',
-            'FreeBSD': 'unknown-freebsd',
-            'Haiku': 'unknown-haiku',
-            'NetBSD': 'unknown-netbsd',
-            'OpenBSD': 'unknown-openbsd'
-        }
-
-        # Consider the direct transformation first and then the special cases
-        if ostype in ostype_mapper:
-            ostype = ostype_mapper[ostype]
-        elif ostype == 'Linux':
-            os_from_sp = subprocess.check_output(
-                ['uname', '-o']).strip().decode(default_encoding)
-            if os_from_sp == 'Android':
-                ostype = 'linux-android'
-            else:
-                ostype = 'unknown-linux-gnu'
-        elif ostype == 'SunOS':
-            ostype = 'sun-solaris'
-            # On Solaris, uname -m will return a machine classification instead
-            # of a cpu type, so uname -p is recommended instead.  However, the
-            # output from that option is too generic for our purposes (it will
-            # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
-            # must be used instead.
-            try:
-                cputype = subprocess.check_output(
-                    ['isainfo', '-k']).strip().decode(default_encoding)
-            except (subprocess.CalledProcessError, OSError):
-                err = "isainfo not found"
-                if self.verbose:
-                    raise Exception(err)
-                sys.exit(err)
-        elif ostype.startswith('MINGW'):
-            # msys' `uname` does not print gcc configuration, but prints msys
-            # configuration. so we cannot believe `uname -m`:
-            # msys1 is always i686 and msys2 is always x86_64.
-            # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
-            # MINGW64 on x86_64.
-            ostype = 'pc-windows-gnu'
-            cputype = 'i686'
-            if os.environ.get('MSYSTEM') == 'MINGW64':
-                cputype = 'x86_64'
-        elif ostype.startswith('MSYS'):
-            ostype = 'pc-windows-gnu'
-        elif ostype.startswith('CYGWIN_NT'):
-            cputype = 'i686'
-            if ostype.endswith('WOW64'):
-                cputype = 'x86_64'
-            ostype = 'pc-windows-gnu'
-        else:
-            err = "unknown OS type: {}".format(ostype)
-            if self.verbose:
-                raise ValueError(err)
-            sys.exit(err)
-
-        cputype_mapper = {
-            'BePC': 'i686',
-            'aarch64': 'aarch64',
-            'amd64': 'x86_64',
-            'arm64': 'aarch64',
-            'i386': 'i686',
-            'i486': 'i686',
-            'i686': 'i686',
-            'i786': 'i686',
-            'powerpc': 'powerpc',
-            'powerpc64': 'powerpc64',
-            'powerpc64le': 'powerpc64le',
-            'ppc': 'powerpc',
-            'ppc64': 'powerpc64',
-            'ppc64le': 'powerpc64le',
-            's390x': 's390x',
-            'x64': 'x86_64',
-            'x86': 'i686',
-            'x86-64': 'x86_64',
-            'x86_64': 'x86_64'
-        }
-
-        # Consider the direct transformation first and then the special cases
-        if cputype in cputype_mapper:
-            cputype = cputype_mapper[cputype]
-        elif cputype in {'xscale', 'arm'}:
-            cputype = 'arm'
-            if ostype == 'linux-android':
-                ostype = 'linux-androideabi'
-        elif cputype == 'armv6l':
-            cputype = 'arm'
-            if ostype == 'linux-android':
-                ostype = 'linux-androideabi'
-            else:
-                ostype += 'eabihf'
-        elif cputype in {'armv7l', 'armv8l'}:
-            cputype = 'armv7'
-            if ostype == 'linux-android':
-                ostype = 'linux-androideabi'
-            else:
-                ostype += 'eabihf'
-        elif cputype == 'mips':
-            if sys.byteorder == 'big':
-                cputype = 'mips'
-            elif sys.byteorder == 'little':
-                cputype = 'mipsel'
-            else:
-                raise ValueError("unknown byteorder: {}".format(sys.byteorder))
-        elif cputype == 'mips64':
-            if sys.byteorder == 'big':
-                cputype = 'mips64'
-            elif sys.byteorder == 'little':
-                cputype = 'mips64el'
-            else:
-                raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
-            # only the n64 ABI is supported, indicate it
-            ostype += 'abi64'
-        elif cputype == 'sparcv9':
-            pass
-        else:
-            err = "unknown cpu type: {}".format(cputype)
-            if self.verbose:
-                raise ValueError(err)
-            sys.exit(err)
-
-        return "{}-{}".format(cputype, ostype)
+        return default_build_triple()
 
     def update_submodules(self):
         """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
-                self.get_toml('submodules') == "false" or \
-                self.get_mk('CFG_DISABLE_MANAGE_SUBMODULES') == "1":
+                self.get_toml('submodules') == "false":
             return
         print('Updating submodules')
         default_encoding = sys.getdefaultencoding()
@@ -680,11 +650,9 @@ class RustBuild(object):
         ).decode(default_encoding).splitlines()]
         submodules = [module for module in submodules
                       if not ((module.endswith("llvm") and
-                               (self.get_toml('llvm-config') or
-                                self.get_mk('CFG_LLVM_ROOT'))) or
+                               self.get_toml('llvm-config')) or
                               (module.endswith("jemalloc") and
-                               (self.get_toml('jemalloc') or
-                                self.get_mk('CFG_JEMALLOC_ROOT'))))]
+                               self.get_toml('jemalloc')))]
         run(["git", "submodule", "update",
              "--init", "--recursive"] + submodules,
             cwd=self.rust_root, verbose=self.verbose)
@@ -721,21 +689,15 @@ def bootstrap():
             build.config_toml = config.read()
     except:
         pass
-    try:
-        build.config_mk = open('config.mk').read()
-    except:
-        pass
 
     if '\nverbose = 2' in build.config_toml:
         build.verbose = 2
     elif '\nverbose = 1' in build.config_toml:
         build.verbose = 1
 
-    build.use_vendored_sources = '\nvendor = true' in build.config_toml or \
-                                 'CFG_ENABLE_VENDOR' in build.config_mk
+    build.use_vendored_sources = '\nvendor = true' in build.config_toml
 
-    build.use_locked_deps = '\nlocked-deps = true' in build.config_toml or \
-                            'CFG_ENABLE_LOCKED_DEPS' in build.config_mk
+    build.use_locked_deps = '\nlocked-deps = true' in build.config_toml
 
     if 'SUDO_USER' in os.environ and not build.use_vendored_sources:
         if os.environ.get('USER') != os.environ['SUDO_USER']:

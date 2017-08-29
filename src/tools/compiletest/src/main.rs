@@ -14,6 +14,7 @@
 
 #![deny(warnings)]
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 extern crate libc;
 extern crate test;
 extern crate getopts;
@@ -39,7 +40,6 @@ use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod procsrv;
 pub mod util;
 mod json;
 pub mod header;
@@ -176,9 +176,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
-        gdb: gdb,
-        gdb_version: gdb_version,
-        gdb_native_rust: gdb_native_rust,
+        gdb,
+        gdb_version,
+        gdb_native_rust,
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
@@ -192,7 +192,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
-        color: color,
+        color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
@@ -470,8 +470,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: ignore,
-            should_panic: should_panic,
+            ignore,
+            should_panic,
             allow_fail: false,
         },
         testfn: make_test_closure(config, testpaths),

@@ -25,6 +25,7 @@ use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use middle::region::CodeExtent;
 use mir::Mir;
+use mir::GeneratorLayout;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
@@ -59,9 +60,9 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 use hir;
 
 pub use self::sty::{Binder, DebruijnIndex};
-pub use self::sty::{FnSig, PolyFnSig};
+pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
-pub use self::sty::{ClosureSubsts, TypeAndMut};
+pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
@@ -76,7 +77,7 @@ pub use self::sty::TypeVariants::*;
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 
-pub use self::context::{TyCtxt, GlobalArenas, tls};
+pub use self::context::{TyCtxt, GlobalArenas, tls, keep_local};
 pub use self::context::{Lift, TypeckTables};
 
 pub use self::instance::{Instance, InstanceDef};
@@ -131,6 +132,7 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
     pub export_map: ExportMap,
 }
 
@@ -408,6 +410,8 @@ bitflags! {
         const HAS_FREE_REGIONS   = 1 << 6,
         const HAS_TY_ERR         = 1 << 7,
         const HAS_PROJECTION     = 1 << 8,
+
+        // FIXME: Rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9,
 
         // true if there are "names" of types and regions and so forth
@@ -491,13 +495,14 @@ impl<'tcx> TyS<'tcx> {
             TypeVariants::TyFnPtr(..) |
             TypeVariants::TyDynamic(..) |
             TypeVariants::TyClosure(..) |
+            TypeVariants::TyInfer(..) |
             TypeVariants::TyProjection(..) => false,
             _ => true,
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -571,8 +576,8 @@ impl<T> Slice<T> {
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
-    pub var_id: NodeId,
-    pub closure_expr_id: NodeId,
+    pub var_id: DefIndex,
+    pub closure_expr_id: DefIndex,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
@@ -1683,12 +1688,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
         match queries::adt_sized_constraint::try_get(tcx, DUMMY_SP, self.did) {
             Ok(tys) => tys,
-            Err(_) => {
+            Err(mut bug) => {
                 debug!("adt_sized_constraint: {:?} is recursive", self);
                 // This should be reported as an error by `check_representable`.
                 //
                 // Consider the type as Sized in the meanwhile to avoid
-                // further errors.
+                // further errors. Delay our `bug` diagnostic here to get
+                // emitted later as well in case we accidentally otherwise don't
+                // emit an error.
+                bug.delay_as_bug();
                 tcx.intern_type_list(&[tcx.types.err])
             }
         }
@@ -1701,7 +1709,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         let result = match ty.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyArray(..) | TyClosure(..) | TyNever => {
+            TyArray(..) | TyClosure(..) | TyGenerator(..) | TyNever => {
                 vec![]
             }
 
@@ -1970,7 +1978,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn local_var_name_str(self, id: NodeId) -> InternedString {
         match self.hir.find(id) {
-            Some(hir_map::NodeLocal(pat)) => {
+            Some(hir_map::NodeBinding(pat)) => {
                 match pat.node {
                     hir::PatKind::Binding(_, _, ref path1, _) => path1.node.as_str(),
                     _ => {
@@ -1980,6 +1988,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             },
             r => bug!("Variable id {} maps to {:?}, not local", id, r),
         }
+    }
+
+    pub fn local_var_name_str_def_index(self, def_index: DefIndex) -> InternedString {
+        let node_id = self.hir.as_local_node_id(DefId::local(def_index)).unwrap();
+        self.local_var_name_str(node_id)
     }
 
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
@@ -2029,6 +2042,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             hir::ExprBox(..) |
             hir::ExprAddrOf(..) |
             hir::ExprBinary(..) |
+            hir::ExprYield(..) |
             hir::ExprCast(..) => {
                 false
             }
@@ -2226,7 +2240,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::InstanceDef::FnPtrShim(..) |
             ty::InstanceDef::Virtual(..) |
             ty::InstanceDef::ClosureOnceShim { .. } |
-            ty::InstanceDef::DropGlue(..) => {
+            ty::InstanceDef::DropGlue(..) |
+            ty::InstanceDef::CloneShim(..) => {
                 self.mir_shims(instance)
             }
         }
@@ -2258,6 +2273,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_default_impl
+    }
+
+    pub fn generator_layout(self, def_id: DefId) -> &'tcx GeneratorLayout<'tcx> {
+        self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -2507,7 +2526,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         param_env,
         trait_of_item,
         trait_impls_of: trait_def::trait_impls_of_provider,
-        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         ..*providers
     };
 }
@@ -2517,7 +2535,6 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
         adt_sized_constraint,
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
-        relevant_trait_impls_for: trait_def::relevant_trait_impls_provider,
         param_env,
         ..*providers
     };

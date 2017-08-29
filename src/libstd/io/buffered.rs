@@ -97,7 +97,7 @@ impl<R: Read> BufReader<R> {
             buffer.set_len(cap);
             inner.initializer().initialize(&mut buffer);
             BufReader {
-                inner: inner,
+                inner,
                 buf: buffer.into_boxed_slice(),
                 pos: 0,
                 cap: 0,

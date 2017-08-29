@@ -135,7 +135,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             (scope, source_info.span)
         } else {
             // Walk up the macro expansion chain until we reach a non-expanded span.
-            // We also stop at the function body level because no line stepping can occurr
+            // We also stop at the function body level because no line stepping can occur
             // at the level above that.
             let mut span = source_info.span;
             while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {
@@ -228,19 +228,19 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let (landing_pads, funclets) = create_funclets(&bcx, &cleanup_kinds, &block_bcxs);
 
     let mut mircx = MirContext {
-        mir: mir,
-        llfn: llfn,
-        fn_ty: fn_ty,
-        ccx: ccx,
+        mir,
+        llfn,
+        fn_ty,
+        ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
         unreachable_block: None,
-        cleanup_kinds: cleanup_kinds,
-        landing_pads: landing_pads,
+        cleanup_kinds,
+        landing_pads,
         funclets: &funclets,
-        scopes: scopes,
+        scopes,
         locals: IndexVec::new(),
-        debug_context: debug_context,
+        debug_context,
         param_substs: {
             assert!(!instance.substs.needs_infer());
             instance.substs
@@ -486,7 +486,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 OperandValue::Immediate(llarg)
             };
             let operand = OperandRef {
-                val: val,
+                val,
                 ty: arg_ty
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
@@ -524,15 +524,15 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
 
             // Or is it the closure environment?
-            let (closure_ty, env_ref) = if let ty::TyRef(_, mt) = arg_ty.sty {
-                (mt.ty, true)
-            } else {
-                (arg_ty, false)
+            let (closure_ty, env_ref) = match arg_ty.sty {
+                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (mt.ty, true),
+                _ => (arg_ty, false)
             };
-            let upvar_tys = if let ty::TyClosure(def_id, substs) = closure_ty.sty {
-                substs.upvar_tys(def_id, tcx)
-            } else {
-                bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty);
+
+            let upvar_tys = match closure_ty.sty {
+                ty::TyClosure(def_id, substs) |
+                ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),
+                _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty)
             };
 
             // Store the pointer to closure data in an alloca for debuginfo

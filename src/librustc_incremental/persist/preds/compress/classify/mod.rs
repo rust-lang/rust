@@ -45,7 +45,7 @@ impl<'a, 'g, N, I, O> Classify<'a, 'g, N, I, O>
 {
     pub(super) fn new(r: &'a mut GraphReduce<'g, N, I, O>) -> Self {
         Classify {
-            r: r,
+            r,
             colors: vec![Color::White; r.in_graph.len_nodes()],
             stack: vec![],
             dag: Dag {

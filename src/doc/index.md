@@ -31,6 +31,7 @@ nicknamed 'The Rust Bookshelf.'
 * [The Unstable Book][unstable-book] has documentation for unstable features.
 * [The Rustonomicon][nomicon] is your guidebook to the dark arts of unsafe Rust.
 * [The Reference][ref] is not a formal spec, but is more detailed and comprehensive than the book.
+* [The Rustdoc Book][rustdoc-book] describes our documentation tool, `rustdoc`.
 
 Initially, documentation lands in the Unstable Book, and then, as part of the
 stabilization process, is moved into the Book, Nomicon, or Reference.
@@ -51,4 +52,5 @@ before this policy was put into place. That work is being tracked
 [book]: book/index.html
 [nomicon]: nomicon/index.html
 [unstable-book]: unstable-book/index.html
+[rustdoc-book]: rustdoc/index.html
 

@@ -32,7 +32,6 @@ use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
-use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
@@ -191,8 +190,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     .map(|l| map_line(l).for_code())
                     .collect::<Vec<&str>>().join("\n");
                 let krate = krate.as_ref().map(|s| &**s);
-                let test = test::maketest(&test, krate, false,
-                                        &Default::default());
+                let test = test::make_test(&test, krate, false,
+                                           &Default::default());
                 let channel = if test.contains("#![feature(") {
                     "&amp;version=nightly"
                 } else {
@@ -242,7 +241,7 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, I> {
     fn new(iter: I, toc: Option<&'b mut TocBuilder>) -> Self {
         HeadingLinks {
             inner: iter,
-            toc: toc,
+            toc,
             buf: VecDeque::new(),
         }
     }
@@ -529,8 +528,8 @@ extern {
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
-    fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
+    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const u8, len: libc::size_t);
 }
 
 impl hoedown_buffer {
@@ -585,8 +584,8 @@ pub fn render(w: &mut fmt::Formatter,
                         .map(|l| map_line(l).for_code())
                         .collect::<Vec<&str>>().join("\n");
                     let krate = krate.as_ref().map(|s| &**s);
-                    let test = test::maketest(&test, krate, false,
-                                              &Default::default());
+                    let test = test::make_test(&test, krate, false,
+                                               &Default::default());
                     let channel = if test.contains("#![feature(") {
                         "&amp;version=nightly"
                     } else {
@@ -620,8 +619,7 @@ pub fn render(w: &mut fmt::Formatter,
                                Some("rust-example-rendered"),
                                None,
                                playground_button.as_ref().map(String::as_str)));
-                let output = CString::new(s).unwrap();
-                hoedown_buffer_puts(ob, output.as_ptr());
+                hoedown_buffer_put(ob, s.as_ptr(), s.len());
             })
         }
     }
@@ -630,7 +628,7 @@ pub fn render(w: &mut fmt::Formatter,
                      level: libc::c_int, data: *const hoedown_renderer_data,
                      _: libc::size_t) {
         // hoedown does this, we may as well too
-        unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
+        unsafe { hoedown_buffer_put(ob, "\n".as_ptr(), 1); }
 
         // Extract the text provided
         let s = if text.is_null() {
@@ -681,8 +679,7 @@ pub fn render(w: &mut fmt::Formatter,
                            <a href='#{id}'>{sec}{}</a></h{lvl}>",
                            s, lvl = level, id = id, sec = sec);
 
-        let text = CString::new(text).unwrap();
-        unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
+        unsafe { hoedown_buffer_put(ob, text.as_ptr(), text.len()); }
     }
 
     extern fn codespan(
@@ -700,8 +697,9 @@ pub fn render(w: &mut fmt::Formatter,
         };
 
         let content = format!("<code>{}</code>", Escape(&content));
-        let element = CString::new(content).unwrap();
-        unsafe { hoedown_buffer_puts(ob, element.as_ptr()); }
+        unsafe {
+            hoedown_buffer_put(ob, content.as_ptr(), content.len());
+        }
         // Return anything except 0, which would mean "also print the code span verbatim".
         1
     }
@@ -1123,15 +1121,15 @@ mod tests {
             should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool,
             compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
             assert_eq!(LangString::parse(s), LangString {
-                should_panic: should_panic,
-                no_run: no_run,
-                ignore: ignore,
-                rust: rust,
-                test_harness: test_harness,
-                compile_fail: compile_fail,
-                error_codes: error_codes,
+                should_panic,
+                no_run,
+                ignore,
+                rust,
+                test_harness,
+                compile_fail,
+                error_codes,
                 original: s.to_owned(),
-                allow_fail: allow_fail,
+                allow_fail,
             })
         }
 

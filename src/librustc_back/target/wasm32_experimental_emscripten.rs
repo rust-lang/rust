@@ -38,7 +38,7 @@ pub fn target() -> Result<Target, String> {
         obj_is_bitcode: true,
         is_like_emscripten: true,
         max_atomic_width: Some(32),
-        post_link_args: post_link_args,
+        post_link_args,
         target_family: Some("unix".to_string()),
         .. Default::default()
     };

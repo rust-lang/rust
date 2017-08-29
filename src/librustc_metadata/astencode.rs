@@ -53,7 +53,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
             body: lazy_body,
             tables: lazy_tables,
             nested_bodies: lazy_nested_bodies,
-            rvalue_promotable_to_static: rvalue_promotable_to_static
+            rvalue_promotable_to_static,
         })
     }
 }

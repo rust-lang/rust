@@ -26,7 +26,6 @@ pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::Visibility::{Public, Inherited};
-pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
@@ -42,6 +41,7 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
+use ty::AdtKind;
 
 use rustc_data_structures::indexed_vec;
 
@@ -129,8 +129,10 @@ pub const CRATE_HIR_ID: HirId = HirId {
 
 pub const DUMMY_HIR_ID: HirId = HirId {
     owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId(!0)
+    local_id: DUMMY_ITEM_LOCAL_ID,
 };
+
+pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId(!0);
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -224,65 +226,7 @@ impl PathSegment {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum PathParameters {
-    /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
-    AngleBracketedParameters(AngleBracketedParameterData),
-    /// The `(A,B)` and `C` in `Foo(A,B) -> C`
-    ParenthesizedParameters(ParenthesizedParameterData),
-}
-
-impl PathParameters {
-    pub fn none() -> PathParameters {
-        AngleBracketedParameters(AngleBracketedParameterData {
-            lifetimes: HirVec::new(),
-            types: HirVec::new(),
-            infer_types: true,
-            bindings: HirVec::new(),
-        })
-    }
-
-    /// Returns the types that the user wrote. Note that these do not necessarily map to the type
-    /// parameters in the parenthesized case.
-    pub fn types(&self) -> HirVec<&P<Ty>> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.types.iter().collect()
-            }
-            ParenthesizedParameters(ref data) => {
-                data.inputs
-                    .iter()
-                    .chain(data.output.iter())
-                    .collect()
-            }
-        }
-    }
-
-    pub fn lifetimes(&self) -> HirVec<&Lifetime> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.lifetimes.iter().collect()
-            }
-            ParenthesizedParameters(_) => {
-                HirVec::new()
-            }
-        }
-    }
-
-    pub fn bindings(&self) -> HirVec<&TypeBinding> {
-        match *self {
-            AngleBracketedParameters(ref data) => {
-                data.bindings.iter().collect()
-            }
-            ParenthesizedParameters(_) => {
-                HirVec::new()
-            }
-        }
-    }
-}
-
-/// A path like `Foo<'a, T>`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct AngleBracketedParameterData {
+pub struct PathParameters {
     /// The lifetime parameters for this path segment.
     pub lifetimes: HirVec<Lifetime>,
     /// The type parameters for this path segment, if present.
@@ -295,19 +239,33 @@ pub struct AngleBracketedParameterData {
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A=Bar>`.
     pub bindings: HirVec<TypeBinding>,
+    /// Were parameters written in parenthesized form `Fn(T) -> U`?
+    /// This is required mostly for pretty-printing and diagnostics,
+    /// but also for changing lifetime elision rules to be "function-like".
+    pub parenthesized: bool,
 }
 
-/// A path like `Foo(A,B) -> C`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct ParenthesizedParameterData {
-    /// Overall span
-    pub span: Span,
+impl PathParameters {
+    pub fn none() -> Self {
+        Self {
+            lifetimes: HirVec::new(),
+            types: HirVec::new(),
+            infer_types: true,
+            bindings: HirVec::new(),
+            parenthesized: false,
+        }
+    }
 
-    /// `(A,B)`
-    pub inputs: HirVec<P<Ty>>,
-
-    /// `C`
-    pub output: Option<P<Ty>>,
+    pub fn inputs(&self) -> &[P<Ty>] {
+        if self.parenthesized {
+            if let Some(ref ty) = self.types.get(0) {
+                if let TyTup(ref tys) = ty.node {
+                    return tys;
+                }
+            }
+        }
+        bug!("PathParameters::inputs: not a `Fn(T) -> U`");
+    }
 }
 
 /// The AST represents all type param bounds as types.
@@ -496,7 +454,7 @@ impl Crate {
         &self.impl_items[&id]
     }
 
-    /// Visits all items in the crate in some determinstic (but
+    /// Visits all items in the crate in some deterministic (but
     /// unspecified) order. If you just need to process every item,
     /// but don't care about nesting, this method is the best choice.
     ///
@@ -547,6 +505,7 @@ pub struct Block {
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
     pub id: NodeId,
+    pub hir_id: HirId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
@@ -560,6 +519,7 @@ pub struct Block {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pat {
     pub id: NodeId,
+    pub hir_id: HirId,
     pub node: PatKind,
     pub span: Span,
 }
@@ -897,6 +857,7 @@ pub struct Local {
     /// Initializer expression to set the value, if any
     pub init: Option<P<Expr>>,
     pub id: NodeId,
+    pub hir_id: HirId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
     pub source: LocalSource,
@@ -968,7 +929,8 @@ pub struct BodyId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
-    pub value: Expr
+    pub value: Expr,
+    pub is_generator: bool,
 }
 
 impl Body {
@@ -986,6 +948,7 @@ pub struct Expr {
     pub span: Span,
     pub node: Expr_,
     pub attrs: ThinVec<Attribute>,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Expr {
@@ -1045,7 +1008,10 @@ pub enum Expr_ {
     /// A closure (for example, `move |a, b, c| {a + b + c}`).
     ///
     /// The final span is the span of the argument block `|...|`
-    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span),
+    ///
+    /// This may also be a generator literal, indicated by the final boolean,
+    /// in that case there is an GeneratorClause.
+    ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, bool),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
@@ -1090,6 +1056,9 @@ pub enum Expr_ {
     /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, BodyId),
+
+    /// A suspension point for generators. This is `yield <expr>` in Rust.
+    ExprYield(P<Expr>),
 }
 
 /// Optionally `Self`-qualified value/type path or associated extension.
@@ -1258,6 +1227,7 @@ pub struct TraitItemId {
 pub struct TraitItem {
     pub id: NodeId,
     pub name: Name,
+    pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
     pub node: TraitItemKind,
     pub span: Span,
@@ -1299,6 +1269,7 @@ pub struct ImplItemId {
 pub struct ImplItem {
     pub id: NodeId,
     pub name: Name,
+    pub hir_id: HirId,
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
@@ -1423,6 +1394,7 @@ pub struct InlineAsm {
 pub struct Arg {
     pub pat: P<Pat>,
     pub id: NodeId,
+    pub hir_id: HirId,
 }
 
 /// Represents the header (not the body) of a function declaration
@@ -1704,8 +1676,9 @@ pub struct ItemId {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
     pub name: Name,
-    pub attrs: HirVec<Attribute>,
     pub id: NodeId,
+    pub hir_id: HirId,
+    pub attrs: HirVec<Attribute>,
     pub node: Item_,
     pub vis: Visibility,
     pub span: Span,
@@ -1780,6 +1753,15 @@ impl Item_ {
             ItemTrait(..) => "trait",
             ItemImpl(..) |
             ItemDefaultImpl(..) => "item",
+        }
+    }
+
+    pub fn adt_kind(&self) -> Option<AdtKind> {
+        match *self {
+            ItemStruct(..) => Some(AdtKind::Struct),
+            ItemUnion(..) => Some(AdtKind::Union),
+            ItemEnum(..) => Some(AdtKind::Enum),
+            _ => None,
         }
     }
 }

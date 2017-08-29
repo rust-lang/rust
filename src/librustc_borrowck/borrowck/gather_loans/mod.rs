@@ -41,16 +41,15 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let def_id = bccx.tcx.hir.body_owner_def_id(body);
     let param_env = bccx.tcx.param_env(def_id);
     let mut glcx = GatherLoanCtxt {
-        bccx: bccx,
+        bccx,
         all_loans: Vec::new(),
         item_ub: region::CodeExtent::Misc(body.node_id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    let body = glcx.bccx.tcx.hir.body(body);
     euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
-        .consume_body(body);
+        .consume_body(bccx.body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -94,12 +93,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                matched_pat,
                cmt,
                mode);
-
-        if let Categorization::Downcast(..) = cmt.cat {
-            gather_moves::gather_match_variant(
-                self.bccx, &self.move_data, &mut self.move_error_collector,
-                matched_pat, cmt, mode);
-        }
     }
 
     fn consume_pat(&mut self,
@@ -133,7 +126,6 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-
         self.guarantee_valid(borrow_id,
                              borrow_span,
                              cmt,
@@ -155,7 +147,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn decl_without_init(&mut self, id: ast::NodeId, _span: Span) {
-        let ty = self.bccx.tables.node_id_to_type(id);
+        let ty = self.bccx
+                     .tables
+                     .node_id_to_type(self.bccx.tcx.hir.node_to_hir_id(id));
         gather_moves::gather_decl(self.bccx, &self.move_data, id, ty);
     }
 }
@@ -228,8 +222,8 @@ fn check_mutability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             // Only mutable data can be lent as mutable.
             if !cmt.mutbl.is_mutable() {
                 Err(bccx.report(BckError { span: borrow_span,
-                                           cause: cause,
-                                           cmt: cmt,
+                                           cause,
+                                           cmt,
                                            code: err_mutbl }))
             } else {
                 Ok(())
@@ -387,13 +381,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
                 Loan {
                     index: self.all_loans.len(),
-                    loan_path: loan_path,
+                    loan_path,
                     kind: req_kind,
-                    gen_scope: gen_scope,
-                    kill_scope: kill_scope,
+                    gen_scope,
+                    kill_scope,
                     span: borrow_span,
-                    restricted_paths: restricted_paths,
-                    cause: cause,
+                    restricted_paths,
+                    cause,
                 }
             }
         };
@@ -421,13 +415,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             //    let all_loans = &mut *self.all_loans; // FIXME(#5074)
             //    Loan {
             //        index: all_loans.len(),
-            //        loan_path: loan_path,
-            //        cmt: cmt,
+            //        loan_path,
+            //        cmt,
             //        mutbl: ConstMutability,
             //        gen_scope: borrow_id,
-            //        kill_scope: kill_scope,
+            //        kill_scope,
             //        span: borrow_span,
-            //        restrictions: restrictions
+            //        restrictions,
             //    }
         // }
     }
@@ -436,20 +430,41 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
-        match loan_path.kind {
-            LpVar(local_id) |
-            LpUpvar(ty::UpvarId{ var_id: local_id, closure_expr_id: _ }) => {
-                self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
-            }
-            LpDowncast(ref base, _) |
-            LpExtend(ref base, mc::McInherited, _) |
-            LpExtend(ref base, mc::McDeclared, _) => {
-                self.mark_loan_path_as_mutated(&base);
-            }
-            LpExtend(_, mc::McImmutable, _) => {
-                // Nothing to do.
+        let mut wrapped_path = Some(loan_path);
+        let mut through_borrow = false;
+
+        while let Some(current_path) = wrapped_path {
+            wrapped_path = match current_path.kind {
+                LpVar(local_id) => {
+                    if !through_borrow {
+                        self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    }
+                    None
+                }
+                LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
+                    let local_id = self.tcx().hir.def_index_to_node_id(var_id);
+                    self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
+                    None
+                }
+                LpExtend(ref base, mc::McInherited, LpDeref(pointer_kind)) |
+                LpExtend(ref base, mc::McDeclared, LpDeref(pointer_kind)) => {
+                    if pointer_kind != mc::Unique {
+                        through_borrow = true;
+                    }
+                    Some(base)
+                }
+                LpDowncast(ref base, _) |
+                LpExtend(ref base, mc::McInherited, _) |
+                LpExtend(ref base, mc::McDeclared, _) => {
+                    Some(base)
+                }
+                LpExtend(_, mc::McImmutable, _) => {
+                    // Nothing to do.
+                    None
+                }
             }
         }
+
     }
 
     pub fn compute_gen_scope(&self,

@@ -149,7 +149,7 @@ fn merge_sigs(text: String, sigs: Vec<Signature>) -> Signature {
 
 fn text_sig(text: String) -> Signature {
     Signature {
-        text: text,
+        text,
         defs: vec![],
         refs: vec![],
     }
@@ -387,7 +387,7 @@ impl Sig for ast::Item {
 
                 sig.text.push('(');
                 for i in &decl.inputs {
-                    // FIXME shoudl descend into patterns to add defs.
+                    // FIXME should descend into patterns to add defs.
                     sig.text.push_str(&pprust::pat_to_string(&i.pat));
                     sig.text.push_str(": ");
                     let nested = i.ty.make(offset + sig.text.len(), Some(i.id), scx)?;
@@ -706,8 +706,8 @@ impl Sig for ast::Variant_ {
                 text.push('}');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Tuple(ref fields, id) => {
@@ -729,8 +729,8 @@ impl Sig for ast::Variant_ {
                 text.push(')');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Unit(id) => {
@@ -922,7 +922,7 @@ fn make_method_signature(id: NodeId,
 
     sig.text.push('(');
     for i in &m.decl.inputs {
-        // FIXME shoudl descend into patterns to add defs.
+        // FIXME should descend into patterns to add defs.
         sig.text.push_str(&pprust::pat_to_string(&i.pat));
         sig.text.push_str(": ");
         let nested = i.ty.make(sig.text.len(), Some(i.id), scx)?;

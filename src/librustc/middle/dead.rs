@@ -13,15 +13,15 @@
 // from live codes are live, and everything else is dead.
 
 use hir::map as hir_map;
-use hir::{self, PatKind};
+use hir::{self, Item_, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
-use middle::privacy;
-use ty::{self, TyCtxt};
 use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use lint;
+use middle::privacy;
+use ty::{self, TyCtxt};
 use util::nodemap::FxHashSet;
 
 use syntax::{ast, codemap};
@@ -94,8 +94,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn lookup_and_handle_method(&mut self, id: ast::NodeId) {
-        self.check_def_id(self.tables.type_dependent_defs[&id].def_id());
+    fn lookup_and_handle_method(&mut self, id: hir::HirId) {
+        self.check_def_id(self.tables.type_dependent_defs()[id].def_id());
     }
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
@@ -119,7 +119,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, def: Def,
                                   pats: &[codemap::Spanned<hir::FieldPat>]) {
-        let variant = match self.tables.node_id_to_type(lhs.id).sty {
+        let variant = match self.tables.node_id_to_type(lhs.hir_id).sty {
             ty::TyAdt(adt, _) => adt.variant_of_def(def),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
@@ -189,6 +189,22 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.struct_has_extern_repr = had_extern_repr;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
+
+    fn mark_as_used_if_union(&mut self, did: DefId, fields: &hir::HirVec<hir::Field>) {
+        if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
+            if let Some(hir_map::NodeItem(item)) = self.tcx.hir.find(node_id) {
+                if let Item_::ItemUnion(ref variant, _) = item.node {
+                    if variant.fields().len() > 1 {
+                        for field in variant.fields() {
+                            if fields.iter().find(|x| x.name.node == field.name).is_some() {
+                                self.live_symbols.insert(field.id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
@@ -219,17 +235,24 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprPath(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
+                let def = self.tables.qpath_def(qpath, expr.hir_id);
                 self.handle_definition(def);
             }
             hir::ExprMethodCall(..) => {
-                self.lookup_and_handle_method(expr.id);
+                self.lookup_and_handle_method(expr.hir_id);
             }
             hir::ExprField(ref lhs, ref name) => {
                 self.handle_field_access(&lhs, name.node);
             }
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&lhs, idx.node);
+            }
+            hir::ExprStruct(_, ref fields, _) => {
+                if let ty::TypeVariants::TyAdt(ref def, _) = self.tables.expr_ty(expr).sty {
+                    if def.is_union() {
+                        self.mark_as_used_if_union(def.did, fields);
+                    }
+                }
             }
             _ => ()
         }
@@ -259,7 +282,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 self.handle_field_pattern_match(pat, path.def, fields);
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 self.handle_definition(def);
             }
             _ => ()
@@ -276,7 +299,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
+fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt,
+                                    id: ast::NodeId,
+                                    attrs: &[ast::Attribute]) -> bool {
     if attr::contains_name(attrs, "lang") {
         return true;
     }
@@ -292,14 +317,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
         return true;
     }
 
-    let dead_code = lint::builtin::DEAD_CODE.name_lower();
-    for attr in lint::gather_attrs(attrs) {
-        match attr {
-            Ok((name, lint::Allow, _)) if name == &*dead_code => return true,
-            _ => (),
-        }
-    }
-    false
+    tcx.lint_level_at_node(lint::builtin::DEAD_CODE, id).0 == lint::Allow
 }
 
 // This visitor seeds items that
@@ -315,14 +333,17 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
 //   or
 //   2) We are not sure to be live or not
 //     * Implementation of a trait method
-struct LifeSeeder<'k> {
+struct LifeSeeder<'k, 'tcx: 'k> {
     worklist: Vec<ast::NodeId>,
     krate: &'k hir::Crate,
+    tcx: TyCtxt<'k, 'tcx, 'tcx>,
 }
 
-impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
+impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
+        let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx,
+                                                               item.id,
+                                                               &item.attrs);
         if allow_dead_code {
             self.worklist.push(item.id);
         }
@@ -337,7 +358,9 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                     match trait_item.node {
                         hir::TraitItemKind::Const(_, Some(_)) |
                         hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
-                            if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
+                            if has_allow_dead_code_or_lang_attr(self.tcx,
+                                                                trait_item.id,
+                                                                &trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
                             }
                         }
@@ -349,7 +372,9 @@ impl<'v, 'k> ItemLikeVisitor<'v> for LifeSeeder<'k> {
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
-                            has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
+                            has_allow_dead_code_or_lang_attr(self.tcx,
+                                                             impl_item.id,
+                                                             &impl_item.attrs) {
                         self.worklist.push(impl_item_ref.id.node_id);
                     }
                 }
@@ -385,6 +410,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut life_seeder = LifeSeeder {
         worklist,
         krate,
+        tcx,
     };
     krate.visit_all_item_likes(&mut life_seeder);
 
@@ -399,7 +425,7 @@ fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
-        tables: &ty::TypeckTables::empty(),
+        tables: &ty::TypeckTables::empty(None),
         live_symbols: box FxHashSet(),
         struct_has_extern_repr: false,
         ignore_non_const_paths: false,
@@ -449,17 +475,19 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         !field.is_positional()
             && !self.symbol_is_live(field.id, None)
             && !is_marker_field
-            && !has_allow_dead_code_or_lang_attr(&field.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, field.id, &field.attrs)
     }
 
     fn should_warn_about_variant(&mut self, variant: &hir::Variant_) -> bool {
         !self.symbol_is_live(variant.data.id(), None)
-            && !has_allow_dead_code_or_lang_attr(&variant.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx,
+                                                 variant.data.id(),
+                                                 &variant.attrs)
     }
 
     fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem) -> bool {
         !self.symbol_is_live(fi.id, None)
-            && !has_allow_dead_code_or_lang_attr(&fi.attrs)
+            && !has_allow_dead_code_or_lang_attr(self.tcx, fi.id, &fi.attrs)
     }
 
     // id := node id of an item's definition.
@@ -505,11 +533,10 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                       node_type: &str) {
         if !name.as_str().starts_with("_") {
             self.tcx
-                .sess
-                .add_lint(lint::builtin::DEAD_CODE,
-                          id,
-                          span,
-                          format!("{} is never used: `{}`", node_type, name));
+                .lint_node(lint::builtin::DEAD_CODE,
+                           id,
+                           span,
+                           &format!("{} is never used: `{}`", node_type, name));
         }
     }
 }
@@ -561,7 +588,6 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(field.id, field.span,
                                 field.name, "field");
         }
-
         intravisit::walk_struct_field(self, field);
     }
 
@@ -603,6 +629,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
-    let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
+    let mut visitor = DeadVisitor {
+        tcx,
+        live_symbols,
+    };
     intravisit::walk_crate(&mut visitor, krate);
 }

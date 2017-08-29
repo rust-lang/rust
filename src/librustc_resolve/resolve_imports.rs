@@ -165,7 +165,7 @@ impl<'a> Resolver<'a> {
                        binding.def() != shadowed_glob.def() {
                         self.ambiguity_errors.push(AmbiguityError {
                             span: path_span,
-                            name: name,
+                            name,
                             lexical: false,
                             b1: binding,
                             b2: shadowed_glob,
@@ -265,13 +265,13 @@ impl<'a> Resolver<'a> {
         let current_module = self.current_module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent: current_module,
-            module_path: module_path,
+            module_path,
             imported_module: Cell::new(None),
-            subclass: subclass,
-            span: span,
-            id: id,
+            subclass,
+            span,
+            id,
             vis: Cell::new(vis),
-            expansion: expansion,
+            expansion,
             used: Cell::new(false),
         });
 
@@ -311,13 +311,13 @@ impl<'a> Resolver<'a> {
 
         self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Import {
-                binding: binding,
-                directive: directive,
+                binding,
+                directive,
                 used: Cell::new(false),
                 legacy_self_import: false,
             },
             span: directive.span,
-            vis: vis,
+            vis,
             expansion: directive.expansion,
         })
     }
@@ -379,7 +379,7 @@ impl<'a> Resolver<'a> {
         // Ensure that `resolution` isn't borrowed when defining in the module's glob importers,
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t) = {
-            let mut resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
+            let resolution = &mut *self.resolution(module, ident, ns).borrow_mut();
             let old_binding = resolution.binding();
 
             let t = f(self, resolution);
@@ -661,8 +661,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             legacy_self_import = Some(directive);
             let binding = this.arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Import {
-                    binding: binding,
-                    directive: directive,
+                    binding,
+                    directive,
                     used: Cell::new(false),
                     legacy_self_import: true,
                 },
@@ -745,8 +745,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                    (error E0365), consider declaring with `pub`",
                                    ident);
-                self.session.add_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-                                      directive.id, directive.span, msg);
+                self.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                                         directive.id,
+                                         directive.span,
+                                         &msg);
             } else if ns == TypeNS {
                 struct_span_err!(self.session, directive.span, E0365,
                                  "`{}` is private, and cannot be reexported", ident)

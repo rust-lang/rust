@@ -27,8 +27,6 @@ use rustc::hir;
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
 
-pub use self::suggest::AllTraitsVec;
-
 mod confirm;
 pub mod probe;
 mod suggest;
@@ -58,8 +56,9 @@ pub enum MethodError<'tcx> {
     ClosureAmbiguity(// DefId of fn trait
                      DefId),
 
-    // Found an applicable method, but it is not visible.
-    PrivateMatch(Def),
+    // Found an applicable method, but it is not visible. The second argument contains a list of
+    // not-in-scope traits which may work.
+    PrivateMatch(Def, Vec<DefId>),
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
@@ -82,10 +81,10 @@ impl<'tcx> NoMatchData<'tcx> {
                mode: probe::Mode)
                -> Self {
         NoMatchData {
-            static_candidates: static_candidates,
-            unsatisfied_predicates: unsatisfied_predicates,
-            out_of_scope_traits: out_of_scope_traits,
-            mode: mode,
+            static_candidates,
+            unsatisfied_predicates,
+            out_of_scope_traits,
+            mode,
         }
     }
 }
@@ -218,7 +217,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
-    /// an obligation for aparticular trait with the given self-type and checks
+    /// an obligation for a particular trait with the given self-type and checks
     /// whether that trait is implemented.
     ///
     /// FIXME(#18741) -- It seems likely that we can consolidate some of this
@@ -330,7 +329,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                  ty::Predicate::WellFormed(method_ty)));
 
         let callee = MethodCallee {
-            def_id: def_id,
+            def_id,
             substs: trait_ref.substs,
             sig: fn_sig,
         };

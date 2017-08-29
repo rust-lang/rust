@@ -69,10 +69,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
            call_expr: &'gcx hir::Expr)
            -> ConfirmContext<'a, 'gcx, 'tcx> {
         ConfirmContext {
-            fcx: fcx,
-            span: span,
-            self_expr: self_expr,
-            call_expr: call_expr,
+            fcx,
+            span,
+            self_expr,
+            call_expr,
         }
     }
 
@@ -311,17 +311,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        let (supplied_types, supplied_lifetimes) = match segment.parameters {
-            hir::AngleBracketedParameters(ref data) => (&data.types, &data.lifetimes),
-            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
-        };
         assert_eq!(method_generics.parent_count(), parent_substs.len());
+        let provided = &segment.parameters;
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.region_at(i)
-            } else if let Some(lifetime) =
-                    supplied_lifetimes.get(i - parent_substs.len()) {
+            } else if let Some(lifetime)
+                    = provided.lifetimes.get(i - parent_substs.len()) {
                 AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
@@ -330,8 +327,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.type_at(i)
-            } else if let Some(ast_ty) =
-                    supplied_types.get(i - parent_substs.len() - method_generics.regions.len()) {
+            } else if let Some(ast_ty)
+                    = provided.types.get(i - parent_substs.len() - method_generics.regions.len()) {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)
@@ -445,11 +442,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
-            let mut source = self.node_ty(expr.id);
+            let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
             // and replace them after mutating them, to avoid having the
             // tables borrowed during (`deref_mut`) method resolution.
-            let previous_adjustments = self.tables.borrow_mut().adjustments.remove(&expr.id);
+            let previous_adjustments = self.tables
+                                           .borrow_mut()
+                                           .adjustments_mut()
+                                           .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 let pref = LvaluePreference::PreferMutLvalue;
                 for adjustment in &mut adjustments {
@@ -466,12 +466,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     source = adjustment.target;
                 }
-                self.tables.borrow_mut().adjustments.insert(expr.id, adjustments);
+                self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
             match expr.node {
                 hir::ExprIndex(ref base_expr, ref index_expr) => {
-                    let index_expr_ty = self.node_ty(index_expr.id);
+                    let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_lvalue_op_to_mutable(
                         LvalueOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }
 
         let base_ty = self.tables.borrow().expr_adjustments(base_expr).last()
-            .map_or_else(|| self.node_ty(expr.id), |adj| adj.target);
+            .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
         // Need to deref because overloaded lvalue ops take self by-reference.
@@ -513,7 +513,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.id, method);
+        self.write_method_call(expr.hir_id, method);
 
         let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
             (r, mt.mutbl)
@@ -523,8 +523,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.
-        let base_expr_ty = self.node_ty(base_expr.id);
-        if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+        let base_expr_ty = self.node_ty(base_expr.hir_id);
+        if let Some(adjustments) = self.tables
+                                       .borrow_mut()
+                                       .adjustments_mut()
+                                       .get_mut(base_expr.hir_id) {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {

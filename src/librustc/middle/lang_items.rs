@@ -274,6 +274,7 @@ language_item_table! {
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
+    CloneTraitLangItem,              "clone",                   clone_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
     FreezeTraitLangItem,             "freeze",                  freeze_trait;
 
@@ -314,6 +315,9 @@ language_item_table! {
     FnTraitLangItem,                 "fn",                      fn_trait;
     FnMutTraitLangItem,              "fn_mut",                  fn_mut_trait;
     FnOnceTraitLangItem,             "fn_once",                 fn_once_trait;
+
+    GeneratorStateLangItem,          "generator_state",         gen_state;
+    GeneratorTraitLangItem,          "generator",               gen_trait;
 
     EqTraitLangItem,                 "eq",                      eq_trait;
     OrdTraitLangItem,                "ord",                     ord_trait;

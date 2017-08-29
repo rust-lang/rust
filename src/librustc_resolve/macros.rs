@@ -273,7 +273,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
                         is_sugared_doc: false,
-                        span: span,
+                        span,
                     });
                 }
             }
@@ -313,14 +313,14 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn check_unused_macros(&self) {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
-                SyntaxExtension::NormalTT(_, isp, _) => isp,
+                SyntaxExtension::NormalTT { def_info, .. } => def_info,
                 SyntaxExtension::DeclMacro(.., osp) => osp,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
                 let lint = lint::builtin::UNUSED_MACROS;
-                let msg = "unused macro definition".to_string();
-                self.session.add_lint(lint, id, span, msg);
+                let msg = "unused macro definition";
+                self.session.buffer_lint(lint, id, span, msg);
             } else {
                 bug!("attempted to create unused macro error, but span not available");
             }
@@ -491,7 +491,7 @@ impl<'a> Resolver<'a> {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: path_span,
-                                name: name,
+                                name,
                                 b1: shadower,
                                 b2: binding,
                                 lexical: true,

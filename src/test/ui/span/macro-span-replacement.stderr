@@ -1,11 +1,16 @@
 warning: struct is never used: `S`
-  --> $DIR/macro-span-replacement.rs:13:9
+  --> $DIR/macro-span-replacement.rs:15:9
    |
-13 |         $b $a;
+15 |         $b $a;
    |         ^^^^^^
 ...
-18 |     m!(S struct);
+20 |     m!(S struct);
    |     ------------- in this macro invocation
    |
-   = note: #[warn(dead_code)] on by default
+note: lint level defined here
+  --> $DIR/macro-span-replacement.rs:11:9
+   |
+11 | #![warn(unused)]
+   |         ^^^^^^
+   = note: #[warn(dead_code)] implied by #[warn(unused)]
 

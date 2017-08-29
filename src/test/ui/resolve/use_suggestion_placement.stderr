@@ -1,0 +1,38 @@
+error[E0425]: cannot find value `A` in this scope
+  --> $DIR/use_suggestion_placement.rs:21:13
+   |
+21 |     let _ = A;
+   |             ^ not found in this scope
+   |
+help: possible candidate is found in another module, you can import it into scope
+   |
+11 | use m::A;
+   |
+
+error[E0412]: cannot find type `HashMap` in this scope
+  --> $DIR/use_suggestion_placement.rs:26:23
+   |
+26 |     type Dict<K, V> = HashMap<K, V>;
+   |                       ^^^^^^^ not found in this scope
+   |
+help: possible candidates are found in other modules, you can import them into scope
+   |
+11 | use std::collections::HashMap;
+   |
+11 | use std::collections::hash_map::HashMap;
+   |
+
+error[E0091]: type parameter `K` is unused
+  --> $DIR/use_suggestion_placement.rs:26:15
+   |
+26 |     type Dict<K, V> = HashMap<K, V>;
+   |               ^ unused type parameter
+
+error[E0091]: type parameter `V` is unused
+  --> $DIR/use_suggestion_placement.rs:26:18
+   |
+26 |     type Dict<K, V> = HashMap<K, V>;
+   |                  ^ unused type parameter
+
+error: aborting due to 4 previous errors
+

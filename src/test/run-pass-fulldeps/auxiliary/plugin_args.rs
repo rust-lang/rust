@@ -48,5 +48,10 @@ impl TTMacroExpander for Expander {
 pub fn plugin_registrar(reg: &mut Registry) {
     let args = reg.args().to_owned();
     reg.register_syntax_extension(Symbol::intern("plugin_args"),
-        NormalTT(Box::new(Expander { args: args, }), None, false));
+        NormalTT {
+            expander: Box::new(Expander { args: args, }),
+            def_info: None,
+            allow_internal_unstable: false,
+            allow_internal_unsafe: false,
+        });
 }

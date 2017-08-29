@@ -2,7 +2,7 @@ error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions-2.rs:12:9
    |
 11 | fn foo((v, w): (&u8, &u8), x: &u8) {
-   |                 ---           --- these references are not declared with the same lifetime...
+   |                 ---           --- these two types are declared with different lifetimes...
 12 |     v = x;
    |         ^ ...but data from `x` flows here
 

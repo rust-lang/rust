@@ -94,19 +94,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
-            ExprKind::Box { value, value_extents } => {
+            ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty, expr_span);
-                // to start, malloc some memory of suitable type (thus far, uninitialized):
+                if let Some(scope) = scope {
+                    // schedule a shallow free of that memory, lest we unwind:
+                    this.cfg.push(block, Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(result.clone())
+                    });
+                    this.schedule_drop(expr_span, scope, &result, value.ty);
+                }
+
+                // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg.push_assign(block, source_info, &result, box_);
-                this.in_scope((value_extents, source_info), block, |this| {
-                    // schedule a shallow free of that memory, lest we unwind:
-                    this.schedule_box_free(expr_span, value_extents, &result, value.ty);
-                    // initialize the box contents:
-                    unpack!(block = this.into(&result.clone().deref(), block, value));
-                    block.and(Rvalue::Use(Operand::Consume(result)))
-                })
+
+                // initialize the box contents:
+                unpack!(block = this.into(&result.clone().deref(), block, value));
+                block.and(Rvalue::Use(Operand::Consume(result)))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);
@@ -179,12 +185,26 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
-                let upvars =
+            ExprKind::Closure { closure_id, substs, upvars, interior } => { // see (*) above
+                let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                block.and(Rvalue::Aggregate(box AggregateKind::Closure(closure_id, substs), upvars))
+                let result = if let Some(interior) = interior {
+                    // Add the state operand since it follows the upvars in the generator
+                    // struct. See librustc_mir/transform/generator.rs for more details.
+                    operands.push(Operand::Constant(box Constant {
+                        span: expr_span,
+                        ty: this.hir.tcx().types.u32,
+                        literal: Literal::Value {
+                            value: ConstVal::Integral(ConstInt::U32(0)),
+                        },
+                    }));
+                    box AggregateKind::Generator(closure_id, substs, interior)
+                } else {
+                    box AggregateKind::Closure(closure_id, substs)
+                };
+                block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Adt {
                 adt_def, variant_index, substs, fields, base
@@ -225,6 +245,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr));
                 block.and(this.unit_rvalue())
+            }
+            ExprKind::Yield { value } => {
+                let value = unpack!(block = this.as_operand(block, scope, value));
+                let resume = this.cfg.start_new_block();
+                let cleanup = this.generator_drop_cleanup();
+                this.cfg.terminate(block, source_info, TerminatorKind::Yield {
+                    value: value,
+                    resume: resume,
+                    drop: cleanup,
+                });
+                resume.and(this.unit_rvalue())
             }
             ExprKind::Literal { .. } |
             ExprKind::Block { .. } |

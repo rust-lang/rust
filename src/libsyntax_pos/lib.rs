@@ -14,9 +14,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "syntax_pos"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -47,7 +44,7 @@ extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod hygiene;
-pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan};
+pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
 pub mod symbol;
 
@@ -153,6 +150,27 @@ impl Span {
         }
     }
 
+    /// Check if this span arises from a compiler desugaring of kind `kind`.
+    pub fn is_compiler_desugaring(&self, kind: CompilerDesugaringKind) -> bool {
+        match self.ctxt.outer().expn_info() {
+            Some(info) => match info.callee.format {
+                ExpnFormat::CompilerDesugaring(k) => k == kind,
+                _ => false,
+            },
+            None => false,
+        }
+    }
+
+    /// Check if a span is "internal" to a macro in which `unsafe`
+    /// can be used without triggering the `unsafe_code` lint
+    //  (that is, a macro marked with `#[allow_internal_unsafe]`).
+    pub fn allows_unsafe(&self) -> bool {
+        match self.ctxt.outer().expn_info() {
+            Some(info) => info.callee.allow_internal_unsafe,
+            None => false,
+        }
+    }
+
     pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];
@@ -174,8 +192,8 @@ impl Span {
             if !info.call_site.source_equal(&prev_span) {
                 result.push(MacroBacktrace {
                     call_site: info.call_site,
-                    macro_decl_name: macro_decl_name,
-                    def_site_span: def_site_span,
+                    macro_decl_name,
+                    def_site_span,
                 });
             }
 
@@ -348,7 +366,7 @@ impl MultiSpan {
 
         for &(span, ref label) in &self.span_labels {
             span_labels.push(SpanLabel {
-                span: span,
+                span,
                 is_primary: is_primary(span),
                 label: Some(label.clone())
             });
@@ -357,7 +375,7 @@ impl MultiSpan {
         for &span in &self.primary_spans {
             if !span_labels.iter().any(|sl| sl.span == span) {
                 span_labels.push(SpanLabel {
-                    span: span,
+                    span,
                     is_primary: true,
                     label: None
                 });
@@ -546,16 +564,16 @@ impl Decodable for FileMap {
             let multibyte_chars: Vec<MultiByteChar> =
                 d.read_struct_field("multibyte_chars", 5, |d| Decodable::decode(d))?;
             Ok(FileMap {
-                name: name,
-                name_was_remapped: name_was_remapped,
+                name,
+                name_was_remapped,
                 // `crate_of_origin` has to be set by the importer.
                 // This value matches up with rustc::hir::def_id::INVALID_CRATE.
                 // That constant is not available here unfortunately :(
                 crate_of_origin: ::std::u32::MAX - 1,
-                start_pos: start_pos,
-                end_pos: end_pos,
+                start_pos,
+                end_pos,
                 src: None,
-                src_hash: src_hash,
+                src_hash,
                 external_src: RefCell::new(ExternalSource::AbsentOk),
                 lines: RefCell::new(lines),
                 multibyte_chars: RefCell::new(multibyte_chars)
@@ -584,13 +602,13 @@ impl FileMap {
         let end_pos = start_pos.to_usize() + src.len();
 
         FileMap {
-            name: name,
-            name_was_remapped: name_was_remapped,
+            name,
+            name_was_remapped,
             crate_of_origin: 0,
             src: Some(Rc::new(src)),
-            src_hash: src_hash,
+            src_hash,
             external_src: RefCell::new(ExternalSource::Unneeded),
-            start_pos: start_pos,
+            start_pos,
             end_pos: Pos::from_usize(end_pos),
             lines: RefCell::new(Vec::new()),
             multibyte_chars: RefCell::new(Vec::new()),
@@ -677,8 +695,8 @@ impl FileMap {
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
         assert!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
-            pos: pos,
-            bytes: bytes,
+            pos,
+            bytes,
         };
         self.multibyte_chars.borrow_mut().push(mbc);
     }

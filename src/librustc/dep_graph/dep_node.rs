@@ -411,6 +411,8 @@ define_dep_nodes!( <'tcx>
 
     [] BorrowCheckKrate,
     [] BorrowCheck(DefId),
+    [] MirBorrowCheck(DefId),
+
     [] RvalueCheck(DefId),
     [] Reachability,
     [] MirKeys,
@@ -432,6 +434,7 @@ define_dep_nodes!( <'tcx>
     [] ImplPolarity(DefId),
     [] ClosureKind(DefId),
     [] FnSignature(DefId),
+    [] GenSignature(DefId),
     [] CoerceUnsizedInfo(DefId),
 
     [] ItemVarianceConstraints(DefId),
@@ -520,7 +523,10 @@ define_dep_nodes!( <'tcx>
     [] DylibDepFormats(DefId),
     [] IsAllocator(DefId),
     [] IsPanicRuntime(DefId),
+    [] IsCompilerBuiltins(DefId),
+    [] HasGlobalAllocator(DefId),
     [] ExternCrate(DefId),
+    [] LintLevels,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

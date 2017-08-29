@@ -26,6 +26,7 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_llvm = { path = "../librustc_llvm" }
 rustc_platform_intrinsics = { path = "../librustc_platform_intrinsics" }
+rustc_trans_utils = { path = "../librustc_trans_utils" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

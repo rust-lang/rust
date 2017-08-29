@@ -9,8 +9,10 @@
 // except according to those terms.
 
 // aux-build:attributes-included.rs
+// ignore-stage1
 
 #![feature(proc_macro, rustc_attrs)]
+#![warn(unused)]
 
 extern crate attributes_included;
 

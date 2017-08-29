@@ -81,7 +81,7 @@
 //! Note the documentation for the primitives [`str`] and [`[T]`][slice] (also
 //! called 'slice'). Many method calls on [`String`] and [`Vec<T>`] are actually
 //! calls to methods on [`str`] and [`[T]`][slice] respectively, via [deref
-//! coercions].
+//! coercions][deref-coercions].
 //!
 //! Third, the standard library defines [The Rust Prelude], a small collection
 //! of items - mostly traits - that are imported into every module of every
@@ -203,16 +203,13 @@
 //! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
 //! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
-//! [deref coercions]: ../book/first-edition/deref-coercions.html
+//! [deref-coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
 //! [primitive types]: ../book/first-edition/primitive-types.html
 
-#![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
-#![crate_type = "rlib"]
-#![crate_type = "dylib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -243,6 +240,7 @@
 #![feature(allocator_api)]
 #![feature(alloc_system)]
 #![feature(allocator_internals)]
+#![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(box_syntax)]
@@ -314,9 +312,26 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
+#![feature(doc_cfg)]
 #![cfg_attr(test, feature(update_panic_count))]
 
 #![default_lib_allocator]
+
+// Always use alloc_system during stage0 since we don't know if the alloc_*
+// crate the stage0 compiler will pick by default is enabled (e.g.
+// if the user has disabled jemalloc in `./configure`).
+// `force_alloc_system` is *only* intended as a workaround for local rebuilds
+// with a rustc without jemalloc.
+// The not(stage0+msvc) gates will only last until the next stage0 bump
+#![cfg_attr(all(
+        not(all(stage0, target_env = "msvc")),
+        any(stage0, feature = "force_alloc_system")),
+    feature(global_allocator))]
+#[cfg(all(
+    not(all(stage0, target_env = "msvc")),
+    any(stage0, feature = "force_alloc_system")))]
+#[global_allocator]
+static ALLOC: alloc_system::System = alloc_system::System;
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
@@ -343,6 +358,7 @@ extern crate std_unicode;
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[allow(unused_extern_crates)]
 extern crate unwind;
 
 // compiler-rt intrinsics

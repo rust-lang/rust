@@ -11,7 +11,7 @@
 //! Compilation of native dependencies like LLVM.
 //!
 //! Native projects like LLVM unfortunately aren't suited just yet for
-//! compilation in build scripts that Cargo has. This is because thie
+//! compilation in build scripts that Cargo has. This is because the
 //! compilation takes a *very* long time but also because we don't want to
 //! compile LLVM 3 times as part of a normal bootstrap (we want it cached).
 //!
@@ -56,6 +56,12 @@ impl Step for Llvm {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let target = self.target;
+
+        // If we're not compiling for LLVM bail out here.
+        if !build.config.llvm_enabled {
+            return;
+        }
+
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
         if let Some(config) = build.config.target_config.get(&target) {

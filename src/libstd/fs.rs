@@ -28,7 +28,7 @@ use time::SystemTime;
 /// A reference to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
-/// it was opened with. Files also implement `Seek` to alter the logical cursor
+/// it was opened with. Files also implement [`Seek`] to alter the logical cursor
 /// that the file contains internally.
 ///
 /// Files are automatically closed when they go out of scope.
@@ -48,7 +48,7 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
-/// Read the contents of a file into a `String`:
+/// Read the contents of a file into a [`String`]:
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -81,6 +81,8 @@ use time::SystemTime;
 /// # }
 /// ```
 ///
+/// [`Seek`]: ../io/trait.Seek.html
+/// [`String`]: ../string/struct.String.html
 /// [`Read`]: ../io/trait.Read.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -104,19 +106,19 @@ pub struct Metadata(fs_imp::FileAttr);
 /// Iterator over the entries in a directory.
 ///
 /// This iterator is returned from the [`read_dir`] function of this module and
-/// will yield instances of `io::Result<DirEntry>`. Through a [`DirEntry`]
+/// will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. Through a [`DirEntry`]
 /// information like the entry's path and possibly other metadata can be
 /// learned.
 ///
-/// [`read_dir`]: fn.read_dir.html
-/// [`DirEntry`]: struct.DirEntry.html
-///
 /// # Errors
 ///
-/// This [`io::Result`] will be an `Err` if there's some sort of intermittent
+/// This [`io::Result`] will be an [`Err`] if there's some sort of intermittent
 /// IO error during iteration.
 ///
+/// [`read_dir`]: fn.read_dir.html
+/// [`DirEntry`]: struct.DirEntry.html
 /// [`io::Result`]: ../io/type.Result.html
+/// [`Err`]: ../result/enum.Result.html#variant.Err
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct ReadDir(fs_imp::ReadDir);
@@ -655,7 +657,7 @@ impl OpenOptions {
     /// This function will return an error under a number of different
     /// circumstances. Some of these error conditions are listed here, together
     /// with their [`ErrorKind`]. The mapping to [`ErrorKind`]s is not part of
-    /// the compatiblity contract of the function, especially the `Other` kind
+    /// the compatibility contract of the function, especially the `Other` kind
     /// might change to more specific kinds in the future.
     ///
     /// * [`NotFound`]: The specified file does not exist and neither `create`
@@ -914,7 +916,7 @@ impl AsInner<fs_imp::FileAttr> for Metadata {
 }
 
 impl Permissions {
-    /// Returns whether these permissions describe a readonly file.
+    /// Returns whether these permissions describe a readonly (unwritable) file.
     ///
     /// # Examples
     ///
@@ -932,7 +934,11 @@ impl Permissions {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn readonly(&self) -> bool { self.0.readonly() }
 
-    /// Modifies the readonly flag for this set of permissions.
+    /// Modifies the readonly flag for this set of permissions. If the
+    /// `readonly` argument is `true`, using the resulting `Permission` will
+    /// update file permissions to forbid writing. Conversely, if it's `false`,
+    /// using the resulting `Permission` will update file permissions to allow
+    /// writing.
     ///
     /// This operation does **not** modify the filesystem. To modify the
     /// filesystem use the `fs::set_permissions` function.

@@ -16,7 +16,7 @@ use self::EvaluationResult::*;
 use super::coherence;
 use super::DerivedObligationCause;
 use super::project;
-use super::project::{normalize_with_depth, Normalized};
+use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
@@ -24,9 +24,9 @@ use super::{ObjectCastObligation, Obligation};
 use super::TraitNotObjectSafe;
 use super::Selection;
 use super::SelectionResult;
-use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
+use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure, VtableGenerator,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
-use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
+use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableGeneratorData,
             VtableClosureData, VtableDefaultImplData, VtableFnPointerData};
 use super::util;
 
@@ -43,6 +43,7 @@ use middle::lang_items;
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
+use std::iter;
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
@@ -197,6 +198,10 @@ enum SelectionCandidate<'tcx> {
     /// confirmation step what ClosureKind obligation to emit.
     ClosureCandidate(/* closure */ DefId, ty::ClosureSubsts<'tcx>, ty::ClosureKind),
 
+    /// Implementation of a `Generator` trait by one of the anonymous types
+    /// generated for a generator.
+    GeneratorCandidate(/* function / closure */ DefId, ty::ClosureSubsts<'tcx>),
+
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
     FnPointerCandidate,
@@ -227,6 +232,11 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
 
             ParamCandidate(ref trait_ref) => {
                 return tcx.lift(trait_ref).map(ParamCandidate);
+            }
+            GeneratorCandidate(def_id, ref substs) => {
+                return tcx.lift(substs).map(|substs| {
+                    GeneratorCandidate(def_id, substs)
+                });
             }
             ClosureCandidate(def_id, ref substs, kind) => {
                 return tcx.lift(substs).map(|substs| {
@@ -494,7 +504,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             never_obligation.predicate = never_obligation.predicate.map_bound(|mut trait_pred| {
                 // Swap out () with ! so we can check if the trait is impld for !
                 {
-                    let mut trait_ref = &mut trait_pred.trait_ref;
+                    let trait_ref = &mut trait_pred.trait_ref;
                     let unit_substs = trait_ref.substs;
                     let mut never_substs = Vec::with_capacity(unit_substs.len());
                     never_substs.push(From::from(tcx.types.never));
@@ -512,11 +522,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             if raise_warning {
-                tcx.sess.add_lint(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-                                  obligation.cause.body_id,
-                                  obligation.cause.span,
-                                  format!("code relies on type inference rules which are likely \
-                                           to change"));
+                tcx.lint_node(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
+                              obligation.cause.body_id,
+                              obligation.cause.span,
+                              &format!("code relies on type inference rules which are likely \
+                                        to change"));
             }
         }
         Ok(ret)
@@ -655,8 +665,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let project_obligation = obligation.with(data.clone());
                 match project::poly_project_and_unify_type(self, &project_obligation) {
                     Ok(Some(subobligations)) => {
-                        self.evaluate_predicates_recursively(previous_stack,
-                                                             subobligations.iter())
+                        let result = self.evaluate_predicates_recursively(previous_stack,
+                                                                          subobligations.iter());
+                        if let Some(key) =
+                            ProjectionCacheKey::from_poly_projection_predicate(self, data)
+                        {
+                            self.infcx.projection_cache.borrow_mut().complete(key);
+                        }
+                        result
                     }
                     Ok(None) => {
                         EvaluatedToAmbig
@@ -1296,6 +1312,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
          } else if self.tcx().lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
          } else {
+             if self.tcx().lang_items.clone_trait() == Some(def_id) {
+                 // Same builtin conditions as `Copy`, i.e. every type which has builtin support
+                 // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
+                 // types have builtin support for `Clone`.
+                 let clone_conditions = self.copy_conditions(obligation);
+                 self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
+             }
+
+             self.assemble_generator_candidates(obligation, &mut candidates)?;
              self.assemble_closure_candidates(obligation, &mut candidates)?;
              self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
              self.assemble_candidates_from_impls(obligation, &mut candidates)?;
@@ -1480,6 +1505,38 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         })
     }
 
+    fn assemble_generator_candidates(&mut self,
+                                   obligation: &TraitObligation<'tcx>,
+                                   candidates: &mut SelectionCandidateSet<'tcx>)
+                                   -> Result<(),SelectionError<'tcx>>
+    {
+        if self.tcx().lang_items.gen_trait() != Some(obligation.predicate.def_id()) {
+            return Ok(());
+        }
+
+        // ok to skip binder because the substs on generator types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters
+        let self_ty = *obligation.self_ty().skip_binder();
+        let (closure_def_id, substs) = match self_ty.sty {
+            ty::TyGenerator(id, substs, _) => (id, substs),
+            ty::TyInfer(ty::TyVar(_)) => {
+                debug!("assemble_generator_candidates: ambiguous self-type");
+                candidates.ambiguous = true;
+                return Ok(());
+            }
+            _ => { return Ok(()); }
+        };
+
+        debug!("assemble_generator_candidates: self_ty={:?} obligation={:?}",
+               self_ty,
+               obligation);
+
+        candidates.vec.push(GeneratorCandidate(closure_def_id, substs));
+
+        Ok(())
+    }
+
     /// Check for the artificial impl that the compiler will create for an obligation like `X :
     /// FnMut<..>` where `X` is a closure type.
     ///
@@ -1576,10 +1633,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
-        let def = self.tcx().trait_def(obligation.predicate.def_id());
-
-        def.for_each_relevant_impl(
-            self.tcx(),
+        self.tcx().for_each_relevant_impl(
+            obligation.predicate.def_id(),
             obligation.predicate.0.trait_ref.self_ty(),
             |impl_def_id| {
                 self.probe(|this, snapshot| { /* [1] */
@@ -1848,6 +1903,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
                 ImplCandidate(..) |
                 ClosureCandidate(..) |
+                GeneratorCandidate(..) |
                 FnPointerCandidate |
                 BuiltinObjectCandidate |
                 BuiltinUnsizeCandidate |
@@ -1928,7 +1984,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
-            ty::TyChar | ty::TyRef(..) |
+            ty::TyChar | ty::TyRef(..) | ty::TyGenerator(..) |
             ty::TyArray(..) | ty::TyClosure(..) | ty::TyNever |
             ty::TyError => {
                 // safe for everything
@@ -1980,7 +2036,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
-            ty::TyClosure(..) |
+            ty::TyClosure(..) | ty::TyGenerator(..) |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 Never
             }
@@ -2081,6 +2137,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 substs.upvar_tys(def_id, self.tcx()).collect()
             }
 
+            ty::TyGenerator(def_id, ref substs, interior) => {
+                let witness = iter::once(interior.witness);
+                substs.upvar_tys(def_id, self.tcx()).chain(witness).collect()
+            }
+
             // for `PhantomData<T>`, we pass `T`
             ty::TyAdt(def, substs) if def.is_phantom_data() => {
                 substs.types().collect()
@@ -2166,8 +2227,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match candidate {
             BuiltinCandidate { has_nested } => {
-                Ok(VtableBuiltin(
-                    self.confirm_builtin_candidate(obligation, has_nested)))
+                let data = self.confirm_builtin_candidate(obligation, has_nested);
+                Ok(VtableBuiltin(data))
             }
 
             ParamCandidate(param) => {
@@ -2188,6 +2249,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let vtable_closure =
                     self.confirm_closure_candidate(obligation, closure_def_id, substs, kind)?;
                 Ok(VtableClosure(vtable_closure))
+            }
+
+            GeneratorCandidate(closure_def_id, substs) => {
+                let vtable_generator =
+                    self.confirm_generator_candidate(obligation, closure_def_id, substs)?;
+                Ok(VtableGenerator(vtable_generator))
             }
 
             BuiltinObjectCandidate => {
@@ -2273,6 +2340,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 _ if Some(trait_def) == self.tcx().lang_items.copy_trait() => {
                     self.copy_conditions(obligation)
                 }
+                _ if Some(trait_def) == self.tcx().lang_items.clone_trait() => {
+                    self.copy_conditions(obligation)
+                }
                 _ => bug!("unexpected builtin trait {:?}", trait_def)
             };
             let nested = match conditions {
@@ -2293,6 +2363,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         debug!("confirm_builtin_candidate: obligations={:?}",
                obligations);
+
         VtableBuiltinData { nested: obligations }
     }
 
@@ -2518,6 +2589,40 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         Ok(VtableFnPointerData { fn_ty: self_ty, nested: obligations })
     }
 
+    fn confirm_generator_candidate(&mut self,
+                                 obligation: &TraitObligation<'tcx>,
+                                 closure_def_id: DefId,
+                                 substs: ty::ClosureSubsts<'tcx>)
+                                 -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
+                                           SelectionError<'tcx>>
+    {
+        debug!("confirm_generator_candidate({:?},{:?},{:?})",
+               obligation,
+               closure_def_id,
+               substs);
+
+        let Normalized {
+            value: trait_ref,
+            obligations
+        } = self.generator_trait_ref(obligation, closure_def_id, substs);
+
+        debug!("confirm_generator_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
+               closure_def_id,
+               trait_ref,
+               obligations);
+
+        self.confirm_poly_trait_refs(obligation.cause.clone(),
+                                     obligation.param_env,
+                                     obligation.predicate.to_poly_trait_ref(),
+                                     trait_ref)?;
+
+        Ok(VtableGeneratorData {
+            closure_def_id: closure_def_id,
+            substs: substs.clone(),
+            nested: obligations
+        })
+    }
+
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: DefId,
@@ -2600,8 +2705,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn confirm_builtin_unsize_candidate(&mut self,
                                         obligation: &TraitObligation<'tcx>,)
-                                        -> Result<VtableBuiltinData<PredicateObligation<'tcx>>,
-                                                  SelectionError<'tcx>> {
+        -> Result<VtableBuiltinData<PredicateObligation<'tcx>>, SelectionError<'tcx>>
+    {
         let tcx = self.tcx();
 
         // assemble_candidates_for_unsizing should ensure there are no late bound
@@ -3011,6 +3116,45 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             obligation, closure_def_id, substs);
 
         // A closure signature can contain associated types which
+        // must be normalized.
+        normalize_with_depth(self,
+                             obligation.param_env,
+                             obligation.cause.clone(),
+                             obligation.recursion_depth+1,
+                             &trait_ref)
+    }
+
+    fn generator_trait_ref_unnormalized(&mut self,
+                                      obligation: &TraitObligation<'tcx>,
+                                      closure_def_id: DefId,
+                                      substs: ty::ClosureSubsts<'tcx>)
+                                      -> ty::PolyTraitRef<'tcx>
+    {
+        let gen_sig = self.infcx.generator_sig(closure_def_id).unwrap()
+            .subst(self.tcx(), substs.substs);
+        let ty::Binder((trait_ref, ..)) =
+            self.tcx().generator_trait_ref_and_outputs(obligation.predicate.def_id(),
+                                                       obligation.predicate.0.self_ty(), // (1)
+                                                       gen_sig);
+        // (1) Feels icky to skip the binder here, but OTOH we know
+        // that the self-type is an generator type and hence is
+        // in fact unparameterized (or at least does not reference any
+        // regions bound in the obligation). Still probably some
+        // refactoring could make this nicer.
+
+        ty::Binder(trait_ref)
+    }
+
+    fn generator_trait_ref(&mut self,
+                         obligation: &TraitObligation<'tcx>,
+                         closure_def_id: DefId,
+                         substs: ty::ClosureSubsts<'tcx>)
+                         -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
+    {
+        let trait_ref = self.generator_trait_ref_unnormalized(
+            obligation, closure_def_id, substs);
+
+        // A generator signature can contain associated types which
         // must be normalized.
         normalize_with_depth(self,
                              obligation.param_env,

@@ -41,9 +41,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            literal: Literal<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
-            span: span,
-            ty: ty,
-            literal: literal,
+            span,
+            ty,
+            literal,
         };
         Operand::Constant(constant)
     }

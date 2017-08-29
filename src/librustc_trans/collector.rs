@@ -331,8 +331,8 @@ fn collect_roots<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     {
         let mut visitor = RootCollector {
-            scx: scx,
-            mode: mode,
+            scx,
+            mode,
             exported_symbols,
             output: &mut roots,
         };
@@ -629,6 +629,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::Return |
             mir::TerminatorKind::Unreachable |
             mir::TerminatorKind::Assert { .. } => {}
+            mir::TerminatorKind::GeneratorDrop |
+            mir::TerminatorKind::Yield { .. } => bug!(),
         }
 
         self.super_terminator_kind(block, kind, location);
@@ -699,7 +701,8 @@ fn visit_instance_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         }
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
-        ty::InstanceDef::FnPtrShim(..) => {
+        ty::InstanceDef::FnPtrShim(..) |
+        ty::InstanceDef::CloneShim(..) => {
             output.push(create_fn_trans_item(instance));
         }
     }
@@ -716,7 +719,8 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::FnPtrShim(..) |
         ty::InstanceDef::DropGlue(..) |
-        ty::InstanceDef::Intrinsic(_) => return true
+        ty::InstanceDef::Intrinsic(_) |
+        ty::InstanceDef::CloneShim(..) => return true
     };
     match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {
@@ -1035,9 +1039,9 @@ fn collect_neighbours<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     let mir = scx.tcx().instance_mir(instance.def);
 
     let mut visitor = MirNeighborCollector {
-        scx: scx,
+        scx,
         mir: &mir,
-        output: output,
+        output,
         param_substs: instance.substs,
         const_context,
     };

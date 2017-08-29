@@ -246,7 +246,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let val = if fn_ty.args[1].is_indirect() {
                     bcx.load(llargs[1], None)
                 } else {
-                    from_immediate(bcx, llargs[1])
+                    if !type_is_zero_size(ccx, tp_ty) {
+                        from_immediate(bcx, llargs[1])
+                    } else {
+                        C_nil(ccx)
+                    }
                 };
                 let ptr = bcx.pointercast(llargs[0], val_ty(val).ptr_to());
                 let store = bcx.volatile_store(val, ptr);

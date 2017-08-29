@@ -34,10 +34,9 @@ fn foo(i: i32) {
 //     let _1: D;
 //     let _2: i32;
 //     let _3: &'6_2rce i32;
-//     let _7: &'6_4rce i32;
+//     let _6: &'6_4rce i32;
 //     let mut _4: ();
 //     let mut _5: i32;
-//     let mut _6: ();
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
@@ -51,10 +50,10 @@ fn foo(i: i32) {
 //     }
 //     bb1: {
 //         StorageDead(_5);
-//         StorageLive(_7);
-//         _7 = &'6_4rce _2;
+//         StorageLive(_6);
+//         _6 = &'6_4rce _2;
 //         _0 = ();
-//         StorageDead(_7);
+//         StorageDead(_6);
 //         EndRegion('6_4rce);
 //         StorageDead(_3);
 //         EndRegion('6_2rce);

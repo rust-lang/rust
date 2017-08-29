@@ -175,8 +175,8 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
            msg);
     Some((which,
           Error {
-        line_num: line_num,
-        kind: kind,
-        msg: msg,
+        line_num,
+        kind,
+        msg,
     }))
 }

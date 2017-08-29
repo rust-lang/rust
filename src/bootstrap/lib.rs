@@ -136,13 +136,13 @@ extern crate toml;
 extern crate libc;
 
 use std::cell::Cell;
-use std::cmp;
 use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{PathBuf, Path};
 use std::process::Command;
+use std::slice;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
 
@@ -187,7 +187,7 @@ mod job {
 }
 
 pub use config::Config;
-pub use flags::{Flags, Subcommand};
+use flags::Subcommand;
 use cache::{Interned, INTERNER};
 
 /// A structure representing a Rust compiler.
@@ -214,9 +214,6 @@ pub struct Compiler {
 pub struct Build {
     // User-specified configuration via config.toml
     config: Config,
-
-    // User-specified configuration via CLI flags
-    flags: Flags,
 
     // Derived properties from the above two configurations
     src: PathBuf,
@@ -288,9 +285,9 @@ impl Build {
     /// line and the filesystem `config`.
     ///
     /// By default all build output will be placed in the current directory.
-    pub fn new(flags: Flags, config: Config) -> Build {
+    pub fn new(config: Config) -> Build {
         let cwd = t!(env::current_dir());
-        let src = flags.src.clone();
+        let src = config.src.clone();
         let out = cwd.join("build");
 
         let is_sudo = match env::var_os("SUDO_USER") {
@@ -302,58 +299,42 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
-
-        let hosts = if !flags.host.is_empty() {
-            for host in flags.host.iter() {
-                if !config.host.contains(host) {
-                    panic!("specified host `{}` is not in configuration", host);
-                }
-            }
-            flags.host.clone()
-        } else {
-            config.host.clone()
-        };
-        let targets = if !flags.target.is_empty() {
-            for target in flags.target.iter() {
-                if !config.target.contains(target) {
-                    panic!("specified target `{}` is not in configuration", target);
-                }
-            }
-            flags.target.clone()
-        } else {
-            config.target.clone()
-        };
+        let rust_info = channel::GitInfo::new(&config, &src);
+        let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
 
         Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
-            fail_fast: flags.cmd.fail_fast(),
-            verbosity: cmp::max(flags.verbose, config.verbose),
+            fail_fast: config.cmd.fail_fast(),
+            verbosity: config.verbose,
 
-            build: config.host[0].clone(),
-            hosts: hosts,
-            targets: targets,
+            build: config.build,
+            hosts: config.hosts.clone(),
+            targets: config.targets.clone(),
 
-            flags: flags,
-            config: config,
-            src: src,
-            out: out,
+            config,
+            src,
+            out,
 
-            rust_info: rust_info,
-            cargo_info: cargo_info,
-            rls_info: rls_info,
+            rust_info,
+            cargo_info,
+            rls_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
-            is_sudo: is_sudo,
+            is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: Cell::new(0),
+        }
+    }
+
+    pub fn build_triple(&self) -> &[Interned<String>] {
+        unsafe {
+            slice::from_raw_parts(&self.build, 1)
         }
     }
 
@@ -363,7 +344,7 @@ impl Build {
             job::setup(self);
         }
 
-        if let Subcommand::Clean = self.flags.cmd {
+        if let Subcommand::Clean = self.config.cmd {
             return clean::clean(self);
         }
 
@@ -429,6 +410,9 @@ impl Build {
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
         }
+        if self.config.llvm_enabled {
+            features.push_str(" llvm");
+        }
         features
     }
 
@@ -460,7 +444,7 @@ impl Build {
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
-    /// running a particular compiler, wehther or not we're building the
+    /// running a particular compiler, whether or not we're building the
     /// standard library, and targeting the specified architecture.
     fn cargo_out(&self,
                  compiler: Compiler,
@@ -605,7 +589,7 @@ impl Build {
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
-        self.flags.jobs.unwrap_or_else(|| num_cpus::get() as u32)
+        self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
     }
 
     /// Returns the path to the C compiler for the target specified.
@@ -672,6 +656,16 @@ impl Build {
         base
     }
 
+    /// Returns if this target should statically link the C runtime, if specified
+    fn crt_static(&self, target: Interned<String>) -> Option<bool> {
+        if target.contains("pc-windows-msvc") {
+            Some(true)
+        } else {
+            self.config.target_config.get(&target)
+                .and_then(|t| t.crt_static)
+        }
+    }
+
     /// Returns the "musl root" for this `target`, if defined
     fn musl_root(&self, target: Interned<String>) -> Option<&Path> {
         self.config.target_config.get(&target)
@@ -724,7 +718,7 @@ impl Build {
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            self.config.host.iter().any(|h| *h == target)
+            self.hosts.iter().any(|h| *h == target)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if

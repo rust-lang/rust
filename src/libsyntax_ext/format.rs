@@ -529,7 +529,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     /// Actually builds the expression which the format_args! block will be
     /// expanded to
-    fn into_expr(mut self) -> P<ast::Expr> {
+    fn into_expr(self) -> P<ast::Expr> {
         let mut locals = Vec::new();
         let mut counts = Vec::new();
         let mut pats = Vec::new();
@@ -709,11 +709,11 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     };
 
     let mut cx = Context {
-        ecx: ecx,
-        args: args,
-        arg_types: arg_types,
-        arg_unique_types: arg_unique_types,
-        names: names,
+        ecx,
+        args,
+        arg_types,
+        arg_unique_types,
+        names,
         curarg: 0,
         arg_index_map: Vec::new(),
         count_args: Vec::new(),
@@ -724,7 +724,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
         pieces: Vec::new(),
         str_pieces: Vec::new(),
         all_pieces_simple: true,
-        macsp: macsp,
+        macsp,
         fmtsp: fmt.span,
     };
 

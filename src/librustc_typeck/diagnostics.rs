@@ -1525,9 +1525,9 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 "##,
 
 E0122: r##"
-An attempt was made to add a generic constraint to a type alias. While Rust will
-allow this with a warning, it will not currently enforce the constraint.
-Consider the example below:
+An attempt was made to add a generic constraint to a type alias. This constraint
+is entirely ignored. For backwards compatibility, Rust still allows this with a
+warning. Consider the example below:
 
 ```
 trait Foo{}
@@ -1633,45 +1633,6 @@ fn bar(foo: Foo) -> u32 {
         Foo::B{i} => i,
     }
 }
-```
-"##,
-
-E0182: r##"
-You bound an associated type in an expression path which is not
-allowed.
-
-Erroneous code example:
-
-```compile_fail,E0182
-trait Foo {
-    type A;
-    fn bar() -> isize;
-}
-
-impl Foo for isize {
-    type A = usize;
-    fn bar() -> isize { 42 }
-}
-
-// error: unexpected binding of associated item in expression path
-let x: isize = Foo::<A=usize>::bar();
-```
-
-To give a concrete type when using the Universal Function Call Syntax,
-use "Type as Trait". Example:
-
-```
-trait Foo {
-    type A;
-    fn bar() -> isize;
-}
-
-impl Foo for isize {
-    type A = usize;
-    fn bar() -> isize { 42 }
-}
-
-let x: isize = <isize as Foo>::bar(); // ok!
 ```
 "##,
 
@@ -2358,21 +2319,6 @@ impl Foo {
 ```
 "##,
      */
-
-E0214: r##"
-A generic type was described using parentheses rather than angle brackets. For
-example:
-
-```compile_fail,E0214
-fn main() {
-    let v: Vec(&str) = vec!["foo"];
-}
-```
-
-This is not currently supported: `v` should be defined as `Vec<&str>`.
-Parentheses are currently only used with generic types when defining parameters
-for `Fn`-family traits.
-"##,
 
 E0220: r##"
 You used an associated type which isn't defined in the trait.
@@ -4644,6 +4590,62 @@ whose implementation is handled specially by the compiler. In order to fix this
 error, just declare a function.
 "##,
 
+E0624: r##"
+A private item was used outside of its scope.
+
+Erroneous code example:
+
+```compile_fail,E0624
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        fn method(&self) {}
+    }
+}
+
+let foo = inner::Foo;
+foo.method(); // error: method `method` is private
+```
+
+Two possibilities are available to solve this issue:
+
+1. Only use the item in the scope it has been defined:
+
+```
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        fn method(&self) {}
+    }
+
+    pub fn call_method(foo: &Foo) { // We create a public function.
+        foo.method(); // Which calls the item.
+    }
+}
+
+let foo = inner::Foo;
+inner::call_method(&foo); // And since the function is public, we can call the
+                          // method through it.
+```
+
+2. Make the item public:
+
+```
+mod inner {
+    pub struct Foo;
+
+    impl Foo {
+        pub fn method(&self) {} // It's now public.
+    }
+}
+
+let foo = inner::Foo;
+foo.method(); // Ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -4665,6 +4667,7 @@ register_diagnostics! {
 //  E0172, // non-trait found in a type sum, moved to resolve
 //  E0173, // manual implementations of unboxed closure traits are experimental
 //  E0174,
+//  E0182, // merged into E0229
     E0183,
 //  E0187, // can't infer the kind of the closure
 //  E0188, // can not cast an immutable reference to a mutable pointer
@@ -4709,7 +4712,7 @@ register_diagnostics! {
            // between structures with the same definition
     E0521, // redundant default implementations of trait
     E0533, // `{}` does not name a unit variant, unit struct or a constant
-    E0563, // cannot determine a type for this `impl Trait`: {}
+//  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0567, // auto traits can not have type parameters
@@ -4718,4 +4721,5 @@ register_diagnostics! {
     E0588, // packed struct cannot transitively contain a `[repr(align)]` struct
     E0592, // duplicate definitions with name `{}`
 //  E0613, // Removed (merged with E0609)
+    E0627, // yield statement outside of generator literal
 }

@@ -94,10 +94,25 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus)
-    fn check_expr_within_pat(&self, expr: &Expr) {
+    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus),
+    /// or path for ranges.
+    ///
+    /// FIXME: do we want to allow expr -> pattern conversion to create path expressions?
+    /// That means making this work:
+    ///
+    /// ```rust,ignore (FIXME)
+    ///     struct S;
+    ///     macro_rules! m {
+    ///         ($a:expr) => {
+    ///             let $a = S;
+    ///         }
+    ///     }
+    ///     m!(S);
+    /// ```
+    fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
-            ExprKind::Lit(..) | ExprKind::Path(..) => {}
+            ExprKind::Lit(..) => {}
+            ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
                 if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
             _ => self.err_handler().span_err(expr.span, "arbitrary expressions aren't allowed \
@@ -124,14 +139,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::Break(Some(ident), _) |
             ExprKind::Continue(Some(ident)) => {
                 self.check_label(ident.node, ident.span);
-            }
-            ExprKind::MethodCall(ref segment, ..) => {
-                if let Some(ref params) = segment.parameters {
-                    if let PathParameters::Parenthesized(..) = **params {
-                        self.err_handler().span_err(expr.span,
-                            "parenthesized parameters cannot be used on method calls");
-                    }
-                }
             }
             _ => {}
         }
@@ -237,10 +244,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.check_trait_fn_not_const(sig.constness);
                         if block.is_none() {
                             self.check_decl_no_pat(&sig.decl, |span, _| {
-                                self.session.add_lint(lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                                      trait_item.id, span,
-                                                      "patterns aren't allowed in methods \
-                                                       without bodies".to_string());
+                                self.session.buffer_lint(
+                                    lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                                    trait_item.id, span,
+                                    "patterns aren't allowed in methods \
+                                     without bodies");
                             });
                         }
                     }
@@ -252,7 +260,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
-                    self.session.add_lint(lint, item.id, item.span, msg.to_string());
+                    self.session.buffer_lint(lint, item.id, item.span, msg);
                 }
             }
             ItemKind::Union(ref vdata, _) => {
@@ -331,11 +339,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_pat(&mut self, pat: &'a Pat) {
         match pat.node {
             PatKind::Lit(ref expr) => {
-                self.check_expr_within_pat(expr);
+                self.check_expr_within_pat(expr, false);
             }
             PatKind::Range(ref start, ref end, _) => {
-                self.check_expr_within_pat(start);
-                self.check_expr_within_pat(end);
+                self.check_expr_within_pat(start, true);
+                self.check_expr_within_pat(end, true);
             }
             _ => {}
         }

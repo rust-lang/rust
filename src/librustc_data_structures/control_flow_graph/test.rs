@@ -26,7 +26,7 @@ impl TestGraph {
     pub fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
         let mut graph = TestGraph {
             num_nodes: start_node + 1,
-            start_node: start_node,
+            start_node,
             successors: HashMap::new(),
             predecessors: HashMap::new(),
         };

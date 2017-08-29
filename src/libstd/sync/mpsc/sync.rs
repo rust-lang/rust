@@ -177,7 +177,7 @@ impl<T> Packet<T> {
             lock: Mutex::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,
-                cap: cap,
+                cap,
                 canceled: None,
                 queue: Queue {
                     head: ptr::null_mut(),

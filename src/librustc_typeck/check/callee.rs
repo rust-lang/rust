@@ -38,6 +38,7 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
+    /// e.g. enum variant constructors
     Overloaded(MethodCallee<'tcx>),
 }
 
@@ -222,7 +223,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 if let hir::ExprCall(ref expr, _) = call_expr.node {
                     let def = if let hir::ExprPath(ref qpath) = expr.node {
-                        self.tables.borrow().qpath_def(qpath, expr.id)
+                        self.tables.borrow().qpath_def(qpath, expr.hir_id)
                     } else {
                         Def::Err
                     };
@@ -314,7 +315,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            TupleArgumentsFlag::TupleArguments,
                                                            expected);
 
-        self.write_method_call(call_expr.id, method_callee);
+        self.write_method_call(call_expr.hir_id, method_callee);
         output_type
     }
 }
@@ -364,7 +365,8 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
                 adjustments.extend(autoref);
                 fcx.apply_adjustments(self.callee_expr, adjustments);
 
-                fcx.write_method_call(self.call_expr.id, method_callee);
+                fcx.write_method_call(self.call_expr.hir_id,
+                                      method_callee);
             }
             None => {
                 span_bug!(self.call_expr.span,

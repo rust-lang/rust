@@ -24,7 +24,7 @@ pub struct ReseedingRng<R, Rsdr> {
     rng: R,
     generation_threshold: usize,
     bytes_generated: usize,
-    /// Controls the behaviour when reseeding the RNG.
+    /// Controls the behavior when reseeding the RNG.
     pub reseeder: Rsdr,
 }
 
@@ -38,10 +38,10 @@ impl<R: Rng, Rsdr: Reseeder<R>> ReseedingRng<R, Rsdr> {
     /// * `reseeder`: the reseeding object to use.
     pub fn new(rng: R, generation_threshold: usize, reseeder: Rsdr) -> ReseedingRng<R, Rsdr> {
         ReseedingRng {
-            rng: rng,
-            generation_threshold: generation_threshold,
+            rng,
+            generation_threshold,
             bytes_generated: 0,
-            reseeder: reseeder,
+            reseeder,
         }
     }
 

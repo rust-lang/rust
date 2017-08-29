@@ -33,7 +33,8 @@ pub struct Flags {
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
-    pub build: Interned<String>,
+    pub build: Option<Interned<String>>,
+
     pub host: Vec<Interned<String>>,
     pub target: Vec<Interned<String>>,
     pub config: Option<PathBuf>,
@@ -66,6 +67,14 @@ pub enum Subcommand {
     Install {
         paths: Vec<PathBuf>,
     },
+}
+
+impl Default for Subcommand {
+    fn default() -> Subcommand {
+        Subcommand::Build {
+            paths: vec![PathBuf::from("nowhere")],
+        }
+    }
 }
 
 impl Flags {
@@ -243,10 +252,8 @@ Arguments:
 
         // All subcommands can have an optional "Available paths" section
         if matches.opt_present("verbose") {
-            let flags = Flags::parse(&["build".to_string()]);
-            let mut config = Config::parse(&flags.build, cfg_file.clone());
-            config.build = flags.build.clone();
-            let mut build = Build::new(flags, config);
+            let config = Config::parse(&["build".to_string()]);
+            let mut build = Build::new(config);
             metadata::build(&mut build);
 
             let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
@@ -267,14 +274,14 @@ Arguments:
             }
             "test" => {
                 Subcommand::Test {
-                    paths: paths,
+                    paths,
                     test_args: matches.opt_strs("test-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
                 }
             }
             "bench" => {
                 Subcommand::Bench {
-                    paths: paths,
+                    paths,
                     test_args: matches.opt_strs("test-args"),
                 }
             }
@@ -290,12 +297,12 @@ Arguments:
             }
             "dist" => {
                 Subcommand::Dist {
-                    paths: paths,
+                    paths,
                 }
             }
             "install" => {
                 Subcommand::Install {
-                    paths: paths,
+                    paths,
                 }
             }
             _ => {
@@ -317,20 +324,18 @@ Arguments:
 
         Flags {
             verbose: matches.opt_count("verbose"),
-            stage: stage,
+            stage,
             on_fail: matches.opt_str("on-fail"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: INTERNER.intern_string(matches.opt_str("build").unwrap_or_else(|| {
-                env::var("BUILD").unwrap()
-            })),
+            build: matches.opt_str("build").map(|s| INTERNER.intern_string(s)),
             host: split(matches.opt_strs("host"))
                 .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             target: split(matches.opt_strs("target"))
                 .into_iter().map(|x| INTERNER.intern_string(x)).collect::<Vec<_>>(),
             config: cfg_file,
-            src: src,
+            src,
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
-            cmd: cmd,
+            cmd,
             incremental: matches.opt_present("incremental"),
         }
     }

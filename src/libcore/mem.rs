@@ -901,7 +901,7 @@ impl<T> ManuallyDrop<T> {
 
     /// Manually drops the contained value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
@@ -941,4 +941,16 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
             fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
         }
     }
+}
+
+/// Tells LLVM that this point in the code is not reachable, enabling further
+/// optimizations.
+///
+/// NB: This is very different from the `unreachable!()` macro: Unlike the
+/// macro, which panics when it is executed, it is *undefined behavior* to
+/// reach code marked with this function.
+#[inline]
+#[unstable(feature = "unreachable", issue = "43751")]
+pub unsafe fn unreachable() -> ! {
+    intrinsics::unreachable()
 }

@@ -22,6 +22,9 @@ use std::mem;
 use std::usize;
 use syntax::ast;
 use syntax::print::pprust::PrintState;
+
+use rustc_data_structures::graph::OUTGOING;
+
 use util::nodemap::NodeMap;
 use hir;
 use hir::intravisit::{self, IdRange};
@@ -523,12 +526,16 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
                 changed: true
             };
 
+            let nodes_po = cfg.graph.nodes_in_postorder(OUTGOING, cfg.entry);
             let mut temp = vec![0; words_per_id];
+            let mut num_passes = 0;
             while propcx.changed {
+                num_passes += 1;
                 propcx.changed = false;
                 propcx.reset(&mut temp);
-                propcx.walk_cfg(cfg, &mut temp);
+                propcx.walk_cfg(cfg, &nodes_po, &mut temp);
             }
+            debug!("finished in {} iterations", num_passes);
         }
 
         debug!("Dataflow result for {}:", self.analysis_name);
@@ -543,12 +550,15 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
     fn walk_cfg(&mut self,
                 cfg: &cfg::CFG,
+                nodes_po: &[CFGIndex],
                 in_out: &mut [usize]) {
         debug!("DataFlowContext::walk_cfg(in_out={}) {}",
                bits_to_string(in_out), self.dfcx.analysis_name);
         assert!(self.dfcx.bits_per_id > 0);
 
-        cfg.graph.each_node(|node_index, node| {
+        // Iterate over nodes in reverse postorder
+        for &node_index in nodes_po.iter().rev() {
+            let node = cfg.graph.node(node_index);
             debug!("DataFlowContext::walk_cfg idx={:?} id={} begin in_out={}",
                    node_index, node.data.id(), bits_to_string(in_out));
 
@@ -563,8 +573,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
 
             // Propagate state on-exit from node into its successors.
             self.propagate_bits_into_graph_successors_of(in_out, cfg, node_index);
-            true // continue to next node
-        });
+        }
     }
 
     fn reset(&mut self, bits: &mut [usize]) {

@@ -94,7 +94,7 @@ impl<'a> Iterator for Iter<'a> {
             ::last_error().map(Err)
         } else {
             Some(Ok(Child {
-                ptr: ptr,
+                ptr,
                 _data: marker::PhantomData,
             }))
         }

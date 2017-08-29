@@ -12,9 +12,8 @@
 //!
 //! A simple wrapper over the platform's dynamic library facilities
 
-use std::env;
-use std::ffi::{CString, OsString};
-use std::path::{Path, PathBuf};
+use std::ffi::CString;
+use std::path::Path;
 
 pub struct DynamicLibrary {
     handle: *mut u8
@@ -43,24 +42,6 @@ impl DynamicLibrary {
         }
     }
 
-    /// Prepends a path to this process's search path for dynamic libraries
-    pub fn prepend_search_path(path: &Path) {
-        let mut search_path = DynamicLibrary::search_path();
-        search_path.insert(0, path.to_path_buf());
-        env::set_var(DynamicLibrary::envvar(), &DynamicLibrary::create_path(&search_path));
-    }
-
-    /// From a slice of paths, create a new vector which is suitable to be an
-    /// environment variable for this platforms dylib search path.
-    pub fn create_path(path: &[PathBuf]) -> OsString {
-        let mut newvar = OsString::new();
-        for (i, path) in path.iter().enumerate() {
-            if i > 0 { newvar.push(DynamicLibrary::separator()); }
-            newvar.push(path);
-        }
-        return newvar;
-    }
-
     /// Returns the environment variable for this process's dynamic library
     /// search path
     pub fn envvar() -> &'static str {
@@ -72,19 +53,6 @@ impl DynamicLibrary {
             "LIBRARY_PATH"
         } else {
             "LD_LIBRARY_PATH"
-        }
-    }
-
-    fn separator() -> &'static str {
-        if cfg!(windows) { ";" } else { ":" }
-    }
-
-    /// Returns the current search path for dynamic libraries being used by this
-    /// process
-    pub fn search_path() -> Vec<PathBuf> {
-        match env::var_os(DynamicLibrary::envvar()) {
-            Some(var) => env::split_paths(&var).collect(),
-            None => Vec::new(),
         }
     }
 

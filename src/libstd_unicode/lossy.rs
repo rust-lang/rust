@@ -12,7 +12,7 @@ use core::str as core_str;
 use core::fmt;
 use core::fmt::Write;
 use char;
-use core::intrinsics;
+use core::mem;
 
 
 /// Lossy UTF-8 string.
@@ -27,7 +27,7 @@ impl Utf8Lossy {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> &Utf8Lossy {
-        unsafe { intrinsics::transmute(bytes) }
+        unsafe { mem::transmute(bytes) }
     }
 
     pub fn chunks(&self) -> Utf8LossyChunksIter {
@@ -153,7 +153,21 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
 
 impl fmt::Display for Utf8Lossy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // If we're the empty string then our iterator won't actually yield
+        // anything, so perform the formatting manually
+        if self.bytes.len() == 0 {
+            return "".fmt(f)
+        }
+
         for Utf8LossyChunk { valid, broken } in self.chunks() {
+            // If we successfully decoded the whole chunk as a valid string then
+            // we can return a direct formatting of the string which will also
+            // respect various formatting flags if possible.
+            if valid.len() == self.bytes.len() {
+                assert!(broken.is_empty());
+                return valid.fmt(f)
+            }
+
             f.write_str(valid)?;
             if !broken.is_empty() {
                 f.write_char(char::REPLACEMENT_CHARACTER)?;

@@ -335,7 +335,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                 CodegenUnit::empty(codegen_unit_name.clone())
             };
 
-            let mut codegen_unit = codegen_units.entry(codegen_unit_name.clone())
+            let codegen_unit = codegen_units.entry(codegen_unit_name.clone())
                                                 .or_insert_with(make_codegen_unit);
 
             let (linkage, visibility) = match trans_item.explicit_linkage(tcx) {
@@ -361,7 +361,8 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                                 InstanceDef::Virtual(..) |
                                 InstanceDef::Intrinsic(..) |
                                 InstanceDef::ClosureOnceShim { .. } |
-                                InstanceDef::DropGlue(..) => {
+                                InstanceDef::DropGlue(..) |
+                                InstanceDef::CloneShim(..) => {
                                     bug!("partitioning: Encountered unexpected
                                           root translation item: {:?}",
                                           trans_item)
@@ -603,7 +604,8 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
                 ty::InstanceDef::ClosureOnceShim { .. } |
                 ty::InstanceDef::Intrinsic(..) |
                 ty::InstanceDef::DropGlue(..) |
-                ty::InstanceDef::Virtual(..) => return None
+                ty::InstanceDef::Virtual(..) |
+                ty::InstanceDef::CloneShim(..) => return None
             };
 
             // If this is a method, we want to put it into the same module as

@@ -60,6 +60,7 @@ impl MirPass for CopyPropagation {
                     return
                 }
             }
+            MirSource::GeneratorDrop(_) => (),
         }
 
         // We only run when the MIR optimization level is > 1.
@@ -299,8 +300,8 @@ impl<'tcx> ConstantPropagationVisitor<'tcx> {
     fn new(dest_local: Local, constant: Constant<'tcx>)
            -> ConstantPropagationVisitor<'tcx> {
         ConstantPropagationVisitor {
-            dest_local: dest_local,
-            constant: constant,
+            dest_local,
+            constant,
             uses_replaced: 0,
         }
     }

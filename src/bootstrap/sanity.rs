@@ -85,7 +85,7 @@ pub fn check(build: &mut Build) {
     }
 
     // We need cmake, but only if we're actually building LLVM or sanitizers.
-    let building_llvm = build.config.host.iter()
+    let building_llvm = build.hosts.iter()
         .filter_map(|host| build.config.target_config.get(host))
         .any(|config| config.llvm_config.is_none());
     if building_llvm || build.config.sanitizers {
@@ -93,10 +93,27 @@ pub fn check(build: &mut Build) {
     }
 
     // Ninja is currently only used for LLVM itself.
-    // Some Linux distros rename `ninja` to `ninja-build`.
-    // CMake can work with either binary name.
-    if building_llvm && build.config.ninja && cmd_finder.maybe_have("ninja-build").is_none() {
-        cmd_finder.must_have("ninja");
+    if building_llvm {
+        if build.config.ninja {
+            // Some Linux distros rename `ninja` to `ninja-build`.
+            // CMake can work with either binary name.
+            if cmd_finder.maybe_have("ninja-build").is_none() {
+                cmd_finder.must_have("ninja");
+            }
+        }
+
+        // If ninja isn't enabled but we're building for MSVC then we try
+        // doubly hard to enable it. It was realized in #43767 that the msbuild
+        // CMake generator for MSVC doesn't respect configuration options like
+        // disabling LLVM assertions, which can often be quite important!
+        //
+        // In these cases we automatically enable Ninja if we find it in the
+        // environment.
+        if !build.config.ninja && build.config.build.contains("msvc") {
+            if cmd_finder.maybe_have("ninja").is_some() {
+                build.config.ninja = true;
+            }
+        }
     }
 
     build.config.python = build.config.python.take().map(|p| cmd_finder.must_have(p))
@@ -114,7 +131,7 @@ pub fn check(build: &mut Build) {
 
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
-    for target in &build.config.target {
+    for target in &build.targets {
         // On emscripten we don't actually need the C compiler to just
         // build the target artifacts, only for testing. For the sake
         // of easier bot configuration, just skip detection.
@@ -128,7 +145,7 @@ pub fn check(build: &mut Build) {
         }
     }
 
-    for host in build.config.host.iter() {
+    for host in &build.hosts {
         cmd_finder.must_have(build.cxx(*host).unwrap());
 
         // The msvc hosts don't use jemalloc, turn it off globally to
@@ -144,15 +161,22 @@ pub fn check(build: &mut Build) {
         panic!("FileCheck executable {:?} does not exist", filecheck);
     }
 
-    for target in &build.config.target {
+    for target in &build.targets {
         // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on macOS");
         }
 
-        // Make sure musl-root is valid if specified
+        // Make sure musl-root is valid
         if target.contains("musl") && !target.contains("mips") {
+            // If this is a native target (host is also musl) and no musl-root is given,
+            // fall back to the system toolchain in /usr before giving up
+            if build.musl_root(*target).is_none() && build.config.build == *target {
+                let target = build.config.target_config.entry(target.clone())
+                                 .or_insert(Default::default());
+                target.musl_root = Some("/usr".into());
+            }
             match build.musl_root(*target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {

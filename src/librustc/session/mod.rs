@@ -79,7 +79,7 @@ pub struct Session {
     // if the value stored here has been affected by path remapping.
     pub working_dir: (String, bool),
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<lint::LintTable>,
+    pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
     /// Set of (LintId, Option<Span>, message) tuples tracking lint
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690).
@@ -112,7 +112,7 @@ pub struct Session {
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
-    /// macro name and defintion span in the source crate.
+    /// macro name and definition span in the source crate.
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
     incr_comp_session: RefCell<IncrCompSession>,
@@ -307,22 +307,15 @@ impl Session {
         self.diagnostic().unimpl(msg)
     }
 
-    pub fn add_lint<S: Into<MultiSpan>>(&self,
-                                        lint: &'static lint::Lint,
-                                        id: ast::NodeId,
-                                        sp: S,
-                                        msg: String)
-    {
-        self.lints.borrow_mut().add_lint(lint, id, sp, msg);
-    }
-
-    pub fn add_lint_diagnostic<M>(&self,
-                                  lint: &'static lint::Lint,
-                                  id: ast::NodeId,
-                                  msg: M)
-        where M: lint::IntoEarlyLint,
-    {
-        self.lints.borrow_mut().add_lint_diagnostic(lint, id, msg);
+    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
+                                           lint: &'static lint::Lint,
+                                           id: ast::NodeId,
+                                           sp: S,
+                                           msg: &str) {
+        match *self.buffered_lints.borrow_mut() {
+            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg),
+            None => bug!("can't buffer lints after HIR lowering"),
+        }
     }
 
     pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
@@ -396,6 +389,13 @@ impl Session {
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
+    pub fn profile_queries(&self) -> bool {
+        self.opts.debugging_opts.profile_queries ||
+            self.opts.debugging_opts.profile_queries_and_keys
+    }
+    pub fn profile_queries_and_keys(&self) -> bool {
+        self.opts.debugging_opts.profile_queries_and_keys
+    }
     pub fn count_llvm_insns(&self) -> bool {
         self.opts.debugging_opts.count_llvm_insns
     }
@@ -434,6 +434,31 @@ impl Session {
         self.opts.cg.overflow_checks
             .or(self.opts.debugging_opts.force_overflow_checks)
             .unwrap_or(self.opts.debug_assertions)
+    }
+
+    pub fn crt_static(&self) -> bool {
+        // If the target does not opt in to crt-static support, use its default.
+        if self.target.target.options.crt_static_respected {
+            self.crt_static_feature()
+        } else {
+            self.target.target.options.crt_static_default
+        }
+    }
+
+    pub fn crt_static_feature(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+
+        // If the target we're compiling for requests a static crt by default,
+        // then see if the `-crt-static` feature was passed to disable that.
+        // Otherwise if we don't have a static crt by default then see if the
+        // `+crt-static` feature was passed.
+        if self.target.target.options.crt_static_default {
+            !found_negative
+        } else {
+            found_positive
+        }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
@@ -708,7 +733,7 @@ pub fn build_session_(sopts: config::Options,
         local_crate_source_file,
         working_dir,
         lint_store: RefCell::new(lint::LintStore::new()),
-        lints: RefCell::new(lint::LintTable::new()),
+        buffered_lints: RefCell::new(Some(lint::LintBuffer::new())),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         plugin_attributes: RefCell::new(Vec::new()),
@@ -835,7 +860,7 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
 #[inline(never)]
 pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
     // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro defintion
+    // qualified path of None::<Span> inside the bug!() macro definition
     opt_span_bug_fmt(file, line, None::<Span>, args);
 }
 

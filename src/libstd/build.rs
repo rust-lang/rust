@@ -21,7 +21,7 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
-        !target.contains("emscripten") && !target.contains("fuchsia") && !target.contains("redox") {
+        !target.contains("emscripten") && !target.contains("fuchsia") {
         let _ = build_libbacktrace(&host, &target);
     }
 
@@ -30,7 +30,7 @@ fn main() {
             println!("cargo:rustc-link-lib=dl");
             println!("cargo:rustc-link-lib=log");
             println!("cargo:rustc-link-lib=gcc");
-        } else if !target.contains("musl") || target.contains("mips") {
+        } else if !target.contains("musl") {
             println!("cargo:rustc-link-lib=dl");
             println!("cargo:rustc-link-lib=rt");
             println!("cargo:rustc-link-lib=pthread");

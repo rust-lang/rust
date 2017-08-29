@@ -153,8 +153,8 @@ pub struct Decoder<'a> {
 impl<'a> Decoder<'a> {
     pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
         Decoder {
-            data: data,
-            position: position,
+            data,
+            position,
         }
     }
 

@@ -76,7 +76,7 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // Find annotations supplied by user (if any).
     let (if_this_changed, then_this_would_need) = {
-        let mut visitor = IfThisChanged { tcx: tcx,
+        let mut visitor = IfThisChanged { tcx,
                                           if_this_changed: vec![],
                                           then_this_would_need: vec![] };
         visitor.process_attrs(ast::CRATE_NODE_ID, &tcx.hir.krate().attrs);

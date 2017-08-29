@@ -68,6 +68,7 @@ macro_rules! book {
 book!(
     Nomicon, "src/doc/book", "nomicon";
     Reference, "src/doc/reference", "reference";
+    Rustdoc, "src/doc/rustdoc", "rustdoc";
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -212,13 +213,13 @@ impl Step for TheBook {
         let name = self.name;
         // build book first edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/first-edition", name)),
         });
 
         // build book second edition
         builder.ensure(Rustbook {
-            target: target,
+            target,
             name: INTERNER.intern_string(format!("{}/second-edition", name)),
         });
 
@@ -236,6 +237,51 @@ impl Step for TheBook {
 
             invoke_rustdoc(builder, self.compiler, target, path);
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct CargoBook {
+    target: Interned<String>,
+}
+
+impl Step for CargoBook {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.path("src/doc/cargo").default_condition(builder.build.config.docs)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(CargoBook {
+            target: run.target,
+        });
+    }
+
+    /// Create a placeholder for the cargo documentation so that doc.rust-lang.org/cargo will
+    /// redirect to doc.crates.io. We want to publish doc.rust-lang.org/cargo in the paper
+    /// version of the book, but we don't want to rush the process of switching cargo's docs
+    /// over to mdbook and deploying them. When the cargo book is ready, this implementation
+    /// should build the mdbook instead of this redirect page.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let out = build.doc_out(self.target);
+
+        let cargo_dir = out.join("cargo");
+        t!(fs::create_dir_all(&cargo_dir));
+
+        let index = cargo_dir.join("index.html");
+        let redirect_html = r#"
+            <html>
+                <head>
+                    <meta http-equiv="refresh" content="0; URL='http://doc.crates.io'" />
+                </head>
+            </html>"#;
+
+        println!("Creating cargo book redirect page");
+        t!(t!(File::create(&index)).write_all(redirect_html.as_bytes()));
     }
 }
 
@@ -260,7 +306,7 @@ fn invoke_rustdoc(builder: &Builder, compiler: Compiler, target: Interned<String
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
-    let mut cmd = builder.rustdoc_cmd(compiler);
+    let mut cmd = builder.rustdoc_cmd(compiler.host);
 
     let out = out.join("book");
 
@@ -306,7 +352,7 @@ impl Step for Standalone {
     ///
     /// This will list all of `src/doc` looking for markdown files and appropriately
     /// perform transformations like substituting `VERSION`, `SHORT_HASH`, and
-    /// `STAMP` alongw ith providing the various header/footer HTML we've cutomized.
+    /// `STAMP` along with providing the various header/footer HTML we've customized.
     ///
     /// In the end, this is just a glorified wrapper around rustdoc!
     fn run(self, builder: &Builder) {
@@ -343,7 +389,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc(compiler);
+            let rustdoc = builder.rustdoc(compiler.host);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -353,7 +399,7 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = builder.rustdoc_cmd(compiler);
+            let mut cmd = builder.rustdoc_cmd(compiler.host);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
@@ -408,7 +454,7 @@ impl Step for Std {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -493,7 +539,7 @@ impl Step for Test {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {
@@ -554,7 +600,7 @@ impl Step for Rustc {
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
-        let rustdoc = builder.rustdoc(compiler);
+        let rustdoc = builder.rustdoc(compiler.host);
         let compiler = if build.force_use_stage1(compiler, target) {
             builder.compiler(1, compiler.host)
         } else {

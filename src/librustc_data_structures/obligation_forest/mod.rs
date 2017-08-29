@@ -57,11 +57,6 @@ pub trait ObligationProcessor {
         where I: Clone + Iterator<Item=&'c Self::Obligation>;
 }
 
-struct SnapshotData {
-    node_len: usize,
-    cache_list_len: usize,
-}
-
 pub struct ObligationForest<O: ForestObligation> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
@@ -83,12 +78,7 @@ pub struct ObligationForest<O: ForestObligation> {
     /// A list of the obligations added in snapshots, to allow
     /// for their removal.
     cache_list: Vec<O::Predicate>,
-    snapshots: Vec<SnapshotData>,
     scratch: Option<Vec<usize>>,
-}
-
-pub struct Snapshot {
-    len: usize,
 }
 
 #[derive(Debug)]
@@ -166,7 +156,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     pub fn new() -> ObligationForest<O> {
         ObligationForest {
             nodes: vec![],
-            snapshots: vec![],
             done_cache: FxHashSet(),
             waiting_cache: FxHashMap(),
             cache_list: vec![],
@@ -178,39 +167,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// yet been fully resolved.
     pub fn len(&self) -> usize {
         self.nodes.len()
-    }
-
-    pub fn start_snapshot(&mut self) -> Snapshot {
-        self.snapshots.push(SnapshotData {
-            node_len: self.nodes.len(),
-            cache_list_len: self.cache_list.len()
-        });
-        Snapshot { len: self.snapshots.len() }
-    }
-
-    pub fn commit_snapshot(&mut self, snapshot: Snapshot) {
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let info = self.snapshots.pop().unwrap();
-        assert!(self.nodes.len() >= info.node_len);
-        assert!(self.cache_list.len() >= info.cache_list_len);
-    }
-
-    pub fn rollback_snapshot(&mut self, snapshot: Snapshot) {
-        // Check that we are obeying stack discipline.
-        assert_eq!(snapshot.len, self.snapshots.len());
-        let info = self.snapshots.pop().unwrap();
-
-        for entry in &self.cache_list[info.cache_list_len..] {
-            self.done_cache.remove(entry);
-            self.waiting_cache.remove(entry);
-        }
-
-        self.nodes.truncate(info.node_len);
-        self.cache_list.truncate(info.cache_list_len);
-    }
-
-    pub fn in_snapshot(&self) -> bool {
-        !self.snapshots.is_empty()
     }
 
     /// Registers an obligation
@@ -262,14 +218,13 @@ impl<O: ForestObligation> ObligationForest<O> {
     ///
     /// This cannot be done during a snapshot.
     pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
-        assert!(!self.in_snapshot());
         let mut errors = vec![];
         for index in 0..self.nodes.len() {
             if let NodeState::Pending = self.nodes[index].state.get() {
                 let backtrace = self.error_at(index);
                 errors.push(Error {
                     error: error.clone(),
-                    backtrace: backtrace,
+                    backtrace,
                 });
             }
         }
@@ -297,7 +252,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         where P: ObligationProcessor<Obligation=O>
     {
         debug!("process_obligations(len={})", self.nodes.len());
-        assert!(!self.in_snapshot()); // cannot unroll this action
 
         let mut errors = vec![];
         let mut stalled = true;
@@ -346,7 +300,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     let backtrace = self.error_at(index);
                     errors.push(Error {
                         error: err,
-                        backtrace: backtrace,
+                        backtrace,
                     });
                 }
             }
@@ -357,8 +311,8 @@ impl<O: ForestObligation> ObligationForest<O> {
             // changed.
             return Outcome {
                 completed: vec![],
-                errors: errors,
-                stalled: stalled,
+                errors,
+                stalled,
             };
         }
 
@@ -372,8 +326,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         Outcome {
             completed: completed_obligations,
-            errors: errors,
-            stalled: stalled,
+            errors,
+            stalled,
         }
     }
 
@@ -528,8 +482,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// on these nodes may be present. This is done by e.g. `process_cycles`.
     #[inline(never)]
     fn compress(&mut self) -> Vec<O> {
-        assert!(!self.in_snapshot()); // didn't write code to unroll this action
-
         let nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = self.scratch.take().unwrap();
         node_rewrites.extend(0..nodes_len);
@@ -638,8 +590,8 @@ impl<O: ForestObligation> ObligationForest<O> {
 impl<O> Node<O> {
     fn new(parent: Option<NodeIndex>, obligation: O) -> Node<O> {
         Node {
-            obligation: obligation,
-            parent: parent,
+            obligation,
+            parent,
             state: Cell::new(NodeState::Pending),
             dependents: vec![],
         }

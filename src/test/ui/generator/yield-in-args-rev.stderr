@@ -1,0 +1,10 @@
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/yield-in-args-rev.rs:20:21
+   |
+20 |         foo(yield, &b); //~ ERROR
+   |             -----   ^
+   |             |
+   |             possible yield occurs here
+
+error: aborting due to previous error
+

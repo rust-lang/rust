@@ -118,6 +118,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Return { .. } |
             ExprKind::Literal { .. } |
             ExprKind::InlineAsm { .. } |
+            ExprKind::Yield { .. } |
             ExprKind::Call { .. } => {
                 // these are not lvalues, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {

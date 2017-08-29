@@ -120,7 +120,7 @@ impl EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
-                dst: dst,
+                dst,
                 cm: code_map,
             }
         } else {
@@ -156,7 +156,7 @@ impl EmitterWriter {
                     }
                     // We don't have a line yet, create one
                     slot.lines.push(Line {
-                        line_index: line_index,
+                        line_index,
                         annotations: vec![ann],
                     });
                     slot.lines.sort();
@@ -165,9 +165,9 @@ impl EmitterWriter {
             }
             // This is the first time we're seeing the file
             file_vec.push(FileWithAnnotatedLines {
-                file: file,
+                file,
                 lines: vec![Line {
-                                line_index: line_index,
+                                line_index,
                                 annotations: vec![ann],
                             }],
                 multiline_depth: 0,
@@ -311,7 +311,9 @@ impl EmitterWriter {
         if line.annotations.len() == 1 {
             if let Some(ref ann) = line.annotations.get(0) {
                 if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                    if source_string[0..ann.start_col].trim() == "" {
+                    if source_string.chars()
+                                    .take(ann.start_col)
+                                    .all(|c| c.is_whitespace()) {
                         let style = if ann.is_primary {
                             Style::UnderlinePrimary
                         } else {
@@ -822,7 +824,7 @@ impl EmitterWriter {
             .map(|_| " ")
             .collect::<String>();
 
-        /// Return wether `style`, or the override if present and the style is `NoStyle`.
+        /// Return whether `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {

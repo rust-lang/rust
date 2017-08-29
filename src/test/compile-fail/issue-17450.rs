@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
+#![allow(dead_code, warnings)]
 
 static mut x: isize = 3;
 static mut y: isize = unsafe {

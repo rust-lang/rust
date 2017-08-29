@@ -148,8 +148,8 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
             let kind = ErrorKind::from_str(&diagnostic.level).ok();
             expected_errors.push(Error {
                 line_num: span.line_start,
-                kind: kind,
-                msg: msg,
+                kind,
+                msg,
             });
         }
     }

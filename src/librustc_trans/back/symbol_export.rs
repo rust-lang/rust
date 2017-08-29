@@ -13,6 +13,7 @@ use rustc::util::nodemap::{FxHashMap, NodeSet};
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE, INVALID_CRATE, CRATE_DEF_INDEX};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
+use rustc_allocator::ALLOCATOR_METHODS;
 use syntax::attr;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
@@ -81,6 +82,14 @@ impl ExportedSymbols {
             local_crate.push(("main".to_string(),
                               INVALID_DEF_ID,
                               SymbolExportLevel::C));
+        }
+
+        if tcx.sess.allocator_kind.get().is_some() {
+            for method in ALLOCATOR_METHODS {
+                local_crate.push((format!("__rust_{}", method.name),
+                                  INVALID_DEF_ID,
+                                  SymbolExportLevel::Rust));
+            }
         }
 
         if let Some(id) = tcx.sess.derive_registrar_fn.get() {

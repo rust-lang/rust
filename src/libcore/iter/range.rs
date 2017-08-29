@@ -214,9 +214,16 @@ impl<A: Step> Iterator for ops::Range<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            let mut n = self.start.add_one();
-            mem::swap(&mut n, &mut self.start);
-            Some(n)
+            // We check for overflow here, even though it can't actually
+            // happen. Adding this check does however help llvm vectorize loops
+            // for some ranges that don't get vectorized otherwise,
+            // and this won't actually result in an extra check in an optimized build.
+            if let Some(mut n) = self.start.add_usize(1) {
+                mem::swap(&mut n, &mut self.start);
+                Some(n)
+            } else {
+                None
+            }
         } else {
             None
         }

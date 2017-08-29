@@ -105,27 +105,27 @@ fn test_chunks_last() {
 
 #[test]
 fn test_chunks_mut_count() {
-    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.chunks_mut(3);
     assert_eq!(c.count(), 2);
 
-    let mut v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let c2 = v2.chunks_mut(2);
     assert_eq!(c2.count(), 3);
 
-    let mut v3: &mut [i32] = &mut [];
+    let v3: &mut [i32] = &mut [];
     let c3 = v3.chunks_mut(2);
     assert_eq!(c3.count(), 0);
 }
 
 #[test]
 fn test_chunks_mut_nth() {
-    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let mut c = v.chunks_mut(2);
     assert_eq!(c.nth(1).unwrap()[1], 3);
     assert_eq!(c.next().unwrap()[0], 4);
 
-    let mut v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
     let mut c2 = v2.chunks_mut(3);
     assert_eq!(c2.nth(1).unwrap()[1], 4);
     assert_eq!(c2.next(), None);
@@ -194,7 +194,7 @@ fn get_range() {
 
 #[test]
 fn get_mut_range() {
-    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     assert_eq!(v.get_mut(..), Some(&mut [0, 1, 2, 3, 4, 5][..]));
     assert_eq!(v.get_mut(..2), Some(&mut [0, 1][..]));
     assert_eq!(v.get_mut(2..), Some(&mut [2, 3, 4, 5][..]));

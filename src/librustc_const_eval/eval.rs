@@ -106,7 +106,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     }
 
     /// Evaluate a constant expression in a context where the expression isn't
-    /// guaranteed to be evaluatable.
+    /// guaranteed to be evaluable.
     pub fn eval(&self, e: &Expr) -> EvalResult<'tcx> {
         if self.tables.tainted_by_errors {
             signal!(e, TypeckError);
@@ -275,8 +275,8 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprPath(ref qpath) => {
-        let substs = cx.tables.node_substs(e.id).subst(tcx, cx.substs);
-          match cx.tables.qpath_def(qpath, e.id) {
+        let substs = cx.tables.node_substs(e.hir_id).subst(tcx, cx.substs);
+          match cx.tables.qpath_def(qpath, e.hir_id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
                     match tcx.at(e.span).const_eval(cx.param_env.and((def_id, substs))) {
@@ -379,7 +379,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             tcx,
             param_env: cx.param_env,
             tables: tcx.typeck_tables_of(def_id),
-            substs: substs,
+            substs,
             fn_args: Some(call_args)
           };
           callee_cx.eval(&body.value)?

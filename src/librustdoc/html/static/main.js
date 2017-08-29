@@ -1271,7 +1271,7 @@
                     e.innerHTML = labelForToggleButton(true);
                 });
                 onEach(toggle.getElementsByClassName('toggle-label'), function(e) {
-                    e.style.display = 'block';
+                    e.style.display = 'inline-block';
                 });
             }
         }

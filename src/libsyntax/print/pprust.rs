@@ -72,7 +72,7 @@ fn rust_printer<'a>(writer: Box<Write+'a>, ann: &'a PpAnn) -> State<'a> {
         literals: vec![].into_iter().peekable(),
         cur_cmnt: 0,
         boxes: Vec::new(),
-        ann: ann,
+        ann,
     }
 }
 
@@ -145,11 +145,11 @@ impl<'a> State<'a> {
         State {
             s: pp::mk_printer(out, DEFAULT_COLUMNS),
             cm: Some(cm),
-            comments: comments,
+            comments,
             literals: literals.unwrap_or_default().into_iter().peekable(),
             cur_cmnt: 0,
             boxes: Vec::new(),
-            ann: ann,
+            ann,
         }
     }
 }
@@ -2281,6 +2281,16 @@ impl<'a> State<'a> {
                 self.print_expr(e)?;
                 self.pclose()?;
             },
+            ast::ExprKind::Yield(ref e) => {
+                self.s.word("yield")?;
+                match *e {
+                    Some(ref expr) => {
+                        self.s.space()?;
+                        self.print_expr(&expr)?;
+                    }
+                    _ => ()
+                }
+            }
             ast::ExprKind::Try(ref e) => {
                 self.print_expr(e)?;
                 self.s.word("?")?

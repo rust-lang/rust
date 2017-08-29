@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo<'a>(s: &'a mut ()) where &'a mut (): Clone {
-    s.clone();
+trait Foo {
+    fn foo(&self);
+}
+
+fn foo<'a>(s: &'a mut ()) where &'a mut (): Foo {
+    s.foo();
 }
 fn main() {}

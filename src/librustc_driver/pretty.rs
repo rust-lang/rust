@@ -44,6 +44,7 @@ use std::io::{self, Write};
 use std::option;
 use std::path::Path;
 use std::str::FromStr;
+use std::mem;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
@@ -173,7 +174,7 @@ impl PpSourceMode {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                 let annotation = NoAnn {
-                    sess: sess,
+                    sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
                 f(&annotation)
@@ -181,14 +182,14 @@ impl PpSourceMode {
 
             PpmIdentified | PpmExpandedIdentified => {
                 let annotation = IdentifiedAnnotation {
-                    sess: sess,
+                    sess,
                     hir_map: hir_map.map(|m| m.clone()),
                 };
                 f(&annotation)
             }
             PpmExpandedHygiene => {
                 let annotation = HygieneAnnotation {
-                    sess: sess,
+                    sess,
                 };
                 f(&annotation)
             }
@@ -210,7 +211,7 @@ impl PpSourceMode {
         match *self {
             PpmNormal => {
                 let annotation = NoAnn {
-                    sess: sess,
+                    sess,
                     hir_map: Some(hir_map.clone()),
                 };
                 f(&annotation, hir_map.forest.krate())
@@ -218,7 +219,7 @@ impl PpSourceMode {
 
             PpmIdentified => {
                 let annotation = IdentifiedAnnotation {
-                    sess: sess,
+                    sess,
                     hir_map: Some(hir_map.clone()),
                 };
                 f(&annotation, hir_map.forest.krate())
@@ -232,9 +233,9 @@ impl PpSourceMode {
                                                                  arenas,
                                                                  id,
                                                                  |tcx, _, _, _| {
-                    let empty_tables = ty::TypeckTables::empty();
+                    let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
-                        tcx: tcx,
+                        tcx,
                         tables: Cell::new(&empty_tables)
                     };
                     let _ignore = tcx.dep_graph.in_ignore();
@@ -618,52 +619,82 @@ impl UserIdentifiedItem {
     }
 }
 
-struct ReplaceBodyWithLoop {
+// Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
+//
+// FIXME: Currently the `everybody_loops` transformation is not applied to:
+//  * `const fn`, due to issue #43636 that `loop` is not supported for const evaluation. We are
+//    waiting for miri to fix that.
+//  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
+//    Solving this may require `!` to implement every trait, which relies on the an even more
+//    ambitious form of the closed RFC #1637. See also [#34511].
+//
+// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
+pub struct ReplaceBodyWithLoop {
     within_static_or_const: bool,
 }
 
 impl ReplaceBodyWithLoop {
-    fn new() -> ReplaceBodyWithLoop {
+    pub fn new() -> ReplaceBodyWithLoop {
         ReplaceBodyWithLoop { within_static_or_const: false }
+    }
+
+    fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
+        let old_const = mem::replace(&mut self.within_static_or_const, is_const);
+        let ret = action(self);
+        self.within_static_or_const = old_const;
+        ret
+    }
+
+    fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
+        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
+            fn involves_impl_trait(ty: &ast::Ty) -> bool {
+                match ty.node {
+                    ast::TyKind::ImplTrait(_) => true,
+                    ast::TyKind::Slice(ref subty) |
+                    ast::TyKind::Array(ref subty, _) |
+                    ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. }) |
+                    ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. }) |
+                    ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
+                    ast::TyKind::Tup(ref tys) => tys.iter().any(|subty| involves_impl_trait(subty)),
+                    _ => false,
+                }
+            }
+            involves_impl_trait(ty)
+        } else {
+            false
+        }
     }
 }
 
 impl fold::Folder for ReplaceBodyWithLoop {
     fn fold_item_kind(&mut self, i: ast::ItemKind) -> ast::ItemKind {
-        match i {
-            ast::ItemKind::Static(..) |
-            ast::ItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_item_kind(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_item_kind(i, self),
-        }
+        let is_const = match i {
+            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
+            ast::ItemKind::Fn(ref decl, _, ref constness, _, _, _) =>
+                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_item_kind(i, s))
     }
 
     fn fold_trait_item(&mut self, i: ast::TraitItem) -> SmallVector<ast::TraitItem> {
-        match i.node {
-            ast::TraitItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_trait_item(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_trait_item(i, self),
-        }
+        let is_const = match i.node {
+            ast::TraitItemKind::Const(..) => true,
+            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
+                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_trait_item(i, s))
     }
 
     fn fold_impl_item(&mut self, i: ast::ImplItem) -> SmallVector<ast::ImplItem> {
-        match i.node {
-            ast::ImplItemKind::Const(..) => {
-                self.within_static_or_const = true;
-                let ret = fold::noop_fold_impl_item(i, self);
-                self.within_static_or_const = false;
-                return ret;
-            }
-            _ => fold::noop_fold_impl_item(i, self),
-        }
+        let is_const = match i.node {
+            ast::ImplItemKind::Const(..) => true,
+            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref constness, .. }, _) =>
+                constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            _ => false,
+        };
+        self.run(is_const, |s| fold::noop_fold_impl_item(i, s))
     }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
@@ -678,7 +709,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
                     })
                     .into_iter()
                     .collect(),
-                rules: rules,
+                rules,
                 id: ast::DUMMY_NODE_ID,
                 span: syntax_pos::DUMMY_SP,
             })
@@ -737,7 +768,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
         hir_map: &tcx.hir,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
-        labelled_edges: labelled_edges,
+        labelled_edges,
     };
 
     match code {
@@ -756,7 +787,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,
-                variants: variants,
+                variants,
                 borrowck_ctxt: &bccx,
                 analysis_data: &analysis_data,
             };

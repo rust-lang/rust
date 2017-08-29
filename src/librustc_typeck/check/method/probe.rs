@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         } else {
             vec![CandidateStep {
-                     self_ty: self_ty,
+                     self_ty,
                      autoderefs: 0,
                      unsize: false,
                  }]
@@ -361,15 +361,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
-            fcx: fcx,
-            span: span,
-            mode: mode,
-            looking_for: looking_for,
+            fcx,
+            span,
+            mode,
+            looking_for,
             inherent_candidates: Vec::new(),
             extension_candidates: Vec::new(),
             impl_dups: FxHashSet(),
             steps: Rc::new(steps),
-            opt_simplified_steps: opt_simplified_steps,
+            opt_simplified_steps,
             static_candidates: Vec::new(),
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
@@ -556,7 +556,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // We can't use normalize_associated_types_in as it will pollute the
             // fcx's fulfillment context after this probe is over.
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+            let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
             debug!("assemble_inherent_impl_probe: xform_self_ty = {:?}",
@@ -719,10 +719,14 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 continue;
             }
 
+            self.assemble_builtin_candidates(import_id, trait_def_id, item.clone());
+
             self.assemble_extension_candidates_for_trait_impls(import_id, trait_def_id,
                                                                item.clone());
 
             self.assemble_closure_candidates(import_id, trait_def_id, item.clone())?;
+
+            self.assemble_generator_candidates(import_id, trait_def_id, item.clone())?;
 
             self.assemble_projection_candidates(import_id, trait_def_id, item.clone());
 
@@ -732,14 +736,55 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         Ok(())
     }
 
+    fn assemble_builtin_candidates(&mut self,
+                                   import_id: Option<ast::NodeId>,
+                                   trait_def_id: DefId,
+                                   item: ty::AssociatedItem) {
+        if Some(trait_def_id) == self.tcx.lang_items.clone_trait() {
+            self.assemble_builtin_clone_candidates(import_id, trait_def_id, item);
+        }
+    }
+
+    fn assemble_builtin_clone_candidates(&mut self,
+                                         import_id: Option<ast::NodeId>,
+                                         trait_def_id: DefId,
+                                         item: ty::AssociatedItem) {
+        for step in Rc::clone(&self.steps).iter() {
+            match step.self_ty.sty {
+                ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+                ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+                ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+                ty::TyRawPtr(..) | ty::TyError | ty::TyNever |
+                ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) |
+                ty::TyArray(..) | ty::TyTuple(..) => {
+                    ()
+                }
+
+                _ => continue,
+            };
+
+            let substs = Substs::for_item(self.tcx,
+                                          trait_def_id,
+                                          |def, _| self.region_var_for_def(self.span, def),
+                                          |def, substs| {
+                if def.index == 0 {
+                    step.self_ty
+                } else {
+                    self.type_var_for_def(self.span, def, substs)
+                }
+            });
+
+            let xform_self_ty = self.xform_self_ty(&item, step.self_ty, substs);
+            self.push_inherent_candidate(xform_self_ty, item, TraitCandidate, import_id);
+        }
+    }
+
     fn assemble_extension_candidates_for_trait_impls(&mut self,
                                                      import_id: Option<ast::NodeId>,
                                                      trait_def_id: DefId,
                                                      item: ty::AssociatedItem) {
-        let trait_def = self.tcx.trait_def(trait_def_id);
-
         // FIXME(arielb1): can we use for_each_relevant_impl here?
-        trait_def.for_each_impl(self.tcx, |impl_def_id| {
+        self.tcx.for_each_impl(trait_def_id, |impl_def_id| {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={:?} \
                                                                   impl_def_id={:?}",
                    trait_def_id,
@@ -767,7 +812,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             // as it will pollute the fcx's fulfillment context after this probe
             // is over.
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-            let mut selcx = &mut traits::SelectionContext::new(self.fcx);
+            let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
                 traits::normalize(selcx, self.param_env, cause, &xform_self_ty);
 
@@ -822,7 +867,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             let closure_id = match step.self_ty.sty {
                 ty::TyClosure(def_id, _) => {
                     if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                        id
+                        self.tcx.hir.node_to_hir_id(id)
                     } else {
                         continue;
                     }
@@ -830,11 +875,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 _ => continue,
             };
 
-            let closure_kinds = &self.tables.borrow().closure_kinds;
-            let closure_kind = match closure_kinds.get(&closure_id) {
-                Some(&(k, _)) => k,
-                None => {
-                    return Err(MethodError::ClosureAmbiguity(trait_def_id));
+            let closure_kind = {
+                match self.tables.borrow().closure_kinds().get(closure_id) {
+                    Some(&(k, _)) => k,
+                    None => {
+                        return Err(MethodError::ClosureAmbiguity(trait_def_id));
+                    }
                 }
             };
 
@@ -842,6 +888,48 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             if !closure_kind.extends(kind) {
                 continue;
             }
+
+            // create some substitutions for the argument/return type;
+            // for the purposes of our method lookup, we only take
+            // receiver type into account, so we can just substitute
+            // fresh types here to use during substitution and subtyping.
+            let substs = Substs::for_item(self.tcx,
+                                          trait_def_id,
+                                          |def, _| self.region_var_for_def(self.span, def),
+                                          |def, substs| {
+                if def.index == 0 {
+                    step.self_ty
+                } else {
+                    self.type_var_for_def(self.span, def, substs)
+                }
+            });
+
+            let xform_self_ty = self.xform_self_ty(&item, step.self_ty, substs);
+            self.push_inherent_candidate(xform_self_ty, item, TraitCandidate, import_id);
+        }
+
+        Ok(())
+    }
+
+    fn assemble_generator_candidates(&mut self,
+                                   import_id: Option<ast::NodeId>,
+                                   trait_def_id: DefId,
+                                   item: ty::AssociatedItem)
+                                   -> Result<(), MethodError<'tcx>> {
+        // Check if this is the Generator trait.
+        let tcx = self.tcx;
+        if Some(trait_def_id) != tcx.lang_items.gen_trait() {
+            return Ok(());
+        }
+
+        // Check if there is an generator self-type in the list of receivers.
+        // If so, add "synthetic impls".
+        let steps = self.steps.clone();
+        for step in steps.iter() {
+            match step.self_ty.sty {
+                ty::TyGenerator(..) => (),
+                _ => continue,
+            };
 
             // create some substitutions for the argument/return type;
             // for the purposes of our method lookup, we only take
@@ -1015,7 +1103,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         };
 
         if let Some(def) = private_candidate {
-            return Err(MethodError::PrivateMatch(def));
+            return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,

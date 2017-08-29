@@ -191,8 +191,8 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(span, Rc::new(SequenceRepetition {
                     tts: sequence,
-                    separator: separator,
-                    op: op,
+                    separator,
+                    op,
                     num_captures: name_captures,
                 }))
             }

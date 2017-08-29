@@ -70,7 +70,7 @@ impl TimeGraph {
         {
             let mut table = self.data.lock().unwrap();
 
-            let mut data = table.entry(timeline).or_insert(PerThread {
+            let data = table.entry(timeline).or_insert(PerThread {
                 timings: Vec::new(),
                 open_work_package: None,
             });
@@ -90,7 +90,7 @@ impl TimeGraph {
         let end = Instant::now();
 
         let mut table = self.data.lock().unwrap();
-        let mut data = table.get_mut(&timeline).unwrap();
+        let data = table.get_mut(&timeline).unwrap();
 
         if let Some((start, work_package_kind)) = data.open_work_package {
             data.timings.push(Timing {

@@ -287,3 +287,20 @@ fn refcell_ref_coercion() {
         assert_eq!(&*coerced, comp);
     }
 }
+
+#[test]
+#[should_panic]
+fn refcell_swap_borrows() {
+    let x = RefCell::new(0);
+    let _b = x.borrow();
+    let y = RefCell::new(1);
+    x.swap(&y);
+}
+
+#[test]
+#[should_panic]
+fn refcell_replace_borrows() {
+    let x = RefCell::new(0);
+    let _b = x.borrow();
+    x.replace(1);
+}

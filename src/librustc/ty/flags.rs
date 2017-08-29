@@ -85,6 +85,13 @@ impl FlagComputation {
                 }
             }
 
+            &ty::TyGenerator(_, ref substs, ref interior) => {
+                self.add_flags(TypeFlags::HAS_TY_CLOSURE);
+                self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
+                self.add_substs(&substs.substs);
+                self.add_ty(interior.witness);
+            }
+
             &ty::TyClosure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
@@ -151,7 +158,10 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyTuple(ref ts, _) => {
+            &ty::TyTuple(ref ts, is_default) => {
+                if is_default {
+                    self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
+                }
                 self.add_tys(&ts[..]);
             }
 

@@ -1,14 +1,14 @@
-error: generic arguments in import path
-  --> $DIR/import-ty-params.rs:24:25
+error: unexpected generic arguments in path
+  --> $DIR/import-ty-params.rs:24:15
    |
-24 |     import! { a::b::c::S<u8> } //~ ERROR generic arguments in import path
-   |                         ^^^^
+24 |     import! { a::b::c::S<u8> } //~ ERROR unexpected generic arguments in path
+   |               ^^^^^^^^^^^^^^
 
-error: generic arguments in import path
-  --> $DIR/import-ty-params.rs:27:25
+error: unexpected generic arguments in path
+  --> $DIR/import-ty-params.rs:27:15
    |
-27 |     import! { a::b::c::S<> } //~ ERROR generic arguments in import path
-   |                         ^^
+27 |     import! { a::b::c::S<> } //~ ERROR unexpected generic arguments in path
+   |               ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
