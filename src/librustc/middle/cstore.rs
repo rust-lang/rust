@@ -251,8 +251,6 @@ pub trait CrateStore {
     /// The name of the crate as it is referred to in source code of the current
     /// crate.
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
-    /// The name of the crate as it is stored in the crate's metadata.
-    fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -349,9 +347,6 @@ impl CrateStore for DummyCrateStore {
     fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
     fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
-    fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
-        bug!("original_crate_name")
-    }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

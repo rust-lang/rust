@@ -2210,7 +2210,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id)
         } else if id.index == CRATE_DEF_INDEX {
-            self.sess.cstore.original_crate_name(id.krate)
+            self.original_crate_name(id.krate)
         } else {
             let def_key = self.sess.cstore.def_key(id);
             // The name of a StructCtor is that of its struct parent.
@@ -2516,6 +2516,12 @@ fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.sess.local_crate_disambiguator()
 }
 
+fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 crate_num: CrateNum) -> Symbol {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.crate_name.clone()
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
@@ -2528,6 +2534,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         param_env,
         trait_of_item,
         crate_disambiguator,
+        original_crate_name,
         trait_impls_of: trait_def::trait_impls_of_provider,
         ..*providers
     };

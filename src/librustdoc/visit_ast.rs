@@ -207,7 +207,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
 
-                    let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
+                    let imported_from = self.cx.tcx.original_crate_name(def_id.krate);
                     let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
                         // FIXME(jseyfried): document proc macro reexports

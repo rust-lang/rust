@@ -917,14 +917,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn original_crate_name(self, cnum: CrateNum) -> Symbol {
-        if cnum == LOCAL_CRATE {
-            self.crate_name.clone()
-        } else {
-            self.sess.cstore.original_crate_name(cnum)
-        }
-    }
-
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }

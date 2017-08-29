@@ -1295,7 +1295,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: cstore.original_crate_name(cnum),
+                    name: self.tcx.original_crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     kind: cstore.dep_kind(cnum),
                 };

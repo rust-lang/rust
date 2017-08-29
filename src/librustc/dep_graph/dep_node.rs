@@ -541,6 +541,7 @@ define_dep_nodes!( <'tcx>
     [] DeriveRegistrarFn(CrateNum),
     [] CrateDisambiguator(CrateNum),
     [] CrateHash(CrateNum),
+    [] OriginalCrateName(CrateNum),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
