@@ -242,7 +242,7 @@ macro_rules! impl_Display {
                 // decode last 1 or 2 chars
                 if n < 10 {
                     curr -= 1;
-                    *buf_ptr.offset(curr) = (n as u8) + 48;
+                    *buf_ptr.offset(curr) = (n as u8) + b'0';
                 } else {
                     let d1 = n << 1;
                     curr -= 2;

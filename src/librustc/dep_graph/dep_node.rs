@@ -527,6 +527,7 @@ define_dep_nodes!( <'tcx>
     [] HasGlobalAllocator(DefId),
     [] ExternCrate(DefId),
     [] LintLevels,
+    [] Specializes { impl1: DefId, impl2: DefId },
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
