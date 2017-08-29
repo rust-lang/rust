@@ -1138,6 +1138,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                             packed: nonnull.packed,
                         })
                     }
+                    // mir optimizations treat single variant enums as structs
+                    General { .. } if adt_def.variants.len() == 1 => Ok(TyAndPacked {
+                        ty: adt_def.variants[0].fields[field_index].ty(self.tcx, substs),
+                        packed: false,
+                    }),
                     _ => {
                         err!(Unimplemented(format!(
                             "get_field_ty can't handle enum type: {:?}, {:?}",
@@ -1211,6 +1216,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             StructWrappedNullablePointer { ref nonnull, .. } => Ok(nonnull.offsets[field_index]),
             UntaggedUnion { .. } => Ok(Size::from_bytes(0)),
+            // mir optimizations treat single variant enums as structs
+            General { ref variants, .. } if variants.len() == 1 => Ok(variants[0].offsets[field_index]),
             _ => {
                 let msg = format!(
                     "get_field_offset: can't handle type: {:?}, with layout: {:?}",

@@ -227,6 +227,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let (offset, packed) = match *base_layout {
             Univariant { ref variant, .. } => (variant.offsets[field_index], variant.packed),
 
+            // mir optimizations treat single variant enums as structs
+            General { ref variants, .. } if variants.len() == 1 => {
+                (variants[0].offsets[field_index], variants[0].packed)
+            }
+
             General { ref variants, .. } => {
                 let (_, base_extra) = base.to_ptr_extra_aligned();
                 if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
