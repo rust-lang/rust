@@ -485,8 +485,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(bccx);
                     let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
-                    self.kill_moves(path,
-                                    bccx.tcx.hir.node_to_hir_id(kill_scope.node_id()).local_id,
+                    self.kill_moves(path, kill_scope.item_local_id(),
                                     KillFrom::ScopeEnd, dfcx_moves);
                 }
                 LpExtend(..) => {}
@@ -501,8 +500,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(bccx);
                     dfcx_assign.add_kill(KillFrom::ScopeEnd,
-                                         bccx.tcx.hir.node_to_hir_id(kill_scope.node_id())
-                                            .local_id,
+                                         kill_scope.item_local_id(),
                                          assignment_index);
                 }
                 LpExtend(..) => {

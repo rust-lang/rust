@@ -390,7 +390,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Finally, resolve all regions.
-        let region_maps = RegionMaps::new();
+        let region_maps = RegionMaps::default();
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
         infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);

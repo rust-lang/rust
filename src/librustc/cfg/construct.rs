@@ -582,10 +582,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         target_scope: CodeExtent,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
-        let mut scope = CodeExtent::Misc(from_expr.id);
+        let mut scope = CodeExtent::Misc(from_expr.hir_id.local_id);
         let region_maps = self.tcx.region_maps(self.owner_def_id);
         while scope != target_scope {
-            data.exiting_scopes.push(self.tcx.hir.node_to_hir_id(scope.node_id()).local_id);
+            data.exiting_scopes.push(scope.item_local_id());
             scope = region_maps.encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);
@@ -612,7 +612,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ScopeTarget::Block(block_expr_id) => {
                 for b in &self.breakable_block_scopes {
                     if b.block_expr_id == self.tcx.hir.node_to_hir_id(block_expr_id).local_id {
-                        return (CodeExtent::Misc(block_expr_id), match scope_cf_kind {
+                        let scope_id = self.tcx.hir.node_to_hir_id(block_expr_id).local_id;
+                        return (CodeExtent::Misc(scope_id), match scope_cf_kind {
                             ScopeCfKind::Break => b.break_index,
                             ScopeCfKind::Continue => bug!("can't continue to block"),
                         });
@@ -623,7 +624,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
-                        return (CodeExtent::Misc(loop_id), match scope_cf_kind {
+                        let scope_id = self.tcx.hir.node_to_hir_id(loop_id).local_id;
+                        return (CodeExtent::Misc(scope_id), match scope_cf_kind {
                             ScopeCfKind::Break => l.break_index,
                             ScopeCfKind::Continue => l.continue_index,
                         });

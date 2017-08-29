@@ -246,7 +246,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
-        self.each_issued_loan(self.tcx().hir.node_to_hir_id(scope.node_id()).local_id, |loan| {
+        self.each_issued_loan(scope.item_local_id(), |loan| {
             if self.bccx.region_maps.is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
@@ -467,7 +467,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             // 3. Where does old loan expire.
 
             let previous_end_span =
-                self.tcx().hir.span(old_loan.kill_scope.node_id()).end_point();
+                old_loan.kill_scope.span(self.tcx(), &self.bccx.region_maps).end_point();
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
@@ -713,12 +713,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         let mut ret = UseOk;
 
-        let node_id = self.tcx().hir.hir_to_node_id(hir::HirId {
-            owner: self.tcx().closure_base_def_id(self.bccx.owner_def_id).index,
-            local_id: expr_id
-        });
         self.each_in_scope_loan_affecting_path(
-            region::CodeExtent::Misc(node_id), use_path, |loan| {
+            region::CodeExtent::Misc(expr_id), use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -837,11 +833,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
-            let node_id = self.tcx().hir.hir_to_node_id(hir::HirId {
-                owner: self.tcx().closure_base_def_id(self.bccx.owner_def_id).index,
-                local_id: assignment_id
-            });
-            let scope = region::CodeExtent::Misc(node_id);
+            let scope = region::CodeExtent::Misc(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

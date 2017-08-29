@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::BodyId;
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
 use middle::region::{CodeExtent, BlockRemainder};
@@ -527,16 +526,16 @@ impl fmt::Display for ty::RegionKind {
             }
             ty::ReScope(code_extent) if identify_regions() => {
                 match code_extent {
-                    CodeExtent::Misc(node_id) =>
-                        write!(f, "'{}mce", node_id.as_u32()),
-                    CodeExtent::CallSiteScope(BodyId { node_id }) =>
-                        write!(f, "'{}cce", node_id.as_u32()),
-                    CodeExtent::ParameterScope(BodyId { node_id }) =>
-                        write!(f, "'{}pce", node_id.as_u32()),
-                    CodeExtent::DestructionScope(node_id) =>
-                        write!(f, "'{}dce", node_id.as_u32()),
+                    CodeExtent::Misc(id) =>
+                        write!(f, "'{}mce", id.as_usize()),
+                    CodeExtent::CallSiteScope(id) =>
+                        write!(f, "'{}cce", id.as_usize()),
+                    CodeExtent::ParameterScope(id) =>
+                        write!(f, "'{}pce", id.as_usize()),
+                    CodeExtent::DestructionScope(id) =>
+                        write!(f, "'{}dce", id.as_usize()),
                     CodeExtent::Remainder(BlockRemainder { block, first_statement_index }) =>
-                        write!(f, "'{}_{}rce", block, first_statement_index),
+                        write!(f, "'{}_{}rce", block.as_usize(), first_statement_index),
                 }
             }
             ty::ReVar(region_vid) if identify_regions() => {

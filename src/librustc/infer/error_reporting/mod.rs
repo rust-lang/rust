@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                             prefix, scope, suffix)
                 };
                 let span = scope.span(self, region_maps);
-                let tag = match self.hir.find(scope.node_id()) {
+                let tag = match self.hir.find(scope.node_id(self, region_maps)) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",

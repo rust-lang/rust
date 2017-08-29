@@ -340,7 +340,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // region obligations that get overlooked.  The right
             // thing to do is the code below. But we keep this old
             // pass around temporarily.
-            let region_maps = RegionMaps::new();
+            let region_maps = RegionMaps::default();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
             infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);

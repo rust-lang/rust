@@ -27,8 +27,8 @@ fn main() {
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     let _2: bool;
-//     let _3: &'7_1rce bool;
-//     let _7: &'7_3rce bool;
+//     let _3: &'23_1rce bool;
+//     let _7: &'23_3rce bool;
 //     let mut _4: ();
 //     let mut _5: bool;
 //     bb0: {
@@ -38,7 +38,7 @@ fn main() {
 //         StorageLive(_2);
 //         _2 = const true;
 //         StorageLive(_3);
-//         _3 = &'7_1rce _2;
+//         _3 = &'23_1rce _2;
 //         StorageLive(_5);
 //         _5 = _2;
 //         switchInt(_5) -> [0u8: bb3, otherwise: bb2];
@@ -47,19 +47,19 @@ fn main() {
 //         _0 = ();
 //         StorageDead(_5);
 //         StorageDead(_3);
-//         EndRegion('7_1rce);
+//         EndRegion('23_1rce);
 //         StorageDead(_2);
 //         return;
 //     }
 //     bb3: {
 //         StorageDead(_5);
 //         StorageLive(_7);
-//         _7 = &'7_3rce _2;
+//         _7 = &'23_3rce _2;
 //         _1 = ();
 //         StorageDead(_7);
-//         EndRegion('7_3rce);
+//         EndRegion('23_3rce);
 //         StorageDead(_3);
-//         EndRegion('7_1rce);
+//         EndRegion('23_1rce);
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }

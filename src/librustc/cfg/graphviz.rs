@@ -32,8 +32,9 @@ pub struct LabelledCFG<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> LabelledCFG<'a, 'tcx> {
     fn local_id_to_string(&self, local_id: hir::ItemLocalId) -> String {
+        assert!(self.cfg.owner_def_id.is_local());
         let node_id = self.tcx.hir.hir_to_node_id(hir::HirId {
-            owner: self.tcx.closure_base_def_id(self.cfg.owner_def_id).index,
+            owner: self.tcx.hir.def_index_to_hir_id(self.cfg.owner_def_id.index).owner,
             local_id
         });
         let s = self.tcx.hir.node_to_string(node_id);

@@ -23,7 +23,7 @@ use hir::def::Def;
 use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
-use middle::region::RegionMaps;
+use middle::region::{CodeExtent, RegionMaps};
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
@@ -298,7 +298,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         for arg in &body.arguments {
             let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.hir_id));
 
-            let fn_body_scope_r = self.tcx().node_scope_region(body.value.id);
+            let fn_body_scope_r =
+                self.tcx().mk_region(ty::ReScope(CodeExtent::Misc(body.value.hir_id.local_id)));
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
                 arg.pat.span,
@@ -542,16 +543,17 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             ty::TyError => { }
             _ => {
                 let def_id = self.mc.tables.type_dependent_defs()[call.hir_id].def_id();
+                let call_scope = CodeExtent::Misc(call.hir_id.local_id);
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
-                        let call_scope_r = self.tcx().node_scope_region(call.id);
+                        let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
                         self.borrow_expr(callee,
                                          call_scope_r,
                                          ty::MutBorrow,
                                          ClosureInvocation);
                     }
                     FnOverloadedCall => {
-                        let call_scope_r = self.tcx().node_scope_region(call.id);
+                        let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
                         self.borrow_expr(callee,
                                          call_scope_r,
                                          ty::ImmBorrow,
@@ -749,7 +751,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // Converting from a &T to *T (or &mut T to *mut T) is
                 // treated as borrowing it for the enclosing temporary
                 // scope.
-                let r = self.tcx().node_scope_region(expr.id);
+                let r = self.tcx().mk_region(ty::ReScope(CodeExtent::Misc(expr.hir_id.local_id)));
 
                 self.delegate.borrow(expr.id,
                                      expr.span,

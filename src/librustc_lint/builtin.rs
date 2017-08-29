@@ -854,7 +854,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             let local_id = cfg.graph.node_data(idx).id();
             if local_id != hir::DUMMY_ITEM_LOCAL_ID {
                 let node_id = cx.tcx.hir.hir_to_node_id(hir::HirId {
-                    owner: cx.tcx.closure_base_def_id(cfg.owner_def_id).index,
+                    owner: body.value.hir_id.owner,
                     local_id
                 });
                 let self_recursive = match method {
