@@ -27,24 +27,32 @@ pub mod __core {
 
 extern "Rust" {
     #[allocator]
+    #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize, err: *mut u8) -> *mut u8;
     #[cold]
+    #[rustc_allocator_nounwind]
     fn __rust_oom(err: *const u8) -> !;
+    #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
+    #[rustc_allocator_nounwind]
     fn __rust_usable_size(layout: *const u8,
                           min: *mut usize,
                           max: *mut usize);
+    #[rustc_allocator_nounwind]
     fn __rust_realloc(ptr: *mut u8,
                       old_size: usize,
                       old_align: usize,
                       new_size: usize,
                       new_align: usize,
                       err: *mut u8) -> *mut u8;
+    #[rustc_allocator_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8;
+    #[rustc_allocator_nounwind]
     fn __rust_alloc_excess(size: usize,
                            align: usize,
                            excess: *mut usize,
                            err: *mut u8) -> *mut u8;
+    #[rustc_allocator_nounwind]
     fn __rust_realloc_excess(ptr: *mut u8,
                              old_size: usize,
                              old_align: usize,
@@ -52,11 +60,13 @@ extern "Rust" {
                              new_align: usize,
                              excess: *mut usize,
                              err: *mut u8) -> *mut u8;
+    #[rustc_allocator_nounwind]
     fn __rust_grow_in_place(ptr: *mut u8,
                             old_size: usize,
                             old_align: usize,
                             new_size: usize,
                             new_align: usize) -> u8;
+    #[rustc_allocator_nounwind]
     fn __rust_shrink_in_place(ptr: *mut u8,
                               old_size: usize,
                               old_align: usize,
