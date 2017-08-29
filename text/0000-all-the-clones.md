@@ -44,6 +44,40 @@ And add the obvious implementations of `Clone::clone` and `Clone::clone_from` as
 
 Remove the macro implementations in libcore. We still have macro implementations for other "derived" traits, such as `PartialEq`, `Hash`, etc.
 
+Note that independently of this RFC, we're adding builtin `Clone` impls for all "scalar" types, most importantly fn pointer and fn item types (where manual impls are impossible in the foreseeable future because of HRTBs, e.g. `for<'a> fn(SomeLocalStruct<'a>)`), which are already `Copy`:
+```
+T fn pointer type
+----------
+T: Clone
+
+T fn item type
+----------
+T: Clone
+
+And just for completeness (these are perfectly done by an impl in Rust 1.19):
+
+T int type | T uint type | T float type
+----------
+T: Clone
+
+T type
+----------
+*const T: Clone
+*mut T: Clone
+
+T type
+'a lifetime
+----------
+&'a T: Clone
+
+----------
+bool: Clone
+char: Clone
+!: Clone
+```
+
+This was considered a bug-fix (these types are all `Copy`, so it's easy to witness that they are `Clone`).
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -70,7 +104,7 @@ fn main() {
 
 ~~The reason (I think) is that there is no good way to write a variable-length array expression in macros. This wouldn't be fixed by the first iteration of const generics.~~ Actually, this can be done using a for-loop (`ArrayVec` is used here instead of a manual panic guard for simplicity, but it can be easily implemented given const generics).
 ```Rust
-impl<const n: usize; T> Clone for [T; n] {
+impl<const n: usize; T: Clone> Clone for [T; n] {
     fn clone(&self) -> Self {
         unsafe {
             let result : ArrayVec<Self> = ArrayVec::new();
@@ -93,7 +127,7 @@ One alternative, which would solve ICEs while being conservative, would be to ha
 
 This would make the shims *trivial* (a `Clone` implementation for a `Copy` type is just a memcpy), and would not implement any features that are not needed.
 
-When we get variadic generics, we could make all tuples with `Clone` elements `Clone`. With the right trick, we could also make all arrays with `Clone` elements `Clone`.
+When we get variadic generics, we could make all tuples with `Clone` elements `Clone`. When we get const generics, we could make all arrays with `Clone` elements `Clone`.
 
 ## Use a MIR implementation of `Clone` for all derived impls
 
