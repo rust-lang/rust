@@ -85,7 +85,8 @@ There are a few areas that need to be changed for this RFC:
 * The compiler needs to be extended to understand when crate dependencies are
   considered a public dependency
 * The `Cargo.toml` manifest needs to be extended to support declaring public
-  dependencies
+  dependencies. This will start as an unstable cargo feature available on nightly
+  and only via opt-in.
 * The `public` attribute of dependencies needs to appear in the Cargo index in order
   to be used by Cargo during version resolution
 * Cargo's version resolution needs to change to reject crate graph resolutions where
@@ -120,6 +121,12 @@ The `Cargo.toml` file will be amended to support the new `public` parameter on
 dependencies. Old Cargo versions will emit a warning when this key is encountered
 but otherwise continue. Since the default for a dependency to be private only,
 public ones will need to be tagged which should be the minority.
+
+This will start as an unstable Cargo feature available on nightly only that authors
+will need to opt into via a feature specified in `Cargo.toml` before Cargo will
+start using the `public` attribute to change the way versions are resolved. The
+Cargo unstable feature will turn on a corresponding rustc unstable feature for
+the compiler changes noted above.
 
 Example dependency:
 
