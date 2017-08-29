@@ -540,6 +540,12 @@ impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::specializes<'tcx> {
+    fn describe(_tcx: TyCtxt, _: (DefId, DefId)) -> String {
+        format!("computing whether impls specialize one another")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1108,6 +1114,8 @@ define_maps! { <'tcx>
     [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 
     [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
+
+    [] specializes: specializes_node((DefId, DefId)) -> bool,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1182,4 +1190,8 @@ fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'
 
 fn lint_levels<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::LintLevels
+}
+
+fn specializes_node<'tcx>((a, b): (DefId, DefId)) -> DepConstructor<'tcx> {
+    DepConstructor::Specializes { impl1: a, impl2: b }
 }

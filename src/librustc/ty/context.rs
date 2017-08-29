@@ -808,8 +808,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub sess: &'tcx Session,
 
-    pub specializes_cache: RefCell<traits::SpecializesCache>,
-
     pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
 
     pub dep_graph: DepGraph,
@@ -1072,7 +1070,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         tls::enter_global(GlobalCtxt {
             sess: s,
             trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
-            specializes_cache: RefCell::new(traits::SpecializesCache::new()),
             global_arenas: arenas,
             global_interners: interners,
             dep_graph: dep_graph.clone(),
