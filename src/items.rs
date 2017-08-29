@@ -387,8 +387,6 @@ impl<'a> FmtVisitor<'a> {
             Some(ref body_str) => self.buffer.push_str(body_str),
             None => if contains_comment(&enum_snippet[brace_pos..]) {
                 self.format_missing_no_indent(span.hi() - BytePos(1))
-            } else {
-                self.format_missing(span.hi() - BytePos(1))
             },
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
@@ -1092,12 +1090,10 @@ pub fn format_struct_struct(
     };
     // 1 = `}`
     let overhead = if fields.is_empty() { 1 } else { 0 };
-    let max_len = context
-        .config
-        .max_width()
-        .checked_sub(offset.width())
-        .unwrap_or(0);
-    if !generics_str.contains('\n') && result.len() + generics_str.len() + overhead > max_len {
+    let total_width = result.len() + generics_str.len() + overhead;
+    if !generics_str.is_empty() && !generics_str.contains('\n') &&
+        total_width > context.config.max_width()
+    {
         result.push('\n');
         result.push_str(&offset.to_string(context.config));
         result.push_str(&generics_str.trim_left());
