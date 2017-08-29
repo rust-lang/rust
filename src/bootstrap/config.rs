@@ -401,6 +401,7 @@ impl Config {
         let mut debuginfo = None;
         let mut debug_assertions = None;
         let mut optimize = None;
+        let mut ignore_git = None;
 
         if let Some(ref llvm) = toml.llvm {
             match llvm.ccache {
@@ -432,6 +433,7 @@ impl Config {
             debuginfo_lines = rust.debuginfo_lines;
             debuginfo_only_std = rust.debuginfo_only_std;
             optimize = rust.optimize;
+            ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
@@ -440,7 +442,6 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
-            set(&mut config.ignore_git, rust.ignore_git);
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
             config.rustc_default_linker = rust.default_linker.clone();
@@ -515,6 +516,9 @@ impl Config {
         config.rust_debuginfo = debuginfo.unwrap_or(default);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
         config.rust_optimize = optimize.unwrap_or(!default);
+
+        let default = config.channel == "dev";
+        config.ignore_git = ignore_git.unwrap_or(default);
 
         config
     }
