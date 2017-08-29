@@ -65,8 +65,12 @@ pub use back::symbol_names::provide;
 
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
+
+use std::rc::Rc;
+
 use rustc::hir::def_id::CrateNum;
-use rustc::util::nodemap::FxHashSet;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::middle::cstore::NativeLibrary;
 
 pub mod back {
     mod archive;
@@ -229,6 +233,7 @@ pub struct CrateInfo {
     profiler_runtime: Option<CrateNum>,
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
+    native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

@@ -15,7 +15,7 @@ use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, HirId};
 use lint;
 use middle::const_val;
-use middle::cstore::{ExternCrate, LinkagePreference};
+use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
 use middle::privacy::AccessLevels;
 use middle::region;
 use mir;
@@ -590,6 +590,12 @@ impl<'tcx> QueryDescription for queries::is_sanitizer_runtime<'tcx> {
 impl<'tcx> QueryDescription for queries::exported_symbols<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the exported symbols of a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::native_libraries<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the native libraries of a linked crate")
     }
 }
 
@@ -1170,6 +1176,7 @@ define_maps! { <'tcx>
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
     [] fn exported_symbols: ExportedSymbols(CrateNum) -> Rc<Vec<DefId>>,
+    [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

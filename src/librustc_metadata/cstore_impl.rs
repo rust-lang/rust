@@ -164,6 +164,7 @@ provide! { <'tcx> tcx, def_id, cdata,
     is_no_builtins => { cdata.is_no_builtins(&tcx.dep_graph) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     exported_symbols => { Rc::new(cdata.get_exported_symbols(&tcx.dep_graph)) }
+    native_libraries => { Rc::new(cdata.get_native_libraries(&tcx.dep_graph)) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -296,11 +297,6 @@ impl CrateStore for cstore::CStore {
             krate: cnum,
             index,
         })
-    }
-
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
-    {
-        self.get_crate_data(cnum).get_native_libraries(&self.dep_graph)
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the

@@ -613,7 +613,7 @@ fn link_staticlib(sess: &Session,
 
     let res = each_linked_rlib(sess, &mut |cnum, path| {
         let name = sess.cstore.crate_name(cnum);
-        let native_libs = sess.cstore.native_libraries(cnum);
+        let native_libs = &trans.crate_info.native_libraries[&cnum];
 
         // Here when we include the rlib into our staticlib we need to make a
         // decision whether to include the extra object files along the way.
@@ -637,7 +637,7 @@ fn link_staticlib(sess: &Session,
                     sess.lto() && !ignored_for_lto(&trans.crate_info, cnum),
                     skip_object_files).unwrap();
 
-        all_native_libs.extend(sess.cstore.native_libraries(cnum));
+        all_native_libs.extend(trans.crate_info.native_libraries[&cnum].iter().cloned());
     });
     if let Err(e) = res {
         sess.fatal(&e);
@@ -1002,7 +1002,7 @@ fn link_args(cmd: &mut Linker,
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
     add_upstream_rust_crates(cmd, sess, trans, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess, crate_type);
+    add_upstream_native_libraries(cmd, sess, trans, crate_type);
 
     // Tell the linker what we're doing.
     if crate_type != config::CrateTypeExecutable {
@@ -1239,7 +1239,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // See the comment above in `link_staticlib` and `link_rlib` for why if
         // there's a static library that's not relevant we skip all object
         // files.
-        let native_libs = sess.cstore.native_libraries(cnum);
+        let native_libs = &trans.crate_info.native_libraries[&cnum];
         let skip_native = native_libs.iter().any(|lib| {
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
@@ -1352,7 +1352,10 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: config::CrateType) {
+fn add_upstream_native_libraries(cmd: &mut Linker,
+                                 sess: &Session,
+                                 trans: &CrateTranslation,
+                                 crate_type: config::CrateType) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1367,7 +1370,7 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
 
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
-        for lib in sess.cstore.native_libraries(cnum) {
+        for lib in trans.crate_info.native_libraries[&cnum].iter() {
             if !relevant_lib(sess, &lib) {
                 continue
             }

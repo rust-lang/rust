@@ -1515,9 +1515,11 @@ impl CrateInfo {
             profiler_runtime: None,
             sanitizer_runtime: None,
             is_no_builtins: FxHashSet(),
+            native_libraries: FxHashMap(),
         };
 
         for cnum in tcx.sess.cstore.crates() {
+            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
             if tcx.is_panic_runtime(cnum) {
                 info.panic_runtime = Some(cnum);
             }
