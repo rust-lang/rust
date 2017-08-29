@@ -258,7 +258,6 @@ pub trait CrateStore {
     fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -367,7 +366,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("derive_registrar_fn") }
     fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
         { bug!("native_libraries") }
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }

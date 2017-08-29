@@ -131,8 +131,6 @@ impl ExportedSymbols {
                 tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
             let crate_exports = tcx
-                .sess
-                .cstore
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
