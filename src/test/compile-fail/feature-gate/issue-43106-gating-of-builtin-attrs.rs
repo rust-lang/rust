@@ -354,8 +354,7 @@ mod repr {
     #[repr = "3900"] fn f() { }
     //~^ WARN unused attribute
 
-    #[repr = "3900"] struct S;
-    //~^ WARN unused attribute
+    struct S;
 
     #[repr = "3900"] type T = S;
     //~^ WARN unused attribute

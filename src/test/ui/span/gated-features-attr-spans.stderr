@@ -1,0 +1,34 @@
+error: the struct `#[repr(align(u16))]` attribute is experimental (see issue #33626)
+  --> $DIR/gated-features-attr-spans.rs:13:1
+   |
+13 | #[repr(align(16))]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(repr_align)] to the crate attributes to enable
+
+error: SIMD types are experimental and possibly buggy (see issue #27731)
+  --> $DIR/gated-features-attr-spans.rs:20:1
+   |
+20 | #[repr(simd)]
+   | ^^^^^^^^^^^^^
+   |
+   = help: add #![feature(repr_simd)] to the crate attributes to enable
+
+warning: `#[must_use]` on methods is experimental (see issue #43302)
+  --> $DIR/gated-features-attr-spans.rs:27:5
+   |
+27 |     #[must_use] fn summon_weapon(&self) -> Weapon { self.weapon }
+   |     ^^^^^^^^^^^
+   |
+   = help: add #![feature(fn_must_use)] to the crate attributes to enable
+
+warning: `#[must_use]` on functions is experimental (see issue #43302)
+  --> $DIR/gated-features-attr-spans.rs:30:1
+   |
+30 | #[must_use]
+   | ^^^^^^^^^^^
+   |
+   = help: add #![feature(fn_must_use)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+

@@ -1252,8 +1252,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
             ast::ItemKind::ExternCrate(_) => {
-                if attr::contains_name(&i.attrs[..], "macro_reexport") {
-                    gate_feature_post!(&self, macro_reexport, i.span,
+                if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
+                    gate_feature_post!(&self, macro_reexport, attr.span,
                                        "macros reexports are experimental \
                                         and possibly buggy");
                 }
@@ -1280,36 +1280,32 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
                 }
-                if attr::contains_name(&i.attrs[..], "must_use") {
-                    gate_feature_post!(&self, fn_must_use, i.span,
+                if let Some(attr) = attr::find_by_name(&i.attrs[..], "must_use") {
+                    gate_feature_post!(&self, fn_must_use, attr.span,
                                        "`#[must_use]` on functions is experimental",
                                        GateStrength::Soft);
                 }
             }
 
             ast::ItemKind::Struct(..) => {
-                if attr::contains_name(&i.attrs[..], "simd") {
-                    gate_feature_post!(&self, simd, i.span,
+                if let Some(attr) = attr::find_by_name(&i.attrs[..], "simd") {
+                    gate_feature_post!(&self, simd, attr.span,
                                        "SIMD types are experimental and possibly buggy");
-                    self.context.parse_sess.span_diagnostic.span_warn(i.span,
+                    self.context.parse_sess.span_diagnostic.span_warn(attr.span,
                                                                       "the `#[simd]` attribute \
                                                                        is deprecated, use \
                                                                        `#[repr(simd)]` instead");
                 }
-                for attr in &i.attrs {
-                    if attr.path == "repr" {
-                        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-                            if item.check_name("simd") {
-                                gate_feature_post!(&self, repr_simd, i.span,
-                                                   "SIMD types are experimental \
-                                                    and possibly buggy");
-
-                            }
-                            if item.check_name("align") {
-                                gate_feature_post!(&self, repr_align, i.span,
-                                                   "the struct `#[repr(align(u16))]` attribute \
-                                                    is experimental");
-                            }
+                if let Some(attr) = attr::find_by_name(&i.attrs[..], "repr") {
+                    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
+                        if item.check_name("simd") {
+                            gate_feature_post!(&self, repr_simd, attr.span,
+                                               "SIMD types are experimental and possibly buggy");
+                        }
+                        if item.check_name("align") {
+                            gate_feature_post!(&self, repr_align, attr.span,
+                                               "the struct `#[repr(align(u16))]` attribute \
+                                                is experimental");
                         }
                     }
                 }
@@ -1338,8 +1334,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
                 for impl_item in impl_items {
                     if let ast::ImplItemKind::Method(..) = impl_item.node {
-                        if attr::contains_name(&impl_item.attrs[..], "must_use") {
-                            gate_feature_post!(&self, fn_must_use, impl_item.span,
+                        if let Some(attr) = attr::find_by_name(&impl_item.attrs[..], "must_use") {
+                            gate_feature_post!(&self, fn_must_use, attr.span,
                                                "`#[must_use]` on methods is experimental",
                                                GateStrength::Soft);
                         }
