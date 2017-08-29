@@ -15,7 +15,7 @@ use errors::DiagnosticBuilder;
 use session::Session;
 use middle;
 use hir::{TraitCandidate, HirId};
-use hir::def::{Def, ExportMap};
+use hir::def::{Def, Export};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DefPathHash;
@@ -822,7 +822,7 @@ pub struct GlobalCtxt<'tcx> {
     trait_map: FxHashMap<HirId, Rc<Vec<TraitCandidate>>>,
 
     /// Export map produced by name resolution.
-    pub export_map: ExportMap,
+    export_map: FxHashMap<HirId, Rc<Vec<Export>>>,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -1081,7 +1081,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             trait_map: resolutions.trait_map.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
-            export_map: resolutions.export_map,
+            export_map: resolutions.export_map.into_iter().map(|(k, v)| {
+                (hir.node_to_hir_id(k), Rc::new(v))
+            }).collect(),
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
@@ -2006,6 +2008,13 @@ fn in_scope_traits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
     tcx.gcx.trait_map.get(&id).cloned()
 }
 
+fn module_exports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
+    -> Option<Rc<Vec<Export>>>
+{
+    tcx.gcx.export_map.get(&id).cloned()
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     providers.in_scope_traits = in_scope_traits;
+    providers.module_exports = module_exports;
 }

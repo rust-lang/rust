@@ -529,6 +529,7 @@ define_dep_nodes!( <'tcx>
     [] ExternCrate(DefId),
     [] LintLevels,
     [] InScopeTraits(HirId),
+    [] ModuleExports(HirId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

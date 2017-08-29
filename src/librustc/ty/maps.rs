@@ -11,7 +11,7 @@
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use hir::def::Def;
+use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, HirId};
 use lint;
 use middle::const_val;
@@ -552,6 +552,12 @@ impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
 impl<'tcx> QueryDescription for queries::in_scope_traits<'tcx> {
     fn describe(_tcx: TyCtxt, _: HirId) -> String {
         format!("fetching the traits in scope at a particular ast node")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::module_exports<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching the exported items for a module")
     }
 }
 
@@ -1125,6 +1131,7 @@ define_maps! { <'tcx>
     [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
+    [] module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

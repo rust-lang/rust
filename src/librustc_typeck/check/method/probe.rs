@@ -662,6 +662,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
                                                          expr_id: ast::NodeId)
                                                          -> Result<(), MethodError<'tcx>> {
+        if expr_id == ast::DUMMY_NODE_ID {
+            return Ok(())
+        }
         let mut duplicates = FxHashSet();
         let expr_hir_id = self.tcx.hir.node_to_hir_id(expr_id);
         let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
