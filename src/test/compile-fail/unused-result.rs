@@ -42,6 +42,9 @@ fn main() {
     foo::<MustUse>(); //~ ERROR: unused `MustUse` which must be used
     foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` which must be used: some message
 
+    // as an exceptional case, booleans are not considered unused
+    foo::<bool>();
+
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();
     let _ = foo::<MustUseMsg>();
