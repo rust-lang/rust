@@ -348,12 +348,11 @@ pub struct Rls {
 
 impl Step for Rls {
     type Output = PathBuf;
-    const DEFAULT: bool = true;
+    const DEFAULT: bool = false;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        let builder = run.builder;
-        run.path("src/tools/rls").default_condition(builder.build.config.extended)
+        run.path("src/tools/rls")
     }
 
     fn make_run(run: RunConfig) {
