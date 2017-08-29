@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
-#![deny(unreachable_code)]
-#![deny(unreachable_patterns)]
+#![feature(never_type, rustc_attrs)]
+#![warn(unreachable_code)]
+#![warn(unreachable_patterns)]
 
 enum Void {}
 
@@ -26,8 +26,8 @@ fn bar(x: Result<!, i32>) -> Result<u32, i32> {
 
 fn foo(x: Result<!, i32>) -> Result<u32, i32> {
     let y = (match x { Ok(n) => Ok(n as u32), Err(e) => Err(e) })?;
-    //~^ ERROR unreachable pattern
-    //~| ERROR unreachable expression
+    //~^ WARN unreachable pattern
+    //~| WARN unreachable expression
     Ok(y)
 }
 
@@ -37,11 +37,12 @@ fn qux(x: Result<u32, Void>) -> Result<u32, i32> {
 
 fn vom(x: Result<u32, Void>) -> Result<u32, i32> {
     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
-    //~^ ERROR unreachable pattern
+    //~^ WARN unreachable pattern
     Ok(y)
 }
 
-fn main() {
+#[rustc_error]
+fn main() { //~ ERROR: compilation successful
     let _ = bar(Err(123));
     let _ = foo(Err(123));
     let _ = qux(Ok(123));

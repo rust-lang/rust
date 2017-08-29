@@ -13,7 +13,7 @@ set -ex
 
 ARCH=$1
 BINUTILS=2.25.1
-GCC=5.3.0
+GCC=6.4.0
 
 hide_output() {
   set +x
@@ -86,7 +86,7 @@ rm -rf freebsd
 # Finally, download and build gcc to target FreeBSD
 mkdir gcc
 cd gcc
-curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.bz2 | tar xjf -
+curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.gz | tar xzf -
 cd gcc-$GCC
 ./contrib/download_prerequisites
 

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(unused)]
 #![deny(warnings)] //~ NOTE: lint level defined here
 use std::thread;
 //~^ ERROR: unused import

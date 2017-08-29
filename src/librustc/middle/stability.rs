@@ -123,7 +123,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
-        if self.index.staged_api[&LOCAL_CRATE] {
+        if self.tcx.sess.features.borrow().staged_api {
+            // This crate explicitly wants staged API.
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             if let Some(..) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged api, \
@@ -201,6 +202,15 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
                                                          outside of the standard library");
+                }
+            }
+
+            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // -Zforce-unstable-if-unmarked is set.
+            if let Some(stab) = self.parent_stab {
+                if stab.level.is_unstable() {
+                    let def_id = self.tcx.hir.local_def_id(id);
+                    self.index.stab_map.insert(def_id, Some(stab));
                 }
             }
 
@@ -313,8 +323,9 @@ struct MissingStabilityAnnotations<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
     fn check_missing_stability(&self, id: NodeId, span: Span) {
         let def_id = self.tcx.hir.local_def_id(id);
+        let stab = self.tcx.stability.borrow().stab_map.get(&def_id).cloned();
         let is_error = !self.tcx.sess.opts.test &&
-                        !self.tcx.stability.borrow().stab_map.contains_key(&def_id) &&
+                        (stab == None || stab == Some(None)) &&
                         self.access_levels.is_reachable(id);
         if is_error {
             self.tcx.sess.span_err(span, "This node does not have a stability attribute");
@@ -420,7 +431,6 @@ impl<'a, 'tcx> Index<'tcx> {
         let is_staged_api =
             sess.opts.debugging_opts.force_unstable_if_unmarked ||
             sess.features.borrow().staged_api;
-
         let mut staged_api = FxHashMap();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {
@@ -493,7 +503,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 format!("use of deprecated item")
             };
 
-            self.sess.add_lint(lint::builtin::DEPRECATED, id, span, msg);
+            self.lint_node(lint::builtin::DEPRECATED, id, span, &msg);
         };
 
         // Deprecated attributes apply in-crate and cross-crate.
@@ -737,10 +747,10 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &(ref stable_lang_feature, span) in &sess.features.borrow().declared_stable_lang_features {
         let version = find_lang_feature_accepted_version(&stable_lang_feature.as_str())
             .expect("unexpectedly couldn't find version feature was stabilized");
-        sess.add_lint(lint::builtin::STABLE_FEATURES,
+        tcx.lint_node(lint::builtin::STABLE_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      format_stable_since_msg(version));
+                      &format_stable_since_msg(version));
     }
 
     let index = tcx.stability.borrow();
@@ -748,10 +758,10 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         match remaining_lib_features.remove(used_lib_feature) {
             Some(span) => {
                 if let &attr::StabilityLevel::Stable { since: ref version } = level {
-                    sess.add_lint(lint::builtin::STABLE_FEATURES,
+                    tcx.lint_node(lint::builtin::STABLE_FEATURES,
                                   ast::CRATE_NODE_ID,
                                   span,
-                                  format_stable_since_msg(&version.as_str()));
+                                  &format_stable_since_msg(&version.as_str()));
                 }
             }
             None => ( /* used but undeclared, handled during the previous ast visit */ )
@@ -759,9 +769,9 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     for &span in remaining_lib_features.values() {
-        sess.add_lint(lint::builtin::UNUSED_FEATURES,
+        tcx.lint_node(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,
-                      "unused or unknown feature".to_string());
+                      "unused or unknown feature");
     }
 }

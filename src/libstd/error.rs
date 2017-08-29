@@ -340,7 +340,7 @@ impl Error for char::CharTryFromError {
     }
 }
 
-#[stable(feature = "char_from_str", since = "1.19.0")]
+#[stable(feature = "char_from_str", since = "1.20.0")]
 impl Error for char::ParseCharError {
     fn description(&self) -> &str {
         self.__description()
@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn downcasting() {
         let mut a = A;
-        let mut a = &mut a as &mut (Error + 'static);
+        let a = &mut a as &mut (Error + 'static);
         assert_eq!(a.downcast_ref::<A>(), Some(&A));
         assert_eq!(a.downcast_ref::<B>(), None);
         assert_eq!(a.downcast_mut::<A>(), Some(&mut A));

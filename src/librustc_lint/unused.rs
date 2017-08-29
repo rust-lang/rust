@@ -44,9 +44,14 @@ impl UnusedMut {
 
         let mut mutables = FxHashMap();
         for p in pats {
-            p.each_binding(|mode, id, _, path1| {
+            p.each_binding(|_, id, span, path1| {
+                let hir_id = cx.tcx.hir.node_to_hir_id(id);
+                let bm = match cx.tables.pat_binding_modes().get(hir_id) {
+                    Some(&bm) => bm,
+                    None => span_bug!(span, "missing binding mode"),
+                };
                 let name = path1.node;
-                if let hir::BindByValue(hir::MutMutable) = mode {
+                if let ty::BindByValue(hir::MutMutable) = bm {
                     if !name.as_str().starts_with("_") {
                         match mutables.entry(name) {
                             Vacant(entry) => {
@@ -141,22 +146,50 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let t = cx.tables.expr_ty(&expr);
-        let warned = match t.sty {
+        let ty_warned = match t.sty {
             ty::TyTuple(ref tys, _) if tys.is_empty() => return,
             ty::TyNever => return,
-            ty::TyBool => return,
-            ty::TyAdt(def, _) => check_must_use(cx, def.did, s.span),
+            ty::TyAdt(def, _) => {
+                if def.variants.is_empty() {
+                    return;
+                } else {
+                    check_must_use(cx, def.did, s.span, "")
+                }
+            },
             _ => false,
         };
-        if !warned {
+
+        let mut fn_warned = false;
+        if cx.tcx.sess.features.borrow().fn_must_use {
+            let maybe_def = match expr.node {
+                hir::ExprCall(ref callee, _) => {
+                    match callee.node {
+                        hir::ExprPath(ref qpath) => {
+                            Some(cx.tables.qpath_def(qpath, callee.hir_id))
+                        },
+                        _ => None
+                    }
+                },
+                hir::ExprMethodCall(..) => {
+                    cx.tables.type_dependent_defs().get(expr.hir_id).cloned()
+                },
+                _ => None
+            };
+            if let Some(def) = maybe_def {
+                let def_id = def.def_id();
+                fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+            }
+        }
+
+        if !(ty_warned || fn_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span) -> bool {
+        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span, describe_path: &str) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let mut msg = format!("unused `{}` which must be used",
-                                          cx.tcx.item_path_str(def_id));
+                    let mut msg = format!("unused {}`{}` which must be used",
+                                          describe_path, cx.tcx.item_path_str(def_id));
                     // check for #[must_use="..."]
                     if let Some(s) = attr.value_str() {
                         msg.push_str(": ");

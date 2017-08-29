@@ -192,6 +192,18 @@ impl<'a> FnLikeNode<'a> {
         }
     }
 
+    pub fn unsafety(self) -> ast::Unsafety {
+        match self.kind() {
+            FnKind::ItemFn(_, _, unsafety, ..) => {
+                unsafety
+            }
+            FnKind::Method(_, m, ..) => {
+                m.unsafety
+            }
+            _ => ast::Unsafety::Normal
+        }
+    }
+
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
             FnKind::ItemFn(p.name, p.generics, p.unsafety, p.constness, p.abi, p.vis, p.attrs)
@@ -252,7 +264,7 @@ impl<'a> FnLikeNode<'a> {
                 }
             },
             map::NodeExpr(e) => match e.node {
-                ast::ExprClosure(_, ref decl, block, _fn_decl_span) =>
+                ast::ExprClosure(_, ref decl, block, _fn_decl_span, _gen) =>
                     closure(ClosureParts::new(&decl, block, e.id, e.span, &e.attrs)),
                 _ => bug!("expr FnLikeNode that is not fn-like"),
             },

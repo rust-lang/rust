@@ -76,8 +76,8 @@ struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
     fn new(mir: &'b Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
         OptimizationFinder {
-            mir: mir,
-            tcx: tcx,
+            mir,
+            tcx,
             optimizations: OptimizationList::default(),
         }
     }

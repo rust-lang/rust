@@ -52,7 +52,8 @@ pub mod net;
 
 #[cfg(feature = "backtrace")]
 #[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
-          all(windows, target_env = "gnu")))]
+          all(windows, target_env = "gnu"),
+          target_os = "redox"))]
 pub mod gnu;
 
 // common error constructors

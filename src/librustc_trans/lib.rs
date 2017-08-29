@@ -14,9 +14,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_trans"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -34,13 +31,10 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
-#![cfg_attr(stage0, feature(associated_consts))]
-
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
 extern crate flate2;
-extern crate crossbeam;
 extern crate libc;
 extern crate owning_ref;
 #[macro_use] extern crate rustc;
@@ -48,7 +42,7 @@ extern crate rustc_allocator;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_incremental;
-pub extern crate rustc_llvm as llvm;
+extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
 #[macro_use]
@@ -56,6 +50,7 @@ extern crate rustc_const_math;
 extern crate rustc_bitflags;
 extern crate rustc_demangle;
 extern crate jobserver;
+extern crate num_cpus;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -79,7 +74,7 @@ pub mod back {
     pub(crate) mod symbol_export;
     pub(crate) mod symbol_names;
     pub mod write;
-    pub mod rpath;
+    mod rpath;
 }
 
 mod diagnostics;
@@ -126,22 +121,74 @@ mod mir;
 mod monomorphize;
 mod partitioning;
 mod symbol_names_test;
+mod time_graph;
 mod trans_item;
 mod tvec;
 mod type_;
 mod type_of;
 mod value;
 
-#[derive(Clone)]
 pub struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between
     /// compilations, incremental compilation requires that name be
     /// unique amongst **all** crates.  Therefore, it should contain
     /// something unique to this crate (e.g., a module path) as well
     /// as the crate name and disambiguator.
-    pub name: String,
-    pub symbol_name_hash: u64,
+    name: String,
+    symbol_name_hash: u64,
     pub source: ModuleSource,
+    pub kind: ModuleKind,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum ModuleKind {
+    Regular,
+    Metadata,
+    Allocator,
+}
+
+impl ModuleTranslation {
+    pub fn into_compiled_module(self, emit_obj: bool, emit_bc: bool) -> CompiledModule {
+        let pre_existing = match self.source {
+            ModuleSource::Preexisting(_) => true,
+            ModuleSource::Translated(_) => false,
+        };
+
+        CompiledModule {
+            name: self.name.clone(),
+            kind: self.kind,
+            symbol_name_hash: self.symbol_name_hash,
+            pre_existing,
+            emit_obj,
+            emit_bc,
+        }
+    }
+}
+
+impl Drop for ModuleTranslation {
+    fn drop(&mut self) {
+        match self.source {
+            ModuleSource::Preexisting(_) => {
+                // Nothing to dispose.
+            },
+            ModuleSource::Translated(llvm) => {
+                unsafe {
+                    llvm::LLVMDisposeModule(llvm.llmod);
+                    llvm::LLVMContextDispose(llvm.llcx);
+                }
+            },
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct CompiledModule {
+    pub name: String,
+    pub kind: ModuleKind,
+    pub symbol_name_hash: u64,
+    pub pre_existing: bool,
+    pub emit_obj: bool,
+    pub emit_bc: bool,
 }
 
 #[derive(Clone)]
@@ -153,9 +200,9 @@ pub enum ModuleSource {
     Translated(ModuleLlvm),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ModuleLlvm {
-    pub llcx: llvm::ContextRef,
+    llcx: llvm::ContextRef,
     pub llmod: llvm::ModuleRef,
 }
 
@@ -164,15 +211,12 @@ unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
     pub crate_name: Symbol,
-    pub modules: Vec<ModuleTranslation>,
-    pub metadata_module: ModuleTranslation,
-    pub allocator_module: Option<ModuleTranslation>,
+    pub modules: Vec<CompiledModule>,
+    allocator_module: Option<CompiledModule>,
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub exported_symbols: back::symbol_export::ExportedSymbols,
-    pub no_builtins: bool,
-    pub windows_subsystem: Option<String>,
-    pub linker_info: back::linker::LinkerInfo
+    windows_subsystem: Option<String>,
+    linker_info: back::linker::LinkerInfo
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

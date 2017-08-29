@@ -22,6 +22,7 @@ macro_rules! tuple_impls {
     )+) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(self.$idx.clone(),)+)
@@ -29,7 +30,7 @@ macro_rules! tuple_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialEq),+> PartialEq for ($($T,)+) {
+            impl<$($T:PartialEq),+> PartialEq for ($($T,)+) where last_type!($($T,)+): ?Sized {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
                     $(self.$idx == other.$idx)&&+
@@ -41,10 +42,11 @@ macro_rules! tuple_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Eq),+> Eq for ($($T,)+) {}
+            impl<$($T:Eq),+> Eq for ($($T,)+) where last_type!($($T,)+): ?Sized {}
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+) {
+            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
+                    where last_type!($($T,)+): ?Sized {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
                     lexical_partial_cmp!($(self.$idx, other.$idx),+)
@@ -68,7 +70,7 @@ macro_rules! tuple_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Ord),+> Ord for ($($T,)+) {
+            impl<$($T:Ord),+> Ord for ($($T,)+) where last_type!($($T,)+): ?Sized {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
                     lexical_cmp!($(self.$idx, other.$idx),+)
@@ -116,6 +118,11 @@ macro_rules! lexical_cmp {
         }
     };
     ($a:expr, $b:expr) => { ($a).cmp(&$b) };
+}
+
+macro_rules! last_type {
+    ($a:ident,) => { $a };
+    ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
 tuple_impls! {

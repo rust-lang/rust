@@ -36,7 +36,6 @@ use util::nodemap::NodeMap;
 /// There is one DefPathTable for each crate.
 pub struct DefPathTable {
     index_to_key: [Vec<DefKey>; 2],
-    key_to_index: FxHashMap<DefKey, DefIndex>,
     def_path_hashes: [Vec<DefPathHash>; 2],
 }
 
@@ -47,7 +46,6 @@ impl Clone for DefPathTable {
         DefPathTable {
             index_to_key: [self.index_to_key[0].clone(),
                            self.index_to_key[1].clone()],
-            key_to_index: self.key_to_index.clone(),
             def_path_hashes: [self.def_path_hashes[0].clone(),
                               self.def_path_hashes[1].clone()],
         }
@@ -65,10 +63,9 @@ impl DefPathTable {
             let index_to_key = &mut self.index_to_key[address_space.index()];
             let index = DefIndex::new(index_to_key.len() + address_space.start());
             debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
-            index_to_key.push(key.clone());
+            index_to_key.push(key);
             index
         };
-        self.key_to_index.insert(key, index);
         self.def_path_hashes[address_space.index()].push(def_path_hash);
         debug_assert!(self.def_path_hashes[address_space.index()].len() ==
                       self.index_to_key[address_space.index()].len());
@@ -85,47 +82,6 @@ impl DefPathTable {
     pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         self.def_path_hashes[index.address_space().index()]
                             [index.as_array_index()]
-    }
-
-    #[inline(always)]
-    pub fn def_index_for_def_key(&self, key: &DefKey) -> Option<DefIndex> {
-        self.key_to_index.get(key).cloned()
-    }
-
-    #[inline(always)]
-    pub fn contains_key(&self, key: &DefKey) -> bool {
-        self.key_to_index.contains_key(key)
-    }
-
-    pub fn retrace_path(&self,
-                        path_data: &[DisambiguatedDefPathData])
-                        -> Option<DefIndex> {
-        let root_key = DefKey {
-            parent: None,
-            disambiguated_data: DisambiguatedDefPathData {
-                data: DefPathData::CrateRoot,
-                disambiguator: 0,
-            },
-        };
-
-        let root_index = self.key_to_index
-                             .get(&root_key)
-                             .expect("no root key?")
-                             .clone();
-
-        debug!("retrace_path: root_index={:?}", root_index);
-
-        let mut index = root_index;
-        for data in path_data {
-            let key = DefKey { parent: Some(index), disambiguated_data: data.clone() };
-            debug!("retrace_path: key={:?}", key);
-            match self.key_to_index.get(&key) {
-                Some(&i) => index = i,
-                None => return None,
-            }
-        }
-
-        Some(index)
     }
 
     pub fn add_def_path_hashes_to(&self,
@@ -149,7 +105,7 @@ impl DefPathTable {
     }
 
     pub fn size(&self) -> usize {
-        self.key_to_index.len()
+        self.index_to_key.iter().map(|v| v.len()).sum()
     }
 }
 
@@ -179,19 +135,8 @@ impl Decodable for DefPathTable {
         let index_to_key = [index_to_key_lo, index_to_key_hi];
         let def_path_hashes = [def_path_hashes_lo, def_path_hashes_hi];
 
-        let mut key_to_index = FxHashMap();
-
-        for space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
-            key_to_index.extend(index_to_key[space.index()]
-                .iter()
-                .enumerate()
-                .map(|(index, key)| (key.clone(),
-                                     DefIndex::new(index + space.start()))))
-        }
-
         Ok(DefPathTable {
             index_to_key,
-            key_to_index,
             def_path_hashes,
         })
     }
@@ -208,6 +153,7 @@ pub struct Definitions {
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     macro_def_scopes: FxHashMap<Mark, DefId>,
     expansions: FxHashMap<DefIndex, Mark>,
+    next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -224,6 +170,7 @@ impl Clone for Definitions {
             node_to_hir_id: self.node_to_hir_id.clone(),
             macro_def_scopes: self.macro_def_scopes.clone(),
             expansions: self.expansions.clone(),
+            next_disambiguator: self.next_disambiguator.clone(),
         }
     }
 }
@@ -448,7 +395,6 @@ impl Definitions {
         Definitions {
             table: DefPathTable {
                 index_to_key: [vec![], vec![]],
-                key_to_index: FxHashMap(),
                 def_path_hashes: [vec![], vec![]],
             },
             node_to_def_index: NodeMap(),
@@ -456,6 +402,7 @@ impl Definitions {
             node_to_hir_id: IndexVec::new(),
             macro_def_scopes: FxHashMap(),
             expansions: FxHashMap(),
+            next_disambiguator: FxHashMap(),
         }
     }
 
@@ -478,10 +425,6 @@ impl Definitions {
         self.table.def_path_hash(index)
     }
 
-    pub fn def_index_for_def_key(&self, key: DefKey) -> Option<DefIndex> {
-        self.table.def_index_for_def_key(&key)
-    }
-
     /// Returns the path from the crate root to `index`. The root
     /// nodes are not included in the path (i.e., this will be an
     /// empty vector for the crate root). For an inlined item, this
@@ -491,18 +434,22 @@ impl Definitions {
         DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
     }
 
+    #[inline]
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
         self.node_to_def_index.get(&node).cloned()
     }
 
+    #[inline]
     pub fn opt_local_def_id(&self, node: ast::NodeId) -> Option<DefId> {
         self.opt_def_index(node).map(DefId::local)
     }
 
+    #[inline]
     pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap()
     }
 
+    #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
             let space_index = def_id.index.address_space().index();
@@ -518,7 +465,24 @@ impl Definitions {
         }
     }
 
+    #[inline]
     pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+        self.node_to_hir_id[node_id]
+    }
+
+    pub fn find_node_for_hir_id(&self, hir_id: hir::HirId) -> ast::NodeId {
+        self.node_to_hir_id
+            .iter()
+            .position(|x| *x == hir_id)
+            .map(|idx| ast::NodeId::new(idx))
+            .unwrap()
+    }
+
+    #[inline]
+    pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
+        let space_index = def_index.address_space().index();
+        let array_index = def_index.as_array_index();
+        let node_id = self.def_index_to_node[space_index][array_index];
         self.node_to_hir_id[node_id]
     }
 
@@ -573,19 +537,20 @@ impl Definitions {
         // The root node must be created with create_root_def()
         assert!(data != DefPathData::CrateRoot);
 
-        // Find a unique DefKey. This basically means incrementing the disambiguator
-        // until we get no match.
-        let mut key = DefKey {
-            parent: Some(parent),
-            disambiguated_data: DisambiguatedDefPathData {
-                data,
-                disambiguator: 0
-            }
+        // Find the next free disambiguator for this key.
+        let disambiguator = {
+            let next_disamb = self.next_disambiguator.entry((parent, data.clone())).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
         };
 
-        while self.table.contains_key(&key) {
-            key.disambiguated_data.disambiguator += 1;
-        }
+        let key = DefKey {
+            parent: Some(parent),
+            disambiguated_data: DisambiguatedDefPathData {
+                data, disambiguator
+            }
+        };
 
         let parent_hash = self.table.def_path_hash(parent);
         let def_path_hash = key.compute_stable_hash(parent_hash);
@@ -710,6 +675,8 @@ macro_rules! define_global_metadata_kind {
             $($variant),*
         }
 
+        const GLOBAL_MD_ADDRESS_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
+
         impl GlobalMetaDataKind {
             fn allocate_def_indices(definitions: &mut Definitions) {
                 $({
@@ -718,7 +685,7 @@ macro_rules! define_global_metadata_kind {
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
                         DefPathData::GlobalMetaData(instance.name()),
-                        DefIndexAddressSpace::High,
+                        GLOBAL_MD_ADDRESS_SPACE,
                         Mark::root()
                     );
 
@@ -736,7 +703,14 @@ macro_rules! define_global_metadata_kind {
                     }
                 };
 
-                def_path_table.key_to_index[&def_key]
+                // These DefKeys are all right after the root,
+                // so a linear search is fine.
+                let index = def_path_table.index_to_key[GLOBAL_MD_ADDRESS_SPACE.index()]
+                                          .iter()
+                                          .position(|k| *k == def_key)
+                                          .unwrap();
+
+                DefIndex::from_array_index(index, GLOBAL_MD_ADDRESS_SPACE)
             }
 
             fn name(&self) -> Symbol {

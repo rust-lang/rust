@@ -2,23 +2,12 @@ error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:12:5
    |
 12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^--------^^-------^^-^^
+   |                              |         |        |
+   |                              |         |        unused
+   |                              |         unused
+   |                              unused
    |
-note: argument never used
-  --> $DIR/format-foreign.rs:12:30
-   |
-12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
-   |                              ^^^^^^^^
-note: argument never used
-  --> $DIR/format-foreign.rs:12:40
-   |
-12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
-   |                                        ^^^^^^^
-note: argument never used
-  --> $DIR/format-foreign.rs:12:49
-   |
-12 |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
-   |                                                 ^
    = help: `%.*3$s` should be written as `{:.2$}`
    = help: `%s` should be written as `{}`
    = note: printf formatting not supported; see the documentation for `std::fmt`

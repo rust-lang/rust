@@ -10,7 +10,6 @@
 
 // aux-build:pub_and_stability.rs
 
-#![feature(staged_api)]
 #![feature(unused_feature)]
 
 // A big point of this test is that we *declare* `unstable_declared`,

@@ -69,7 +69,7 @@ impl ParseSess {
             config: HashSet::new(),
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
             included_mod_stack: RefCell::new(vec![]),
-            code_map: code_map
+            code_map,
         }
     }
 
@@ -124,7 +124,7 @@ pub fn parse_expr_from_source_str(name: String, source: String, sess: &ParseSess
 
 /// Parses an item.
 ///
-/// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and`Err`
+/// Returns `Ok(Some(item))` when successful, `Ok(None)` when no item was found, and `Err`
 /// when a syntax error occurred.
 pub fn parse_item_from_source_str(name: String, source: String, sess: &ParseSess)
                                       -> PResult<Option<P<ast::Item>>> {
@@ -843,11 +843,18 @@ mod tests {
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
         // this test depends on the intern order of "fn" and "i32"
-        assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
+        let item = string_to_item("fn a (b : i32) { b; }".to_string()).map(|m| {
+            m.map(|mut m| {
+                m.tokens = None;
+                m
+            })
+        });
+        assert_eq!(item,
                   Some(
                       P(ast::Item{ident:Ident::from_str("a"),
                             attrs:Vec::new(),
                             id: ast::DUMMY_NODE_ID,
+                            tokens: None,
                             node: ast::ItemKind::Fn(P(ast::FnDecl {
                                 inputs: vec![ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
@@ -860,13 +867,14 @@ mod tests {
                                     pat: P(ast::Pat {
                                         id: ast::DUMMY_NODE_ID,
                                         node: PatKind::Ident(
-                                            ast::BindingMode::ByValue(ast::Mutability::Immutable),
-                                                Spanned{
-                                                    span: sp(6,7),
-                                                    node: Ident::from_str("b")},
-                                                None
-                                                    ),
-                                            span: sp(6,7)
+                                            ast::BindingMode::ByValue(
+                                                ast::Mutability::Immutable),
+                                            Spanned{
+                                                span: sp(6,7),
+                                                node: Ident::from_str("b")},
+                                            None
+                                        ),
+                                        span: sp(6,7)
                                     }),
                                         id: ast::DUMMY_NODE_ID
                                     }],
@@ -885,6 +893,7 @@ mod tests {
                                         where_clause: ast::WhereClause {
                                             id: ast::DUMMY_NODE_ID,
                                             predicates: Vec::new(),
+                                            span: syntax_pos::DUMMY_SP,
                                         },
                                         span: syntax_pos::DUMMY_SP,
                                     },

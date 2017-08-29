@@ -10,6 +10,7 @@
 
 use super::{probe, MethodCallee};
 
+use astconv::AstConv;
 use check::{FnCtxt, LvalueOp, callee};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
@@ -37,6 +38,11 @@ impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
     }
 }
 
+pub struct ConfirmResult<'tcx> {
+    pub callee: MethodCallee<'tcx>,
+    pub illegal_sized_bound: bool,
+}
+
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn confirm_method(&self,
                           span: Span,
@@ -45,7 +51,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           unadjusted_self_ty: Ty<'tcx>,
                           pick: probe::Pick<'tcx>,
                           segment: &hir::PathSegment)
-                          -> MethodCallee<'tcx> {
+                          -> ConfirmResult<'tcx> {
         debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
                unadjusted_self_ty,
                pick,
@@ -63,10 +69,10 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
            call_expr: &'gcx hir::Expr)
            -> ConfirmContext<'a, 'gcx, 'tcx> {
         ConfirmContext {
-            fcx: fcx,
-            span: span,
-            self_expr: self_expr,
-            call_expr: call_expr,
+            fcx,
+            span,
+            self_expr,
+            call_expr,
         }
     }
 
@@ -74,7 +80,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                unadjusted_self_ty: Ty<'tcx>,
                pick: probe::Pick<'tcx>,
                segment: &hir::PathSegment)
-               -> MethodCallee<'tcx> {
+               -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
 
@@ -90,12 +96,26 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Create the final signature for the method, replacing late-bound regions.
         let (method_sig, method_predicates) = self.instantiate_method_sig(&pick, all_substs);
 
+        // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
+        // something which derefs to `Self` actually implements the trait and the caller
+        // wanted to make a static dispatch on it but forgot to import the trait.
+        // See test `src/test/ui/issue-35976.rs`.
+        //
+        // In that case, we'll error anyway, but we'll also re-run the search with all traits
+        // in scope, and if we find another method which can be used, we'll output an
+        // appropriate hint suggesting to import the trait.
+        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(&method_predicates);
+
         // Unify the (adjusted) self type with what the method expects.
         self.unify_receivers(self_ty, method_sig.inputs()[0]);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
-        self.add_obligations(method_ty, all_substs, &method_predicates);
+        // We won't add these if we encountered an illegal sized bound, so that we can use
+        // a custom error in that case.
+        if !illegal_sized_bound {
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
+            self.add_obligations(method_ty, all_substs, &method_predicates);
+        }
 
         // Create the final `MethodCallee`.
         let callee = MethodCallee {
@@ -108,7 +128,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             self.convert_lvalue_derefs_to_mutable();
         }
 
-        callee
+        ConfirmResult { callee, illegal_sized_bound }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -280,62 +300,35 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(&mut self,
                                  pick: &probe::Pick<'tcx>,
                                  segment: &hir::PathSegment,
-                                 substs: &Substs<'tcx>)
+                                 parent_substs: &Substs<'tcx>)
                                  -> &'tcx Substs<'tcx> {
-        let supplied_method_types = match segment.parameters {
-            hir::AngleBracketedParameters(ref data) => &data.types,
-            _ => bug!("unexpected generic arguments: {:?}", segment.parameters),
-        };
-
         // Determine the values for the generic parameters of the method.
         // If they were not explicitly supplied, just construct fresh
         // variables.
-        let num_supplied_types = supplied_method_types.len();
         let method_generics = self.tcx.generics_of(pick.item.def_id);
-        let num_method_types = method_generics.types.len();
-
-        if num_supplied_types > 0 && num_supplied_types != num_method_types {
-            if num_method_types == 0 {
-                struct_span_err!(self.tcx.sess,
-                                 self.span,
-                                 E0035,
-                                 "does not take type parameters")
-                    .span_label(self.span, "called with unneeded type parameters")
-                    .emit();
-            } else {
-                struct_span_err!(self.tcx.sess,
-                                 self.span,
-                                 E0036,
-                                 "incorrect number of type parameters given for this method: \
-                                  expected {}, found {}",
-                                 num_method_types,
-                                 num_supplied_types)
-                    .span_label(self.span,
-                                format!("Passed {} type argument{}, expected {}",
-                                         num_supplied_types,
-                                         if num_supplied_types != 1 { "s" } else { "" },
-                                         num_method_types))
-                    .emit();
-            }
-        }
+        let mut fn_segment = Some((segment, method_generics));
+        self.fcx.check_path_parameter_count(self.span, &mut fn_segment, true);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
-        //
-        // FIXME -- permit users to manually specify lifetimes
-        let supplied_start = substs.len() + method_generics.regions.len();
+        assert_eq!(method_generics.parent_count(), parent_substs.len());
+        let provided = &segment.parameters;
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
-            if i < substs.len() {
-                substs.region_at(i)
+            if i < parent_substs.len() {
+                parent_substs.region_at(i)
+            } else if let Some(lifetime)
+                    = provided.lifetimes.get(i - parent_substs.len()) {
+                AstConv::ast_region_to_region(self.fcx, lifetime, Some(def))
             } else {
                 self.region_var_for_def(self.span, def)
             }
         }, |def, cur_substs| {
             let i = def.index as usize;
-            if i < substs.len() {
-                substs.type_at(i)
-            } else if let Some(ast_ty) = supplied_method_types.get(i - supplied_start) {
+            if i < parent_substs.len() {
+                parent_substs.type_at(i)
+            } else if let Some(ast_ty)
+                    = provided.types.get(i - parent_substs.len() - method_generics.regions.len()) {
                 self.to_ty(ast_ty)
             } else {
                 self.type_var_for_def(self.span, def, cur_substs)
@@ -449,11 +442,14 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // Fix up the autoderefs. Autorefs can only occur immediately preceding
             // overloaded lvalue ops, and will be fixed by them in order to get
             // the correct region.
-            let mut source = self.node_ty(expr.id);
+            let mut source = self.node_ty(expr.hir_id);
             // Do not mutate adjustments in place, but rather take them,
             // and replace them after mutating them, to avoid having the
             // tables borrowed during (`deref_mut`) method resolution.
-            let previous_adjustments = self.tables.borrow_mut().adjustments.remove(&expr.id);
+            let previous_adjustments = self.tables
+                                           .borrow_mut()
+                                           .adjustments_mut()
+                                           .remove(expr.hir_id);
             if let Some(mut adjustments) = previous_adjustments {
                 let pref = LvaluePreference::PreferMutLvalue;
                 for adjustment in &mut adjustments {
@@ -470,12 +466,12 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     }
                     source = adjustment.target;
                 }
-                self.tables.borrow_mut().adjustments.insert(expr.id, adjustments);
+                self.tables.borrow_mut().adjustments_mut().insert(expr.hir_id, adjustments);
             }
 
             match expr.node {
                 hir::ExprIndex(ref base_expr, ref index_expr) => {
-                    let index_expr_ty = self.node_ty(index_expr.id);
+                    let index_expr_ty = self.node_ty(index_expr.hir_id);
                     self.convert_lvalue_op_to_mutable(
                         LvalueOp::Index, expr, base_expr, &[index_expr_ty]);
                 }
@@ -502,7 +498,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         }
 
         let base_ty = self.tables.borrow().expr_adjustments(base_expr).last()
-            .map_or_else(|| self.node_ty(expr.id), |adj| adj.target);
+            .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
         let base_ty = self.resolve_type_vars_if_possible(&base_ty);
 
         // Need to deref because overloaded lvalue ops take self by-reference.
@@ -517,7 +513,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             None => return self.tcx.sess.delay_span_bug(expr.span, "re-trying op failed")
         };
         debug!("convert_lvalue_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.id, method);
+        self.write_method_call(expr.hir_id, method);
 
         let (region, mutbl) = if let ty::TyRef(r, mt) = method.sig.inputs()[0].sty {
             (r, mt.mutbl)
@@ -527,8 +523,11 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         // Convert the autoref in the base expr to mutable with the correct
         // region and mutability.
-        let base_expr_ty = self.node_ty(base_expr.id);
-        if let Some(adjustments) = self.tables.borrow_mut().adjustments.get_mut(&base_expr.id) {
+        let base_expr_ty = self.node_ty(base_expr.hir_id);
+        if let Some(adjustments) = self.tables
+                                       .borrow_mut()
+                                       .adjustments_mut()
+                                       .get_mut(base_expr.hir_id) {
             let mut source = base_expr_ty;
             for adjustment in &mut adjustments[..] {
                 if let Adjust::Borrow(AutoBorrow::Ref(..)) = adjustment.kind {
@@ -555,6 +554,30 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
+
+    fn predicates_require_illegal_sized_bound(&self,
+                                              predicates: &ty::InstantiatedPredicates<'tcx>)
+                                              -> bool {
+        let sized_def_id = match self.tcx.lang_items.sized_trait() {
+            Some(def_id) => def_id,
+            None => return false,
+        };
+
+        traits::elaborate_predicates(self.tcx, predicates.predicates.clone())
+            .filter_map(|predicate| {
+                match predicate {
+                    ty::Predicate::Trait(trait_pred) if trait_pred.def_id() == sized_def_id =>
+                        Some(trait_pred),
+                    _ => None,
+                }
+            })
+            .any(|trait_pred| {
+                match trait_pred.0.self_ty().sty {
+                    ty::TyDynamic(..) => true,
+                    _ => false,
+                }
+            })
+    }
 
     fn enforce_illegal_method_limitations(&self, pick: &probe::Pick) {
         // Disallow calls to the method `drop` defined in the `Drop` trait.

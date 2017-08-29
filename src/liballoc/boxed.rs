@@ -66,7 +66,7 @@ use core::hash::{self, Hash};
 use core::iter::FusedIterator;
 use core::marker::{self, Unsize};
 use core::mem;
-use core::ops::{CoerceUnsized, Deref, DerefMut};
+use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, Unique};
 use core::convert::From;
@@ -169,7 +169,7 @@ fn make_place<T>() -> IntermediateBox<T> {
 
     IntermediateBox {
         ptr: p,
-        layout: layout,
+        layout,
         marker: marker::PhantomData,
     }
 }
@@ -295,6 +295,37 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     pub fn into_raw(b: Box<T>) -> *mut T {
+        unsafe { mem::transmute(b) }
+    }
+
+    /// Consumes the `Box`, returning the wrapped pointer as `Unique<T>`.
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Box`. In particular, the
+    /// caller should properly destroy `T` and release the memory. The
+    /// proper way to do so is to convert the raw pointer back into a
+    /// `Box` with the [`Box::from_raw`] function.
+    ///
+    /// Note: this is an associated function, which means that you have
+    /// to call it as `Box::into_unique(b)` instead of `b.into_unique()`. This
+    /// is so that there is no conflict with a method on the inner type.
+    ///
+    /// [`Box::from_raw`]: struct.Box.html#method.from_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique)]
+    ///
+    /// fn main() {
+    ///     let x = Box::new(5);
+    ///     let ptr = Box::into_unique(x);
+    /// }
+    /// ```
+    #[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+               issue = "27730")]
+    #[inline]
+    pub fn into_unique(b: Box<T>) -> Unique<T> {
         unsafe { mem::transmute(b) }
     }
 }
@@ -602,7 +633,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 /// that `FnBox` may be deprecated in the future if `Box<FnOnce()>`
 /// closures become directly usable.)
 ///
-/// ### Example
+/// # Examples
 ///
 /// Here is a snippet of code which creates a hashmap full of boxed
 /// once closures and then removes them one by one, calling each
@@ -726,14 +757,14 @@ impl<T: Clone> Clone for Box<[T]> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Box<T> {
     fn borrow(&self) -> &T {
         &**self
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "box_borrow", since = "1.1.0")]
 impl<T: ?Sized> borrow::BorrowMut<T> for Box<T> {
     fn borrow_mut(&mut self) -> &mut T {
         &mut **self
@@ -751,5 +782,16 @@ impl<T: ?Sized> AsRef<T> for Box<T> {
 impl<T: ?Sized> AsMut<T> for Box<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut **self
+    }
+}
+
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<T> Generator for Box<T>
+    where T: Generator + ?Sized
+{
+    type Yield = T::Yield;
+    type Return = T::Return;
+    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+        (**self).resume()
     }
 }

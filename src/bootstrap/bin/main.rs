@@ -21,11 +21,10 @@ extern crate bootstrap;
 
 use std::env;
 
-use bootstrap::{Flags, Config, Build};
+use bootstrap::{Config, Build};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    let flags = Flags::parse(&args);
-    let config = Config::parse(&flags.build, flags.config.clone());
-    Build::new(flags, config).build();
+    let config = Config::parse(&args);
+    Build::new(config).build();
 }

@@ -135,13 +135,13 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
         Qualifier {
-            mode: mode,
+            mode,
             span: mir.span,
-            def_id: def_id,
-            mir: mir,
-            rpo: rpo,
-            tcx: tcx,
-            param_env: param_env,
+            def_id,
+            mir,
+            rpo,
+            tcx,
+            param_env,
             temp_qualif: IndexVec::from_elem(None, &mir.local_decls),
             return_qualif: None,
             qualif: Qualif::empty(),
@@ -244,8 +244,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 let mut span = None;
 
                 self.tcx
-                    .trait_def(drop_trait_id)
-                    .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
+                    .for_each_relevant_impl(drop_trait_id, self.mir.return_ty, |impl_did| {
                         self.tcx.hir
                             .as_local_node_id(impl_did)
                             .and_then(|impl_node_id| self.tcx.hir.find(impl_node_id))
@@ -376,6 +375,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume |
+                TerminatorKind::GeneratorDrop |
+                TerminatorKind::Yield { .. } |
                 TerminatorKind::Unreachable => None,
 
                 TerminatorKind::Return => {
@@ -485,8 +486,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                 }
             },
-            Lvalue::Static(_) => {
+            Lvalue::Static(ref global) => {
                 self.add(Qualif::STATIC);
+
+                if self.mode != Mode::Fn {
+                    for attr in &self.tcx.get_attrs(global.def_id)[..] {
+                        if attr.check_name("thread_local") {
+                            span_err!(self.tcx.sess, self.span, E0625,
+                                      "thread-local statics cannot be \
+                                       accessed at compile-time");
+                            return;
+                        }
+                    }
+                }
+
                 if self.mode == Mode::Const || self.mode == Mode::ConstFn {
                     span_err!(self.tcx.sess, self.span, E0013,
                               "{}s cannot refer to statics, use \
@@ -749,14 +762,27 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
-            let (is_shuffle, is_const_fn) = match fn_ty.sty {
-                ty::TyFnDef(def_id, _) => {
-                    (self.tcx.fn_sig(def_id).abi() == Abi::PlatformIntrinsic &&
-                     self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
-                     self.tcx.is_const_fn(def_id))
+            let (mut is_shuffle, mut is_const_fn) = (false, false);
+            if let ty::TyFnDef(def_id, _) = fn_ty.sty {
+                match self.tcx.fn_sig(def_id).abi() {
+                    Abi::RustIntrinsic |
+                    Abi::PlatformIntrinsic => {
+                        assert!(!self.tcx.is_const_fn(def_id));
+                        match &self.tcx.item_name(def_id).as_str()[..] {
+                            "size_of" | "min_align_of" => is_const_fn = true,
+
+                            name if name.starts_with("simd_shuffle") => {
+                                is_shuffle = true;
+                            }
+
+                            _ => {}
+                        }
+                    }
+                    _ => {
+                        is_const_fn = self.tcx.is_const_fn(def_id);
+                    }
                 }
-                _ => (false, false)
-            };
+            }
 
             for (i, arg) in args.iter().enumerate() {
                 self.nest(|this| {
@@ -895,6 +921,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
                 StatementKind::EndRegion(_) |
+                StatementKind::Validate(..) |
                 StatementKind::Nop => {}
             }
         });
@@ -953,6 +980,7 @@ impl MirPass for QualifyAndPromoteConstants {
             }
             MirSource::Static(_, hir::MutImmutable) => Mode::Static,
             MirSource::Static(_, hir::MutMutable) => Mode::StaticMut,
+            MirSource::GeneratorDrop(_) |
             MirSource::Const(_) |
             MirSource::Promoted(..) => return
         };
@@ -985,6 +1013,12 @@ impl MirPass for QualifyAndPromoteConstants {
 
         // Statics must be Sync.
         if mode == Mode::Static {
+            // `#[thread_local]` statics don't have to be `Sync`.
+            for attr in &tcx.get_attrs(def_id)[..] {
+                if attr.check_name("thread_local") {
+                    return;
+                }
+            }
             let ty = mir.return_ty;
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty(Reveal::UserFacing);

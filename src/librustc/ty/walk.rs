@@ -90,14 +90,14 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
             stack.push(mt.ty);
         }
         ty::TyProjection(ref data) => {
-            stack.extend(data.trait_ref.substs.types().rev());
+            stack.extend(data.substs.types().rev());
         }
         ty::TyDynamic(ref obj, ..) => {
             stack.extend(obj.iter().rev().flat_map(|predicate| {
                 let (substs, opt_ty) = match *predicate.skip_binder() {
                     ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
                     ty::ExistentialPredicate::Projection(p) =>
-                        (p.trait_ref.substs, Some(p.ty)),
+                        (p.substs, Some(p.ty)),
                     ty::ExistentialPredicate::AutoTrait(_) =>
                         // Empty iterator
                         (ty::Substs::empty(), None),
@@ -111,6 +111,10 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         }
         ty::TyClosure(_, ref substs) => {
             stack.extend(substs.substs.types().rev());
+        }
+        ty::TyGenerator(_, ref substs, ref interior) => {
+            stack.extend(substs.substs.types().rev());
+            stack.push(interior.witness);
         }
         ty::TyTuple(ts, _) => {
             stack.extend(ts.iter().cloned().rev());

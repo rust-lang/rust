@@ -8,83 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast::{self, MetaItem};
 use syntax_pos::DUMMY_SP;
 
-
-use rustc::mir::{self, Mir, BasicBlock, Location};
-use rustc::session::Session;
+use rustc::mir::{self, Mir, Location};
 use rustc::ty::{self, TyCtxt};
 use util::elaborate_drops::DropFlagState;
-use rustc_data_structures::indexed_set::{IdxSet};
 
-use std::fmt;
-
-use super::{Dataflow, DataflowBuilder, DataflowAnalysis};
-use super::{BitDenotation, DataflowOperator, DataflowResults};
+use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
 use super::move_paths::{MoveData, LookupResult};
-
-pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
-    for attr in attrs {
-        if attr.check_name("rustc_mir") {
-            let items = attr.meta_item_list();
-            for item in items.iter().flat_map(|l| l.iter()) {
-                match item.meta_item() {
-                    Some(mi) if mi.check_name(name) => return Some(mi.clone()),
-                    _ => continue
-                }
-            }
-        }
-    }
-    return None;
-}
-
-pub struct MoveDataParamEnv<'tcx> {
-    pub(crate) move_data: MoveData<'tcx>,
-    pub(crate) param_env: ty::ParamEnv<'tcx>,
-}
-
-pub(crate) fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                mir: &Mir<'tcx>,
-                                node_id: ast::NodeId,
-                                attributes: &[ast::Attribute],
-                                dead_unwinds: &IdxSet<BasicBlock>,
-                                bd: BD,
-                                p: P)
-                                -> DataflowResults<BD>
-    where BD: BitDenotation<Idx=MovePathIndex> + DataflowOperator,
-          P: Fn(&BD, BD::Idx) -> &fmt::Debug
-{
-    let name_found = |sess: &Session, attrs: &[ast::Attribute], name| -> Option<String> {
-        if let Some(item) = has_rustc_mir_with(attrs, name) {
-            if let Some(s) = item.value_str() {
-                return Some(s.to_string())
-            } else {
-                sess.span_err(
-                    item.span,
-                    &format!("{} attribute requires a path", item.name()));
-                return None;
-            }
-        }
-        return None;
-    };
-
-    let print_preflow_to =
-        name_found(tcx.sess, attributes, "borrowck_graphviz_preflow");
-    let print_postflow_to =
-        name_found(tcx.sess, attributes, "borrowck_graphviz_postflow");
-
-    let mut mbcx = DataflowBuilder {
-        node_id: node_id,
-        print_preflow_to: print_preflow_to,
-        print_postflow_to: print_postflow_to,
-        flow_state: DataflowAnalysis::new(tcx, mir, dead_unwinds, bd),
-    };
-
-    mbcx.dataflow(p);
-    mbcx.flow_state.results()
-}
 
 pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
@@ -240,7 +172,7 @@ pub(crate) fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(
         let lookup_result = move_data.rev_lookup.find(&lvalue);
         on_lookup_result_bits(tcx, mir, move_data,
                               lookup_result,
-                              |moi| callback(moi, DropFlagState::Present));
+                              |mpi| callback(mpi, DropFlagState::Present));
     }
 }
 
@@ -270,7 +202,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
 
         on_all_children_bits(tcx, mir, move_data,
                              path,
-                             |moi| callback(moi, DropFlagState::Absent))
+                             |mpi| callback(mpi, DropFlagState::Absent))
     }
 
     let block = &mir[loc.block];
@@ -279,16 +211,27 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
             }
-            mir::StatementKind::Assign(ref lvalue, _) => {
-                debug!("drop_flag_effects: assignment {:?}", stmt);
-                 on_lookup_result_bits(tcx, mir, move_data,
-                                       move_data.rev_lookup.find(lvalue),
-                                       |moi| callback(moi, DropFlagState::Present))
+            mir::StatementKind::Assign(ref lvalue, ref rvalue) => {
+                match rvalue.initialization_state() {
+                    mir::tcx::RvalueInitializationState::Shallow => {
+                        debug!("drop_flag_effects: box assignment {:?}", stmt);
+                        if let LookupResult::Exact(mpi) = move_data.rev_lookup.find(lvalue) {
+                            callback(mpi, DropFlagState::Present);
+                        }
+                    }
+                    mir::tcx::RvalueInitializationState::Deep => {
+                        debug!("drop_flag_effects: assignment {:?}", stmt);
+                        on_lookup_result_bits(tcx, mir, move_data,
+                                              move_data.rev_lookup.find(lvalue),
+                                              |mpi| callback(mpi, DropFlagState::Present))
+                    }
+                }
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::EndRegion(_) |
+            mir::StatementKind::Validate(..) |
             mir::StatementKind::Nop => {}
         },
         None => {
@@ -297,7 +240,7 @@ pub(crate) fn drop_flag_effects_for_location<'a, 'tcx, F>(
                 mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                     on_lookup_result_bits(tcx, mir, move_data,
                                           move_data.rev_lookup.find(location),
-                                          |moi| callback(moi, DropFlagState::Present))
+                                          |mpi| callback(mpi, DropFlagState::Present))
                 }
                 _ => {
                     // other terminators do not contain move-ins

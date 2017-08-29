@@ -102,10 +102,10 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// The number of bits in the exponent.
     const EXP_BITS: u8;
 
-    /// The number of bits in the singificand, *including* the hidden bit.
+    /// The number of bits in the significand, *including* the hidden bit.
     const SIG_BITS: u8;
 
-    /// The number of bits in the singificand, *excluding* the hidden bit.
+    /// The number of bits in the significand, *excluding* the hidden bit.
     const EXPLICIT_SIG_BITS: u8;
 
     /// The maximum legal exponent in fractional representation.
@@ -123,7 +123,7 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// `MIN_EXP` for integral representation, i.e., with the shift applied.
     const MIN_EXP_INT: i16;
 
-    /// The maximum normalized singificand in integral representation.
+    /// The maximum normalized significand in integral representation.
     const MAX_SIG: u64;
 
     /// The minimal normalized significand in integral representation.

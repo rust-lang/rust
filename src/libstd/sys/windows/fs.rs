@@ -768,8 +768,8 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
 
     unsafe {
         let mut data = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        let mut db = data.as_mut_ptr()
-                        as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
+        let db = data.as_mut_ptr()
+                    as *mut c::REPARSE_MOUNTPOINT_DATA_BUFFER;
         let buf = &mut (*db).ReparseTarget as *mut _;
         let mut i = 0;
         // FIXME: this conversion is very hacky

@@ -160,18 +160,18 @@ impl<'a> StringReader<'a> {
         let source_text = (*filemap.src.as_ref().unwrap()).clone();
 
         StringReader {
-            sess: sess,
+            sess,
             next_pos: filemap.start_pos,
             pos: filemap.start_pos,
             col: CharPos(0),
             ch: Some('\n'),
-            filemap: filemap,
+            filemap,
             terminator: None,
             save_new_lines_and_multibyte: true,
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
-            source_text: source_text,
+            source_text,
             fatal_errs: Vec::new(),
             token: token::Eof,
             span: syntax_pos::DUMMY_SP,
@@ -546,7 +546,7 @@ impl<'a> StringReader<'a> {
                             };
 
                             Some(TokenAndSpan {
-                                tok: tok,
+                                tok,
                                 sp: self.mk_sp(start_bpos, self.pos),
                             })
                         })
@@ -675,7 +675,7 @@ impl<'a> StringReader<'a> {
             };
 
             Some(TokenAndSpan {
-                tok: tok,
+                tok,
                 sp: self.mk_sp(start_bpos, self.pos),
             })
         })

@@ -66,7 +66,7 @@ fn spawn_emulator(target: &str,
         start_android_emulator(server);
     } else {
         let rootfs = rootfs.as_ref().expect("need rootfs on non-android");
-        start_qemu_emulator(rootfs, server, tmpdir);
+        start_qemu_emulator(target, rootfs, server, tmpdir);
     }
 
     // Wait for the emulator to come online
@@ -120,7 +120,10 @@ fn start_android_emulator(server: &Path) {
                     .unwrap();
 }
 
-fn start_qemu_emulator(rootfs: &Path, server: &Path, tmpdir: &Path) {
+fn start_qemu_emulator(target: &str,
+                       rootfs: &Path,
+                       server: &Path,
+                       tmpdir: &Path) {
     // Generate a new rootfs image now that we've updated the test server
     // executable. This is the equivalent of:
     //
@@ -143,16 +146,36 @@ fn start_qemu_emulator(rootfs: &Path, server: &Path, tmpdir: &Path) {
     assert!(t!(child.wait()).success());
 
     // Start up the emulator, in the background
-    let mut cmd = Command::new("qemu-system-arm");
-    cmd.arg("-M").arg("vexpress-a15")
-       .arg("-m").arg("1024")
-       .arg("-kernel").arg("/tmp/zImage")
-       .arg("-initrd").arg(&rootfs_img)
-       .arg("-dtb").arg("/tmp/vexpress-v2p-ca15-tc1.dtb")
-       .arg("-append").arg("console=ttyAMA0 root=/dev/ram rdinit=/sbin/init init=/sbin/init")
-       .arg("-nographic")
-       .arg("-redir").arg("tcp:12345::12345");
-    t!(cmd.spawn());
+    match target {
+        "arm-unknown-linux-gnueabihf" => {
+            let mut cmd = Command::new("qemu-system-arm");
+            cmd.arg("-M").arg("vexpress-a15")
+               .arg("-m").arg("1024")
+               .arg("-kernel").arg("/tmp/zImage")
+               .arg("-initrd").arg(&rootfs_img)
+               .arg("-dtb").arg("/tmp/vexpress-v2p-ca15-tc1.dtb")
+               .arg("-append")
+               .arg("console=ttyAMA0 root=/dev/ram rdinit=/sbin/init init=/sbin/init")
+               .arg("-nographic")
+               .arg("-redir").arg("tcp:12345::12345");
+            t!(cmd.spawn());
+        }
+        "aarch64-unknown-linux-gnu" => {
+            let mut cmd = Command::new("qemu-system-aarch64");
+            cmd.arg("-machine").arg("virt")
+               .arg("-cpu").arg("cortex-a57")
+               .arg("-m").arg("1024")
+               .arg("-kernel").arg("/tmp/Image")
+               .arg("-initrd").arg(&rootfs_img)
+               .arg("-append")
+               .arg("console=ttyAMA0 root=/dev/ram rdinit=/sbin/init init=/sbin/init")
+               .arg("-nographic")
+               .arg("-netdev").arg("user,id=net0,hostfwd=tcp::12345-:12345")
+               .arg("-device").arg("virtio-net-device,netdev=net0,mac=00:00:00:00:00:00");
+            t!(cmd.spawn());
+        }
+        _ => panic!("cannot start emulator for: {}"< target),
+    }
 
     fn add_files(w: &mut Write, root: &Path, cur: &Path) {
         for entry in t!(cur.read_dir()) {

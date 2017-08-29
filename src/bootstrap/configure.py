@@ -1,0 +1,408 @@
+#!/usr/bin/env python
+# Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
+#
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
+
+# ignore-tidy-linelength
+
+import sys
+import os
+rust_dir = os.path.dirname(os.path.abspath(__file__))
+rust_dir = os.path.dirname(rust_dir)
+rust_dir = os.path.dirname(rust_dir)
+sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
+import bootstrap
+
+class Option:
+    def __init__(self, name, rustbuild, desc, value):
+        self.name = name
+        self.rustbuild = rustbuild
+        self.desc = desc
+        self.value = value
+
+options = []
+
+def o(*args):
+    options.append(Option(*args, value=False))
+
+def v(*args):
+    options.append(Option(*args, value=True))
+
+o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-optimize` given")
+o("docs", "build.docs", "build standard library documentation")
+o("compiler-docs", "build.compiler-docs", "build compiler documentation")
+o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
+o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
+o("quiet-tests", "rust.quiet-tests", "enable quieter output when running tests")
+o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
+o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
+o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
+v("local-rust-root", None, "set prefix for local rust binary")
+o("local-rebuild", "build.local-rebuild", "assume local-rust matches the current version, for rebuilds; implies local-rust, and is implied if local-rust already matches the current version")
+o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ for LLVM")
+o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
+o("rpath", "rust.rpath", "build rpaths into rustc itself")
+o("llvm-version-check", "llvm.version-check", "check if the LLVM version is supported, build anyway")
+o("codegen-tests", "rust.codegen-tests", "run the src/test/codegen tests")
+o("option-checking", None, "complain about unrecognized options in this configure script")
+o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
+o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
+o("vendor", "build.vendor", "enable usage of vendored Rust crates")
+o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, msan, tsan)")
+o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
+o("cargo-openssl-static", "build.openssl-static", "static openssl in cargo")
+o("profiler", "build.profiler", "build the profiler runtime")
+
+# Optimization and debugging options. These may be overridden by the release
+# channel, etc.
+o("optimize", "rust.optimize", "build optimized rust code")
+o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
+o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
+o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
+o("llvm-release-debuginfo", "llvm.release-debuginfo", "build LLVM with debugger metadata")
+o("debuginfo", "rust.debuginfo", "build with debugger metadata")
+o("debuginfo-lines", "rust.debuginfo-lines", "build with line number debugger metadata")
+o("debuginfo-only-std", "rust.debuginfo-only-std", "build only libstd with debugging information")
+o("debug-jemalloc", "rust.debug-jemalloc", "build jemalloc with --enable-debug --enable-fill")
+
+v("prefix", "install.prefix", "set installation prefix")
+v("localstatedir", "install.localstatedir", "local state directory")
+v("datadir", "install.datadir", "install data")
+v("sysconfdir", "install.sysconfdir", "install system configuration files")
+v("infodir", "install.infodir", "install additional info")
+v("libdir", "install.libdir", "install libraries")
+v("mandir", "install.mandir", "install man pages in PATH")
+v("docdir", "install.docdir", "install documentation in PATH")
+v("bindir", "install.bindir", "install binaries")
+
+v("llvm-root", None, "set LLVM root")
+v("python", "build.python", "set path to python")
+v("jemalloc-root", None, "set directory where libjemalloc_pic.a is located")
+v("android-cross-path", "target.arm-linux-androideabi.android-ndk",
+  "Android NDK standalone path (deprecated)")
+v("i686-linux-android-ndk", "target.i686-linux-android.android-ndk",
+  "i686-linux-android NDK standalone path")
+v("arm-linux-androideabi-ndk", "target.arm-linux-androideabi.android-ndk",
+  "arm-linux-androideabi NDK standalone path")
+v("armv7-linux-androideabi-ndk", "target.armv7-linux-androideabi.android-ndk",
+  "armv7-linux-androideabi NDK standalone path")
+v("aarch64-linux-android-ndk", "target.aarch64-linux-android.android-ndk",
+  "aarch64-linux-android NDK standalone path")
+v("x86_64-linux-android-ndk", "target.x86_64-linux-android.android-ndk",
+  "x86_64-linux-android NDK standalone path")
+v("musl-root", "target.x86_64-unknown-linux-musl.musl-root",
+  "MUSL root installation directory (deprecated)")
+v("musl-root-x86_64", "target.x86_64-unknown-linux-musl.musl-root",
+  "x86_64-unknown-linux-musl install directory")
+v("musl-root-i686", "target.i686-unknown-linux-musl.musl-root",
+  "i686-unknown-linux-musl install directory")
+v("musl-root-arm", "target.arm-unknown-linux-musleabi.musl-root",
+  "arm-unknown-linux-musleabi install directory")
+v("musl-root-armhf", "target.arm-unknown-linux-musleabihf.musl-root",
+  "arm-unknown-linux-musleabihf install directory")
+v("musl-root-armv7", "target.armv7-unknown-linux-musleabihf.musl-root",
+  "armv7-unknown-linux-musleabihf install directory")
+v("qemu-armhf-rootfs", "target.arm-unknown-linux-gnueabihf.qemu-rootfs",
+  "rootfs in qemu testing, you probably don't want to use this")
+v("qemu-aarch64-rootfs", "target.aarch64-unknown-linux-gnu.qemu-rootfs",
+  "rootfs in qemu testing, you probably don't want to use this")
+v("experimental-targets", "llvm.experimental-targets",
+  "experimental LLVM targets to build")
+v("release-channel", "rust.channel", "the name of the release channel to build")
+
+# Used on systems where "cc" and "ar" are unavailable
+v("default-linker", "rust.default-linker", "the default linker")
+v("default-ar", "rust.default-ar", "the default ar")
+
+# Many of these are saved below during the "writing configuration" step
+# (others are conditionally saved).
+o("manage-submodules", "build.submodules", "let the build manage the git submodules")
+o("jemalloc", "rust.use-jemalloc", "build liballoc with jemalloc")
+o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two")
+o("extended", "build.extended", "build an extended rust tool set")
+
+v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
+v("host", None, "GNUs ./configure syntax LLVM host triples")
+v("target", None, "GNUs ./configure syntax LLVM target triples")
+
+v("set", None, "set arbitrary key/value pairs in TOML configuration")
+
+def p(msg):
+    print("configure: " + msg)
+
+def err(msg):
+    print("configure: error: " + msg)
+    sys.exit(1)
+
+if '--help' in sys.argv or '-h' in sys.argv:
+    print('Usage: ./configure [options]')
+    print('')
+    print('Options')
+    for option in options:
+        if 'android' in option.name:
+            # no one needs to know about these obscure options
+            continue
+        if option.value:
+            print('\t{:30} {}'.format('--{}=VAL'.format(option.name), option.desc))
+        else:
+            print('\t{:30} {}'.format('--enable-{}'.format(option.name), option.desc))
+    print('')
+    print('This configure script is a thin configuration shim over the true')
+    print('configuration system, `config.toml`. You can explore the comments')
+    print('in `config.toml.example` next to this configure script to see')
+    print('more information about what each option is. Additionally you can')
+    print('pass `--set` as an argument to set arbitrary key/value pairs')
+    print('in the TOML configuration if desired')
+    print('')
+    print('Also note that all options which take `--enable` can similarly')
+    print('be passed with `--disable-foo` to forcibly disable the option')
+    sys.exit(0)
+
+# Parse all command line arguments into one of these three lists, handling
+# boolean and value-based options separately
+unknown_args = []
+need_value_args = []
+known_args = {}
+
+p("processing command line")
+i = 1
+while i < len(sys.argv):
+    arg = sys.argv[i]
+    i += 1
+    if not arg.startswith('--'):
+        unknown_args.append(arg)
+        continue
+
+    found = False
+    for option in options:
+        value = None
+        if option.value:
+            keyval = arg[2:].split('=', 1)
+            key = keyval[0]
+            if option.name != key:
+                continue
+
+            if len(keyval) > 1:
+                value = keyval[1]
+            elif i < len(sys.argv):
+                value = sys.argv[i]
+                i += 1
+            else:
+                need_value_args.append(arg)
+                continue
+        else:
+            if arg[2:] == 'enable-' + option.name:
+                value = True
+            elif arg[2:] == 'disable-' + option.name:
+                value = False
+            else:
+                continue
+
+        found = True
+        if not option.name in known_args:
+            known_args[option.name] = []
+        known_args[option.name].append((option, value))
+        break
+
+    if not found:
+        unknown_args.append(arg)
+p("")
+
+if 'option-checking' not in known_args or known_args['option-checking'][1]:
+    if len(unknown_args) > 0:
+        err("Option '" + unknown_args[0] + "' is not recognized")
+    if len(need_value_args) > 0:
+        err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
+
+# Parse all known arguments into a configuration structure that reflects the
+# TOML we're going to write out
+config = {}
+
+def build():
+    if 'build' in known_args:
+        return known_args['build'][0][1]
+    return bootstrap.default_build_triple()
+
+def set(key, value):
+      s = "{:20} := {}".format(key, value)
+      if len(s) < 70:
+          p(s)
+      else:
+          p(s[:70] + " ...")
+
+      arr = config
+      parts = key.split('.')
+      for i, part in enumerate(parts):
+          if i == len(parts) - 1:
+              arr[part] = value
+          else:
+              if not part in arr:
+                  arr[part] = {}
+              arr = arr[part]
+
+for key in known_args:
+    # The `set` option is special and an be passed a bunch of times
+    if key == 'set':
+        for option, value in known_args[key]:
+            keyval = value.split('=', 1)
+            set(keyval[0], True if len(keyval) == 1 else keyval[1])
+        continue
+
+    # Ensure each option is only passed once
+    arr = known_args[key]
+    if len(arr) > 1:
+        err("Option '{}' provided more than once".format(key))
+    option, value = arr[0]
+
+    # If we have a clear avenue to set our value in rustbuild, do so
+    if option.rustbuild is not None:
+        set(option.rustbuild, value)
+        continue
+
+    # Otherwise we're a "special" option and need some extra handling, so do
+    # that here.
+    if option.name == 'sccache':
+        set('llvm.ccache', 'sccache')
+    elif option.name == 'local-rust':
+        for path in os.environ['PATH'].split(os.pathsep):
+            if os.path.exists(path + '/rustc'):
+                set('build.rustc', path + '/rustc')
+                break
+        for path in os.environ['PATH'].split(os.pathsep):
+            if os.path.exists(path + '/cargo'):
+                set('build.cargo', path + '/cargo')
+                break
+    elif option.name == 'local-rust-root':
+        set('build.rustc', value + '/bin/rustc')
+        set('build.cargo', value + '/bin/cargo')
+    elif option.name == 'llvm-root':
+        set('target.{}.llvm-config'.format(build()), value + '/bin/llvm-config')
+    elif option.name == 'jemalloc-root':
+        set('target.{}.jemalloc'.format(build()), value + '/libjemalloc_pic.a')
+    elif option.name == 'host':
+        set('build.host', value.split(','))
+    elif option.name == 'target':
+        set('build.target', value.split(','))
+    elif option.name == 'option-checking':
+        # this was handled above
+        pass
+    else:
+        raise RuntimeError("unhandled option {}".format(option.name))
+
+set('build.configure-args', sys.argv[1:])
+
+# "Parse" the `config.toml.example` file into the various sections, and we'll
+# use this as a template of a `config.toml` to write out which preserves
+# all the various comments and whatnot.
+#
+# Note that the `target` section is handled separately as we'll duplicate it
+# per configure dtarget, so there's a bit of special handling for that here.
+sections = {}
+cur_section = None
+sections[None] = []
+section_order = [None]
+targets = {}
+
+for line in open(rust_dir + '/config.toml.example').read().split("\n"):
+    if line.startswith('['):
+        cur_section = line[1:-1]
+        if cur_section.startswith('target'):
+            cur_section = 'target'
+        elif '.' in cur_section:
+            raise RuntimeError("don't know how to deal with section: {}".format(cur_section))
+        sections[cur_section] = [line]
+        section_order.append(cur_section)
+    else:
+        sections[cur_section].append(line)
+
+# Fill out the `targets` array by giving all configured targets a copy of the
+# `target` section we just loaded from the example config
+configured_targets = [build()]
+if 'build' in config:
+    if 'host' in config['build']:
+        configured_targets += config['build']['host']
+    if 'target' in config['build']:
+        configured_targets += config['build']['target']
+if 'target' in config:
+    for target in config['target']:
+        configured_targets.append(target)
+for target in configured_targets:
+    targets[target] = sections['target'][:]
+    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
+
+# Here we walk through the constructed configuration we have from the parsed
+# command line arguemnts. We then apply each piece of configuration by
+# basically just doing a `sed` to change the various configuration line to what
+# we've got configure.
+def to_toml(value):
+    if isinstance(value, bool):
+        if value:
+            return "true"
+        else:
+            return "false"
+    elif isinstance(value, list):
+        return '[' + ', '.join(map(to_toml, value)) + ']'
+    elif isinstance(value, str):
+        return "'" + value + "'"
+    else:
+        raise 'no toml'
+
+def configure_section(lines, config):
+    for key in config:
+        value = config[key]
+        found = False
+        for i, line in enumerate(lines):
+            if not line.startswith('#' + key + ' = '):
+                continue
+            found = True
+            lines[i] = "{} = {}".format(key, to_toml(value))
+            break
+        if not found:
+            raise RuntimeError("failed to find config line for {}".format(key))
+
+for section_key in config:
+    section_config = config[section_key]
+    if not section_key in sections:
+        raise RuntimeError("config key {} not in sections".format(key))
+
+    if section_key == 'target':
+        for target in section_config:
+            configure_section(targets[target], section_config[target])
+    else:
+        configure_section(sections[section_key], section_config)
+
+# Now that we've built up our `config.toml`, write it all out in the same
+# order that we read it in.
+p("")
+p("writing `config.toml` in current directory")
+with open('config.toml', 'w') as f:
+    for section in section_order:
+        if section == 'target':
+            for target in targets:
+                for line in targets[target]:
+                    f.write(line + "\n")
+        else:
+            for line in sections[section]:
+                f.write(line + "\n")
+
+with open('Makefile', 'w') as f:
+    contents = os.path.join(rust_dir, 'src', 'bootstrap', 'mk', 'Makefile.in')
+    contents = open(contents).read()
+    contents = contents.replace("$(CFG_SRC_DIR)", rust_dir + '/')
+    contents = contents.replace("$(CFG_PYTHON)", sys.executable)
+    f.write(contents)
+
+# Finally, clean up with a bit of a help message
+relpath = os.path.dirname(__file__)
+if relpath == '':
+    relpath = '.'
+
+p("")
+p("run `python {}/x.py --help`".format(relpath))
+p("")

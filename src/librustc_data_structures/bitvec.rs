@@ -151,7 +151,7 @@ impl BitMatrix {
         // element. Round up to an even number of u64s.
         let u64s_per_row = u64s(columns);
         BitMatrix {
-            columns: columns,
+            columns,
             vector: vec![0; rows * u64s_per_row],
         }
     }
@@ -166,7 +166,7 @@ impl BitMatrix {
     pub fn add(&mut self, source: usize, target: usize) -> bool {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
-        let mut vector = &mut self.vector[..];
+        let vector = &mut self.vector[..];
         let v1 = vector[start + word];
         let v2 = v1 | mask;
         vector[start + word] = v2;

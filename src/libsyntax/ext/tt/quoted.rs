@@ -128,7 +128,7 @@ impl TokenTree {
         }
     }
 
-    /// Retrieve the TokenTree's span.
+    /// Retrieve the `TokenTree`'s span.
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) |
@@ -191,12 +191,13 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(span, Rc::new(SequenceRepetition {
                     tts: sequence,
-                    separator: separator,
-                    op: op,
+                    separator,
+                    op,
                     num_captures: name_captures,
                 }))
             }
-            Some(tokenstream::TokenTree::Token(ident_span, token::Ident(ident))) => {
+            Some(tokenstream::TokenTree::Token(ident_span, ref token)) if token.is_ident() => {
+                let ident = token.ident().unwrap();
                 let span = Span { lo: span.lo, ..ident_span };
                 if ident.name == keywords::Crate.name() {
                     let ident = ast::Ident { name: keywords::DollarCrate.name(), ..ident };

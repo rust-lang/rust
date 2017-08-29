@@ -63,24 +63,18 @@ RUN curl http://cdimage.ubuntu.com/ubuntu-base/releases/16.04/release/ubuntu-bas
 
 # Copy over our init script, which starts up our test server and also a few
 # other misc tasks.
-COPY armhf-gnu/rcS rootfs/etc/init.d/rcS
+COPY scripts/qemu-bare-bones-rcS rootfs/etc/init.d/rcS
 RUN chmod +x rootfs/etc/init.d/rcS
 
 # Helper to quickly fill the entropy pool in the kernel.
-COPY armhf-gnu/addentropy.c /tmp/
+COPY scripts/qemu-bare-bones-addentropy.c /tmp/addentropy.c
 RUN arm-linux-gnueabihf-gcc addentropy.c -o rootfs/addentropy -static
 
 # TODO: What is this?!
 RUN curl -O http://ftp.nl.debian.org/debian/dists/jessie/main/installer-armhf/current/images/device-tree/vexpress-v2p-ca15-tc1.dtb
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
-RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
-    dpkg -i dumb-init_*.deb && \
-    rm dumb-init_*.deb
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
       --target=arm-unknown-linux-gnueabihf \

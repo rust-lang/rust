@@ -193,7 +193,7 @@ impl<W> Hasher for StableHasher<W> {
 
 
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
-/// stable across multiple compiliation sessions.
+/// stable across multiple compilation sessions.
 pub trait HashStable<CTX> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut CTX,
@@ -289,6 +289,15 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Box<T> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        (**self).hash_stable(ctx, hasher);
     }
 }
 

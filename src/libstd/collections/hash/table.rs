@@ -44,7 +44,7 @@ impl TaggedHashUintPtr {
     #[inline]
     unsafe fn new(ptr: *mut HashUint) -> Self {
         debug_assert!(ptr as usize & 1 == 0 || ptr as usize == EMPTY as usize);
-        TaggedHashUintPtr(Unique::new(ptr))
+        TaggedHashUintPtr(Unique::new_unchecked(ptr))
     }
 
     #[inline]
@@ -56,7 +56,7 @@ impl TaggedHashUintPtr {
             } else {
                 usize_ptr &= !1;
             }
-            self.0 = Unique::new(usize_ptr as *mut HashUint)
+            self.0 = Unique::new_unchecked(usize_ptr as *mut HashUint)
         }
     }
 
@@ -353,14 +353,14 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
         let ib_index = ib_index & table.capacity_mask;
         Bucket {
             raw: table.raw_bucket_at(ib_index),
-            table: table,
+            table,
         }
     }
 
     pub fn first(table: M) -> Bucket<K, V, M> {
         Bucket {
             raw: table.raw_bucket_at(0),
-            table: table,
+            table,
         }
     }
 
@@ -455,7 +455,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> EmptyBucket<K, V, M> {
         match self.next().peek() {
             Full(bucket) => {
                 Ok(GapThenFull {
-                    gap: gap,
+                    gap,
                     full: bucket,
                 })
             }
@@ -563,7 +563,7 @@ impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     ///
     /// This works similarly to `put`, building an `EmptyBucket` out of the
     /// taken bucket.
-    pub fn take(mut self) -> (EmptyBucket<K, V, &'t mut RawTable<K, V>>, K, V) {
+    pub fn take(self) -> (EmptyBucket<K, V, &'t mut RawTable<K, V>>, K, V) {
         self.table.size -= 1;
 
         unsafe {
@@ -860,8 +860,8 @@ impl<K, V> RawTable<K, V> {
         // Replace the marker regardless of lifetime bounds on parameters.
         IntoIter {
             iter: RawBuckets {
-                raw: raw,
-                elems_left: elems_left,
+                raw,
+                elems_left,
                 marker: marker::PhantomData,
             },
             table: self,
@@ -873,11 +873,11 @@ impl<K, V> RawTable<K, V> {
         // Replace the marker regardless of lifetime bounds on parameters.
         Drain {
             iter: RawBuckets {
-                raw: raw,
-                elems_left: elems_left,
+                raw,
+                elems_left,
                 marker: marker::PhantomData,
             },
-            table: unsafe { Shared::new(self) },
+            table: Shared::from(self),
             marker: marker::PhantomData,
         }
     }

@@ -37,7 +37,7 @@ pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
 impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
     pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
         LibEmbargoVisitor {
-            cx: cx,
+            cx,
             cstore: &*cx.sess().cstore,
             access_levels: cx.access_levels.borrow_mut(),
             prev_level: Some(AccessLevel::Public),

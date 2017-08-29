@@ -239,10 +239,10 @@ impl<'a> AsyncPipe<'a> {
         };
         overlapped.hEvent = event.raw();
         Ok(AsyncPipe {
-            pipe: pipe,
-            overlapped: overlapped,
-            event: event,
-            dst: dst,
+            pipe,
+            overlapped,
+            event,
+            dst,
             state: State::NotReading,
         })
     }

@@ -11,8 +11,8 @@
 #![sanitizer_runtime]
 #![feature(sanitizer_runtime)]
 #![feature(alloc_system)]
-#![cfg_attr(not(stage0), feature(allocator_api))]
-#![cfg_attr(not(stage0), feature(global_allocator))]
+#![feature(allocator_api)]
+#![feature(global_allocator)]
 #![feature(staged_api)]
 #![no_std]
 #![unstable(feature = "sanitizer_runtime_lib",
@@ -21,9 +21,7 @@
 
 extern crate alloc_system;
 
-#[cfg(not(stage0))]
 use alloc_system::System;
 
-#[cfg(not(stage0))]
 #[global_allocator]
 static ALLOC: System = System;

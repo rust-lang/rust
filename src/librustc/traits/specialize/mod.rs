@@ -88,7 +88,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     // vary across impls
     let target_substs = match target_node {
         specialization_graph::Node::Impl(target_impl) => {
-            // no need to translate if we're targetting the impl we started with
+            // no need to translate if we're targeting the impl we started with
             if source_impl == target_impl {
                 return source_substs;
             }
@@ -96,7 +96,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
             fulfill_implication(infcx, param_env, source_trait_ref, target_impl)
                 .unwrap_or_else(|_| {
                     bug!("When translating substitutions for specialization, the expected \
-                          specializaiton failed to hold")
+                          specialization failed to hold")
                 })
         }
         specialization_graph::Node::Trait(..) => source_trait_ref.substs,
@@ -107,7 +107,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 /// Given a selected impl described by `impl_data`, returns the
-/// definition and substitions for the method with the name `name`
+/// definition and substitutions for the method with the name `name`
 /// the kind `kind`, and trait method substitutions `substs`, in
 /// that impl, a less specialized impl, or the trait default,
 /// whichever applies.
@@ -300,12 +300,13 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                                                       -> Rc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
-    let mut trait_impls: Vec<DefId> = tcx.trait_impls_of(trait_id).iter().collect();
+    let mut trait_impls = Vec::new();
+    tcx.for_each_impl(trait_id, |impl_did| trait_impls.push(impl_did));
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
     // negated CrateNum (so remote definitions are visited first) and then
-    // by a flattend version of the DefIndex.
+    // by a flattened version of the DefIndex.
     trait_impls.sort_unstable_by_key(|def_id| {
         (-(def_id.krate.as_u32() as i64),
          def_id.index.address_space().index(),

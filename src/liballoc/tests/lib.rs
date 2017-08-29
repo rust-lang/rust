@@ -10,12 +10,12 @@
 
 #![deny(warnings)]
 
-#![feature(alloc)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
 #![feature(const_fn)]
+#![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
 #![feature(iterator_step_by)]
 #![feature(pattern)]
@@ -24,17 +24,12 @@
 #![feature(repr_align)]
 #![feature(slice_rotate)]
 #![feature(splice)]
-#![feature(str_checked_slicing)]
 #![feature(str_escape)]
-#![feature(test)]
+#![feature(string_retain)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(utf8_error_error_len)]
 
-extern crate alloc;
-extern crate test;
 extern crate std_unicode;
-extern crate core;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

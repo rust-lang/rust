@@ -12,7 +12,7 @@
 
 // aux-build:lint_stability.rs
 
-#![allow(unused_imports)]
+#![allow(warnings)]
 
 extern crate lint_stability;
 

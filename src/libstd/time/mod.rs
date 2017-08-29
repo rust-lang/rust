@@ -33,10 +33,10 @@ pub use self::duration::Duration;
 
 mod duration;
 
-/// A measurement of a monotonically increasing clock.
+/// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with `Duration`.
 ///
-/// Instants are always guaranteed to be greater than any previously measured
+/// Instants are always guaranteed to be no less than any previously measured
 /// instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
@@ -112,7 +112,7 @@ pub struct Instant(time::Instant);
 ///            println!("{}", elapsed.as_secs());
 ///        }
 ///        Err(e) => {
-///            // an error occured!
+///            // an error occurred!
 ///            println!("Error: {:?}", e);
 ///        }
 ///    }
@@ -163,10 +163,7 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// This function will panic if `earlier` is later than `self`, which should
-    /// only be possible if `earlier` was created after `self`. Because
-    /// `Instant` is monotonic, the only time that this should happen should be
-    /// a bug.
+    /// This function will panic if `earlier` is later than `self`.
     ///
     /// # Examples
     ///
@@ -536,9 +533,17 @@ mod tests {
         assert!(b > a);
         assert_eq!(b - a, Duration::new(1, 0));
 
-        // let's assume that we're all running computers later than 2000
         let thirty_years = Duration::new(1, 0) * 60 * 60 * 24 * 365 * 30;
-        assert!(a > thirty_years);
+
+        // Right now for CI this test is run in an emulator, and apparently the
+        // aarch64 emulator's sense of time is that we're still living in the
+        // 70s.
+        //
+        // Otherwise let's assume that we're all running computers later than
+        // 2000.
+        if !cfg!(target_arch = "aarch64") {
+            assert!(a > thirty_years);
+        }
 
         // let's assume that we're all running computers earlier than 2090.
         // Should give us ~70 years to fix this!

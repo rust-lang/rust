@@ -170,11 +170,17 @@ impl AsInner<stat64> for FileAttr {
 }
 
 impl FilePermissions {
-    pub fn readonly(&self) -> bool { self.mode & 0o222 == 0 }
+    pub fn readonly(&self) -> bool {
+        // check if any class (owner, group, others) has write permission
+        self.mode & 0o222 == 0
+    }
+
     pub fn set_readonly(&mut self, readonly: bool) {
         if readonly {
+            // remove write permission for all classes; equivalent to `chmod a-w <file>`
             self.mode &= !0o222;
         } else {
+            // add write permission for all classes; equivalent to `chmod a+w <file>`
             self.mode |= 0o222;
         }
     }
@@ -284,12 +290,7 @@ impl DirEntry {
         lstat(&self.path())
     }
 
-    #[cfg(target_os = "solaris")]
-    pub fn file_type(&self) -> io::Result<FileType> {
-        stat(&self.path()).map(|m| m.file_type())
-    }
-
-    #[cfg(target_os = "haiku")]
+    #[cfg(any(target_os = "solaris", target_os = "haiku"))]
     pub fn file_type(&self) -> io::Result<FileType> {
         lstat(&self.path()).map(|m| m.file_type())
     }

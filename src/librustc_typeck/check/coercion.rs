@@ -128,8 +128,8 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
 impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>, cause: ObligationCause<'tcx>) -> Self {
         Coerce {
-            fcx: fcx,
-            cause: cause,
+            fcx,
+            cause,
             use_lub: false,
         }
     }
@@ -807,8 +807,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let lub_ty = self.commit_if_ok(|_| {
                 self.at(cause, self.param_env)
                     .lub(prev_ty, new_ty)
-                    .map(|ok| self.register_infer_ok_obligations(ok))
-            });
+            }).map(|ok| self.register_infer_ok_obligations(ok));
 
             if lub_ty.is_ok() {
                 // We have a LUB of prev_ty and new_ty, just return it.
@@ -844,7 +843,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // First try to coerce the new expression to the type of the previous ones,
         // but only if the new expression has no coercion already applied to it.
         let mut first_error = None;
-        if !self.tables.borrow().adjustments.contains_key(&new.id) {
+        if !self.tables.borrow().adjustments().contains_key(new.hir_id) {
             let result = self.commit_if_ok(|_| coerce.coerce(new_ty, prev_ty));
             match result {
                 Ok(ok) => {
@@ -866,7 +865,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Adjustment { kind: Adjust::Deref(_), .. },
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }
                 ] => {
-                    match self.node_ty(expr.id).sty {
+                    match self.node_ty(expr.hir_id).sty {
                         ty::TyRef(_, mt_orig) => {
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
@@ -884,8 +883,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 return self.commit_if_ok(|_| {
                     self.at(cause, self.param_env)
                         .lub(prev_ty, new_ty)
-                        .map(|ok| self.register_infer_ok_obligations(ok))
-                });
+                }).map(|ok| self.register_infer_ok_obligations(ok));
             }
         }
 
@@ -898,8 +896,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.commit_if_ok(|_| {
                         self.at(cause, self.param_env)
                             .lub(prev_ty, new_ty)
-                            .map(|ok| self.register_infer_ok_obligations(ok))
-                    })
+                    }).map(|ok| self.register_infer_ok_obligations(ok))
                 }
             }
             Ok(ok) => {
@@ -1046,7 +1043,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
-    /// occurs in a case like `if foo { ... };`, where the issing else
+    /// occurs in a case like `if foo { ... };`, where the missing else
     /// generates a "forced unit". Another example is a `loop { break;
     /// }`, where the `break` has no argument expression. We treat
     /// these cases slightly differently for error-reporting
@@ -1204,7 +1201,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     }
                 }
 
-                if let Some(mut augment_error) = augment_error {
+                if let Some(augment_error) = augment_error {
                     augment_error(&mut db);
                 }
 

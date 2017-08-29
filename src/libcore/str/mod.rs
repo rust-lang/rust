@@ -207,7 +207,7 @@ impl Utf8Error {
     ///   that starts at the index given by `valid_up_to()`.
     ///   Decoding should resume after that sequence
     ///   (after inserting a U+FFFD REPLACEMENT CHARACTER) in case of lossy decoding.
-    #[unstable(feature = "utf8_error_error_len", reason ="new", issue = "40494")]
+    #[stable(feature = "utf8_error_error_len", since = "1.20.0")]
     pub fn error_len(&self) -> Option<usize> {
         self.error_len.map(|len| len as usize)
     }
@@ -301,7 +301,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
-#[unstable(feature = "str_mut_extras", issue = "41119")]
+#[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
     Ok(unsafe { from_utf8_unchecked_mut(v) })
@@ -369,7 +369,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// assert_eq!("💖", sparkle_heart);
 /// ```
-#[inline(always)]
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     mem::transmute(v)
@@ -381,8 +381,8 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// See the immutable version, [`from_utf8_unchecked()`][fromutf8], for more information.
 ///
 /// [fromutf8]: fn.from_utf8_unchecked.html
-#[inline(always)]
-#[unstable(feature = "str_mut_extras", issue = "41119")]
+#[inline]
+#[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     mem::transmute(v)
 }
@@ -710,6 +710,37 @@ impl<'a> Iterator for Bytes<'a> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.0.nth(n)
     }
+
+    #[inline]
+    fn all<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        self.0.all(f)
+    }
+
+    #[inline]
+    fn any<F>(&mut self, f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        self.0.any(f)
+    }
+
+    #[inline]
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item> where
+        P: FnMut(&Self::Item) -> bool
+    {
+        self.0.find(predicate)
+    }
+
+    #[inline]
+    fn position<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.0.position(predicate)
+    }
+
+    #[inline]
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.0.rposition(predicate)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -717,6 +748,13 @@ impl<'a> DoubleEndedIterator for Bytes<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.0.next_back()
+    }
+
+    #[inline]
+    fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item> where
+        P: FnMut(&Self::Item) -> bool
+    {
+        self.0.rfind(predicate)
     }
 }
 
@@ -809,7 +847,7 @@ macro_rules! generate_pattern_iterators {
         internal:
             $internal_iterator:ident yielding ($iterty:ty);
 
-        // Kind of delgation - either single ended or double ended
+        // Kind of delegation - either single ended or double ended
         delegate $($t:tt)*
     } => {
         $(#[$forward_iterator_attribute])*
@@ -1342,7 +1380,7 @@ fn contains_nonascii(x: usize) -> bool {
 /// returning `true` in that case, or, if it is invalid, `false` with
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
-#[inline(always)]
+#[inline]
 fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();
@@ -1738,7 +1776,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeFull {
         type Output = str;
         #[inline]
@@ -1767,7 +1805,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::Range<usize> {
         type Output = str;
         #[inline]
@@ -1821,7 +1859,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeTo<usize> {
         type Output = str;
         #[inline]
@@ -1866,7 +1904,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeFrom<usize> {
         type Output = str;
         #[inline]
@@ -1913,7 +1951,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -1956,7 +1994,7 @@ mod traits {
 
 
 
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2056,13 +2094,13 @@ pub trait StrExt {
     #[rustc_deprecated(since = "1.6.0", reason = "use lines() instead now")]
     #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny;
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output>;
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output>;
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output;
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output;
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str;
@@ -2085,7 +2123,7 @@ pub trait StrExt {
     fn is_char_boundary(&self, index: usize) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
-    #[unstable(feature = "str_mut_extras", issue = "41119")]
+    #[stable(feature = "str_mut_extras", since = "1.20.0")]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8];
     #[stable(feature = "core", since = "1.6.0")]
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
@@ -2195,7 +2233,7 @@ impl StrExt for str {
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
         SplitN(SplitNInternal {
             iter: self.split(pat).0,
-            count: count,
+            count,
         })
     }
 

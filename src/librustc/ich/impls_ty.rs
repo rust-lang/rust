@@ -11,7 +11,7 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{self, StableHashingContext, NodeIdHashingMode};
+use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::hash as std_hash;
@@ -20,7 +20,7 @@ use syntax_pos::symbol::InternedString;
 use ty;
 
 impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for &'tcx ty::Slice<T>
+for &'gcx ty::Slice<T>
     where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -30,7 +30,7 @@ for &'tcx ty::Slice<T>
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::subst::Kind<'tcx> {
+for ty::subst::Kind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -55,6 +55,11 @@ for ty::RegionKind {
                 db.depth.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
+            ty::ReLateBound(db, ty::BrNamed(def_id, name)) => {
+                db.depth.hash_stable(hcx, hasher);
+                def_id.hash_stable(hcx, hasher);
+                name.hash_stable(hcx, hasher);
+            }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
                 def_id.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
@@ -76,7 +81,7 @@ for ty::RegionKind {
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::adjustment::AutoBorrow<'tcx> {
+for ty::adjustment::AutoBorrow<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -94,7 +99,7 @@ for ty::adjustment::AutoBorrow<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::adjustment::Adjust<'tcx> {
+for ty::adjustment::Adjust<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -128,7 +133,7 @@ impl_stable_hash_for!(enum ty::BorrowKind {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::UpvarCapture<'tcx> {
+for ty::UpvarCapture<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -142,6 +147,11 @@ for ty::UpvarCapture<'tcx> {
     }
 }
 
+impl_stable_hash_for!(struct ty::GenSig<'tcx> {
+    yield_ty,
+    return_ty
+});
+
 impl_stable_hash_for!(struct ty::FnSig<'tcx> {
     inputs_and_output,
     variadic,
@@ -150,12 +160,13 @@ impl_stable_hash_for!(struct ty::FnSig<'tcx> {
 });
 
 impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Binder<T>
-    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + ty::fold::TypeFoldable<'tcx>
+    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        hcx.tcx().anonymize_late_bound_regions(self).0.hash_stable(hcx, hasher);
+        let ty::Binder(ref inner) = *self;
+        inner.hash_stable(hcx, hasher);
     }
 }
 
@@ -187,10 +198,10 @@ for ty::OutlivesPredicate<A, B>
 }
 
 impl_stable_hash_for!(struct ty::ProjectionPredicate<'tcx> { projection_ty, ty });
-impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { trait_ref, item_def_id });
+impl_stable_hash_for!(struct ty::ProjectionTy<'tcx> { substs, item_def_id });
 
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'tcx> {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Predicate<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -256,7 +267,7 @@ impl_stable_hash_for!(struct ty::FieldDef {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::middle::const_val::ConstVal<'tcx> {
+for ::middle::const_val::ConstVal<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
@@ -315,6 +326,8 @@ for ::middle::const_val::ConstVal<'tcx> {
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 
+impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
+
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
     predicates
@@ -346,6 +359,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
             // `def_id.index` (`def_id.krate` is the same as the item's).
             type_param_to_index: _, // Don't hash this
             has_self,
+            has_late_bound_regions,
         } = *self;
 
         parent.hash_stable(hcx, hasher);
@@ -354,6 +368,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Ge
         regions.hash_stable(hcx, hasher);
         types.hash_stable(hcx, hasher);
         has_self.hash_stable(hcx, hasher);
+        has_late_bound_regions.hash_stable(hcx, hasher);
     }
 }
 
@@ -366,7 +381,6 @@ for ty::RegionParameterDef {
             name,
             def_id,
             index,
-            issue_32330: _,
             pure_wrt_drop
         } = *self;
 
@@ -482,7 +496,7 @@ impl_stable_hash_for!(enum ty::BoundRegion {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::TypeVariants<'tcx>
+for ty::TypeVariants<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -539,6 +553,12 @@ for ty::TypeVariants<'tcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
+            TyGenerator(def_id, closure_substs, interior)
+             => {
+                def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
+                interior.hash_stable(hcx, hasher);
+            }
             TyTuple(inner_tys, from_diverging_type_var) => {
                 inner_tys.hash_stable(hcx, hasher);
                 from_diverging_type_var.hash_stable(hcx, hasher);
@@ -573,7 +593,7 @@ impl_stable_hash_for!(struct ty::TypeAndMut<'tcx> {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::ExistentialPredicate<'tcx>
+for ty::ExistentialPredicate<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -599,65 +619,69 @@ impl_stable_hash_for!(struct ty::ExistentialTraitRef<'tcx> {
 });
 
 impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
-    trait_ref,
-    item_name,
+    item_def_id,
+    substs,
     ty
 });
 
+impl_stable_hash_for!(enum ty::fast_reject::SimplifiedType {
+    BoolSimplifiedType,
+    CharSimplifiedType,
+    IntSimplifiedType(int_ty),
+    UintSimplifiedType(int_ty),
+    FloatSimplifiedType(float_ty),
+    AdtSimplifiedType(def_id),
+    StrSimplifiedType,
+    ArraySimplifiedType,
+    PtrSimplifiedType,
+    NeverSimplifiedType,
+    TupleSimplifiedType(size),
+    TraitSimplifiedType(def_id),
+    ClosureSimplifiedType(def_id),
+    GeneratorSimplifiedType(def_id),
+    AnonSimplifiedType(def_id),
+    FunctionSimplifiedType(params),
+    ParameterSimplifiedType
+});
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::TypeckTables<'tcx> {
+impl_stable_hash_for!(struct ty::Instance<'tcx> {
+    def,
+    substs
+});
+
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::InstanceDef<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let ty::TypeckTables {
-            ref type_dependent_defs,
-            ref node_types,
-            ref node_substs,
-            ref adjustments,
-            ref upvar_capture_map,
-            ref closure_tys,
-            ref closure_kinds,
-            ref liberated_fn_sigs,
-            ref fru_field_types,
+        mem::discriminant(self).hash_stable(hcx, hasher);
 
-            ref cast_kinds,
-
-            // FIXME(#41184): This is still ignored at the moment.
-            lints: _,
-            ref used_trait_imports,
-            tainted_by_errors,
-            ref free_region_map,
-        } = *self;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_nodemap(hcx, hasher, type_dependent_defs);
-            ich::hash_stable_nodemap(hcx, hasher, node_types);
-            ich::hash_stable_nodemap(hcx, hasher, node_substs);
-            ich::hash_stable_nodemap(hcx, hasher, adjustments);
-            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
-                let ty::UpvarId {
-                    var_id,
-                    closure_expr_id
-                } = *up_var_id;
-
-                let var_def_id = hcx.tcx().hir.local_def_id(var_id);
-                let closure_def_id = hcx.tcx().hir.local_def_id(closure_expr_id);
-                (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
-            });
-
-            ich::hash_stable_nodemap(hcx, hasher, closure_tys);
-            ich::hash_stable_nodemap(hcx, hasher, closure_kinds);
-            ich::hash_stable_nodemap(hcx, hasher, liberated_fn_sigs);
-            ich::hash_stable_nodemap(hcx, hasher, fru_field_types);
-            ich::hash_stable_nodemap(hcx, hasher, cast_kinds);
-
-            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
-                hcx.def_path_hash(*def_id)
-            });
-
-            tainted_by_errors.hash_stable(hcx, hasher);
-            free_region_map.hash_stable(hcx, hasher);
-        })
+        match *self {
+            ty::InstanceDef::Item(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Intrinsic(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::FnPtrShim(def_id, ty) => {
+                def_id.hash_stable(hcx, hasher);
+                ty.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::Virtual(def_id, n) => {
+                def_id.hash_stable(hcx, hasher);
+                n.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::ClosureOnceShim { call_once } => {
+                call_once.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::DropGlue(def_id, t) => {
+                def_id.hash_stable(hcx, hasher);
+                t.hash_stable(hcx, hasher);
+            }
+            ty::InstanceDef::CloneShim(def_id, t) => {
+                def_id.hash_stable(hcx, hasher);
+                t.hash_stable(hcx, hasher);
+            }
+        }
     }
 }
+

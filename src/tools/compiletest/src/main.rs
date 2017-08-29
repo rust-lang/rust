@@ -10,12 +10,11 @@
 
 #![crate_name = "compiletest"]
 
-#![feature(box_syntax)]
 #![feature(test)]
-#![feature(libc)]
 
 #![deny(warnings)]
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 extern crate libc;
 extern crate test;
 extern crate getopts;
@@ -41,7 +40,6 @@ use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod procsrv;
 pub mod util;
 mod json;
 pub mod header;
@@ -69,7 +67,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
-        .reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
+        .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
         .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
@@ -159,7 +157,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
-        rustdoc_path: opt_path(matches, "rustdoc-path"),
+        rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         lldb_python: matches.opt_str("lldb-python").unwrap(),
         docck_python: matches.opt_str("docck-python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
@@ -178,9 +176,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: opt_str2(matches.opt_str("target")),
         host: opt_str2(matches.opt_str("host")),
-        gdb: gdb,
-        gdb_version: gdb_version,
-        gdb_native_rust: gdb_native_rust,
+        gdb,
+        gdb_version,
+        gdb_native_rust,
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         llvm_version: matches.opt_str("llvm-version"),
         system_llvm: matches.opt_present("system-llvm"),
@@ -194,7 +192,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
-        color: color,
+        color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
@@ -212,7 +210,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
-    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path.display()));
+    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
@@ -472,8 +470,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: ignore,
-            should_panic: should_panic,
+            ignore,
+            should_panic,
             allow_fail: false,
         },
         testfn: make_test_closure(config, testpaths),

@@ -23,6 +23,7 @@
 //! On a technical level, Rust inserts
 //!
 //! ```
+//! # #[allow(unused_extern_crates)]
 //! extern crate std;
 //! ```
 //!

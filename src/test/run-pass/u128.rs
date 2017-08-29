@@ -122,4 +122,8 @@ fn main() {
     assert_eq!(b(0x679289ac23bb334f_36144401cf882172_u128) /
                b(0x7b0b271b64865f05_f54a7b72746c062f_u128),
                0u128);
+
+    // iter-arithmetic traits
+    assert_eq!(10u128, [1u128, 2, 3, 4].iter().sum());
+    assert_eq!(24u128, [1u128, 2, 3, 4].iter().product());
 }

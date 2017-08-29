@@ -11,7 +11,7 @@
 // Evaluation of constants in refutable patterns goes through
 // different compiler control-flow paths.
 
-#![allow(unused_imports)]
+#![allow(unused_imports, warnings)]
 
 use std::fmt;
 use std::{i8, i16, i32, i64, isize};

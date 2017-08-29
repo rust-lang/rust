@@ -4,13 +4,19 @@ environment:
   AWS_SECRET_ACCESS_KEY:
     secure: 1UkmbiDd15tWtYbMm5O2Uqm0b0Ur8v1MoSlydxl4ojcroPeerRMlUges0l57py8c
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
+
+  # By default schannel checks revocation of certificates unlike some other SSL
+  # backends, but we've historically had problems on CI where a revocation
+  # server goes down presumably. See #43333 for more info
+  CARGO_HTTP_CHECK_REVOKE: false
+
   matrix:
   # 32/64 bit MSVC tests
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i686-pc-windows-msvc
     SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc
 
   # MSVC aux tests
@@ -75,7 +81,7 @@ environment:
 
   # "alternate" deployment, see .travis.yml for more info
   - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY_ALT: 1
 
@@ -139,7 +145,8 @@ install:
   # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
-  - appveyor-retry choco install -y InnoSetup
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-08-22-is.exe
+  - 2017-08-22-is.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
   - set PATH="C:\Program Files (x86)\Inno Setup 5";%PATH%
 
   # Help debug some handle issues on AppVeyor

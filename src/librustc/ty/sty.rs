@@ -11,7 +11,6 @@
 //! This module contains TypeVariants and its major components
 
 use hir::def_id::DefId;
-use hir::map::DefPathHash;
 
 use middle::region;
 use ty::subst::{Substs, Subst};
@@ -24,7 +23,7 @@ use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::symbol::{keywords, InternedString};
+use syntax::symbol::keywords;
 use util::nodemap::FxHashMap;
 
 use serialize;
@@ -76,20 +75,6 @@ impl BoundRegion {
             _ => false,
         }
     }
-}
-
-/// When a region changed from late-bound to early-bound when #32330
-/// was fixed, its `RegionParameterDef` will have one of these
-/// structures that we can use to give nicer errors.
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable)]
-pub struct Issue32330 {
-    /// fn where is region declared
-    pub fn_def_id: DefId,
-
-    /// name of region; duplicates the info in BrNamed but convenient
-    /// to have it here, and this code is only temporary
-    pub region_name: ast::Name,
 }
 
 /// NB: If you change this, you'll probably want to change the corresponding
@@ -149,6 +134,10 @@ pub enum TypeVariants<'tcx> {
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
     TyClosure(DefId, ClosureSubsts<'tcx>),
+
+    /// The anonymous type of a generator. Used to represent the type of
+    /// `|a| yield a`.
+    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
 
     /// The never type `!`
     TyNever,
@@ -276,6 +265,51 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
+    /// This returns the types of the MIR locals which had to be stored across suspension points.
+    /// It is calculated in rustc_mir::transform::generator::StateTransform.
+    /// All the types here must be in the tuple in GeneratorInterior.
+    pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'a
+    {
+        let state = tcx.generator_layout(def_id).fields.iter();
+        state.map(move |d| d.ty.subst(tcx, self.substs))
+    }
+
+    /// This is the types of all the fields stored in a generator.
+    /// It includes the upvars, state types and the state discriminant which is u32.
+    pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'a
+    {
+        let upvars = self.upvar_tys(def_id, tcx);
+        let state = self.state_tys(def_id, tcx);
+        upvars.chain(iter::once(tcx.types.u32)).chain(state)
+    }
+}
+
+/// This describes the types that can be contained in a generator.
+/// It will be a type variable initially and unified in the last stages of typeck of a body.
+/// It contains a tuple of all the types that could end up on a generator frame.
+/// The state transformation MIR pass may only produce layouts which mention types in this tuple.
+/// Upvars are not counted here.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct GeneratorInterior<'tcx> {
+    pub witness: Ty<'tcx>,
+}
+
+impl<'tcx> GeneratorInterior<'tcx> {
+    pub fn new(witness: Ty<'tcx>) -> GeneratorInterior<'tcx> {
+        GeneratorInterior { witness }
+    }
+
+    pub fn as_slice(&self) -> &'tcx Slice<Ty<'tcx>> {
+        match self.witness.sty {
+            ty::TyTuple(s, _) => s,
+            _ => bug!(),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ExistentialPredicate<'tcx> {
     /// e.g. Iterator
@@ -291,7 +325,8 @@ impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
         use self::ExistentialPredicate::*;
         match (*self, *other) {
             (Trait(_), Trait(_)) => Ordering::Equal,
-            (Projection(ref a), Projection(ref b)) => a.sort_key(tcx).cmp(&b.sort_key(tcx)),
+            (Projection(ref a), Projection(ref b)) =>
+                tcx.def_path_hash(a.item_def_id).cmp(&tcx.def_path_hash(b.item_def_id)),
             (AutoTrait(ref a), AutoTrait(ref b)) =>
                 tcx.trait_def(*a).def_path_hash.cmp(&tcx.trait_def(*b).def_path_hash),
             (Trait(_), _) => Ordering::Less,
@@ -551,8 +586,8 @@ impl fmt::Debug for TypeFlags {
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ProjectionTy<'tcx> {
-    /// The trait reference `T as Trait<..>`.
-    pub trait_ref: ty::TraitRef<'tcx>,
+    /// The parameters of the associated item.
+    pub substs: &'tcx Substs<'tcx>,
 
     /// The DefId of the TraitItem for the associated type N.
     ///
@@ -568,19 +603,47 @@ impl<'a, 'tcx> ProjectionTy<'tcx> {
         tcx: TyCtxt, trait_ref: ty::TraitRef<'tcx>, item_name: Name
     ) -> ProjectionTy<'tcx> {
         let item_def_id = tcx.associated_items(trait_ref.def_id).find(
-            |item| item.name == item_name).unwrap().def_id;
+            |item| item.name == item_name && item.kind == ty::AssociatedKind::Type
+        ).unwrap().def_id;
 
         ProjectionTy {
-            trait_ref,
+            substs: trait_ref.substs,
             item_def_id,
         }
     }
 
-    pub fn item_name(self, tcx: TyCtxt) -> Name {
-        tcx.associated_item(self.item_def_id).name
+    /// Extracts the underlying trait reference from this projection.
+    /// For example, if this is a projection of `<T as Iterator>::Item`,
+    /// then this function would return a `T: Iterator` trait reference.
+    pub fn trait_ref(&self, tcx: TyCtxt) -> ty::TraitRef<'tcx> {
+        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        ty::TraitRef {
+            def_id,
+            substs: self.substs,
+        }
+    }
+
+    pub fn self_ty(&self) -> Ty<'tcx> {
+        self.substs.type_at(0)
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct GenSig<'tcx> {
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+}
+
+pub type PolyGenSig<'tcx> = Binder<GenSig<'tcx>>;
+
+impl<'tcx> PolyGenSig<'tcx> {
+    pub fn yield_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.yield_ty)
+    }
+    pub fn return_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        self.map_bound_ref(|sig| sig.return_ty)
+    }
+}
 
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
@@ -741,7 +804,7 @@ pub type Region<'tcx> = &'tcx RegionKind;
 ///
 /// The process of doing that is called "skolemization". The bound regions
 /// are replaced by skolemized markers, which don't satisfy any relation
-/// not explicity provided.
+/// not explicitly provided.
 ///
 /// There are 2 kinds of skolemized regions in rustc: `ReFree` and
 /// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
@@ -861,29 +924,24 @@ pub enum InferTy {
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExistentialProjection<'tcx> {
-    pub trait_ref: ExistentialTraitRef<'tcx>,
-    pub item_name: Name,
+    pub item_def_id: DefId,
+    pub substs: &'tcx Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
 pub type PolyExistentialProjection<'tcx> = Binder<ExistentialProjection<'tcx>>;
 
 impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
-    pub fn item_name(&self) -> Name {
-        self.item_name // safe to skip the binder to access a name
-    }
-
-    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (DefPathHash, InternedString) {
-        // We want something here that is stable across crate boundaries.
-        // The DefId isn't but the `deterministic_hash` of the corresponding
-        // DefPath is.
-        let trait_def = tcx.trait_def(self.trait_ref.def_id);
-        let def_path_hash = trait_def.def_path_hash;
-
-        // An `ast::Name` is also not stable (it's just an index into an
-        // interning table), so map to the corresponding `InternedString`.
-        let item_name = self.item_name.as_str();
-        (def_path_hash, item_name)
+    /// Extracts the underlying existential trait reference from this projection.
+    /// For example, if this is a projection of `exists T. <T as Iterator>::Item == X`,
+    /// then this function would return a `exists T. T: Iterator` existential trait
+    /// reference.
+    pub fn trait_ref(&self, tcx: TyCtxt) -> ty::ExistentialTraitRef<'tcx> {
+        let def_id = tcx.associated_item(self.item_def_id).container.id();
+        ty::ExistentialTraitRef{
+            def_id,
+            substs: self.substs,
+        }
     }
 
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -894,24 +952,17 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         assert!(!self_ty.has_escaping_regions());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy::from_ref_and_name(
-                tcx,
-                self.trait_ref.with_self_ty(tcx, self_ty),
-                self.item_name),
+            projection_ty: ty::ProjectionTy {
+                item_def_id: self.item_def_id,
+                substs: tcx.mk_substs(
+                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned())),
+            },
             ty: self.ty,
         }
     }
 }
 
 impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
-    pub fn item_name(&self) -> Name {
-        self.skip_binder().item_name()
-    }
-
-    pub fn sort_key(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> (DefPathHash, InternedString) {
-        self.skip_binder().sort_key(tcx)
-    }
-
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::PolyProjectionPredicate<'tcx> {
         self.map_bound(|p| p.with_self_ty(tcx, self_ty))
@@ -993,7 +1044,6 @@ impl RegionKind {
 
     // This method returns whether the given Region is Named
     pub fn is_named_region(&self) -> bool {
-
         match *self {
             ty::ReFree(ref free_region) => {
                 match free_region.bound_region {
@@ -1394,11 +1444,11 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
-            TyClosure(_, ref substs) => {
+            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _) => {
                 substs.substs.regions().collect()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions().collect()
+                data.substs.regions().collect()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

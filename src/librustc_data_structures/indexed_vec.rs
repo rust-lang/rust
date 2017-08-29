@@ -38,7 +38,7 @@ impl Idx for u32 {
     fn index(self) -> usize { self as usize }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
     _marker: PhantomData<Fn(&I)>
@@ -196,6 +196,16 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T: Ord> IndexVec<I, T> {
+    #[inline]
+    pub fn binary_search(&self, value: &T) -> Result<I, I> {
+        match self.raw.binary_search(value) {
+            Ok(i) => Ok(Idx::new(i)),
+            Err(i) => Err(Idx::new(i)),
+        }
+    }
+}
+
 impl<I: Idx, T> Index<I> for IndexVec<I, T> {
     type Output = T;
 
@@ -259,7 +269,7 @@ impl<'a, I: Idx, T> IntoIterator for &'a mut IndexVec<I, T> {
     type IntoIter = slice::IterMut<'a, T>;
 
     #[inline]
-    fn into_iter(mut self) -> slice::IterMut<'a, T> {
+    fn into_iter(self) -> slice::IterMut<'a, T> {
         self.raw.iter_mut()
     }
 }

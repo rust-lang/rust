@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     discr: Operand::Consume(discr),
                     switch_ty: discr_ty,
                     values: From::from(values),
-                    targets: targets
+                    targets,
                 });
                 target_blocks
             }
@@ -249,9 +249,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ).collect();
                     (targets.clone(), TerminatorKind::SwitchInt {
                         discr: Operand::Consume(lvalue.clone()),
-                        switch_ty: switch_ty,
+                        switch_ty,
                         values: From::from(values),
-                        targets: targets,
+                        targets,
                     })
                 };
                 self.cfg.terminate(block, source_info, terminator);
@@ -306,7 +306,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let bool_ty = self.hir.bool_ty();
                     let eq_result = self.temp(bool_ty, test.span);
                     let eq_block = self.cfg.start_new_block();
-                    let cleanup = self.diverge_cleanup(test.span);
+                    let cleanup = self.diverge_cleanup();
                     self.cfg.terminate(block, source_info, TerminatorKind::Call {
                         func: Operand::Constant(box Constant {
                             span: test.span,
@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         }),
                         args: vec![val, expect],
                         destination: Some((eq_result.clone(), eq_block)),
-                        cleanup: cleanup,
+                        cleanup,
                     });
 
                     // check the result

@@ -46,7 +46,7 @@ pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx>
     // the LUB/GLB of `a` and `b` as appropriate.
     //
     // Subtle hack: ordering *may* be significant here. This method
-    // relates `v` to `a` first, which may help us to avoid unecessary
+    // relates `v` to `a` first, which may help us to avoid unnecessary
     // type variable obligations. See caller for details.
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }

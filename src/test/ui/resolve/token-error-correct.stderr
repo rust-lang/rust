@@ -28,11 +28,11 @@ error: expected expression, found `;`
 14 |     foo(bar(;
    |             ^
 
-error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `true`, `unsafe`, `while`, or an operator, found `;`
+error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `true`, `unsafe`, `while`, `yield`, or an operator, found `;`
   --> $DIR/token-error-correct.rs:14:13
    |
 14 |     foo(bar(;
-   |             ^ expected one of 18 possible tokens here
+   |             ^ expected one of 19 possible tokens here
 
 error: expected expression, found `)`
   --> $DIR/token-error-correct.rs:23:1

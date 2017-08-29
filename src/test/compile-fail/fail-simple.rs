@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    panic!(@); //~ ERROR expected expression, found `@`
+    panic!(@); //~ ERROR no rules expected the token `@`
 }

@@ -166,8 +166,8 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         let pattern_arena = TypedArena::new();
 
         f(MatchCheckCtxt {
-            tcx: tcx,
-            module: module,
+            tcx,
+            module,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap(),
         })
@@ -296,7 +296,7 @@ impl<'tcx> Witness<'tcx> {
         let sub_pattern_tys = constructor_sub_pattern_tys(cx, ctor, ty);
         self.0.extend(sub_pattern_tys.into_iter().map(|ty| {
             Pattern {
-                ty: ty,
+                ty,
                 span: DUMMY_SP,
                 kind: box PatternKind::Wild,
             }
@@ -344,7 +344,7 @@ impl<'tcx> Witness<'tcx> {
                         if adt.variants.len() > 1 {
                             PatternKind::Variant {
                                 adt_def: adt,
-                                substs: substs,
+                                substs,
                                 variant_index: ctor.variant_index_for_adt(adt),
                                 subpatterns: pats
                             }
@@ -378,7 +378,7 @@ impl<'tcx> Witness<'tcx> {
         };
 
         self.0.push(Pattern {
-            ty: ty,
+            ty,
             span: DUMMY_SP,
             kind: Box::new(pat),
         });
@@ -673,7 +673,7 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
         Pattern {
-            ty: ty,
+            ty,
             span: DUMMY_SP,
             kind: box PatternKind::Wild,
         }
@@ -835,7 +835,7 @@ fn slice_pat_covered_by_constructor(_tcx: TyCtxt, _span: Span,
     Ok(true)
 }
 
-fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
+fn constructor_covered_by_range(tcx: TyCtxt, span: Span,
                                 ctor: &Constructor,
                                 from: &ConstVal, to: &ConstVal,
                                 end: RangeEnd)
@@ -845,14 +845,14 @@ fn range_covered_by_constructor(tcx: TyCtxt, span: Span,
     match *ctor {
         ConstantValue(ref value) => {
             let to = cmp_to(value)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(value)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Included) => {
             let to = cmp_to(to)?;
-            let end = (to != Ordering::Greater) ||
-                      (end == RangeEnd::Excluded && to == Ordering::Equal);
+            let end = (to == Ordering::Less) ||
+                      (end == RangeEnd::Included && to == Ordering::Equal);
             Ok(cmp_from(from)? && end)
         },
         ConstantRange(ref from, ref to, RangeEnd::Excluded) => {
@@ -933,7 +933,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         "unexpected const-val {:?} with ctor {:?}", value, constructor)
                 },
                 _ => {
-                    match range_covered_by_constructor(
+                    match constructor_covered_by_range(
                         cx.tcx, pat.span, constructor, value, value, RangeEnd::Included
                             ) {
                         Ok(true) => Some(vec![]),
@@ -945,7 +945,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         }
 
         PatternKind::Range { ref lo, ref hi, ref end } => {
-            match range_covered_by_constructor(
+            match constructor_covered_by_range(
                 cx.tcx, pat.span, constructor, lo, hi, end.clone()
             ) {
                 Ok(true) => Some(vec![]),

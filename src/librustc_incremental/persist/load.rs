@@ -189,7 +189,8 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          &serialized_dep_graph.nodes,
                          &dirty_raw_nodes,
                          &mut clean_work_products,
-                         &mut dirty_work_products);
+                         &mut dirty_work_products,
+                         &work_products);
         }
     }
 
@@ -201,11 +202,7 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             clean_work_products.insert(wp_id);
         }
 
-        tcx.dep_graph.with_task(*bootstrap_output, (), (), create_node);
-
-        fn create_node((): (), (): ()) {
-            // just create the node with no inputs
-        }
+        tcx.dep_graph.add_node_directly(*bootstrap_output);
     }
 
     // Add in work-products that are still clean, and delete those that are
@@ -394,7 +391,8 @@ fn process_edge<'a, 'tcx, 'edges>(
     nodes: &IndexVec<DepNodeIndex, DepNode>,
     dirty_raw_nodes: &DirtyNodes,
     clean_work_products: &mut FxHashSet<WorkProductId>,
-    dirty_work_products: &mut FxHashSet<WorkProductId>)
+    dirty_work_products: &mut FxHashSet<WorkProductId>,
+    work_products: &[SerializedWorkProduct])
 {
     // If the target is dirty, skip the edge. If this is an edge
     // that targets a work-product, we can print the blame
@@ -418,9 +416,11 @@ fn process_edge<'a, 'tcx, 'edges>(
                         format!("{:?}", blame)
                     };
 
-                    eprintln!("incremental: module {:?} is dirty because {:?} \
-                               changed or was removed",
-                              wp_id,
+                    let wp = work_products.iter().find(|swp| swp.id == wp_id).unwrap();
+
+                    eprintln!("incremental: module {:?} is dirty because \
+                              {:?} changed or was removed",
+                              wp.work_product.cgu_name,
                               blame_str);
                 }
             }
@@ -449,8 +449,7 @@ fn process_edge<'a, 'tcx, 'edges>(
     if !dirty_raw_nodes.contains_key(&target) {
         let target = nodes[target];
         let source = nodes[source];
-        let _task = tcx.dep_graph.in_task(target);
-        tcx.dep_graph.read(source);
+        tcx.dep_graph.add_edge_directly(source, target);
 
         if let DepKind::WorkProduct = target.kind {
             let wp_id = WorkProductId::from_fingerprint(target.hash);
@@ -458,4 +457,3 @@ fn process_edge<'a, 'tcx, 'edges>(
         }
     }
 }
-

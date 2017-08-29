@@ -16,7 +16,7 @@ The nodes of the graph are defined by the enum `DepNode`. They represent
 one of three things:
 
 1. HIR nodes (like `Hir(DefId)`) represent the HIR input itself.
-2. Data nodes (like `ItemSignature(DefId)`) represent some computed
+2. Data nodes (like `TypeOfItem(DefId)`) represent some computed
    information about a particular item.
 3. Procedure nodes (like `CoherenceCheckTrait(DefId)`) represent some
    procedure that is executing. Usually this procedure is
@@ -289,7 +289,7 @@ to see something like:
 
     Hir(foo) -> Collect(bar)
     Collect(bar) -> TypeckTables(bar)
-    
+
 That first edge looks suspicious to you. So you set
 `RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and
 then observe the backtrace. Voila, bug fixed!

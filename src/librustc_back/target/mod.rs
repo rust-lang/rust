@@ -50,7 +50,7 @@ use std::default::Default;
 use std::io::prelude::*;
 use syntax::abi::{Abi, lookup as lookup_abi};
 
-use {LinkerFlavor, PanicStrategy};
+use {LinkerFlavor, PanicStrategy, RelroLevel};
 
 mod android_base;
 mod apple_base;
@@ -69,6 +69,7 @@ mod solaris_base;
 mod windows_base;
 mod windows_msvc_base;
 mod thumb_base;
+mod l4re_base;
 mod fuchsia_base;
 mod redox_base;
 
@@ -192,6 +193,8 @@ supported_targets! {
 
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
+
+    ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
@@ -367,6 +370,10 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Either partial, full, or off. Full RELRO makes the dynamic linker
+    /// resolve all symbols at startup and marks the GOT read-only before
+    /// starting the program, preventing overwriting the GOT.
+    pub relro_level: RelroLevel,
     /// Format that archives should be emitted in. This affects whether we use
     /// LLVM to assemble an archive or fall back to the system linker, and
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
@@ -409,8 +416,12 @@ pub struct TargetOptions {
     /// ABIs are considered to be supported on all platforms and cannot be blacklisted.
     pub abi_blacklist: Vec<Abi>,
 
+    /// Whether or not linking dylibs to a static CRT is allowed.
+    pub crt_static_allows_dylibs: bool,
     /// Whether or not the CRT is statically linked by default.
     pub crt_static_default: bool,
+    /// Whether or not crt-static is respected by the compiler (or is a no-op).
+    pub crt_static_respected: bool,
 
     /// Whether or not stack probes (__rust_probestack) are enabled
     pub stack_probes: bool,
@@ -454,6 +465,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
+            relro_level: RelroLevel::Off,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
@@ -470,7 +482,9 @@ impl Default for TargetOptions {
             max_atomic_width: None,
             panic_strategy: PanicStrategy::Unwind,
             abi_blacklist: vec![],
+            crt_static_allows_dylibs: false,
             crt_static_default: false,
+            crt_static_respected: false,
             stack_probes: false,
         }
     }
@@ -580,6 +594,18 @@ impl Target {
                 Some(Ok(()))
             })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, RelroLevel) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match s.parse::<RelroLevel>() {
+                        Ok(level) => base.options.$key_name = level,
+                        _ => return Some(Err(format!("'{}' is not a valid value for \
+                                                      relro-level. Use 'full', 'partial, or 'off'.",
+                                                      s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).map(|o| o.as_array()
@@ -683,6 +709,7 @@ impl Target {
         key!(has_rpath, bool);
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
+        try!(key!(relro_level, RelroLevel));
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
@@ -693,7 +720,9 @@ impl Target {
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         try!(key!(panic_strategy, PanicStrategy));
+        key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
+        key!(crt_static_respected, bool);
         key!(stack_probes, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
@@ -870,6 +899,7 @@ impl ToJson for Target {
         target_option_val!(has_rpath);
         target_option_val!(no_default_libraries);
         target_option_val!(position_independent_executables);
+        target_option_val!(relro_level);
         target_option_val!(archive_format);
         target_option_val!(allow_asm);
         target_option_val!(custom_unwind_resume);
@@ -880,7 +910,9 @@ impl ToJson for Target {
         target_option_val!(min_atomic_width);
         target_option_val!(max_atomic_width);
         target_option_val!(panic_strategy);
+        target_option_val!(crt_static_allows_dylibs);
         target_option_val!(crt_static_default);
+        target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
 
         if default.abi_blacklist != self.options.abi_blacklist {

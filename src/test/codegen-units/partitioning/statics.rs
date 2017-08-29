@@ -15,34 +15,34 @@
 
 #![crate_type="lib"]
 
-//~ TRANS_ITEM static statics::FOO[0] @@ statics[External]
+//~ TRANS_ITEM static statics::FOO[0] @@ statics[Internal]
 static FOO: u32 = 0;
 
-//~ TRANS_ITEM static statics::BAR[0] @@ statics[External]
+//~ TRANS_ITEM static statics::BAR[0] @@ statics[Internal]
 static BAR: u32 = 0;
 
-//~ TRANS_ITEM fn statics::function[0] @@ statics[External]
+//~ TRANS_ITEM fn statics::function[0] @@ statics[Internal]
 fn function() {
-    //~ TRANS_ITEM static statics::function[0]::FOO[0] @@ statics[External]
+    //~ TRANS_ITEM static statics::function[0]::FOO[0] @@ statics[Internal]
     static FOO: u32 = 0;
 
-    //~ TRANS_ITEM static statics::function[0]::BAR[0] @@ statics[External]
+    //~ TRANS_ITEM static statics::function[0]::BAR[0] @@ statics[Internal]
     static BAR: u32 = 0;
 }
 
 mod mod1 {
-    //~ TRANS_ITEM static statics::mod1[0]::FOO[0] @@ statics-mod1[External]
+    //~ TRANS_ITEM static statics::mod1[0]::FOO[0] @@ statics-mod1[Internal]
     static FOO: u32 = 0;
 
-    //~ TRANS_ITEM static statics::mod1[0]::BAR[0] @@ statics-mod1[External]
+    //~ TRANS_ITEM static statics::mod1[0]::BAR[0] @@ statics-mod1[Internal]
     static BAR: u32 = 0;
 
-    //~ TRANS_ITEM fn statics::mod1[0]::function[0] @@ statics-mod1[External]
+    //~ TRANS_ITEM fn statics::mod1[0]::function[0] @@ statics-mod1[Internal]
     fn function() {
-        //~ TRANS_ITEM static statics::mod1[0]::function[0]::FOO[0] @@ statics-mod1[External]
+        //~ TRANS_ITEM static statics::mod1[0]::function[0]::FOO[0] @@ statics-mod1[Internal]
         static FOO: u32 = 0;
 
-        //~ TRANS_ITEM static statics::mod1[0]::function[0]::BAR[0] @@ statics-mod1[External]
+        //~ TRANS_ITEM static statics::mod1[0]::function[0]::BAR[0] @@ statics-mod1[Internal]
         static BAR: u32 = 0;
     }
 }

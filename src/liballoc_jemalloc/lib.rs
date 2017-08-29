@@ -8,34 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "alloc_jemalloc"]
-#![crate_type = "rlib"]
 #![no_std]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
 #![deny(warnings)]
+#![feature(alloc)]
+#![feature(alloc_system)]
 #![feature(libc)]
-#![feature(staged_api)]
 #![feature(linkage)]
-#![cfg_attr(stage0, allocator)]
-#![cfg_attr(stage0, feature(allocator))]
-#![cfg_attr(not(stage0), feature(global_allocator))]
-#![cfg_attr(all(not(stage0), not(dummy_jemalloc)), feature(allocator_api))]
-#![cfg_attr(not(stage0), feature(alloc))]
-#![cfg_attr(not(stage0), feature(alloc_system))]
-#![cfg_attr(dummy_jemalloc, allow(dead_code))]
+#![feature(staged_api)]
+#![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
+#![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 
-#[cfg(not(stage0))]
 extern crate alloc;
-#[cfg(not(stage0))]
 extern crate alloc_system;
 extern crate libc;
 
-#[cfg(all(not(stage0), not(dummy_jemalloc)))]
+#[cfg(not(dummy_jemalloc))]
 pub use contents::*;
-#[cfg(all(not(stage0), not(dummy_jemalloc)))]
+#[cfg(not(dummy_jemalloc))]
 mod contents {
     use core::ptr;
 

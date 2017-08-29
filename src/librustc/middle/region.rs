@@ -24,6 +24,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
 use syntax::ast;
+use syntax::ast::NodeId;
 use syntax_pos::Span;
 use ty::TyCtxt;
 use ty::maps::Providers;
@@ -32,6 +33,7 @@ use hir;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use hir::map::Node;
 use mir::transform::MirSource;
 
 /// CodeExtent represents a statically-describable extent that can be
@@ -72,7 +74,7 @@ use mir::transform::MirSource;
 ///  (M1.): Misc extent of the whole `let a = ...;` statement.
 ///  (M2.): Misc extent of the `f()` expression.
 ///  (M3.): Misc extent of the `f().g(..)` expression.
-///  (M4.): Misc extent of the block labelled `'b:`.
+///  (M4.): Misc extent of the block labeled `'b:`.
 ///  (M5.): Misc extent of the `let x = d();` statement
 ///  (D6.): DestructionScope for temporaries created during M5.
 ///  (R7.): Remainder extent for block `'b:`, stmt 0 (let x = ...).
@@ -458,10 +460,10 @@ impl<'tcx> RegionMaps {
                                    -> CodeExtent {
         if scope_a == scope_b { return scope_a; }
 
-        /// [1] The initial values for `a_buf` and `b_buf` are not used.
-        /// The `ancestors_of` function will return some prefix that
-        /// is re-initialized with new values (or else fallback to a
-        /// heap-allocated vector).
+        // [1] The initial values for `a_buf` and `b_buf` are not used.
+        // The `ancestors_of` function will return some prefix that
+        // is re-initialized with new values (or else fallback to a
+        // heap-allocated vector).
         let mut a_buf: [CodeExtent; 32] = [scope_a /* [1] */; 32];
         let mut a_vec: Vec<CodeExtent> = vec![];
         let mut b_buf: [CodeExtent; 32] = [scope_b /* [1] */; 32];
@@ -789,7 +791,7 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
     match expr.node {
         // Manually recurse over closures, because they are the only
         // case of nested bodies that share the parent environment.
-        hir::ExprClosure(.., body, _) => {
+        hir::ExprClosure(.., body, _, _) => {
             let body = visitor.tcx.hir.body(body);
             visitor.visit_body(body);
         }
@@ -889,8 +891,32 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     ///        | ( ..., P&, ... )
     ///        | box P&
     fn is_binding_pat(pat: &hir::Pat) -> bool {
+        // Note that the code below looks for *explicit* refs only, that is, it won't
+        // know about *implicit* refs as introduced in #42640.
+        //
+        // This is not a problem. For example, consider
+        //
+        //      let (ref x, ref y) = (Foo { .. }, Bar { .. });
+        //
+        // Due to the explicit refs on the left hand side, the below code would signal
+        // that the temporary value on the right hand side should live until the end of
+        // the enclosing block (as opposed to being dropped after the let is complete).
+        //
+        // To create an implicit ref, however, you must have a borrowed value on the RHS
+        // already, as in this example (which won't compile before #42640):
+        //
+        //      let Foo { x, .. } = &Foo { x: ..., ... };
+        //
+        // in place of
+        //
+        //      let Foo { ref x, .. } = Foo { ... };
+        //
+        // In the former case (the implicit ref version), the temporary is created by the
+        // & expression, and its lifetime would be extended to the end of the block (due
+        // to a different rule, not the below code).
         match pat.node {
-            PatKind::Binding(hir::BindByRef(_), ..) => true,
+            PatKind::Binding(hir::BindingAnnotation::Ref, ..) |
+            PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
                 field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
@@ -1140,6 +1166,102 @@ fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     };
 
     Rc::new(maps)
+}
+
+struct YieldFinder<'a> {
+    cache: &'a mut FxHashMap<NodeId, Option<Span>>,
+    result: Option<Span>,
+}
+
+impl<'a> YieldFinder<'a> {
+    fn lookup<F: FnOnce(&mut Self)>(&mut self, id: NodeId, f: F) {
+        // Don't traverse further if we found a yield expression
+        if self.result.is_some() {
+            return;
+        }
+
+        // See if there's an entry in the cache
+        if let Some(result) = self.cache.get(&id) {
+            self.result = *result;
+            return;
+        }
+
+        // Otherwise calculate the result and insert it into the cache
+        f(self);
+        self.cache.insert(id, self.result);
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for YieldFinder<'a> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        if let hir::ExprYield(..) = expr.node {
+            self.result = Some(expr.span);
+            return;
+        }
+
+        self.lookup(expr.id, |this| {
+            intravisit::walk_expr(this, expr);
+        });
+    }
+
+    fn visit_block(&mut self, block: &'tcx hir::Block) {
+        self.lookup(block.id, |this| {
+            intravisit::walk_block(this, block);
+        });
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Checks whether the given code extent contains a `yield`. If so,
+    /// returns `Some(span)` with the span of a yield we found.
+    pub fn yield_in_extent(self,
+                          extent: CodeExtent,
+                          cache: &mut FxHashMap<NodeId, Option<Span>>) -> Option<Span> {
+        let mut finder = YieldFinder {
+            cache,
+            result: None,
+        };
+
+        match extent {
+            CodeExtent::DestructionScope(node_id) |
+            CodeExtent::Misc(node_id) => {
+                match self.hir.get(node_id) {
+                    Node::NodeItem(_) |
+                    Node::NodeTraitItem(_) |
+                    Node::NodeImplItem(_) => {
+                        let body = self.hir.body(self.hir.body_owned_by(node_id));
+                        finder.visit_body(body);
+                    }
+                    Node::NodeExpr(expr) => finder.visit_expr(expr),
+                    Node::NodeStmt(stmt) => finder.visit_stmt(stmt),
+                    Node::NodeBlock(block) => finder.visit_block(block),
+                    _ => bug!(),
+                }
+            }
+
+            CodeExtent::CallSiteScope(body_id) |
+            CodeExtent::ParameterScope(body_id) => {
+                finder.visit_body(self.hir.body(body_id))
+            }
+
+            CodeExtent::Remainder(r) => {
+                if let Node::NodeBlock(block) = self.hir.get(r.block) {
+                    for stmt in &block.stmts[(r.first_statement_index as usize + 1)..] {
+                        finder.visit_stmt(stmt);
+                    }
+                    block.expr.as_ref().map(|e| finder.visit_expr(e));
+                } else {
+                    bug!()
+                }
+            }
+        }
+
+        finder.result
+    }
 }
 
 pub fn provide(providers: &mut Providers) {

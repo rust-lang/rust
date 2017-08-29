@@ -147,22 +147,13 @@ pub trait FromIterator<A>: Sized {
 ///
 /// ```
 /// let v = vec![1, 2, 3];
-///
 /// let mut iter = v.into_iter();
 ///
-/// let n = iter.next();
-/// assert_eq!(Some(1), n);
-///
-/// let n = iter.next();
-/// assert_eq!(Some(2), n);
-///
-/// let n = iter.next();
-/// assert_eq!(Some(3), n);
-///
-/// let n = iter.next();
-/// assert_eq!(None, n);
+/// assert_eq!(Some(1), iter.next());
+/// assert_eq!(Some(2), iter.next());
+/// assert_eq!(Some(3), iter.next());
+/// assert_eq!(None, iter.next());
 /// ```
-///
 /// Implementing `IntoIterator` for your type:
 ///
 /// ```
@@ -227,20 +218,12 @@ pub trait IntoIterator {
     ///
     /// ```
     /// let v = vec![1, 2, 3];
-    ///
     /// let mut iter = v.into_iter();
     ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(1), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(2), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(Some(3), n);
-    ///
-    /// let n = iter.next();
-    /// assert_eq!(None, n);
+    /// assert_eq!(Some(1), iter.next());
+    /// assert_eq!(Some(2), iter.next());
+    /// assert_eq!(Some(3), iter.next());
+    /// assert_eq!(None, iter.next());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
@@ -362,7 +345,7 @@ pub trait Extend<A> {
 /// In a similar fashion to the [`Iterator`] protocol, once a
 /// `DoubleEndedIterator` returns `None` from a `next_back()`, calling it again
 /// may or may not ever return `Some` again. `next()` and `next_back()` are
-/// interchangable for this purpose.
+/// interchangeable for this purpose.
 ///
 /// [`Iterator`]: trait.Iterator.html
 ///
@@ -732,7 +715,7 @@ macro_rules! float_sum_product {
     )*)
 }
 
-integer_sum_product! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 float_sum_product! { f32 f64 }
 
 /// An iterator adapter that produces output as long as the underlying
@@ -761,7 +744,7 @@ impl<I, T, E> ResultShunt<I, E>
 
     fn new(iter: I) -> Self {
         ResultShunt {
-            iter: iter,
+            iter,
             error: None,
         }
     }

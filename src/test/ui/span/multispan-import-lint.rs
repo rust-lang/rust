@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(unused)]
+
 use std::cmp::{Eq, Ord, min, PartialEq, PartialOrd};
 
 fn main() {

@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-x86
-// ignore-arm
-// ignore-emscripten
-// ignore 32-bit platforms (test output is different)
-
 use std::mem;
 
-unsafe fn foo() -> (i32, *const (), Option<fn()>) {
+unsafe fn foo() -> (i8, *const (), Option<fn()>) {
     let i = mem::transmute(bar);
     //~^ ERROR is zero-sized and can't be transmuted
     //~^^ NOTE cast with `as` to a pointer instead
@@ -46,7 +41,7 @@ unsafe fn bar() {
     //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
-    mem::transmute::<fn(), u32>(main);
+    mem::transmute::<fn(), usize>(main);
 }
 
 unsafe fn baz() {
@@ -63,7 +58,7 @@ unsafe fn baz() {
     //~^^ NOTE cast with `as` to a pointer instead
 
     // No error if a coercion would otherwise occur.
-    mem::transmute::<Option<fn()>, u32>(Some(main));
+    mem::transmute::<Option<fn()>, usize>(Some(main));
 }
 
 fn main() {

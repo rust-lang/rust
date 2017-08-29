@@ -354,7 +354,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     // direct equality here because all of these types
                     // are part of the formal parameter listing, and
                     // hence there should be no inference variables.
-                    let projection_trait_ref = ty::Binder(data.trait_ref.clone());
+                    let projection_trait_ref = ty::Binder(data.trait_ref(self));
                     let is_supertrait_of_current_trait =
                         supertraits.as_ref().unwrap().contains(&projection_trait_ref);
 

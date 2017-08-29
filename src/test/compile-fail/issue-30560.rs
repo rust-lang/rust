@@ -10,10 +10,10 @@
 
 type Alias = ();
 use Alias::*;
-//~^ ERROR unresolved import `Alias::*` [E0432]
+//~^ ERROR unresolved import `Alias` [E0432]
 //~| Not a module `Alias`
 use std::io::Result::*;
-//~^ ERROR unresolved import `std::io::Result::*` [E0432]
+//~^ ERROR unresolved import `std::io::Result` [E0432]
 //~| Not a module `Result`
 
 trait T {}

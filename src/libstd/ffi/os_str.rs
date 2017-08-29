@@ -123,7 +123,7 @@ impl OsString {
 
     /// Creates a new `OsString` with the given capacity.
     ///
-    /// The string will be able to hold exactly `capacity` lenth units of other
+    /// The string will be able to hold exactly `capacity` length units of other
     /// OS strings without reallocating. If `capacity` is 0, the string will not
     /// allocate.
     ///
@@ -252,15 +252,13 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(into_boxed_os_str)]
-    ///
     /// use std::ffi::{OsString, OsStr};
     ///
     /// let s = OsString::from("hello");
     ///
     /// let b: Box<OsStr> = s.into_boxed_os_str();
     /// ```
-    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
+    #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
@@ -511,7 +509,7 @@ impl OsStr {
     ///
     /// [`Box`]: ../boxed/struct.Box.html
     /// [`OsString`]: struct.OsString.html
-    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
+    #[stable(feature = "into_boxed_os_str", since = "1.20.0")]
     pub fn into_os_string(self: Box<OsStr>) -> OsString {
         let inner: Box<Slice> = unsafe { mem::transmute(self) };
         OsString { inner: Buf::from_box(inner) }

@@ -147,7 +147,7 @@ impl TcpStream {
     /// connection request.
     ///
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    #[unstable(feature = "tcpstream_connect_timeout", issue = "43709")]
+    #[unstable(feature = "tcpstream_connect_timeout", issue = "43079")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
     }
@@ -351,7 +351,7 @@ impl TcpStream {
         self.0.write_timeout()
     }
 
-    /// Receives data on the socket from the remote adress to which it is
+    /// Receives data on the socket from the remote address to which it is
     /// connected, without removing that data from the queue. On success,
     /// returns the number of bytes peeked.
     ///

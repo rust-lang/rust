@@ -14,7 +14,7 @@ use self::MemberDescriptionFactory::*;
 use self::EnumDiscriminantInfo::*;
 
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
-                   get_namespace_and_span_for_item, create_DIArray, is_node_local_to_unit};
+                   get_namespace_for_item, create_DIArray, is_node_local_to_unit};
 use super::namespace::mangled_name_of_item;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
@@ -205,11 +205,11 @@ fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
     type_map.register_type_with_metadata(unfinished_type, metadata_stub);
 
     UnfinishedMetadata {
-        unfinished_type: unfinished_type,
-        unique_type_id: unique_type_id,
-        metadata_stub: metadata_stub,
-        llvm_type: llvm_type,
-        member_description_factory: member_description_factory,
+        unfinished_type,
+        unique_type_id,
+        metadata_stub,
+        llvm_type,
+        member_description_factory,
     }
 }
 
@@ -421,7 +421,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let containing_scope = match trait_type.sty {
         ty::TyDynamic(ref data, ..) => if let Some(principal) = data.principal() {
             let def_id = principal.def_id();
-            get_namespace_and_span_for_item(cx, def_id).0
+            get_namespace_for_item(cx, def_id)
         } else {
             NO_SCOPE_METADATA
         },
@@ -574,6 +574,16 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::TyClosure(def_id, substs) => {
             let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx()).collect();
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &upvar_tys,
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
+        }
+        ty::TyGenerator(def_id, substs, _) => {
+            let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx()).map(|t| {
+                cx.tcx().normalize_associated_type(&t)
+            }).collect();
             prepare_tuple_metadata(cx,
                                    t,
                                    &upvar_tys,
@@ -847,8 +857,8 @@ struct MetadataCreationResult {
 impl MetadataCreationResult {
     fn new(metadata: DIType, already_stored_in_typemap: bool) -> MetadataCreationResult {
         MetadataCreationResult {
-            metadata: metadata,
-            already_stored_in_typemap: already_stored_in_typemap
+            metadata,
+            already_stored_in_typemap,
         }
     }
 }
@@ -947,10 +957,10 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             let offset = FixedMemberOffset { bytes: offsets[i].bytes() as usize};
 
             MemberDescription {
-                name: name,
+                name,
                 llvm_type: type_of::in_memory_type_of(cx, fty),
                 type_metadata: type_metadata(cx, fty, self.span),
-                offset: offset,
+                offset,
                 flags: DIFlags::FlagZero,
             }
         }).collect()
@@ -971,7 +981,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => bug!("prepare_struct_metadata on a non-ADT")
     };
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, struct_def_id);
+    let containing_scope = get_namespace_for_item(cx, struct_def_id);
 
     let struct_metadata_stub = create_struct_stub(cx,
                                                   struct_llvm_type,
@@ -987,9 +997,9 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
             ty: struct_type,
-            variant: variant,
-            substs: substs,
-            span: span,
+            variant,
+            substs,
+            span,
         })
     )
 }
@@ -1052,7 +1062,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         TupleMDF(TupleMemberDescriptionFactory {
             ty: tuple_type,
             component_types: component_types.to_vec(),
-            span: span,
+            span,
         })
     )
 }
@@ -1096,7 +1106,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => bug!("prepare_union_metadata on a non-ADT")
     };
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, union_def_id);
+    let containing_scope = get_namespace_for_item(cx, union_def_id);
 
     let union_metadata_stub = create_union_stub(cx,
                                                 union_llvm_type,
@@ -1111,9 +1121,9 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         union_metadata_stub,
         union_llvm_type,
         UnionMDF(UnionMemberDescriptionFactory {
-            variant: variant,
-            substs: substs,
-            span: span,
+            variant,
+            substs,
+            span,
         })
     )
 }
@@ -1462,14 +1472,14 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
             offsets: &struct_def.offsets[..],
-            args: args,
+            args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {
                     Some(discriminant_type_metadata)
                 }
                 _ => None
             },
-            span: span,
+            span,
         });
 
     (metadata_stub, variant_llvm_type, member_description_factory)
@@ -1483,7 +1493,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    -> RecursiveTypeDescription<'tcx> {
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
-    let (containing_scope, _) = get_namespace_and_span_for_item(cx, enum_def_id);
+    let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
     // currently can't get the necessary information when it comes to types
     // imported from other crates. Formerly we violated the ODR when performing
@@ -1590,12 +1600,12 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_metadata,
         enum_llvm_type,
         EnumMDF(EnumMemberDescriptionFactory {
-            enum_type: enum_type,
+            enum_type,
             type_rep: type_rep.layout,
-            discriminant_type_metadata: discriminant_type_metadata,
-            containing_scope: containing_scope,
-            file_metadata: file_metadata,
-            span: span,
+            discriminant_type_metadata,
+            containing_scope,
+            file_metadata,
+            span,
         }),
     );
 
@@ -1781,7 +1791,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let tcx = cx.tcx();
 
     let node_def_id = tcx.hir.local_def_id(node_id);
-    let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
+    let var_scope = get_namespace_for_item(cx, node_def_id);
+    let span = cx.tcx().def_span(node_def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);

@@ -466,7 +466,7 @@ impl Ipv4Addr {
     /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     /// - the unspecified address (0.0.0.0)
     ///
-    /// [ipv4-sr]: http://goo.gl/RaZ7lg
+    /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples

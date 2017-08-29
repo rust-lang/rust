@@ -6,11 +6,11 @@ error[E0308]: mismatched types
    |
    = note: expected type `()`
               found type `usize`
-help: did you mean to add a semicolon here?
+help: try adding a semicolon
    |
 19 |     foo();
    |          ^
-help: possibly return type missing here?
+help: try adding a return type
    |
 18 | fn bar() -> usize {
    |          ^^^^^^^^

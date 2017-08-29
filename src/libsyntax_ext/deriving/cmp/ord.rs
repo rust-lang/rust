@@ -26,7 +26,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
     let inline = cx.meta_word(span, Symbol::intern("inline"));
     let attrs = vec![cx.attribute(span, inline)];
     let trait_def = TraitDef {
-        span: span,
+        span,
         attributes: Vec::new(),
         path: path_std!(cx, core::cmp::Ord),
         additional_bounds: Vec::new(),

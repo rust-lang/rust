@@ -23,7 +23,8 @@
 use std::mem;
 use std::slice;
 
-pub struct Blake2bCtx {
+#[repr(C)]
+struct Blake2bCtx {
     b: [u8; 128],
     h: [u64; 8],
     t: [u64; 2],

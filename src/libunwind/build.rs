@@ -16,7 +16,7 @@ fn main() {
 
     if target.contains("linux") {
         if target.contains("musl") && !target.contains("mips") {
-            println!("cargo:rustc-link-lib=static=unwind");
+            // musl is handled in lib.rs
         } else if !target.contains("android") {
             println!("cargo:rustc-link-lib=gcc_s");
         }
@@ -41,5 +41,7 @@ fn main() {
         println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("haiku") {
         println!("cargo:rustc-link-lib=gcc_s");
+    } else if target.contains("redox") {
+        println!("cargo:rustc-link-lib=gcc");
     }
 }

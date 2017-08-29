@@ -99,12 +99,14 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         let basic_blocks = mir.basic_blocks_mut();
 
         CfgSimplifier {
-            basic_blocks: basic_blocks,
-            pred_count: pred_count
+            basic_blocks,
+            pred_count,
         }
     }
 
     pub fn simplify(mut self) {
+        self.strip_nops();
+
         loop {
             let mut changed = false;
 
@@ -141,8 +143,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 
             if !changed { break }
         }
-
-        self.strip_nops()
     }
 
     // Collapse a goto chain starting from `start`

@@ -37,7 +37,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 /// consists of a list of obligations that must be (eventually)
 /// satisfied. The job is to track which are satisfied, which yielded
 /// errors, and which are still pending. At any point, users can call
-/// `select_where_possible`, and the fulfilment context will try to do
+/// `select_where_possible`, and the fulfillment context will try to do
 /// selection, retaining only those obligations that remain
 /// ambiguous. This may be helpful in pushing type inference
 /// along. Once all type inference constraints have been generated, the
@@ -250,6 +250,9 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                 region_obligations: &mut self.region_obligations,
             });
             debug!("select: outcome={:?}", outcome);
+
+            // FIXME: if we kept the original cache key, we could mark projection
+            // obligations as complete for the projection cache here.
 
             errors.extend(
                 outcome.errors.into_iter()
@@ -470,8 +473,9 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             let project_obligation = obligation.with(data.clone());
             match project::poly_project_and_unify_type(selcx, &project_obligation) {
                 Ok(None) => {
+                    let tcx = selcx.tcx();
                     pending_obligation.stalled_on =
-                        trait_ref_type_vars(selcx, data.to_poly_trait_ref());
+                        trait_ref_type_vars(selcx, data.to_poly_trait_ref(tcx));
                     Ok(None)
                 }
                 Ok(v) => Ok(v),

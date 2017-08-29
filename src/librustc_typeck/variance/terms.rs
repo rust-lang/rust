@@ -79,8 +79,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
                                                      arena: &'a mut TypedArena<VarianceTerm<'a>>)
                                                      -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
-        tcx: tcx,
-        arena: arena,
+        tcx,
+        arena,
         inferred_starts: NodeMap(),
         inferred_terms: vec![],
 

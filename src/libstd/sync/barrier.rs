@@ -152,7 +152,7 @@ impl Barrier {
             BarrierWaitResult(false)
         } else {
             lock.count = 0;
-            lock.generation_id += 1;
+            lock.generation_id = lock.generation_id.wrapping_add(1);
             self.cvar.notify_all();
             BarrierWaitResult(true)
         }

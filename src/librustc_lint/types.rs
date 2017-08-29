@@ -92,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
 
                 if binop.node.is_shift() {
-                    let opt_ty_bits = match cx.tables.node_id_to_type(l.id).sty {
+                    let opt_ty_bits = match cx.tables.node_id_to_type(l.hir_id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None,
@@ -106,7 +106,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 false
                             }
                         } else {
-                            let const_cx = ConstContext::with_tables(cx.tcx, cx.tables);
+                            // HACK(eddyb) This might be quite inefficient.
+                            // This would be better left to MIR constant propagation,
+                            // perhaps even at trans time (like is the case already
+                            // when the value being shifted is *also* constant).
+                            let parent_item = cx.tcx.hir.get_parent(e.id);
+                            let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
+                            let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
+                            let const_cx = ConstContext::new(cx.tcx,
+                                                             cx.param_env.and(substs),
+                                                             cx.tables);
                             match const_cx.eval(&r) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||
@@ -126,7 +135,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 }
             }
             hir::ExprLit(ref lit) => {
-                match cx.tables.node_id_to_type(e.id).sty {
+                match cx.tables.node_id_to_type(e.hir_id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
@@ -173,18 +182,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         }
                     }
                     ty::TyFloat(t) => {
-                        let (min, max) = float_ty_range(t);
-                        let lit_val: f64 = match lit.node {
+                        let is_infinite = match lit.node {
                             ast::LitKind::Float(v, _) |
                             ast::LitKind::FloatUnsuffixed(v) => {
-                                match v.as_str().parse() {
-                                    Ok(f) => f,
-                                    Err(_) => return,
+                                match t {
+                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
                                 }
                             }
                             _ => bug!(),
                         };
-                        if lit_val < min || lit_val > max {
+                        if is_infinite == Ok(true) {
                             cx.span_lint(OVERFLOWING_LITERALS,
                                          e.span,
                                          &format!("literal out of range for {:?}", t));
@@ -242,13 +250,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
-            match float_ty {
-                ast::FloatTy::F32 => (f32::MIN as f64, f32::MAX as f64),
-                ast::FloatTy::F64 => (f64::MIN, f64::MAX),
-            }
-        }
-
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
                 ast::IntTy::Is => int_ty_bits(target_int_ty, target_int_ty),
@@ -284,7 +285,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
             let norm_binop = if swap { rev_binop(binop) } else { binop };
-            match cx.tables.node_id_to_type(expr.id).sty {
+            match cx.tables.node_id_to_type(expr.hir_id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.node {
@@ -606,6 +607,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyInfer(..) |
             ty::TyError |
             ty::TyClosure(..) |
+            ty::TyGenerator(..) |
             ty::TyProjection(..) |
             ty::TyAnon(..) |
             ty::TyFnDef(..) => bug!("Unexpected type in foreign function"),

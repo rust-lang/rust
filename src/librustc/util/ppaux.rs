@@ -17,7 +17,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyProjection, TyAnon};
+use ty::{TyClosure, TyGenerator, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -224,7 +224,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
         start_or_continue(f, "<", ", ")?;
         ty::tls::with(|tcx|
             write!(f, "{}={}",
-            projection.projection_ty.item_name(tcx),
+            tcx.associated_item(projection.projection_ty.item_def_id).name,
             projection.ty)
         )?;
     }
@@ -715,6 +715,12 @@ impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Display for ty::GeneratorInterior<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.witness.fmt(f)
+    }
+}
+
 impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -813,6 +819,41 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 })
             }
             TyStr => write!(f, "str"),
+            TyGenerator(did, substs, interior) => ty::tls::with(|tcx| {
+                let upvar_tys = substs.upvar_tys(did, tcx);
+                write!(f, "[generator")?;
+
+                if let Some(node_id) = tcx.hir.as_local_node_id(did) {
+                    write!(f, "@{:?}", tcx.hir.span(node_id))?;
+                    let mut sep = " ";
+                    tcx.with_freevars(node_id, |freevars| {
+                        for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {
+                            let def_id = freevar.def.def_id();
+                            let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+                            write!(f,
+                                        "{}{}:{}",
+                                        sep,
+                                        tcx.local_var_name_str(node_id),
+                                        upvar_ty)?;
+                            sep = ", ";
+                        }
+                        Ok(())
+                    })?
+                } else {
+                    // cross-crate closure types should only be
+                    // visible in trans bug reports, I imagine.
+                    write!(f, "@{:?}", did)?;
+                    let mut sep = " ";
+                    for (index, upvar_ty) in upvar_tys.enumerate() {
+                        write!(f, "{}{}:{}", sep, index, upvar_ty)?;
+                        sep = ", ";
+                    }
+                }
+
+                write!(f, " {}", interior)?;
+
+                write!(f, "]")
+            }),
             TyClosure(did, substs) => ty::tls::with(|tcx| {
                 let upvar_tys = substs.upvar_tys(did, tcx);
                 write!(f, "[closure")?;
@@ -864,9 +905,9 @@ impl<'tcx> fmt::Display for ty::TyS<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "UpvarId({};`{}`;{})",
+        write!(f, "UpvarId({:?};`{}`;{:?})",
                self.var_id,
-               ty::tls::with(|tcx| tcx.local_var_name_str(self.var_id)),
+               ty::tls::with(|tcx| tcx.local_var_name_str_def_index(self.var_id)),
                self.closure_expr_id)
     }
 }
@@ -958,9 +999,14 @@ impl<'tcx> fmt::Display for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> fmt::Display for ty::ProjectionTy<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let item_name = ty::tls::with(|tcx| self.item_name(tcx));
+        // FIXME(tschottdorf): use something like
+        //   parameterized(f, self.substs, self.item_def_id, &[])
+        // (which currently ICEs).
+        let (trait_ref, item_name) = ty::tls::with(|tcx|
+            (self.trait_ref(tcx), tcx.associated_item(self.item_def_id).name)
+        );
         write!(f, "{:?}::{}",
-               self.trait_ref,
+               trait_ref,
                item_name)
     }
 }

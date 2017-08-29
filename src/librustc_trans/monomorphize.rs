@@ -125,6 +125,12 @@ fn resolve_associated_item<'a, 'tcx>(
             let substs = tcx.erase_regions(&substs);
             ty::Instance::new(def_id, substs)
         }
+        traits::VtableGenerator(closure_data) => {
+            Instance {
+                def: ty::InstanceDef::Item(closure_data.closure_def_id),
+                substs: closure_data.substs.substs
+            }
+        }
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
             resolve_closure(scx, closure_data.closure_def_id, closure_data.substs,
@@ -140,6 +146,12 @@ fn resolve_associated_item<'a, 'tcx>(
             let index = tcx.get_vtable_index_of_object_method(data, def_id);
             Instance {
                 def: ty::InstanceDef::Virtual(def_id, index),
+                substs: rcvr_substs
+            }
+        }
+        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items.clone_trait() => {
+            Instance {
+                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
                 substs: rcvr_substs
             }
         }

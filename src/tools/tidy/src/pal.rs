@@ -69,6 +69,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libstd/path.rs",
     "src/libstd/f32.rs",
     "src/libstd/f64.rs",
+    "src/libstd/lib.rs", // Until next stage0 snapshot bump
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
     "src/libterm", // Not sure how to make this crate portable, but test needs it

@@ -103,26 +103,31 @@ mod prim_bool { }
 /// [`String`]: string/struct.String.html
 ///
 /// As always, remember that a human intuition for 'character' may not map to
-/// Unicode's definitions. For example, emoji symbols such as '❤️' can be more
-/// than one Unicode code point; this ❤️ in particular is two:
+/// Unicode's definitions. For example, despite looking similar, the 'é'
+/// character is one Unicode code point while 'é' is two Unicode code points:
 ///
 /// ```
-/// let s = String::from("❤️");
+/// let mut chars = "é".chars();
+/// // U+00e9: 'latin small letter e with acute'
+/// assert_eq!(Some('\u{00e9}'), chars.next());
+/// assert_eq!(None, chars.next());
 ///
-/// // we get two chars out of a single ❤️
-/// let mut iter = s.chars();
-/// assert_eq!(Some('\u{2764}'), iter.next());
-/// assert_eq!(Some('\u{fe0f}'), iter.next());
-/// assert_eq!(None, iter.next());
+/// let mut chars = "é".chars();
+/// // U+0065: 'latin small letter e'
+/// assert_eq!(Some('\u{0065}'), chars.next());
+/// // U+0301: 'combining acute accent'
+/// assert_eq!(Some('\u{0301}'), chars.next());
+/// assert_eq!(None, chars.next());
 /// ```
 ///
-/// This means it won't fit into a `char`. Trying to create a literal with
-/// `let heart = '❤️';` gives an error:
+/// This means that the contents of the first string above _will_ fit into a
+/// `char` while the contents of the second string _will not_. Trying to create
+/// a `char` literal with the contents of the second string gives an error:
 ///
 /// ```text
-/// error: character literal may only contain one codepoint: '❤
-/// let heart = '❤️';
-///             ^~
+/// error: character literal may only contain one codepoint: 'é'
+/// let c = 'é';
+///         ^^^^
 /// ```
 ///
 /// Another implication of the 4-byte fixed size of a `char` is that
@@ -183,9 +188,10 @@ mod prim_unit { }
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
-/// Use the [`null`] function to create null pointers, and the [`is_null`] method
-/// of the `*const T` type  to check for null. The `*const T` type also defines
-/// the [`offset`] method, for pointer math.
+/// Use the [`null`] and [`null_mut`] functions to create null pointers, and the
+/// [`is_null`] method of the `*const T` and `*mut T` types to check for null.
+/// The `*const T` and `*mut T` types also define the [`offset`] method, for
+/// pointer math.
 ///
 /// # Common ways to create raw pointers
 ///
@@ -256,6 +262,7 @@ mod prim_unit { }
 /// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// [`null`]: ../std/ptr/fn.null.html
+/// [`null_mut`]: ../std/ptr/fn.null_mut.html
 /// [`is_null`]: ../std/primitive.pointer.html#method.is_null
 /// [`offset`]: ../std/primitive.pointer.html#method.offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
@@ -722,3 +729,221 @@ mod prim_isize { }
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
+
+#[doc(primitive = "reference")]
+//
+/// References, both shared and mutable.
+///
+/// A reference represents a borrow of some owned value. You can get one by using the `&` or `&mut`
+/// operators on a value, or by using a `ref` or `ref mut` pattern.
+///
+/// For those familiar with pointers, a reference is just a pointer that is assumed to not be null.
+/// In fact, `Option<&T>` has the same memory representation as a nullable pointer, and can be
+/// passed across FFI boundaries as such.
+///
+/// In most cases, references can be used much like the original value. Field access, method
+/// calling, and indexing work the same (save for mutability rules, of course). In addition, the
+/// comparison operators transparently defer to the referent's implementation, allowing references
+/// to be compared the same as owned values.
+///
+/// References have a lifetime attached to them, which represents the scope for which the borrow is
+/// valid. A lifetime is said to "outlive" another one if its representative scope is as long or
+/// longer than the other. The `'static` lifetime is the longest lifetime, which represents the
+/// total life of the program. For example, string literals have a `'static` lifetime because the
+/// text data is embedded into the binary of the program, rather than in an allocation that needs
+/// to be dynamically managed.
+///
+/// `&mut T` references can be freely coerced into `&T` references with the same referent type, and
+/// references with longer lifetimes can be freely coerced into references with shorter ones.
+///
+/// For more information on how to use references, see [the book's section on "References and
+/// Borrowing"][book-refs].
+///
+/// [book-refs]: ../book/second-edition/ch04-02-references-and-borrowing.html
+///
+/// The following traits are implemented for all `&T`, regardless of the type of its referent:
+///
+/// * [`Copy`]
+/// * [`Clone`] \(Note that this will not defer to `T`'s `Clone` implementation if it exists!)
+/// * [`Deref`]
+/// * [`Borrow`]
+/// * [`Pointer`]
+///
+/// [`Copy`]: marker/trait.Copy.html
+/// [`Clone`]: clone/trait.Clone.html
+/// [`Deref`]: ops/trait.Deref.html
+/// [`Borrow`]: borrow/trait.Borrow.html
+/// [`Pointer`]: fmt/trait.Pointer.html
+///
+/// `&mut T` references get all of the above except `Copy` and `Clone` (to prevent creating
+/// multiple simultaneous mutable borrows), plus the following, regardless of the type of its
+/// referent:
+///
+/// * [`DerefMut`]
+/// * [`BorrowMut`]
+///
+/// [`DerefMut`]: ops/trait.DerefMut.html
+/// [`BorrowMut`]: borrow/trait.BorrowMut.html
+///
+/// The following traits are implemented on `&T` references if the underlying `T` also implements
+/// that trait:
+///
+/// * All the traits in [`std::fmt`] except [`Pointer`] and [`fmt::Write`]
+/// * [`PartialOrd`]
+/// * [`Ord`]
+/// * [`PartialEq`]
+/// * [`Eq`]
+/// * [`AsRef`]
+/// * [`Fn`] \(in addition, `&T` references get [`FnMut`] and [`FnOnce`] if `T: Fn`)
+/// * [`Hash`]
+/// * [`ToSocketAddrs`]
+///
+/// [`std::fmt`]: fmt/index.html
+/// [`fmt::Write`]: fmt/trait.Write.html
+/// [`PartialOrd`]: cmp/trait.PartialOrd.html
+/// [`Ord`]: cmp/trait.Ord.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`Eq`]: cmp/trait.Eq.html
+/// [`AsRef`]: convert/trait.AsRef.html
+/// [`Fn`]: ops/trait.Fn.html
+/// [`FnMut`]: ops/trait.FnMut.html
+/// [`FnOnce`]: ops/trait.FnOnce.html
+/// [`Hash`]: hash/trait.Hash.html
+/// [`ToSocketAddrs`]: net/trait.ToSocketAddrs.html
+///
+/// `&mut T` references get all of the above except `ToSocketAddrs`, plus the following, if `T`
+/// implements that trait:
+///
+/// * [`AsMut`]
+/// * [`FnMut`] \(in addition, `&mut T` references get [`FnOnce`] if `T: FnMut`)
+/// * [`fmt::Write`]
+/// * [`Iterator`]
+/// * [`DoubleEndedIterator`]
+/// * [`ExactSizeIterator`]
+/// * [`FusedIterator`]
+/// * [`TrustedLen`]
+/// * [`Send`] \(note that `&T` references only get `Send` if `T: Sync`)
+/// * [`io::Write`]
+/// * [`Read`]
+/// * [`Seek`]
+/// * [`BufRead`]
+///
+/// [`AsMut`]: convert/trait.AsMut.html
+/// [`Iterator`]: iter/trait.Iterator.html
+/// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
+/// [`ExactSizeIterator`]: iter/trait.ExactSizeIterator.html
+/// [`FusedIterator`]: iter/trait.FusedIterator.html
+/// [`TrustedLen`]: iter/trait.TrustedLen.html
+/// [`Send`]: marker/trait.Send.html
+/// [`io::Write`]: io/trait.Write.html
+/// [`Read`]: io/trait.Read.html
+/// [`Seek`]: io/trait.Seek.html
+/// [`BufRead`]: io/trait.BufRead.html
+///
+/// Note that due to method call deref coercion, simply calling a trait method will act like they
+/// work on references as well as they do on owned values! The implementations described here are
+/// meant for generic contexts, where the final type `T` is a type parameter or otherwise not
+/// locally known.
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_ref { }
+
+#[doc(primitive = "fn")]
+//
+/// Function pointers, like `fn(usize) -> bool`.
+///
+/// *See also the traits [`Fn`], [`FnMut`], and [`FnOnce`].*
+///
+/// [`Fn`]: ops/trait.Fn.html
+/// [`FnMut`]: ops/trait.FnMut.html
+/// [`FnOnce`]: ops/trait.FnOnce.html
+///
+/// Plain function pointers are obtained by casting either plain functions, or closures that don't
+/// capture an environment:
+///
+/// ```
+/// fn add_one(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// let ptr: fn(usize) -> usize = add_one;
+/// assert_eq!(ptr(5), 6);
+///
+/// let clos: fn(usize) -> usize = |x| x + 5;
+/// assert_eq!(clos(5), 10);
+/// ```
+///
+/// In addition to varying based on their signature, function pointers come in two flavors: safe
+/// and unsafe. Plain `fn()` function pointers can only point to safe functions,
+/// while `unsafe fn()` function pointers can point to safe or unsafe functions.
+///
+/// ```
+/// fn add_one(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// unsafe fn add_one_unsafely(x: usize) -> usize {
+///     x + 1
+/// }
+///
+/// let safe_ptr: fn(usize) -> usize = add_one;
+///
+/// //ERROR: mismatched types: expected normal fn, found unsafe fn
+/// //let bad_ptr: fn(usize) -> usize = add_one_unsafely;
+///
+/// let unsafe_ptr: unsafe fn(usize) -> usize = add_one_unsafely;
+/// let really_safe_ptr: unsafe fn(usize) -> usize = add_one;
+/// ```
+///
+/// On top of that, function pointers can vary based on what ABI they use. This is achieved by
+/// adding the `extern` keyword to the type name, followed by the ABI in question. For example,
+/// `fn()` is different from `extern "C" fn()`, which itself is different from `extern "stdcall"
+/// fn()`, and so on for the various ABIs that Rust supports.  Non-`extern` functions have an ABI
+/// of `"Rust"`, and `extern` functions without an explicit ABI have an ABI of `"C"`. For more
+/// information, see [the nomicon's section on foreign calling conventions][nomicon-abi].
+///
+/// [nomicon-abi]: ../nomicon/ffi.html#foreign-calling-conventions
+///
+/// Extern function declarations with the "C" or "cdecl" ABIs can also be *variadic*, allowing them
+/// to be called with a variable number of arguments. Normal rust functions, even those with an
+/// `extern "ABI"`, cannot be variadic. For more information, see [the nomicon's section on
+/// variadic functions][nomicon-variadic].
+///
+/// [nomicon-variadic]: ../nomicon/ffi.html#variadic-functions
+///
+/// These markers can be combined, so `unsafe extern "stdcall" fn()` is a valid type.
+///
+/// Like references in rust, function pointers are assumed to not be null, so if you want to pass a
+/// function pointer over FFI and be able to accommodate null pointers, make your type
+/// `Option<fn()>` with your required signature.
+///
+/// Function pointers implement the following traits:
+///
+/// * [`Clone`]
+/// * [`PartialEq`]
+/// * [`Eq`]
+/// * [`PartialOrd`]
+/// * [`Ord`]
+/// * [`Hash`]
+/// * [`Pointer`]
+/// * [`Debug`]
+///
+/// [`Clone`]: clone/trait.Clone.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`Eq`]: cmp/trait.Eq.html
+/// [`PartialOrd`]: cmp/trait.PartialOrd.html
+/// [`Ord`]: cmp/trait.Ord.html
+/// [`Hash`]: hash/trait.Hash.html
+/// [`Pointer`]: fmt/trait.Pointer.html
+/// [`Debug`]: fmt/trait.Debug.html
+///
+/// Due to a temporary restriction in Rust's type system, these traits are only implemented on
+/// functions that take 12 arguments or less, with the `"Rust"` and `"C"` ABIs. In the future, this
+/// may change.
+///
+/// In addition, function pointers of *any* signature, ABI, or safety are [`Copy`], and all *safe*
+/// function pointers implement [`Fn`], [`FnMut`], and [`FnOnce`]. This works because these traits
+/// are specially known to the compiler.
+///
+/// [`Copy`]: marker/trait.Copy.html
+#[stable(feature = "rust1", since = "1.0.0")]
+mod prim_fn { }

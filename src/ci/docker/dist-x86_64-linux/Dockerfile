@@ -76,14 +76,8 @@ RUN ./build-cmake.sh
 COPY dist-x86_64-linux/build-headers.sh /tmp/
 RUN ./build-headers.sh
 
-RUN curl -Lo /rustroot/dumb-init \
-      https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
-      chmod +x /rustroot/dumb-init
-ENTRYPOINT ["/rustroot/dumb-init", "--"]
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
+COPY scripts/sccache.sh /scripts/
+RUN sh /scripts/sccache.sh
 
 ENV HOSTS=x86_64-unknown-linux-gnu
 

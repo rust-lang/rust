@@ -10,6 +10,8 @@
 
 #![feature(box_syntax)]
 
+fn id<T>(x: T) -> T { x }
+
 trait Foo { }
 
 impl<'a> Foo for &'a isize { }
@@ -17,7 +19,7 @@ impl<'a> Foo for &'a isize { }
 fn main() {
     let blah;
     {
-        let ss: &isize = &1;
+        let ss: &isize = &id(1);
         blah = box ss as Box<Foo>;
     }
 }

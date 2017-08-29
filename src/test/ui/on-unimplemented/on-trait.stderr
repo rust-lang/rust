@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `std::option::Option<std::vec::Vec<u8>>: MyFromIterator<&u8>` is not satisfied
+  --> $DIR/on-trait.rs:37:30
+   |
+37 |     let y: Option<Vec<u8>> = collect(x.iter()); // this should give approximately the same error for x.iter().collect()
+   |                              ^^^^^^^ a collection of type `std::option::Option<std::vec::Vec<u8>>` cannot be built from an iterator over elements of type `&u8`
+   |
+   = help: the trait `MyFromIterator<&u8>` is not implemented for `std::option::Option<std::vec::Vec<u8>>`
+   = note: required by `collect`
+
+error[E0277]: the trait bound `std::string::String: Bar::Foo<u8, _, u32>` is not satisfied
+  --> $DIR/on-trait.rs:42:21
+   |
+42 |     let x: String = foobar(); //~ ERROR
+   |                     ^^^^^^ test error `std::string::String` with `u8` `_` `u32` in `Bar::Foo`
+   |
+   = help: the trait `Bar::Foo<u8, _, u32>` is not implemented for `std::string::String`
+   = note: required by `foobar`
+
+error: aborting due to 2 previous errors
+

@@ -10,7 +10,7 @@
 
 //! A helper class for dealing with static archives
 
-use std::ffi::{CString, CStr, OsString};
+use std::ffi::{CString, CStr};
 use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -28,8 +28,6 @@ pub struct ArchiveConfig<'a> {
     pub dst: PathBuf,
     pub src: Option<PathBuf>,
     pub lib_search_paths: Vec<PathBuf>,
-    pub ar_prog: String,
-    pub command_path: OsString,
 }
 
 /// Helper for adding many files to an archive with a single invocation of
@@ -89,7 +87,7 @@ impl<'a> ArchiveBuilder<'a> {
     /// by `config`.
     pub fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
         ArchiveBuilder {
-            config: config,
+            config,
             removals: Vec::new(),
             additions: Vec::new(),
             should_update_symbols: false,
@@ -126,7 +124,7 @@ impl<'a> ArchiveBuilder<'a> {
             Some(ref src) => src,
             None => return None,
         };
-        self.src_archive = Some(ArchiveRO::open(src));
+        self.src_archive = Some(ArchiveRO::open(src).ok());
         self.src_archive.as_ref().unwrap().as_ref()
     }
 
@@ -186,12 +184,11 @@ impl<'a> ArchiveBuilder<'a> {
         where F: FnMut(&str) -> bool + 'static
     {
         let archive = match ArchiveRO::open(archive) {
-            Some(ar) => ar,
-            None => return Err(io::Error::new(io::ErrorKind::Other,
-                                              "failed to open archive")),
+            Ok(ar) => ar,
+            Err(e) => return Err(io::Error::new(io::ErrorKind::Other, e)),
         };
         self.additions.push(Addition::Archive {
-            archive: archive,
+            archive,
             skip: Box::new(skip),
         });
         Ok(())

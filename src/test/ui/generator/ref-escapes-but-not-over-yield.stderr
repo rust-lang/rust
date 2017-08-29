@@ -1,0 +1,12 @@
+error[E0597]: `b` does not live long enough
+  --> $DIR/ref-escapes-but-not-over-yield.rs:25:5
+   |
+24 |         a = &b; //~ ERROR
+   |              - borrow occurs here
+25 |     };
+   |     ^ `b` dropped here while still borrowed
+26 | }
+   | - borrowed value needs to live until here
+
+error: aborting due to previous error
+

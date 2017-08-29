@@ -6,8 +6,6 @@ error[E0308]: mismatched types
    |
    = note: expected type `fn(&'cx S) -> &'cx S`
               found type `fn(&'a S) -> &S {bar::<'_>}`
-   = note: lifetime parameter `'b` declared on fn `bar` appears only in the return type, but here is required to be higher-ranked, which means that `'b` must appear in both argument and return types
-   = note: this error is the result of a recent bug fix; for more information, see issue #33685 <https://github.com/rust-lang/rust/issues/33685>
 
 error: aborting due to previous error
 

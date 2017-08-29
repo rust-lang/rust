@@ -359,10 +359,18 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 
+    #[inline]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
         where P: FnMut(&Self::Item) -> bool
     {
         self.iter.rfind(predicate)
+    }
+
+    #[inline]
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
+        P: FnMut(Self::Item) -> bool
+    {
+        self.iter.position(predicate)
     }
 }
 
@@ -832,8 +840,8 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     type Item = (A::Item, B::Item);
     default fn new(a: A, b: B) -> Self {
         Zip {
-            a: a,
-            b: b,
+            a,
+            b,
             index: 0, // unused
             len: 0, // unused
         }
@@ -895,10 +903,10 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
     fn new(a: A, b: B) -> Self {
         let len = cmp::min(a.len(), b.len());
         Zip {
-            a: a,
-            b: b,
+            a,
+            b,
             index: 0,
-            len: len,
+            len,
         }
     }
 
@@ -1027,7 +1035,7 @@ unsafe impl<A, B> TrustedLen for Zip<A, B>
 /// Now consider this twist where we add a call to `rev`. This version will
 /// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
 /// but the values of the counter still go in order. This is because `map()` is
-/// still being called lazilly on each item, but we are popping items off the
+/// still being called lazily on each item, but we are popping items off the
 /// back of the vector now, instead of shifting them from the front.
 ///
 /// ```rust

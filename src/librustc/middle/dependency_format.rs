@@ -396,7 +396,8 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
             }
             let cnum = CrateNum::new(i + 1);
             let found_strategy = sess.cstore.panic_strategy(cnum);
-            if desired_strategy == found_strategy {
+            let is_compiler_builtins = sess.cstore.is_compiler_builtins(cnum);
+            if is_compiler_builtins || desired_strategy == found_strategy {
                 continue
             }
 

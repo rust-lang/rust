@@ -126,7 +126,7 @@ impl AsInner<imp::Process> for Child {
 impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
     fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
         Child {
-            handle: handle,
+            handle,
             stdin: io.stdin.map(ChildStdin::from_inner),
             stdout: io.stdout.map(ChildStdout::from_inner),
             stderr: io.stderr.map(ChildStderr::from_inner),
@@ -799,8 +799,8 @@ impl From<fs::File> for Stdio {
 pub struct ExitStatus(imp::ExitStatus);
 
 impl ExitStatus {
-    /// Was termination successful? Signal termination not considered a success,
-    /// and success is defined as a zero exit status.
+    /// Was termination successful? Signal termination is not considered a
+    /// success, and success is defined as a zero exit status.
     ///
     /// # Examples
     ///
@@ -1035,9 +1035,9 @@ impl Child {
 
         let status = self.wait()?;
         Ok(Output {
-            status: status,
-            stdout: stdout,
-            stderr: stderr,
+            status,
+            stdout,
+            stderr,
         })
     }
 }
@@ -1417,8 +1417,19 @@ mod tests {
         let output = String::from_utf8(result.stdout).unwrap();
 
         for (ref k, ref v) in env::vars() {
-            // don't check android RANDOM variables
-            if cfg!(target_os = "android") && *k == "RANDOM" {
+            // Don't check android RANDOM variable which seems to change
+            // whenever the shell runs, and our `env_cmd` is indeed running a
+            // shell which means it'll get a different RANDOM than we probably
+            // have.
+            //
+            // Also skip env vars with `-` in the name on android because, well,
+            // I'm not sure. It appears though that the `set` command above does
+            // not print env vars with `-` in the name, so we just skip them
+            // here as we won't find them in the output. Note that most env vars
+            // use `_` instead of `-`, but our build system sets a few env vars
+            // with `-` in the name.
+            if cfg!(target_os = "android") &&
+               (*k == "RANDOM" || k.contains("-")) {
                 continue
             }
 

@@ -112,6 +112,29 @@
 //! will want to make use of some form of **interior mutability** through the
 //! [`Cell`] or [`RefCell`] types.
 //!
+//! ## Naming threads
+//!
+//! Threads are able to have associated names for identification purposes. By default, spawned
+//! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
+//! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
+//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//!
+//! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
+//! * The thread name is provided to the OS where applicable (e.g. `pthread_setname_np` in
+//!   unix-like platforms).
+//!
+//! ## Stack size
+//!
+//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
+//! subject to change in the future. There are two ways to manually specify the stack size for
+//! spawned threads:
+//!
+//! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
+//! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
+//!   size (in bytes). Note that setting [`Builder::stack_size`] will override this.
+//!
+//! Note that the stack size of the main thread is *not* determined by Rust.
+//!
 //! [channels]: ../../std/sync/mpsc/index.html
 //! [`Arc`]: ../../std/sync/struct.Arc.html
 //! [`spawn`]: ../../std/thread/fn.spawn.html
@@ -123,11 +146,14 @@
 //! [`Err`]: ../../std/result/enum.Result.html#variant.Err
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
+//! [`Builder::stack_size`]: ../../std/thread/struct.Builder.html#method.stack_size
+//! [`Builder::name`]: ../../std/thread/struct.Builder.html#method.name
 //! [`thread::current`]: ../../std/thread/fn.current.html
 //! [`thread::Result`]: ../../std/thread/type.Result.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+//! [`Thread::name`]: ../../std/thread/struct.Thread.html#method.name
 //! [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
@@ -159,7 +185,7 @@ use time::Duration;
 #[macro_use] mod local;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::local::{LocalKey, LocalKeyState};
+pub use self::local::{LocalKey, LocalKeyState, AccessError};
 
 // The types used by the thread_local! macro to access TLS keys. Note that there
 // are two types, the "OS" type and the "fast" type. The OS thread local key
@@ -187,16 +213,8 @@ pub use self::local::{LocalKey, LocalKeyState};
 ///
 /// The two configurations available are:
 ///
-/// - [`name`]: allows to give a name to the thread which is currently
-///   only used in `panic` messages.
-/// - [`stack_size`]: specifies the desired stack size. Note that this can
-///   be overriden by the OS.
-///
-/// If the [`stack_size`] field is not specified, the stack size
-/// will be the `RUST_MIN_STACK` environment variable. If it is
-/// not specified either, a sensible default will be set.
-///
-/// If the [`name`] field is not specified, the thread will not be named.
+/// - [`name`]: specifies an [associated name for the thread][naming-threads]
+/// - [`stack_size`]: specifies the [desired stack size for the thread][stack-size]
 ///
 /// The [`spawn`] method will take ownership of the builder and create an
 /// [`io::Result`] to the thread handle with the given configuration.
@@ -228,6 +246,8 @@ pub use self::local::{LocalKey, LocalKeyState};
 /// [`spawn`]: ../../std/thread/struct.Builder.html#method.spawn
 /// [`io::Result`]: ../../std/io/type.Result.html
 /// [`unwrap`]: ../../std/result/enum.Result.html#method.unwrap
+/// [naming-threads]: ./index.html#naming-threads
+/// [stack-size]: ./index.html#stack-size
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Builder {
@@ -267,6 +287,9 @@ impl Builder {
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
     ///
+    /// For more information about named threads, see
+    /// [this module-level documentation][naming-threads].
+    ///
     /// # Examples
     ///
     /// ```
@@ -281,6 +304,8 @@ impl Builder {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
@@ -292,6 +317,9 @@ impl Builder {
     /// The actual stack size may be greater than this value if
     /// the platform specifies minimal stack size.
     ///
+    /// For more information about the stack size for threads, see
+    /// [this module-level documentation][stack-size].
+    ///
     /// # Examples
     ///
     /// ```
@@ -299,6 +327,8 @@ impl Builder {
     ///
     /// let builder = thread::Builder::new().stack_size(32 * 1024);
     /// ```
+    ///
+    /// [stack-size]: ./index.html#stack-size
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
@@ -344,7 +374,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(util::min_stack());
+        let stack_size = stack_size.unwrap_or_else(util::min_stack);
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
@@ -413,7 +443,7 @@ impl Builder {
 ///   *by value* from the thread where it is spawned to the new thread. Its
 ///   return value will need to be passed from the new thread to the thread
 ///   where it is `join`ed.
-///   As a reminder, the [`Send`] marker trait, expresses that it is safe to be
+///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
 ///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
 ///   reference be passed from thread to thread.
 ///
@@ -529,9 +559,9 @@ pub fn current() -> Thread {
 /// Thus the pattern of `yield`ing after a failed poll is rather common when
 /// implementing low-level shared resources or synchronization primitives.
 ///
-/// However programmers will usualy prefer to use, [`channel`]s, [`Condvar`]s,
-/// [`Mutex`]es or [`join`] for their synchronisation routines, as they avoid
-/// thinking about thread schedulling.
+/// However programmers will usually prefer to use, [`channel`]s, [`Condvar`]s,
+/// [`Mutex`]es or [`join`] for their synchronization routines, as they avoid
+/// thinking about thread scheduling.
 ///
 /// Note that [`channel`]s for example are implemented using this primitive.
 /// Indeed when you call `send` or `recv`, which are blocking, they will yield
@@ -770,14 +800,14 @@ pub fn park_timeout_ms(ms: u32) {
 /// preemption or platform differences that may not cause the maximum
 /// amount of time waited to be precisely `dur` long.
 ///
-/// See the [park dococumentation][park] for more details.
+/// See the [park documentation][park] for more details.
 ///
 /// # Platform behavior
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
-/// # Example
+/// # Examples
 ///
 /// Waiting for the complete expiration of the timeout:
 ///
@@ -820,7 +850,8 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// A `ThreadId` is an opaque object that has a unique value for each thread
 /// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
-/// system-designated identifier.
+/// system-designated identifier. A `ThreadId` can be retrieved from the [`id`]
+/// method on a [`Thread`].
 ///
 /// # Examples
 ///
@@ -834,6 +865,9 @@ pub fn park_timeout(dur: Duration) {
 /// let other_thread_id = other_thread.join().unwrap();
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
+///
+/// [`id`]: ../../std/thread/struct.Thread.html#method.id
+/// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
@@ -891,11 +925,14 @@ struct Inner {
 /// The [`thread::current`] function is available even for threads not spawned
 /// by the APIs of this module.
 ///
-/// There is usualy no need to create a `Thread` struct yourself, one
+/// There is usually no need to create a `Thread` struct yourself, one
 /// should instead use a function like `spawn` to create new threads, see the
 /// docs of [`Builder`] and [`spawn`] for more details.
 ///
 /// [`Builder`]: ../../std/thread/struct.Builder.html
+/// [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+/// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+/// [`thread::current`]: ../../std/thread/fn.current.html
 /// [`spawn`]: ../../std/thread/fn.spawn.html
 
 pub struct Thread {
@@ -980,6 +1017,9 @@ impl Thread {
 
     /// Gets the thread's name.
     ///
+    /// For more information about named threads, see
+    /// [this module-level documentation][naming-threads].
+    ///
     /// # Examples
     ///
     /// Threads by default have no name specified:
@@ -1010,6 +1050,8 @@ impl Thread {
     ///
     /// handler.join().unwrap();
     /// ```
+    ///
+    /// [naming-threads]: ./index.html#naming-threads
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
@@ -1187,6 +1229,11 @@ impl<T> JoinHandle<T> {
     ///
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     /// [`panic`]: ../../std/macro.panic.html
+    ///
+    /// # Panics
+    ///
+    /// This function may panic on some platforms if a thread attempts to join
+    /// itself or otherwise may create a deadlock with joining threads.
     ///
     /// # Examples
     ///

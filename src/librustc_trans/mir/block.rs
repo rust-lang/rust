@@ -263,7 +263,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
+                let ty = location.ty(self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
                 let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.shared(), ty);
 
@@ -374,6 +374,27 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                          vec![msg_file_line_col],
                          Some(ErrKind::Math(err.clone())))
                     }
+                    mir::AssertMessage::GeneratorResumedAfterReturn |
+                    mir::AssertMessage::GeneratorResumedAfterPanic => {
+                        let str = if let mir::AssertMessage::GeneratorResumedAfterReturn = *msg {
+                            "generator resumed after completion"
+                        } else {
+                            "generator resumed after panicking"
+                        };
+                        let msg_str = Symbol::intern(str).as_str();
+                        let msg_str = C_str_slice(bcx.ccx, msg_str);
+                        let msg_file_line = C_struct(bcx.ccx,
+                                                     &[msg_str, filename, line],
+                                                     false);
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line));
+                        let msg_file_line = consts::addr_of(bcx.ccx,
+                                                            msg_file_line,
+                                                            align,
+                                                            "panic_loc");
+                        (lang_items::PanicFnLangItem,
+                         vec![msg_file_line],
+                         None)
+                    }
                 };
 
                 // If we know we always panic, and the error message
@@ -438,7 +459,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let extra_args = &args[sig.inputs().len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
-                    let op_ty = op_arg.ty(&self.mir, bcx.tcx());
+                    let op_ty = op_arg.ty(self.mir, bcx.tcx());
                     self.monomorphize(&op_ty)
                 }).collect::<Vec<_>>();
 
@@ -557,6 +578,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         destination.as_ref().map(|&(_, target)| (ret_dest, sig.output(), target)),
                         cleanup);
             }
+            mir::TerminatorKind::GeneratorDrop |
+            mir::TerminatorKind::Yield { .. } => bug!("generator ops in trans"),
         }
     }
 
@@ -673,8 +696,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         Ref(ptr, align)
                     };
                     let op = OperandRef {
-                        val: val,
-                        ty: ty
+                        val,
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }
@@ -697,7 +720,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty: ty
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }
@@ -713,7 +736,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // Pair is always made up of immediates
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty: ty
+                        ty,
                     };
                     self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
                 }

@@ -47,6 +47,26 @@ fn main() {
     let x = |mut y: isize| 10; //~ ERROR: variable does not need to be mutable
     fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
 
+    let mut a = &mut 5; //~ ERROR: variable does not need to be mutable
+    *a = 4;
+
+    let mut a = 5;
+    let mut b = (&mut a,);
+    *b.0 = 4; //~^ ERROR: variable does not need to be mutable
+
+    let mut x = &mut 1; //~ ERROR: variable does not need to be mutable
+    let mut f = || {
+      *x += 1;
+    };
+    f();
+
+    fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
+        &mut arg[..] //~^ ERROR: variable does not need to be mutable
+    }
+
+    let mut v : &mut Vec<()> = &mut vec![]; //~ ERROR: variable does not need to be mutable
+    v.push(());
+
     // positive cases
     let mut a = 2;
     a = 3;

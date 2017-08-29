@@ -16,8 +16,6 @@
 //! is not recommended to use this library directly, but rather the official
 //! interface through `std::rand`.
 
-#![crate_name = "rand"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -180,7 +178,7 @@ pub trait Rng: Sized {
     /// This method does *not* have a requirement to bear any fixed
     /// relationship to the other methods, for example, it does *not*
     /// have to result in the same output as progressively filling
-    /// `dest` with `self.gen::<u8>()`, and any such behaviour should
+    /// `dest` with `self.gen::<u8>()`, and any such behavior should
     /// not be relied upon.
     ///
     /// This method should guarantee that `dest` is entirely filled
@@ -418,10 +416,10 @@ impl Rand for XorShiftRng {
         }
         let (x, y, z, w) = tuple;
         XorShiftRng {
-            x: x,
-            y: y,
-            z: z,
-            w: w,
+            x,
+            y,
+            z,
+            w,
         }
     }
 }

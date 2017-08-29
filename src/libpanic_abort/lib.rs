@@ -14,8 +14,6 @@
 //! simpler! That being said, it's not quite as versatile, but here goes!
 
 #![no_std]
-#![crate_name = "panic_abort"]
-#![crate_type = "rlib"]
 #![unstable(feature = "panic_abort", issue = "32837")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",

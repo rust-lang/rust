@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::{DepConstructor, DepNode, DepTrackingMapConfig};
-use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
+use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
+use errors::{Diagnostic, DiagnosticBuilder};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::Def;
 use hir;
+use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
@@ -27,10 +29,11 @@ use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
 use util::nodemap::{DefIdSet, NodeSet};
+use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell, RefMut, Cell};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -186,7 +189,18 @@ impl<'tcx> Value<'tcx> for ty::SymbolName {
 
 struct QueryMap<D: QueryDescription> {
     phantom: PhantomData<D>,
-    map: FxHashMap<D::Key, D::Value>,
+    map: FxHashMap<D::Key, QueryValue<D::Value>>,
+}
+
+struct QueryValue<T> {
+    value: T,
+    index: DepNodeIndex,
+    diagnostics: Option<Box<QueryDiagnostics>>,
+}
+
+struct QueryDiagnostics {
+    diagnostics: Vec<Diagnostic>,
+    emitted_diagnostics: Cell<bool>,
 }
 
 impl<M: QueryDescription> QueryMap<M> {
@@ -198,13 +212,15 @@ impl<M: QueryDescription> QueryMap<M> {
     }
 }
 
-pub struct CycleError<'a, 'tcx: 'a> {
+struct CycleError<'a, 'tcx: 'a> {
     span: Span,
     cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn report_cycle(self, CycleError { span, cycle }: CycleError) {
+    fn report_cycle(self, CycleError { span, cycle }: CycleError)
+        -> DiagnosticBuilder<'a>
+    {
         // Subtle: release the refcell lock before invoking `describe()`
         // below by dropping `cycle`.
         let stack = cycle.to_vec();
@@ -233,8 +249,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             err.note(&format!("...which then again requires {}, completing the cycle.",
                               stack[0].1.describe(self)));
 
-            err.emit();
-        });
+            return err
+        })
     }
 
     fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
@@ -261,11 +277,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-trait QueryDescription: DepTrackingMapConfig {
+pub trait QueryConfig {
+    type Key: Eq + Hash + Clone;
+    type Value;
+}
+
+trait QueryDescription: QueryConfig {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 }
 
-impl<M: DepTrackingMapConfig<Key=DefId>> QueryDescription for M {
+impl<M: QueryConfig<Key=DefId>> QueryDescription for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("processing `{}`", tcx.item_path_str(def_id))
     }
@@ -367,8 +388,8 @@ impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
 }
 
 impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
-    fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
-        format!("const-evaluating `{}`", tcx.item_path_str(def_id))
+    fn describe(tcx: TyCtxt, key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>) -> String {
+        format!("const-evaluating `{}`", tcx.item_path_str(key.value.0))
     }
 }
 
@@ -465,12 +486,6 @@ impl<'tcx> QueryDescription for queries::trait_impls_of<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::relevant_trait_impls_for<'tcx> {
-    fn describe(tcx: TyCtxt, (def_id, ty): (DefId, SimplifiedType)) -> String {
-        format!("relevant impls for: `({}, {:?})`", tcx.item_path_str(def_id), ty)
-    }
-}
-
 impl<'tcx> QueryDescription for queries::is_object_safe<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("determine object safety of trait `{}`", tcx.item_path_str(def_id))
@@ -501,9 +516,50 @@ impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::is_compiler_builtins<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate is_compiler_builtins".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::has_global_allocator<'tcx> {
+    fn describe(_: TyCtxt, _: DefId) -> String {
+        "checking if the crate has_global_allocator".to_string()
+    }
+}
+
 impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         "getting crate's ExternCrateData".to_string()
+    }
+}
+
+impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("computing the lint levels for items in this crate")
+    }
+}
+
+// If enabled, send a message to the profile-queries thread
+macro_rules! profq_msg {
+    ($tcx:expr, $msg:expr) => {
+        if cfg!(debug_assertions) {
+            if  $tcx.sess.profile_queries() {
+                profq_msg($msg)
+            }
+        }
+    }
+}
+
+// If enabled, format a key using its debug string, which can be
+// expensive to compute (in terms of time).
+macro_rules! profq_key {
+    ($tcx:expr, $key:expr) => {
+        if cfg!(debug_assertions) {
+            if $tcx.sess.profile_queries_and_keys() {
+                Some(format!("{:?}", $key))
+            } else { None }
+        } else { None }
     }
 }
 
@@ -533,10 +589,23 @@ macro_rules! define_maps {
             $($(#[$attr])* $name($K)),*
         }
 
+        #[allow(bad_style)]
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub enum QueryMsg {
+            $($name(Option<String>)),*
+        }
+
         impl<$tcx> Query<$tcx> {
             pub fn describe(&self, tcx: TyCtxt) -> String {
-                match *self {
-                    $(Query::$name(key) => queries::$name::describe(tcx, key)),*
+                let (r, name) = match *self {
+                    $(Query::$name(key) => {
+                        (queries::$name::describe(tcx, key), stringify!($name))
+                    })*
+                };
+                if tcx.sess.verbose() {
+                    format!("{} [{}]", r, name)
+                } else {
+                    r
                 }
             }
         }
@@ -550,18 +619,19 @@ macro_rules! define_maps {
             })*
         }
 
-        $(impl<$tcx> DepTrackingMapConfig for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
+        }
 
+        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
             #[allow(unused)]
-            fn to_dep_node(tcx: TyCtxt, key: &$K) -> DepNode {
+            fn to_dep_node(tcx: TyCtxt<'a, $tcx, 'lcx>, key: &$K) -> DepNode {
                 use dep_graph::DepConstructor::*;
 
                 DepNode::new(tcx, $node(*key))
             }
-        }
-        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
+
             fn try_get_with<F, R>(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                   mut span: Span,
                                   key: $K,
@@ -574,40 +644,101 @@ macro_rules! define_maps {
                        key,
                        span);
 
-                if let Some(result) = tcx.maps.$name.borrow().map.get(&key) {
-                    return Ok(f(result));
+                profq_msg!(tcx,
+                    ProfileQueriesMsg::QueryBegin(
+                        span.clone(),
+                        QueryMsg::$name(profq_key!(tcx, key))
+                    )
+                );
+
+                if let Some(value) = tcx.maps.$name.borrow().map.get(&key) {
+                    if let Some(ref d) = value.diagnostics {
+                        if !d.emitted_diagnostics.get() {
+                            d.emitted_diagnostics.set(true);
+                            let handle = tcx.sess.diagnostic();
+                            for diagnostic in d.diagnostics.iter() {
+                                DiagnosticBuilder::new_diagnostic(handle, diagnostic.clone())
+                                    .emit();
+                            }
+                        }
+                    }
+                    profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                    tcx.dep_graph.read_index(value.index);
+                    return Ok(f(&value.value));
                 }
+                // else, we are going to run the provider:
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
 
                 // FIXME(eddyb) Get more valid Span's on queries.
-                // def_span guard is necesary to prevent a recursive loop,
+                // def_span guard is necessary to prevent a recursive loop,
                 // default_span calls def_span query internally.
                 if span == DUMMY_SP && stringify!($name) != "def_span" {
                     span = key.default_span(tcx)
                 }
 
-                let _task = tcx.dep_graph.in_task(Self::to_dep_node(tcx, &key));
+                let res = tcx.cycle_check(span, Query::$name(key), || {
+                    let dep_node = Self::to_dep_node(tcx, &key);
 
-                let result = tcx.cycle_check(span, Query::$name(key), || {
-                    let provider = tcx.maps.providers[key.map_crate()].$name;
-                    provider(tcx.global_tcx(), key)
+                    tcx.sess.diagnostic().track_diagnostics(|| {
+                        if dep_node.kind.is_anon() {
+                            tcx.dep_graph.with_anon_task(dep_node.kind, || {
+                                let provider = tcx.maps.providers[key.map_crate()].$name;
+                                provider(tcx.global_tcx(), key)
+                            })
+                        } else {
+                            fn run_provider<'a, 'tcx, 'lcx>(tcx: TyCtxt<'a, 'tcx, 'lcx>,
+                                                            key: $K)
+                                                            -> $V {
+                                let provider = tcx.maps.providers[key.map_crate()].$name;
+                                provider(tcx.global_tcx(), key)
+                            }
+
+                            tcx.dep_graph.with_task(dep_node, tcx, key, run_provider)
+                        }
+                    })
                 })?;
+                profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
+                let ((result, dep_node_index), diagnostics) = res;
 
-                Ok(f(tcx.maps.$name.borrow_mut().map.entry(key).or_insert(result)))
+                tcx.dep_graph.read_index(dep_node_index);
+
+                let value = QueryValue {
+                    value: result,
+                    index: dep_node_index,
+                    diagnostics: if diagnostics.len() == 0 {
+                        None
+                    } else {
+                        Some(Box::new(QueryDiagnostics {
+                            diagnostics,
+                            emitted_diagnostics: Cell::new(true),
+                        }))
+                    },
+                };
+
+                Ok(f(&tcx.maps
+                         .$name
+                         .borrow_mut()
+                         .map
+                         .entry(key)
+                         .or_insert(value)
+                         .value))
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
-                           -> Result<$V, CycleError<'a, $tcx>> {
-                // We register the `read` here, but not in `force`, since
-                // `force` does not give access to the value produced (and thus
-                // we actually don't read it).
-                tcx.dep_graph.read(Self::to_dep_node(tcx, &key));
-                Self::try_get_with(tcx, span, key, Clone::clone)
+                           -> Result<$V, DiagnosticBuilder<'a>> {
+                match Self::try_get_with(tcx, span, key, Clone::clone) {
+                    Ok(e) => Ok(e),
+                    Err(e) => Err(tcx.report_cycle(e)),
+                }
             }
 
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
+                // Ignore dependencies, since we not reading the computed value
+                let _task = tcx.dep_graph.in_ignore();
+
                 match Self::try_get_with(tcx, span, key, |_| ()) {
                     Ok(()) => {}
-                    Err(e) => tcx.report_cycle(e)
+                    Err(e) => tcx.report_cycle(e).emit(),
                 }
             }
         })*
@@ -644,8 +775,8 @@ macro_rules! define_maps {
         impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
             $($(#[$attr])*
             pub fn $name(self, key: $K) -> $V {
-                queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|e| {
-                    self.report_cycle(e);
+                queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|mut e| {
+                    e.emit();
                     Value::from_cycle_error(self.global_tcx())
                 })
             })*
@@ -796,12 +927,12 @@ macro_rules! define_provider_struct {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    [] type_of: ItemSignature(DefId) -> Ty<'tcx>,
+    [] type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
-    [] generics_of: ItemSignature(DefId) -> &'tcx ty::Generics,
-    [] predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
+    [] predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -809,15 +940,15 @@ define_maps! { <'tcx>
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    [] super_predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    [] super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
     [] type_param_predicates: type_param_predicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
-    [] trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
-    [] adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
+    [] trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
+    [] adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
@@ -829,7 +960,7 @@ define_maps! { <'tcx>
     [] is_foreign_item: IsForeignItem(DefId) -> bool,
 
     /// True if this is a default impl (aka impl Foo for ..)
-    [] is_default_impl: ItemSignature(DefId) -> bool,
+    [] is_default_impl: IsDefaultImpl(DefId) -> bool,
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
@@ -845,8 +976,8 @@ define_maps! { <'tcx>
     /// Maps from a trait item to the trait item "descriptor"
     [] associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
-    [] impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
-    [] impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
+    [] impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
+    [] impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
@@ -861,40 +992,46 @@ define_maps! { <'tcx>
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
-    [] mir_const_qualif: Mir(DefId) -> u8,
+    [] mir_const_qualif: MirConstQualif(DefId) -> u8,
 
     /// Fetch the MIR for a given def-id up till the point where it is
     /// ready for const evaluation.
     ///
     /// See the README for the `mir` module for details.
-    [] mir_const: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-    [] mir_validated: Mir(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
-    [] optimized_mir: Mir(DefId) -> &'tcx mir::Mir<'tcx>,
+    [] optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
 
     /// Type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    [] closure_kind: ItemSignature(DefId) -> ty::ClosureKind,
+    [] closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
 
     /// The signature of functions and closures.
-    [] fn_sig: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
+    [] fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
+
+    /// Records the signature of each generator. The def ID is the ID of the
+    /// expression defining the closure.
+    [] generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    [] coerce_unsized_info: ItemSignature(DefId)
+    [] coerce_unsized_info: CoerceUnsizedInfo(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
     [] typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
 
     [] typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
-    [] has_typeck_tables: TypeckTables(DefId) -> bool,
+    [] has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
     [] coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
     [] borrowck: BorrowCheck(DefId) -> (),
+    // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
+    [] mir_borrowck: MirBorrowCheck(DefId) -> (),
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
@@ -904,11 +1041,11 @@ define_maps! { <'tcx>
     /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
+    [] crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum) -> (),
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
-    [] const_eval: const_eval_dep_node((DefId, &'tcx Substs<'tcx>))
+    [] const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
         -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
@@ -939,10 +1076,7 @@ define_maps! { <'tcx>
     [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] is_mir_available: IsMirAvailable(DefId) -> bool,
 
-    [] trait_impls_of: TraitImpls(DefId) -> ty::trait_def::TraitImpls,
-    // Note that TraitDef::for_each_relevant_impl() will do type simplication for you.
-    [] relevant_trait_impls_for: relevant_trait_impls_for((DefId, SimplifiedType))
-        -> ty::trait_def::TraitImpls,
+    [] trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
     [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
     [] is_object_safe: ObjectSafety(DefId) -> bool,
 
@@ -968,85 +1102,84 @@ define_maps! { <'tcx>
 
     [] is_allocator: IsAllocator(DefId) -> bool,
     [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
+    [] is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
+    [] has_global_allocator: HasGlobalAllocator(DefId) -> bool,
 
     [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
+
+    [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 }
 
-fn type_param_predicates((item_id, param_id): (DefId, DefId)) -> DepConstructor {
+fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::TypeParamPredicates {
         item_id,
         param_id
     }
 }
 
-fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepConstructor {
+fn coherent_trait_dep_node<'tcx>((_, def_id): (CrateNum, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::CoherenceCheckTrait(def_id)
 }
 
-fn crate_inherent_impls_dep_node(_: CrateNum) -> DepConstructor {
+fn crate_inherent_impls_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Coherence
 }
 
-fn reachability_dep_node(_: CrateNum) -> DepConstructor {
+fn inherent_impls_overlap_check_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::CoherenceInherentImplOverlapCheck
+}
+
+fn reachability_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::Reachability
 }
 
-fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepConstructor {
-    instance.dep_node()
+fn mir_shim_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::MirShim {
+        instance_def
+    }
 }
 
-fn symbol_name_dep_node(instance: ty::Instance) -> DepConstructor {
-    // symbol_name uses the substs only to traverse them to find the
-    // hash, and that does not create any new dep-nodes.
-    DepConstructor::SymbolName(instance.def.def_id())
+fn symbol_name_dep_node<'tcx>(instance: ty::Instance<'tcx>) -> DepConstructor<'tcx> {
+    DepConstructor::InstanceSymbolName { instance }
 }
 
-fn typeck_item_bodies_dep_node(_: CrateNum) -> DepConstructor {
+fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::TypeckBodiesKrate
 }
 
-fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepConstructor {
-    DepConstructor::ConstEval(def_id)
+fn const_eval_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
+                             -> DepConstructor<'tcx> {
+    DepConstructor::ConstEval
 }
 
-fn mir_keys(_: CrateNum) -> DepConstructor {
+fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::MirKeys
 }
 
-fn crate_variances(_: CrateNum) -> DepConstructor {
+fn crate_variances<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::CrateVariances
 }
 
-fn relevant_trait_impls_for((def_id, _): (DefId, SimplifiedType)) -> DepConstructor {
-    DepConstructor::TraitImpls(def_id)
+fn is_copy_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsCopy
 }
 
-fn is_copy_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsCopy(def_id)
+fn is_sized_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsSized
 }
 
-fn is_sized_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsSized(def_id)
+fn is_freeze_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsFreeze
 }
 
-fn is_freeze_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::IsFreeze(def_id)
+fn needs_drop_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::NeedsDrop
 }
 
-fn needs_drop_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::NeedsDrop(def_id)
+fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::Layout
 }
 
-fn layout_dep_node<'tcx>(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor {
-    let def_id = ty::item_path::characteristic_def_id_of_type(key.value)
-        .unwrap_or(DefId::local(CRATE_DEF_INDEX));
-    DepConstructor::Layout(def_id)
+fn lint_levels<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::LintLevels
 }

@@ -13,7 +13,7 @@
 //! For now, this module is limited to extracting file descriptors,
 //! but its functionality will grow over time.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```no_run
 //! use std::fs::File;
@@ -28,11 +28,13 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(cfg(target_os = "redox"))]
 
 pub mod ffi;
 pub mod fs;
 pub mod io;
 pub mod process;
+pub mod thread;
 
 /// A prelude for conveniently writing platform-specific code.
 ///
@@ -45,6 +47,8 @@ pub mod prelude {
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::fs::{FileTypeExt, PermissionsExt, OpenOptionsExt, MetadataExt};
+    #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
+    pub use super::thread::JoinHandleExt;
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::process::{CommandExt, ExitStatusExt};
 }

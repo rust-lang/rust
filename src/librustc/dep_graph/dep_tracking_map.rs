@@ -12,10 +12,9 @@ use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use ty::TyCtxt;
 use util::common::MemoizationMap;
 
-use super::{DepNode, DepGraph};
+use super::{DepKind, DepNodeIndex, DepGraph};
 
 /// A DepTrackingMap offers a subset of the `Map` API and ensures that
 /// we make calls to `read` and `write` as appropriate. We key the
@@ -23,13 +22,13 @@ use super::{DepNode, DepGraph};
 pub struct DepTrackingMap<M: DepTrackingMapConfig> {
     phantom: PhantomData<M>,
     graph: DepGraph,
-    map: FxHashMap<M::Key, M::Value>,
+    map: FxHashMap<M::Key, (M::Value, DepNodeIndex)>,
 }
 
 pub trait DepTrackingMapConfig {
     type Key: Eq + Hash + Clone;
     type Value: Clone;
-    fn to_dep_node(tcx: TyCtxt, key: &Self::Key) -> DepNode;
+    fn to_dep_kind() -> DepKind;
 }
 
 impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
@@ -39,27 +38,6 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
             graph,
             map: FxHashMap(),
         }
-    }
-
-    /// Registers a (synthetic) read from the key `k`. Usually this
-    /// is invoked automatically by `get`.
-    fn read(&self, tcx: TyCtxt, k: &M::Key) {
-        let dep_node = M::to_dep_node(tcx, k);
-        self.graph.read(dep_node);
-    }
-
-    pub fn get(&self, tcx: TyCtxt, k: &M::Key) -> Option<&M::Value> {
-        self.read(tcx, k);
-        self.map.get(k)
-    }
-
-    pub fn contains_key(&self, tcx: TyCtxt, k: &M::Key) -> bool {
-        self.read(tcx, k);
-        self.map.contains_key(k)
-    }
-
-    pub fn keys(&self) -> Vec<M::Key> {
-        self.map.keys().cloned().collect()
     }
 }
 
@@ -98,22 +76,22 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// The key is the line marked `(*)`: the closure implicitly
     /// accesses the body of the item `item`, so we register a read
     /// from `Hir(item_def_id)`.
-    fn memoize<OP>(&self, tcx: TyCtxt, key: M::Key, op: OP) -> M::Value
+    fn memoize<OP>(&self, key: M::Key, op: OP) -> M::Value
         where OP: FnOnce() -> M::Value
     {
         let graph;
         {
             let this = self.borrow();
-            if let Some(result) = this.map.get(&key) {
-                this.read(tcx, &key);
+            if let Some(&(ref result, dep_node)) = this.map.get(&key) {
+                this.graph.read_index(dep_node);
                 return result.clone();
             }
             graph = this.graph.clone();
         }
 
-        let _task = graph.in_task(M::to_dep_node(tcx, &key));
-        let result = op();
-        self.borrow_mut().map.insert(key, result.clone());
+        let (result, dep_node) = graph.with_anon_task(M::to_dep_kind(), op);
+        self.borrow_mut().map.insert(key, (result.clone(), dep_node));
+        graph.read_index(dep_node);
         result
     }
 }

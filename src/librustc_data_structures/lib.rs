@@ -16,9 +16,6 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_data_structures"]
-#![crate_type = "dylib"]
-#![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
@@ -34,10 +31,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(discriminant_value)]
 #![feature(specialization)]
-#![feature(manually_drop)]
-
-#![cfg_attr(stage0, feature(associated_consts))]
-#![cfg_attr(stage0, feature(struct_field_attributes))]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -56,11 +49,9 @@ pub mod accumulate_vec;
 pub mod small_vec;
 pub mod base_n;
 pub mod bitslice;
-pub mod blake2b;
 pub mod bitvec;
-pub mod fmt_wrap;
+pub mod blake2b;
 pub mod graph;
-pub mod ivar;
 pub mod indexed_set;
 pub mod indexed_vec;
 pub mod obligation_forest;
@@ -69,7 +60,6 @@ pub mod snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
 pub mod unify;
-pub mod fnv;
 pub mod fx;
 pub mod tuple_slice;
 pub mod veccell;

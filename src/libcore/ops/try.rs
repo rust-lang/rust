@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A trait for customizing the behaviour of the `?` operator.
+/// A trait for customizing the behavior of the `?` operator.
 ///
 /// A type implementing `Try` is one that has a canonical way to view it
 /// in terms of a success/failure dichotomy.  This trait allows both
@@ -16,7 +16,7 @@
 /// creating a new instance from a success or failure value.
 #[unstable(feature = "try_trait", issue = "42327")]
 #[rustc_on_unimplemented = "the `?` operator can only be used in a function that returns `Result` \
-                            (or another type that implements `std::ops::Try`)"]
+                            (or another type that implements `{Try}`)"]
 pub trait Try {
     /// The type of this value when viewed as successful.
     #[unstable(feature = "try_trait", issue = "42327")]

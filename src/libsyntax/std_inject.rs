@@ -28,6 +28,7 @@ fn ignored_span(sp: Span) -> Span {
             format: MacroAttribute(Symbol::intern("std_inject")),
             span: None,
             allow_internal_unstable: true,
+            allow_internal_unsafe: false,
         }
     });
     Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..sp }
@@ -60,6 +61,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
         ident: ast::Ident::from_str(name),
         id: ast::DUMMY_NODE_ID,
         span: DUMMY_SP,
+        tokens: None,
     }));
 
     let span = ignored_span(DUMMY_SP);
@@ -70,18 +72,19 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<Strin
             tokens: TokenStream::empty(),
             id: attr::mk_attr_id(),
             is_sugared_doc: false,
-            span: span,
+            span,
         }],
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::Use(P(codemap::dummy_spanned(ast::ViewPathGlob(ast::Path {
             segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
                 ast::PathSegment::from_ident(ast::Ident::from_str(name), DUMMY_SP)
             }).collect(),
-            span: span,
+            span,
         })))),
         id: ast::DUMMY_NODE_ID,
         ident: keywords::Invalid.ident(),
-        span: span,
+        span,
+        tokens: None,
     }));
 
     krate

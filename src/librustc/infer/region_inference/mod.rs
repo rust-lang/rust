@@ -128,7 +128,7 @@ pub enum UndoLogEntry<'tcx> {
     /// We added the given `given`
     AddGiven(Region<'tcx>, ty::RegionVid),
 
-    /// We added a GLB/LUB "combinaton variable"
+    /// We added a GLB/LUB "combination variable"
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 
     /// During skolemization, we sometimes purge entries from the undo
@@ -1550,8 +1550,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(
-                p.trait_ref.clone(), p.item_name(tcx)),
+            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
         }
     }
 }

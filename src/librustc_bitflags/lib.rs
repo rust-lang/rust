@@ -9,12 +9,8 @@
 // except according to those terms.
 
 
-#![crate_name = "rustc_bitflags"]
-#![crate_type = "rlib"]
 #![no_std]
 #![deny(warnings)]
-
-#![cfg_attr(stage0, feature(associated_consts))]
 
 //! A typesafe bitmask flag generator.
 

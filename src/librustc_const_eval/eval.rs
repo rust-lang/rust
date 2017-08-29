@@ -21,11 +21,12 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
-use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::DefIdMap;
 
+use syntax::abi::Abi;
 use syntax::ast;
+use syntax::attr;
 use rustc::hir::{self, Expr};
 use syntax_pos::Span;
 
@@ -48,24 +49,21 @@ macro_rules! math {
     }
 }
 
-/// * `def_id` is the id of the constant.
-/// * `substs` is the monomorphized substitutions for the expression.
-///
-/// `substs` is optional and is used for associated constants.
-/// This generally happens in late/trans const evaluation.
+/// * `DefId` is the id of the constant.
+/// * `Substs` is the monomorphized substitutions for the expression.
 pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    def_id: DefId,
-                                    substs: &'tcx Substs<'tcx>)
+                                    key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                                     -> Option<(DefId, &'tcx Substs<'tcx>)> {
+    let (def_id, _) = key.value;
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         match tcx.hir.find(node_id) {
             Some(hir_map::NodeTraitItem(_)) => {
                 // If we have a trait item and the substitutions for it,
                 // `resolve_trait_associated_const` will select an impl
                 // or the default.
-                resolve_trait_associated_const(tcx, def_id, substs)
+                resolve_trait_associated_const(tcx, key)
             }
-            _ => Some((def_id, substs))
+            _ => Some(key.value)
         }
     } else {
         match tcx.describe_def(def_id) {
@@ -75,12 +73,12 @@ pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
                 if tcx.trait_of_item(def_id).is_some() {
-                    resolve_trait_associated_const(tcx, def_id, substs)
+                    resolve_trait_associated_const(tcx, key)
                 } else {
-                    Some((def_id, substs))
+                    Some(key.value)
                 }
             }
-            _ => Some((def_id, substs))
+            _ => Some(key.value)
         }
     }
 }
@@ -88,22 +86,27 @@ pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 pub struct ConstContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     substs: &'tcx Substs<'tcx>,
     fn_args: Option<DefIdMap<ConstVal<'tcx>>>
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
-    pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::TypeckTables<'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+               tables: &'a ty::TypeckTables<'tcx>)
+               -> Self {
         ConstContext {
-            tcx: tcx,
-            tables: tables,
-            substs: tcx.intern_substs(&[]),
+            tcx,
+            param_env: param_env_and_substs.param_env,
+            tables,
+            substs: param_env_and_substs.value,
             fn_args: None
         }
     }
 
     /// Evaluate a constant expression in a context where the expression isn't
-    /// guaranteed to be evaluatable.
+    /// guaranteed to be evaluable.
     pub fn eval(&self, e: &Expr) -> EvalResult<'tcx> {
         if self.tables.tainted_by_errors {
             signal!(e, TypeckError);
@@ -117,14 +120,7 @@ type CastResult<'tcx> = Result<ConstVal<'tcx>, ErrKind<'tcx>>;
 fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                                      e: &Expr) -> EvalResult<'tcx> {
     let tcx = cx.tcx;
-    let ety = cx.tables.expr_ty(e);
-
-    // Avoid applying substitutions if they're empty, that'd ICE.
-    let ety = if cx.substs.is_empty() {
-        ety
-    } else {
-        ety.subst(tcx, cx.substs)
-    };
+    let ety = cx.tables.expr_ty(e).subst(tcx, cx.substs);
 
     let result = match e.node {
       hir::ExprUnary(hir::UnNeg, ref inner) => {
@@ -268,14 +264,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprCast(ref base, _) => {
         let base_val = cx.eval(base)?;
-        let base_ty = cx.tables.expr_ty(base);
-
-        // Avoid applying substitutions if they're empty, that'd ICE.
-        let base_ty = if cx.substs.is_empty() {
-            base_ty
-        } else {
-            base_ty.subst(tcx, cx.substs)
-        };
+        let base_ty = cx.tables.expr_ty(base).subst(tcx, cx.substs);
         if ety == base_ty {
             base_val
         } else {
@@ -286,19 +275,11 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprPath(ref qpath) => {
-        let substs = cx.tables.node_substs(e.id);
-
-        // Avoid applying substitutions if they're empty, that'd ICE.
-        let substs = if cx.substs.is_empty() {
-            substs
-        } else {
-            substs.subst(tcx, cx.substs)
-        };
-
-          match cx.tables.qpath_def(qpath, e.id) {
+        let substs = cx.tables.node_substs(e.hir_id).subst(tcx, cx.substs);
+          match cx.tables.qpath_def(qpath, e.hir_id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
-                    match tcx.at(e.span).const_eval((def_id, substs)) {
+                    match tcx.at(e.span).const_eval(cx.param_env.and((def_id, substs))) {
                         Ok(val) => val,
                         Err(ConstEvalErr { kind: TypeckError, .. }) => {
                             signal!(e, TypeckError);
@@ -340,6 +321,27 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
               _ => signal!(e, TypeckError),
           };
 
+          if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
+            let layout_of = |ty: Ty<'tcx>| {
+                ty.layout(tcx, cx.param_env).map_err(|err| {
+                    ConstEvalErr { span: e.span, kind: LayoutError(err) }
+                })
+            };
+            match &tcx.item_name(def_id).as_str()[..] {
+                "size_of" => {
+                    let size = layout_of(substs.type_at(0))?.size(tcx);
+                    return Ok(Integral(Usize(ConstUsize::new(size.bytes(),
+                        tcx.sess.target.uint_type).unwrap())));
+                }
+                "min_align_of" => {
+                    let align = layout_of(substs.type_at(0))?.align(tcx);
+                    return Ok(Integral(Usize(ConstUsize::new(align.abi(),
+                        tcx.sess.target.uint_type).unwrap())));
+                }
+                _ => signal!(e, TypeckError)
+            }
+          }
+
           let body = if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
             if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
                 if fn_like.constness() == hir::Constness::Const {
@@ -374,9 +376,10 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           }
           debug!("const call({:?})", call_args);
           let callee_cx = ConstContext {
-            tcx: tcx,
+            tcx,
+            param_env: cx.param_env,
             tables: tcx.typeck_tables_of(def_id),
-            substs: substs,
+            substs,
             fn_args: Some(call_args)
           };
           callee_cx.eval(&body.value)?
@@ -474,9 +477,10 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
 }
 
 fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                            def_id: DefId,
-                                            substs: &'tcx Substs<'tcx>)
+                                            key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                                             -> Option<(DefId, &'tcx Substs<'tcx>)> {
+    let param_env = key.param_env;
+    let (def_id, substs) = key.value;
     let trait_item = tcx.associated_item(def_id);
     let trait_id = trait_item.container.id();
     let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, substs));
@@ -484,7 +488,6 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            trait_ref);
 
     tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                                  param_env,
@@ -503,10 +506,8 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         // NOTE: this code does not currently account for specialization, but when
-        // it does so, it should hook into the Reveal to determine when the
-        // constant should resolve; this will also require plumbing through to this
-        // function whether we are in "trans mode" to pick the right Reveal
-        // when constructing the inference context above.
+        // it does so, it should hook into the param_env.reveal to determine when the
+        // constant should resolve.
         match selection {
             traits::VtableImpl(ref impl_data) => {
                 let name = trait_item.name;
@@ -515,18 +516,22 @@ fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 match ac {
                     // FIXME(eddyb) Use proper Instance resolution to
                     // get the correct Substs returned from here.
-                    Some(ic) => Some((ic.def_id, Substs::empty())),
+                    Some(ic) => {
+                        let substs = Substs::identity_for_item(tcx, ic.def_id);
+                        Some((ic.def_id, substs))
+                    }
                     None => {
                         if trait_item.defaultness.has_value() {
-                            Some((def_id, substs))
+                            Some(key.value)
                         } else {
                             None
                         }
                     }
                 }
             }
+            traits::VtableParam(_) => None,
             _ => {
-                bug!("resolve_trait_associated_const: unexpected vtable type")
+                bug!("resolve_trait_associated_const: unexpected vtable type {:?}", selection)
             }
         }
     })
@@ -556,8 +561,15 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::Us) => {
             Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.uint_type))))
         },
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(F64(val.to_f64()))),
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(F32(val.to_f32()))),
+        ty::TyFloat(fty) => {
+            if let Some(i) = val.to_u128() {
+                Ok(Float(ConstFloat::from_u128(i, fty)))
+            } else {
+                // The value must be negative, go through signed integers.
+                let i = val.to_u128_unchecked() as i128;
+                Ok(Float(ConstFloat::from_i128(i, fty)))
+            }
+        }
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
         ty::TyChar => match val {
             U8(u) => Ok(Char(u as char)),
@@ -570,30 +582,25 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               val: ConstFloat,
                               ty: Ty<'tcx>) -> CastResult<'tcx> {
+    let int_width = |ty| {
+        ty::layout::Integer::from_attr(tcx, ty).size().bits() as usize
+    };
     match ty.sty {
-        ty::TyInt(_) | ty::TyUint(_) => {
-            let i = match val {
-                F32(f) if f >= 0.0 => U128(f as u128),
-                F64(f) if f >= 0.0 => U128(f as u128),
-
-                F32(f) => I128(f as i128),
-                F64(f) => I128(f as i128)
-            };
-
-            if let (I128(_), &ty::TyUint(_)) = (i, &ty.sty) {
-                return Err(CannotCast);
+        ty::TyInt(ity) => {
+            if let Some(i) = val.to_i128(int_width(attr::SignedInt(ity))) {
+                cast_const_int(tcx, I128(i), ty)
+            } else {
+                Err(CannotCast)
             }
-
-            cast_const_int(tcx, i, ty)
         }
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(F64(match val {
-            F32(f) => f as f64,
-            F64(f) => f
-        }))),
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(F32(match val {
-            F64(f) => f as f32,
-            F32(f) => f
-        }))),
+        ty::TyUint(uty) => {
+            if let Some(i) = val.to_u128(int_width(attr::UnsignedInt(uty))) {
+                cast_const_int(tcx, U128(i), ty)
+            } else {
+                Err(CannotCast)
+            }
+        }
+        ty::TyFloat(fty) => Ok(Float(val.convert(fty))),
         _ => Err(CannotCast),
     }
 }
@@ -687,11 +694,7 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
 
 fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
                      -> Result<ConstFloat, ErrKind<'tcx>> {
-    let val = match fty {
-        ast::FloatTy::F32 => num.parse::<f32>().map(F32),
-        ast::FloatTy::F64 => num.parse::<f64>().map(F64)
-    };
-    val.map_err(|_| {
+    ConstFloat::from_str(num, fty).map_err(|_| {
         // FIXME(#31407) this is only necessary because float parsing is buggy
         UnimplementedConstVal("could not evaluate float literal (see issue #31407)")
     })
@@ -755,29 +758,23 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                        (def_id, substs): (DefId, &'tcx Substs<'tcx>))
+                        key: ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
                         -> EvalResult<'tcx> {
-    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, def_id, substs) {
+    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, key) {
         resolved
     } else {
         return Err(ConstEvalErr {
-            span: tcx.def_span(def_id),
+            span: tcx.def_span(key.value.0),
             kind: TypeckError
         });
     };
 
-    let cx = ConstContext {
-        tcx,
-        tables: tcx.typeck_tables_of(def_id),
-        substs: substs,
-        fn_args: None
-    };
-
+    let tables = tcx.typeck_tables_of(def_id);
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
         tcx.sess.cstore.item_body(tcx, def_id)
     };
-    cx.eval(&body.value)
+    ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
 }

@@ -14,7 +14,7 @@
 //! representation of the DAG):
 //!
 //! - SCCs, in the form of a union-find repr that can convert each node to
-//!   its *cycle head* (an arbitrarly chosen representative from the cycle)
+//!   its *cycle head* (an arbitrarily chosen representative from the cycle)
 //! - a vector of *leaf nodes*, just a convenience
 //! - a vector of *parents* for each node (in some cases, nodes have no parents,
 //!   or their parent is another member of same cycle; in that case, the vector

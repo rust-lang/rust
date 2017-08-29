@@ -47,22 +47,6 @@ fn post_order_walk<G: ControlFlowGraph>(graph: &G,
     result.push(node);
 }
 
-pub fn pre_order_walk<G: ControlFlowGraph>(graph: &G,
-                                           node: G::Node,
-                                           result: &mut Vec<G::Node>,
-                                           visited: &mut IndexVec<G::Node, bool>) {
-    if visited[node] {
-        return;
-    }
-    visited[node] = true;
-
-    result.push(node);
-
-    for successor in graph.successors(node) {
-        pre_order_walk(graph, successor, result, visited);
-    }
-}
-
 pub fn reverse_post_order<G: ControlFlowGraph>(graph: &G, start_node: G::Node) -> Vec<G::Node> {
     let mut vec = post_order_from(graph, start_node);
     vec.reverse();

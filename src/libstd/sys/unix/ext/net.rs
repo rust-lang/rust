@@ -12,21 +12,32 @@
 
 //! Unix-specific networking functionality
 
+#[cfg(unix)]
 use libc;
+
+// FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
+#[cfg(not(unix))]
+mod libc {
+    pub use libc::c_int;
+    pub type socklen_t = u32;
+    pub struct sockaddr;
+    #[derive(Clone)]
+    pub struct sockaddr_un;
+}
 
 use ascii;
 use ffi::OsStr;
 use fmt;
 use io::{self, Initializer};
 use mem;
-use net::Shutdown;
+use net::{self, Shutdown};
 use os::unix::ffi::OsStrExt;
 use os::unix::io::{RawFd, AsRawFd, FromRawFd, IntoRawFd};
 use path::Path;
 use time::Duration;
-use sys::cvt;
+use sys::{self, cvt};
 use sys::net::Socket;
-use sys_common::{AsInner, FromInner, IntoInner};
+use sys_common::{self, AsInner, FromInner, IntoInner};
 
 #[cfg(any(target_os = "linux", target_os = "android",
           target_os = "dragonfly", target_os = "freebsd",
@@ -130,8 +141,8 @@ impl SocketAddr {
         }
 
         Ok(SocketAddr {
-            addr: addr,
-            len: len,
+            addr,
+            len,
         })
     }
 
@@ -327,7 +338,7 @@ impl UnixStream {
     ///
     /// The returned `UnixStream` is a reference to the same stream that this
     /// object references. Both handles will read and write the same stream of
-    /// data, and options set on one stream will be propogated to the other
+    /// data, and options set on one stream will be propagated to the other
     /// stream.
     ///
     /// # Examples
@@ -577,6 +588,64 @@ impl IntoRawFd for UnixStream {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for net::TcpStream {
+    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for net::TcpListener {
+    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for net::UdpSocket {
+    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+}
+
+#[stable(feature = "from_raw_os", since = "1.1.0")]
+impl FromRawFd for net::TcpStream {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
+        let socket = sys::net::Socket::from_inner(fd);
+        net::TcpStream::from_inner(sys_common::net::TcpStream::from_inner(socket))
+    }
+}
+
+#[stable(feature = "from_raw_os", since = "1.1.0")]
+impl FromRawFd for net::TcpListener {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
+        let socket = sys::net::Socket::from_inner(fd);
+        net::TcpListener::from_inner(sys_common::net::TcpListener::from_inner(socket))
+    }
+}
+
+#[stable(feature = "from_raw_os", since = "1.1.0")]
+impl FromRawFd for net::UdpSocket {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
+        let socket = sys::net::Socket::from_inner(fd);
+        net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(socket))
+    }
+}
+
+#[stable(feature = "into_raw_os", since = "1.4.0")]
+impl IntoRawFd for net::TcpStream {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+#[stable(feature = "into_raw_os", since = "1.4.0")]
+impl IntoRawFd for net::TcpListener {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+#[stable(feature = "into_raw_os", since = "1.4.0")]
+impl IntoRawFd for net::UdpSocket {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+
 /// A structure representing a Unix domain socket server.
 ///
 /// # Examples
@@ -655,7 +724,7 @@ impl UnixListener {
     /// Accepts a new incoming connection to this listener.
     ///
     /// This function will block the calling thread until a new Unix connection
-    /// is established. When established, the corersponding [`UnixStream`] and
+    /// is established. When established, the corresponding [`UnixStream`] and
     /// the remote peer's address will be returned.
     ///
     /// [`UnixStream`]: ../../../../std/os/unix/net/struct.UnixStream.html

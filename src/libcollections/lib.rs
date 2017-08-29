@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "collections"]
-#![crate_type = "rlib"]
 #![allow(unused_attributes)]
 #![unstable(feature = "collections",
             reason = "this library is unlikely to be stabilized in its current \

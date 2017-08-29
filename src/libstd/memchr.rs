@@ -20,7 +20,7 @@
 /// magnitude faster than `haystack.iter().position(|&b| b == needle)`.
 /// (See benchmarks.)
 ///
-/// # Example
+/// # Examples
 ///
 /// This shows how to find the first position of a byte in a byte string.
 ///
@@ -40,7 +40,7 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 /// Returns the index corresponding to the last occurrence of `needle` in
 /// `haystack`, or `None` if one is not found.
 ///
-/// # Example
+/// # Examples
 ///
 /// This shows how to find the last position of a byte in a byte string.
 ///

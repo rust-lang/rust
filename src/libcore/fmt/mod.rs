@@ -81,6 +81,22 @@ pub type Result = result::Result<(), Error>;
 /// This type does not support transmission of an error other than that an error
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
+///
+/// An important thing to remember is that the type `fmt::Error` should not be
+/// confused with `std::io::Error` or `std::error::Error`, which you may also
+/// have in scope.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::fmt::{self, write};
+///
+/// let mut output = String::new();
+/// match write(&mut output, format_args!("Hello {}!", "world")) {
+///     Err(fmt::Error) => panic!("An error occurred"),
+///     _ => (),
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Error;
@@ -318,9 +334,9 @@ impl<'a> Arguments<'a> {
     pub fn new_v1(pieces: &'a [&'a str],
                   args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments {
-            pieces: pieces,
+            pieces,
             fmt: None,
-            args: args
+            args,
         }
     }
 
@@ -337,9 +353,9 @@ impl<'a> Arguments<'a> {
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
         Arguments {
-            pieces: pieces,
+            pieces,
             fmt: Some(fmt),
-            args: args
+            args,
         }
     }
 
@@ -1331,7 +1347,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
         builders::debug_struct_new(self, name)
     }
@@ -1359,7 +1374,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(10, "Hello World".to_string()));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
     }
@@ -1384,7 +1398,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
         builders::debug_list_new(self)
     }
@@ -1409,7 +1422,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
     }
@@ -1434,7 +1446,6 @@ impl<'a> Formatter<'a> {
     /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
     }
@@ -1627,13 +1638,13 @@ macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<$($name:Debug),*> Debug for ($($name,)*) {
+        impl<$($name:Debug),*> Debug for ($($name,)*) where last_type!($($name,)+): ?Sized {
             #[allow(non_snake_case, unused_assignments, deprecated)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
                 $(
-                    builder.field($name);
+                    builder.field(&$name);
                 )*
 
                 builder.finish()
@@ -1641,6 +1652,11 @@ macro_rules! tuple {
         }
         peel! { $($name,)* }
     )
+}
+
+macro_rules! last_type {
+    ($a:ident,) => { $a };
+    ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }

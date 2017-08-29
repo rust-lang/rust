@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use dep_graph::DepConstructor;
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs};
 use util::ppaux;
@@ -25,15 +24,22 @@ pub struct Instance<'tcx> {
 pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
-    // <fn() as FnTrait>::call_*
-    // def-id is FnTrait::call_*
+
+    /// <fn() as FnTrait>::call_*
+    /// def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
-    // <Trait as Trait>::fn
+
+    /// <Trait as Trait>::fn
     Virtual(DefId, usize),
-    // <[mut closure] as FnOnce>::call_once
+
+    /// <[mut closure] as FnOnce>::call_once
     ClosureOnceShim { call_once: DefId },
-    // drop_in_place::<T>; None for empty drop glue.
+
+    /// drop_in_place::<T>; None for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
+
+    /// Builtin method implementation, e.g. `Clone::clone`.
+    CloneShim(DefId, Ty<'tcx>),
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -44,9 +50,9 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
-            InstanceDef::ClosureOnceShim { call_once: def_id }
-                => def_id,
-            InstanceDef::DropGlue(def_id, _) => def_id
+            InstanceDef::ClosureOnceShim { call_once: def_id } |
+            InstanceDef::DropGlue(def_id, _) |
+            InstanceDef::CloneShim(def_id, _) => def_id
         }
     }
 
@@ -58,27 +64,6 @@ impl<'tcx> InstanceDef<'tcx> {
     #[inline]
     pub fn attrs<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
-    }
-
-    pub //(crate)
-     fn dep_node(&self) -> DepConstructor {
-        // HACK: def-id binning, project-style; someone replace this with
-        // real on-demand.
-        let ty = match self {
-            &InstanceDef::FnPtrShim(_, ty) => Some(ty),
-            &InstanceDef::DropGlue(_, ty) => ty,
-            _ => None
-        }.into_iter();
-
-        DepConstructor::MirShim(
-            Some(self.def_id()).into_iter().chain(
-                ty.flat_map(|t| t.walk()).flat_map(|t| match t.sty {
-                   ty::TyAdt(adt_def, _) => Some(adt_def.did),
-                   ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
-                   _ => None,
-               })
-            ).collect()
-        )
     }
 }
 
@@ -100,6 +85,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
                 write!(f, " - shim")
             }
             InstanceDef::DropGlue(_, ty) => {
+                write!(f, " - shim({:?})", ty)
+            }
+            InstanceDef::CloneShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
         }

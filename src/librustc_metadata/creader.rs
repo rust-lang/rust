@@ -162,8 +162,8 @@ enum LoadResult {
 impl<'a> CrateLoader<'a> {
     pub fn new(sess: &'a Session, cstore: &'a CStore, local_crate_name: &str) -> Self {
         CrateLoader {
-            sess: sess,
-            cstore: cstore,
+            sess,
+            cstore,
             next_crate_num: cstore.next_crate_num(),
             local_crate_name: Symbol::intern(local_crate_name),
         }
@@ -184,7 +184,7 @@ impl<'a> CrateLoader<'a> {
                 };
                 Some(ExternCrateInfo {
                     ident: i.ident.name,
-                    name: name,
+                    name,
                     id: i.id,
                     dep_kind: if attr::contains_name(&i.attrs, "no_link") {
                         DepKind::UnexportedMacrosOnly
@@ -325,25 +325,25 @@ impl<'a> CrateLoader<'a> {
             });
 
         let mut cmeta = cstore::CrateMetadata {
-            name: name,
+            name,
             extern_crate: Cell::new(None),
             def_path_table: Rc::new(def_path_table),
-            exported_symbols: exported_symbols,
-            trait_impls: trait_impls,
+            exported_symbols,
+            trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
             }),
             root: crate_root,
             blob: metadata,
             cnum_map: RefCell::new(cnum_map),
-            cnum: cnum,
+            cnum,
             codemap_import_info: RefCell::new(vec![]),
             attribute_cache: RefCell::new([Vec::new(), Vec::new()]),
             dep_kind: Cell::new(dep_kind),
             source: cstore::CrateSource {
-                dylib: dylib,
-                rlib: rlib,
-                rmeta: rmeta,
+                dylib,
+                rlib,
+                rmeta,
             },
             // Initialize this with an empty set. The field is populated below
             // after we were able to deserialize its contents.
@@ -388,14 +388,14 @@ impl<'a> CrateLoader<'a> {
             info!("falling back to a load");
             let mut locate_ctxt = locator::Context {
                 sess: self.sess,
-                span: span,
-                ident: ident,
+                span,
+                ident,
                 crate_name: name,
                 hash: hash.map(|a| &*a),
                 filesearch: self.sess.target_filesearch(path_kind),
                 target: &self.sess.target.target,
                 triple: &self.sess.opts.target_triple,
-                root: root,
+                root,
                 rejected_via_hash: vec![],
                 rejected_via_triple: vec![],
                 rejected_via_kind: vec![],
@@ -547,7 +547,7 @@ impl<'a> CrateLoader<'a> {
         let mut target_only = false;
         let mut locate_ctxt = locator::Context {
             sess: self.sess,
-            span: span,
+            span,
             ident: info.ident,
             crate_name: info.name,
             hash: None,
@@ -596,9 +596,9 @@ impl<'a> CrateLoader<'a> {
         };
 
         ExtensionCrate {
-            metadata: metadata,
+            metadata,
             dylib: dylib.map(|p| p.0),
-            target_only: target_only,
+            target_only,
         }
     }
 
@@ -856,21 +856,48 @@ impl<'a> CrateLoader<'a> {
                 return
             }
 
-            if !self.sess.crate_types.borrow().iter().all(|ct| {
-                match *ct {
-                    // Link the runtime
-                    config::CrateTypeExecutable => true,
-                    // This crate will be compiled with the required
-                    // instrumentation pass
-                    config::CrateTypeRlib => false,
-                    _ => {
-                        self.sess.err(&format!("Only executables and rlibs can be \
-                                                compiled with `-Z sanitizer`"));
-                        false
+            // firstyear 2017 - during testing I was unable to access an OSX machine
+            // to make this work on different crate types. As a result, today I have
+            // only been able to test and support linux as a target.
+            if self.sess.target.target.llvm_target == "x86_64-unknown-linux-gnu" {
+                if !self.sess.crate_types.borrow().iter().all(|ct| {
+                    match *ct {
+                        // Link the runtime
+                        config::CrateTypeStaticlib |
+                        config::CrateTypeExecutable => true,
+                        // This crate will be compiled with the required
+                        // instrumentation pass
+                        config::CrateTypeRlib |
+                        config::CrateTypeDylib |
+                        config::CrateTypeCdylib =>
+                            false,
+                        _ => {
+                            self.sess.err(&format!("Only executables, staticlibs, \
+                                cdylibs, dylibs and rlibs can be compiled with \
+                                `-Z sanitizer`"));
+                            false
+                        }
                     }
+                }) {
+                    return
                 }
-            }) {
-                return
+            } else {
+                if !self.sess.crate_types.borrow().iter().all(|ct| {
+                    match *ct {
+                        // Link the runtime
+                        config::CrateTypeExecutable => true,
+                        // This crate will be compiled with the required
+                        // instrumentation pass
+                        config::CrateTypeRlib => false,
+                        _ => {
+                            self.sess.err(&format!("Only executables and rlibs can be \
+                                                    compiled with `-Z sanitizer`"));
+                            false
+                        }
+                    }
+                }) {
+                    return
+                }
             }
 
             let mut uses_std = false;
@@ -890,7 +917,7 @@ impl<'a> CrateLoader<'a> {
                 info!("loading sanitizer: {}", name);
 
                 let symbol = Symbol::intern(name);
-                let dep_kind = DepKind::Implicit;
+                let dep_kind = DepKind::Explicit;
                 let (_, data) =
                     self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
                                        PathKind::Crate, dep_kind);
@@ -900,6 +927,8 @@ impl<'a> CrateLoader<'a> {
                     self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
                                            name));
                 }
+            } else {
+                self.sess.err(&format!("Must link std to be compiled with `-Z sanitizer`"));
             }
         }
     }
@@ -1192,9 +1221,9 @@ impl<'a> CrateLoader<'a> {
                 .collect();
             let lib = NativeLibrary {
                 name: n,
-                kind: kind,
-                cfg: cfg,
-                foreign_items: foreign_items,
+                kind,
+                cfg,
+                foreign_items,
             };
             register_native_lib(self.sess, self.cstore, Some(m.span), lib);
         }

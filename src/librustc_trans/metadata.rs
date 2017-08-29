@@ -31,10 +31,10 @@ impl MetadataLoader for LlvmMetadataLoader {
         // just keeping the archive along while the metadata is in use.
         let archive = ArchiveRO::open(filename)
             .map(|ar| OwningRef::new(box ar))
-            .ok_or_else(|| {
-                            debug!("llvm didn't like `{}`", filename.display());
-                            format!("failed to read rlib metadata: '{}'", filename.display())
-                        })?;
+            .map_err(|e| {
+                debug!("llvm didn't like `{}`: {}", filename.display(), e);
+                format!("failed to read rlib metadata in '{}': {}", filename.display(), e)
+            })?;
         let buf: OwningRef<_, [u8]> = archive
             .try_map(|ar| {
                 ar.iter()
@@ -42,10 +42,10 @@ impl MetadataLoader for LlvmMetadataLoader {
                     .find(|sect| sect.name() == Some(METADATA_FILENAME))
                     .map(|s| s.data())
                     .ok_or_else(|| {
-                                    debug!("didn't find '{}' in the archive", METADATA_FILENAME);
-                                    format!("failed to read rlib metadata: '{}'",
-                                            filename.display())
-                                })
+                        debug!("didn't find '{}' in the archive", METADATA_FILENAME);
+                        format!("failed to read rlib metadata: '{}'",
+                                filename.display())
+                    })
             })?;
         Ok(buf.erase_owner())
     }

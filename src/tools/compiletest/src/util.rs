@@ -72,6 +72,14 @@ pub fn get_env(triple: &str) -> Option<&str> {
     triple.split('-').nth(3)
 }
 
+pub fn get_pointer_width(triple: &str) -> &'static str {
+    if triple.contains("64") || triple.starts_with("s390x") {
+        "64bit"
+    } else {
+        "32bit"
+    }
+}
+
 pub fn make_new_path(path: &str) -> String {
     assert!(cfg!(windows));
     // Windows just uses PATH as the library search path, so we have to

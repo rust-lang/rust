@@ -56,10 +56,11 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::GlobalAsm(P(ast::GlobalAsm {
-            asm: asm,
+            asm,
             ctxt: cx.backtrace(),
         })),
         vis: ast::Visibility::Inherited,
         span: sp,
+        tokens: None,
     })))
 }

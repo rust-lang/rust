@@ -629,10 +629,12 @@ extern "rust-intrinsic" {
     /// Aborts the execution of the process.
     pub fn abort() -> !;
 
-    /// Tells LLVM that this point in the code is not reachable,
-    /// enabling further optimizations.
+    /// Tells LLVM that this point in the code is not reachable, enabling
+    /// further optimizations.
     ///
-    /// NB: This is very different from the `unreachable!()` macro!
+    /// NB: This is very different from the `unreachable!()` macro: Unlike the
+    /// macro, which panics when it is executed, it is *undefined behavior* to
+    /// reach code marked with this function.
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.
@@ -1042,20 +1044,23 @@ extern "rust-intrinsic" {
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out
+    /// unless size is equal to zero.
     pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
                                                   count: usize);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out
+    /// unless size is equal to zero..
     pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`.
     ///
-    /// The volatile parameter is set to `true`, so it will not be optimized out.
+    /// The volatile parameter is set to `true`, so it will not be optimized out
+    /// unless size is equal to zero.
     pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Perform a volatile load from the `src` pointer.
@@ -1229,7 +1234,6 @@ extern "rust-intrinsic" {
     /// let num_leading = unsafe { ctlz_nonzero(x) };
     /// assert_eq!(num_leading, 3);
     /// ```
-    #[cfg(not(stage0))]
     pub fn ctlz_nonzero<T>(x: T) -> T;
 
     /// Returns the number of trailing unset bits (zeroes) in an integer type `T`.
@@ -1273,7 +1277,6 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
-    #[cfg(not(stage0))]
     pub fn cttz_nonzero<T>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.

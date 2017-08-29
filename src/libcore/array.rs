@@ -89,7 +89,7 @@ macro_rules! __impl_slice_eq2 {
     }
 }
 
-// macro for implementing n-ary tuple functions and operations
+// macro for implementing n-element array functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
@@ -124,6 +124,7 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[cfg(stage0)]
             impl<T:Copy> Clone for [T; $N] {
                 fn clone(&self) -> [T; $N] {
                     *self

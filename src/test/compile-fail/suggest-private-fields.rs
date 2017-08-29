@@ -27,7 +27,8 @@ fn main () {
         //~| NOTE field does not exist - did you mean `a`?
         bb: 20,
         //~^ ERROR struct `xc::B` has no field named `bb`
-        //~| NOTE field does not exist - did you mean `a`?
+        //~| NOTE `xc::B` does not have this field
+        //~| NOTE available fields are: `a`
     };
     // local crate struct
     let l = A {

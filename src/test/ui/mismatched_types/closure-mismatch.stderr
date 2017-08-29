@@ -14,8 +14,8 @@ error[E0281]: type mismatch: `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]` im
 18 |     baz(|_| ());
    |     ^^^ ------ implements `std::ops::Fn<(_,)>`
    |     |
-   |     requires `for<'r> std::ops::Fn<(&'r (),)>`
    |     expected concrete lifetime, found bound lifetime parameter
+   |     requires `for<'r> std::ops::Fn<(&'r (),)>`
    |
    = note: required because of the requirements on the impl of `Foo` for `[closure@$DIR/closure-mismatch.rs:18:9: 18:15]`
    = note: required by `baz`

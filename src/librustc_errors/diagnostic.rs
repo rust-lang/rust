@@ -83,9 +83,9 @@ impl Diagnostic {
 
     pub fn new_with_code(level: Level, code: Option<String>, message: &str) -> Self {
         Diagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            code: code,
+            code,
             span: MultiSpan::new(),
             children: vec![],
             suggestions: vec![],
@@ -93,9 +93,9 @@ impl Diagnostic {
     }
 
     /// Cancel the diagnostic (a structured diagnostic must either be emitted or
-    /// cancelled or it will panic when dropped).
+    /// canceled or it will panic when dropped).
     /// BEWARE: if this DiagnosticBuilder is an error, then creating it will
-    /// bump the error count on the Handler and cancelling it won't undo that.
+    /// bump the error count on the Handler and canceling it won't undo that.
     /// If you want to decrement the error count you should use `Handler::cancel`.
     pub fn cancel(&mut self) {
         self.level = Level::Cancelled;
@@ -103,10 +103,6 @@ impl Diagnostic {
 
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
-    }
-
-    pub fn is_fatal(&self) -> bool {
-        self.level == Level::Fatal
     }
 
     /// Add a span/label to be included in the resulting snippet.
@@ -209,7 +205,35 @@ impl Diagnostic {
         self
     }
 
+    /// Prints out a message with a suggested edit of the code. If the suggestion is presented
+    /// inline it will only show the text message and not the text.
+    ///
+    /// See `diagnostic::CodeSuggestion` for more information.
+    pub fn span_suggestion_short(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
+        self.suggestions.push(CodeSuggestion {
+            substitution_parts: vec![Substitution {
+                span: sp,
+                substitutions: vec![suggestion],
+            }],
+            msg: msg.to_owned(),
+            show_code_when_inline: false,
+        });
+        self
+    }
+
     /// Prints out a message with a suggested edit of the code.
+    ///
+    /// In case of short messages and a simple suggestion,
+    /// rustc displays it as a label like
+    ///
+    /// "try adding parentheses: `(tup.0).1`"
+    ///
+    /// The message
+    /// * should not end in any punctuation (a `:` is added automatically)
+    /// * should not be a question
+    /// * should not contain any parts like "the following", "as shown"
+    /// * may look like "to do xyz, use" or "to do xyz, use abc"
+    /// * may contain a name of a function, variable or type, but not whole expressions
     ///
     /// See `diagnostic::CodeSuggestion` for more information.
     pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
@@ -219,6 +243,7 @@ impl Diagnostic {
                 substitutions: vec![suggestion],
             }],
             msg: msg.to_owned(),
+            show_code_when_inline: true,
         });
         self
     }
@@ -230,6 +255,7 @@ impl Diagnostic {
                 substitutions: suggestions,
             }],
             msg: msg.to_owned(),
+            show_code_when_inline: true,
         });
         self
     }
@@ -248,16 +274,8 @@ impl Diagnostic {
         self.message.iter().map(|i| i.0.to_owned()).collect::<String>()
     }
 
-    pub fn set_message(&mut self, message: &str) {
-        self.message = vec![(message.to_owned(), Style::NoStyle)];
-    }
-
     pub fn styled_message(&self) -> &Vec<(String, Style)> {
         &self.message
-    }
-
-    pub fn level(&self) -> Level {
-        self.level
     }
 
     /// Used by a lint. Copies over all details *but* the "main
@@ -276,10 +294,10 @@ impl Diagnostic {
            span: MultiSpan,
            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
+            level,
             message: vec![(message.to_owned(), Style::NoStyle)],
-            span: span,
-            render_span: render_span,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }
@@ -292,10 +310,10 @@ impl Diagnostic {
                            span: MultiSpan,
                            render_span: Option<RenderSpan>) {
         let sub = SubDiagnostic {
-            level: level,
-            message: message,
-            span: span,
-            render_span: render_span,
+            level,
+            message,
+            span,
+            render_span,
         };
         self.children.push(sub);
     }

@@ -132,7 +132,7 @@ impl<K, V> InternalNode<K, V> {
 
 /// An owned pointer to a node. This basically is either `Box<LeafNode<K, V>>` or
 /// `Box<InternalNode<K, V>>`. However, it contains no information as to which of the two types
-/// of nodes is acutally behind the box, and, partially due to this lack of information, has no
+/// of nodes is actually behind the box, and, partially due to this lack of information, has no
 /// destructor.
 struct BoxedNode<K, V> {
     ptr: Unique<LeafNode<K, V>>
@@ -140,24 +140,22 @@ struct BoxedNode<K, V> {
 
 impl<K, V> BoxedNode<K, V> {
     fn from_leaf(node: Box<LeafNode<K, V>>) -> Self {
-        unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node)) }
-        }
+        BoxedNode { ptr: Box::into_unique(node) }
     }
 
     fn from_internal(node: Box<InternalNode<K, V>>) -> Self {
         unsafe {
-            BoxedNode { ptr: Unique::new(Box::into_raw(node) as *mut LeafNode<K, V>) }
+            BoxedNode { ptr: Unique::new_unchecked(Box::into_raw(node) as *mut LeafNode<K, V>) }
         }
     }
 
     unsafe fn from_ptr(ptr: NonZero<*const LeafNode<K, V>>) -> Self {
-        BoxedNode { ptr: Unique::new(ptr.get() as *mut LeafNode<K, V>) }
+        BoxedNode { ptr: Unique::new_unchecked(ptr.get() as *mut LeafNode<K, V>) }
     }
 
     fn as_ptr(&self) -> NonZero<*const LeafNode<K, V>> {
         unsafe {
-            NonZero::new(self.ptr.as_ptr())
+            NonZero::from(self.ptr.as_ref())
         }
     }
 }
@@ -266,7 +264,7 @@ impl<K, V> Root<K, V> {
 // correct variance.
 /// A reference to a node.
 ///
-/// This type has a number of paramaters that controls how it acts:
+/// This type has a number of parameters that controls how it acts:
 /// - `BorrowType`: This can be `Immut<'a>` or `Mut<'a>` for some `'a` or `Owned`.
 ///    When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`,
 ///    when this is `Mut<'a>`, the `NodeRef` acts roughly like `&'a mut Node`,
@@ -384,21 +382,19 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         >,
         Self
     > {
-        if self.as_leaf().parent.is_null() {
-            Err(self)
-        } else {
+        if let Some(non_zero) = NonZero::new(self.as_leaf().parent as *const LeafNode<K, V>) {
             Ok(Handle {
                 node: NodeRef {
                     height: self.height + 1,
-                    node: unsafe {
-                        NonZero::new(self.as_leaf().parent as *mut LeafNode<K, V>)
-                    },
+                    node: non_zero,
                     root: self.root,
                     _marker: PhantomData
                 },
                 idx: self.as_leaf().parent_idx as usize,
                 _marker: PhantomData
             })
+        } else {
+            Err(self)
         }
     }
 
@@ -767,7 +763,7 @@ impl<Node: Copy, Type> Clone for Handle<Node, Type> {
 }
 
 impl<Node, Type> Handle<Node, Type> {
-    /// Retrieves the node that contains the edge of key/value pair this handle pointes to.
+    /// Retrieves the node that contains the edge of key/value pair this handle points to.
     pub fn into_node(self) -> Node {
         self.node
     }
@@ -780,8 +776,8 @@ impl<BorrowType, K, V, NodeType> Handle<NodeRef<BorrowType, K, V, NodeType>, mar
         debug_assert!(idx < node.len());
 
         Handle {
-            node: node,
-            idx: idx,
+            node,
+            idx,
             _marker: PhantomData
         }
     }
@@ -854,8 +850,8 @@ impl<BorrowType, K, V, NodeType>
         debug_assert!(idx <= node.len());
 
         Handle {
-            node: node,
-            idx: idx,
+            node,
+            idx,
             _marker: PhantomData
         }
     }
@@ -1041,7 +1037,7 @@ impl<'a, K: 'a, V: 'a, NodeType>
         Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
 
     pub fn into_kv_mut(self) -> (&'a mut K, &'a mut V) {
-        let (mut keys, mut vals) = self.node.into_slices_mut();
+        let (keys, vals) = self.node.into_slices_mut();
         unsafe {
             (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
         }
@@ -1051,7 +1047,7 @@ impl<'a, K: 'a, V: 'a, NodeType>
 impl<'a, K, V, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV> {
     pub fn kv_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
-            let (mut keys, mut vals) = self.node.reborrow_mut().into_slices_mut();
+            let (keys, vals) = self.node.reborrow_mut().into_slices_mut();
             (keys.get_unchecked_mut(self.idx), vals.get_unchecked_mut(self.idx))
         }
     }
@@ -1153,7 +1149,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
 
             let mut new_root = Root {
                 node: BoxedNode::from_internal(new_node),
-                height: height
+                height,
             };
 
             for i in 0..(new_len+1) {
@@ -1453,12 +1449,12 @@ impl<BorrowType, K, V, HandleType>
     > {
         match self.node.force() {
             ForceResult::Leaf(node) => ForceResult::Leaf(Handle {
-                node: node,
+                node,
                 idx: self.idx,
                 _marker: PhantomData
             }),
             ForceResult::Internal(node) => ForceResult::Internal(Handle {
-                node: node,
+                node,
                 idx: self.idx,
                 _marker: PhantomData
             })

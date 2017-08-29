@@ -210,11 +210,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // some cases applied on the RHS, on top of which we need
                         // to autoref, which is not allowed by apply_adjustments.
                         // self.apply_adjustments(rhs_expr, vec![autoref]);
-                        self.tables.borrow_mut().adjustments.entry(rhs_expr.id)
-                            .or_insert(vec![]).push(autoref);
+                        self.tables
+                            .borrow_mut()
+                            .adjustments_mut()
+                            .entry(rhs_expr.hir_id)
+                            .or_insert(vec![])
+                            .push(autoref);
                     }
                 }
-                self.write_method_call(expr.id, method);
+                self.write_method_call(expr.hir_id, method);
 
                 method.sig.output()
             }
@@ -300,7 +304,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
                           rhs_ty: Ty<'tcx>,
-                          mut err: &mut errors::DiagnosticBuilder) -> bool {
+                          err: &mut errors::DiagnosticBuilder) -> bool {
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         let mut is_string_addition = false;
@@ -320,7 +324,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   from a string reference. String concatenation \
                                   appends the string on the right to the string \
                                   on the left and may require reallocation. This \
-                                  requires ownership of the string on the left."), suggestion);
+                                  requires ownership of the string on the left"), suggestion);
                     is_string_addition = true;
                 }
 
@@ -340,7 +344,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(op.is_by_value());
         match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
             Ok(method) => {
-                self.write_method_call(ex.id, method);
+                self.write_method_call(ex.hir_id, method);
                 method.sig.output()
             }
             Err(()) => {

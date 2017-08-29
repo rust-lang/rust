@@ -4,8 +4,8 @@ error[E0596]: cannot borrow immutable local variable `key` as mutable
 16 |     get(&mut key);
    |              ^^^
    |              |
-   |              try removing `&mut` here
    |              cannot reborrow mutably
+   |              try removing `&mut` here
 
 error: aborting due to previous error
 

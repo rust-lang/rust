@@ -14,6 +14,16 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
+#[macro_export]
+// This stability attribute is totally useless.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+macro_rules! __rust_unstable_column {
+    () => {
+        column!()
+    }
+}
+
 /// The entry point for panic of Rust threads.
 ///
 /// This macro is used to inject panic into a Rust thread, causing the thread to
@@ -23,6 +33,11 @@
 ///
 /// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
+///
+/// # Current implementation
+///
+/// If the main thread panics it will terminate all your threads and end your
+/// program with code `101`.
 ///
 /// # Examples
 ///
@@ -41,9 +56,10 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic_new($msg, {
+        $crate::rt::begin_panic($msg, {
             // static requires less code at runtime, more constant data
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
+                __rust_unstable_column!());
             &_FILE_LINE_COL
         })
     });
@@ -53,7 +69,8 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(), column!());
+            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
+                __rust_unstable_column!());
             &_FILE_LINE_COL
         })
     });
@@ -244,7 +261,7 @@ pub mod builtin {
     /// For more information, see the [RFC].
     ///
     /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/1695-add-error-macro.md
-    #[unstable(feature = "compile_error_macro", issue = "40872")]
+    #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
     macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
 
@@ -444,9 +461,26 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```ignore (cannot-doctest-external-file-dependency)
-    /// let secret_key = include_str!("secret-key.ascii");
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'spanish.in':
+    ///
+    /// ```text
+    /// adiós
     /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let my_str = include_str!("spanish.in");
+    ///     assert_eq!(my_str, "adiós\n");
+    ///     print!("{}", my_str);
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
@@ -461,9 +495,26 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```ignore (cannot-doctest-external-file-dependency)
-    /// let secret_key = include_bytes!("secret-key.bin");
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'spanish.in':
+    ///
+    /// ```text
+    /// adiós
     /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let bytes = include_bytes!("spanish.in");
+    ///     assert_eq!(bytes, b"adi\xc3\xb3s\n");
+    ///     print!("{}", String::from_utf8_lossy(bytes));
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
@@ -528,23 +579,28 @@ pub mod builtin {
     /// Assume there are two files in the same directory with the following
     /// contents:
     ///
-    /// File 'my_str.in':
+    /// File 'monkeys.in':
     ///
     /// ```ignore (only-for-syntax-highlight)
-    /// "Hello World!"
+    /// ['🙈', '🙊', '🙉']
+    ///     .iter()
+    ///     .cycle()
+    ///     .take(6)
+    ///     .collect::<String>()
     /// ```
     ///
     /// File 'main.rs':
     ///
     /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
-    ///     let my_str = include!("my_str.in");
-    ///     println!("{}", my_str);
+    ///     let my_string = include!("monkeys.in");
+    ///     assert_eq!("🙈🙊🙉🙈🙊🙉", my_string);
+    ///     println!("{}", my_string);
     /// }
     /// ```
     ///
-    /// Compiling 'main.rs' and running the resulting binary will print "Hello
-    /// World!".
+    /// Compiling 'main.rs' and running the resulting binary will print
+    /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }

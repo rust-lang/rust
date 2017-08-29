@@ -71,4 +71,10 @@ pub fn main() {
         Ok(&my_string)
     };
     assert_eq!(res, Ok("test"));
+
+    do catch {
+        ()
+    }
+
+    ();
 }

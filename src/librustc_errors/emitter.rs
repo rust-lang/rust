@@ -47,11 +47,12 @@ impl Emitter for EmitterWriter {
                // don't display multiline suggestions as labels
                sugg.substitution_parts[0].substitutions[0].find('\n').is_none() {
                 let substitution = &sugg.substitution_parts[0].substitutions[0];
-                let msg = if substitution.len() == 0 {
-                    // This substitution is only removal, don't show it
+                let msg = if substitution.len() == 0 || !sugg.show_code_when_inline {
+                    // This substitution is only removal or we explicitely don't want to show the
+                    // code inline, don't show it
                     format!("help: {}", sugg.msg)
                 } else {
-                    format!("help: {} `{}`", sugg.msg, substitution)
+                    format!("help: {}: `{}`", sugg.msg, substitution)
                 };
                 primary_span.push_span_label(sugg.substitution_spans().next().unwrap(), msg);
             } else {
@@ -119,7 +120,7 @@ impl EmitterWriter {
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter {
-                dst: dst,
+                dst,
                 cm: code_map,
             }
         } else {
@@ -155,7 +156,7 @@ impl EmitterWriter {
                     }
                     // We don't have a line yet, create one
                     slot.lines.push(Line {
-                        line_index: line_index,
+                        line_index,
                         annotations: vec![ann],
                     });
                     slot.lines.sort();
@@ -164,9 +165,9 @@ impl EmitterWriter {
             }
             // This is the first time we're seeing the file
             file_vec.push(FileWithAnnotatedLines {
-                file: file,
+                file,
                 lines: vec![Line {
-                                line_index: line_index,
+                                line_index,
                                 annotations: vec![ann],
                             }],
                 multiline_depth: 0,
@@ -310,7 +311,9 @@ impl EmitterWriter {
         if line.annotations.len() == 1 {
             if let Some(ref ann) = line.annotations.get(0) {
                 if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                    if source_string[0..ann.start_col].trim() == "" {
+                    if source_string.chars()
+                                    .take(ann.start_col)
+                                    .all(|c| c.is_whitespace()) {
                         let style = if ann.is_primary {
                             Style::UnderlinePrimary
                         } else {
@@ -346,9 +349,20 @@ impl EmitterWriter {
         // and "annotations lines", where the highlight lines have the `^`.
 
         // Sort the annotations by (start, end col)
+        // The labels are reversed, sort and then reversed again.
+        // Consider a list of annotations (A1, A2, C1, C2, B1, B2) where
+        // the letter signifies the span. Here we are only sorting by the
+        // span and hence, the order of the elements with the same span will
+        // not change. On reversing the ordering (|a, b| but b.cmp(a)), you get
+        // (C1, C2, B1, B2, A1, A2). All the elements with the same span are
+        // still ordered first to last, but all the elements with different
+        // spans are ordered by their spans in last to first order. Last to
+        // first order is important, because the jiggly lines and | are on
+        // the left, so the rightmost span needs to be rendered first,
+        // otherwise the lines would end up needing to go over a message.
+
         let mut annotations = line.annotations.clone();
-        annotations.sort();
-        annotations.reverse();
+        annotations.sort_by(|a,b| b.start_col.cmp(&a.start_col));
 
         // First, figure out where each label will be positioned.
         //
@@ -810,7 +824,7 @@ impl EmitterWriter {
             .map(|_| " ")
             .collect::<String>();
 
-        /// Return wether `style`, or the override if present and the style is `NoStyle`.
+        /// Return whether `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {
             if let Some(o) = override_style {
                 if style == Style::NoStyle {

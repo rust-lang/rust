@@ -21,8 +21,9 @@ use rustc::middle::mem_categorization::{cmt};
 use rustc::middle::region::RegionMaps;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::lint;
-use rustc_errors::{Diagnostic, Level, DiagnosticBuilder};
+use rustc_errors::DiagnosticBuilder;
 
 use rustc::hir::def::*;
 use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
@@ -51,7 +52,8 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
             region_maps: &self.tcx.region_maps(def_id),
-            param_env: self.tcx.param_env(def_id)
+            param_env: self.tcx.param_env(def_id),
+            identity_substs: Substs::identity_for_item(self.tcx, def_id),
         }.visit_body(self.tcx.hir.body(b));
     }
 }
@@ -69,6 +71,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    identity_substs: &'tcx Substs<'tcx>,
     region_maps: &'a RegionMaps,
 }
 
@@ -110,7 +113,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn report_inlining_errors(&self, pat_span: Span) {
         for error in &self.errors {
             match *error {
@@ -162,7 +165,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
                 arm.pats.iter().map(|pat| {
-                    let mut patcx = PatternContext::new(self.tcx, self.tables);
+                    let mut patcx = PatternContext::new(self.tcx,
+                                                        self.param_env.and(self.identity_substs),
+                                                        self.tables);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
@@ -183,7 +188,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_id_to_type(scrut.id);
+            let pat_ty = self.tables.node_id_to_type(scrut.hir_id);
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
@@ -212,7 +217,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .flat_map(|arm| &arm.0)
                 .map(|pat| vec![pat.0])
                 .collect();
-            let scrut_ty = self.tables.node_id_to_type(scrut.id);
+            let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
         })
     }
@@ -229,7 +234,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_irrefutable(&self, pat: &Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
         MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
-            let mut patcx = PatternContext::new(self.tcx, self.tables);
+            let mut patcx = PatternContext::new(self.tcx,
+                                                self.param_env.and(self.identity_substs),
+                                                self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats : Matrix = vec![vec![
@@ -261,7 +268,16 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
-        if let PatKind::Binding(hir::BindByValue(hir::MutImmutable), _, name, None) = p.node {
+        if let PatKind::Binding(_, _, name, None) = p.node {
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(p.hir_id)
+                        .expect("missing binding mode");
+
+            if bm != ty::BindByValue(hir::MutImmutable) {
+                // Nothing to check.
+                return true;
+            }
             let pat_ty = cx.tables.pat_ty(p);
             if let ty::TyAdt(edef, _) = pat_ty.sty {
                 if edef.is_enum() && edef.variants.iter().any(|variant| {
@@ -339,12 +355,10 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             match arm_index {
                                 // The arm with the user-specified pattern.
                                 0 => {
-                                    let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                         "unreachable pattern");
-                                    diagnostic.set_span(pat.span);
-                                    cx.tcx.sess.add_lint_diagnostic(
+                                    cx.tcx.lint_node(
                                             lint::builtin::UNREACHABLE_PATTERNS,
-                                            hir_pat.id, diagnostic);
+                                        hir_pat.id, pat.span,
+                                        "unreachable pattern");
                                 },
                                 // The arm with the wildcard pattern.
                                 1 => {
@@ -359,16 +373,18 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            let mut diagnostic = Diagnostic::new(Level::Warning,
-                                                                 "unreachable pattern");
-                            diagnostic.set_span(pat.span);
+                            let mut err = cx.tcx.struct_span_lint_node(
+                                lint::builtin::UNREACHABLE_PATTERNS,
+                                hir_pat.id,
+                                pat.span,
+                                "unreachable pattern",
+                            );
                             // if we had a catchall pattern, hint at that
                             if let Some(catchall) = catchall {
-                                diagnostic.span_label(pat.span, "this is an unreachable pattern");
-                                diagnostic.span_note(catchall, "this pattern matches any value");
+                                err.span_label(pat.span, "this is an unreachable pattern");
+                                err.span_note(catchall, "this pattern matches any value");
                             }
-                            cx.tcx.sess.add_lint_diagnostic(lint::builtin::UNREACHABLE_PATTERNS,
-                                                            hir_pat.id, diagnostic);
+                            err.emit();
                         },
 
                         // Unreachable patterns in try expressions occur when one of the arms
@@ -445,8 +461,13 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                                    pats: &[P<Pat>]) {
     let mut by_ref_span = None;
     for pat in pats {
-        pat.each_binding(|bm, _, span, _path| {
-            if let hir::BindByRef(..) = bm {
+        pat.each_binding(|_, id, span, _path| {
+            let hir_id = cx.tcx.hir.node_to_hir_id(id);
+            let bm = *cx.tables
+                        .pat_binding_modes()
+                        .get(hir_id)
+                        .expect("missing binding mode");
+            if let ty::BindByReference(..) = bm {
                 by_ref_span = Some(span);
             }
         })
@@ -477,10 +498,19 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 
     for pat in pats {
         pat.walk(|p| {
-            if let PatKind::Binding(hir::BindByValue(..), _, _, ref sub) = p.node {
-                let pat_ty = cx.tables.node_id_to_type(p.id);
-                if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
-                    check_move(p, sub.as_ref().map(|p| &**p));
+            if let PatKind::Binding(_, _, _, ref sub) = p.node {
+                let bm = *cx.tables
+                            .pat_binding_modes()
+                            .get(p.hir_id)
+                            .expect("missing binding mode");
+                match bm {
+                    ty::BindByValue(..) => {
+                        let pat_ty = cx.tables.node_id_to_type(p.hir_id);
+                        if pat_ty.moves_by_default(cx.tcx, cx.param_env, pat.span) {
+                            check_move(p, sub.as_ref().map(|p| &**p));
+                        }
+                    }
+                    _ => {}
                 }
             }
             true
@@ -494,7 +524,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     let mut checker = MutationChecker {
-        cx: cx,
+        cx,
     };
     ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_maps, cx.tables)
         .walk_expr(guard);

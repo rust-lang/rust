@@ -56,13 +56,12 @@ struct Test {
 }
 
 struct TestCtxt<'a> {
-    sess: &'a ParseSess,
     span_diagnostic: &'a errors::Handler,
     path: Vec<Ident>,
     ext_cx: ExtCtxt<'a>,
     testfns: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
-    is_test_crate: bool,
+    is_libtest: bool,
     ctxt: SyntaxContext,
 
     // top-level re-export submodule, filled out after folding is finished
@@ -192,7 +191,7 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::MainNamed |
             EntryPointType::MainAttr |
             EntryPointType::Start =>
-                folded.map(|ast::Item {id, ident, attrs, node, vis, span}| {
+                folded.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
                     let allow_str = Symbol::intern("allow");
                     let dead_code_str = Symbol::intern("dead_code");
                     let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
@@ -202,17 +201,18 @@ impl fold::Folder for EntryPointCleaner {
                                                               allow_dead_code_item);
 
                     ast::Item {
-                        id: id,
-                        ident: ident,
+                        id,
+                        ident,
                         attrs: attrs.into_iter()
                             .filter(|attr| {
                                 !attr.check_name("main") && !attr.check_name("start")
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
-                        node: node,
-                        vis: vis,
-                        span: span
+                        node,
+                        vis,
+                        span,
+                        tokens,
                     }
                 }),
             EntryPointType::None |
@@ -242,7 +242,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
 
     let reexport_mod = ast::Mod {
         inner: DUMMY_SP,
-        items: items,
+        items,
     };
 
     let sym = Ident::with_empty_ctxt(Symbol::gensym("__test_reexports"));
@@ -255,6 +255,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt,
         node: ast::ItemKind::Mod(reexport_mod),
         vis: ast::Visibility::Public,
         span: DUMMY_SP,
+        tokens: None,
     })).pop().unwrap();
 
     (it, sym)
@@ -270,14 +271,15 @@ fn generate_test_harness(sess: &ParseSess,
     let krate = cleaner.fold_crate(krate);
 
     let mark = Mark::fresh(Mark::root());
+
     let mut cx: TestCtxt = TestCtxt {
-        sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, ExpansionConfig::default("test".to_string()), resolver),
         path: Vec::new(),
         testfns: Vec::new(),
-        reexport_test_harness_main: reexport_test_harness_main,
-        is_test_crate: is_test_crate(&krate),
+        reexport_test_harness_main,
+        // NB: doesn't consider the value of `--crate-name` passed on the command line.
+        is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
     };
@@ -289,11 +291,12 @@ fn generate_test_harness(sess: &ParseSess,
             format: MacroAttribute(Symbol::intern("test")),
             span: None,
             allow_internal_unstable: true,
+            allow_internal_unsafe: false,
         }
     });
 
     TestHarnessGenerator {
-        cx: cx,
+        cx,
         tests: Vec::new(),
         tested_submods: Vec::new(),
     }.fold_crate(krate)
@@ -451,7 +454,7 @@ mod __test {
 fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = Ident::from_str("test");
     let sp = ignored_span(cx, DUMMY_SP);
-    let (vi, vis, ident) = if cx.is_test_crate {
+    let (vi, vis, ident) = if cx.is_libtest {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec![id_test]))))),
@@ -461,11 +464,12 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     };
     P(ast::Item {
         id: ast::DUMMY_NODE_ID,
-        ident: ident,
+        ident,
         node: vi,
         attrs: vec![],
-        vis: vis,
-        span: sp
+        vis,
+        span: sp,
+        tokens: None,
     })
 }
 
@@ -506,7 +510,8 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
         id: ast::DUMMY_NODE_ID,
         node: main,
         vis: ast::Visibility::Public,
-        span: sp
+        span: sp,
+        tokens: None,
     })
 }
 
@@ -536,6 +541,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
         node: item_,
         vis: ast::Visibility::Public,
         span: DUMMY_SP,
+        tokens: None,
     })).pop().unwrap();
     let reexport = cx.reexport_test_harness_main.map(|s| {
         // building `use <ident> = __test::main`
@@ -551,7 +557,8 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Visibility::Inherited,
-            span: DUMMY_SP
+            span: DUMMY_SP,
+            tokens: None,
         })).pop().unwrap()
     });
 
@@ -599,13 +606,6 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
                    ecx.ident_of("TESTS"),
                    static_type,
                    test_descs)
-}
-
-fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crate_name(&krate.attrs) {
-        Some(s) if "test" == s.as_str() => true,
-        _ => false
-    }
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> P<ast::Expr> {

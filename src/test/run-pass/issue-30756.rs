@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 thread_local!(static FOO: u8 = 1);
 

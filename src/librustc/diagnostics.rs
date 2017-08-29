@@ -362,6 +362,10 @@ Here are some simple examples of where you'll run into this error:
 struct Foo { x: &bool }        // error
 struct Foo<'a> { x: &'a bool } // correct
 
+struct Bar { x: Foo }
+               ^^^ expected lifetime parameter
+struct Bar<'a> { x: Foo<'a> } // correct
+
 enum Bar { A(u8), B(&bool), }        // error
 enum Bar<'a> { A(u8), B(&'a bool), } // correct
 
@@ -681,6 +685,21 @@ attributes:
 ```
 
 See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
+"##,
+
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```compile_fail,E0214
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
 "##,
 
 E0261: r##"
@@ -1708,7 +1727,7 @@ not apply to structs.
 representation of enums isn't strictly defined in Rust, and this attribute
 won't work on enums.
 
-`#[repr(simd)]` will give a struct consisting of a homogenous series of machine
+`#[repr(simd)]` will give a struct consisting of a homogeneous series of machine
 types (i.e. `u8`, `i32`, etc) a representation that permits vectorization via
 SIMD. This doesn't make much sense for enums since they don't consist of a
 single list of data.
@@ -1947,27 +1966,25 @@ Either way, try to update/remove it in order to fix the error.
 "##,
 
 E0621: r##"
-This error code indicates a mismatch between the function signature (i.e.,
-the parameter types and the return type) and the function body. Most of
-the time, this indicates that the function signature needs to be changed to
-match the body, but it may be that the body needs to be changed to match
-the signature.
+This error code indicates a mismatch between the lifetimes appearing in the
+function signature (i.e., the parameter types and the return type) and the
+data-flow found in the function body.
 
-Specifically, one or more of the parameters contain borrowed data that
-needs to have a named lifetime in order for the body to type-check. Most of
-the time, this is because the borrowed data is being returned from the
-function, as in this example:
+Erroneous code example:
 
 ```compile_fail,E0621
-fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // explicit lifetime required
-                                             // in the type of `y`
+fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 { // error: explicit lifetime
+                                             //        required in the type of
+                                             //        `y`
     if x > y { x } else { y }
 }
 ```
 
-Here, the function is returning data borrowed from either x or y, but the
-'a annotation indicates that it is returning data only from x. We can make
-the signature match the body by changing the type of y to &'a i32, like so:
+In the code above, the function is returning data borrowed from either `x` or
+`y`, but the `'a` annotation indicates that it is returning data only from `x`.
+To fix the error, the signature and the body must be made to match. Typically,
+this is done by updating the function signature. So, in this case, we change
+the type of `y` to `&'a i32`, like so:
 
 ```
 fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
@@ -1975,7 +1992,8 @@ fn foo<'a>(x: &'a i32, y: &'a i32) -> &'a i32 {
 }
 ```
 
-Alternatively, you could change the body not to return data from y:
+Now the signature indicates that the function data borrowed from either `x` or
+`y`. Alternatively, you could change the body to not return data from `y`:
 
 ```
 fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
@@ -2026,5 +2044,6 @@ register_diagnostics! {
     E0490, // a value of type `..` is borrowed for too long
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
     E0566, // conflicting representation hints
-    E0587, // conflicting packed and align representation hints
+    E0623, // lifetime mismatch where both parameters are anonymous regions
+    E0628, // generators cannot have explicit arguments
 }

@@ -188,6 +188,34 @@ use ptr;
 
 /// A mutable memory location.
 ///
+/// # Examples
+///
+/// Here you can see how using `Cell<T>` allows to use mutable field inside
+/// immutable struct (which is also called 'interior mutability').
+///
+/// ```
+/// use std::cell::Cell;
+///
+/// struct SomeStruct {
+///     regular_field: u8,
+///     special_field: Cell<u8>,
+/// }
+///
+/// let my_struct = SomeStruct {
+///     regular_field: 0,
+///     special_field: Cell::new(1),
+/// };
+///
+/// let new_value = 100;
+///
+/// // ERROR, because my_struct is immutable
+/// // my_struct.regular_field = new_value;
+///
+/// // WORKS, although `my_struct` is immutable, field `special_field` is mutable because it is Cell
+/// my_struct.special_field.set(new_value);
+/// assert_eq!(my_struct.special_field.get(), new_value);
+/// ```
+///
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cell<T> {
@@ -543,6 +571,59 @@ impl<T> RefCell<T> {
         debug_assert!(self.borrow.get() == UNUSED);
         unsafe { self.value.into_inner() }
     }
+
+    /// Replaces the wrapped value with a new one, returning the old value,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_replace_swap)]
+    /// use std::cell::RefCell;
+    /// let c = RefCell::new(5);
+    /// let u = c.replace(6);
+    /// assert_eq!(u, 5);
+    /// assert_eq!(c, RefCell::new(6));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the `RefCell` has any outstanding borrows,
+    /// whether or not they are full mutable borrows.
+    #[inline]
+    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    pub fn replace(&self, t: T) -> T {
+        mem::replace(&mut *self.borrow_mut(), t)
+    }
+
+    /// Swaps the wrapped value of `self` with the wrapped value of `other`,
+    /// without deinitializing either one.
+    ///
+    /// This function corresponds to [`std::mem::swap`](../mem/fn.swap.html).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(refcell_replace_swap)]
+    /// use std::cell::RefCell;
+    /// let c = RefCell::new(5);
+    /// let d = RefCell::new(6);
+    /// c.swap(&d);
+    /// assert_eq!(c, RefCell::new(6));
+    /// assert_eq!(d, RefCell::new(5));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if either `RefCell` has any outstanding borrows,
+    /// whether or not they are full mutable borrows.
+    #[inline]
+    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    pub fn swap(&self, other: &Self) {
+        mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
+    }
 }
 
 impl<T: ?Sized> RefCell<T> {
@@ -728,7 +809,7 @@ impl<T: ?Sized> RefCell<T> {
     /// [`borrow_mut`] method instead if `self` isn't mutable.
     ///
     /// Also, please be aware that this method is only for special circumstances and is usually
-    /// not you want. In case of doubt, use [`borrow_mut`] instead.
+    /// not what you want. In case of doubt, use [`borrow_mut`] instead.
     ///
     /// [`borrow_mut`]: #method.borrow_mut
     ///
@@ -917,7 +998,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// A method would interfere with methods of the same name on the contents
     /// of a `RefCell` used through `Deref`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::{RefCell, Ref};
@@ -942,7 +1023,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b, T> {}
 
-#[stable(feature = "std_guard_impls", since = "1.20")]
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
@@ -959,7 +1040,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// `RefMut::map(...)`.  A method would interfere with methods of the same
     /// name on the contents of a `RefCell` used through `Deref`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::cell::{RefCell, RefMut};
@@ -1041,7 +1122,7 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefMut<'b, T> {}
 
-#[stable(feature = "std_guard_impls", since = "1.20")]
+#[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)

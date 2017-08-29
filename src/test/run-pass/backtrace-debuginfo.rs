@@ -10,7 +10,7 @@
 
 // We disable tail merging here because it can't preserve debuginfo and thus
 // potentially breaks the backtraces. Also, subtle changes can decide whether
-// tail merging suceeds, so the test might work today but fail tomorrow due to a
+// tail merging succeeds, so the test might work today but fail tomorrow due to a
 // seemingly completely unrelated change.
 // Unfortunately, LLVM has no "disable" option for this, so we have to set
 // "enable" to 0 instead.
@@ -88,7 +88,7 @@ fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
 }
 
 // LLVM does not yet output the required debug info to support showing inlined
-// function calls in backtraces when targetting MSVC, so disable inlining in
+// function calls in backtraces when targeting MSVC, so disable inlining in
 // this case.
 #[cfg_attr(not(target_env = "msvc"), inline(always))]
 #[cfg_attr(target_env = "msvc", inline(never))]

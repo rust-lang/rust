@@ -45,21 +45,33 @@ use syntax::print::pprust;
 
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext) -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     item.make(0, None, scx).ok()
 }
 
 pub fn foreign_item_signature(item: &ast::ForeignItem, scx: &SaveContext) -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     item.make(0, None, scx).ok()
 }
 
 /// Signature for a struct or tuple field declaration.
 /// Does not include a trailing comma.
 pub fn field_signature(field: &ast::StructField, scx: &SaveContext) -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     field.make(0, None, scx).ok()
 }
 
 /// Does not include a trailing comma.
 pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     variant.node.make(0, None, scx).ok()
 }
 
@@ -68,6 +80,9 @@ pub fn method_signature(id: NodeId,
                         m: &ast::MethodSig,
                         scx: &SaveContext)
                         -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     make_method_signature(id, ident, m, scx).ok()
 }
 
@@ -77,6 +92,9 @@ pub fn assoc_const_signature(id: NodeId,
                              default: Option<&ast::Expr>,
                              scx: &SaveContext)
                              -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     make_assoc_const_signature(id, ident, ty, default, scx).ok()
 }
 
@@ -86,6 +104,9 @@ pub fn assoc_type_signature(id: NodeId,
                             default: Option<&ast::Ty>,
                             scx: &SaveContext)
                             -> Option<Signature> {
+    if !scx.config.signatures {
+        return None;
+    }
     make_assoc_type_signature(id, ident, bounds, default, scx).ok()
 }
 
@@ -128,7 +149,7 @@ fn merge_sigs(text: String, sigs: Vec<Signature>) -> Signature {
 
 fn text_sig(text: String) -> Signature {
     Signature {
-        text: text,
+        text,
         defs: vec![],
         refs: vec![],
     }
@@ -366,7 +387,7 @@ impl Sig for ast::Item {
 
                 sig.text.push('(');
                 for i in &decl.inputs {
-                    // FIXME shoudl descend into patterns to add defs.
+                    // FIXME should descend into patterns to add defs.
                     sig.text.push_str(&pprust::pat_to_string(&i.pat));
                     sig.text.push_str(": ");
                     let nested = i.ty.make(offset + sig.text.len(), Some(i.id), scx)?;
@@ -685,8 +706,8 @@ impl Sig for ast::Variant_ {
                 text.push('}');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Tuple(ref fields, id) => {
@@ -708,8 +729,8 @@ impl Sig for ast::Variant_ {
                 text.push(')');
                 Ok(Signature {
                     text,
-                    defs: defs,
-                    refs: refs,
+                    defs,
+                    refs,
                 })
             }
             ast::VariantData::Unit(id) => {
@@ -901,7 +922,7 @@ fn make_method_signature(id: NodeId,
 
     sig.text.push('(');
     for i in &m.decl.inputs {
-        // FIXME shoudl descend into patterns to add defs.
+        // FIXME should descend into patterns to add defs.
         sig.text.push_str(&pprust::pat_to_string(&i.pat));
         sig.text.push_str(": ");
         let nested = i.ty.make(sig.text.len(), Some(i.id), scx)?;

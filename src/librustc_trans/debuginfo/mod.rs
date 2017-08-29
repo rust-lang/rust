@@ -87,9 +87,9 @@ impl<'tcx> CrateDebugContext<'tcx> {
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         CrateDebugContext {
-            llcontext: llcontext,
-            llmod: llmod,
-            builder: builder,
+            llcontext,
+            llmod,
+            builder,
             created_files: RefCell::new(FxHashMap()),
             created_enum_disr_types: RefCell::new(FxHashMap()),
             type_map: RefCell::new(TypeMap::new()),
@@ -292,7 +292,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Initialize fn debug context (including scope map and namespace map)
     let fn_debug_context = FunctionDebugContextData {
-        fn_metadata: fn_metadata,
+        fn_metadata,
         source_locations_enabled: Cell::new(false),
         defining_crate: def_id.krate,
     };

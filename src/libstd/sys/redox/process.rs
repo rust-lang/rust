@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use collections::hash_map::HashMap;
-use env;
+use env::{self, split_paths};
 use ffi::OsStr;
+use os::unix::ffi::OsStrExt;
 use fmt;
 use io::{self, Error, ErrorKind};
-use path::Path;
+use path::{Path, PathBuf};
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
 use sys::pipe::{self, AnonPipe};
@@ -271,21 +272,21 @@ impl Command {
 
         if let Some(fd) = stdio.stderr.fd() {
             t!(cvt(syscall::dup2(fd, 2, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(2, syscall::F_GETFL, 0)));
+            let mut flags = t!(cvt(syscall::fcntl(2, syscall::F_GETFD, 0)));
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(2, syscall::F_SETFL, flags)));
+            t!(cvt(syscall::fcntl(2, syscall::F_SETFD, flags)));
         }
         if let Some(fd) = stdio.stdout.fd() {
             t!(cvt(syscall::dup2(fd, 1, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(1, syscall::F_GETFL, 0)));
+            let mut flags = t!(cvt(syscall::fcntl(1, syscall::F_GETFD, 0)));
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(1, syscall::F_SETFL, flags)));
+            t!(cvt(syscall::fcntl(1, syscall::F_SETFD, flags)));
         }
         if let Some(fd) = stdio.stdin.fd() {
             t!(cvt(syscall::dup2(fd, 0, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(0, syscall::F_GETFL, 0)));
+            let mut flags = t!(cvt(syscall::fcntl(0, syscall::F_GETFD, 0)));
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(0, syscall::F_SETFL, flags)));
+            t!(cvt(syscall::fcntl(0, syscall::F_SETFD, flags)));
         }
 
         if let Some(g) = self.gid {
@@ -313,23 +314,29 @@ impl Command {
         }
 
         let program = if self.program.contains(':') || self.program.contains('/') {
-            self.program.to_owned()
-        } else {
-            let mut path_env = ::env::var("PATH").unwrap_or(".".to_string());
-
-            if ! path_env.ends_with('/') {
-                path_env.push('/');
+            Some(PathBuf::from(&self.program))
+        } else if let Ok(path_env) = ::env::var("PATH") {
+            let mut program = None;
+            for mut path in split_paths(&path_env) {
+                path.push(&self.program);
+                if path.exists() {
+                    program = Some(path);
+                    break;
+                }
             }
-
-            path_env.push_str(&self.program);
-
-            path_env
+            program
+        } else {
+            None
         };
 
-        if let Err(err) = syscall::execve(&program, &args) {
-            io::Error::from_raw_os_error(err.errno as i32)
+        if let Some(program) = program {
+            if let Err(err) = syscall::execve(program.as_os_str().as_bytes(), &args) {
+                io::Error::from_raw_os_error(err.errno as i32)
+            } else {
+                panic!("return from exec without err");
+            }
         } else {
-            panic!("return from exec without err");
+            io::Error::from_raw_os_error(syscall::ENOENT)
         }
     }
 
@@ -393,7 +400,7 @@ impl Stdio {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
                 opts.write(!readable);
-                let fd = File::open(&Path::new("null:"), &opts)?;
+                let fd = File::open(Path::new("null:"), &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
         }

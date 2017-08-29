@@ -273,7 +273,10 @@ impl str {
         core_str::StrExt::is_char_boundary(self, index)
     }
 
-    /// Converts a string slice to a byte slice.
+    /// Converts a string slice to a byte slice. To convert the byte slice back
+    /// into a string slice, use the [`str::from_utf8`] function.
+    ///
+    /// [`str::from_utf8`]: ./str/fn.from_utf8.html
     ///
     /// # Examples
     ///
@@ -289,8 +292,12 @@ impl str {
         core_str::StrExt::as_bytes(self)
     }
 
-    /// Converts a mutable string slice to a mutable byte slice.
-    #[unstable(feature = "str_mut_extras", issue = "41119")]
+    /// Converts a mutable string slice to a mutable byte slice. To convert the
+    /// mutable byte slice back into a mutable string slice, use the
+    /// [`str::from_utf8_mut`] function.
+    ///
+    /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
+    #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         core_str::StrExt::as_bytes_mut(self)
@@ -328,14 +335,18 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
-    /// let v = "🗻∈🌏";
+    /// let mut v = String::from("🗻∈🌏");
+    ///
     /// assert_eq!(Some("🗻"), v.get(0..4));
-    /// assert!(v.get(1..).is_none());
-    /// assert!(v.get(..8).is_none());
-    /// assert!(v.get(..42).is_none());
+    ///
+    /// // indices not on UTF-8 sequence boundaries
+    /// assert!(v.get_mut(1..).is_none());
+    /// assert!(v.get_mut(..8).is_none());
+    ///
+    /// // out of bounds
+    /// assert!(v.get_mut(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         core_str::StrExt::get(self, i)
@@ -351,14 +362,18 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let mut v = String::from("🗻∈🌏");
+    ///
     /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
+    ///
+    /// // indices not on UTF-8 sequence boundaries
     /// assert!(v.get_mut(1..).is_none());
     /// assert!(v.get_mut(..8).is_none());
+    ///
+    /// // out of bounds
     /// assert!(v.get_mut(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         core_str::StrExt::get_mut(self, i)
@@ -383,7 +398,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let v = "🗻∈🌏";
     /// unsafe {
     ///     assert_eq!("🗻", v.get_unchecked(0..4));
@@ -391,7 +405,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
         core_str::StrExt::get_unchecked(self, i)
@@ -416,7 +430,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_checked_slicing)]
     /// let mut v = String::from("🗻∈🌏");
     /// unsafe {
     ///     assert_eq!("🗻", v.get_unchecked_mut(0..4));
@@ -424,7 +437,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked_mut(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
         core_str::StrExt::get_unchecked_mut(self, i)
@@ -567,12 +580,16 @@ impl str {
     /// Basic usage:
     ///
     /// ```
+    /// use std::ascii::AsciiExt;
+    ///
     /// let mut s = "Per Martin-Löf".to_string();
-    ///
-    /// let (first, last) = s.split_at_mut(3);
-    ///
-    /// assert_eq!("Per", first);
-    /// assert_eq!(" Martin-Löf", last);
+    /// {
+    ///     let (first, last) = s.split_at_mut(3);
+    ///     first.make_ascii_uppercase();
+    ///     assert_eq!("PER", first);
+    ///     assert_eq!(" Martin-Löf", last);
+    /// }
+    /// assert_eq!("PER Martin-Löf", s);
     /// ```
     #[inline]
     #[stable(feature = "str_split_at", since = "1.4.0")]
@@ -1697,7 +1714,7 @@ impl str {
     ///
     /// [`Err`]: str/trait.FromStr.html#associatedtype.Err
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Basic usage
     ///
@@ -1729,7 +1746,7 @@ impl str {
     }
 
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
-    #[unstable(feature = "str_box_extras", issue = "41119")]
+    #[stable(feature = "str_box_extras", since = "1.20.0")]
     pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
         self.into()
     }
@@ -1996,7 +2013,7 @@ impl str {
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
 /// that the string contains valid UTF-8.
-#[unstable(feature = "str_box_extras", issue = "41119")]
+#[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     mem::transmute(v)
 }

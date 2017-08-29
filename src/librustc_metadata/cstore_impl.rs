@@ -12,17 +12,18 @@ use cstore;
 use encoder;
 use schema;
 
-use rustc::dep_graph::DepTrackingMapConfig;
+use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
                             NativeLibrary, MetadataLoader, LinkMeta,
-                            LinkagePreference, LoadedMacro, EncodedMetadata};
+                            LinkagePreference, LoadedMacro, EncodedMetadata,
+                            EncodedMetadataHashes};
 use rustc::hir::def;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::map::{DefKey, DefPath, DisambiguatedDefPathData, DefPathHash};
+use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::util::nodemap::{NodeSet, DefIdMap};
@@ -45,7 +46,7 @@ macro_rules! provide {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
                                     -> <ty::queries::$name<$lt> as
-                                        DepTrackingMapConfig>::Value {
+                                        QueryConfig>::Value {
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);
@@ -104,6 +105,7 @@ provide! { <'tcx> tcx, def_id, cdata,
 
         mir
     }
+    generator_sig => { cdata.generator_sig(def_id.index, tcx) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
@@ -136,6 +138,8 @@ provide! { <'tcx> tcx, def_id, cdata,
 
     dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
     is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
+    is_compiler_builtins => { cdata.is_compiler_builtins(&tcx.dep_graph) }
+    has_global_allocator => { cdata.has_global_allocator(&tcx.dep_graph) }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
 }
 
@@ -281,7 +285,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 
@@ -289,7 +293,7 @@ impl CrateStore for cstore::CStore {
     {
         self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
             krate: cnum,
-            index: index
+            index,
         })
     }
 
@@ -305,16 +309,6 @@ impl CrateStore for cstore::CStore {
 
     fn is_no_builtins(&self, cnum: CrateNum) -> bool {
         self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
-    }
-
-    fn retrace_path(&self,
-                    cnum: CrateNum,
-                    path: &[DisambiguatedDefPathData])
-                    -> Option<DefId> {
-        let cdata = self.get_crate_data(cnum);
-        cdata.def_path_table
-             .retrace_path(&path)
-             .map(|index| DefId { krate: cnum, index: index })
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -399,6 +393,7 @@ impl CrateStore for cstore::CStore {
                 legacy: def.legacy,
             }),
             vis: ast::Visibility::Inherited,
+            tokens: None,
         })
     }
 
@@ -452,7 +447,7 @@ impl CrateStore for cstore::CStore {
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet)
-                                 -> EncodedMetadata
+                                 -> (EncodedMetadata, EncodedMetadataHashes)
     {
         encoder::encode_metadata(tcx, link_meta, reachable)
     }
@@ -487,7 +482,7 @@ impl CrateStore for cstore::CStore {
                 _ => {},
             }
 
-            let mut bfs_queue = &mut VecDeque::new();
+            let bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
                 let child = child.def.def_id();
 

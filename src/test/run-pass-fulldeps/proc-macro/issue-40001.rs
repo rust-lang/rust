@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-40001-plugin.rs
+// ignore-stage1
 
 #![feature(proc_macro, plugin)]
 #![plugin(issue_40001_plugin)]

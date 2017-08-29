@@ -27,6 +27,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::cmp;
+use std::iter;
 use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
@@ -213,6 +214,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
         let mut hasher = StableHasher::new();
         let mut hcx = StableHashingContext::new(self);
+
+        // We want the type_id be independent of the types free regions, so we
+        // erase them. The erase_regions() call will also anonymize bound
+        // regions, which is desirable too.
+        let ty = self.erase_regions(&ty);
 
         hcx.while_hashing_spans(false, |hcx| {
             hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
@@ -422,7 +428,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);
-        self.trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+        self.for_each_relevant_impl(drop_trait, ty, |impl_did| {
             if let Some(item) = self.associated_items(impl_did).next() {
                 if let Ok(()) = validate(self, impl_did) {
                     dtor_did = Some(item.def_id);
@@ -568,6 +574,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }).collect()
             }
 
+            ty::TyGenerator(def_id, substs, interior) => {
+                substs.upvar_tys(def_id, self).chain(iter::once(interior.witness)).map(|ty| {
+                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
+                }).collect()
+            }
+
             ty::TyAdt(def, substs) => {
                 let ty::DtorckConstraint {
                     dtorck_types, outlives
@@ -689,6 +701,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyRawPtr(m) |
             TyRef(_, m) => self.hash(m.mutbl),
             TyClosure(def_id, _) |
+            TyGenerator(def_id, _, _) |
             TyAnon(def_id, _) |
             TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
@@ -1064,11 +1077,15 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let needs_drop = |ty: Ty<'tcx>| -> bool {
         match ty::queries::needs_drop_raw::try_get(tcx, DUMMY_SP, param_env.and(ty)) {
             Ok(v) => v,
-            Err(_) => {
+            Err(mut bug) => {
                 // Cycles should be reported as an error by `check_representable`.
                 //
-                // Consider the type as not needing drop in the meanwhile to avoid
-                // further errors.
+                // Consider the type as not needing drop in the meanwhile to
+                // avoid further errors.
+                //
+                // In case we forgot to emit a bug elsewhere, delay our
+                // diagnostic to get emitted as a compiler bug.
+                bug.delay_as_bug();
                 false
             }
         }
@@ -1110,6 +1127,11 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyArray(ty, _) | ty::TySlice(ty) => needs_drop(ty),
 
         ty::TyClosure(def_id, ref substs) => substs.upvar_tys(def_id, tcx).any(needs_drop),
+
+        // Pessimistically assume that all generators will require destructors
+        // as we don't know if a destructor is a noop or not until after the MIR
+        // state transformation pass
+        ty::TyGenerator(..) => true,
 
         ty::TyTuple(ref tys, _) => tys.iter().cloned().any(needs_drop),
 

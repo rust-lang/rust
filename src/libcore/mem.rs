@@ -188,7 +188,27 @@ pub fn forget<T>(t: T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn size_of<T>() -> usize {
+    unsafe { intrinsics::size_of::<T>() }
+}
+
+/// Returns the size of a type in bytes.
+///
+/// More specifically, this is the offset in bytes between successive
+/// items of the same type, including alignment padding.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of::<i32>());
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
 
@@ -279,7 +299,30 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn align_of<T>() -> usize {
+    unsafe { intrinsics::min_align_of::<T>() }
+}
+
+/// Returns the [ABI]-required minimum alignment of a type.
+///
+/// Every reference to a value of the type `T` must be a multiple of this number.
+///
+/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of::<i32>());
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
@@ -795,7 +838,6 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// the type:
 ///
 /// ```rust
-/// # #![feature(manually_drop)]
 /// use std::mem::ManuallyDrop;
 /// struct Peach;
 /// struct Banana;
@@ -821,7 +863,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
 pub union ManuallyDrop<T>{ value: T }
 
@@ -831,11 +873,10 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(manually_drop)]
     /// use std::mem::ManuallyDrop;
     /// ManuallyDrop::new(Box::new(()));
     /// ```
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
@@ -846,12 +887,11 @@ impl<T> ManuallyDrop<T> {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(manually_drop)]
     /// use std::mem::ManuallyDrop;
     /// let x = ManuallyDrop::new(Box::new(()));
     /// let _: Box<()> = ManuallyDrop::into_inner(x);
     /// ```
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub fn into_inner(slot: ManuallyDrop<T>) -> T {
         unsafe {
@@ -861,19 +901,19 @@ impl<T> ManuallyDrop<T> {
 
     /// Manually drops the contained value.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This function runs the destructor of the contained value and thus the wrapped value
     /// now represents uninitialized data. It is up to the user of this method to ensure the
     /// uninitialized data is not actually used.
-    #[unstable(feature = "manually_drop", issue = "40673")]
+    #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
         ptr::drop_in_place(&mut slot.value)
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> ::ops::Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
@@ -884,7 +924,7 @@ impl<T> ::ops::Deref for ManuallyDrop<T> {
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T> ::ops::DerefMut for ManuallyDrop<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -894,11 +934,23 @@ impl<T> ::ops::DerefMut for ManuallyDrop<T> {
     }
 }
 
-#[unstable(feature = "manually_drop", issue = "40673")]
+#[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
     fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
         unsafe {
             fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
         }
     }
+}
+
+/// Tells LLVM that this point in the code is not reachable, enabling further
+/// optimizations.
+///
+/// NB: This is very different from the `unreachable!()` macro: Unlike the
+/// macro, which panics when it is executed, it is *undefined behavior* to
+/// reach code marked with this function.
+#[inline]
+#[unstable(feature = "unreachable", issue = "43751")]
+pub unsafe fn unreachable() -> ! {
+    intrinsics::unreachable()
 }

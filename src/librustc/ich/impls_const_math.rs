@@ -11,9 +11,9 @@
 //! This module contains `HashStable` implementations for various data types
 //! from `rustc_const_math` in no particular order.
 
-impl_stable_hash_for!(enum ::rustc_const_math::ConstFloat {
-    F32(val),
-    F64(val)
+impl_stable_hash_for!(struct ::rustc_const_math::ConstFloat {
+    ty,
+    bits
 });
 
 impl_stable_hash_for!(enum ::rustc_const_math::ConstInt {

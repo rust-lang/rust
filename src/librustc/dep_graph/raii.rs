@@ -9,53 +9,49 @@
 // except according to those terms.
 
 use super::DepNode;
-use super::thread::{DepGraphThreadData, DepMessage};
+use super::edges::DepGraphEdges;
+
+use std::cell::RefCell;
 
 pub struct DepTask<'graph> {
-    data: &'graph DepGraphThreadData,
-    key: Option<DepNode>,
+    graph: &'graph RefCell<DepGraphEdges>,
+    key: DepNode,
 }
 
 impl<'graph> DepTask<'graph> {
-    pub fn new(data: &'graph DepGraphThreadData, key: DepNode)
-               -> Option<DepTask<'graph>> {
-        if data.is_enqueue_enabled() {
-            data.enqueue(DepMessage::PushTask(key.clone()));
-            Some(DepTask { data: data, key: Some(key) })
-        } else {
-            None
+    pub fn new(graph: &'graph RefCell<DepGraphEdges>,
+               key: DepNode)
+               -> DepTask<'graph> {
+        graph.borrow_mut().push_task(key);
+        DepTask {
+            graph,
+            key,
         }
     }
 }
 
 impl<'graph> Drop for DepTask<'graph> {
     fn drop(&mut self) {
-        if self.data.is_enqueue_enabled() {
-            self.data.enqueue(DepMessage::PopTask(self.key.take().unwrap()));
-        }
+        self.graph.borrow_mut().pop_task(self.key);
     }
 }
 
 pub struct IgnoreTask<'graph> {
-    data: &'graph DepGraphThreadData
+    graph: &'graph RefCell<DepGraphEdges>,
 }
 
 impl<'graph> IgnoreTask<'graph> {
-    pub fn new(data: &'graph DepGraphThreadData) -> Option<IgnoreTask<'graph>> {
-        if data.is_enqueue_enabled() {
-            data.enqueue(DepMessage::PushIgnore);
-            Some(IgnoreTask { data: data })
-        } else {
-            None
+    pub fn new(graph: &'graph RefCell<DepGraphEdges>) -> IgnoreTask<'graph> {
+        graph.borrow_mut().push_ignore();
+        IgnoreTask {
+            graph
         }
     }
 }
 
 impl<'graph> Drop for IgnoreTask<'graph> {
     fn drop(&mut self) {
-        if self.data.is_enqueue_enabled() {
-            self.data.enqueue(DepMessage::PopIgnore);
-        }
+        self.graph.borrow_mut().pop_ignore();
     }
 }
 

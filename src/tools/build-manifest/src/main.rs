@@ -9,7 +9,9 @@
 // except according to those terms.
 
 extern crate toml;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -92,6 +94,7 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
+    "x86_64-unknown-redox",
 ];
 
 static MINGW: &'static [&'static str] = &[
@@ -99,19 +102,21 @@ static MINGW: &'static [&'static str] = &[
     "x86_64-pc-windows-gnu",
 ];
 
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
 struct Manifest {
     manifest_version: String,
     date: String,
     pkg: BTreeMap<String, Package>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct Package {
     version: String,
     target: BTreeMap<String, Target>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct Target {
     available: bool,
     url: Option<String>,
@@ -136,7 +141,7 @@ impl Target {
     }
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct Component {
     pkg: String,
     target: String,
@@ -177,15 +182,15 @@ fn main() {
     t!(io::stdin().read_to_string(&mut passphrase));
 
     Builder {
-        rust_release: rust_release,
-        cargo_release: cargo_release,
-        rls_release: rls_release,
-        input: input,
-        output: output,
+        rust_release,
+        cargo_release,
+        rls_release,
+        input,
+        output,
         gpg_passphrase: passphrase,
         digests: BTreeMap::new(),
-        s3_address: s3_address,
-        date: date,
+        s3_address,
+        date,
         rust_version: String::new(),
         cargo_version: String::new(),
         rls_version: String::new(),
@@ -199,28 +204,16 @@ impl Builder {
         self.rls_version = self.version("rls", "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
-        let Manifest { manifest_version, date, pkg } = self.build_manifest();
-
-        // Unfortunately we can't use derive(RustcEncodable) here because the
-        // version field is called `manifest-version`, not `manifest_version`.
-        // In lieu of that just create the table directly here with a `BTreeMap`
-        // and wrap it up in a `Value::Table`.
-        let mut manifest = BTreeMap::new();
-        manifest.insert("manifest-version".to_string(),
-                        toml::Value::String(manifest_version));
-        manifest.insert("date".to_string(), toml::Value::String(date.clone()));
-        manifest.insert("pkg".to_string(), toml::encode(&pkg));
-        let manifest = toml::Value::Table(manifest).to_string();
-
+        let manifest = self.build_manifest();
         let filename = format!("channel-rust-{}.toml", self.rust_release);
-        self.write_manifest(&manifest, &filename);
+        self.write_manifest(&toml::to_string(&manifest).unwrap(), &filename);
 
         let filename = format!("channel-rust-{}-date.txt", self.rust_release);
-        self.write_date_stamp(&date, &filename);
+        self.write_date_stamp(&manifest.date, &filename);
 
         if self.rust_release != "beta" && self.rust_release != "nightly" {
-            self.write_manifest(&manifest, "channel-rust-stable.toml");
-            self.write_date_stamp(&date, "channel-rust-stable-date.txt");
+            self.write_manifest(&toml::to_string(&manifest).unwrap(), "channel-rust-stable.toml");
+            self.write_date_stamp(&manifest.date, "channel-rust-stable-date.txt");
         }
     }
 

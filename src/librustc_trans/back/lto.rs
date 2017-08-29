@@ -12,7 +12,7 @@ use back::link;
 use back::write;
 use back::symbol_export;
 use rustc::session::config;
-use errors::FatalError;
+use errors::{FatalError, Handler};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
@@ -22,11 +22,12 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 
 use libc;
-use flate2::read::ZlibDecoder;
+use flate2::read::DeflateDecoder;
 
 use std::io::Read;
 use std::ffi::CString;
 use std::path::Path;
+use std::ptr::read_unaligned;
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -41,24 +42,24 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
 }
 
 pub fn run(cgcx: &CodegenContext,
+           diag_handler: &Handler,
            llmod: ModuleRef,
            tm: TargetMachineRef,
            config: &ModuleConfig,
            temp_no_opt_bc_filename: &Path) -> Result<(), FatalError> {
-    let handler = cgcx.handler;
     if cgcx.opts.cg.prefer_dynamic {
-        handler.struct_err("cannot prefer dynamic linking when performing LTO")
-            .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
-                   supported with LTO")
-            .emit();
+        diag_handler.struct_err("cannot prefer dynamic linking when performing LTO")
+                    .note("only 'staticlib', 'bin', and 'cdylib' outputs are \
+                           supported with LTO")
+                    .emit();
         return Err(FatalError)
     }
 
     // Make sure we actually can run LTO
     for crate_type in cgcx.crate_types.iter() {
         if !crate_type_allows_lto(*crate_type) {
-            let e = handler.fatal("lto can only be run for executables, cdylibs and \
-                                   static library outputs");
+            let e = diag_handler.fatal("lto can only be run for executables, cdylibs and \
+                                        static library outputs");
             return Err(e)
         }
     }
@@ -66,7 +67,7 @@ pub fn run(cgcx: &CodegenContext,
     let export_threshold =
         symbol_export::crates_export_threshold(&cgcx.crate_types);
 
-    let symbol_filter = &|&(ref name, level): &(String, _)| {
+    let symbol_filter = &|&(ref name, _, level): &(String, _, _)| {
         if symbol_export::is_below_threshold(level, export_threshold) {
             let mut bytes = Vec::with_capacity(name.len() + 1);
             bytes.extend(name.bytes());
@@ -111,18 +112,18 @@ pub fn run(cgcx: &CodegenContext,
                             (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as usize)];
 
                         let mut inflated = Vec::new();
-                        let res = ZlibDecoder::new(compressed_data)
+                        let res = DeflateDecoder::new(compressed_data)
                             .read_to_end(&mut inflated);
                         if res.is_err() {
                             let msg = format!("failed to decompress bc of `{}`",
                                               name);
-                            Err(handler.fatal(&msg))
+                            Err(diag_handler.fatal(&msg))
                         } else {
                             Ok(inflated)
                         }
                     } else {
-                        Err(handler.fatal(&format!("Unsupported bytecode format version {}",
-                                                   version)))
+                        Err(diag_handler.fatal(&format!("Unsupported bytecode format version {}",
+                                                        version)))
                     }
                 })?
             } else {
@@ -131,12 +132,12 @@ pub fn run(cgcx: &CodegenContext,
                     // simply inflate everything and let LLVM decide if it can
                     // make sense of it
                     let mut inflated = Vec::new();
-                    let res = ZlibDecoder::new(bc_encoded)
+                    let res = DeflateDecoder::new(bc_encoded)
                         .read_to_end(&mut inflated);
                     if res.is_err() {
                         let msg = format!("failed to decompress bc of `{}`",
                                           name);
-                        Err(handler.fatal(&msg))
+                        Err(diag_handler.fatal(&msg))
                     } else {
                         Ok(inflated)
                     }
@@ -152,7 +153,7 @@ pub fn run(cgcx: &CodegenContext,
                     Ok(())
                 } else {
                     let msg = format!("failed to load bc of `{}`", name);
-                    Err(write::llvm_err(handler, msg))
+                    Err(write::llvm_err(&diag_handler, msg))
                 }
             })?;
         }
@@ -223,13 +224,13 @@ fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
     let pos = link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET;
     let byte_data = &bc[pos..pos + 4];
-    let data = unsafe { *(byte_data.as_ptr() as *const u32) };
+    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u32) };
     u32::from_le(data)
 }
 
 fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
     let pos = link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET;
     let byte_data = &bc[pos..pos + 8];
-    let data = unsafe { *(byte_data.as_ptr() as *const u64) };
+    let data = unsafe { read_unaligned(byte_data.as_ptr() as *const u64) };
     u64::from_le(data)
 }

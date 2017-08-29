@@ -266,17 +266,20 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
     }
 }
 
-pub struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub tables: &'a ty::TypeckTables<'gcx>,
+pub struct PatternContext<'a, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
+    pub tables: &'a ty::TypeckTables<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub errors: Vec<PatternError<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
-    pub fn from_hir(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                    tables: &'a ty::TypeckTables<'gcx>,
+impl<'a, 'tcx> Pattern<'tcx> {
+    pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+                    tables: &'a ty::TypeckTables<'tcx>,
                     pat: &hir::Pat) -> Self {
-        let mut pcx = PatternContext::new(tcx, tables);
+        let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
             span_bug!(pat.span, "encountered errors lowering pattern: {:?}", pcx.errors)
@@ -286,13 +289,21 @@ impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, tables: &'a ty::TypeckTables<'gcx>) -> Self {
-        PatternContext { tcx: tcx, tables: tables, errors: vec![] }
+impl<'a, 'tcx> PatternContext<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+               param_env_and_substs: ty::ParamEnvAnd<'tcx, &'tcx Substs<'tcx>>,
+               tables: &'a ty::TypeckTables<'tcx>) -> Self {
+        PatternContext {
+            tcx,
+            param_env: param_env_and_substs.param_env,
+            tables,
+            substs: param_env_and_substs.value,
+            errors: vec![]
+        }
     }
 
     pub fn lower_pattern(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
-        let mut ty = self.tables.node_id_to_type(pat.id);
+        let mut ty = self.tables.node_id_to_type(pat.hir_id);
 
         let kind = match pat.node {
             PatKind::Wild => PatternKind::Wild,
@@ -310,7 +321,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Path(ref qpath) => {
-                return self.lower_path(qpath, pat.id, pat.id, pat.span);
+                return self.lower_path(qpath, pat.hir_id, pat.id, pat.span);
             }
 
             PatKind::Ref(ref subpattern, _) |
@@ -319,7 +330,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
-                let ty = self.tables.node_id_to_type(pat.id);
+                let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
                     ty::TyRef(_, mt) =>
                         PatternKind::Deref {
@@ -344,7 +355,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Tuple(ref subpatterns, ddpos) => {
-                let ty = self.tables.node_id_to_type(pat.id);
+                let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
                     ty::TyTuple(ref tys, _) => {
                         let subpatterns =
@@ -363,27 +374,31 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 }
             }
 
-            PatKind::Binding(bm, def_id, ref ident, ref sub) => {
+            PatKind::Binding(_, def_id, ref ident, ref sub) => {
                 let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
-                let var_ty = self.tables.node_id_to_type(pat.id);
+                let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 let region = match var_ty.sty {
                     ty::TyRef(r, _) => Some(r),
                     _ => None,
                 };
+                let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
+                                                         .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    hir::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue(hir::MutMutable) =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    hir::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue(hir::MutImmutable) =>
                         (Mutability::Not, BindingMode::ByValue),
-                    hir::BindByRef(hir::MutMutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Mut)),
-                    hir::BindByRef(hir::MutImmutable) =>
-                        (Mutability::Not, BindingMode::ByRef(region.unwrap(), BorrowKind::Shared)),
+                    ty::BindByReference(hir::MutMutable) =>
+                        (Mutability::Not, BindingMode::ByRef(
+                            region.unwrap(), BorrowKind::Mut)),
+                    ty::BindByReference(hir::MutImmutable) =>
+                        (Mutability::Not, BindingMode::ByRef(
+                            region.unwrap(), BorrowKind::Shared)),
                 };
 
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
-                if let hir::BindByRef(_) = bm {
+                if let ty::BindByReference(_) = bm {
                     if let ty::TyRef(_, mt) = ty.sty {
                         ty = mt.ty;
                     } else {
@@ -392,8 +407,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 }
 
                 PatternKind::Binding {
-                    mutability: mutability,
-                    mode: mode,
+                    mutability,
+                    mode,
                     name: ident.node,
                     var: id,
                     ty: var_ty,
@@ -402,7 +417,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT"),
@@ -421,7 +436,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pat.id);
+                let def = self.tables.qpath_def(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => {
@@ -455,7 +470,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
 
         Pattern {
             span: pat.span,
-            ty: ty,
+            ty,
             kind: Box::new(kind),
         }
     }
@@ -554,10 +569,10 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                         _ => bug!("inappropriate type for def: {:?}", ty.sty),
                     };
                     PatternKind::Variant {
-                        adt_def: adt_def,
-                        substs: substs,
+                        adt_def,
+                        substs,
                         variant_index: adt_def.variant_index_with_id(variant_id),
-                        subpatterns: subpatterns,
+                        subpatterns,
                     }
                 } else {
                     PatternKind::Leaf { subpatterns: subpatterns }
@@ -575,7 +590,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
 
     fn lower_path(&mut self,
                   qpath: &hir::QPath,
-                  id: ast::NodeId,
+                  id: hir::HirId,
                   pat_id: ast::NodeId,
                   span: Span)
                   -> Pattern<'tcx> {
@@ -583,20 +598,22 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let def = self.tables.qpath_def(qpath, id);
         let kind = match def {
             Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                let tcx = self.tcx.global_tcx();
                 let substs = self.tables.node_substs(id);
-                match eval::lookup_const_by_id(tcx, def_id, substs) {
-                    Some((def_id, _substs)) => {
-                        // Enter the inlined constant's tables temporarily.
+                match eval::lookup_const_by_id(self.tcx, self.param_env.and((def_id, substs))) {
+                    Some((def_id, substs)) => {
+                        // Enter the inlined constant's tables&substs temporarily.
                         let old_tables = self.tables;
-                        self.tables = tcx.typeck_tables_of(def_id);
-                        let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-                            tcx.hir.body(tcx.hir.body_owned_by(id))
+                        let old_substs = self.substs;
+                        self.tables = self.tcx.typeck_tables_of(def_id);
+                        self.substs = substs;
+                        let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
+                            self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
                         } else {
-                            tcx.sess.cstore.item_body(tcx, def_id)
+                            self.tcx.sess.cstore.item_body(self.tcx, def_id)
                         };
                         let pat = self.lower_const_expr(&body.value, pat_id, span);
                         self.tables = old_tables;
+                        self.substs = old_substs;
                         return pat;
                     }
                     None => {
@@ -609,14 +626,16 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         };
 
         Pattern {
-            span: span,
-            ty: ty,
+            span,
+            ty,
             kind: Box::new(kind),
         }
     }
 
     fn lower_lit(&mut self, expr: &hir::Expr) -> PatternKind<'tcx> {
-        let const_cx = eval::ConstContext::with_tables(self.tcx.global_tcx(), self.tables);
+        let const_cx = eval::ConstContext::new(self.tcx,
+                                               self.param_env.and(self.substs),
+                                               self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
                 if let ConstVal::Variant(def_id) = value {
@@ -676,8 +695,8 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                     hir::ExprPath(ref qpath) => qpath,
                     _ => bug!()
                 };
-                let ty = self.tables.node_id_to_type(callee.id);
-                let def = self.tables.qpath_def(qpath, callee.id);
+                let ty = self.tables.node_id_to_type(callee.hir_id);
+                let def = self.tables.qpath_def(qpath, callee.hir_id);
                 match def {
                     Def::Fn(..) | Def::Method(..) => self.lower_lit(expr),
                     _ => {
@@ -693,7 +712,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprStruct(ref qpath, ref fields, None) => {
-                let def = self.tables.qpath_def(qpath, expr.id);
+                let def = self.tables.qpath_def(qpath, expr.hir_id);
                 let adt_def = match pat_ty.sty {
                     ty::TyAdt(adt_def, _) => adt_def,
                     _ => {
@@ -736,14 +755,14 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprPath(ref qpath) => {
-                return self.lower_path(qpath, expr.id, pat_id, span);
+                return self.lower_path(qpath, expr.hir_id, pat_id, span);
             }
 
             _ => self.lower_lit(expr)
         };
 
         Pattern {
-            span: span,
+            span,
             ty: pat_ty,
             kind: Box::new(kind),
         }

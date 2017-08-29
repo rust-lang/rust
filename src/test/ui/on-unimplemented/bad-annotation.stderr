@@ -1,0 +1,22 @@
+error[E0232]: this attribute must have a value
+  --> $DIR/bad-annotation.rs:26:1
+   |
+26 | #[rustc_on_unimplemented] //~ ERROR this attribute must have a value
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ attribute requires a value
+   |
+   = note: eg `#[rustc_on_unimplemented = "foo"]`
+
+error[E0230]: there is no type parameter C on trait BadAnnotation2
+  --> $DIR/bad-annotation.rs:30:1
+   |
+30 | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0231]: only named substitution parameters are allowed
+  --> $DIR/bad-annotation.rs:35:1
+   |
+35 | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
