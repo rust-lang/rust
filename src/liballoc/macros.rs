@@ -84,8 +84,8 @@ macro_rules! vec {
 /// depending on the intended destination of the string.
 ///
 /// [fmt]: ../std/fmt/index.html
-/// [`print!`]: macro.print.html
-/// [`write!`]: macro.write.html
+/// [`print!`]: ../std/macro.print.html
+/// [`write!`]: ../std/macro.write.html
 ///
 /// # Panics
 ///
