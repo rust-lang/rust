@@ -705,30 +705,74 @@ impl hash::Hash for SocketAddrV6 {
 ///
 /// # Examples
 ///
-/// ```no_run
-/// use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
+/// Creating a [`SocketAddr`] iterator that yields one item:
 ///
-/// fn main() {
-///     let ip = Ipv4Addr::new(127, 0, 0, 1);
-///     let port = 12345;
-///
-///     // The following lines are equivalent modulo possible "localhost" name
-///     // resolution differences
-///     let tcp_s = TcpStream::connect(SocketAddrV4::new(ip, port));
-///     let tcp_s = TcpStream::connect((ip, port));
-///     let tcp_s = TcpStream::connect(("127.0.0.1", port));
-///     let tcp_s = TcpStream::connect(("localhost", port));
-///     let tcp_s = TcpStream::connect("127.0.0.1:12345");
-///     let tcp_s = TcpStream::connect("localhost:12345");
-///
-///     // TcpListener::bind(), UdpSocket::bind() and UdpSocket::send_to()
-///     // behave similarly
-///     let tcp_l = TcpListener::bind("localhost:12345");
-///
-///     let mut udp_s = UdpSocket::bind(("127.0.0.1", port)).unwrap();
-///     udp_s.send_to(&[7], (ip, 23451)).unwrap();
-/// }
 /// ```
+/// use std::net::{ToSocketAddrs, SocketAddr};
+///
+/// let addr = SocketAddr::from(([127, 0, 0, 1], 443));
+/// let mut addrs_iter = addr.to_socket_addrs().unwrap();
+///
+/// assert_eq!(Some(addr), addrs_iter.next());
+/// assert!(addrs_iter.next().is_none());
+/// ```
+///
+/// Creating a [`SocketAddr`] iterator from a hostname:
+///
+/// ```no_run
+/// use std::net::{SocketAddr, ToSocketAddrs};
+///
+/// // assuming 'localhost' resolves to 127.0.0.1
+/// let mut addrs_iter = "localhost:443".to_socket_addrs().unwrap();
+/// assert_eq!(addrs_iter.next(), Some(SocketAddr::from(([127, 0, 0, 1], 443))));
+/// assert!(addrs_iter.next().is_none());
+///
+/// // assuming 'foo' does not resolve
+/// assert!("foo:443".to_socket_addrs().is_err());
+/// ```
+///
+/// Creating a [`SocketAddr`] iterator that yields multiple items:
+///
+/// ```
+/// use std::net::{SocketAddr, ToSocketAddrs};
+///
+/// let addr1 = SocketAddr::from(([0, 0, 0, 0], 80));
+/// let addr2 = SocketAddr::from(([127, 0, 0, 1], 443));
+/// let addrs = vec![addr1, addr2];
+///
+/// let mut addrs_iter = (&addrs[..]).to_socket_addrs().unwrap();
+///
+/// assert_eq!(Some(addr1), addrs_iter.next());
+/// assert_eq!(Some(addr2), addrs_iter.next());
+/// assert!(addrs_iter.next().is_none());
+/// ```
+///
+/// Attempting to create a [`SocketAddr`] iterator from an improperly formatted
+/// socket address `&str` (missing the port):
+///
+/// ```
+/// use std::io;
+/// use std::net::ToSocketAddrs;
+///
+/// let err = "127.0.0.1".to_socket_addrs().unwrap_err();
+/// assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+/// ```
+///
+/// [`TcpStream::connect`] is an example of an function that utilizes
+/// `ToSocketsAddr` as a trait bound on its parameter in order to accept
+/// different types:
+///
+/// ```no_run
+/// use std::net::{TcpStream, Ipv4Addr};
+///
+/// let stream = TcpStream::connect(("127.0.0.1", 443));
+/// // or
+/// let stream = TcpStream::connect("127.0.0.1.443");
+/// // or
+/// let stream = TcpStream::connect((Ipv4Addr::new(127, 0, 0, 1), 443));
+/// ```
+///
+/// [`TcpStream::connect`]: ../../std/net/struct.TcpStream.html#method.connect
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToSocketAddrs {
     /// Returned iterator over socket addresses which this type may correspond
