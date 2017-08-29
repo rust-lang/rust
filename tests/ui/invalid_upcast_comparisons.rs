@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![warn(invalid_upcast_comparisons)]
-#![allow(unused, eq_op, no_effect, unnecessary_operation)]
+#![allow(unused, eq_op, no_effect, unnecessary_operation, cast_lossless)]
 
 fn mk_value<T>() -> T { unimplemented!() }
 
