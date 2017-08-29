@@ -522,6 +522,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         // In some cases in non-MIR libstd-mode, not having a destination is legit.  Handle these early.
         match &path[..] {
             "std::panicking::rust_panic_with_hook" |
+            "core::panicking::panic_fmt::::panic_impl" |
             "std::rt::begin_panic_fmt" => return err!(Panic),
             _ => {}
         }

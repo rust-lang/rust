@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
 use rustc::ty::subst::{Subst, Substs, Kind};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::ast::Mutability;
@@ -282,15 +282,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // let's simply get rid of them
         let without_lifetimes = self.tcx.erase_regions(&ty);
         let substituted = without_lifetimes.subst(self.tcx, substs);
-        self.tcx.normalize_associated_type(&substituted)
-    }
-
-    pub fn erase_lifetimes<T>(&self, value: &Binder<T>) -> T
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        let value = self.tcx.erase_late_bound_regions(value);
-        self.tcx.erase_regions(&value)
+        let substituted = self.tcx.normalize_associated_type(&substituted);
+        substituted
     }
 
     /// Return the size and aligment of the value at the given type.
