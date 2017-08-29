@@ -92,6 +92,8 @@ There are a few areas that need to be changed for this RFC:
   two versions of a crate are publicly reachable to each other.
 * The `cargo publish` process needs to be changed to warn (or prevent) the publishing
   of crates that have undeclared public dependencies
+* `cargo publish` will resolve dependencies to the *lowest* possible versions in order to
+  check that the minimal version specified in `Cargo.toml` is correct.
 * Crates.io should show public dependencies more prominently than private ones.
 
 ## Compiler Changes
@@ -184,13 +186,52 @@ How this will work:
   same crate, we consider that an error. This basically means that if you privately
   depend on Hyper 0.3 and Hyper 0.4, that's an error.
 
-## Changes to Cargo Publishing
+## Changes to Cargo Publish: Warnings
 
 When a new crate version is published, Cargo will warn about types and traits that
 the compiler determined to be public but did not come from a public dependency. For
 now, it should be possible to publish anyways but in some period in the future it
 will be necessary to explicitly mark all public dependencies as such or explicitly
 mark them with `#[allow(external_private_dependency)]`.
+
+## Changes to Cargo Publish: Lowest Version Resolution
+
+A very common situation today is that people write the initial version of a
+dependency in their Cargo.toml, but never bother to update it as they take advantage
+of new features in newer versions. This works out okay because (1) Cargo will
+generally use the largest version it can find, compatible with constraints, and (2)
+upper bounds on constraints (at least within a particular minor version) are
+relatively rare. That means, in particular, that Cargo.toml is not a fully accurate
+picture of version dependency information; in general it's a lower bound at best.
+There can be "invisible" dependencies that don't cause resolution failures but can
+create compilation errors as APIs evolve.
+
+Public dependencies exacerbate the above problem, because you can end up relying on
+features of a "new API" from a crate you didn't even know you depended on! For
+example:
+
+- A depends on:
+  - B 1.0 which publicly depends on C ^1.0
+  - D 1.0, which has no dependencies
+- When A is initially built, it resolves to B 1.0 and C 1.1.
+  - Because C's APIs are available to A via re-exports in B, A effectively depends
+    on C 1.1 now, even though B only claims to depend on C ^1.0
+  - In particular, the code in A might depend on APIs only available in C 1.1
+  - However, if A is a library, we don't check in any lockfile for it, so this
+    information is lost.
+- Now we change A to depend on D 1.1, which depends on C =1.0
+  - A fresh copy of A, when built, will now resolve the crate graph to B 1.0, D 1.1,
+    C 1.0
+  - But now A may suddenly fail to compile, because it was implicitly depending on C
+    1.1 features via B.
+
+This example and others like it rely on a common ingredient: a crate somewhere using
+an API that only is available in a newer version of a crate than the version listed
+in Cargo.toml.
+
+To attempt to surface this problem earlier, `cargo publish` will attempt to resolve
+the graph while picking the smallest versions compatible with constraints. If the
+crate fails to build with this resolution graph, the publish will fail.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
