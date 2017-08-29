@@ -2472,7 +2472,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         fn parameter_count_error<'tcx>(sess: &Session, sp: Span, expected_count: usize,
                                        arg_count: usize, error_code: &str, variadic: bool,
-                                       def_span: Option<Span>) {
+                                       def_span: Option<Span>, sugg_unit: bool) {
             let mut err = sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} parameter{} but {} parameter{} supplied",
                     if variadic {"at least "} else {""},
@@ -2482,12 +2482,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 error_code);
 
-            err.span_label(sp, format!("expected {}{} parameter{}",
-                                        if variadic {"at least "} else {""},
-                                        expected_count,
-                                        if expected_count == 1 {""} else {"s"}));
             if let Some(def_s) = def_span {
                 err.span_label(def_s, "defined here");
+            }
+            if sugg_unit {
+                let mut sugg_span = sp.end_point();
+                // remove closing `)` from the span
+                sugg_span.hi = sugg_span.lo;
+                err.span_suggestion(
+                    sugg_span,
+                    "expected the unit value `()`. You can create one with a pair of parenthesis",
+                    String::from("()"));
+            } else {
+                err.span_label(sp, format!("expected {}{} parameter{}",
+                                            if variadic {"at least "} else {""},
+                                            expected_count,
+                                            if expected_count == 1 {""} else {"s"}));
             }
             err.emit();
         }
@@ -2497,7 +2507,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match tuple_type.sty {
                 ty::TyTuple(arg_types, _) if arg_types.len() != args.len() => {
                     parameter_count_error(tcx.sess, sp_args, arg_types.len(), args.len(),
-                                          "E0057", false, def_span);
+                                          "E0057", false, def_span, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
@@ -2526,13 +2536,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 fn_inputs.to_vec()
             } else {
                 parameter_count_error(tcx.sess, sp_args, expected_arg_count,
-                                      supplied_arg_count, "E0060", true, def_span);
+                                      supplied_arg_count, "E0060", true, def_span, false);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
         } else {
+            // is the missing argument of type `()`?
+            let sugg_unit = if expected_arg_tys.len() == 1 && supplied_arg_count == 0 {
+                self.resolve_type_vars_if_possible(&expected_arg_tys[0]).is_nil()
+            } else if fn_inputs.len() == 1 && supplied_arg_count == 0 {
+                self.resolve_type_vars_if_possible(&fn_inputs[0]).is_nil()
+            } else {
+                false
+            };
             parameter_count_error(tcx.sess, sp_args, expected_arg_count,
-                                  supplied_arg_count, "E0061", false, def_span);
+                                  supplied_arg_count, "E0061", false, def_span, sugg_unit);
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
         };
