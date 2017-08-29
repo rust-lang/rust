@@ -123,7 +123,7 @@ pub fn last_line_contains_single_line_comment(s: &str) -> bool {
 
 #[inline]
 pub fn is_attributes_extendable(attrs_str: &str) -> bool {
-    !attrs_str.contains('\n') && !last_line_contains_single_line_comment(&attrs_str)
+    !attrs_str.contains('\n') && !last_line_contains_single_line_comment(attrs_str)
 }
 
 // The width of the first line in s.

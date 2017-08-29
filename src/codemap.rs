@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This module contains utilities that work with the `CodeMap` from libsyntax / syntex_syntax.
+//! This module contains utilities that work with the `CodeMap` from `libsyntax` / `syntex_syntax`.
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
 use std::rc::Rc;
@@ -77,8 +77,9 @@ impl LineRangeUtils for CodeMap {
         let lo = self.lookup_char_pos(span.lo());
         let hi = self.lookup_char_pos(span.hi());
 
-        assert!(
-            lo.file.name == hi.file.name,
+        assert_eq!(
+            lo.file.name,
+            hi.file.name,
             "span crossed file boundary: lo: {:?}, hi: {:?}",
             lo,
             hi

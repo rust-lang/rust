@@ -256,7 +256,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
             "{}{}{}",
             parent_rewrite,
             first_connector,
-            join_rewrites(&rewrites, &subexpr_list, &connector)
+            join_rewrites(&rewrites, subexpr_list, &connector)
         )
     };
     let result = format!("{}{}", result, repeat_try(suffix_try_num));
@@ -475,7 +475,7 @@ fn rewrite_method_call(
         let type_list: Vec<_> =
             try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
-        let type_str = if context.config.spaces_within_angle_brackets() && type_list.len() > 0 {
+        let type_str = if context.config.spaces_within_angle_brackets() && !type_list.is_empty() {
             format!("::< {} >", type_list.join(", "))
         } else {
             format!("::<{}>", type_list.join(", "))

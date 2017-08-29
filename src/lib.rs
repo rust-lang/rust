@@ -504,7 +504,7 @@ impl FormattingError {
 
     fn msg_suffix(&self) -> String {
         match self.kind {
-            ErrorKind::LineOverflow(..) if self.is_comment => format!(
+            ErrorKind::LineOverflow(..) if self.is_comment => String::from(
                 "use `error_on_line_overflow_comments = false` to suppress \
                  the warning against line comments\n",
             ),
@@ -802,9 +802,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                     last_wspace = Some(b);
                 }
             } else if c == '/' {
-                match prev_char {
-                    Some('/') => is_comment = true,
-                    _ => (),
+                if let Some('/') = prev_char {
+                    is_comment = true;
                 }
                 last_wspace = None;
             } else {
@@ -869,7 +868,7 @@ pub fn format_input<T: Write>(
     config: &Config,
     mut out: Option<&mut T>,
 ) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
-    let mut summary = Summary::new();
+    let mut summary = Summary::default();
     if config.disable_all_formatting() {
         return Ok((summary, FileMap::new(), FormatReport::new()));
     }

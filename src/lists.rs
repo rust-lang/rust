@@ -20,7 +20,7 @@ use rewrite::RewriteContext;
 use utils::{first_line_width, last_line_width, mk_sp};
 
 /// Formatting tactic for lists. This will be cast down to a
-/// DefinitiveListTactic depending on the number and length of the items and
+/// `DefinitiveListTactic` depending on the number and length of the items and
 /// their comments.
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
@@ -172,7 +172,7 @@ impl DefinitiveListTactic {
 }
 
 /// The type of separator for lists.
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Separator {
     Comma,
     VerticalBar,
@@ -346,9 +346,9 @@ where
 
             if tactic == DefinitiveListTactic::Vertical {
                 // We cannot keep pre-comments on the same line if the comment if normalized.
-                let keep_comment = if formatting.config.normalize_comments() {
-                    false
-                } else if item.pre_comment_style == ListItemCommentStyle::DifferentLine {
+                let keep_comment = if formatting.config.normalize_comments() ||
+                    item.pre_comment_style == ListItemCommentStyle::DifferentLine
+                {
                     false
                 } else {
                     // We will try to keep the comment on the same line with the item here.
@@ -405,7 +405,7 @@ where
                         formatting.config.max_width(),
                     ));
                 }
-                let overhead = if let &mut Some(max_width) = item_max_width {
+                let overhead = if let Some(max_width) = *item_max_width {
                     max_width + 2
                 } else {
                     // 1 = space between item and comment.
@@ -548,8 +548,7 @@ where
                     .chars()
                     .rev()
                     .take(comment_end + 1)
-                    .find(|c| *c == '\n')
-                    .is_some()
+                    .any(|c| c == '\n')
                 {
                     (
                         Some(trimmed_pre_snippet.to_owned()),
@@ -612,7 +611,7 @@ where
                 }
                 None => post_snippet
                     .find_uncommented(self.terminator)
-                    .unwrap_or(post_snippet.len()),
+                    .unwrap_or_else(|| post_snippet.len()),
             };
 
             if !post_snippet.is_empty() && comment_end > 0 {
@@ -621,12 +620,14 @@ where
 
                 // Everything from the separator to the next item.
                 let test_snippet = &post_snippet[comment_end - 1..];
-                let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
+                let first_newline = test_snippet
+                    .find('\n')
+                    .unwrap_or_else(|| test_snippet.len());
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];
                 let first = test_snippet
                     .find(|c: char| !c.is_whitespace())
-                    .unwrap_or(test_snippet.len());
+                    .unwrap_or_else(|| test_snippet.len());
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 
@@ -747,7 +748,7 @@ pub fn struct_lit_shape(
         IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces());
             Shape {
-                width: try_opt!(context.config.max_width().checked_sub(shape.indent.width())),
+                width: context.budget(shape.indent.width()),
                 ..shape
             }
         }

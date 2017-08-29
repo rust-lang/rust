@@ -280,11 +280,11 @@ macro_rules! create_config {
             }
             )+
 
-            pub fn set<'a>(&'a mut self) -> ConfigSetter<'a> {
+            pub fn set(&mut self) -> ConfigSetter {
                 ConfigSetter(self)
             }
 
-            pub fn was_set<'a>(&'a self) -> ConfigWasSet<'a> {
+            pub fn was_set(&self) -> ConfigWasSet {
                 ConfigWasSet(self)
             }
 
@@ -306,7 +306,7 @@ macro_rules! create_config {
                     let table = parsed
                         .as_table()
                         .ok_or(String::from("Parsed config was not table"))?;
-                    for (key, _) in table {
+                    for key in table.keys() {
                         match &**key {
                             $(
                                 stringify!($i) => (),

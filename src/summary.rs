@@ -1,5 +1,5 @@
 #[must_use]
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Summary {
     // Encountered e.g. an IO error.
     has_operational_errors: bool,
@@ -15,15 +15,6 @@ pub struct Summary {
 }
 
 impl Summary {
-    pub fn new() -> Summary {
-        Summary {
-            has_operational_errors: false,
-            has_parsing_errors: false,
-            has_formatting_errors: false,
-            has_diff: false,
-        }
-    }
-
     pub fn has_operational_errors(&self) -> bool {
         self.has_operational_errors
     }

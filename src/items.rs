@@ -80,7 +80,7 @@ impl Rewrite for ast::Local {
         let pat_shape = try_opt!(shape.offset_left(4));
         // 1 = ;
         let pat_shape = try_opt!(pat_shape.sub_width(1));
-        let pat_str = try_opt!(self.pat.rewrite(&context, pat_shape));
+        let pat_str = try_opt!(self.pat.rewrite(context, pat_shape));
         result.push_str(&pat_str);
 
         // String that is placed within the assignment pattern and expression.
@@ -111,7 +111,7 @@ impl Rewrite for ast::Local {
             // 1 = trailing semicolon;
             let nested_shape = try_opt!(shape.sub_width(1));
 
-            result = try_opt!(rewrite_assign_rhs(&context, result, ex, nested_shape));
+            result = try_opt!(rewrite_assign_rhs(context, result, ex, nested_shape));
         }
 
         result.push(';');
@@ -195,7 +195,7 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_body_element(&mut self, element: &BodyElement) {
         match *element {
-            BodyElement::ForeignItem(ref item) => self.format_foreign_item(item),
+            BodyElement::ForeignItem(item) => self.format_foreign_item(item),
         }
     }
 
@@ -321,7 +321,7 @@ impl<'a> FmtVisitor<'a> {
 
         if self.config.fn_single_line() && is_simple_block_stmt(block, codemap) {
             let rewrite = {
-                if let Some(ref stmt) = block.stmts.first() {
+                if let Some(stmt) = block.stmts.first() {
                     match stmt_expr(stmt) {
                         Some(e) => {
                             let suffix = if semicolon_for_expr(&self.get_context(), e) {
@@ -574,10 +574,10 @@ pub fn format_impl(
 
         if try_opt!(is_impl_single_line(
             context,
-            &items,
+            items,
             &result,
             &where_clause_str,
-            &item,
+            item,
         )) {
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') || last_line_contains_single_line_comment(&result) {
@@ -680,7 +680,7 @@ fn format_impl_ref_and_type(
         let mut result = String::with_capacity(128);
 
         result.push_str(&format_visibility(&item.vis));
-        result.push_str(&format_defaultness(defaultness));
+        result.push_str(format_defaultness(defaultness));
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
@@ -713,7 +713,7 @@ fn format_impl_ref_and_type(
             let result_len = result.len();
             if let Some(trait_ref_str) = rewrite_trait_ref(
                 context,
-                &trait_ref,
+                trait_ref,
                 offset,
                 &generics_str,
                 true,
@@ -731,7 +731,7 @@ fn format_impl_ref_and_type(
                 ));
                 result.push_str(&try_opt!(rewrite_trait_ref(
                     context,
-                    &trait_ref,
+                    trait_ref,
                     offset,
                     &generics_str,
                     false,
@@ -1100,7 +1100,7 @@ pub fn format_struct_struct(
     if !generics_str.contains('\n') && result.len() + generics_str.len() + overhead > max_len {
         result.push('\n');
         result.push_str(&offset.to_string(context.config));
-        result.push_str(&generics_str.trim_left());
+        result.push_str(generics_str.trim_left());
     } else {
         result.push_str(&generics_str);
     }
@@ -1111,7 +1111,7 @@ pub fn format_struct_struct(
             // `struct S {}`
         } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
             // fix indent
-            result.push_str(&snippet.trim_right());
+            result.push_str(snippet.trim_right());
             result.push('\n');
             result.push_str(&offset.to_string(context.config));
         } else {
@@ -1178,7 +1178,7 @@ fn format_tuple_struct(
     } else {
         // This is a dirty hack to work around a missing `)` from the span of the last field.
         let last_arg_span = fields[fields.len() - 1].span;
-        if context.snippet(last_arg_span).ends_with(")") {
+        if context.snippet(last_arg_span).ends_with(')') {
             last_arg_span.hi()
         } else {
             context
@@ -1226,7 +1226,7 @@ fn format_tuple_struct(
         if snippet.is_empty() {
             // `struct S ()`
         } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
-            result.push_str(&snippet.trim_right());
+            result.push_str(snippet.trim_right());
             result.push('\n');
             result.push_str(&offset.to_string(context.config));
         } else {
@@ -1440,7 +1440,7 @@ pub fn rewrite_struct_field(
     let ty_rewritten = rewrite_struct_field_type(context, overhead, field, &spacing, shape);
     if let Some(ref ty) = ty_rewritten {
         if !ty.contains('\n') {
-            return Some(attr_prefix + &ty);
+            return Some(attr_prefix + ty);
         }
     }
 
@@ -1461,17 +1461,17 @@ pub fn rewrite_struct_field(
             Some(ref new_ty) if !new_ty.contains('\n') => format!(
                 "{}\n{}{}",
                 prefix,
-                type_offset.to_string(&context.config),
+                type_offset.to_string(context.config),
                 &new_ty
             ),
-            _ => prefix + &ty,
+            _ => prefix + ty,
         },
         _ => {
             let ty = try_opt!(rewrite_type_in_next_line());
             format!(
                 "{}\n{}{}",
                 prefix,
-                type_offset.to_string(&context.config),
+                type_offset.to_string(context.config),
                 &ty
             )
         }
@@ -1554,7 +1554,7 @@ pub fn rewrite_associated_type(
                 .map(|ty_bound| ty_bound.rewrite(context, shape))
                 .collect::<Option<Vec<_>>>()
         );
-        if bounds.len() > 0 {
+        if !bounds.is_empty() {
             format!(": {}", join_bounds(context, shape, &bound_str))
         } else {
             String::new()
@@ -1798,7 +1798,7 @@ fn rewrite_fn_base(
     // return type later anyway.
     let ret_str = try_opt!(
         fd.output
-            .rewrite(&context, Shape::indented(indent, context.config))
+            .rewrite(context, Shape::indented(indent, context.config))
     );
 
     let multi_line_ret_str = ret_str.contains('\n');
@@ -1826,26 +1826,24 @@ fn rewrite_fn_base(
     if one_line_budget == 0 {
         if snuggle_angle_bracket {
             result.push('(');
+        } else if context.config.fn_args_paren_newline() {
+            result.push('\n');
+            result.push_str(&arg_indent.to_string(context.config));
+            if context.config.fn_args_layout() == IndentStyle::Visual {
+                arg_indent = arg_indent + 1; // extra space for `(`
+            }
+            result.push('(');
         } else {
-            if context.config.fn_args_paren_newline() {
+            result.push_str("(");
+            if context.config.fn_args_layout() == IndentStyle::Visual {
                 result.push('\n');
                 result.push_str(&arg_indent.to_string(context.config));
-                if context.config.fn_args_layout() == IndentStyle::Visual {
-                    arg_indent = arg_indent + 1; // extra space for `(`
-                }
-                result.push('(');
-            } else {
-                result.push_str("(");
-                if context.config.fn_args_layout() == IndentStyle::Visual {
-                    result.push('\n');
-                    result.push_str(&arg_indent.to_string(context.config));
-                }
             }
         }
     } else {
         result.push('(');
     }
-    if context.config.spaces_within_parens() && fd.inputs.len() > 0 && result.ends_with('(') {
+    if context.config.spaces_within_parens() && !fd.inputs.is_empty() && result.ends_with('(') {
         result.push(' ')
     }
 
@@ -1900,10 +1898,10 @@ fn rewrite_fn_base(
         let used_width = last_line_used_width(&result, indent.width()) + first_line_width(&ret_str);
         // Put the closing brace on the next line if it overflows the max width.
         // 1 = `)`
-        if fd.inputs.len() == 0 && used_width + 1 > context.config.max_width() {
+        if fd.inputs.is_empty() && used_width + 1 > context.config.max_width() {
             result.push('\n');
         }
-        if context.config.spaces_within_parens() && fd.inputs.len() > 0 {
+        if context.config.spaces_within_parens() && !fd.inputs.is_empty() {
             result.push(' ')
         }
         // If the last line of args contains comment, we cannot put the closing paren
@@ -1924,7 +1922,7 @@ fn rewrite_fn_base(
     if let ast::FunctionRetTy::Ty(..) = fd.output {
         let ret_should_indent = match context.config.fn_args_layout() {
             // If our args are block layout then we surely must have space.
-            IndentStyle::Block if put_args_in_block || fd.inputs.len() == 0 => false,
+            IndentStyle::Block if put_args_in_block || fd.inputs.is_empty() => false,
             _ if args_last_line_contains_comment => false,
             _ if result.contains('\n') || multi_line_ret_str => true,
             _ => {
@@ -2071,9 +2069,10 @@ fn rewrite_fn_base(
     result.push_str(&where_clause_str);
 
     force_new_line_for_brace |= last_line_contains_single_line_comment(&result);
-    return Some((result, force_new_line_for_brace));
+    Some((result, force_new_line_for_brace))
 }
 
+#[derive(Copy, Clone)]
 struct WhereClauseOption {
     suppress_comma: bool, // Force no trailing comma
     snuggle: bool,        // Do not insert newline before `where`
@@ -2121,7 +2120,7 @@ fn rewrite_args(
     let mut arg_item_strs = try_opt!(
         args.iter()
             .map(|arg| {
-                arg.rewrite(&context, Shape::legacy(multi_line_budget, arg_indent))
+                arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent))
             })
             .collect::<Option<Vec<_>>>()
     );
@@ -2203,7 +2202,7 @@ fn rewrite_args(
     }
 
     let fits_in_one_line = !generics_str_contains_newline &&
-        (arg_items.len() == 0 || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
+        (arg_items.is_empty() || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
 
     for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
         item.item = Some(arg);
@@ -2497,7 +2496,7 @@ fn rewrite_trait_bounds(
     let bound_str = try_opt!(
         bounds
             .iter()
-            .map(|ty_bound| ty_bound.rewrite(&context, shape))
+            .map(|ty_bound| ty_bound.rewrite(context, shape))
             .collect::<Option<Vec<_>>>()
     );
     Some(format!(": {}", join_bounds(context, shape, &bound_str)))

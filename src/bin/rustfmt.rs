@@ -104,7 +104,7 @@ fn match_cli_path_or_file(
         let toml = Config::from_toml_path(config_file.as_ref())?;
         return Ok((toml, Some(config_file)));
     }
-    Config::from_resolved_toml_path(input_file).map_err(|e| FmtError::from(e))
+    Config::from_resolved_toml_path(input_file).map_err(FmtError::from)
 }
 
 fn make_opts() -> Options {
@@ -161,21 +161,21 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
         Operation::Help => {
             print_usage(opts, "");
             Summary::print_exit_codes();
-            Ok(Summary::new())
+            Ok(Summary::default())
         }
         Operation::Version => {
             print_version();
-            Ok(Summary::new())
+            Ok(Summary::default())
         }
         Operation::ConfigHelp => {
             Config::print_docs();
-            Ok(Summary::new())
+            Ok(Summary::default())
         }
         Operation::ConfigOutputDefault { path } => {
             let mut file = File::create(path)?;
             let toml = Config::default().all_options().to_toml()?;
             file.write_all(toml.as_bytes())?;
-            Ok(Summary::new())
+            Ok(Summary::default())
         }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
@@ -222,7 +222,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 }
             }
 
-            let mut error_summary = Summary::new();
+            let mut error_summary = Summary::default();
             for file in files {
                 if !file.exists() {
                     println!("Error: file `{}` does not exist", file.to_str().unwrap());
@@ -354,7 +354,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
                 return config_path_not_found(path.to_str().unwrap());
             }
         }
-        path @ _ => path,
+        path => path,
     };
 
     // If no path is given, we won't output a minimal config.

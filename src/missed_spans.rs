@@ -90,7 +90,7 @@ impl<'a> FmtVisitor<'a> {
         let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
 
         let big_diff = (span.lo() - big_span_lo).to_usize();
-        let snippet = self.snippet(span.clone());
+        let snippet = self.snippet(span);
 
         debug!("write_snippet `{}`", snippet);
 
@@ -180,7 +180,7 @@ impl<'a> FmtVisitor<'a> {
                     last_wspace = None;
                     line_start = offset + subslice.len();
 
-                    if let Some('/') = subslice.chars().skip(1).next() {
+                    if let Some('/') = subslice.chars().nth(1) {
                         // check that there are no contained block comments
                         if !subslice
                             .split('\n')
