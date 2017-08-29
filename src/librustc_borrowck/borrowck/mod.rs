@@ -167,9 +167,11 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
+        loan_dfcx.add_gen(this.tcx.hir.node_to_hir_id(loan.gen_scope.node_id()).local_id,
+                          loan_idx);
         loan_dfcx.add_kill(KillFrom::ScopeEnd,
-                           loan.kill_scope.node_id(), loan_idx);
+                           this.tcx.hir.node_to_hir_id(loan.kill_scope.node_id()).local_id,
+                           loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, this.body);
@@ -640,19 +642,22 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         // Get type of value and span where it was previously
         // moved.
+        let node_id = self.tcx.hir.hir_to_node_id(hir::HirId {
+            owner: self.tcx.closure_base_def_id(self.owner_def_id).index,
+            local_id: the_move.id
+        });
         let (move_span, move_note) = match the_move.kind {
             move_data::Declared => {
                 unreachable!();
             }
 
             move_data::MoveExpr |
-            move_data::MovePat =>
-                (self.tcx.hir.span(the_move.id), ""),
+            move_data::MovePat => (self.tcx.hir.span(node_id), ""),
 
             move_data::Captured =>
-                (match self.tcx.hir.expect_expr(the_move.id).node {
+                (match self.tcx.hir.expect_expr(node_id).node {
                     hir::ExprClosure(.., fn_decl_span, _) => fn_decl_span,
-                    ref r => bug!("Captured({}) maps to non-closure: {:?}",
+                    ref r => bug!("Captured({:?}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),
         };

@@ -15,40 +15,47 @@
 use graphviz as dot;
 use graphviz::IntoCow;
 
-use syntax::ast;
-
-use hir::map as hir_map;
 use cfg;
+use hir;
+use ty::TyCtxt;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
 pub type Edge<'a> = &'a cfg::CFGEdge;
 
-pub struct LabelledCFG<'a, 'hir: 'a> {
-    pub hir_map: &'a hir_map::Map<'hir>,
+pub struct LabelledCFG<'a, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub cfg: &'a cfg::CFG,
     pub name: String,
     /// `labelled_edges` controls whether we emit labels on the edges
     pub labelled_edges: bool,
 }
 
-fn replace_newline_with_backslash_l(s: String) -> String {
-    // Replacing newlines with \\l causes each line to be left-aligned,
-    // improving presentation of (long) pretty-printed expressions.
-    if s.contains("\n") {
-        let mut s = s.replace("\n", "\\l");
-        // Apparently left-alignment applies to the line that precedes
-        // \l, not the line that follows; so, add \l at end of string
-        // if not already present, ensuring last line gets left-aligned
-        // as well.
-        let mut last_two: Vec<_> =
-            s.chars().rev().take(2).collect();
-        last_two.reverse();
-        if last_two != ['\\', 'l'] {
-            s.push_str("\\l");
+impl<'a, 'tcx> LabelledCFG<'a, 'tcx> {
+    fn local_id_to_string(&self, local_id: hir::ItemLocalId) -> String {
+        let node_id = self.tcx.hir.hir_to_node_id(hir::HirId {
+            owner: self.tcx.closure_base_def_id(self.cfg.owner_def_id).index,
+            local_id
+        });
+        let s = self.tcx.hir.node_to_string(node_id);
+
+        // Replacing newlines with \\l causes each line to be left-aligned,
+        // improving presentation of (long) pretty-printed expressions.
+        if s.contains("\n") {
+            let mut s = s.replace("\n", "\\l");
+            // Apparently left-alignment applies to the line that precedes
+            // \l, not the line that follows; so, add \l at end of string
+            // if not already present, ensuring last line gets left-aligned
+            // as well.
+            let mut last_two: Vec<_> =
+                s.chars().rev().take(2).collect();
+            last_two.reverse();
+            if last_two != ['\\', 'l'] {
+                s.push_str("\\l");
+            }
+            s
+        } else {
+            s
         }
-        s
-    } else {
-        s
     }
 }
 
@@ -66,12 +73,10 @@ impl<'a, 'hir> dot::Labeller<'a> for LabelledCFG<'a, 'hir> {
             dot::LabelText::LabelStr("entry".into_cow())
         } else if i == self.cfg.exit {
             dot::LabelText::LabelStr("exit".into_cow())
-        } else if n.data.id() == ast::DUMMY_NODE_ID {
+        } else if n.data.id() == hir::DUMMY_ITEM_LOCAL_ID {
             dot::LabelText::LabelStr("(dummy_node)".into_cow())
         } else {
-            let s = self.hir_map.node_to_string(n.data.id());
-            // left-aligns the lines
-            let s = replace_newline_with_backslash_l(s);
+            let s = self.local_id_to_string(n.data.id());
             dot::LabelText::EscStr(s.into_cow())
         }
     }
@@ -82,15 +87,13 @@ impl<'a, 'hir> dot::Labeller<'a> for LabelledCFG<'a, 'hir> {
             return dot::LabelText::EscStr(label.into_cow());
         }
         let mut put_one = false;
-        for (i, &node_id) in e.data.exiting_scopes.iter().enumerate() {
+        for (i, &id) in e.data.exiting_scopes.iter().enumerate() {
             if put_one {
                 label.push_str(",\\l");
             } else {
                 put_one = true;
             }
-            let s = self.hir_map.node_to_string(node_id);
-            // left-aligns the lines
-            let s = replace_newline_with_backslash_l(s);
+            let s = self.local_id_to_string(id);
             label.push_str(&format!("exiting scope_{} {}",
                                    i,
                                    &s[..]));

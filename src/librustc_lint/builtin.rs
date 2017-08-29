@@ -850,23 +850,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             }
             visited.insert(cfg_id);
 
-            let node_id = cfg.graph.node_data(idx).id();
-
             // is this a recursive call?
-            let self_recursive = if node_id != ast::DUMMY_NODE_ID {
-                match method {
+            let local_id = cfg.graph.node_data(idx).id();
+            if local_id != hir::DUMMY_ITEM_LOCAL_ID {
+                let node_id = cx.tcx.hir.hir_to_node_id(hir::HirId {
+                    owner: cx.tcx.closure_base_def_id(cfg.owner_def_id).index,
+                    local_id
+                });
+                let self_recursive = match method {
                     Some(ref method) => expr_refers_to_this_method(cx, method, node_id),
                     None => expr_refers_to_this_fn(cx, id, node_id),
+                };
+                if self_recursive {
+                    self_call_spans.push(cx.tcx.hir.span(node_id));
+                    // this is a self call, so we shouldn't explore past
+                    // this node in the CFG.
+                    continue;
                 }
-            } else {
-                false
-            };
-            if self_recursive {
-                self_call_spans.push(cx.tcx.hir.span(node_id));
-                // this is a self call, so we shouldn't explore past
-                // this node in the CFG.
-                continue;
             }
+
             // add the successors of this node to explore the graph further.
             for (_, edge) in cfg.graph.outgoing_edges(idx) {
                 let target_idx = edge.target();

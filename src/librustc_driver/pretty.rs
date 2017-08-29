@@ -765,7 +765,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
-        hir_map: &tcx.hir,
+        tcx,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
         labelled_edges,

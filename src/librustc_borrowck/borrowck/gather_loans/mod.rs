@@ -44,7 +44,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         bccx,
         all_loans: Vec::new(),
         item_ub: region::CodeExtent::Misc(body.node_id),
-        move_data: MoveData::new(),
+        move_data: MoveData::default(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
@@ -79,7 +79,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    consume_id, cmt, move_reason);
+                    self.bccx.tcx.hir.node_to_hir_id(consume_id).local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -272,8 +272,12 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                assignment_id, assignment_span,
-                                                lp, cmt.id, mode);
+                                                self.bccx.tcx.hir.node_to_hir_id(assignment_id)
+                                                    .local_id,
+                                                assignment_span,
+                                                lp,
+                                                self.bccx.tcx.hir.node_to_hir_id(cmt.id).local_id,
+                                                mode);
             }
             None => {
                 // This can occur with e.g. `*foo() = 5`.  In such
