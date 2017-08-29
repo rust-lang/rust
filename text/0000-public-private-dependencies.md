@@ -86,6 +86,8 @@ There are a few areas that need to be changed for this RFC:
   considered a public dependency
 * The `Cargo.toml` manifest needs to be extended to support declaring public
   dependencies
+* The `public` attribute of dependencies needs to appear in the Cargo index in order
+  to be used by Cargo during version resolution
 * The `cargo publish` process needs to be changed to warn (or prevent) the publishing
   of crates that have undeclared public dependencies
 * Crates.io should show public dependencies more prominently than private ones.
@@ -120,6 +122,32 @@ Example dependency:
 ```toml
 [dependencies]
 url = { version = "1.4.0", public = true }
+```
+
+## Changes to the Cargo Index
+
+The [Cargo index](https://github.com/rust-lang/crates.io-index) used by Cargo when
+resolving versions will contain the `public` attribute on dependencies as specified
+in `Cargo.toml`. For example, an index line for a crate named `example` that
+publicly depends on the `url` crate would look like (JSON prettified for legibility):
+
+```json
+{
+    "name":"example",
+    "vers":"0.1.0",
+    "deps":[
+        {
+            "name":"url",
+            "req":"^1.4.0",
+            "public":"true",
+            "features":[],
+            "optional":false,
+            "default_features":true,
+            "target":null,
+            "kind":"normal"
+        }
+    ]
+}
 ```
 
 ## Changes to Cargo Publishing
