@@ -126,10 +126,6 @@ impl CStore {
         self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
-    pub fn get_crate_hash(&self, cnum: CrateNum) -> Svh {
-        self.get_crate_data(cnum).hash()
-    }
-
     pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
         self.metas.borrow_mut().insert(cnum, data);
     }

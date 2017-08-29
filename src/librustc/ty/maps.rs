@@ -13,6 +13,7 @@ use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, HirId};
+use hir::svh::Svh;
 use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
@@ -617,6 +618,12 @@ impl<'tcx> QueryDescription for queries::crate_disambiguator<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::crate_hash<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the hash a crate")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1198,6 +1205,7 @@ define_maps! { <'tcx>
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Symbol,
+    [] fn crate_hash: CrateHash(CrateNum) -> Svh,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

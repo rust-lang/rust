@@ -253,7 +253,6 @@ pub trait CrateStore {
     fn crate_name(&self, cnum: CrateNum) -> Symbol;
     /// The name of the crate as it is stored in the crate's metadata.
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
-    fn crate_hash(&self, cnum: CrateNum) -> Svh;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -353,7 +352,6 @@ impl CrateStore for DummyCrateStore {
     fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
         bug!("original_crate_name")
     }
-    fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
