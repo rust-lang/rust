@@ -2,6 +2,7 @@ use rustc::lint::*;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::hir::*;
+use std::collections::HashSet;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
 use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -88,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 }
 
-fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]) {
+fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
         item.name == name &&
             if let AssociatedItemKind::Method { has_self } = item.kind {
@@ -102,16 +103,50 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             }
     }
 
-    if !trait_items.iter().any(|i| is_named_self(cx, i, "is_empty")) {
-        if let Some(i) = trait_items.iter().find(|i| is_named_self(cx, i, "len")) {
-            if cx.access_levels.is_exported(i.id.node_id) {
-                span_lint(
-                    cx,
-                    LEN_WITHOUT_IS_EMPTY,
-                    item.span,
-                    &format!("trait `{}` has a `len` method but no `is_empty` method", item.name),
-                );
+    // fill the set with current and super traits
+    fn fill_trait_set<'a, 'b: 'a>(traitt: &'b Item, set: &'a mut HashSet<&'b Item>, cx: &'b LateContext) {
+        if set.insert(traitt) {
+            if let ItemTrait(.., ref ty_param_bounds, _) = traitt.node {
+                for ty_param_bound in ty_param_bounds {
+                    if let TraitTyParamBound(ref poly_trait_ref, _) = *ty_param_bound {
+                        let super_trait_node_id = cx.tcx
+                            .hir
+                            .as_local_node_id(poly_trait_ref.trait_ref.path.def.def_id())
+                            .expect("the DefId is local, the NodeId should be available");
+                        let super_trait = cx.tcx.hir.expect_item(super_trait_node_id);
+                        fill_trait_set(super_trait, set, cx);
+                    }
+                }
             }
+        }
+    }
+
+    if cx.access_levels.is_exported(visited_trait.id) &&
+        trait_items
+            .iter()
+            .any(|i| is_named_self(cx, i, "len"))
+    {
+        let mut current_and_super_traits = HashSet::new();
+        fill_trait_set(visited_trait, &mut current_and_super_traits, cx);
+
+        let is_empty_method_found = current_and_super_traits
+            .iter()
+            .flat_map(|i| match i.node {
+                ItemTrait(.., ref trait_items) => trait_items.iter(),
+                _ => bug!("should only handle traits"),
+            })
+            .any(|i| is_named_self(cx, i, "is_empty"));
+
+        if !is_empty_method_found {
+            span_lint(
+                cx,
+                LEN_WITHOUT_IS_EMPTY,
+                visited_trait.span,
+                &format!(
+                    "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
+                    visited_trait.name
+                ),
+            );
         }
     }
 }
