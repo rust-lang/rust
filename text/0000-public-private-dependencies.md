@@ -88,6 +88,8 @@ There are a few areas that need to be changed for this RFC:
   dependencies
 * The `public` attribute of dependencies needs to appear in the Cargo index in order
   to be used by Cargo during version resolution
+* Cargo's version resolution needs to change to reject crate graph resolutions where
+  two versions of a crate are publicly reachable to each other.
 * The `cargo publish` process needs to be changed to warn (or prevent) the publishing
   of crates that have undeclared public dependencies
 * Crates.io should show public dependencies more prominently than private ones.
@@ -149,6 +151,38 @@ publicly depends on the `url` crate would look like (JSON prettified for legibil
     ]
 }
 ```
+
+## Changes to Cargo Version Resolution
+
+Cargo will specifically reject graphs that contain two different versions of the
+same crate being publicly depended upon and reachable from each other. This will
+prevent the strange errors possible today at version resolution time rather than at
+compile time.
+
+How this will work:
+
+* First, a resolution graph has a bunch of nodes. These nodes are "package ids"
+  which are a triple of (name, source, version). Basically this means that different
+  versions of the same crate are different nodes, and different sources of the same
+  name (e.g. git and crates.io) are also different nodes.
+* There are *directed edges* between nodes. A directed edge represents a dependency.
+  For example if A depends on B then there's a directed edge from A to B.
+* With public/private dependencies, we can now say that every edge is either tagged
+  with public or private.
+* This means that we can have a collection of subgraphs purely connected by public
+  dependency edges. The directionality of the public dependency edges within the
+  subgraph doesn't matter. Each of these subgraphs represents an "ecosystem" of
+  crates publicly depending on each other. These subgraphs are "pools of public
+  types" where if you have access to the subgraph, you have access to all types
+  within that pool of types.
+* We can place a constraint that each of these "publicly connected subgraphs" are
+  required to have exactly one version of all crates internally. For example, each
+  subgraph can only have one version of Hyper.
+* Finally, we can consider all pairs of edges coming out of one node in the
+  resolution graph. If the two edges point to *two distinct publicly connected
+  subgraphs from above* and those subgraphs contain two different versions of the
+  same crate, we consider that an error. This basically means that if you privately
+  depend on Hyper 0.3 and Hyper 0.4, that's an error.
 
 ## Changes to Cargo Publishing
 
