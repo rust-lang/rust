@@ -84,7 +84,7 @@ pub struct MultiSpan {
 impl Span {
     #[inline]
     pub fn new(lo: BytePos, hi: BytePos, ctxt: SyntaxContext) -> Self {
-        Span { lo, hi, ctxt }
+        if lo <= hi { Span { lo, hi, ctxt } } else { Span { lo: hi, hi: lo, ctxt } }
     }
 
     #[inline]
