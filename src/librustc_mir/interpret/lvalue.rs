@@ -476,7 +476,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 );
                 assert!(u64::from(from) <= n - u64::from(to));
                 let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;
-                let extra = LvalueExtra::Length(n - u64::from(to) - u64::from(from));
+                // sublicing arrays produces arrays
+                let extra = if self.type_is_sized(base_ty) {
+                    LvalueExtra::None
+                } else {
+                    LvalueExtra::Length(n - u64::from(to) - u64::from(from))
+                };
                 (ptr, extra)
             }
         };
