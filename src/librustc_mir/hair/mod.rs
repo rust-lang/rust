@@ -46,7 +46,6 @@ pub enum StmtRef<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct Stmt<'tcx> {
-    pub span: Span,
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_extent: Option<CodeExtent>,
 }

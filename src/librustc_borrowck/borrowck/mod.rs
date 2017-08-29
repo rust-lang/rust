@@ -943,6 +943,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
+                                    &self.region_maps,
                                     &mut db,
                                     "borrowed value must be valid for ",
                                     sub_scope,
@@ -955,6 +956,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
+                                    &self.region_maps,
                                     &mut db,
                                     "...but borrowed value is only valid for ",
                                     super_scope,
@@ -984,12 +986,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     None => self.cmt_to_string(&err.cmt),
                 };
                 self.tcx.note_and_explain_region(
+                    &self.region_maps,
                     &mut db,
                     &format!("{} would have to be valid for ",
                             descr),
                     loan_scope,
                     "...");
                 self.tcx.note_and_explain_region(
+                    &self.region_maps,
                     &mut db,
                     &format!("...but {} is only valid for ", descr),
                     ptr_scope,
@@ -1245,14 +1249,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                match scope.span(&self.tcx.hir) {
-                    Some(s) => {
-                        Some(s.end_point())
-                    }
-                    None => {
-                        None
-                    }
-                }
+                Some(scope.span(self.tcx, &self.region_maps).end_point())
             }
             _ => None
         }

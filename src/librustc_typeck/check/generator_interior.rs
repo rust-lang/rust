@@ -13,7 +13,6 @@
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
 //! types computed here.
 
-use log;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
@@ -36,18 +35,15 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        let live_across_yield = scope.map(|s| {
-            self.fcx.tcx.yield_in_extent(s, &mut self.cache).is_some()
-        }).unwrap_or(true);
+        let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
+            self.fcx.tcx.yield_in_extent(s, &mut self.cache)
+        });
 
-        if live_across_yield {
+        if let Some(span) = live_across_yield {
             let ty = self.fcx.resolve_type_vars_if_possible(&ty);
 
-            if log_enabled!(log::LogLevel::Debug) {
-                let span = scope.map(|s| s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP));
-                debug!("type in expr = {:?}, scope = {:?}, type = {:?}, span = {:?}",
-                       expr, scope, ty, span);
-            }
+            debug!("type in expr = {:?}, scope = {:?}, type = {:?}, span = {:?}",
+                   expr, scope, ty, span);
 
             // Map the type to the number of types added before it
             let entries = self.types.len();

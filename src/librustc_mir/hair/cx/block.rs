@@ -45,7 +45,6 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             hir::StmtExpr(ref expr, id) |
             hir::StmtSemi(ref expr, id) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
-                    span: stmt.span,
                     kind: StmtKind::Expr {
                         scope: CodeExtent::Misc(id),
                         expr: expr.to_ref(),
@@ -69,7 +68,6 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                                         cx.tables(),
                                                         &local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
-                            span: stmt.span,
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_extent,
                                 init_scope: CodeExtent::Misc(id),

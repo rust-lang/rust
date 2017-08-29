@@ -16,7 +16,6 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
-use hir::map as hir_map;
 use util::nodemap::{FxHashMap, NodeMap, NodeSet};
 use ty;
 
@@ -161,34 +160,31 @@ impl CodeExtent {
     /// Returns the span of this CodeExtent.  Note that in general the
     /// returned span may not correspond to the span of any node id in
     /// the AST.
-    pub fn span(&self, hir_map: &hir_map::Map) -> Option<Span> {
-        match hir_map.find(self.node_id()) {
-            Some(hir_map::NodeBlock(ref blk)) => {
-                match *self {
-                    CodeExtent::CallSiteScope(_) |
-                    CodeExtent::ParameterScope(_) |
-                    CodeExtent::Misc(_) |
-                    CodeExtent::DestructionScope(_) => Some(blk.span),
+    pub fn span(&self, tcx: TyCtxt, region_maps: &RegionMaps) -> Span {
+        let root_node = region_maps.root_body.unwrap().node_id;
+        assert_eq!(DefId::local(tcx.hir.node_to_hir_id(self.node_id()).owner),
+                   DefId::local(tcx.hir.node_to_hir_id(root_node).owner));
+        let span = tcx.hir.span(self.node_id());
+        if let CodeExtent::Remainder(r) = *self {
+            if let hir::map::NodeBlock(ref blk) = tcx.hir.get(r.block) {
+                // Want span for extent starting after the
+                // indexed statement and ending at end of
+                // `blk`; reuse span of `blk` and shift `lo`
+                // forward to end of indexed statement.
+                //
+                // (This is the special case aluded to in the
+                // doc-comment for this method)
 
-                    CodeExtent::Remainder(r) => {
-                        assert_eq!(r.block, blk.id);
-                        // Want span for extent starting after the
-                        // indexed statement and ending at end of
-                        // `blk`; reuse span of `blk` and shift `lo`
-                        // forward to end of indexed statement.
-                        //
-                        // (This is the special case aluded to in the
-                        // doc-comment for this method)
-                        let stmt_span = blk.stmts[r.first_statement_index as usize].span;
-                        Some(Span::new(stmt_span.hi(), blk.span.hi(), stmt_span.ctxt()))
-                    }
+                let stmt_span = blk.stmts[r.first_statement_index as usize].span;
+
+                // To avoid issues with macro-generated spans, the span
+                // of the statement must be nested in that of the block.
+                if span.lo() <= stmt_span.lo() && stmt_span.lo() <= span.hi() {
+                    return Span::new(stmt_span.lo(), span.hi(), span.ctxt());
                 }
             }
-            Some(hir_map::NodeExpr(ref expr)) => Some(expr.span),
-            Some(hir_map::NodeStmt(ref stmt)) => Some(stmt.span),
-            Some(hir_map::NodeItem(ref item)) => Some(item.span),
-            Some(_) | None => None,
          }
+         span
     }
 }
 

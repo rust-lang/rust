@@ -1084,7 +1084,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors); // see error_reporting module
+            self.report_region_errors(region_map, &errors); // see error_reporting module
         }
     }
 
