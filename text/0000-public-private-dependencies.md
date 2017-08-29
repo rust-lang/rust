@@ -276,6 +276,147 @@ how far we are off to making them errors.
 
 Crates.io should be updated to render public and private dependencies separately.
 
+# End user experience
+[end-user-experience]: #end-user-experience
+
+## Author of a crate with one dependency
+
+Assume today that an author of a library crate `onedep` has a dependency on the `url` crate and the `url::Url` type is exposed in `onedep`'s public API.
+
+`onedep`'s `Cargo.toml`:
+
+```toml
+[package]
+name = "onedep"
+version = "0.1.0"
+
+[dependencies]
+url = "1.0.0"
+```
+
+`onedep`'s `src/lib.rs`:
+
+```rust
+extern crate url;
+use url::Origin;
+
+use std::collections::HashMap;
+
+#[derive(Default)]
+pub struct OriginTracker {
+    origin_counts: HashMap<Origin, usize>,
+}
+
+impl OriginTracker {
+    pub fn log_origin(&mut self, origin: Origin) {
+        let counter = self.origin_counts.entry(origin).or_insert(0);
+        *counter += 1;
+    }
+}
+```
+
+When the author of `onedep` upgrades Rust/Cargo to a version where this RFC is
+completely implemented, the author will notice two changes:
+
+1. When they run `cargo build`, the build will succeed but they will get a warning
+that a private dependency (the `url` crate specifically) is used in their public API
+(the `url::Origin` type in the `pub fn log_origin` function specifically) and that
+they should consider adding `public = true` to their `Cargo.toml`. Ideally the
+warning would say something like:
+
+    ```
+        consider changing dependency:
+
+        ```
+        url = "1.0.0"
+        ```
+
+        to:
+
+        ```
+        url = { version = "1.0.0", public = true}
+        ```
+    ```
+
+The warning could also encourage the author to then bump their crate's major
+version, since adding public dependencies is a breaking change.
+
+2. When they run `cargo publish`, the build check that happens after packaging will
+fail and the publish will fail. This is because [deriving `Hash` on `url::Origin`
+wasn't added until v1.5.1 of the url
+crate](https://github.com/servo/rust-url/commit/42603254fac8d4c446183cba73bbaeb2c3b416c2).
+The author of `onedep` has been running `cargo update` periodically, and their
+`Cargo.lock` has url 1.5.1, but they never updated `Cargo.toml` to indicate that
+they have a new lower bound. Since `cargo publish` will try to resolve dependencies
+to the lowest possible versions, it will choose version 1.0.0 of the url crate,
+which doesn't implement `Hash` on `Origin`.
+
+There should be a clear error message for this case that indicates Cargo has
+resolved crates to their lowest possible versions, that this might be the cause of
+the compilation failure, and that the author should investigate the versions of
+their dependencies in `Cargo.toml` to see if they should be updated. This command
+should change the Cargo.lock so that running `cargo build` will reproduce the error
+for the author to fix.
+
+## Author of a crate with multiple dependencies
+
+`twodep`'s `Cargo.toml`:
+
+```toml
+[package]
+name = "twodep"
+version = "0.1.0"
+
+[dependencies]
+// this is the version of onedep above using a public dep on url 1.5.1
+onedep = "1.0.0"
+url = "1.0.0"
+```
+
+`twodep`'s `src/main.rs`:
+
+```rust
+extern crate url;
+use url::Origin;
+
+extern crate onedep;
+
+fn main() {
+    let mut origin_tracker = onedep::OriginTracker::default();
+
+    loop {
+        println!("Please enter a URL!");
+        // pseudocode because I'm lazy
+        let url = stdin::readline().unwrap();
+        let url = Url::parse(url).unwrap();
+        origin_tracker.log_origin(url.origin());
+        // other stuff
+    }
+    println!("Here are all the origins you mentioned: {:#?}", origin_tracker);
+}
+```
+
+Before upgrading Rust/Cargo to a version where this RFC has been implemented, this
+code might have been getting a compilation error if Cargo had resolved the direct
+dependency on the url crate to a different version than the version of onedep
+resolved to. Or it might have been resolving and compiling fine if the versions had
+resolved to be the same.
+
+After upgrading Rust/Cargo, if this code had a compilation error, it would now have
+a version resolution problem that cargo would either automatically resolve or prompt
+the user to change version constraints/`cargo update` to resolve. If the code was
+compiling before, that must mean the previous resolution graph was good, so nothing
+will change on upgrading.
+
+This crate is a binary and doesn't have a public API, so it won't get any warnings
+about crates not being marked public.
+
+If the author publishes to crates.io after upgrading Rust/Cargo, since onedep's
+public dependency on url now has a lower bound of 1.5.1, the only valid graphs that
+Cargo will generate will be with url 1.5.1 or greater, which is also compatible with
+the url 1.0.0 direct dependency. Publish will work without any errors or further
+changes.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
