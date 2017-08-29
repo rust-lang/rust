@@ -205,13 +205,15 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::N
                 // corresponding entry in the `trait_map` we need to hash that.
                 // Make sure we don't ignore too much by checking that there is
                 // no entry in a debug_assert!().
-                debug_assert!(hcx.tcx.trait_map.get(self).is_none());
+                let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
+                debug_assert!(hcx.tcx.in_scope_traits(hir_id).is_none());
             }
             NodeIdHashingMode::HashDefPath => {
                 hcx.tcx.hir.definitions().node_to_hir_id(*self).hash_stable(hcx, hasher);
             }
             NodeIdHashingMode::HashTraitsInScope => {
-                if let Some(traits) = hcx.tcx.trait_map.get(self) {
+                let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
+                if let Some(traits) = hcx.tcx.in_scope_traits(hir_id) {
                     // The ordering of the candidates is not fixed. So we hash
                     // the def-ids and then sort them and hash the collection.
                     let mut candidates: AccumulateVec<[_; 8]> =

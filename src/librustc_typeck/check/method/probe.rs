@@ -663,9 +663,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                                          expr_id: ast::NodeId)
                                                          -> Result<(), MethodError<'tcx>> {
         let mut duplicates = FxHashSet();
-        let opt_applicable_traits = self.tcx.trait_map.get(&expr_id);
+        let expr_hir_id = self.tcx.hir.node_to_hir_id(expr_id);
+        let opt_applicable_traits = self.tcx.in_scope_traits(expr_hir_id);
         if let Some(applicable_traits) = opt_applicable_traits {
-            for trait_candidate in applicable_traits {
+            for trait_candidate in applicable_traits.iter() {
                 let trait_did = trait_candidate.def_id;
                 if duplicates.insert(trait_did) {
                     let import_id = trait_candidate.import_id;

@@ -12,7 +12,7 @@ use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::def::Def;
-use hir;
+use hir::{self, TraitCandidate, HirId};
 use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference};
@@ -76,6 +76,15 @@ impl Key for CrateNum {
         *self
     }
     fn default_span(&self, _: TyCtxt) -> Span {
+        DUMMY_SP
+    }
+}
+
+impl Key for HirId {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _tcx: TyCtxt) -> Span {
         DUMMY_SP
     }
 }
@@ -537,6 +546,12 @@ impl<'tcx> QueryDescription for queries::extern_crate<'tcx> {
 impl<'tcx> QueryDescription for queries::lint_levels<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("computing the lint levels for items in this crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::in_scope_traits<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching the traits in scope at a particular ast node")
     }
 }
 
@@ -1108,6 +1123,8 @@ define_maps! { <'tcx>
     [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 
     [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
+
+    [] in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
