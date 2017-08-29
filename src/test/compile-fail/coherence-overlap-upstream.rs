@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that we consider `Box<U>: !Sugar` to be ambiguous, even
-// though we see no impl of `Sugar` for `Box`. Therefore, an overlap
-// error is reported for the following pair of impls (#23516).
+// Tests that we consider `i16: Remote` to be ambiguous, even
+// though the upstream crate doesn't implement it for now.
 
-pub trait Sugar { fn dummy(&self) { } }
-pub trait Sweet { fn dummy(&self) { } }
-impl<T:Sugar> Sweet for T { }
+// aux-build:coherence_lib.rs
+
+extern crate coherence_lib;
+
+use coherence_lib::Remote;
+
+trait Foo {}
+impl<T> Foo for T where T: Remote {}
 //~^ NOTE first implementation here
-impl<U:Sugar> Sweet for Box<U> { }
+impl Foo for i16 {}
 //~^ ERROR E0119
-//~| NOTE conflicting implementation for `std::boxed::Box<_>`
-//~| NOTE downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
+//~| NOTE conflicting implementation for `i16`
+//~| NOTE upstream crates may add new impl of trait `coherence_lib::Remote` for type `i16`
 
-fn main() { }
+fn main() {}
