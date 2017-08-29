@@ -1523,8 +1523,7 @@ impl<'a> fmt::Display for Item<'a> {
                 } else {
                     write!(fmt, "Module ")?;
                 },
-            clean::FunctionItem(..) | clean::ForeignFunctionItem(..) =>
-                write!(fmt, "Function ")?,
+            clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => write!(fmt, "Function ")?,
             clean::TraitItem(..) => write!(fmt, "Trait ")?,
             clean::StructItem(..) => write!(fmt, "Struct ")?,
             clean::UnionItem(..) => write!(fmt, "Union ")?,
@@ -1532,8 +1531,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
             clean::MacroItem(..) => write!(fmt, "Macro ")?,
             clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-            clean::StaticItem(..) | clean::ForeignStaticItem(..) =>
-                write!(fmt, "Static ")?,
+            clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             _ => {
                 // We don't generate pages for any other type.
