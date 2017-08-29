@@ -1,3 +1,10 @@
+rustc (1.21.0-dev-20170829-1) unstable; urgency=low
+
+  * New upstream release.
+  * Drop pc-windows-gnu targets.
+
+ -- Onur Aslan <onur@onur.im>  Wed, 30 Aug 2017 00:49:56 +0300
+
 rustc (1.20.0-dev-20170709-1) unstable; urgency=low
 
   * Rename dh_override_auto_test rule to test.
