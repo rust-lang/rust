@@ -31,6 +31,7 @@ use syntax_pos::{Span, DUMMY_SP};
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
+pub use self::error_reporting::OnUnimplementedInfo;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};

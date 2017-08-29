@@ -2505,50 +2505,6 @@ fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 ```
 "##,
 
-E0230: r##"
-The trait has more type parameters specified than appear in its definition.
-
-Erroneous example code:
-
-```compile_fail,E0230
-#![feature(on_unimplemented)]
-#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
-// error: there is no type parameter C on trait TraitWithThreeParams
-trait TraitWithThreeParams<A,B>
-{}
-```
-
-Include the correct number of type parameters and the compilation should
-proceed:
-
-```
-#![feature(on_unimplemented)]
-#[rustc_on_unimplemented = "Trait error on `{Self}` with `<{A},{B},{C}>`"]
-trait TraitWithThreeParams<A,B,C> // ok!
-{}
-```
-"##,
-
-E0232: r##"
-The attribute must have a value. Erroneous code example:
-
-```compile_fail,E0232
-#![feature(on_unimplemented)]
-
-#[rustc_on_unimplemented] // error: this attribute must have a value
-trait Bar {}
-```
-
-Please supply the missing value of the attribute. Example:
-
-```
-#![feature(on_unimplemented)]
-
-#[rustc_on_unimplemented = "foo"] // ok!
-trait Bar {}
-```
-"##,
-
 E0243: r##"
 This error indicates that not enough type parameters were found in a type or
 trait.
@@ -4690,7 +4646,6 @@ register_diagnostics! {
     E0224, // at least one non-builtin train is required for an object type
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
-    E0231, // only named substitution parameters are allowed
 //  E0233,
 //  E0234,
 //  E0235, // structure constructor specifies a structure of type but

@@ -39,9 +39,148 @@ use ty::fast_reject;
 use ty::fold::TypeFolder;
 use ty::subst::Subst;
 use ty::SubtypePredicate;
+use util::common::ErrorReported;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::symbol::InternedString;
+
+pub struct OnUnimplementedFormatString(InternedString);
+pub struct OnUnimplementedInfo {
+    note: OnUnimplementedFormatString
+}
+
+impl<'a, 'gcx, 'tcx> OnUnimplementedInfo {
+    pub fn of_item(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                   trait_def_id: DefId,
+                   impl_def_id: DefId,
+                   span: Span)
+                   -> Result<Option<Self>, ErrorReported>
+    {
+        let attrs = tcx.get_attrs(impl_def_id);
+
+        let attr = if let Some(item) =
+            attrs.into_iter().find(|a| a.check_name("rustc_on_unimplemented"))
+        {
+            item
+        } else {
+            return Ok(None);
+        };
+
+        let span = attr.span.substitute_dummy(span);
+        if let Some(label) = attr.value_str() {
+            Ok(Some(OnUnimplementedInfo {
+                note: OnUnimplementedFormatString::try_parse(
+                    tcx, trait_def_id, label.as_str(), span)?
+            }))
+        } else {
+            struct_span_err!(
+                tcx.sess, span, E0232,
+                "this attribute must have a value")
+                .span_label(attr.span, "attribute requires a value")
+                .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
+                .emit();
+            Err(ErrorReported)
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
+    pub fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                     trait_def_id: DefId,
+                     from: InternedString,
+                     err_sp: Span)
+                     -> Result<Self, ErrorReported>
+    {
+        let result = OnUnimplementedFormatString(from);
+        result.verify(tcx, trait_def_id, err_sp)?;
+        Ok(result)
+    }
+
+    fn verify(&self,
+              tcx: TyCtxt<'a, 'gcx, 'tcx>,
+              trait_def_id: DefId,
+              span: Span)
+              -> Result<(), ErrorReported>
+    {
+        let name = tcx.item_name(trait_def_id).as_str();
+        let generics = tcx.generics_of(trait_def_id);
+        let parser = Parser::new(&self.0);
+        let types = &generics.types;
+        let mut result = Ok(());
+        for token in parser {
+            match token {
+                Piece::String(_) => (), // Normal string, no need to check it
+                Piece::NextArgument(a) => match a.position {
+                    // `{Self}` is allowed
+                    Position::ArgumentNamed(s) if s == "Self" => (),
+                    // `{ThisTraitsName}` is allowed
+                    Position::ArgumentNamed(s) if s == name => (),
+                    // So is `{A}` if A is a type parameter
+                    Position::ArgumentNamed(s) => match types.iter().find(|t| {
+                        t.name == s
+                    }) {
+                        Some(_) => (),
+                        None => {
+                            span_err!(tcx.sess, span, E0230,
+                                      "there is no type parameter \
+                                       {} on trait {}",
+                                      s, name);
+                            result = Err(ErrorReported);
+                        }
+                    },
+                    // `{:1}` and `{}` are not to be used
+                    Position::ArgumentIs(_) => {
+                        span_err!(tcx.sess, span, E0231,
+                                  "only named substitution \
+                                   parameters are allowed");
+                        result = Err(ErrorReported);
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    fn format(&self,
+              tcx: TyCtxt<'a, 'gcx, 'tcx>,
+              trait_ref: ty::TraitRef<'tcx>)
+              -> String
+    {
+        let name = tcx.item_name(trait_ref.def_id).as_str();
+        let trait_str = tcx.item_path_str(trait_ref.def_id);
+        let generics = tcx.generics_of(trait_ref.def_id);
+        let generic_map = generics.types.iter().map(|param| {
+            (param.name.as_str().to_string(),
+             trait_ref.substs.type_for_def(param).to_string())
+        }).collect::<FxHashMap<String, String>>();
+
+        let parser = Parser::new(&self.0);
+        parser.map(|p| {
+            match p {
+                Piece::String(s) => s,
+                Piece::NextArgument(a) => match a.position {
+                    Position::ArgumentNamed(s) => match generic_map.get(s) {
+                        Some(val) => val,
+                        None if s == name => {
+                            &trait_str
+                        }
+                        None => {
+                            bug!("broken on_unimplemented {:?} for {:?}: \
+                                  no argument matching {:?}",
+                                 self.0, trait_ref, s)
+                        }
+                    },
+                    _ => {
+                        bug!("broken on_unimplemented {:?} - bad \
+                              format arg", self.0)
+                    }
+                }
+            }
+        }).collect()
+    }
+}
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
@@ -323,70 +462,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = trait_ref.skip_binder();
 
-        let span = obligation.cause.span;
-        let mut report = None;
-        if let Some(item) = self.tcx
-            .get_attrs(def_id)
-            .into_iter()
-            .filter(|a| a.check_name("rustc_on_unimplemented"))
-            .next()
-        {
-            let name = self.tcx.item_name(def_id).as_str();
-            let err_sp = item.span.substitute_dummy(span);
-            let trait_str = self.tcx.item_path_str(trait_ref.def_id);
-            if let Some(istring) = item.value_str() {
-                let istring = &*istring.as_str();
-                let generics = self.tcx.generics_of(trait_ref.def_id);
-                let generic_map = generics.types.iter().map(|param| {
-                    (param.name.as_str().to_string(),
-                        trait_ref.substs.type_for_def(param).to_string())
-                }).collect::<FxHashMap<String, String>>();
-                let parser = Parser::new(istring);
-                let mut errored = false;
-                let err: String = parser.filter_map(|p| {
-                    match p {
-                        Piece::String(s) => Some(s),
-                        Piece::NextArgument(a) => match a.position {
-                            Position::ArgumentNamed(s) => match generic_map.get(s) {
-                                Some(val) => Some(val),
-                                None if s == name => {
-                                    Some(&trait_str)
-                                }
-                                None => {
-                                    span_err!(self.tcx.sess, err_sp, E0272,
-                                              "the #[rustc_on_unimplemented] attribute on trait \
-                                               definition for {} refers to non-existent type \
-                                               parameter {}",
-                                              trait_str, s);
-                                    errored = true;
-                                    None
-                                }
-                            },
-                            _ => {
-                                span_err!(self.tcx.sess, err_sp, E0273,
-                                          "the #[rustc_on_unimplemented] attribute on trait \
-                                           definition for {} must have named format arguments, eg \
-                                           `#[rustc_on_unimplemented = \"foo {{T}}\"]`",
-                                          trait_str);
-                                errored = true;
-                                None
-                            }
-                        }
-                    }
-                }).collect();
-                // Report only if the format string checks out
-                if !errored {
-                    report = Some(err);
-                }
-            } else {
-                span_err!(self.tcx.sess, err_sp, E0274,
-                                        "the #[rustc_on_unimplemented] attribute on \
-                                                    trait definition for {} must have a value, \
-                                                    eg `#[rustc_on_unimplemented = \"foo\"]`",
-                                                    trait_str);
-            }
+        match OnUnimplementedInfo::of_item(
+            self.tcx, trait_ref.def_id, def_id, obligation.cause.span
+        ) {
+            Ok(Some(info)) => Some(info.note.format(self.tcx, *trait_ref)),
+            _ => None
         }
-        report
     }
 
     fn find_similar_impl_candidates(&self,
