@@ -81,7 +81,7 @@ macro_rules! test {
 
             eprintln!("path: {}", out_file.to_str().unwrap());
             success &= Command::new("git")
-                .args(&["diff", out_file.to_str().unwrap()])
+                .args(&["diff", "--exit-code", out_file.to_str().unwrap()])
                 .env("PAGER", "")
                 .status()
                 .expect("could not run git diff")

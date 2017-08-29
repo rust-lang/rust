@@ -77,7 +77,7 @@ macro_rules! full_test {
 
             eprintln!("path: {}", out_file);
             success &= Command::new("git")
-                .args(&["diff", out_file])
+                .args(&["diff", "--exit-code", out_file])
                 .env("PAGER", "")
                 .status()
                 .expect("could not run git diff")
