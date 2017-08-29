@@ -1,4 +1,4 @@
-# Notes on work done during GSoC 2017
+# Notes on work done during GSoC 2017 (by twk/ibabushkin)
 The toplevel [README](https://github.com/ibabushkin/rust-semverver/blob/master/README.md)
 outlines the functionality and usage of the project. This document complements it by
 gathering references to the work that has been done during the Google Summer of Code 2017
