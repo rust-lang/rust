@@ -182,7 +182,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         if !(ty_warned || fn_warned) {
-            cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
+            match t.sty {
+                // Historically, booleans have not been considered unused
+                // results. (See Issue #44119.)
+                ty::TyBool => return,
+                _ => {
+                    cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
+                }
+            }
         }
 
         fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span, describe_path: &str) -> bool {
