@@ -83,117 +83,117 @@ impl fmt::Display for Mode {
 
 #[derive(Clone)]
 pub struct Config {
-    // The library paths required for running the compiler
+    /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
 
-    // The library paths required for running compiled programs
+    /// The library paths required for running compiled programs
     pub run_lib_path: PathBuf,
 
-    // The rustc executable
+    /// The rustc executable
     pub rustc_path: PathBuf,
 
-    // The rustdoc executable
+    /// The rustdoc executable
     pub rustdoc_path: Option<PathBuf>,
 
-    // The python executable to use for LLDB
+    /// The python executable to use for LLDB
     pub lldb_python: String,
 
-    // The python executable to use for htmldocck
+    /// The python executable to use for htmldocck
     pub docck_python: String,
 
-    // The llvm FileCheck binary path
+    /// The llvm FileCheck binary path
     pub llvm_filecheck: Option<PathBuf>,
 
-    // The valgrind path
+    /// The valgrind path
     pub valgrind_path: Option<String>,
 
-    // Whether to fail if we can't run run-pass-valgrind tests under valgrind
-    // (or, alternatively, to silently run them like regular run-pass tests).
+    /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
+    /// (or, alternatively, to silently run them like regular run-pass tests).
     pub force_valgrind: bool,
 
-    // The directory containing the tests to run
+    /// The directory containing the tests to run
     pub src_base: PathBuf,
 
-    // The directory where programs should be built
+    /// The directory where programs should be built
     pub build_base: PathBuf,
 
-    // The name of the stage being built (stage1, etc)
+    /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    // The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, compile-fail, run-fail, run-pass
     pub mode: Mode,
 
-    // Run ignored tests
+    /// Run ignored tests
     pub run_ignored: bool,
 
-    // Only run tests that match this filter
+    /// Only run tests that match this filter
     pub filter: Option<String>,
 
-    // Exactly match the filter, rather than a substring
+    /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
 
-    // Write out a parseable log of tests that were run
+    /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
 
-    // A command line to prefix program execution with,
-    // for running under valgrind
+    /// A command line to prefix program execution with,
+    /// for running under valgrind
     pub runtool: Option<String>,
 
-    // Flags to pass to the compiler when building for the host
+    /// Flags to pass to the compiler when building for the host
     pub host_rustcflags: Option<String>,
 
-    // Flags to pass to the compiler when building for the target
+    /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
 
-    // Target system to be tested
+    /// Target system to be tested
     pub target: String,
 
-    // Host triple for the compiler being invoked
+    /// Host triple for the compiler being invoked
     pub host: String,
 
-    // Path to / name of the GDB executable
+    /// Path to / name of the GDB executable
     pub gdb: Option<String>,
 
-    // Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
+    /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     pub gdb_version: Option<u32>,
 
-    // Whether GDB has native rust support
+    /// Whether GDB has native rust support
     pub gdb_native_rust: bool,
 
-    // Version of LLDB
+    /// Version of LLDB
     pub lldb_version: Option<String>,
 
-    // Version of LLVM
+    /// Version of LLVM
     pub llvm_version: Option<String>,
 
-    // Is LLVM a system LLVM
+    /// Is LLVM a system LLVM
     pub system_llvm: bool,
 
-    // Path to the android tools
+    /// Path to the android tools
     pub android_cross_path: PathBuf,
 
-    // Extra parameter to run adb on arm-linux-androideabi
+    /// Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: String,
 
-    // Extra parameter to run test suite on arm-linux-androideabi
+    /// Extra parameter to run test suite on arm-linux-androideabi
     pub adb_test_dir: String,
 
-    // status whether android device available or not
+    /// status whether android device available or not
     pub adb_device_status: bool,
 
-    // the path containing LLDB's Python module
+    /// the path containing LLDB's Python module
     pub lldb_python_dir: Option<String>,
 
-    // Explain what's going on
+    /// Explain what's going on
     pub verbose: bool,
 
-    // Print one character per test instead of one line
+    /// Print one character per test instead of one line
     pub quiet: bool,
 
-    // Whether to use colors in test.
+    /// Whether to use colors in test.
     pub color: ColorConfig,
 
-    // where to find the remote test client process, if we're using it
+    /// where to find the remote test client process, if we're using it
     pub remote_test_client: Option<PathBuf>,
 
     // Configuration for various run-make tests frobbing things like C compilers
