@@ -87,7 +87,7 @@ OTOH, this means that making non-`Copy` arrays `Clone` is less of a bugfix and m
 
 ## Implement `Clone` only for `Copy` types
 
-As of Rust 1.19, the compiler *does not* have the `Clone` implementations, which causes ICEs such as rust-lang/rust#25733 because `Clone` is a supertrait of `Copy`.
+As of Rust 1.19, the compiler *does not* have the `Clone` implementations, which causes ICEs such as [rust-lang/rust#25733] because `Clone` is a supertrait of `Copy`.
 
 One alternative, which would solve ICEs while being conservative, would be to have compiler implementations for `Clone` only for *`Copy`* tuples of size 12+ and arrays, and maintain the `libcore` macros for `Clone` of tuples (in Rust 1.19, arrays are only `Clone` if they are `Copy`).
 
@@ -100,14 +100,20 @@ When we get variadic generics, we could make all tuples with `Clone` elements `C
 The implementation on the other end of the conservative-radical end would be to use the MIR shims for *all* `#[derive(Clone)]` implementations. This would increase uniformity by getting rid of the separate `libsyntax` derived implementation. However:
 
 1. We'll still need the `#[derive_Clone]` hook in libsyntax, which would presumably result in an attribute that trait selection can see. That's not a significant concern.
-2. The more annoying issue is that, as a workaround to trait matching being inductive, derived implementations are imperfect - see rust-lang/rust#26925. This means that we either have to solve that issue for `Clone` (which is dedicatedly non-trivial) or have some sort of type-checking for the generated MIR shims, both annoying options.
+
+2. The more annoying issue is that, as a workaround to trait matching being inductive, derived implementations are imperfect - see [rust-lang/rust#26925]. This means that we either have to solve that issue for `Clone` (which is dedicatedly non-trivial) or have some sort of type-checking for the generated MIR shims, both annoying options.
+
 3. A MIR shim implementation would also have to deal with edge cases such as `#[repr(packed)]`, which normal type-checking would handle for ordinary `derive`. I think drop glue already encounters all of these edge cases so we have to deal with them anyway.
 
 ## `Copy` and `Clone` for closures
 
-We could also add implementations of `Copy` and `Clone` to closures. That is RFC #2132 and should be discussed there.
+We could also add implementations of `Copy` and `Clone` to closures. That is [RFC #2132] and should be discussed there.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
 See Alternatives.
+
+[RFC #2132]: https://github.com/rust-lang/rfcs/pull/2132
+[rust-lang/rust#25733]: https://github.com/rust-lang/rust/issues/25733
+[rust-lang/rust#26925]: https://github.com/rust-lang/rust/issues/26925
