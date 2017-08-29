@@ -499,7 +499,7 @@ declare_lint! {
 /// ```
 declare_lint! {
     pub CAST_LOSSLESS,
-    Allow,
+    Warn,
     "casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`"
 }
 

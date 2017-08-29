@@ -38,12 +38,12 @@ pub struct U(u64);
 
 impl PartialEq<u32> for U {
     fn eq(&self, other: &u32) -> bool {
-        self.eq(&U(*other as u64))
+        self.eq(&U(u64::from(*other)))
     }
 }
 impl PartialOrd<u32> for U {
     fn partial_cmp(&self, other: &u32) -> Option<Ordering> {
-        self.partial_cmp(&U(*other as u64))
+        self.partial_cmp(&U(u64::from(*other)))
     }
 }
 
