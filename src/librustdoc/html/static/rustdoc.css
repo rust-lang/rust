@@ -658,11 +658,13 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 
 .toggle-wrapper {
 	position: relative;
+	margin-top: 5px;
 }
 
 .toggle-wrapper.collapsed {
-	height: 1em;
+	height: 25px;
 	transition: height .2s;
+	margin-bottom: .6em;
 }
 
 .collapse-toggle > .inner {
@@ -704,12 +706,14 @@ span.since {
 	margin-top: 5px;
 }
 
-.variant + .toggle-wrapper > a {
-	margin-top: 5px;
-}
-
 .sub-variant, .sub-variant > h3 {
 	margin-top: 0 !important;
+}
+
+.toggle-label {
+	display: inline-block;
+	margin-left: 4px;
+	margin-top: 3px;
 }
 
 .enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
