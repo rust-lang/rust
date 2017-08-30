@@ -20,6 +20,8 @@ use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
 use middle::cstore::NativeLibraryKind;
 use middle::privacy::AccessLevels;
 use middle::region;
+use middle::region::RegionMaps;
+use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -649,6 +651,24 @@ impl<'tcx> QueryDescription for queries::link_args<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::named_region<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching info about a named region")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_late_bound<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("testing whether a lifetime is late bound")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::object_lifetime_defaults<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching a list of ObjectLifetimeDefault for a lifetime")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1243,6 +1263,11 @@ define_maps! { <'tcx>
     [] native_library_kind: NativeLibraryKind(DefId)
         -> Option<NativeLibraryKind>,
     [] link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
+
+    [] named_region: NamedRegion(HirId) -> Option<Region>,
+    [] is_late_bound: IsLateBound(HirId) -> bool,
+    [] object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
+        -> Option<Rc<Vec<ObjectLifetimeDefault>>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

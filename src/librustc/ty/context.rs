@@ -23,7 +23,7 @@ use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::resolve_lifetime;
+use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::Mir;
 use mir::transform::Passes;
@@ -822,7 +822,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<HirId, Rc<Vec<Export>>>,
 
-    pub named_region_map: resolve_lifetime::NamedRegionMap,
+    named_region_map: NamedRegionMap,
 
     pub hir: hir_map::Map<'tcx>,
 
@@ -1054,7 +1054,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
-            named_region_map,
+            named_region_map: NamedRegionMap {
+                defs:
+                    named_region_map.defs
+                        .into_iter()
+                        .map(|(k, v)| (hir.node_to_hir_id(k), v))
+                        .collect(),
+                late_bound:
+                    named_region_map.late_bound
+                        .into_iter()
+                        .map(|k| hir.node_to_hir_id(k))
+                        .collect(),
+                object_lifetime_defaults:
+                    named_region_map.object_lifetime_defaults
+                        .into_iter()
+                        .map(|(k, v)| (hir.node_to_hir_id(k), Rc::new(v)))
+                        .collect(),
+            },
             trait_map: resolutions.trait_map.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
@@ -1978,19 +1994,18 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-fn in_scope_traits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
-    -> Option<Rc<Vec<TraitCandidate>>>
-{
-    tcx.gcx.trait_map.get(&id).cloned()
-}
-
-fn module_exports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
-    -> Option<Rc<Vec<Export>>>
-{
-    tcx.gcx.export_map.get(&id).cloned()
+struct NamedRegionMap {
+    defs: FxHashMap<HirId, resolve_lifetime::Region>,
+    late_bound: FxHashSet<HirId>,
+    object_lifetime_defaults: FxHashMap<HirId, Rc<Vec<ObjectLifetimeDefault>>>,
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
-    providers.in_scope_traits = in_scope_traits;
-    providers.module_exports = module_exports;
+    providers.in_scope_traits = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
+    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
+    providers.named_region = |tcx, id| tcx.gcx.named_region_map.defs.get(&id).cloned();
+    providers.is_late_bound = |tcx, id| tcx.gcx.named_region_map.late_bound.contains(&id);
+    providers.object_lifetime_defaults = |tcx, id| {
+        tcx.gcx.named_region_map.object_lifetime_defaults.get(&id).cloned()
+    };
 }

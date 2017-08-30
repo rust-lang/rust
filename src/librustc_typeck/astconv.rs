@@ -96,22 +96,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
-        let r = match tcx.named_region_map.defs.get(&lifetime.id) {
-            Some(&rl::Region::Static) => {
+        let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+        let r = match tcx.named_region(hir_id) {
+            Some(rl::Region::Static) => {
                 tcx.types.re_static
             }
 
-            Some(&rl::Region::LateBound(debruijn, id)) => {
+            Some(rl::Region::LateBound(debruijn, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
                     ty::BrNamed(tcx.hir.local_def_id(id), name)))
             }
 
-            Some(&rl::Region::LateBoundAnon(debruijn, index)) => {
+            Some(rl::Region::LateBoundAnon(debruijn, index)) => {
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
             }
 
-            Some(&rl::Region::EarlyBound(index, id)) => {
+            Some(rl::Region::EarlyBound(index, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
                     def_id: tcx.hir.local_def_id(id),
@@ -120,7 +121,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }))
             }
 
-            Some(&rl::Region::Free(scope, id)) => {
+            Some(rl::Region::Free(scope, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
@@ -627,7 +628,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region_map.defs.contains_key(&lifetime.id) {
+                let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+                if tcx.named_region(hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(span, None).unwrap_or_else(|| {

@@ -550,6 +550,10 @@ define_dep_nodes!( <'tcx>
     [] IsStaticallyIncludedForeignItem(DefId),
     [] NativeLibraryKind(DefId),
     [] LinkArgs,
+
+    [] NamedRegion(HirId),
+    [] IsLateBound(HirId),
+    [] ObjectLifetimeDefaults(HirId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
