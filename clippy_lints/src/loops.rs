@@ -7,11 +7,15 @@ use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
+use rustc::middle::region::CodeExtent;
+use rustc::middle::expr_use_visitor::*;
+use rustc::middle::mem_categorization::cmt;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
 use syntax::ast;
+use syntax::codemap::Span;
 use utils::sugg;
 use utils::const_to_u64;
 
@@ -614,7 +618,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
-    check_for_mut_range_bound(cx, arg, expr);
+    check_for_mut_range_bound(cx, arg, body, expr);
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
@@ -1304,11 +1308,49 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     }
 }
 
-fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, expr: &Expr) {
+// TODO: clippy builds, but the `mutate` method of `Delegate` is never called when compiling `tests/run-pass/mut_range_bound_tmp.rs`. what's wrong? 
+
+struct MutateDelegate<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    node_id: NodeId,
+    was_mutated: bool
+}
+
+impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
+    fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
+    }
+  
+    fn matched_pat(&mut self, matched_pat: &Pat, cmt: cmt<'tcx>, mode: MatchMode) {
+    }
+
+    fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, mode: ConsumeMode) {
+    }
+
+    fn borrow(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: LoanCause) {        
+    }
+
+    fn mutate(&mut self, assignment_id: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {
+        println!("something was mutated"); // tmp: see if this function is ever called at all (no)
+        if assignment_id == self.node_id {
+            self.was_mutated = true;
+        }
+    }
+
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {
+    }
+}
+
+impl<'a, 'tcx> MutateDelegate<'a, 'tcx> {
+    fn bound_was_mutated(&self) -> bool {
+        self.was_mutated
+    }
+}
+
+fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr,  expr: &Expr) {
     if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
         let bounds = vec![start, end];
         for bound in &bounds {
-            if check_for_mutability(cx, bound) {
+            if check_for_mutation(cx, body, bound) {
                 span_lint(cx, MUT_RANGE_BOUND, expr.span, "you are looping over a range where at least one bound was defined as a mutable variable. keep in mind that mutating this variable inside the loop will not affect the range");   
                 return;
             }
@@ -1316,11 +1358,10 @@ fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, expr: &Expr) {
     }
 }
 
-fn check_for_mutability(cx: &LateContext, bound: &Expr) -> bool {
+fn check_for_mutation(cx: &LateContext, body: &Expr, bound: &Expr) -> bool {
     if_let_chain! {[
         let ExprPath(ref qpath) = bound.node,
         let QPath::Resolved(None, ref path) = *qpath,
-        path.segments.len() == 1,
     ], {
         let def = cx.tables.qpath_def(qpath, bound.id);
         match def {
@@ -1328,13 +1369,18 @@ fn check_for_mutability(cx: &LateContext, bound: &Expr) -> bool {
                 let def_id = def.def_id();
                 let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
                 let node_str = cx.tcx.hir.get(node_id);
-                if_let_chain! {[
+                if_let_chain! {[ // prob redundant now, remove
                     let map::Node::NodeLocal(pat) = node_str,
                     let PatKind::Binding(bind_ann, _, _, _) = pat.node,
                     let BindingAnnotation::Mutable = bind_ann,
+                    
                 ], {
-                    return true;
-                }} 
+                    println!("bound was mutable"); // tmp: make sure the full if-let chain executes when it should (yes)
+                    let mut delegate = MutateDelegate { cx: cx, node_id: node_id, was_mutated: false };
+                    let region_maps = &cx.tcx.region_maps(def_id); // is this the correct argument?
+                    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_maps, cx.tables).walk_expr(body);
+                    return delegate.bound_was_mutated();
+                }}
             },
             _ => (),
         }}
