@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-This RFC seeks to clarify and streamline Rust's story around paths and visibility for modules and crates. When the RFC is *fully* implemented (which will require a [new epoch]), that story will look as follows:
+This RFC seeks to clarify and streamline Rust's story around paths and visibility for modules and crates. That story will look as follows:
 
 - Absolute paths begin with a crate name, where the keyword `crate` refers to the current crate (other forms are deprecated)
 - `extern crate` is deprecated. Usage of external crates is always unambiguous, since it must somewhere involve an absolute path beginning with the crate's name.
