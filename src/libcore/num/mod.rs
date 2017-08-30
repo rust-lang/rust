@@ -2507,12 +2507,10 @@ impl fmt::Display for TryFromIntError {
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
+        impl From<$source> for $target {
             #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                Ok(u as $target)
+            fn from(value: $source) -> $target {
+                value as $target
             }
         }
     )*}
@@ -2584,31 +2582,17 @@ macro_rules! rev {
 }
 
 /// intra-sign conversions
-try_from_unbounded!(u8, u8, u16, u32, u64, u128);
-try_from_unbounded!(u16, u16, u32, u64, u128);
-try_from_unbounded!(u32, u32, u64, u128);
-try_from_unbounded!(u64, u64, u128);
-try_from_unbounded!(u128, u128);
 try_from_upper_bounded!(u16, u8);
 try_from_upper_bounded!(u32, u16, u8);
 try_from_upper_bounded!(u64, u32, u16, u8);
 try_from_upper_bounded!(u128, u64, u32, u16, u8);
 
-try_from_unbounded!(i8, i8, i16, i32, i64, i128);
-try_from_unbounded!(i16, i16, i32, i64, i128);
-try_from_unbounded!(i32, i32, i64, i128);
-try_from_unbounded!(i64, i64, i128);
-try_from_unbounded!(i128, i128);
 try_from_both_bounded!(i16, i8);
 try_from_both_bounded!(i32, i16, i8);
 try_from_both_bounded!(i64, i32, i16, i8);
 try_from_both_bounded!(i128, i64, i32, i16, i8);
 
 // unsigned-to-signed
-try_from_unbounded!(u8, i16, i32, i64, i128);
-try_from_unbounded!(u16, i32, i64, i128);
-try_from_unbounded!(u32, i64, i128);
-try_from_unbounded!(u64, i128);
 try_from_upper_bounded!(u8, i8);
 try_from_upper_bounded!(u16, i8, i16);
 try_from_upper_bounded!(u32, i8, i16, i32);
@@ -2627,10 +2611,8 @@ try_from_both_bounded!(i64, u32, u16, u8);
 try_from_both_bounded!(i128, u64, u32, u16, u8);
 
 // usize/isize
-try_from_unbounded!(usize, usize);
 try_from_upper_bounded!(usize, isize);
 try_from_lower_bounded!(isize, usize);
-try_from_unbounded!(isize, isize);
 
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
@@ -2647,14 +2629,14 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8);
     try_from_unbounded!(isize, i16, i32, i64, i128);
 
-    rev!(try_from_unbounded, usize, u8, u16);
+    rev!(try_from_unbounded, usize, u16);
     rev!(try_from_upper_bounded, usize, u32, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16);
     rev!(try_from_both_bounded, usize, i32, i64, i128);
 
     rev!(try_from_unbounded, isize, u8);
     rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i8, i16);
+    rev!(try_from_unbounded, isize, i16);
     rev!(try_from_both_bounded, isize, i32, i64, i128);
 }
 
@@ -2673,14 +2655,14 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8, i16);
     try_from_unbounded!(isize, i32, i64, i128);
 
-    rev!(try_from_unbounded, usize, u8, u16, u32);
+    rev!(try_from_unbounded, usize, u16, u32);
     rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
     rev!(try_from_both_bounded, usize, i64, i128);
 
     rev!(try_from_unbounded, isize, u8, u16);
     rev!(try_from_upper_bounded, isize, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i8, i16, i32);
+    rev!(try_from_unbounded, isize, i16, i32);
     rev!(try_from_both_bounded, isize, i64, i128);
 }
 
@@ -2699,14 +2681,14 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8, i16, i32);
     try_from_unbounded!(isize, i64, i128);
 
-    rev!(try_from_unbounded, usize, u8, u16, u32, u64);
+    rev!(try_from_unbounded, usize, u16, u32, u64);
     rev!(try_from_upper_bounded, usize, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
     rev!(try_from_both_bounded, usize, i128);
 
     rev!(try_from_unbounded, isize, u8, u16, u32);
     rev!(try_from_upper_bounded, isize, u64, u128);
-    rev!(try_from_unbounded, isize, i8, i16, i32, i64);
+    rev!(try_from_unbounded, isize, i16, i32, i64);
     rev!(try_from_both_bounded, isize, i128);
 }
 
