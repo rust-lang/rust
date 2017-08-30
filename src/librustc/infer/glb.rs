@@ -74,7 +74,10 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_glb(a, b, self.a_is_expected)
+        // Otherwise, we make the (overly strict) requirement that
+        // the two sides are equal.
+        self.relate_with_variance(ty::Variance::Invariant, a, b)?;
+        Ok(a.clone())
     }
 }
 
