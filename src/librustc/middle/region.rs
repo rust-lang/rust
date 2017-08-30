@@ -223,7 +223,9 @@ pub struct RegionMaps {
     /// table, the appropriate cleanup scope is the innermost
     /// enclosing statement, conditional expression, or repeating
     /// block (see `terminating_scopes`).
-    rvalue_scopes: NodeMap<CodeExtent>,
+    /// In constants, None is used to indicate that certain expressions
+    /// escape into 'static and should have no local cleanup scope.
+    rvalue_scopes: NodeMap<Option<CodeExtent>>,
 
     /// Encodes the hierarchy of fn bodies. Every fn body (including
     /// closures) forms its own distinct region hierarchy, rooted in
@@ -358,9 +360,11 @@ impl<'tcx> RegionMaps {
         self.var_map.insert(var, lifetime);
     }
 
-    fn record_rvalue_scope(&mut self, var: ast::NodeId, lifetime: CodeExtent) {
+    fn record_rvalue_scope(&mut self, var: ast::NodeId, lifetime: Option<CodeExtent>) {
         debug!("record_rvalue_scope(sub={:?}, sup={:?})", var, lifetime);
-        assert!(var != lifetime.node_id());
+        if let Some(lifetime) = lifetime {
+            assert!(var != lifetime.node_id());
+        }
         self.rvalue_scopes.insert(var, lifetime);
     }
 
@@ -389,7 +393,7 @@ impl<'tcx> RegionMaps {
         // check for a designated rvalue scope
         if let Some(&s) = self.rvalue_scopes.get(&expr_id) {
             debug!("temporary_scope({:?}) = {:?} [custom]", expr_id, s);
-            return Some(s);
+            return s;
         }
 
         // else, locate the innermost terminating scope
@@ -803,16 +807,11 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 }
 
 fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
-                           local: &'tcx hir::Local) {
-    debug!("resolve_local(local.id={:?},local.init={:?})",
-           local.id,local.init.is_some());
+                           pat: Option<&'tcx hir::Pat>,
+                           init: Option<&'tcx hir::Expr>) {
+    debug!("resolve_local(pat={:?}, init={:?})", pat, init);
 
-    // For convenience in trans, associate with the local-id the var
-    // scope that will be used for any bindings declared in this
-    // pattern.
     let blk_scope = visitor.cx.var_parent;
-    let blk_scope = blk_scope.expect("locals must be within a block");
-    visitor.region_maps.record_var_scope(local.id, blk_scope);
 
     // As an exception to the normal rules governing temporary
     // lifetimes, initializers in a let have a temporary lifetime
@@ -872,15 +871,22 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     //
     // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
-    if let Some(ref expr) = local.init {
+    if let Some(expr) = init {
         record_rvalue_scope_if_borrow_expr(visitor, &expr, blk_scope);
 
-        if is_binding_pat(&local.pat) {
-            record_rvalue_scope(visitor, &expr, blk_scope);
+        if let Some(pat) = pat {
+            if is_binding_pat(pat) {
+                record_rvalue_scope(visitor, &expr, blk_scope);
+            }
         }
     }
 
-    intravisit::walk_local(visitor, local);
+    if let Some(pat) = pat {
+        visitor.visit_pat(pat);
+    }
+    if let Some(expr) = init {
+        visitor.visit_expr(expr);
+    }
 
     /// True if `pat` match the `P&` nonterminal:
     ///
@@ -954,7 +960,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     fn record_rvalue_scope_if_borrow_expr<'a, 'tcx>(
         visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
         expr: &hir::Expr,
-        blk_id: CodeExtent)
+        blk_id: Option<CodeExtent>)
     {
         match expr.node {
             hir::ExprAddrOf(_, ref subexpr) => {
@@ -1004,7 +1010,7 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     /// Note: ET is intended to match "rvalues or lvalues based on rvalues".
     fn record_rvalue_scope<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                                      expr: &hir::Expr,
-                                     blk_scope: CodeExtent) {
+                                     blk_scope: Option<CodeExtent>) {
         let mut expr = expr;
         loop {
             // Note: give all the expressions matching `ET` with the
@@ -1077,12 +1083,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         let outer_cx = self.cx;
         let outer_ts = mem::replace(&mut self.terminating_scopes, NodeSet());
-
-        // Only functions have an outer terminating (drop) scope,
-        // while temporaries in constant initializers are 'static.
-        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
-            self.terminating_scopes.insert(body_id.node_id);
-        }
+        self.terminating_scopes.insert(body_id.node_id);
 
         if let Some(root_id) = self.cx.root_id {
             self.region_maps.record_fn_parent(body_id.node_id, root_id);
@@ -1100,7 +1101,30 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 
         // The body of the every fn is a root scope.
         self.cx.parent = self.cx.var_parent;
-        self.visit_expr(&body.value);
+        if let MirSource::Fn(_) = MirSource::from_node(self.tcx, owner_id) {
+            self.visit_expr(&body.value);
+        } else {
+            // Only functions have an outer terminating (drop) scope, while
+            // temporaries in constant initializers may be 'static, but only
+            // according to rvalue lifetime semantics, using the same
+            // syntactical rules used for let initializers.
+            //
+            // E.g. in `let x = &f();`, the temporary holding the result from
+            // the `f()` call lives for the entirety of the surrounding block.
+            //
+            // Similarly, `const X: ... = &f();` would have the result of `f()`
+            // live for `'static`, implying (if Drop restrictions on constants
+            // ever get lifted) that the value *could* have a destructor, but
+            // it'd get leaked instead of the destructor running during the
+            // evaluation of `X` (if at all allowed by CTFE).
+            //
+            // However, `const Y: ... = g(&f());`, like `let y = g(&f());`,
+            // would *not* let the `f()` temporary escape into an outer scope
+            // (i.e. `'static`), which means that after `g` returns, it drops,
+            // and all the associated destruction scope rules apply.
+            self.cx.var_parent = None;
+            resolve_local(self, None, Some(&body.value));
+        }
 
         // Restore context we had at the start.
         self.cx = outer_cx;
@@ -1120,7 +1144,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         resolve_expr(self, ex);
     }
     fn visit_local(&mut self, l: &'tcx Local) {
-        resolve_local(self, l);
+        resolve_local(self, Some(&l.pat), l.init.as_ref().map(|e| &**e));
     }
 }
 

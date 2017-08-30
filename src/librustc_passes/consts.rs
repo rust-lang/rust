@@ -87,19 +87,14 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    // Adds the worst effect out of all the values of one type.
-    fn add_type(&mut self, ty: Ty<'gcx>) {
-        if !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
-            self.promotable = false;
-        }
-
-        if ty.needs_drop(self.tcx, self.param_env) {
-            self.promotable = false;
-        }
+    // Returns true iff all the values of the type are promotable.
+    fn type_has_only_promotable_values(&mut self, ty: Ty<'gcx>) -> bool {
+        ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
+        !ty.needs_drop(self.tcx, self.param_env)
     }
 
     fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>) {
-        self.add_type(ret_ty);
+        self.promotable &= self.type_has_only_promotable_values(ret_ty);
 
         self.promotable &= if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
             FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
@@ -333,20 +328,30 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
                 Def::Fn(..) | Def::Method(..) => {}
-                Def::AssociatedConst(_) => v.add_type(node_ty),
-                Def::Const(did) => {
-                    v.promotable &= if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
-                        match v.tcx.hir.expect_item(node_id).node {
-                            hir::ItemConst(_, body) => {
+
+                Def::Const(did) |
+                Def::AssociatedConst(did) => {
+                    let promotable = if v.tcx.trait_of_item(did).is_some() {
+                        // Don't peek inside trait associated constants.
+                        false
+                    } else if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
+                        match v.tcx.hir.maybe_body_owned_by(node_id) {
+                            Some(body) => {
                                 v.visit_nested_body(body);
                                 v.tcx.rvalue_promotable_to_static.borrow()[&body.node_id]
                             }
-                            _ => false
+                            None => false
                         }
                     } else {
                         v.tcx.const_is_rvalue_promotable_to_static(did)
                     };
+
+                    // Just in case the type is more specific than the definition,
+                    // e.g. impl associated const with type parameters, check it.
+                    // Also, trait associated consts are relaxed by this.
+                    v.promotable &= promotable || v.type_has_only_promotable_values(node_ty);
                 }
+
                 _ => {
                     v.promotable = false;
                 }
