@@ -327,10 +327,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 
+        let mut flags = vec![];
+        let direct = match obligation.cause.code {
+            ObligationCauseCode::BuiltinDerivedObligation(..) |
+            ObligationCauseCode::ImplDerivedObligation(..) => false,
+            _ => true
+        };
+        if direct {
+            // this is a "direct", user-specified, rather than derived,
+            // obligation.
+            flags.push("direct");
+        }
+
+        if let Some(_) = obligation.cause.span.compiler_desugaring_kind() {
+            flags.push("from_desugaring");
+        }
+
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(
             self.tcx, trait_ref.def_id, def_id
         ) {
-            command.evaluate(self.tcx, trait_ref, &[])
+            command.evaluate(self.tcx, trait_ref, &flags)
         } else {
             OnUnimplementedNote::empty()
         }

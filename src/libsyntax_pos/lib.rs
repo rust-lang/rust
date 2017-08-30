@@ -205,6 +205,18 @@ impl Span {
         }
     }
 
+    /// Return the compiler desugaring that created this span, or None
+    /// if this span is not from a desugaring.
+    pub fn compiler_desugaring_kind(&self) -> Option<CompilerDesugaringKind> {
+        match self.ctxt().outer().expn_info() {
+            Some(info) => match info.callee.format {
+                ExpnFormat::CompilerDesugaring(k) => Some(k),
+                _ => None
+            },
+            None => None
+        }
+    }
+
     /// Check if a span is "internal" to a macro in which `unsafe`
     /// can be used without triggering the `unsafe_code` lint
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).

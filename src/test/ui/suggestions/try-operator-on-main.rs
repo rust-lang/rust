@@ -8,6 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Try;
+
 fn main() {
     std::fs::File::open("foo")?;
+
+    try_trait_generic::<()>();
 }
+
+fn try_trait_generic<T: Try>() {}
