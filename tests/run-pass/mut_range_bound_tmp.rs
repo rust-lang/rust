@@ -1,6 +1,8 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![allow(unused)]
+
 fn main() {
     mut_range_bound_upper();
     mut_range_bound_lower();
@@ -10,7 +12,10 @@ fn main() {
 
 fn mut_range_bound_upper() {
     let mut m = 4;
-    for i in 0..m { continue; } // WARNING the range upper bound is mutable
+    for i in 0..m { 
+
+        m = 5;
+        continue; } // WARNING the range upper bound is mutable
 }
 
 fn mut_range_bound_lower() {

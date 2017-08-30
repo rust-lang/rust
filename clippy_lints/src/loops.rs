@@ -1329,8 +1329,8 @@ impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
     fn borrow(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: LoanCause) {        
     }
 
-    fn mutate(&mut self, assignment_id: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {
-        println!("something was mutated"); // tmp: see if this function is ever called at all (no)
+    fn mutate(&mut self, assignment_id: NodeId, sp: Span, _: cmt<'tcx>, _: MutateMode) {
+        self.cx.sess().span_note_without_error(sp, "mutates!");
         if assignment_id == self.node_id {
             self.was_mutated = true;
         }
@@ -1364,18 +1364,19 @@ fn check_for_mutation(cx: &LateContext, body: &Expr, bound: &Expr) -> bool {
         let QPath::Resolved(None, ref path) = *qpath,
     ], {
         let def = cx.tables.qpath_def(qpath, bound.hir_id);
+
+                    cx.sess().span_note_without_error(body.span, "loop");
         match def {
             Def::Local(..) | Def::Upvar(..) => {
                 let def_id = def.def_id();
                 let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
                 let node_str = cx.tcx.hir.get(node_id);
-                if_let_chain! {[ // prob redundant now, remove
-                    let map::Node::NodeLocal(local) = node_str,
-                    let PatKind::Binding(bind_ann, _, _, _) = local.pat.node,
+                if_let_chain! {[
+                    let map::Node::NodeBinding(pat) = node_str,
+                    let PatKind::Binding(bind_ann, _, _, _) = pat.node,
                     let BindingAnnotation::Mutable = bind_ann,
                     
                 ], {
-                    println!("bound was mutable"); // tmp: make sure the full if-let chain executes when it should (yes)
                     let mut delegate = MutateDelegate { cx: cx, node_id: node_id, was_mutated: false };
                     let region_maps = &cx.tcx.region_maps(def_id); // is this the correct argument?
                     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_maps, cx.tables).walk_expr(body);
