@@ -10,7 +10,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
-            opt_def_id, snippet, span_help_and_lint, span_lint, span_lint_and_sugg, type_size};
+            opt_def_id, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_sugg, type_size};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -581,13 +581,26 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
 }
 
 fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
+    // The suggestion is to use a function call, so if the original expression
+    // has parens on the outside, they are no longer needed.
+    let opt = snippet_opt(cx, op.span);
+    let sugg = if let Some(ref snip) = opt {
+        if snip.starts_with('(') && snip.ends_with(')') {
+            &snip[1..snip.len()-1]
+        } else {
+            snip.as_str()
+        }
+    } else {
+        ".."
+    };
+
     span_lint_and_sugg(
         cx,
         CAST_LOSSLESS,
         expr.span,
         &format!("casting {} to {} may become silently lossy if types change", cast_from, cast_to),
         "try",
-        format!("{}::from({})", cast_to, &snippet(cx, op.span, "..")),
+        format!("{}::from({})", cast_to, sugg),
     );
 }
 
