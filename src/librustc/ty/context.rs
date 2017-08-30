@@ -855,10 +855,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub lang_items: middle::lang_items::LanguageItems,
 
-    /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
-    /// present in this set can be warned about.
-    pub used_unsafe: RefCell<NodeSet>,
-
     /// Set of nodes which mark locals as mutable which end up getting used at
     /// some point. Local variable definitions not in this set can be warned
     /// about.
@@ -1091,7 +1087,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
             lang_items,
-            used_unsafe: RefCell::new(NodeSet()),
             used_mut_nodes: RefCell::new(NodeSet()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
