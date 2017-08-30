@@ -10,19 +10,21 @@
 
 use cstore;
 use encoder;
+use link_args;
+use native_libs;
 use schema;
 
 use rustc::ty::maps::QueryConfig;
 use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            NativeLibrary, MetadataLoader, LinkMeta,
+                            MetadataLoader, LinkMeta,
                             LinkagePreference, LoadedMacro, EncodedMetadata,
-                            EncodedMetadataHashes};
+                            EncodedMetadataHashes, NativeLibraryKind};
 use rustc::hir::def;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
@@ -199,6 +201,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.get_implementations_for_trait(None, &tcx.dep_graph, &mut result);
         Rc::new(result)
     }
+
+    is_dllimport_foreign_item => {
+        cdata.is_dllimport_foreign_item(def_id.index, &tcx.dep_graph)
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -215,6 +221,31 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
 
     *providers = Providers {
         is_const_fn,
+        is_dllimport_foreign_item: |tcx, id| {
+            tcx.native_library_kind(id) == Some(NativeLibraryKind::NativeUnknown)
+        },
+        is_statically_included_foreign_item: |tcx, id| {
+            match tcx.native_library_kind(id) {
+                Some(NativeLibraryKind::NativeStatic) |
+                Some(NativeLibraryKind::NativeStaticNobundle) => true,
+                _ => false,
+            }
+        },
+        native_library_kind: |tcx, id| {
+            tcx.native_libraries(id.krate)
+                .iter()
+                .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
+                .find(|l| l.foreign_items.contains(&id.index))
+                .map(|l| l.kind)
+        },
+        native_libraries: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(native_libs::collect(tcx))
+        },
+        link_args: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(link_args::collect(tcx))
+        },
         ..*providers
     };
 }
@@ -242,20 +273,6 @@ impl CrateStore for cstore::CStore {
     {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_associated_item(def.index)
-    }
-
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
-    {
-        self.do_is_statically_included_foreign_item(def_id)
-    }
-
-    fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
-        if def_id.krate == LOCAL_CRATE {
-            self.dllimport_foreign_items.borrow().contains(&def_id.index)
-        } else {
-            self.get_crate_data(def_id.krate)
-                .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
-        }
     }
 
     fn dep_kind(&self, cnum: CrateNum) -> DepKind
@@ -400,15 +417,6 @@ impl CrateStore for cstore::CStore {
         result
     }
 
-    fn used_libraries(&self) -> Vec<NativeLibrary>
-    {
-        self.get_used_libraries().borrow().clone()
-    }
-
-    fn used_link_args(&self) -> Vec<String>
-    {
-        self.get_used_link_args().borrow().clone()
-    }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
     {
         self.do_get_used_crates(prefer)

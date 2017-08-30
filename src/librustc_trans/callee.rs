@@ -125,7 +125,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         if ccx.use_dll_storage_attrs() &&
-            ccx.sess().cstore.is_dllimport_foreign_item(instance_def_id)
+            tcx.is_dllimport_foreign_item(instance_def_id)
         {
             unsafe {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);

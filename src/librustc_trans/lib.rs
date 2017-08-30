@@ -234,6 +234,8 @@ pub struct CrateInfo {
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
     native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    used_libraries: Rc<Vec<NativeLibrary>>,
+    link_args: Rc<Vec<String>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

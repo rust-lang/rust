@@ -545,6 +545,11 @@ define_dep_nodes!( <'tcx>
 
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
     [] AllTraitImplementations(CrateNum),
+
+    [] IsDllimportForeignItem(DefId),
+    [] IsStaticallyIncludedForeignItem(DefId),
+    [] NativeLibraryKind(DefId),
+    [] LinkArgs,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

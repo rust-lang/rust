@@ -694,7 +694,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // this back at some point.
     let _ignore = sess.dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
-    crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
                                      &krate,

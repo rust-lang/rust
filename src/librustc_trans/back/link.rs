@@ -431,7 +431,7 @@ fn link_rlib<'a>(sess: &'a Session,
     // feature then we'll need to figure out how to record what objects were
     // loaded from the libraries found here and then encode that into the
     // metadata of the rlib we're generating somehow.
-    for lib in sess.cstore.used_libraries() {
+    for lib in trans.crate_info.used_libraries.iter() {
         match lib.kind {
             NativeLibraryKind::NativeStatic => {}
             NativeLibraryKind::NativeStaticNobundle |
@@ -930,7 +930,7 @@ fn link_args(cmd: &mut Linker,
         cmd.gc_sections(keep_metadata);
     }
 
-    let used_link_args = sess.cstore.used_link_args();
+    let used_link_args = &trans.crate_info.link_args;
 
     if crate_type == config::CrateTypeExecutable &&
        t.options.position_independent_executables {
@@ -1000,7 +1000,7 @@ fn link_args(cmd: &mut Linker,
     // link line. And finally upstream native libraries can't depend on anything
     // in this DAG so far because they're only dylibs and dylibs can only depend
     // on other dylibs (e.g. other native deps).
-    add_local_native_libraries(cmd, sess);
+    add_local_native_libraries(cmd, sess, trans);
     add_upstream_rust_crates(cmd, sess, trans, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, trans, crate_type);
 
@@ -1057,7 +1057,9 @@ fn link_args(cmd: &mut Linker,
 // Also note that the native libraries linked here are only the ones located
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
-fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
+fn add_local_native_libraries(cmd: &mut Linker,
+                              sess: &Session,
+                              trans: &CrateTranslation) {
     sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
         match k {
             PathKind::Framework => { cmd.framework_path(path); }
@@ -1065,7 +1067,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let relevant_libs = sess.cstore.used_libraries().into_iter().filter(|l| {
+    let relevant_libs = trans.crate_info.used_libraries.iter().filter(|l| {
         relevant_lib(sess, l)
     });
 

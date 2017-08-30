@@ -236,10 +236,6 @@ pub trait CrateStore {
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
-    // flags
-    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
-
     // crate metadata
     fn dep_kind(&self, cnum: CrateNum) -> DepKind;
     fn export_macros(&self, cnum: CrateNum);
@@ -265,8 +261,6 @@ pub trait CrateStore {
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum>;
-    fn used_libraries(&self) -> Vec<NativeLibrary>;
-    fn used_link_args(&self) -> Vec<String>;
 
     // utility functions
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
@@ -329,10 +323,6 @@ impl CrateStore for DummyCrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
-    // flags
-    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
-
     // crate metadata
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
         { bug!("lang_items") }
@@ -368,8 +358,6 @@ impl CrateStore for DummyCrateStore {
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum> { vec![] }
-    fn used_libraries(&self) -> Vec<NativeLibrary> { vec![] }
-    fn used_link_args(&self) -> Vec<String> { vec![] }
 
     // utility functions
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>

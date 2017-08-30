@@ -905,7 +905,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(..) => {
                 let def_id = tcx.hir.local_def_id(id);
-                tcx.sess.cstore.is_statically_included_foreign_item(def_id)
+                tcx.is_statically_included_foreign_item(def_id)
             }
 
             // Only consider nodes that actually have exported symbols.
@@ -1516,6 +1516,8 @@ impl CrateInfo {
             sanitizer_runtime: None,
             is_no_builtins: FxHashSet(),
             native_libraries: FxHashMap(),
+            used_libraries: tcx.native_libraries(LOCAL_CRATE),
+            link_args: tcx.link_args(LOCAL_CRATE),
         };
 
         for cnum in tcx.sess.cstore.crates() {
@@ -1536,6 +1538,7 @@ impl CrateInfo {
                 info.is_no_builtins.insert(cnum);
             }
         }
+
 
         return info
     }

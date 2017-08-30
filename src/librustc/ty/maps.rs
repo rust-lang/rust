@@ -17,6 +17,7 @@ use hir::svh::Svh;
 use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
+use middle::cstore::NativeLibraryKind;
 use middle::privacy::AccessLevels;
 use middle::region;
 use mir;
@@ -642,6 +643,12 @@ impl<'tcx> QueryDescription for queries::all_trait_implementations<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::link_args<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up link arguments for a crate")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1230,6 +1237,12 @@ define_maps! { <'tcx>
         -> Rc<Vec<DefId>>,
     [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
         -> Rc<Vec<DefId>>,
+
+    [] is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
+    [] is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
+    [] native_library_kind: NativeLibraryKind(DefId)
+        -> Option<NativeLibraryKind>,
+    [] link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1314,4 +1327,8 @@ fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
     -> DepConstructor<'tcx>
 {
     DepConstructor::ImplementationsOfTrait { krate, trait_id }
+}
+
+fn link_args_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::LinkArgs
 }

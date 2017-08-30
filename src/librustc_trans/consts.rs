@@ -211,7 +211,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         g
     };
 
-    if ccx.use_dll_storage_attrs() && ccx.sess().cstore.is_dllimport_foreign_item(def_id) {
+    if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
         // For foreign (native) libs we know the exact storage type to use.
         unsafe {
             llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);

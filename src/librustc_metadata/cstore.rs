@@ -14,7 +14,7 @@
 use schema::{self, Tracked};
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
@@ -95,10 +95,6 @@ pub struct CStore {
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    used_libraries: RefCell<Vec<NativeLibrary>>,
-    used_link_args: RefCell<Vec<String>>,
-    statically_included_foreign_items: RefCell<FxHashSet<DefIndex>>,
-    pub dllimport_foreign_items: RefCell<FxHashSet<DefIndex>>,
     pub visible_parent_map: RefCell<DefIdMap<DefId>>,
     pub metadata_loader: Box<MetadataLoader>,
 }
@@ -109,10 +105,6 @@ impl CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FxHashMap()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
-            used_libraries: RefCell::new(Vec::new()),
-            used_link_args: RefCell::new(Vec::new()),
-            statically_included_foreign_items: RefCell::new(FxHashSet()),
-            dllimport_foreign_items: RefCell::new(FxHashSet()),
             visible_parent_map: RefCell::new(FxHashMap()),
             metadata_loader,
         }
@@ -208,36 +200,8 @@ impl CStore {
         libs
     }
 
-    pub fn add_used_library(&self, lib: NativeLibrary) {
-        assert!(!lib.name.as_str().is_empty());
-        self.used_libraries.borrow_mut().push(lib);
-    }
-
-    pub fn get_used_libraries(&self) -> &RefCell<Vec<NativeLibrary>> {
-        &self.used_libraries
-    }
-
-    pub fn add_used_link_args(&self, args: &str) {
-        for s in args.split(' ').filter(|s| !s.is_empty()) {
-            self.used_link_args.borrow_mut().push(s.to_string());
-        }
-    }
-
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String>> {
-        &self.used_link_args
-    }
-
     pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
-    }
-
-    pub fn add_statically_included_foreign_item(&self, id: DefIndex) {
-        self.statically_included_foreign_items.borrow_mut().insert(id);
-    }
-
-    pub fn do_is_statically_included_foreign_item(&self, def_id: DefId) -> bool {
-        assert!(def_id.krate == LOCAL_CRATE);
-        self.statically_included_foreign_items.borrow().contains(&def_id.index)
     }
 
     pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
