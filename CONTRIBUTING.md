@@ -232,7 +232,34 @@ Some common invocations of `x.py` are:
   guidelines as of yet, but basic rules like 4 spaces for indentation and no
   more than 99 characters in a single line should be kept in mind when writing
   code.
-- `rustup toolchain link <name> build/<host-triple>/<stage>` - Use the custom compiler build via [rustup](https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds).
+
+### Using your local build
+
+If you use Rustup to manage your rust install, it has a feature called ["custom
+toolchains"][toolchain-link] that you can use to access your newly-built compiler
+without having to install it to your system or user PATH. If you've run `python
+x.py build`, then you can add your custom rustc to a new toolchain like this:
+
+[toolchain-link]: https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds
+
+```
+rustup toolchain link <name> build/<host-triple>/stage2
+```
+
+Where `<host-triple>` is the build triple for the host (the triple of your
+computer, by default), and `<name>` is the name for your custom toolchain. (If you
+added `--stage 1` to your build command, the compiler will be in the `stage1`
+folder instead.) You'll only need to do this once - it will automatically point
+to the latest build you've done.
+
+Once this is set up, you can use your custom toolchain just like any other. For
+example, if you've named your toolchain `local`, running `cargo +local build` will
+compile a project with your custom rustc, setting `rustup override set local` will
+override the toolchain for your current directory, and `cargo +local doc` will use
+your custom rustc and rustdoc to generate docs. (If you do this with a `--stage 1`
+build, you'll need to build rustdoc specially, since it's not normally built in
+stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
+rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
 
 ## Pull Requests
 
