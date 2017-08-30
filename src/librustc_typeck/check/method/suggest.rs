@@ -296,22 +296,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.emit();
             }
 
-            MethodError::ClosureAmbiguity(trait_def_id) => {
-                let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
-                                   invoked on this closure as we have not yet inferred what \
-                                   kind of closure it is",
-                                  item_name,
-                                  self.tcx.item_path_str(trait_def_id));
-                let msg = if let Some(callee) = rcvr_expr {
-                    format!("{}; use overloaded call notation instead (e.g., `{}()`)",
-                            msg,
-                            self.tcx.hir.node_to_pretty_string(callee.id))
-                } else {
-                    msg
-                };
-                self.sess().span_err(span, &msg);
-            }
-
             MethodError::PrivateMatch(def, out_of_scope_traits) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0624,
                                                "{} `{}` is private", def.kind_name(), item_name);
@@ -336,6 +320,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.suggest_use_candidates(&mut err, help, candidates);
                 }
                 err.emit();
+            }
+
+            MethodError::BadReturnType => {
+                bug!("no return type expectations but got BadReturnType")
             }
         }
     }

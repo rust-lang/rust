@@ -8,6 +8,8 @@ error[E0599]: no method named `method` found for type `u32` in the current scope
    = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
            candidate #1: `use foo::Bar;`
            candidate #2: `use no_method_suggested_traits::foo::PubPub;`
+           candidate #3: `use no_method_suggested_traits::qux::PrivPub;`
+           candidate #4: `use no_method_suggested_traits::Reexported;`
 
 error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::boxed::Box<&u32>>` in the current scope
   --> $DIR/no-method-suggested-traits.rs:38:44
@@ -19,6 +21,8 @@ error[E0599]: no method named `method` found for type `std::rc::Rc<&mut std::box
    = note: the following traits are implemented but not in scope, perhaps add a `use` for one of them:
            candidate #1: `use foo::Bar;`
            candidate #2: `use no_method_suggested_traits::foo::PubPub;`
+           candidate #3: `use no_method_suggested_traits::qux::PrivPub;`
+           candidate #4: `use no_method_suggested_traits::Reexported;`
 
 error[E0599]: no method named `method` found for type `char` in the current scope
   --> $DIR/no-method-suggested-traits.rs:44:9

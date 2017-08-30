@@ -232,24 +232,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            probe::ExtensionImplPick(impl_def_id) => {
-                // The method being invoked is the method as defined on the trait,
-                // so return the substitutions from the trait. Consider:
-                //
-                //     impl<A,B,C> Trait<A,B> for Foo<C> { ... }
-                //
-                // If we instantiate A, B, and C with $A, $B, and $C
-                // respectively, then we want to return the type
-                // parameters from the trait ([$A,$B]), not those from
-                // the impl ([$A,$B,$C]) not the receiver type ([$C]).
-                let impl_polytype = self.impl_self_ty(self.span, impl_def_id);
-                let impl_trait_ref =
-                    self.instantiate_type_scheme(self.span,
-                                                 impl_polytype.substs,
-                                                 &self.tcx.impl_trait_ref(impl_def_id).unwrap());
-                impl_trait_ref.substs
-            }
-
             probe::TraitPick => {
                 let trait_def_id = pick.item.container.id();
 

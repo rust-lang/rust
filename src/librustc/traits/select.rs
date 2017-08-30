@@ -194,13 +194,12 @@ enum SelectionCandidate<'tcx> {
     ProjectionCandidate,
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
-    /// generated for a `||` expression. The ty::ClosureKind informs the
-    /// confirmation step what ClosureKind obligation to emit.
-    ClosureCandidate(/* closure */ DefId, ty::ClosureSubsts<'tcx>, ty::ClosureKind),
+    /// generated for a `||` expression.
+    ClosureCandidate,
 
     /// Implementation of a `Generator` trait by one of the anonymous types
     /// generated for a generator.
-    GeneratorCandidate(/* function / closure */ DefId, ty::ClosureSubsts<'tcx>),
+    GeneratorCandidate,
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -229,19 +228,11 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
             ObjectCandidate => ObjectCandidate,
             BuiltinObjectCandidate => BuiltinObjectCandidate,
             BuiltinUnsizeCandidate => BuiltinUnsizeCandidate,
+            ClosureCandidate => ClosureCandidate,
+            GeneratorCandidate => GeneratorCandidate,
 
             ParamCandidate(ref trait_ref) => {
                 return tcx.lift(trait_ref).map(ParamCandidate);
-            }
-            GeneratorCandidate(def_id, ref substs) => {
-                return tcx.lift(substs).map(|substs| {
-                    GeneratorCandidate(def_id, substs)
-                });
-            }
-            ClosureCandidate(def_id, ref substs, kind) => {
-                return tcx.lift(substs).map(|substs| {
-                    ClosureCandidate(def_id, substs, kind)
-                });
             }
         })
     }
@@ -1471,23 +1462,22 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = *obligation.self_ty().skip_binder();
-        let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyGenerator(id, substs, _) => (id, substs),
+        match self_ty.sty {
+            ty::TyGenerator(..) => {
+                debug!("assemble_generator_candidates: self_ty={:?} obligation={:?}",
+                       self_ty,
+                       obligation);
+
+                candidates.vec.push(GeneratorCandidate);
+                Ok(())
+            }
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_generator_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
                 return Ok(());
             }
             _ => { return Ok(()); }
-        };
-
-        debug!("assemble_generator_candidates: self_ty={:?} obligation={:?}",
-               self_ty,
-               obligation);
-
-        candidates.vec.push(GeneratorCandidate(closure_def_id, substs));
-
-        Ok(())
+        }
     }
 
     /// Check for the artificial impl that the compiler will create for an obligation like `X :
@@ -1509,36 +1499,31 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // ok to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        let self_ty = *obligation.self_ty().skip_binder();
-        let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, substs) => (id, substs),
+        match obligation.self_ty().skip_binder().sty {
+            ty::TyClosure(closure_def_id, _) => {
+                debug!("assemble_unboxed_candidates: kind={:?} obligation={:?}",
+                       kind, obligation);
+                match self.infcx.closure_kind(closure_def_id) {
+                    Some(closure_kind) => {
+                        debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
+                        if closure_kind.extends(kind) {
+                            candidates.vec.push(ClosureCandidate);
+                        }
+                    }
+                    None => {
+                        debug!("assemble_unboxed_candidates: closure_kind not yet known");
+                        candidates.vec.push(ClosureCandidate);
+                    }
+                };
+                Ok(())
+            }
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
                 return Ok(());
             }
             _ => { return Ok(()); }
-        };
-
-        debug!("assemble_unboxed_candidates: self_ty={:?} kind={:?} obligation={:?}",
-               self_ty,
-               kind,
-               obligation);
-
-        match self.infcx.closure_kind(closure_def_id) {
-            Some(closure_kind) => {
-                debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
-                if closure_kind.extends(kind) {
-                    candidates.vec.push(ClosureCandidate(closure_def_id, substs, kind));
-                }
-            }
-            None => {
-                debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                candidates.vec.push(ClosureCandidate(closure_def_id, substs, kind));
-            }
         }
-
-        Ok(())
     }
 
     /// Implement one of the `Fn()` family for a fn pointer.
@@ -1855,8 +1840,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                          when there are other valid candidates");
                 }
                 ImplCandidate(..) |
-                ClosureCandidate(..) |
-                GeneratorCandidate(..) |
+                ClosureCandidate |
+                GeneratorCandidate |
                 FnPointerCandidate |
                 BuiltinObjectCandidate |
                 BuiltinUnsizeCandidate |
@@ -2198,15 +2183,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(VtableImpl(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
-            ClosureCandidate(closure_def_id, substs, kind) => {
-                let vtable_closure =
-                    self.confirm_closure_candidate(obligation, closure_def_id, substs, kind)?;
+            ClosureCandidate => {
+                let vtable_closure = self.confirm_closure_candidate(obligation)?;
                 Ok(VtableClosure(vtable_closure))
             }
 
-            GeneratorCandidate(closure_def_id, substs) => {
-                let vtable_generator =
-                    self.confirm_generator_candidate(obligation, closure_def_id, substs)?;
+            GeneratorCandidate => {
+                let vtable_generator = self.confirm_generator_candidate(obligation)?;
                 Ok(VtableGenerator(vtable_generator))
             }
 
@@ -2543,21 +2526,34 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     fn confirm_generator_candidate(&mut self,
-                                 obligation: &TraitObligation<'tcx>,
-                                 closure_def_id: DefId,
-                                 substs: ty::ClosureSubsts<'tcx>)
-                                 -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
+                                   obligation: &TraitObligation<'tcx>)
+                                   -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
     {
+        // ok to skip binder because the substs on generator types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let (closure_def_id, substs) = match self_ty.sty {
+            ty::TyGenerator(id, substs, _) => (id, substs),
+            _ => bug!("closure candidate for non-closure {:?}", obligation)
+        };
+
         debug!("confirm_generator_candidate({:?},{:?},{:?})",
                obligation,
                closure_def_id,
                substs);
 
+        let trait_ref =
+            self.generator_trait_ref_unnormalized(obligation, closure_def_id, substs);
         let Normalized {
             value: trait_ref,
             obligations
-        } = self.generator_trait_ref(obligation, closure_def_id, substs);
+        } = normalize_with_depth(self,
+                                 obligation.param_env,
+                                 obligation.cause.clone(),
+                                 obligation.recursion_depth+1,
+                                 &trait_ref);
 
         debug!("confirm_generator_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
                closure_def_id,
@@ -2577,22 +2573,36 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     }
 
     fn confirm_closure_candidate(&mut self,
-                                 obligation: &TraitObligation<'tcx>,
-                                 closure_def_id: DefId,
-                                 substs: ty::ClosureSubsts<'tcx>,
-                                 kind: ty::ClosureKind)
+                                 obligation: &TraitObligation<'tcx>)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
     {
-        debug!("confirm_closure_candidate({:?},{:?},{:?})",
-               obligation,
-               closure_def_id,
-               substs);
+        debug!("confirm_closure_candidate({:?})", obligation);
 
+        let kind = match self.tcx().lang_items.fn_trait_kind(obligation.predicate.0.def_id()) {
+            Some(k) => k,
+            None => bug!("closure candidate for non-fn trait {:?}", obligation)
+        };
+
+        // ok to skip binder because the substs on closure types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let (closure_def_id, substs) = match self_ty.sty {
+            ty::TyClosure(id, substs) => (id, substs),
+            _ => bug!("closure candidate for non-closure {:?}", obligation)
+        };
+
+        let trait_ref =
+            self.closure_trait_ref_unnormalized(obligation, closure_def_id, substs);
         let Normalized {
             value: trait_ref,
             mut obligations
-        } = self.closure_trait_ref(obligation, closure_def_id, substs);
+        } = normalize_with_depth(self,
+                                 obligation.param_env,
+                                 obligation.cause.clone(),
+                                 obligation.recursion_depth+1,
+                                 &trait_ref);
 
         debug!("confirm_closure_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
                closure_def_id,
@@ -3059,24 +3069,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         ty::Binder(trait_ref)
     }
 
-    fn closure_trait_ref(&mut self,
-                         obligation: &TraitObligation<'tcx>,
-                         closure_def_id: DefId,
-                         substs: ty::ClosureSubsts<'tcx>)
-                         -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
-    {
-        let trait_ref = self.closure_trait_ref_unnormalized(
-            obligation, closure_def_id, substs);
-
-        // A closure signature can contain associated types which
-        // must be normalized.
-        normalize_with_depth(self,
-                             obligation.param_env,
-                             obligation.cause.clone(),
-                             obligation.recursion_depth+1,
-                             &trait_ref)
-    }
-
     fn generator_trait_ref_unnormalized(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       closure_def_id: DefId,
@@ -3096,24 +3088,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // refactoring could make this nicer.
 
         ty::Binder(trait_ref)
-    }
-
-    fn generator_trait_ref(&mut self,
-                         obligation: &TraitObligation<'tcx>,
-                         closure_def_id: DefId,
-                         substs: ty::ClosureSubsts<'tcx>)
-                         -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
-    {
-        let trait_ref = self.generator_trait_ref_unnormalized(
-            obligation, closure_def_id, substs);
-
-        // A generator signature can contain associated types which
-        // must be normalized.
-        normalize_with_depth(self,
-                             obligation.param_env,
-                             obligation.cause.clone(),
-                             obligation.recursion_depth+1,
-                             &trait_ref)
     }
 
     /// Returns the obligations that are implied by instantiating an

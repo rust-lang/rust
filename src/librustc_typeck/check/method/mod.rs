@@ -52,10 +52,6 @@ pub enum MethodError<'tcx> {
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
 
-    // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
-    ClosureAmbiguity(// DefId of fn trait
-                     DefId),
-
     // Found an applicable method, but it is not visible. The second argument contains a list of
     // not-in-scope traits which may work.
     PrivateMatch(Def, Vec<DefId>),
@@ -63,6 +59,9 @@ pub enum MethodError<'tcx> {
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
     IllegalSizedBound(Vec<DefId>),
+
+    // Found a match, but the return type is wrong
+    BadReturnType,
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -113,9 +112,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(..) => true,
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
-            Err(ClosureAmbiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
             Err(IllegalSizedBound(..)) => true,
+            Err(BadReturnType) => {
+                bug!("no return type expectations but got BadReturnType")
+            }
+
         }
     }
 
