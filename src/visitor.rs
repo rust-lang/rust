@@ -58,6 +58,10 @@ pub struct FmtVisitor<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
+    pub fn shape(&self) -> Shape {
+        Shape::indented(self.block_indent, self.config)
+    }
+
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         debug!(
             "visit_stmt: {:?} {:?}",
@@ -138,9 +142,7 @@ impl<'a> FmtVisitor<'a> {
             if let Some(first_stmt) = b.stmts.first() {
                 let attr_lo = inner_attrs
                     .and_then(|attrs| {
-                        utils::inner_attributes(attrs)
-                            .first()
-                            .map(|attr| attr.span.lo)
+                        inner_attributes(attrs).first().map(|attr| attr.span.lo)
                     })
                     .or_else(|| {
                         // Attributes for an item in a statement position
@@ -218,7 +220,7 @@ impl<'a> FmtVisitor<'a> {
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
             let end_pos = source!(self, b.span).hi - brace_compensation - remove_len;
-            let snippet = self.get_context().snippet(mk_sp(self.last_pos, end_pos));
+            let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
         // FIXME: we should compress any newlines here to just one
@@ -336,7 +338,7 @@ impl<'a> FmtVisitor<'a> {
                         self.push_rewrite(item.span, None);
                         return;
                     }
-                } else if utils::contains_skip(&item.attrs) {
+                } else if contains_skip(&item.attrs) {
                     // Module is not inline, but should be skipped.
                     return;
                 } else {
@@ -371,7 +373,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
-                let snippet = self.get_context().snippet(item.span);
+                let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
@@ -635,9 +637,7 @@ impl<'a> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, mac.span);
 
         // 1 = ;
-        let shape = Shape::indented(self.block_indent, self.config)
-            .sub_width(1)
-            .unwrap();
+        let shape = self.shape().sub_width(1).unwrap();
         let rewrite = rewrite_macro(mac, ident, &self.get_context(), shape, pos);
         self.push_rewrite(mac.span, rewrite);
     }
@@ -677,7 +677,7 @@ impl<'a> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
-        if utils::contains_skip(attrs) {
+        if contains_skip(attrs) {
             return true;
         }
 
@@ -686,10 +686,7 @@ impl<'a> FmtVisitor<'a> {
             return false;
         }
 
-        let rewrite = attrs.rewrite(
-            &self.get_context(),
-            Shape::indented(self.block_indent, self.config),
-        );
+        let rewrite = attrs.rewrite(&self.get_context(), self.shape());
         let span = mk_sp(attrs[0].span.lo, attrs[attrs.len() - 1].span.hi);
         self.push_rewrite(span, rewrite);
 
