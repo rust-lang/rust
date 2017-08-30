@@ -2486,9 +2486,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let mut sugg_span = sp.end_point();
+                let sugg_span = sp.end_point();
                 // remove closing `)` from the span
-                sugg_span.hi = sugg_span.lo;
+                let sugg_span = sugg_span.with_hi(sugg_span.lo());
                 err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`. You can create one with a pair of parenthesis",
@@ -3138,7 +3138,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     debug!("tuple struct named {:?}",  base_t);
                     let ident = ast::Ident {
                         name: Symbol::intern(&idx.node.to_string()),
-                        ctxt: idx.span.ctxt.modern(),
+                        ctxt: idx.span.ctxt().modern(),
                     };
                     let (ident, def_scope) =
                         self.tcx.adjust_ident(ident, base_def.did, self.body_id);
@@ -4526,11 +4526,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
-        let span_semi = Span {
-            lo: original_span.hi - BytePos(1),
-            hi: original_span.hi,
-            ctxt: original_span.ctxt,
-        };
+        let span_semi = original_span.with_lo(original_span.hi() - BytePos(1));
         err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
     }
 

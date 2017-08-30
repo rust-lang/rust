@@ -181,7 +181,7 @@ pub fn filemap_to_parser(sess: & ParseSess, filemap: Rc<FileMap>, ) -> Parser {
     let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap, None));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
-        parser.span = Span { lo: end_pos, hi: end_pos, ctxt: NO_EXPANSION };
+        parser.span = Span::new(end_pos, end_pos, NO_EXPANSION);
     }
 
     parser
@@ -661,7 +661,7 @@ mod tests {
 
     // produce a syntax_pos::span
     fn sp(a: u32, b: u32) -> Span {
-        Span {lo: BytePos(a), hi: BytePos(b), ctxt: NO_EXPANSION}
+        Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
     }
 
     fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
@@ -976,7 +976,7 @@ mod tests {
 
         for &src in &srcs {
             let spans = get_spans_of_pat_idents(src);
-            let Span{ lo, hi, .. } = spans[0];
+            let (lo, hi) = (spans[0].lo(), spans[0].hi());
             assert!("self" == &src[lo.to_usize()..hi.to_usize()],
                     "\"{}\" != \"self\". src=\"{}\"",
                     &src[lo.to_usize()..hi.to_usize()], src)

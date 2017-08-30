@@ -457,8 +457,8 @@ impl Clean<Item> for doctree::Module {
         // the outer `mod` item for the source code.
         let whence = {
             let cm = cx.sess().codemap();
-            let outer = cm.lookup_char_pos(self.where_outer.lo);
-            let inner = cm.lookup_char_pos(self.where_inner.lo);
+            let outer = cm.lookup_char_pos(self.where_outer.lo());
+            let inner = cm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
                 // mod foo { ... }
                 self.where_outer
@@ -2251,8 +2251,8 @@ impl Clean<Span> for syntax_pos::Span {
 
         let cm = cx.sess().codemap();
         let filename = cm.span_to_filename(*self);
-        let lo = cm.lookup_char_pos(self.lo);
-        let hi = cm.lookup_char_pos(self.hi);
+        let lo = cm.lookup_char_pos(self.lo());
+        let hi = cm.lookup_char_pos(self.hi());
         Span {
             filename: filename.to_string(),
             loline: lo.line,

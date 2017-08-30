@@ -262,7 +262,7 @@ impl<'a> State<'a> {
                              indented: usize,
                              close_box: bool)
                              -> io::Result<()> {
-        self.maybe_print_comment(span.hi)?;
+        self.maybe_print_comment(span.hi())?;
         self.break_offset_if_not_bol(1, -(indented as isize))?;
         self.s.word("}")?;
         if close_box {
@@ -324,12 +324,12 @@ impl<'a> State<'a> {
         let len = elts.len();
         let mut i = 0;
         for elt in elts {
-            self.maybe_print_comment(get_span(elt).hi)?;
+            self.maybe_print_comment(get_span(elt).hi())?;
             op(self, elt)?;
             i += 1;
             if i < len {
                 self.s.word(",")?;
-                self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi))?;
+                self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi()))?;
                 self.space_if_not_bol()?;
             }
         }
@@ -368,7 +368,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_type(&mut self, ty: &hir::Ty) -> io::Result<()> {
-        self.maybe_print_comment(ty.span.lo)?;
+        self.maybe_print_comment(ty.span.lo())?;
         self.ibox(0)?;
         match ty.node {
             hir::TySlice(ref ty) => {
@@ -458,7 +458,7 @@ impl<'a> State<'a> {
 
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         match item.node {
             hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
@@ -531,7 +531,7 @@ impl<'a> State<'a> {
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
@@ -797,7 +797,7 @@ impl<'a> State<'a> {
         self.bopen()?;
         for v in variants {
             self.space_if_not_bol()?;
-            self.maybe_print_comment(v.span.lo)?;
+            self.maybe_print_comment(v.span.lo())?;
             self.print_outer_attributes(&v.node.attrs)?;
             self.ibox(indent_unit)?;
             self.print_variant(v)?;
@@ -842,7 +842,7 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 self.popen()?;
                 self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    s.maybe_print_comment(field.span.lo)?;
+                    s.maybe_print_comment(field.span.lo())?;
                     s.print_outer_attributes(&field.attrs)?;
                     s.print_visibility(&field.vis)?;
                     s.print_type(&field.ty)
@@ -863,7 +863,7 @@ impl<'a> State<'a> {
 
             for field in struct_def.fields() {
                 self.hardbreak_if_not_bol()?;
-                self.maybe_print_comment(field.span.lo)?;
+                self.maybe_print_comment(field.span.lo())?;
                 self.print_outer_attributes(&field.attrs)?;
                 self.print_visibility(&field.vis)?;
                 self.print_name(field.name)?;
@@ -908,7 +908,7 @@ impl<'a> State<'a> {
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ti.span.lo)?;
+        self.maybe_print_comment(ti.span.lo())?;
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             hir::TraitItemKind::Const(ref ty, default) => {
@@ -938,7 +938,7 @@ impl<'a> State<'a> {
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ii.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ii.span.lo)?;
+        self.maybe_print_comment(ii.span.lo())?;
         self.print_outer_attributes(&ii.attrs)?;
         self.print_defaultness(ii.defaultness)?;
 
@@ -962,7 +962,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
-        self.maybe_print_comment(st.span.lo)?;
+        self.maybe_print_comment(st.span.lo())?;
         match st.node {
             hir::StmtDecl(ref decl, _) => {
                 self.print_decl(&decl)?;
@@ -1017,7 +1017,7 @@ impl<'a> State<'a> {
             hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe")?,
             hir::DefaultBlock => (),
         }
-        self.maybe_print_comment(blk.span.lo)?;
+        self.maybe_print_comment(blk.span.lo())?;
         self.ann.pre(self, NodeBlock(blk))?;
         self.bopen()?;
 
@@ -1030,7 +1030,7 @@ impl<'a> State<'a> {
             Some(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
-                self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi))?;
+                self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()))?;
             }
             _ => (),
         }
@@ -1228,7 +1228,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
-        self.maybe_print_comment(expr.span.lo)?;
+        self.maybe_print_comment(expr.span.lo())?;
         self.print_outer_attributes(&expr.attrs)?;
         self.ibox(indent_unit)?;
         self.ann.pre(self, NodeExpr(expr))?;
@@ -1480,7 +1480,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_decl(&mut self, decl: &hir::Decl) -> io::Result<()> {
-        self.maybe_print_comment(decl.span.lo)?;
+        self.maybe_print_comment(decl.span.lo())?;
         match decl.node {
             hir::DeclLocal(ref loc) => {
                 self.space_if_not_bol()?;
@@ -1523,7 +1523,7 @@ impl<'a> State<'a> {
                       path: &hir::Path,
                       colons_before_params: bool)
                       -> io::Result<()> {
-        self.maybe_print_comment(path.span.lo)?;
+        self.maybe_print_comment(path.span.lo())?;
 
         for (i, segment) in path.segments.iter().enumerate() {
             if i > 0 {
@@ -1641,7 +1641,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_pat(&mut self, pat: &hir::Pat) -> io::Result<()> {
-        self.maybe_print_comment(pat.span.lo)?;
+        self.maybe_print_comment(pat.span.lo())?;
         self.ann.pre(self, NodePat(pat))?;
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
@@ -1897,7 +1897,7 @@ impl<'a> State<'a> {
         match decl.output {
             hir::Return(ref ty) => {
                 self.print_type(&ty)?;
-                self.maybe_print_comment(ty.span.lo)
+                self.maybe_print_comment(ty.span.lo())
             }
             hir::DefaultReturn(..) => unreachable!(),
         }
@@ -2074,7 +2074,7 @@ impl<'a> State<'a> {
         self.end()?;
 
         match decl.output {
-            hir::Return(ref output) => self.maybe_print_comment(output.span.lo),
+            hir::Return(ref output) => self.maybe_print_comment(output.span.lo()),
             _ => Ok(()),
         }
     }
@@ -2124,13 +2124,13 @@ impl<'a> State<'a> {
             if (*cmnt).style != comments::Trailing {
                 return Ok(());
             }
-            let span_line = cm.lookup_char_pos(span.hi);
+            let span_line = cm.lookup_char_pos(span.hi());
             let comment_line = cm.lookup_char_pos((*cmnt).pos);
             let mut next = (*cmnt).pos + BytePos(1);
             if let Some(p) = next_pos {
                 next = p;
             }
-            if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
+            if span.hi() < (*cmnt).pos && (*cmnt).pos < next &&
                span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
             }

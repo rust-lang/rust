@@ -80,11 +80,7 @@ fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {
     let start = make_pos(file_text, start);
     let end = make_pos(file_text, end) + end.string.len(); // just after matching thing ends
     assert!(start <= end);
-    Span {
-        lo: BytePos(start as u32),
-        hi: BytePos(end as u32),
-        ctxt: NO_EXPANSION,
-    }
+    Span::new(BytePos(start as u32), BytePos(end as u32), NO_EXPANSION)
 }
 
 fn make_pos(file_text: &str, pos: &Position) -> usize {

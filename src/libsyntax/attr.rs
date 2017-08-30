@@ -1059,7 +1059,7 @@ impl MetaItem {
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
         where I: Iterator<Item = TokenTree>,
     {
-        let (mut span, name) = match tokens.next() {
+        let (span, name) = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
                 token::Nonterminal::NtIdent(ident) => (ident.span, ident.node.name),
@@ -1068,17 +1068,17 @@ impl MetaItem {
             },
             _ => return None,
         };
-        let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi);
+        let list_closing_paren_pos = tokens.peek().map(|tt| tt.span().hi());
         let node = match MetaItemKind::from_tokens(tokens) {
             Some(node) => node,
             _ => return None,
         };
-        span.hi = match node {
-            MetaItemKind::NameValue(ref lit) => lit.span.hi,
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi),
-            _ => span.hi,
+        let hi = match node {
+            MetaItemKind::NameValue(ref lit) => lit.span.hi(),
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi()),
+            _ => span.hi(),
         };
-        Some(MetaItem { name: name, span: span, node: node })
+        Some(MetaItem { name, node, span: span.with_hi(hi) })
     }
 }
 

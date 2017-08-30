@@ -118,7 +118,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         fn explain_span<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                         heading: &str, span: Span)
                                         -> (String, Option<Span>) {
-            let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
+            let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo());
             (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
              Some(span))
         }

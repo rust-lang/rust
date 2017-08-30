@@ -603,8 +603,8 @@ pub trait PrintState<'a> {
     }
 
     fn print_literal(&mut self, lit: &ast::Lit) -> io::Result<()> {
-        self.maybe_print_comment(lit.span.lo)?;
-        if let Some(ltrl) = self.next_lit(lit.span.lo) {
+        self.maybe_print_comment(lit.span.lo())?;
+        if let Some(ltrl) = self.next_lit(lit.span.lo()) {
             return self.writer().word(&ltrl.lit);
         }
         match lit.node {
@@ -723,7 +723,7 @@ pub trait PrintState<'a> {
         if !is_inline {
             self.hardbreak_if_not_bol()?;
         }
-        self.maybe_print_comment(attr.span.lo)?;
+        self.maybe_print_comment(attr.span.lo())?;
         if attr.is_sugared_doc {
             self.writer().word(&attr.value_str().unwrap().as_str())?;
             self.writer().hardbreak()
@@ -892,7 +892,7 @@ impl<'a> State<'a> {
     }
     pub fn bclose_maybe_open(&mut self, span: syntax_pos::Span,
                              indented: usize, close_box: bool) -> io::Result<()> {
-        self.maybe_print_comment(span.hi)?;
+        self.maybe_print_comment(span.hi())?;
         self.break_offset_if_not_bol(1, -(indented as isize))?;
         self.s.word("}")?;
         if close_box {
@@ -950,13 +950,13 @@ impl<'a> State<'a> {
         let len = elts.len();
         let mut i = 0;
         for elt in elts {
-            self.maybe_print_comment(get_span(elt).hi)?;
+            self.maybe_print_comment(get_span(elt).hi())?;
             op(self, elt)?;
             i += 1;
             if i < len {
                 self.s.word(",")?;
                 self.maybe_print_trailing_comment(get_span(elt),
-                                                  Some(get_span(&elts[i]).hi))?;
+                                                  Some(get_span(&elts[i]).hi()))?;
                 self.space_if_not_bol()?;
             }
         }
@@ -996,7 +996,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_type(&mut self, ty: &ast::Ty) -> io::Result<()> {
-        self.maybe_print_comment(ty.span.lo)?;
+        self.maybe_print_comment(ty.span.lo())?;
         self.ibox(0)?;
         match ty.node {
             ast::TyKind::Slice(ref ty) => {
@@ -1094,7 +1094,7 @@ impl<'a> State<'a> {
     pub fn print_foreign_item(&mut self,
                               item: &ast::ForeignItem) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
@@ -1163,7 +1163,7 @@ impl<'a> State<'a> {
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &ast::Item) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
@@ -1433,7 +1433,7 @@ impl<'a> State<'a> {
         self.bopen()?;
         for v in variants {
             self.space_if_not_bol()?;
-            self.maybe_print_comment(v.span.lo)?;
+            self.maybe_print_comment(v.span.lo())?;
             self.print_outer_attributes(&v.node.attrs)?;
             self.ibox(INDENT_UNIT)?;
             self.print_variant(v)?;
@@ -1481,7 +1481,7 @@ impl<'a> State<'a> {
                 self.commasep(
                     Inconsistent, struct_def.fields(),
                     |s, field| {
-                        s.maybe_print_comment(field.span.lo)?;
+                        s.maybe_print_comment(field.span.lo())?;
                         s.print_outer_attributes(&field.attrs)?;
                         s.print_visibility(&field.vis)?;
                         s.print_type(&field.ty)
@@ -1503,7 +1503,7 @@ impl<'a> State<'a> {
 
             for field in struct_def.fields() {
                 self.hardbreak_if_not_bol()?;
-                self.maybe_print_comment(field.span.lo)?;
+                self.maybe_print_comment(field.span.lo())?;
                 self.print_outer_attributes(&field.attrs)?;
                 self.print_visibility(&field.vis)?;
                 self.print_ident(field.ident.unwrap())?;
@@ -1548,7 +1548,7 @@ impl<'a> State<'a> {
                             -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ti.span.lo)?;
+        self.maybe_print_comment(ti.span.lo())?;
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref default) => {
@@ -1590,7 +1590,7 @@ impl<'a> State<'a> {
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ii.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ii.span.lo)?;
+        self.maybe_print_comment(ii.span.lo())?;
         self.print_outer_attributes(&ii.attrs)?;
         self.print_defaultness(ii.defaultness)?;
         match ii.node {
@@ -1622,7 +1622,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_stmt(&mut self, st: &ast::Stmt) -> io::Result<()> {
-        self.maybe_print_comment(st.span.lo)?;
+        self.maybe_print_comment(st.span.lo())?;
         match st.node {
             ast::StmtKind::Local(ref loc) => {
                 self.print_outer_attributes(&loc.attrs)?;
@@ -1705,7 +1705,7 @@ impl<'a> State<'a> {
             BlockCheckMode::Unsafe(..) => self.word_space("unsafe")?,
             BlockCheckMode::Default => ()
         }
-        self.maybe_print_comment(blk.span.lo)?;
+        self.maybe_print_comment(blk.span.lo())?;
         self.ann.pre(self, NodeBlock(blk))?;
         self.bopen()?;
 
@@ -1714,10 +1714,10 @@ impl<'a> State<'a> {
         for (i, st) in blk.stmts.iter().enumerate() {
             match st.node {
                 ast::StmtKind::Expr(ref expr) if i == blk.stmts.len() - 1 => {
-                    self.maybe_print_comment(st.span.lo)?;
+                    self.maybe_print_comment(st.span.lo())?;
                     self.space_if_not_bol()?;
                     self.print_expr_outer_attr_style(expr, false)?;
-                    self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi))?;
+                    self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()))?;
                 }
                 _ => self.print_stmt(st)?,
             }
@@ -1988,7 +1988,7 @@ impl<'a> State<'a> {
     fn print_expr_outer_attr_style(&mut self,
                                   expr: &ast::Expr,
                                   is_inline: bool) -> io::Result<()> {
-        self.maybe_print_comment(expr.span.lo)?;
+        self.maybe_print_comment(expr.span.lo())?;
 
         let attrs = &expr.attrs;
         if is_inline {
@@ -2343,7 +2343,7 @@ impl<'a> State<'a> {
                   defaults_to_global: bool)
                   -> io::Result<()>
     {
-        self.maybe_print_comment(path.span.lo)?;
+        self.maybe_print_comment(path.span.lo())?;
 
         let mut segments = path.segments[..path.segments.len()-depth].iter();
         if defaults_to_global && path.is_global() {
@@ -2465,7 +2465,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_pat(&mut self, pat: &ast::Pat) -> io::Result<()> {
-        self.maybe_print_comment(pat.span.lo)?;
+        self.maybe_print_comment(pat.span.lo())?;
         self.ann.pre(self, NodePat(pat))?;
         /* Pat isn't normalized, but the beauty of it
          is that it doesn't matter */
@@ -2607,7 +2607,7 @@ impl<'a> State<'a> {
         }
         self.cbox(INDENT_UNIT)?;
         self.ibox(0)?;
-        self.maybe_print_comment(arm.pats[0].span.lo)?;
+        self.maybe_print_comment(arm.pats[0].span.lo())?;
         self.print_outer_attributes(&arm.attrs)?;
         let mut first = true;
         for p in &arm.pats {
@@ -2715,7 +2715,7 @@ impl<'a> State<'a> {
         match decl.output {
             ast::FunctionRetTy::Ty(ref ty) => {
                 self.print_type(ty)?;
-                self.maybe_print_comment(ty.span.lo)
+                self.maybe_print_comment(ty.span.lo())
             }
             ast::FunctionRetTy::Default(..) => unreachable!(),
         }
@@ -2971,7 +2971,7 @@ impl<'a> State<'a> {
         self.end()?;
 
         match decl.output {
-            ast::FunctionRetTy::Ty(ref output) => self.maybe_print_comment(output.span.lo),
+            ast::FunctionRetTy::Ty(ref output) => self.maybe_print_comment(output.span.lo()),
             _ => Ok(())
         }
     }
@@ -3017,10 +3017,10 @@ impl<'a> State<'a> {
         };
         if let Some(ref cmnt) = self.next_comment() {
             if cmnt.style != comments::Trailing { return Ok(()) }
-            let span_line = cm.lookup_char_pos(span.hi);
+            let span_line = cm.lookup_char_pos(span.hi());
             let comment_line = cm.lookup_char_pos(cmnt.pos);
             let next = next_pos.unwrap_or(cmnt.pos + BytePos(1));
-            if span.hi < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
+            if span.hi() < cmnt.pos && cmnt.pos < next && span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
             }
         }

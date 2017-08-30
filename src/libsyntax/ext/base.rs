@@ -731,7 +731,7 @@ impl<'a> ExtCtxt<'a> {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }
-                ctxt = info.call_site.ctxt;
+                ctxt = info.call_site.ctxt();
                 last_macro = Some(info.call_site);
                 Some(())
             }).is_none() {
@@ -837,7 +837,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
                               -> Option<Spanned<(Symbol, ast::StrStyle)>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
-        expr.span.ctxt = expr.span.ctxt.apply_mark(cx.current_expansion.mark);
+        expr.span = expr.span.with_ctxt(expr.span.ctxt().apply_mark(cx.current_expansion.mark));
         expr
     });
 

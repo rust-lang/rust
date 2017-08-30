@@ -180,7 +180,7 @@ impl CodeExtent {
                         // (This is the special case aluded to in the
                         // doc-comment for this method)
                         let stmt_span = blk.stmts[r.first_statement_index as usize].span;
-                        Some(Span { lo: stmt_span.hi, hi: blk.span.hi, ctxt: stmt_span.ctxt })
+                        Some(Span::new(stmt_span.hi(), blk.span.hi(), stmt_span.ctxt()))
                     }
                 }
             }

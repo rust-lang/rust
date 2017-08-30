@@ -158,13 +158,13 @@ fn call_intrinsic(cx: &ExtCtxt,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
     if cx.current_expansion.mark.expn_info().unwrap().callee.allow_internal_unstable {
-        span.ctxt = cx.backtrace();
+        span = span.with_ctxt(cx.backtrace());
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
         info.callee.allow_internal_unstable = true;
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
-        span.ctxt = SyntaxContext::empty().apply_mark(mark);
+        span = span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
     }
     let path = cx.std_path(&["intrinsics", intrinsic]);
     let call = cx.expr_call_global(span, path, args);

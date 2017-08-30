@@ -130,7 +130,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     tts = tts.map_enumerated(|i, tt| {
                         let mut tt = tt.clone();
                         let mut sp = rhs_spans[i];
-                        sp.ctxt = tt.span().ctxt;
+                        sp = sp.with_ctxt(tt.span().ctxt());
                         tt.set_span(sp);
                         tt
                     });
@@ -161,7 +161,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     macro_ident: name
                 })
             }
-            Failure(sp, tok) => if sp.lo >= best_fail_spot.lo {
+            Failure(sp, tok) => if sp.lo() >= best_fail_spot.lo() {
                 best_fail_spot = sp;
                 best_fail_tok = Some(tok);
             },

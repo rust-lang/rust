@@ -306,7 +306,7 @@ fn generate_test_harness(sess: &ParseSess,
 /// call to codemap's `is_internal` check.
 /// The expanded code calls some unstable functions in the test crate.
 fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
-    Span { ctxt: cx.ctxt, ..sp }
+    sp.with_ctxt(cx.ctxt)
 }
 
 #[derive(PartialEq)]

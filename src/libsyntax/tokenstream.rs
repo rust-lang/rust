@@ -59,7 +59,7 @@ impl Delimited {
         let open_span = if span == DUMMY_SP {
             DUMMY_SP
         } else {
-            Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span }
+            span.with_hi(span.lo() + BytePos(self.delim.len() as u32))
         };
         TokenTree::Token(open_span, self.open_token())
     }
@@ -69,7 +69,7 @@ impl Delimited {
         let close_span = if span == DUMMY_SP {
             DUMMY_SP
         } else {
-            Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span }
+            span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -602,11 +602,7 @@ mod tests {
     }
 
     fn sp(a: u32, b: u32) -> Span {
-        Span {
-            lo: BytePos(a),
-            hi: BytePos(b),
-            ctxt: NO_EXPANSION,
-        }
+        Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
     }
 
     #[test]

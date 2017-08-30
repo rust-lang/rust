@@ -371,7 +371,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
             allow_internal_unsafe: false,
         }
     });
-    let span = Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..DUMMY_SP };
+    let span = DUMMY_SP.with_ctxt(SyntaxContext::empty().apply_mark(mark));
 
     let proc_macro = Ident::from_str("proc_macro");
     let krate = cx.item(span,

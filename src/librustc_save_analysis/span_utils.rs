@@ -192,7 +192,7 @@ impl<'a> SpanUtils<'a> {
             prev = next;
         }
         if angle_count != 0 || bracket_count != 0 {
-            let loc = self.sess.codemap().lookup_char_pos(span.lo);
+            let loc = self.sess.codemap().lookup_char_pos(span.lo());
             span_bug!(span,
                       "Mis-counted brackets when breaking path? Parsing '{}' \
                        in {}, line {}",
@@ -319,7 +319,7 @@ impl<'a> SpanUtils<'a> {
         };
 
         //If the span comes from a fake filemap, filter it.
-        if !self.sess.codemap().lookup_char_pos(parent.lo).file.is_real_file() {
+        if !self.sess.codemap().lookup_char_pos(parent.lo()).file.is_real_file() {
             return true;
         }
 

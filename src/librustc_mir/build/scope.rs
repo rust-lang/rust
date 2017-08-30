@@ -636,7 +636,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let tcx = self.hir.tcx();
                 let extent_span = extent.span(&tcx.hir).unwrap();
                 // Attribute scope exit drops to scope's closing brace
-                let scope_end = Span { lo: extent_span.hi, .. extent_span};
+                let scope_end = extent_span.with_lo(extent_span.hi());
                 scope.drops.push(DropData {
                     span: scope_end,
                     location: lvalue.clone(),
