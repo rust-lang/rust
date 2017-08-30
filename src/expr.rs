@@ -180,17 +180,11 @@ pub fn format_expr(
                 )
             }
         }
-        ast::ExprKind::Yield(ref opt_expr) => {
-            if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, "yield ", &**expr, shape)
-            } else {
-                wrap_str(
-                    "yield".to_string(),
-                    context.config.max_width(),
-                    shape,
-                )
-            }
-        }
+        ast::ExprKind::Yield(ref opt_expr) => if let Some(ref expr) = *opt_expr {
+            rewrite_unary_prefix(context, "yield ", &**expr, shape)
+        } else {
+            wrap_str("yield".to_string(), context.config.max_width(), shape)
+        },
         ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
             rewrite_closure(capture, fn_decl, body, expr.span, context, shape)
         }
