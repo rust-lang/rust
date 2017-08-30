@@ -15,19 +15,127 @@ use ty::{self, TyCtxt};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
+use syntax::ast::{MetaItem, NestedMetaItem};
+use syntax::attr;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 
+#[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(InternedString);
-pub struct OnUnimplementedInfo {
-    pub label: OnUnimplementedFormatString
+
+#[derive(Debug)]
+pub struct OnUnimplementedDirective {
+    pub condition: Option<MetaItem>,
+    pub subcommands: Vec<OnUnimplementedDirective>,
+    pub message: Option<OnUnimplementedFormatString>,
+    pub label: Option<OnUnimplementedFormatString>,
 }
 
-impl<'a, 'gcx, 'tcx> OnUnimplementedInfo {
+pub struct OnUnimplementedNote {
+    pub message: Option<String>,
+    pub label: Option<String>,
+}
+
+impl OnUnimplementedNote {
+    pub fn empty() -> Self {
+        OnUnimplementedNote { message: None, label: None }
+    }
+}
+
+fn parse_error(tcx: TyCtxt, span: Span,
+               message: &str,
+               label: &str,
+               note: Option<&str>)
+               -> ErrorReported
+{
+    let mut diag = struct_span_err!(
+        tcx.sess, span, E0232, "{}", message);
+    diag.span_label(span, label);
+    if let Some(note) = note {
+        diag.note(note);
+    }
+    diag.emit();
+    ErrorReported
+}
+
+impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
+    pub fn parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                 trait_def_id: DefId,
+                 items: &[NestedMetaItem],
+                 span: Span,
+                 is_root: bool)
+                 -> Result<Self, ErrorReported>
+    {
+        let mut errored = false;
+        let mut item_iter = items.iter();
+
+        let condition = if is_root {
+            None
+        } else {
+            let cond = item_iter.next().ok_or_else(|| {
+                parse_error(tcx, span,
+                            "empty `on`-clause in `#[rustc_on_unimplemented]`",
+                            "empty on-clause here",
+                            None)
+            })?.meta_item().ok_or_else(|| {
+                parse_error(tcx, span,
+                            "invalid `on`-clause in `#[rustc_on_unimplemented]`",
+                            "invalid on-clause here",
+                            None)
+            })?;
+            attr::eval_condition(cond, &tcx.sess.parse_sess, &mut |_| true);
+            Some(cond.clone())
+        };
+
+        let mut message = None;
+        let mut label = None;
+        let mut subcommands = vec![];
+        for item in item_iter {
+            if item.check_name("message") && message.is_none() {
+                if let Some(message_) = item.value_str() {
+                    message = Some(OnUnimplementedFormatString::try_parse(
+                        tcx, trait_def_id, message_.as_str(), span)?);
+                    continue;
+                }
+            } else if item.check_name("label") && label.is_none() {
+                if let Some(label_) = item.value_str() {
+                    label = Some(OnUnimplementedFormatString::try_parse(
+                        tcx, trait_def_id, label_.as_str(), span)?);
+                    continue;
+                }
+            } else if item.check_name("on") && is_root &&
+                message.is_none() && label.is_none()
+            {
+                if let Some(items) = item.meta_item_list() {
+                    if let Ok(subcommand) =
+                        Self::parse(tcx, trait_def_id, &items, item.span, false)
+                    {
+                        subcommands.push(subcommand);
+                    } else {
+                        errored = true;
+                    }
+                    continue
+                }
+            }
+
+            // nothing found
+            parse_error(tcx, item.span,
+                        "this attribute must have a valid value",
+                        "expected value here",
+                        Some(r#"eg `#[rustc_on_unimplemented = "foo"]`"#));
+        }
+
+        if errored {
+            Err(ErrorReported)
+        } else {
+            Ok(OnUnimplementedDirective { condition, message, label, subcommands })
+        }
+    }
+
+
     pub fn of_item(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                    trait_def_id: DefId,
-                   impl_def_id: DefId,
-                   span: Span)
+                   impl_def_id: DefId)
                    -> Result<Option<Self>, ErrorReported>
     {
         let attrs = tcx.get_attrs(impl_def_id);
@@ -40,20 +148,52 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedInfo {
             return Ok(None);
         };
 
-        let span = attr.span.substitute_dummy(span);
-        if let Some(label) = attr.value_str() {
-            Ok(Some(OnUnimplementedInfo {
-                label: OnUnimplementedFormatString::try_parse(
-                    tcx, trait_def_id, label.as_str(), span)?
+        let result = if let Some(items) = attr.meta_item_list() {
+            Self::parse(tcx, trait_def_id, &items, attr.span, true).map(Some)
+        } else if let Some(value) = attr.value_str() {
+            Ok(Some(OnUnimplementedDirective {
+                condition: None,
+                message: None,
+                subcommands: vec![],
+                label: Some(OnUnimplementedFormatString::try_parse(
+                    tcx, trait_def_id, value.as_str(), attr.span)?)
             }))
         } else {
-            struct_span_err!(
-                tcx.sess, span, E0232,
-                "this attribute must have a value")
-                .span_label(attr.span, "attribute requires a value")
-                .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
-                .emit();
-            Err(ErrorReported)
+            return Err(parse_error(tcx, attr.span,
+                                   "`#[rustc_on_unimplemented]` requires a value",
+                                   "value required here",
+                                   Some(r#"eg `#[rustc_on_unimplemented = "foo"]`"#)));
+        };
+        debug!("of_item({:?}/{:?}) = {:?}", trait_def_id, impl_def_id, result);
+        result
+    }
+
+    pub fn evaluate(&self,
+                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                    trait_ref: ty::TraitRef<'tcx>,
+                    options: &[&str])
+                    -> OnUnimplementedNote
+    {
+        let mut message = None;
+        let mut label = None;
+
+        for command in self.subcommands.iter().chain(Some(self)).rev() {
+            if let Some(ref condition) = command.condition {
+                if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
+                    options.iter().any(|o| c.check_name(o))
+                }) {
+                    debug!("evaluate: skipping {:?} due to condition", command);
+                    continue
+                }
+            }
+            debug!("evaluate: {:?} succeeded", command);
+            message = command.message.clone();
+            label = command.label.clone();
+        }
+
+        OnUnimplementedNote {
+            label: label.map(|l| l.format(tcx, trait_ref)),
+            message: message.map(|m| m.format(tcx, trait_ref))
         }
     }
 }

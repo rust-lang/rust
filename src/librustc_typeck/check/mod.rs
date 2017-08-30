@@ -1218,8 +1218,8 @@ fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     item: &hir::Item) {
     let item_def_id = tcx.hir.local_def_id(item.id);
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedInfo::of_item(
-        tcx, trait_def_id, item_def_id, item.span);
+    let _ = traits::OnUnimplementedDirective::of_item(
+        tcx, trait_def_id, item_def_id);
 }
 
 fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

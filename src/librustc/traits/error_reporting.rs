@@ -15,7 +15,8 @@ use super::{
     Obligation,
     ObligationCause,
     ObligationCauseCode,
-    OnUnimplementedInfo,
+    OnUnimplementedDirective,
+    OnUnimplementedNote,
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
     PredicateObligation,
@@ -316,18 +317,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn on_unimplemented_note(&self,
-                             trait_ref: ty::PolyTraitRef<'tcx>,
-                             obligation: &PredicateObligation<'tcx>) -> Option<String> {
+    fn on_unimplemented_note(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        obligation: &PredicateObligation<'tcx>) ->
+        OnUnimplementedNote
+    {
         let def_id = self.impl_similar_to(trait_ref, obligation)
             .unwrap_or(trait_ref.def_id());
-        let trait_ref = trait_ref.skip_binder();
+        let trait_ref = *trait_ref.skip_binder();
 
-        match OnUnimplementedInfo::of_item(
-            self.tcx, trait_ref.def_id, def_id, obligation.cause.span
+        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(
+            self.tcx, trait_ref.def_id, def_id
         ) {
-            Ok(Some(info)) => Some(info.label.format(self.tcx, *trait_ref)),
-            _ => None
+            command.evaluate(self.tcx, trait_ref, &[])
+        } else {
+            OnUnimplementedNote::empty()
         }
     }
 
@@ -519,17 +524,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let (post_message, pre_message) =
                             self.get_parent_trait_ref(&obligation.cause.code)
                                 .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
-                                .unwrap_or((String::new(), String::new()));
+                            .unwrap_or((String::new(), String::new()));
+
+                        let OnUnimplementedNote { message, label }
+                            = self.on_unimplemented_note(trait_ref, obligation);
+                        let have_alt_message = message.is_some() || label.is_some();
+
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,
                             E0277,
-                            "the trait bound `{}` is not satisfied{}",
-                            trait_ref.to_predicate(),
-                            post_message);
+                            "{}",
+                            message.unwrap_or_else(|| {
+                                format!("the trait bound `{}` is not satisfied{}",
+                                         trait_ref.to_predicate(), post_message)
+                            }));
 
-                        let unimplemented_note = self.on_unimplemented_note(trait_ref, obligation);
-                        if let Some(ref s) = unimplemented_note {
+                        if let Some(ref s) = label {
                             // If it has a custom "#[rustc_on_unimplemented]"
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
@@ -557,7 +568,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                                 trait_ref.to_predicate()));
-                        } else if unimplemented_note.is_none() {
+                        } else if !have_alt_message {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);

@@ -2012,9 +2012,9 @@ register_diagnostics! {
 //  E0102, // replaced with E0282
 //  E0134,
 //  E0135,
-//  E0271, // on_unimplemented #0
-//  E0272, // on_unimplemented #1
-//  E0273, // on_unimplemented #2
+//  E0272, // on_unimplemented #0
+//  E0273, // on_unimplemented #1
+//  E0274, // on_unimplemented #2
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied

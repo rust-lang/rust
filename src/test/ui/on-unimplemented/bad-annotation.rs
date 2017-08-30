@@ -37,5 +37,29 @@ trait BadAnnotation2<A,B>
 trait BadAnnotation3<A,B>
 {}
 
+#[rustc_on_unimplemented(lorem="")]
+trait BadAnnotation4 {}
+
+#[rustc_on_unimplemented(lorem(ipsum(dolor)))]
+trait BadAnnotation5 {}
+
+#[rustc_on_unimplemented(message="x", message="y")]
+trait BadAnnotation6 {}
+
+#[rustc_on_unimplemented(message="x", on(desugared, message="y"))]
+trait BadAnnotation7 {}
+
+#[rustc_on_unimplemented(on(), message="y")]
+trait BadAnnotation8 {}
+
+#[rustc_on_unimplemented(on="x", message="y")]
+trait BadAnnotation9 {}
+
+#[rustc_on_unimplemented(on(x="y"), message="y")]
+trait BadAnnotation10 {}
+
+#[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message="y")]
+trait BadAnnotation11 {}
+
 pub fn main() {
 }

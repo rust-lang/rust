@@ -585,6 +585,20 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
+    eval_condition(cfg, sess, &mut |cfg| {
+        if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
+            gated_cfg.check_and_emit(sess, feats);
+        }
+        sess.config.contains(&(cfg.name(), cfg.value_str()))
+    })
+}
+
+/// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
+/// evaluate individual items.
+pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
+                         -> bool
+    where F: FnMut(&ast::MetaItem) -> bool
+{
     match cfg.node {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
@@ -598,10 +612,10 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             // that they won't fail with the loop above.
             match &*cfg.name.as_str() {
                 "any" => mis.iter().any(|mi| {
-                    cfg_matches(mi.meta_item().unwrap(), sess, features)
+                    eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
                 "all" => mis.iter().all(|mi| {
-                    cfg_matches(mi.meta_item().unwrap(), sess, features)
+                    eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
                 "not" => {
                     if mis.len() != 1 {
@@ -609,7 +623,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                         return false;
                     }
 
-                    !cfg_matches(mis[0].meta_item().unwrap(), sess, features)
+                    !eval_condition(mis[0].meta_item().unwrap(), sess, eval)
                 },
                 p => {
                     span_err!(sess.span_diagnostic, cfg.span, E0537, "invalid predicate `{}`", p);
@@ -618,10 +632,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             }
         },
         ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
-            if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
-                gated_cfg.check_and_emit(sess, feats);
-            }
-            sess.config.contains(&(cfg.name(), cfg.value_str()))
+            eval(cfg)
         }
     }
 }
