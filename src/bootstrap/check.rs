@@ -23,7 +23,7 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::{self, output};
+use build_helper::{self, output, BuildExpectation};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use cache::{INTERNER, Interned};
@@ -33,6 +33,7 @@ use native;
 use tool::{self, Tool};
 use util::{self, dylib_path, dylib_path_var};
 use {Build, Mode};
+use toolstate::ToolState;
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -64,15 +65,19 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run(build: &Build, cmd: &mut Command) {
+fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) {
     if !build.fail_fast {
-        if !build.try_run(cmd) {
+        if !build.try_run(cmd, expect) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
         }
     } else {
-        build.run(cmd);
+        build.run_expecting(cmd, expect);
     }
+}
+
+fn try_run(build: &Build, cmd: &mut Command) {
+    try_run_expecting(build, cmd, BuildExpectation::None)
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
@@ -333,7 +338,11 @@ impl Step for Miri {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run(build, &mut cargo);
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.miri.passes(ToolState::Testing),
+        );
     }
 }
 

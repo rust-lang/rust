@@ -15,7 +15,7 @@ extern crate gcc;
 
 use std::env;
 use std::process::Command;
-use build_helper::{run, native_lib_boilerplate};
+use build_helper::{run, native_lib_boilerplate, BuildExpectation};
 
 fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
@@ -97,11 +97,14 @@ fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
                 .env("CC", compiler.path())
                 .env("AR", &ar)
                 .env("RANLIB", format!("{} s", ar.display()))
-                .env("CFLAGS", cflags));
+                .env("CFLAGS", cflags),
+        BuildExpectation::None);
 
     run(Command::new(build_helper::make(host))
                 .current_dir(&native.out_dir)
                 .arg(format!("INCDIR={}", native.src_dir.display()))
-                .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
+                .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")),
+        BuildExpectation::None);
+
     Ok(())
 }

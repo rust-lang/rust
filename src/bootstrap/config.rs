@@ -27,6 +27,7 @@ use util::exe;
 use cache::{INTERNER, Interned};
 use flags::Flags;
 pub use flags::Subcommand;
+use toolstate::ToolStates;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -131,6 +132,8 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+
+    pub toolstate: ToolStates,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -332,6 +335,18 @@ impl Config {
                 }
             }
         }).unwrap_or_else(|| TomlConfig::default());
+
+        let toolstate_toml_path = config.src.join("src/tools/toolstate.toml");
+        let parse_toolstate = || -> Result<_, Box<::std::error::Error>> {
+            let mut f = File::open(toolstate_toml_path)?;
+            let mut contents = String::new();
+            f.read_to_string(&mut contents)?;
+            Ok(toml::from_str(&contents)?)
+        };
+        config.toolstate = parse_toolstate().unwrap_or_else(|err| {
+            println!("failed to parse TOML configuration 'toolstate.toml': {}", err);
+            process::exit(2);
+        });
 
         let build = toml.build.clone().unwrap_or(Build::default());
         set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
