@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// Creates a `Vec` containing the arguments.
+/// Creates a [`Vec`] containing the arguments.
 ///
 /// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
 /// There are two forms of this macro:
 ///
-/// - Create a `Vec` containing a given list of elements:
+/// - Create a [`Vec`] containing a given list of elements:
 ///
 /// ```
 /// let v = vec![1, 2, 3];
@@ -22,7 +22,7 @@
 /// assert_eq!(v[2], 3);
 /// ```
 ///
-/// - Create a `Vec` from a given element and size:
+/// - Create a [`Vec`] from a given element and size:
 ///
 /// ```
 /// let v = vec![1; 3];
@@ -30,14 +30,17 @@
 /// ```
 ///
 /// Note that unlike array expressions this syntax supports all elements
-/// which implement `Clone` and the number of elements doesn't have to be
+/// which implement [`Clone`] and the number of elements doesn't have to be
 /// a constant.
 ///
-/// This will use `clone()` to duplicate an expression, so one should be careful
+/// This will use `clone` to duplicate an expression, so one should be careful
 /// using this with types having a nonstandard `Clone` implementation. For
 /// example, `vec![Rc::new(1); 5]` will create a vector of five references
 /// to the same boxed integer value, not five references pointing to independently
 /// boxed integers.
+///
+/// [`Vec`]: ../std/vec/struct.Vec.html
+/// [`Clone`]: ../std/clone/trait.Clone.html
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -67,10 +70,22 @@ macro_rules! vec {
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
-/// Use the syntax described in `std::fmt` to create a value of type `String`.
-/// See [`std::fmt`][fmt] for more information.
+/// Creates a `String` using interpolation of runtime expressions.
+///
+/// The first argument `format!` recieves is a format string.  This must be a string
+/// literal.  The power of the formatting string is in the `{}`s contained.
+///
+/// Additional parameters passed to `format!` replace the `{}`s within the
+/// formatting string in the order given unless named or positional parameters
+/// are used, see [`std::fmt`][fmt] for more information.
+///
+/// A common use for `format!` is concatenation and interpolation of strings.
+/// The same convention is used with [`print!`] and [`write!`] macros,
+/// depending on the intended destination of the string.
 ///
 /// [fmt]: ../std/fmt/index.html
+/// [`print!`]: ../std/macro.print.html
+/// [`write!`]: ../std/macro.write.html
 ///
 /// # Panics
 ///
