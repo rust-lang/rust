@@ -247,11 +247,17 @@ def set(key, value):
               arr = arr[part]
 
 for key in known_args:
-    # The `set` option is special and an be passed a bunch of times
+    # The `set` option is special and can be passed a bunch of times
     if key == 'set':
         for option, value in known_args[key]:
             keyval = value.split('=', 1)
-            set(keyval[0], True if len(keyval) == 1 else keyval[1])
+            if len(keyval) == 1 or keyval[1] == "true":
+                value = True
+            elif keyval[1] == "false":
+                value = False
+            else:
+                value = keyval[1]
+            set(keyval[0], value)
         continue
 
     # Ensure each option is only passed once
