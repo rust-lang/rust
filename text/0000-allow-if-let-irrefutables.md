@@ -60,7 +60,7 @@ macro_rules! check_five {
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-This can be taught by changing the second version of (`The Book`)[https://doc.rust-lang.org/book/second-edition/ch18-02-refutability.html] to not explicitly say that it is not allowed.
+This can be taught by changing the second version of [The Book](https://doc.rust-lang.org/book/second-edition/ch18-02-refutability.html) to not explicitly say that it is not allowed.
 Adding that it is a lint that can be disabled.
 
 # Drawbacks
