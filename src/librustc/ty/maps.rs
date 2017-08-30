@@ -630,6 +630,18 @@ impl<'tcx> QueryDescription for queries::original_crate_name<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::implementations_of_trait<'tcx> {
+    fn describe(_tcx: TyCtxt, _: (CrateNum, DefId)) -> String {
+        format!("looking up implementations of a trait in a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::all_trait_implementations<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up all (?) trait implementations")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1213,6 +1225,11 @@ define_maps! { <'tcx>
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Symbol,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+
+    [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
+        -> Rc<Vec<DefId>>,
+    [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
+        -> Rc<Vec<DefId>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1291,4 +1308,10 @@ fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn specializes_node<'tcx>((a, b): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::Specializes { impl1: a, impl2: b }
+}
+
+fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
+    -> DepConstructor<'tcx>
+{
+    DepConstructor::ImplementationsOfTrait { krate, trait_id }
 }

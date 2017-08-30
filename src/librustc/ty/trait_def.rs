@@ -141,13 +141,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
                                                 -> Rc<TraitImpls> {
-    let remote_impls = if trait_id.is_local() {
-        // Traits defined in the current crate can't have impls in upstream
-        // crates, so we don't bother querying the cstore.
-        Vec::new()
-    } else {
-        tcx.sess.cstore.implementations_of_trait(Some(trait_id))
-    };
+    let mut remote_impls = Vec::new();
+
+    // Traits defined in the current crate can't have impls in upstream
+    // crates, so we don't bother querying the cstore.
+    if !trait_id.is_local() {
+        for cnum in tcx.sess.cstore.crates() {
+            let impls = tcx.implementations_of_trait((cnum, trait_id));
+            remote_impls.extend(impls.iter().cloned());
+        }
+    }
 
     let mut blanket_impls = Vec::new();
     let mut non_blanket_impls = FxHashMap();

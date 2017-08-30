@@ -42,14 +42,16 @@ use rustc::hir::svh::Svh;
 use rustc::hir;
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $($name:ident => $compute:block)*) => {
+    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
+      $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
                                         QueryConfig>::Value
-                where T: IntoDefId,
+                where T: IntoArgs,
             {
-                let $def_id = def_id_arg.into_def_id();
+                #[allow(unused_variables)]
+                let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);
@@ -71,19 +73,25 @@ macro_rules! provide {
     }
 }
 
-trait IntoDefId {
-    fn into_def_id(self) -> DefId;
+// small trait to work around different signature queries all being defined via
+// the macro above.
+trait IntoArgs {
+    fn into_args(self) -> (DefId, DefId);
 }
 
-impl IntoDefId for DefId {
-    fn into_def_id(self) -> DefId { self }
+impl IntoArgs for DefId {
+    fn into_args(self) -> (DefId, DefId) { (self, self) }
 }
 
-impl IntoDefId for CrateNum {
-    fn into_def_id(self) -> DefId { self.as_def_id() }
+impl IntoArgs for CrateNum {
+    fn into_args(self) -> (DefId, DefId) { (self.as_def_id(), self.as_def_id()) }
 }
 
-provide! { <'tcx> tcx, def_id, cdata,
+impl IntoArgs for (CrateNum, DefId) {
+    fn into_args(self) -> (DefId, DefId) { (self.0.as_def_id(), self.1) }
+}
+
+provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
@@ -178,6 +186,19 @@ provide! { <'tcx> tcx, def_id, cdata,
     crate_disambiguator => { cdata.disambiguator() }
     crate_hash => { cdata.hash() }
     original_crate_name => { cdata.name() }
+
+    implementations_of_trait => {
+        let mut result = vec![];
+        let filter = Some(other);
+        cdata.get_implementations_for_trait(filter, &tcx.dep_graph, &mut result);
+        Rc::new(result)
+    }
+
+    all_trait_implementations => {
+        let mut result = vec![];
+        cdata.get_implementations_for_trait(None, &tcx.dep_graph, &mut result);
+        Rc::new(result)
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -215,16 +236,6 @@ impl CrateStore for cstore::CStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_generics(def.index)
-    }
-
-    fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
-    {
-        let mut result = vec![];
-
-        self.iter_crate_data(|_, cdata| {
-            cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
-        });
-        result
     }
 
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem

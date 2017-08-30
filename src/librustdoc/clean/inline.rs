@@ -236,8 +236,10 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
 
     cx.populated_all_crate_impls.set(true);
 
-    for did in tcx.sess.cstore.implementations_of_trait(None) {
-        build_impl(cx, did, &mut impls);
+    for cnum in tcx.sess.cstore.crates() {
+        for did in tcx.all_trait_implementations(cnum).iter() {
+            build_impl(cx, *did, &mut impls);
+        }
     }
 
     // Also try to inline primitive impls from other crates.
