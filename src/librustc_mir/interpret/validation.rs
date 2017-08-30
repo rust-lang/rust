@@ -355,7 +355,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyRef(..) | TyFnPtr(..) | TyFnDef(..) | TyNever => true,
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) |
-            TyDynamic(..) => false,
+            TyDynamic(..) | TyGenerator(..) => false,
             TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => {
                 bug!("I got an incomplete/unnormalized type for validation")
             }
@@ -630,7 +630,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // Is there other things we can/should check?  Like vtable pointers?
                 Ok(())
             }
-            _ => bug!("We already establishd that this is a type we support."),
+            // FIXME: generators aren't validated right now
+            TyGenerator(..) => Ok(()),
+            _ => bug!("We already established that this is a type we support. ({})", query.ty),
         }
     }
 }

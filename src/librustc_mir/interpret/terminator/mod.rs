@@ -137,8 +137,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
+                    use rustc::mir::AssertMessage::*;
                     return match *msg {
-                        mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                        BoundsCheck { ref len, ref index } => {
                             let span = terminator.source_info.span;
                             let len = self.eval_operand_to_primval(len)
                                 .expect("can't eval len")
@@ -148,13 +149,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 .to_u64()?;
                             err!(ArrayIndexOutOfBounds(span, len, index))
                         }
-                        mir::AssertMessage::Math(ref err) => {
+                        Math(ref err) => {
                             err!(Math(terminator.source_info.span, err.clone()))
                         }
+                        GeneratorResumedAfterReturn |
+                        GeneratorResumedAfterPanic => unimplemented!(),
                     };
                 }
             }
 
+            Yield { .. } => unimplemented!("{:#?}", terminator.kind),
+            GeneratorDrop => unimplemented!(),
             DropAndReplace { .. } => unimplemented!(),
             Resume => unimplemented!(),
             Unreachable => return err!(Unreachable),

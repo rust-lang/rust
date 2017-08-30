@@ -480,15 +480,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         // Subtract 1 because `local_decls` includes the ReturnMemoryPointer, but we don't store a local
         // `Value` for that.
-        let annotated_locals = collect_storage_annotations(mir);
         let num_locals = mir.local_decls.len() - 1;
-        let mut locals = vec![None; num_locals];
-        for i in 0..num_locals {
-            let local = mir::Local::new(i + 1);
-            if !annotated_locals.contains(&local) {
-                locals[i] = Some(Value::ByVal(PrimVal::Undef));
+
+        // FIXME: generators produce broken storage annotations (https://github.com/rust-lang/rust/issues/44179)
+        let locals = if mir.generator_layout.is_some() {
+            vec![Some(Value::ByVal(PrimVal::Undef)); num_locals]
+        } else {
+            let annotated_locals = collect_storage_annotations(mir);
+            let mut locals = vec![None; num_locals];
+            for i in 0..num_locals {
+                let local = mir::Local::new(i + 1);
+                if !annotated_locals.contains(&local) {
+                    locals[i] = Some(Value::ByVal(PrimVal::Undef));
+                }
             }
-        }
+            locals
+        };
 
         self.stack.push(Frame {
             mir,
@@ -2425,6 +2432,12 @@ fn resolve_associated_item<'a, 'tcx>(
                 ::rustc::traits::find_associated_item(tcx, trait_item, rcvr_substs, &impl_data);
             let substs = tcx.erase_regions(&substs);
             ty::Instance::new(def_id, substs)
+        }
+        ::rustc::traits::VtableGenerator(closure_data) => {
+            ty::Instance {
+                def: ty::InstanceDef::Item(closure_data.closure_def_id),
+                substs: closure_data.substs.substs
+            }
         }
         ::rustc::traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
