@@ -38,8 +38,8 @@ pub enum InstanceDef<'tcx> {
     /// drop_in_place::<T>; None for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    /// Builtin method implementation, e.g. `Clone::clone`.
-    CloneShim(DefId, Ty<'tcx>),
+    /// Builtin `<T as Clone>::clone` implementation.
+    CloneShim(DefId),
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -52,7 +52,7 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Intrinsic(def_id, ) |
             InstanceDef::ClosureOnceShim { call_once: def_id } |
             InstanceDef::DropGlue(def_id, _) |
-            InstanceDef::CloneShim(def_id, _) => def_id
+            InstanceDef::CloneShim(def_id) => def_id
         }
     }
 
@@ -81,13 +81,11 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::FnPtrShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
-            InstanceDef::ClosureOnceShim { .. } => {
+            InstanceDef::ClosureOnceShim { .. } |
+            InstanceDef::CloneShim(_) => {
                 write!(f, " - shim")
             }
             InstanceDef::DropGlue(_, ty) => {
-                write!(f, " - shim({:?})", ty)
-            }
-            InstanceDef::CloneShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
         }

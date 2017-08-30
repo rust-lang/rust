@@ -22,7 +22,6 @@ macro_rules! tuple_impls {
     )+) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[cfg(stage0)]
             impl<$($T:Clone),+> Clone for ($($T,)+) {
                 fn clone(&self) -> ($($T,)+) {
                     ($(self.$idx.clone(),)+)

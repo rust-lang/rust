@@ -151,7 +151,7 @@ fn resolve_associated_item<'a, 'tcx>(
         }
         traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items.clone_trait() => {
             Instance {
-                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
+                def: ty::InstanceDef::CloneShim(def_id),
                 substs: rcvr_substs
             }
         }
