@@ -43,7 +43,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
             let ExprMethodCall(ref filter, _, ref filter_args) = count_args[0].node,
             filter.name == "filter",
             filter_args.len() == 2,
-            let ExprClosure(_, _, body_id, _) = filter_args[1].node,
+            let ExprClosure(_, _, body_id, _, _) = filter_args[1].node,
         ], {
             let body = cx.tcx.hir.body(body_id);
             if_let_chain!([

@@ -49,7 +49,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, eid, _) = expr.node {
+    if let ExprClosure(_, ref decl, eid, _, _) = expr.node {
         let body = cx.tcx.hir.body(eid);
         let ex = &body.value;
         if let ExprCall(ref caller, ref args) = ex.node {

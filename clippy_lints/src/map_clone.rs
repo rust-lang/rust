@@ -31,7 +31,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let ExprMethodCall(ref method, _, ref args) = expr.node {
             if method.name == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, closure_eid, _) => {
+                    ExprClosure(_, ref decl, closure_eid, _, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
                         let closure_expr = remove_blocks(&body.value);
                         let ty = cx.tables.pat_ty(&body.arguments[0].pat);

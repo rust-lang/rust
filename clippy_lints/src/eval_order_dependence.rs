@@ -104,7 +104,7 @@ struct DivergenceVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr) {
         match e.node {
-            ExprClosure(..) => {},
+            ExprClosure(.., _) => {},
             ExprMatch(ref e, ref arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
@@ -239,7 +239,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
                 walk_expr(vis, expr);
             }
         },
-        ExprClosure(_, _, _, _) => {
+        ExprClosure(_, _, _, _, _) => {
             // Either
             //
             // * `var` is defined in the closure body, in which case we've
@@ -323,7 +323,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not
             // occur here (or ever). Like above, bail to avoid false positives.
-            ExprClosure(_, _, _, _) |
+            ExprClosure(_, _, _, _, _) |
 
             // We want to avoid a false positive when a variable name occurs
             // only to have its address taken, so we stop here. Technically,

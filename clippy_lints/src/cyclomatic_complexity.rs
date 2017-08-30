@@ -171,7 +171,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                     _ => (),
                 }
             },
-            ExprClosure(..) => (),
+            ExprClosure(.., _) => (),
             ExprBinary(op, _, _) => {
                 walk_expr(self, e);
                 match op.node {

@@ -296,9 +296,15 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Match(ref expr, ref arms, ref desugaring) = {},", current);
                 println!("    // unimplemented: `ExprMatch` is not further destructured at the moment");
             },
-            Expr_::ExprClosure(ref _capture_clause, ref _func, _, _) => {
-                println!("Closure(ref capture_clause, ref func, _, _) = {},", current);
+            Expr_::ExprClosure(ref _capture_clause, ref _func, _, _, _) => {
+                println!("Closure(ref capture_clause, ref func, _, _, _) = {},", current);
                 println!("    // unimplemented: `ExprClosure` is not further destructured at the moment");
+            },
+            Expr_::ExprYield(ref sub) => {
+                let sub_pat = self.next("sub");
+                println!("Yield(ref sub) = {},", current);
+                self.current = sub_pat;
+                self.visit_expr(sub);
             },
             Expr_::ExprBlock(ref block) => {
                 let block_pat = self.next("block");

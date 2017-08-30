@@ -321,6 +321,11 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_name(&i.node.name);
                 }
             },
+            ExprYield(ref e) => {
+                let c: fn(_) -> _ = ExprYield;
+                c.hash(&mut self.s);
+                self.hash_expr(e);
+            },
             ExprAssign(ref l, ref r) => {
                 let c: fn(_, _) -> _ = ExprAssign;
                 c.hash(&mut self.s);
@@ -373,8 +378,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
                 // TODO: _ty
             },
-            ExprClosure(cap, _, eid, _) => {
-                let c: fn(_, _, _, _) -> _ = ExprClosure;
+            ExprClosure(cap, _, eid, _, _) => {
+                let c: fn(_, _, _, _, _) -> _ = ExprClosure;
                 c.hash(&mut self.s);
                 cap.hash(&mut self.s);
                 self.hash_expr(&self.cx.tcx.hir.body(eid).value);

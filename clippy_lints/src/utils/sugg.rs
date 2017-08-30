@@ -49,11 +49,12 @@ impl<'a> Sugg<'a> {
             match expr.node {
                 hir::ExprAddrOf(..) |
                 hir::ExprBox(..) |
-                hir::ExprClosure(..) |
+                hir::ExprClosure(.., _) |
                 hir::ExprIf(..) |
                 hir::ExprUnary(..) |
                 hir::ExprMatch(..) => Sugg::MaybeParen(snippet),
                 hir::ExprAgain(..) |
+                hir::ExprYield(..) |
                 hir::ExprArray(..) |
                 hir::ExprBlock(..) |
                 hir::ExprBreak(..) |
@@ -106,6 +107,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Call(..) |
             ast::ExprKind::Catch(..) |
             ast::ExprKind::Continue(..) |
+            ast::ExprKind::Yield(..) |
             ast::ExprKind::Field(..) |
             ast::ExprKind::ForLoop(..) |
             ast::ExprKind::Index(..) |

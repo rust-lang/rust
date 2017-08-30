@@ -46,7 +46,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
     }
     match expr.node {
         Expr_::ExprLit(..) |
-        Expr_::ExprClosure(..) |
+        Expr_::ExprClosure(.., _) |
         Expr_::ExprPath(..) => true,
         Expr_::ExprIndex(ref a, ref b) |
         Expr_::ExprBinary(_, ref a, ref b) => has_no_effect(cx, a) && has_no_effect(cx, b),

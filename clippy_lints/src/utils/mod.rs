@@ -104,6 +104,7 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir.get_parent(id);
     match MirSource::from_node(cx.tcx, parent_id) {
+        MirSource::GeneratorDrop(_) |
         MirSource::Fn(_) => false,
         MirSource::Const(_) |
         MirSource::Static(..) |

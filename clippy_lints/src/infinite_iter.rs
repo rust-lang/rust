@@ -148,7 +148,7 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
                 }
             }
             if method.name == "flat_map" && args.len() == 2 {
-                if let ExprClosure(_, _, body_id, _) = args[1].node {
+                if let ExprClosure(_, _, body_id, _, _) = args[1].node {
                     let body = cx.tcx.hir.body(body_id);
                     return is_infinite(cx, &body.value);
                 }

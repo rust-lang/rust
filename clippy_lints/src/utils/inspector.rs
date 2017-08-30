@@ -245,10 +245,14 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             print_expr(cx, cond, indent + 1);
             println!("{}source: {:?}", ind, source);
         },
-        hir::ExprClosure(ref clause, _, _, _) => {
+        hir::ExprClosure(ref clause, _, _, _, _) => {
             println!("{}Closure", ind);
             println!("{}clause: {:?}", ind, clause);
         },
+        hir::ExprYield(ref sub) => {
+            println!("{}Yield", ind);
+            print_expr(cx, sub, indent + 1);
+        }
         hir::ExprBlock(_) => {
             println!("{}Block", ind);
         },
