@@ -1363,15 +1363,15 @@ fn check_for_mutation(cx: &LateContext, body: &Expr, bound: &Expr) -> bool {
         let ExprPath(ref qpath) = bound.node,
         let QPath::Resolved(None, ref path) = *qpath,
     ], {
-        let def = cx.tables.qpath_def(qpath, bound.id);
+        let def = cx.tables.qpath_def(qpath, bound.hir_id);
         match def {
             Def::Local(..) | Def::Upvar(..) => {
                 let def_id = def.def_id();
                 let node_id = cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
                 let node_str = cx.tcx.hir.get(node_id);
                 if_let_chain! {[ // prob redundant now, remove
-                    let map::Node::NodeLocal(pat) = node_str,
-                    let PatKind::Binding(bind_ann, _, _, _) = pat.node,
+                    let map::Node::NodeLocal(local) = node_str,
+                    let PatKind::Binding(bind_ann, _, _, _) = local.pat.node,
                     let BindingAnnotation::Mutable = bind_ann,
                     
                 ], {
