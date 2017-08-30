@@ -389,7 +389,7 @@ trait Foo<T> {
 
 impl<T> Foo<T> for MyStruct {
     type Bar = impl Trait;
-    fn bar() -> impl Trait {
+    fn bar() -> Self::Bar {
         ...
         // Returns some type MyBar<T>
     }
@@ -478,7 +478,7 @@ fn new_baz() -> Baz {
     (Default::default(), Default::default())
 }
 
-// This function fully constraints the first `impl Trait` type,
+// This function fully constrains the first `impl Trait` type,
 // but places no constraints upon the second.
 fn add_to_first(baz: Baz) -> Baz {
     let first: i32 = baz.0;
@@ -549,7 +549,7 @@ enough. In the future, such a feature could be added backwards-compatibly.
 
 This RFC proposes the addition of a complicated feature that will take time
 for Rust developers to learn and understand.
-There are potentially simpler ways to acheive some of the goals of this RFC,
+There are potentially simpler ways to achieve some of the goals of this RFC,
 such as making `impl Trait` usable in traits.
 This RFC instead introduces a more complicated solution in order to
 allow for increased expressiveness and clarity.
