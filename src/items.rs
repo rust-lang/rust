@@ -55,7 +55,23 @@ impl Rewrite for ast::Local {
 
         skip_out_of_file_lines_range!(context, self.span);
 
-        let mut result = "let ".to_owned();
+        if contains_skip(&self.attrs) {
+            return None;
+        }
+
+        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        let mut result = if attrs_str.is_empty() {
+            "let ".to_owned()
+        } else {
+            try_opt!(combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                "let ",
+                mk_sp(self.attrs.last().map(|a| a.span.hi).unwrap(), self.span.lo),
+                shape,
+                false,
+            ))
+        };
 
         // 4 = "let ".len()
         let pat_shape = try_opt!(shape.offset_left(4));

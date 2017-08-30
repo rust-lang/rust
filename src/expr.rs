@@ -130,11 +130,10 @@ pub fn format_expr(
                 ExprType::Statement => {
                     if is_unsafe_block(block) {
                         block.rewrite(context, shape)
-                    } else {
+                    } else if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
                         // Rewrite block without trying to put it in a single line.
-                        if let rw @ Some(_) = rewrite_empty_block(context, block, shape) {
-                            return rw;
-                        }
+                        rw
+                    } else {
                         let prefix = try_opt!(block_prefix(context, block, shape));
                         rewrite_block_with_visitor(context, &prefix, block, shape)
                     }
@@ -293,17 +292,17 @@ pub fn format_expr(
             shape,
         ),
         ast::ExprKind::Catch(ref block) => {
-            if let rewrite @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape)
-            {
-                return rewrite;
+            if let rw @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape) {
+                rw
+            } else {
+                // 9 = `do catch `
+                let budget = shape.width.checked_sub(9).unwrap_or(0);
+                Some(format!(
+                    "{}{}",
+                    "do catch ",
+                    try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))
+                ))
             }
-            // 9 = `do catch `
-            let budget = shape.width.checked_sub(9).unwrap_or(0);
-            Some(format!(
-                "{}{}",
-                "do catch ",
-                try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))
-            ))
         }
     };
 
@@ -883,16 +882,13 @@ impl Rewrite for ast::Stmt {
                     ""
                 };
 
-                format_expr(
-                    ex,
-                    match self.node {
-                        ast::StmtKind::Expr(_) => ExprType::SubExpression,
-                        ast::StmtKind::Semi(_) => ExprType::Statement,
-                        _ => unreachable!(),
-                    },
-                    context,
-                    try_opt!(shape.sub_width(suffix.len())),
-                ).map(|s| s + suffix)
+                let expr_type = match self.node {
+                    ast::StmtKind::Expr(_) => ExprType::SubExpression,
+                    ast::StmtKind::Semi(_) => ExprType::Statement,
+                    _ => unreachable!(),
+                };
+                let shape = try_opt!(shape.sub_width(suffix.len()));
+                format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
         };

@@ -124,3 +124,25 @@ impl InnerAttributes() {
 mod InnerAttributes {
     #![this_is_an_inner_attribute(foo)]
 }
+
+fn attributes_on_statements() {
+    // Local
+    #[attr(on(local))]
+    let x = 3;
+
+    // Item
+    #[attr(on(item))]
+    use foo;
+
+    // Expr
+    #[attr(on(expr))]
+    {}
+
+    // Semi
+    #[attr(on(semi))]
+    foo();
+
+    // Mac
+    #[attr(on(mac))]
+    foo!();
+}

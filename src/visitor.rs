@@ -30,7 +30,7 @@ use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, Sepa
 use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{self, contains_skip, mk_sp};
+use utils::{self, contains_skip, inner_attributes, mk_sp};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -73,47 +73,23 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
             }
-            ast::StmtKind::Local(ref local) => {
-                let rewrite = if contains_skip(&local.attrs) {
-                    None
-                } else {
-                    stmt.rewrite(
-                        &self.get_context(),
-                        Shape::indented(self.block_indent, self.config),
-                    )
-                };
-                self.push_rewrite(stmt.span, rewrite);
+            ast::StmtKind::Local(..) => {
+                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite);
             }
             ast::StmtKind::Expr(ref expr) => {
-                let rewrite = format_expr(
-                    expr,
-                    ExprType::Statement,
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                );
-                let span = if expr.attrs.is_empty() {
-                    stmt.span
-                } else {
-                    mk_sp(expr.span().lo, stmt.span.hi)
-                };
-                self.push_rewrite(span, rewrite)
+                let rewrite =
+                    format_expr(expr, ExprType::Statement, &self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite)
             }
-            ast::StmtKind::Semi(ref expr) => {
-                let rewrite = stmt.rewrite(
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                );
-                let span = if expr.attrs.is_empty() {
-                    stmt.span
-                } else {
-                    mk_sp(expr.span().lo, stmt.span.hi)
-                };
-                self.push_rewrite(span, rewrite)
+            ast::StmtKind::Semi(..) => {
+                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite)
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
-                if contains_skip(attrs) {
-                    self.push_rewrite(mac.span, None);
+                if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
+                    self.push_rewrite(stmt.span(), None);
                 } else {
                     self.visit_mac(mac, None, MacroPosition::Statement);
                 }
