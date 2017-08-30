@@ -55,7 +55,23 @@ impl Rewrite for ast::Local {
 
         skip_out_of_file_lines_range!(context, self.span);
 
-        let mut result = "let ".to_owned();
+        if contains_skip(&self.attrs) {
+            return None;
+        }
+
+        let attrs_str = try_opt!(self.attrs.rewrite(context, shape));
+        let mut result = if attrs_str.is_empty() {
+            "let ".to_owned()
+        } else {
+            try_opt!(combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                "let ",
+                mk_sp(self.attrs.last().map(|a| a.span.hi).unwrap(), self.span.lo),
+                shape,
+                false,
+            ))
+        };
 
         // 4 = "let ".len()
         let pat_shape = try_opt!(shape.offset_left(4));
@@ -187,8 +203,7 @@ impl<'a> FmtVisitor<'a> {
 
 
     fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
-        let shape = Shape::indented(self.block_indent, self.config);
-        let rewrite = item.rewrite(&self.get_context(), shape);
+        let rewrite = item.rewrite(&self.get_context(), self.shape());
         self.push_rewrite(item.span(), rewrite);
         self.last_pos = item.span.hi;
     }
@@ -312,18 +327,11 @@ impl<'a> FmtVisitor<'a> {
                                 ""
                             };
 
-                            format_expr(
-                                &e,
-                                ExprType::Statement,
-                                &self.get_context(),
-                                Shape::indented(self.block_indent, self.config),
-                            ).map(|s| s + suffix)
+                            format_expr(&e, ExprType::Statement, &self.get_context(), self.shape())
+                                .map(|s| s + suffix)
                                 .or_else(|| Some(self.snippet(e.span)))
                         }
-                        None => stmt.rewrite(
-                            &self.get_context(),
-                            Shape::indented(self.block_indent, self.config),
-                        ),
+                        None => stmt.rewrite(&self.get_context(), self.shape()),
                     }
                 } else {
                     None
@@ -421,9 +429,7 @@ impl<'a> FmtVisitor<'a> {
             false,
         );
 
-        let shape = Shape::indented(self.block_indent, self.config)
-            .sub_width(2)
-            .unwrap();
+        let shape = self.shape().sub_width(2).unwrap();
         let fmt = ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
@@ -451,7 +457,7 @@ impl<'a> FmtVisitor<'a> {
 
         let context = self.get_context();
         let indent = self.block_indent;
-        let shape = Shape::indented(indent, self.config);
+        let shape = self.shape();
         let attrs_str = try_opt!(field.node.attrs.rewrite(&context, shape));
         let lo = field
             .node

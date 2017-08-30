@@ -260,7 +260,7 @@ impl<'a> FmtVisitor<'a> {
     ) {
         let vis = utils::format_visibility(vis);
         // 4 = `use `, 1 = `;`
-        let rw = Shape::indented(self.block_indent, self.config)
+        let rw = self.shape()
             .offset_left(vis.len() + 4)
             .and_then(|shape| shape.sub_width(1))
             .and_then(|shape| match vp.node {

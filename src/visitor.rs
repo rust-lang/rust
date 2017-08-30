@@ -30,7 +30,7 @@ use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, Sepa
 use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{self, contains_skip, mk_sp};
+use utils::{self, contains_skip, inner_attributes, mk_sp};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -58,6 +58,10 @@ pub struct FmtVisitor<'a> {
 }
 
 impl<'a> FmtVisitor<'a> {
+    pub fn shape(&self) -> Shape {
+        Shape::indented(self.block_indent, self.config)
+    }
+
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         debug!(
             "visit_stmt: {:?} {:?}",
@@ -69,47 +73,23 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
             }
-            ast::StmtKind::Local(ref local) => {
-                let rewrite = if contains_skip(&local.attrs) {
-                    None
-                } else {
-                    stmt.rewrite(
-                        &self.get_context(),
-                        Shape::indented(self.block_indent, self.config),
-                    )
-                };
-                self.push_rewrite(stmt.span, rewrite);
+            ast::StmtKind::Local(..) => {
+                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite);
             }
             ast::StmtKind::Expr(ref expr) => {
-                let rewrite = format_expr(
-                    expr,
-                    ExprType::Statement,
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                );
-                let span = if expr.attrs.is_empty() {
-                    stmt.span
-                } else {
-                    mk_sp(expr.span().lo, stmt.span.hi)
-                };
-                self.push_rewrite(span, rewrite)
+                let rewrite =
+                    format_expr(expr, ExprType::Statement, &self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite)
             }
-            ast::StmtKind::Semi(ref expr) => {
-                let rewrite = stmt.rewrite(
-                    &self.get_context(),
-                    Shape::indented(self.block_indent, self.config),
-                );
-                let span = if expr.attrs.is_empty() {
-                    stmt.span
-                } else {
-                    mk_sp(expr.span().lo, stmt.span.hi)
-                };
-                self.push_rewrite(span, rewrite)
+            ast::StmtKind::Semi(..) => {
+                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
+                self.push_rewrite(stmt.span(), rewrite)
             }
             ast::StmtKind::Mac(ref mac) => {
                 let (ref mac, _macro_style, ref attrs) = **mac;
-                if contains_skip(attrs) {
-                    self.push_rewrite(mac.span, None);
+                if self.visit_attrs(attrs, ast::AttrStyle::Outer) {
+                    self.push_rewrite(stmt.span(), None);
                 } else {
                     self.visit_mac(mac, None, MacroPosition::Statement);
                 }
@@ -138,9 +118,7 @@ impl<'a> FmtVisitor<'a> {
             if let Some(first_stmt) = b.stmts.first() {
                 let attr_lo = inner_attrs
                     .and_then(|attrs| {
-                        utils::inner_attributes(attrs)
-                            .first()
-                            .map(|attr| attr.span.lo)
+                        inner_attributes(attrs).first().map(|attr| attr.span.lo)
                     })
                     .or_else(|| {
                         // Attributes for an item in a statement position
@@ -218,7 +196,7 @@ impl<'a> FmtVisitor<'a> {
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
             let end_pos = source!(self, b.span).hi - brace_compensation - remove_len;
-            let snippet = self.get_context().snippet(mk_sp(self.last_pos, end_pos));
+            let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
         // FIXME: we should compress any newlines here to just one
@@ -336,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
                         self.push_rewrite(item.span, None);
                         return;
                     }
-                } else if utils::contains_skip(&item.attrs) {
+                } else if contains_skip(&item.attrs) {
                     // Module is not inline, but should be skipped.
                     return;
                 } else {
@@ -371,7 +349,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(source!(self, item.span).lo);
-                let snippet = self.get_context().snippet(item.span);
+                let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo);
@@ -635,9 +613,7 @@ impl<'a> FmtVisitor<'a> {
         skip_out_of_file_lines_range_visitor!(self, mac.span);
 
         // 1 = ;
-        let shape = Shape::indented(self.block_indent, self.config)
-            .sub_width(1)
-            .unwrap();
+        let shape = self.shape().sub_width(1).unwrap();
         let rewrite = rewrite_macro(mac, ident, &self.get_context(), shape, pos);
         self.push_rewrite(mac.span, rewrite);
     }
@@ -677,7 +653,7 @@ impl<'a> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute], style: ast::AttrStyle) -> bool {
-        if utils::contains_skip(attrs) {
+        if contains_skip(attrs) {
             return true;
         }
 
@@ -686,10 +662,7 @@ impl<'a> FmtVisitor<'a> {
             return false;
         }
 
-        let rewrite = attrs.rewrite(
-            &self.get_context(),
-            Shape::indented(self.block_indent, self.config),
-        );
+        let rewrite = attrs.rewrite(&self.get_context(), self.shape());
         let span = mk_sp(attrs[0].span.lo, attrs[attrs.len() - 1].span.hi);
         self.push_rewrite(span, rewrite);
 

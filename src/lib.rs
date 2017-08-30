@@ -91,32 +91,46 @@ macro_rules! span_with_attrs_lo_hi {
         }
     }
 }
+
 macro_rules! span_with_attrs {
     ($this:ident) => {
         span_with_attrs_lo_hi!($this, $this.span.lo, $this.span.hi)
     }
 }
 
-impl Spanned for ast::Expr {
-    fn span(&self) -> Span {
-        span_with_attrs!(self)
+macro_rules! implement_spanned {
+    ($this:ty) => {
+        impl Spanned for $this {
+            fn span(&self) -> Span {
+                span_with_attrs!(self)
+            }
+        }
     }
 }
 
-impl Spanned for ast::Item {
-    fn span(&self) -> Span {
-        span_with_attrs!(self)
-    }
-}
+// Implement `Spanned` for structs with `attrs` field.
+implement_spanned!(ast::Expr);
+implement_spanned!(ast::Field);
+implement_spanned!(ast::ForeignItem);
+implement_spanned!(ast::Item);
+implement_spanned!(ast::Local);
 
 impl Spanned for ast::Stmt {
     fn span(&self) -> Span {
         match self.node {
-            // Cover attributes
+            ast::StmtKind::Local(ref local) => mk_sp(local.span().lo, self.span.hi),
+            ast::StmtKind::Item(ref item) => mk_sp(item.span().lo, self.span.hi),
             ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
                 mk_sp(expr.span().lo, self.span.hi)
             }
-            _ => self.span,
+            ast::StmtKind::Mac(ref mac) => {
+                let (_, _, ref attrs) = **mac;
+                if attrs.is_empty() {
+                    self.span
+                } else {
+                    mk_sp(attrs[0].span.lo, self.span.hi)
+                }
+            }
         }
     }
 }
@@ -152,12 +166,6 @@ impl Spanned for ast::Arg {
 impl Spanned for ast::StructField {
     fn span(&self) -> Span {
         span_with_attrs_lo_hi!(self, self.span.lo, self.ty.span.hi)
-    }
-}
-
-impl Spanned for ast::Field {
-    fn span(&self) -> Span {
-        span_with_attrs!(self)
     }
 }
 
@@ -205,12 +213,6 @@ impl Spanned for ast::TyParamBound {
             ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span,
             ast::TyParamBound::RegionTyParamBound(ref l) => l.span,
         }
-    }
-}
-
-impl Spanned for ast::ForeignItem {
-    fn span(&self) -> Span {
-        span_with_attrs!(self)
     }
 }
 
