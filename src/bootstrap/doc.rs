@@ -669,11 +669,6 @@ impl Step for ErrorIndex {
         let build = builder.build;
         let target = self.target;
 
-        builder.ensure(compile::Rustc {
-            compiler: builder.compiler(0, build.build),
-            target,
-        });
-
         println!("Documenting error index ({})", target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));

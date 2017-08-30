@@ -717,7 +717,7 @@ impl Build {
     fn force_use_stage1(&self, compiler: Compiler, target: Interned<String>) -> bool {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
-            self.hosts.iter().any(|h| *h == target)
+            (self.hosts.iter().any(|h| *h == target) || target == self.build)
     }
 
     /// Returns the directory that OpenSSL artifacts are compiled into if
