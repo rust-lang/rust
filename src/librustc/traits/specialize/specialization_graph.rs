@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{OverlapError, specializes};
+use super::OverlapError;
 
 use hir::def_id::DefId;
 use traits;
@@ -118,8 +118,8 @@ impl<'a, 'gcx, 'tcx> Children {
                         return Ok((false, false));
                     }
 
-                    let le = specializes(tcx, impl_def_id, possible_sibling);
-                    let ge = specializes(tcx, possible_sibling, impl_def_id);
+                    let le = tcx.specializes((impl_def_id, possible_sibling));
+                    let ge = tcx.specializes((possible_sibling, impl_def_id));
 
                     if le == ge {
                         // overlap, but no specialization; error out

@@ -38,7 +38,7 @@ pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
-pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
+pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::{SpecializesCache, find_associated_item};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
@@ -831,6 +831,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
+        specializes: specialize::specializes,
         ..*providers
     };
 }
@@ -839,6 +840,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
+        specializes: specialize::specializes,
         ..*providers
     };
 }
