@@ -135,9 +135,10 @@ fn main() {
         assert_eq!(float_point(p), p);
         assert_eq!(int_odd(i), i);
 
-        // mingw64-gcc uses the wrong ABI:
-        // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82028
-        #[cfg(not(all(windows, target_arch = "x86_64", target_env = "gnu")))]
+        // MSVC/GCC/Clang are not consistent in the ABI of single-float aggregates.
+        // x86_64: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82028
+        // i686: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82041
+        #[cfg(not(all(windows, target_env = "gnu")))]
         assert_eq!(float_one(f1), f1);
     }
 }
