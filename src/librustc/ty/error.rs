@@ -54,6 +54,8 @@ pub enum TypeError<'tcx> {
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
+
+    OldStyleLUB(Box<TypeError<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -169,6 +171,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
+            }
+            OldStyleLUB(ref err) => {
+                write!(f, "{}", err)
             }
         }
     }
