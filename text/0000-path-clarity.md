@@ -8,12 +8,12 @@
 
 This RFC seeks to clarify and streamline Rust's story around paths and visibility for modules and crates. When the RFC is *fully* implemented (which will require a [new epoch]), that story will look as follows:
 
-- Absolute paths *always* begin with a crate name, where the keyword `crate` refers to the current crate.
+- Absolute paths begin with a crate name, where the keyword `crate` refers to the current crate (other forms are deprecated)
 - `extern crate` is deprecated. Usage of external crates is always unambiguous, since it must somewhere involve an absolute path beginning with the crate's name.
 - The `crate` keyword also acts as a visibility modifier, equivalent to today's `pub(crate)`. Consequently, uses of bare `pub` on items that are not actually publicly exported trigger a lint warning suggesting `crate` visibility instead.
 - A `foo.rs` and `foo/` subdirectory may coexist; `mod.rs` is no longer needed when placing submodules in a subdirectory.
 
-The vast majority of these changes can be done without a new epoch; only the "always" on the first bullet requires a new epoch.
+**These changes do not require a new epoch**.
 
 *This RFC incorporates some text written by @withoutboats and @cramertj, who have both been involved in the long-running discussions on this topic.*
 
@@ -169,7 +169,9 @@ creating a directory containing submodules. There are several downsides:
 - From a learnability perspective, the fact that the paths in the module system
   aren't *quite* in direct correspondence with the file system is another small
   speedbump, and in particular makes `mod foo;` declarations entail extra
-  ceremony (since the parent module must be moved into a new directory).
+  ceremony (since the parent module must be moved into a new directory). A
+  simpler rule would be: the path to a module's file is the path to it within
+  Rust code, with `.rs` appended.
 - From an ergonomics perspective, one often ends up with many `mod.rs` files
   open, and thus must depend on editor smarts to easily navigate between
   them. Again, a minor but nontrivial papercut.
@@ -444,27 +446,10 @@ First, a bit of terminology: a *fully qualified path* is a path starting with
 The actual changes in this RFC are fairly small tweaks to the current module
 system; most of the complexity comes from the migration plans.
 
-There are two basic ways we could do migration. The first one, pioneered by [RFC
-2088], treats external crates as a kind of "fallback" when interpeting fully
-qualified paths (to retain compatibility with today's code). That solution is
-detailed in the alternatives section.
+The proposed migration plan is minimally disruptive; **it does not require an
+epoch**.
 
-[RFC 2088]: https://github.com/rust-lang/rfcs/pull/2088
-
-This RFC, however, spells out a different alternative which avoids the need for
-any kind of fallback in name resolution, or indeed any "implicit" linking of
-crates at all. This is achieved via a two-stage approach: one within the current
-[epoch], and one for the next.
-
-[epoch]: https://github.com/rust-lang/rfcs/pull/2052
-
-## Stage 1 (current epoch)
-
-The core idea of stage 1 is to make all of the changes in this RFC *except* for
-removing the need for `extern crate`. In particular, this allows people to
-migrate paths to use `crate::` in preparation for the next stage.
-
-In detail, at stage 1:
+## Basic changes
 
 - You can write `mod bar;` statements even when not in a `mod.rs` or equivalent;
   in this case, the submodules must appear within a subdirectory with
@@ -472,6 +457,7 @@ In detail, at stage 1:
   there is also a `foo/bar.rs`.
   - It is not permitted to have both `foo.rs` and `foo/mod.rs` at the same point
     in the file system.
+  - The use of `mod.rs` continues to be allowed without any deprecation.
 
 - We introduce `crate` as a new visibility specifier, shorthand for `pub(crate)`
   visibility.
@@ -483,106 +469,69 @@ In detail, at stage 1:
 - We introduce `crate` as a new path component which designates the root of the
   current crate, and deprecate fully qualified paths that do not begin with one
   of: an external crate name, `crate`, `super`, or `self`.
-  - However, at this stage, external crate names *must* be provided by
-    *explicit* `extern crate` declarations at the root of the crate.
-  - We deprecate any use of `extern crate` *not* at crate root.
 
 - Cargo will provide a new `alias` key for dependencies, so that e.g. users who
-  want to use the `rand` crate but call it `random` instead can now write `rand
-  = { version = "0.3", alias = "random" }`.
-  - `extern crate foo as bar` is deprecated.
+  want to use the `rand` crate but call it `random` instead can now write `random
+  = { version = "0.3", crate = "rand" }`.
 
-However, at stage 1, we do *not* deprecate `extern crate` outright, which is still
-required for mounting external crates.
-
-Thus, at the end of stage 1, idiomatic code should look as follows:
-
-```rust
-extern crate serde; // we'll drop this in stage 2
-use serde::Serialize;
-use crate::top_level_module::SomeItem;
-```
-
-The idea is that, if you have warning-free code at this point, transitioning to
-the next stage should just be a matter of removing `extern crate` declarations
-(in some cases replacing them with `use` declarations).
-
-## Stage 2 (next epoch)
-
-In stage 2, we interpret fully-qualified paths strictly according to this RFC,
-which means that it's *always* clear whether they are referring to the current
-crate or an external crate. In detail:
-
-- *All* fully-qualified paths *must* begin with one of: an external crate name,
-  `crate`, `super`, or `self`.
-  - If a path begins with a name that does *not* correspond to an external
-    crate, the compiler will generate an error. If there is a top-level module
-    with the same name, the compiler error will point this out and suggest
-    adding `crate`.
-
-- `extern crate foo;` is fully deprecated. Its semantics is now identical to `use foo;`.
+- `extern crate foo;` is deprecated. Its semantics is now identical to `use
+  foo;` (assuming that there is no top-level module named `foo`).
   - There is one exception: `#[macro_use] extern crate foo` at the top-level
     will not generate a warning. This will ultimately be supplanted by [macros
     2.0].
   - Note that macro authors can still emit `extern crate` with an attribute to
     silence the warning.
 
-- The compilation model for external crates is essentially the same as today:
-  they are linked only if references through an absolute path (e.g. a `use`
-  statement) or `extern crate` declaration. In either case, the fact that the
-  reference is to an external crate is completely unambiguous, and use of
-  `extern crate` is no longer needed.
+## Resolving fully-qualified paths
 
-Note that, unlike the [previous RFC] involving `extern crate`, we do not need to
-change the interface between Cargo and `rustc` here at all, because there is no
-need to "generate" bindings based on the external crates provided. Instead, as
-today, extern crates are brought in *by demand* using absolute paths.
+The only way to refer to an external crate without using `extern crate` is
+through a fully-qualified path.
 
-Thus, at the end of stage 2, idiomatic code should look as follows:
+When resolving a fully-qualified path that begins with a name (and not `crate`,
+`super` or `self`, we go through a two-stage process:
 
-```rust
-use serde::Serialize;
-use crate::top_level_module::SomeItem;
-```
+- First, attempt to resolve the name as an item defined in the top-level module.
+  - If successful, issue a deprecation warning, saying that the `crate` prefix
+    should be used.
+- Otherwise, attempt to resolve the name as an external crate, exactly as we do
+  with `extern crate` today.
 
-A consequence is that you can discover all usage of external crates from a
-project's source by grepping for `use` statements or absolute paths that do not
-begin with `crate`/`super`/`self`. Put differently, usage of external crates is
-still fully explicit in the source, even without consulting `Cargo.toml`.
+In particular, no change to the compilation model or interface between `rustc`
+and Cargo/the ambient build system is needed.
 
+This approach is designed for backwards compatibility, but it means that you
+cannot have a top-level module and an external crate with the same
+name. Allowing that would require all fully-qualified paths into the current
+crate to start with `crate`, which can only be done on a future epoch. We can
+and should consider making such a change eventually, but it is not required for
+this RFC.
+
+[epoch]: https://github.com/rust-lang/rfcs/pull/2052
 [macros 2.0]: https://github.com/rust-lang/rfcs/blob/master/text/1561-macro-naming.md#importing-macros
 [previous RFC]: https://github.com/rust-lang/rfcs/pull/2088
 
 ## Migration experience
 
-The two stages are carefully designed to retain key properties of the module
-system and compilation throughout, and to minimize the introduction of hard
-errors across epochs. The only thing that you *must* do to opt in to the next
-epoch is change absolute paths to use the new format (starts with crate name,
-`crate`, `super`, or `self`).
-
-We can and should provide a high-fidelity `rustfix` tool that performs at least
-this change, and ideally lowers `pub` to `crate` when possible as well.
-
-In the error specified for invalid fully qualified paths, in which the compiler
-checks for a top-level module with the same name, the error should *also*
-suggest that the code may be coming from an older epoch, and point to (1) the
-`rustfix` tool to automate migration and (2) the ability to specify an older
-epoch in `Cargo.toml`.
+We will provide a high-fidelity `rustfix` tool that makes changes to the a crate
+to silence deprecation warnings. In particular, the tool will introduce
+`crate::` prefixes, and downgrade from `pub` to `crate` where appropriate. It
+must be sound (i.e. keep the meaning of code intact and keep it compiling) but
+may not be complete (i.e. you may still get some deprecation warnings after
+running it).
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The most clear drawback here is that a new epoch is required. The RFC strives to
-make the transition as narrow as possible, both by introducing as few new errors
-as possible, and by providing additional mitigations through migration tooling
-and compiler diagnostics (as well as the epoch system itself, of course).
+The most important drawback is the amount of churn involved through
+deprecations: a *lot* of `use` statements are going to need to change. However,
+the fact that this is a deprecation lint makes it easy to perform the change
+incrementally, and `rustfix` should cover the majority of cases.
 
-Another drawback is that imports from within your crate become more verbose,
-since they require a leading `crate`. However, this downside is considerably
-mitigated if [nesting in `use`] is permitted.
+Imports from within your crate become more verbose, since they require a leading
+`crate`. However, this downside is considerably mitigated if [nesting in `use`]
+is permitted.
 
-[nesting in `use`]: https://github.com/rust-lang/rfcs/issues/1400
+[nesting in `use`]: https://github.com/rust-lang/rfcs/pull/2128
 
 In previous discussions about deprecating `extern crate`, there were concerns
 about the impact on non-Cargo tooling, and in overall explicitness. This RFC
@@ -622,70 +571,6 @@ without fundamental change.
   `crate`, which should always work. It seems less feasible to ask people to
   annotate definitions with e.g. `pub(super)`, though maybe this is a sign that
   the `pub(restricted)` syntax is too unergonomic or underused.
-
-## The migration plan
-
-This RFC lays out a two stage plan using epochs, which aims to avoid the need
-for any kind of name resolution fallback or change of interface between `rustc`
-and `cargo`. That's partly in response to feedback on [RFC 2088].
-
-That said, we could instead adopt the [RFC 2088] approach:
-
-> External crates can be passed to the rust compiler using the
-> `--extern CRATE_NAME=PATH` flag.
-> For example, `cargo build`-ing a crate `my_crate` with a dependency on `rand`
-> results in a call to rustc that looks something like
-> `rustc --crate-name mycrate src/main.rs --extern rand=/path/to/librand.rlib ...`.
->
-> When an external crate is specified this way, it will be automatically
-> available to any module in the current crate through `use` statements or
-> absolute paths (e.g. `::rand::random()`). It will _not_ be automatically
-> imported at root level as happens with current `extern crate`.
-> None of this behavior will occur when including a library using the `-l`
-> or `-L` flags.
->
-> We will continue to support the current `extern crate` syntax for backwards
-> compatibility. `extern crate foo;` will behave just like it does currently.
-> Writing `extern crate foo;` will not affect the availability of `foo` in
-> `use` and absolute paths as specified by this RFC.
->
-> Additionally, items such as modules, types, or functions that conflict with
-> the names of implicitly imported crates will result in a warning and will
-> require the external crate to be brought in manually using `extern crate`.
-> Note that this is different from the current behavior of the
-> implicitly-imported `std` module.
-> Currently, creating a root-level item named `std` results in a name conflict
-> error. For consistency with other crates, this error will be removed.
-> Creating a root-level item named `std` will prevent `std` from being included,
-> and will trigger a warning.
->
-> When compiling, an external crate is only linked if it is used
-> (through either `extern crate`, `use`, or absolute paths).
-> This prevents unused crates from being linked, which is helpful in a number of
-> scenarios:
-> - Some crates have both `lib` and `bin` targets and want to avoid linking both
-> `bin` and `lib` dependencies.
-> - `no_std` crates need a way to avoid accidentally linking `std`-using crates.
-> - Other crates have a large number of possible dependencies (such as
-> [the current Rust Playground](https://users.rust-lang.org/t/the-official-rust-playground-now-has-the-top-100-crates-available/11817)),
-> and want to avoid linking all of them.
->
-> In order to prevent linking of unused crates,
-> after macro expansion has occurred, the compiler will resolve
-> `use`, `extern crate`, and absolute paths looking for a reference to external
-> crates or items within them. Crates which are unreferenced in these paths
-> will not be linked.
-
-The upside of this approach is that *no epoch is required*. That said, an epoch
-may still be desirable: the mental model of this RFC strongly suggests that you
-should be able to have an external crate and a top-level module with the same
-name, and doing that requires an epochal change. Still, if we took the [RFC
-2088] approach, we could get the vast majority of the benefits of this RFC, and
-make the epochal change much later, when we have confidence that very little
-code in active development would be impacted.
-
-Regardless, the actual changes to code are the same, and we'd want to provide a
-`rustfix` tool to make them painless.
 
 ## The community discussion around modules
 
@@ -729,6 +614,4 @@ ideas off into a separate *experimental* RFC:
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Bikeshedding on `crate` as visibility attribute
-- Precise migration story (two options are laid out above)
-- Should `mod.rs` be deprecated?
+None.
