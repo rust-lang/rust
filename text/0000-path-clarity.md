@@ -538,6 +538,10 @@ about the impact on non-Cargo tooling, and in overall explicitness. This RFC
 fully addresses both concerns by leveraging the new, unambiguous nature of fully
 qualified paths.
 
+Moving renaming of crates externally has implications for procedural macros with
+dependencies: their clients must include those dependencies without renaming
+them.
+
 # Rationale and Alternatives
 [alternatives]: #alternatives
 
