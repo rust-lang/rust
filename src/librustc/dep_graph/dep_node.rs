@@ -62,6 +62,7 @@
 
 use hir::def_id::{CrateNum, DefId};
 use hir::map::DefPathHash;
+use hir::HirId;
 
 use ich::Fingerprint;
 use ty::{TyCtxt, Instance, InstanceDef};
@@ -528,6 +529,8 @@ define_dep_nodes!( <'tcx>
     [] ExternCrate(DefId),
     [] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
+    [] InScopeTraits(HirId),
+    [] ModuleExports(HirId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

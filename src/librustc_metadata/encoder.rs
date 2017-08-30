@@ -548,12 +548,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                                                                  &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
+        let hir_id = tcx.hir.node_to_hir_id(id);
         let def_id = tcx.hir.local_def_id(id);
         debug!("IsolatedEncoder::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
-            reexports: match tcx.export_map.get(&id) {
-                Some(exports) if *vis == hir::Public => {
+            reexports: match tcx.module_exports(hir_id) {
+                Some(ref exports) if *vis == hir::Public => {
                     self.lazy_seq_from_slice(exports.as_slice())
                 }
                 _ => LazySeq::empty(),
