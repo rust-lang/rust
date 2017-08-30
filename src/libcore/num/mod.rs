@@ -2507,10 +2507,12 @@ impl fmt::Display for TryFromIntError {
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
-        impl From<$source> for $target {
+        impl TryFrom<$source> for $target {
+            type Error = Infallible;
+
             #[inline]
-            fn from(value: $source) -> $target {
-                value as $target
+            fn try_from(value: $source) -> Result<Self, Self::Error> {
+                Ok(value as $target)
             }
         }
     )*}
@@ -2617,7 +2619,7 @@ try_from_lower_bounded!(isize, usize);
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::TryFrom;
+    use convert::{Infallible, TryFrom};
 
     try_from_upper_bounded!(usize, u8);
     try_from_unbounded!(usize, u16, u32, u64, u128);
@@ -2643,7 +2645,7 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::TryFrom;
+    use convert::{Infallible, TryFrom};
 
     try_from_upper_bounded!(usize, u8, u16);
     try_from_unbounded!(usize, u32, u64, u128);
@@ -2669,7 +2671,7 @@ mod ptr_try_from_impls {
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::TryFrom;
+    use convert::{Infallible, TryFrom};
 
     try_from_upper_bounded!(usize, u8, u16, u32);
     try_from_unbounded!(usize, u64, u128);
