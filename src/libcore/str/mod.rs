@@ -23,6 +23,7 @@ use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use slice::{self, SliceIndex};
 use mem;
+use intrinsics::align_offset;
 
 pub mod pattern;
 
@@ -1468,7 +1469,10 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
             let ptr = v.as_ptr();
-            let align = (ptr as usize + index) & (usize_bytes - 1);
+            let align = unsafe {
+                // the offset is safe, because `index` is guaranteed inbounds
+                align_offset(ptr.offset(index as isize) as *const (), usize_bytes)
+            };
             if align == 0 {
                 while index < blocks_end {
                     unsafe {
