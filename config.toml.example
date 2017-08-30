@@ -283,7 +283,10 @@
 #codegen-tests = true
 
 # Flag indicating whether git info will be retrieved from .git automatically.
-#ignore-git = false
+# Having the git information can cause a lot of rebuilds during development.
+# Note: If this attribute is not explicity set (e.g. if left commented out) it
+# will default to true if channel = "dev", but will default to false otherwise.
+#ignore-git = true
 
 # When creating source tarballs whether or not to create a source tarball.
 #dist-src = false
