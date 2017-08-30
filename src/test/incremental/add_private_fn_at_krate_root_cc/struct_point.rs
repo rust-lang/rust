@@ -15,15 +15,14 @@
 // revisions:rpass1 rpass2
 // compile-flags: -Z query-dep-graph
 // aux-build:point.rs
+// ignore-test FIXME(#42293) this regressed in #44142 but should get fixed with red/green
 
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 
-// FIXME(#42293) this regressed in #44142 but should get fixed with red/green
-// #![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
-// FIXME(#42293) this regressed in #44142 but should get fixed with red/green
-// #![rustc_partition_reused(module="struct_point-fn_calls_free_fn", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="rpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_free_fn", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_read_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_write_field", cfg="rpass2")]
 #![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="rpass2")]
