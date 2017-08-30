@@ -10,3 +10,4 @@ crate-type = ["dylib"]
 [dependencies]
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+rustc_errors = { path = "../librustc_errors" }
