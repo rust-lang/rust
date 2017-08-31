@@ -16,6 +16,7 @@
 use build::CFG;
 use rustc::middle::region;
 use rustc::mir::*;
+use rustc::ty;
 
 impl<'tcx> CFG<'tcx> {
     pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -44,14 +45,17 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
-    pub fn push_end_region(&mut self,
-                           block: BasicBlock,
-                           source_info: SourceInfo,
-                           region_scope: region::Scope) {
-        self.push(block, Statement {
-            source_info,
-            kind: StatementKind::EndRegion(region_scope),
-        });
+    pub fn push_end_region<'a, 'gcx:'a+'tcx>(&mut self,
+                                             tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+                                             block: BasicBlock,
+                                             source_info: SourceInfo,
+                                             region_scope: region::Scope) {
+        if tcx.sess.opts.debugging_opts.emit_end_regions {
+            self.push(block, Statement {
+                source_info,
+                kind: StatementKind::EndRegion(region_scope),
+            });
+        }
     }
 
     pub fn push_assign(&mut self,

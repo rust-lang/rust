@@ -39,9 +39,11 @@ struct DeleteTrivialEndRegions<'a> {
 
 impl MirPass for CleanEndRegions {
     fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
+        if !tcx.sess.opts.debugging_opts.emit_end_regions { return; }
+
         let mut gather = GatherBorrowedRegions {
             seen_regions: FxHashSet()
         };
