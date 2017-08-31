@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(drop_types_in_const)]
+
 struct Foo {
     a: u32
 }
@@ -24,7 +26,7 @@ impl Drop for Bar {
     fn drop(&mut self) {}
 }
 
-const F : Foo = Foo { a : 0 };
+const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
 
 fn main() {
 }
