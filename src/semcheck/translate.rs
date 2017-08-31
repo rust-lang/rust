@@ -202,13 +202,20 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                     err_pred
                                 }
                             },
-                            Projection(ExistentialProjection { item_def_id, substs, ty }) => {
+                            Projection(existential_projection) => {
+                                let projection_pred = Binder(existential_projection)
+                                    .with_self_ty(self.tcx, self.tcx.types.err);
+                                let item_def_id =
+                                    projection_pred.skip_binder().projection_ty.item_def_id;
+                                let substs = projection_pred.skip_binder().projection_ty.substs;
+
                                 if let Some((target_def_id, target_substs)) =
                                     self.translate_orig_substs(index_map, item_def_id, substs)
                                 {
                                     Projection(ExistentialProjection {
                                         item_def_id: target_def_id,
-                                        substs: target_substs,
+                                        // TODO: should be it's own method in rustc
+                                        substs: self.tcx.intern_substs(&target_substs[1..]),
                                         ty: ty,
                                     })
                                 } else {

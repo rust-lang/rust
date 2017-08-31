@@ -10,8 +10,6 @@ extern crate log;
 extern crate quickcheck;
 
 extern crate rustc;
-extern crate rustc_data_structures;
-extern crate rustc_errors;
 extern crate semver;
 extern crate syntax;
 extern crate syntax_pos;

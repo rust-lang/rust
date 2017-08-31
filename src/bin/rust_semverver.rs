@@ -6,8 +6,6 @@ extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_metadata;
-extern crate semver;
 extern crate semverver;
 extern crate syntax;
 
