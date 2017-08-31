@@ -121,4 +121,5 @@ test!(structs);
 test!(swap);
 test!(traits);
 test!(trait_impls);
+test!(trait_objects);
 test!(ty_alias);

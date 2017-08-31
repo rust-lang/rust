@@ -174,21 +174,31 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 TyDynamic(preds, region) => {
                     // hacky error catching mechanism
                     use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-                    let mut success = true;
+                    use std::cell::Cell;
+
+                    let success = Cell::new(true);
                     let err_pred = AutoTrait(DefId::local(CRATE_DEF_INDEX));
 
-                    let target_preds = self.tcx.mk_existential_predicates(preds.iter().map(|p| {
+                    let res: Vec<_> = preds.iter().map(|p| {
+                        debug!("pred: {:?}", p);
                         match *p.skip_binder() {
-                            Trait(ExistentialTraitRef { def_id: did, substs }) => {
+                            Trait(existential_trait_ref) => {
+                                let trait_ref = Binder(existential_trait_ref)
+                                    .with_self_ty(self.tcx, self.tcx.types.err);
+                                let did = trait_ref.skip_binder().def_id;
+                                let substs = trait_ref.skip_binder().substs;
+
                                 if let Some((target_def_id, target_substs)) =
                                     self.translate_orig_substs(index_map, did, substs)
                                 {
-                                    Trait(ExistentialTraitRef {
+                                    let target_trait_ref = TraitRef {
                                         def_id: target_def_id,
-                                        substs: target_substs
-                                    })
-                                } else {
-                                    success = false;
+                                        substs: target_substs,
+                                    };
+                                    Trait(ExistentialTraitRef::erase_self_ty(self.tcx,
+                                                                             target_trait_ref))
+                                } else  {
+                                    success.set(false);
                                     err_pred
                                 }
                             },
@@ -202,7 +212,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                         ty: ty,
                                     })
                                 } else {
-                                    success = false;
+                                    success.set(false);
                                     err_pred
                                 }
                             },
@@ -210,9 +220,10 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                 AutoTrait(self.translate_orig(did))
                             },
                         }
-                    }));
+                    }).collect();
 
-                    if success {
+                    if success.get() {
+                        let target_preds = self.tcx.mk_existential_predicates(res.iter());
                         self.tcx.mk_dynamic(Binder(target_preds), region)
                     } else {
                         ty
