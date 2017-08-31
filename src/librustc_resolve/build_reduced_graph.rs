@@ -490,7 +490,7 @@ impl<'a> Resolver<'a> {
                     self.define(module, child.ident, ns,
                                 (child.def, ty::Visibility::Public, DUMMY_SP, expansion));
 
-                    if self.session.cstore.associated_item_cloned(child.def.def_id())
+                    if self.session.cstore.associated_item_cloned_untracked(child.def.def_id())
                            .method_has_self_argument {
                         self.has_self.insert(child.def.def_id());
                     }

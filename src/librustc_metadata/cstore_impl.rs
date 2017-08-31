@@ -350,12 +350,12 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_generics(def.index)
     }
 
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
     {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_associated_item(def.index)

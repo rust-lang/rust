@@ -234,12 +234,6 @@ pub trait CrateStore {
     // access to the metadata loader
     fn metadata_loader(&self) -> &MetadataLoader;
 
-    // item info
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-
-    // trait/impl-item info
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
-
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
@@ -255,6 +249,8 @@ pub trait CrateStore {
     fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics;
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -308,11 +304,11 @@ impl CrateStore for DummyCrateStore {
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
 
     // trait/impl-item info
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
     // crate metadata

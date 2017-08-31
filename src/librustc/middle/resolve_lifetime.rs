@@ -978,7 +978,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             } else {
                 let cstore = &self.sess.cstore;
                 self.xcrate_object_lifetime_defaults.entry(def_id).or_insert_with(|| {
-                    cstore.item_generics_cloned(def_id).types.into_iter().map(|def| {
+                    cstore.item_generics_cloned_untracked(def_id).types.into_iter().map(|def| {
                         def.object_lifetime_default
                     }).collect()
                 })

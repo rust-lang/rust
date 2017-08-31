@@ -787,7 +787,7 @@ impl<'a> LoweringContext<'a> {
                         return n;
                     }
                     assert!(!def_id.is_local());
-                    let n = self.sess.cstore.item_generics_cloned(def_id).regions.len();
+                    let n = self.sess.cstore.item_generics_cloned_untracked(def_id).regions.len();
                     self.type_def_lifetime_params.insert(def_id, n);
                     n
                 });
