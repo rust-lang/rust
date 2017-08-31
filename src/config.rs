@@ -306,7 +306,7 @@ macro_rules! create_config {
                     let table = parsed
                         .as_table()
                         .ok_or(String::from("Parsed config was not table"))?;
-                    for (key, _) in table {
+                    for key in table.keys() {
                         match &**key {
                             $(
                                 stringify!($i) => (),

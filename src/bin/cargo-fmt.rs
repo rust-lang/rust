@@ -84,7 +84,7 @@ fn execute() -> i32 {
 
     let workspace_hitlist = WorkspaceHitlist::from_matches(&matches);
 
-    match format_crate(verbosity, workspace_hitlist) {
+    match format_crate(verbosity, &workspace_hitlist) {
         Err(e) => {
             print_usage(&opts, &e.to_string());
             failure
@@ -115,7 +115,7 @@ pub enum Verbosity {
 
 fn format_crate(
     verbosity: Verbosity,
-    workspace_hitlist: WorkspaceHitlist,
+    workspace_hitlist: &WorkspaceHitlist,
 ) -> Result<ExitStatus, std::io::Error> {
     let targets = get_targets(workspace_hitlist)?;
 
@@ -178,9 +178,9 @@ pub enum WorkspaceHitlist {
 }
 
 impl WorkspaceHitlist {
-    pub fn get_some<'a>(&'a self) -> Option<&'a [String]> {
-        if let &WorkspaceHitlist::Some(ref hitlist) = self {
-            Some(&hitlist)
+    pub fn get_some(&self) -> Option<&[String]> {
+        if let WorkspaceHitlist::Some(ref hitlist) = *self {
+            Some(hitlist)
         } else {
             None
         }
@@ -196,9 +196,9 @@ impl WorkspaceHitlist {
 }
 
 // Returns a vector of all compile targets of a crate
-fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
+fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
     let mut targets: Vec<Target> = vec![];
-    if workspace_hitlist == WorkspaceHitlist::None {
+    if *workspace_hitlist == WorkspaceHitlist::None {
         let output = Command::new("cargo").arg("read-manifest").output()?;
         if output.status.success() {
             // None of the unwraps should fail if output of `cargo read-manifest` is correct
@@ -229,7 +229,7 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
         let data = &String::from_utf8(output.stdout).unwrap();
         let json: Value = json::from_str(data).unwrap();
         let json_obj = json.as_object().unwrap();
-        let mut hitlist: HashSet<&String> = if workspace_hitlist != WorkspaceHitlist::All {
+        let mut hitlist: HashSet<&String> = if *workspace_hitlist != WorkspaceHitlist::All {
             HashSet::from_iter(workspace_hitlist.get_some().unwrap())
         } else {
             HashSet::new() // Unused
@@ -240,7 +240,7 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
             .as_array()
             .unwrap()
             .into_iter()
-            .filter(|member| if workspace_hitlist == WorkspaceHitlist::All {
+            .filter(|member| if *workspace_hitlist == WorkspaceHitlist::All {
                 true
             } else {
                 let member_obj = member.as_object().unwrap();
@@ -248,7 +248,7 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
                 hitlist.take(&member_name.to_string()).is_some()
             })
             .collect();
-        if hitlist.len() != 0 {
+        if hitlist.is_empty() {
             // Mimick cargo of only outputting one <package> spec.
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,

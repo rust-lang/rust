@@ -25,8 +25,8 @@ use visitor::FmtVisitor;
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
     match *a {
-        ast::ViewPath_::ViewPathSimple(_, ref p) => p,
-        ast::ViewPath_::ViewPathGlob(ref p) => p,
+        ast::ViewPath_::ViewPathSimple(_, ref p) |
+        ast::ViewPath_::ViewPathGlob(ref p) |
         ast::ViewPath_::ViewPathList(ref p, _) => p,
     }
 }
@@ -54,12 +54,10 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
         } else {
             Ordering::Less
         }
+    } else if b_name_str == "self" {
+        Ordering::Greater
     } else {
-        if b_name_str == "self" {
-            Ordering::Greater
-        } else {
-            a_name_str.cmp(&b_name_str)
-        }
+        a_name_str.cmp(b_name_str)
     };
     if name_ordering == Ordering::Equal {
         match a.node.rename {
@@ -137,7 +135,7 @@ fn rewrite_view_path_prefix(
         path.segments.len() > 1
     {
         let path = &ast::Path {
-            span: path.span.clone(),
+            span: path.span,
             segments: path.segments[..path.segments.len() - 1].to_owned(),
         };
         try_opt!(rewrite_path(

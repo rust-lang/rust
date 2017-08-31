@@ -95,7 +95,7 @@ fn normalize_ranges(ranges: &mut HashMap<String, Vec<Range>>) {
         {
             let mut iter = ranges.into_iter().peekable();
             while let Some(next) = iter.next() {
-                let mut next = next.clone();
+                let mut next = *next;
                 while let Some(&&mut peek) = iter.peek() {
                     if let Some(merged) = next.merge(peek) {
                         iter.next().unwrap();
@@ -166,7 +166,7 @@ impl FileLines {
     }
 }
 
-/// FileLines files iterator.
+/// `FileLines` files iterator.
 pub struct Files<'a>(
     Option<::std::collections::hash_map::Keys<'a, String, Vec<Range>>>,
 );
@@ -197,9 +197,9 @@ impl str::FromStr for FileLines {
     fn from_str(s: &str) -> Result<FileLines, String> {
         let v: Vec<JsonSpan> = json::from_str(s).map_err(|e| e.to_string())?;
         let mut m = HashMap::new();
-        for js in v.into_iter() {
+        for js in v {
             let (s, r) = JsonSpan::into_tuple(js)?;
-            m.entry(s).or_insert(vec![]).push(r);
+            m.entry(s).or_insert_with(|| vec![]).push(r);
         }
         Ok(FileLines::from_ranges(m))
     }

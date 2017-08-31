@@ -23,16 +23,14 @@ use utils::{first_line_width, last_line_width, wrap_str};
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
         false
+    } else if let Some(c) = comment.chars().nth(2) {
+        !c.is_alphanumeric() && !c.is_whitespace()
     } else {
-        if let Some(c) = comment.chars().nth(2) {
-            !c.is_alphanumeric() && !c.is_whitespace()
-        } else {
-            false
-        }
+        false
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum CommentStyle<'a> {
     DoubleSlash,
     TripleSlash,
@@ -194,17 +192,15 @@ pub fn combine_strs_with_missing_comments(
     };
     let second_sep = if missing_comment.is_empty() || next_str.is_empty() {
         String::new()
+    } else if missing_comment.starts_with("//") {
+        format!("\n{}", indent_str)
     } else {
-        if missing_comment.starts_with("//") {
-            format!("\n{}", indent_str)
+        one_line_width += missing_comment.len() + first_sep.len() + 1;
+        allow_one_line &= !missing_comment.starts_with("//") && !missing_comment.contains('\n');
+        if prefer_same_line && allow_one_line && one_line_width <= shape.width {
+            String::from(" ")
         } else {
-            one_line_width += missing_comment.len() + first_sep.len() + 1;
-            allow_one_line &= !missing_comment.starts_with("//") && !missing_comment.contains('\n');
-            if prefer_same_line && allow_one_line && one_line_width <= shape.width {
-                String::from(" ")
-            } else {
-                format!("\n{}", indent_str)
-            }
+            format!("\n{}", indent_str)
         }
     };
     Some(format!(
@@ -314,7 +310,7 @@ fn rewrite_comment_inner(
             line = line.trim();
             // Drop old closer.
             if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                line = &line[..(line.len() - 2)].trim_right();
+                line = line[..(line.len() - 2)].trim_right();
             }
 
             line
@@ -339,7 +335,7 @@ fn rewrite_comment_inner(
         }
 
         if config.wrap_comments() && line.len() > max_chars {
-            let rewrite = rewrite_string(line, &fmt).unwrap_or(line.to_owned());
+            let rewrite = rewrite_string(line, &fmt).unwrap_or_else(|| line.to_owned());
             result.push_str(&rewrite);
         } else {
             if line.is_empty() && result.ends_with(' ') {
@@ -412,7 +408,7 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
             // `*` in `/*`.
             let first_non_whitespace = l.find(|c| !char::is_whitespace(c));
             if let Some(fnw) = first_non_whitespace {
-                if l.as_bytes()[fnw] == '*' as u8 && fnw > 0 {
+                if l.as_bytes()[fnw] == b'*' && fnw > 0 {
                     &l[fnw - 1..]
                 } else {
                     &l[fnw..]
@@ -432,7 +428,7 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
         line.starts_with("/** ")
     {
         &line[4..]
-    } else if let &CommentStyle::Custom(opener) = style {
+    } else if let CommentStyle::Custom(opener) = *style {
         if line.starts_with(opener) {
             &line[opener.len()..]
         } else {
@@ -646,7 +642,7 @@ where
                 _ => CharClassesStatus::Normal,
             },
             CharClassesStatus::BlockComment(deepness) => {
-                assert!(deepness != 0);
+                assert_ne!(deepness, 0);
                 self.status = match self.base.peek() {
                     Some(next) if next.get_char() == '/' && chr == '*' => {
                         CharClassesStatus::BlockCommentClosing(deepness - 1)
@@ -901,10 +897,8 @@ impl<'a> Iterator for CommentReducer<'a> {
                 if c == '*' {
                     c = try_opt!(self.iter.next());
                 }
-            } else {
-                if c == '\n' {
-                    self.at_start_line = true;
-                }
+            } else if c == '\n' {
+                self.at_start_line = true;
             }
             if !c.is_whitespace() {
                 return Some(c);

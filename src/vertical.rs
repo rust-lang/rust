@@ -284,13 +284,7 @@ fn group_aligned_items<T: AlignedItem>(
             .skip(1)
             .collect::<Vec<_>>()
             .join("\n");
-        let spacings = if snippet
-            .lines()
-            .rev()
-            .skip(1)
-            .find(|l| l.trim().is_empty())
-            .is_some()
-        {
+        let spacings = if snippet.lines().rev().skip(1).any(|l| l.trim().is_empty()) {
             "\n"
         } else {
             ""

@@ -139,7 +139,7 @@ fn rewrite_struct_pat(
         path_shape,
     ));
 
-    if fields.len() == 0 && !elipses {
+    if fields.is_empty() && !elipses {
         return Some(format!("{} {{}}", path_str));
     }
 
@@ -223,7 +223,7 @@ pub enum TuplePatField<'a> {
 impl<'a> Rewrite for TuplePatField<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match *self {
-            TuplePatField::Pat(ref p) => p.rewrite(context, shape),
+            TuplePatField::Pat(p) => p.rewrite(context, shape),
             TuplePatField::Dotdot(_) => Some("..".to_string()),
         }
     }
@@ -232,15 +232,15 @@ impl<'a> Rewrite for TuplePatField<'a> {
 impl<'a> Spanned for TuplePatField<'a> {
     fn span(&self) -> Span {
         match *self {
-            TuplePatField::Pat(ref p) => p.span(),
+            TuplePatField::Pat(p) => p.span(),
             TuplePatField::Dotdot(span) => span,
         }
     }
 }
 
 pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len: usize) -> bool {
-    match pat {
-        &TuplePatField::Pat(ref pat) => match pat.node {
+    match *pat {
+        TuplePatField::Pat(pat) => match pat.node {
             ast::PatKind::Path(..) | ast::PatKind::Tuple(..) | ast::PatKind::Struct(..) => {
                 context.use_block_indent() && len == 1
             }
@@ -250,7 +250,7 @@ pub fn can_be_overflowed_pat(context: &RewriteContext, pat: &TuplePatField, len:
             ast::PatKind::Lit(ref expr) => can_be_overflowed_expr(context, expr, len),
             _ => false,
         },
-        &TuplePatField::Dotdot(..) => false,
+        TuplePatField::Dotdot(..) => false,
     }
 }
 
@@ -288,7 +288,7 @@ fn rewrite_tuple_pat(
     }
 
     if pat_vec.is_empty() {
-        return Some(format!("{}()", path_str.unwrap_or(String::new())));
+        return Some(format!("{}()", path_str.unwrap_or_default()));
     }
 
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
@@ -313,12 +313,13 @@ fn rewrite_tuple_pat(
     if let Some(&TuplePatField::Dotdot(..)) = pat_vec.last() {
         context.inside_macro = true;
     }
-    let path_str = path_str.unwrap_or(String::new());
+    let path_str = path_str.unwrap_or_default();
     let mut pat_ref_vec = Vec::with_capacity(pat_vec.len());
     for pat in pat_vec {
         pat_ref_vec.push(pat);
     }
-    return rewrite_call_inner(
+
+    rewrite_call_inner(
         &context,
         &path_str,
         &pat_ref_vec[..],
@@ -326,7 +327,7 @@ fn rewrite_tuple_pat(
         shape,
         shape.width,
         add_comma,
-    ).ok();
+    ).ok()
 }
 
 fn count_wildcard_suffix_len(

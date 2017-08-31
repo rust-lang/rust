@@ -224,7 +224,7 @@ pub fn rewrite_macro(
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as an usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
-                if FORCED_BRACKET_MACROS.contains(&&macro_name.as_str()) {
+                if FORCED_BRACKET_MACROS.contains(&macro_name.as_str()) {
                     context.inside_macro = false;
                     trailing_comma = false;
                 }
@@ -355,8 +355,7 @@ fn indent_macro_snippet(
 
 fn get_prefix_space_width(context: &RewriteContext, s: &str) -> usize {
     let mut width = 0;
-    let mut iter = s.chars();
-    while let Some(c) = iter.next() {
+    for c in s.chars() {
         match c {
             ' ' => width += 1,
             '\t' => width += context.config.tab_spaces(),

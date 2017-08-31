@@ -260,7 +260,7 @@ impl<'a> FmtVisitor<'a> {
                     abi,
                     vis,
                     mk_sp(s.lo(), b.span.lo()),
-                    &b,
+                    b,
                 )
             }
             visit::FnKind::Method(ident, sig, vis, b) => {
@@ -276,7 +276,7 @@ impl<'a> FmtVisitor<'a> {
                     sig.abi,
                     vis.unwrap_or(&ast::Visibility::Inherited),
                     mk_sp(s.lo(), b.span.lo()),
-                    &b,
+                    b,
                 )
             }
             visit::FnKind::Closure(_) => unreachable!(),
@@ -503,8 +503,8 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::MacroDef(..) => {
                 // FIXME(#1539): macros 2.0
-                let snippet = Some(self.snippet(item.span));
-                self.push_rewrite(item.span, snippet);
+                let mac_snippet = Some(self.snippet(item.span));
+                self.push_rewrite(item.span, mac_snippet);
             }
         }
     }
@@ -719,7 +719,7 @@ impl<'a> FmtVisitor<'a> {
             // next item for output.
             if self.config.reorder_imports() && is_use_item(&*items_left[0]) {
                 let used_items_len = self.reorder_items(
-                    &items_left,
+                    items_left,
                     &is_use_item,
                     self.config.reorder_imports_in_group(),
                 );
@@ -727,7 +727,7 @@ impl<'a> FmtVisitor<'a> {
                 items_left = rest;
             } else if self.config.reorder_extern_crates() && is_extern_crate(&*items_left[0]) {
                 let used_items_len = self.reorder_items(
-                    &items_left,
+                    items_left,
                     &is_extern_crate,
                     self.config.reorder_extern_crates_in_group(),
                 );
@@ -863,10 +863,7 @@ impl Rewrite for ast::MetaItem {
                             .unwrap_or(0),
                         ..shape
                     };
-                    format!(
-                        "{}",
-                        try_opt!(rewrite_comment(&value, false, doc_shape, context.config))
-                    )
+                    try_opt!(rewrite_comment(&value, false, doc_shape, context.config))
                 } else {
                     format!("{} = {}", name, value)
                 }
@@ -923,7 +920,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 {
                     // Look at before and after comment and see if there are any empty lines.
                     let comment_begin = comment.chars().position(|c| c == '/');
-                    let len = comment_begin.unwrap_or(comment.len());
+                    let len = comment_begin.unwrap_or_else(|| comment.len());
                     let mlb = comment.chars().take(len).filter(|c| *c == '\n').count() > 1;
                     let mla = if comment_begin.is_none() {
                         mlb

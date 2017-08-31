@@ -447,7 +447,7 @@ impl Rewrite for ast::WherePredicate {
                     );
                     let bounds_str = join_bounds(context, ty_shape, &bounds);
 
-                    if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
+                    if context.config.spaces_within_angle_brackets() && !lifetime_str.is_empty() {
                         format!(
                             "for< {} > {}{}{}",
                             lifetime_str,
@@ -635,7 +635,7 @@ impl Rewrite for ast::PolyTraitRef {
             ));
 
             Some(
-                if context.config.spaces_within_angle_brackets() && lifetime_str.len() > 0 {
+                if context.config.spaces_within_angle_brackets() && !lifetime_str.is_empty() {
                     format!("for< {} > {}", lifetime_str, path_str)
                 } else {
                     format!("for<{}> {}", lifetime_str, path_str)
@@ -812,7 +812,7 @@ fn rewrite_bare_fn(
     Some(result)
 }
 
-pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &Vec<String>) -> String {
+pub fn join_bounds(context: &RewriteContext, shape: Shape, type_strs: &[String]) -> String {
     // Try to join types in a single line
     let joiner = match context.config.type_punctuation_density() {
         TypeDensity::Compressed => "+",
