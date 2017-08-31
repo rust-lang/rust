@@ -42,7 +42,6 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
-use hir;
 
 pub use self::NativeLibraryKind::*;
 
@@ -258,10 +257,6 @@ pub trait CrateStore {
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
 
-    // misc. metadata
-    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> &'tcx hir::Body;
-
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
     fn crates(&self) -> Vec<CrateNum>;
@@ -349,12 +344,6 @@ impl CrateStore for DummyCrateStore {
         bug!("item_children")
     }
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
-
-    // misc. metadata
-    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> &'tcx hir::Body {
-        bug!("item_body")
-    }
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.

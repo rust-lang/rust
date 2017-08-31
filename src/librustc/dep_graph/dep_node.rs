@@ -563,6 +563,7 @@ define_dep_nodes!( <'tcx>
     [] GetLangItems,
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),
+    [] ItemBody(DefId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

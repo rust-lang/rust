@@ -1315,6 +1315,7 @@ define_maps! { <'tcx>
     [] get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
     [] defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
     [] missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
+    [] item_body: ItemBody(DefId) -> &'tcx hir::Body,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

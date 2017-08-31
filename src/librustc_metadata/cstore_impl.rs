@@ -214,6 +214,14 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     defined_lang_items => { Rc::new(cdata.get_lang_items(&tcx.dep_graph)) }
     missing_lang_items => { Rc::new(cdata.get_missing_lang_items(&tcx.dep_graph)) }
+
+    item_body => {
+        if let Some(cached) = tcx.hir.get_inlined_body_untracked(def_id) {
+            return cached;
+        }
+        debug!("item_body({:?}): inlining item", def_id);
+        cdata.item_body(tcx, def_id.index)
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -395,21 +403,6 @@ impl CrateStore for cstore::CStore {
             vis: ast::Visibility::Inherited,
             tokens: None,
         })
-    }
-
-    fn item_body<'a, 'tcx>(&self,
-                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           def_id: DefId)
-                           -> &'tcx hir::Body {
-        self.read_dep_node(def_id);
-
-        if let Some(cached) = tcx.hir.get_inlined_body_untracked(def_id) {
-            return cached;
-        }
-
-        debug!("item_body({:?}): inlining item", def_id);
-
-        self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
     }
 
     fn crates(&self) -> Vec<CrateNum>
