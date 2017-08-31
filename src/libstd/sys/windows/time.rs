@@ -16,6 +16,7 @@ use sys::c;
 use sys::cvt;
 use sys_common::mul_div_u64;
 use time::Duration;
+use convert::TryInto;
 
 const NANOS_PER_SEC: u64 = 1_000_000_000;
 const INTERVALS_PER_SEC: u64 = NANOS_PER_SEC / 100;
@@ -173,9 +174,11 @@ impl From<c::FILETIME> for SystemTime {
 }
 
 fn dur2intervals(d: &Duration) -> i64 {
-    d.as_secs().checked_mul(INTERVALS_PER_SEC).and_then(|i| {
-        i.checked_add(d.subsec_nanos() as u64 / 100)
-    }).expect("overflow when converting duration to intervals") as i64
+    d.as_secs()
+        .checked_mul(INTERVALS_PER_SEC)
+        .and_then(|i| i.checked_add(d.subsec_nanos() as u64 / 100))
+        .and_then(|i| i.try_into().ok())
+        .expect("overflow when converting duration to intervals")
 }
 
 fn intervals2dur(intervals: u64) -> Duration {
