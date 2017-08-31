@@ -3025,7 +3025,10 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_span;
         let body = match decl.output {
-            FunctionRetTy::Default(_) => self.parse_expr()?,
+            FunctionRetTy::Default(_) => {
+                let restrictions = self.restrictions - RESTRICTION_STMT_EXPR;
+                self.parse_expr_res(restrictions, None)?
+            },
             _ => {
                 // If an explicit return type is given, require a
                 // block to appear (RFC 968).
