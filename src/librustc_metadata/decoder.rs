@@ -759,10 +759,10 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn item_body(&self,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     id: DefIndex)
-                     -> &'tcx hir::Body {
+    pub fn extern_const_body(&self,
+                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             id: DefIndex)
+                             -> &'tcx hir::Body {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);

@@ -1357,7 +1357,7 @@ define_maps! { <'tcx>
     [] get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
     [] defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
     [] missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
-    [] item_body: ItemBody(DefId) -> &'tcx hir::Body,
+    [] extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
     [] visible_parent_map: visible_parent_map_node(CrateNum)
         -> Rc<DefIdMap<DefId>>,
     [] missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,

@@ -474,7 +474,7 @@ impl hir::print::PpAnn for InlinedConst {
 }
 
 fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
-    let body = cx.tcx.item_body(did);
+    let body = cx.tcx.extern_const_body(did);
     let inlined = InlinedConst {
         nested_bodies: cx.tcx.item_body_nested_bodies(did)
     };

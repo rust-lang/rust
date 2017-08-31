@@ -563,7 +563,7 @@ define_dep_nodes!( <'tcx>
     [] GetLangItems,
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),
-    [] ItemBody(DefId),
+    [] ExternConstBody(DefId),
     [] VisibleParentMap,
     [] IsDirectExternCrate(CrateNum),
     [] MissingExternCrateItem(CrateNum),
