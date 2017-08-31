@@ -12,8 +12,11 @@
 // language and lib features.
 
 #![deny(stable_features)]
+
 #![feature(test_accepted_feature)] //~ ERROR this feature has been stable since 1.0.0
-#![feature(rust1)] //~ ERROR this feature has been stable since 1.0.0
+
+// FIXME(#44232) we should error that this isn't used.
+#![feature(rust1)]
 
 fn main() {
     let _foo: Vec<()> = Vec::new();

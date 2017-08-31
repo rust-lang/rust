@@ -19,6 +19,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
                             LoadedMacro, EncodedMetadata,
                             EncodedMetadataHashes, NativeLibraryKind};
+use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
@@ -142,8 +143,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_default_impl => { cdata.is_default_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    stability => { cdata.get_stability(def_id.index) }
-    deprecation => { cdata.get_deprecation(def_id.index) }
+    lookup_stability => {
+        cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
+    }
+    lookup_deprecation_entry => {
+        cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
+    }
     item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
     // FIXME(#38501) We've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
@@ -242,6 +247,9 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
+    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // therefore no actual inputs, they're just reading tables calculated in
+    // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_const_fn,
         is_dllimport_foreign_item: |tcx, id| {

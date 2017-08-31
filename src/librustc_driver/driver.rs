@@ -934,8 +934,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
               "static item recursion checking",
               || static_recursion::check_crate(sess, &hir_map))?;
 
-    let index = stability::Index::new(&sess);
-
     let mut local_providers = ty::maps::Providers::default();
     borrowck::provide(&mut local_providers);
     mir::provide(&mut local_providers);
@@ -1022,7 +1020,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
-                             index,
                              name,
                              |tcx| {
         let incremental_hashes_map =
@@ -1033,10 +1030,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
-
-        time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx)
-        });
 
         time(time_passes,
              "stability checking",

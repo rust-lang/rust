@@ -855,9 +855,6 @@ pub struct GlobalCtxt<'tcx> {
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
 
-    /// Maps any item's def-id to its stability index.
-    pub stability: RefCell<stability::Index<'tcx>>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -989,7 +986,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
-                                  stability: stability::Index<'tcx>,
                                   crate_name: &str,
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
@@ -1086,7 +1082,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
             used_mut_nodes: RefCell::new(NodeSet()),
-            stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
@@ -1116,6 +1111,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // will change rarely.
         self.dep_graph.with_ignore(|| {
             self.get_lang_items(LOCAL_CRATE)
+        })
+    }
+
+    pub fn stability(self) -> Rc<stability::Index<'tcx>> {
+        self.dep_graph.with_ignore(|| {
+            self.stability_index(LOCAL_CRATE)
         })
     }
 }
@@ -2012,6 +2013,9 @@ struct NamedRegionMap {
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
+    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // therefore no actual inputs, they're just reading tables calculated in
+    // resolve! Does this work? Unsure! That's what the issue is about
     providers.in_scope_traits = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
     providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
     providers.named_region = |tcx, id| tcx.gcx.named_region_map.defs.get(&id).cloned();
@@ -2034,5 +2038,20 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.maybe_unused_extern_crates = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Rc::new(tcx.maybe_unused_extern_crates.clone())
+    };
+
+    providers.stability_index = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(stability::Index::new(tcx))
+    };
+    providers.lookup_stability = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        tcx.stability().local_stability(id)
+    };
+    providers.lookup_deprecation_entry = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        tcx.stability().local_deprecation_entry(id)
     };
 }

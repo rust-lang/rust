@@ -22,6 +22,7 @@ use middle::privacy::AccessLevels;
 use middle::region;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
+use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
@@ -434,13 +435,13 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
 }
 
 
-impl<'tcx> QueryDescription for queries::stability<'tcx> {
+impl<'tcx> QueryDescription for queries::lookup_stability<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("stability")
     }
 }
 
-impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
+impl<'tcx> QueryDescription for queries::lookup_deprecation_entry<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("deprecation")
     }
@@ -745,6 +746,12 @@ impl<'tcx> QueryDescription for queries::maybe_unused_trait_import<'tcx> {
 impl<'tcx> QueryDescription for queries::maybe_unused_extern_crates<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up all possibly unused extern crates")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::stability_index<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the stability index for the local crate")
     }
 }
 
@@ -1272,8 +1279,8 @@ define_maps! { <'tcx>
 
     [] fn describe_def: DescribeDef(DefId) -> Option<Def>,
     [] fn def_span: DefSpan(DefId) -> Span,
-    [] fn stability: Stability(DefId) -> Option<attr::Stability>,
-    [] fn deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
+    [] fn lookup_stability: LookupStability(DefId) -> Option<&'tcx attr::Stability>,
+    [] fn lookup_deprecation_entry: LookupDeprecationEntry(DefId) -> Option<DeprecationEntry>,
     [] fn item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
     [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
@@ -1337,37 +1344,39 @@ define_maps! { <'tcx>
     [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
         -> Rc<Vec<DefId>>,
 
-    [] is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
-    [] is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
-    [] native_library_kind: NativeLibraryKind(DefId)
+    [] fn is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
+    [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
+    [] fn native_library_kind: NativeLibraryKind(DefId)
         -> Option<NativeLibraryKind>,
-    [] link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
+    [] fn link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
 
-    [] named_region: NamedRegion(HirId) -> Option<Region>,
-    [] is_late_bound: IsLateBound(HirId) -> bool,
-    [] object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
+    [] fn named_region: NamedRegion(HirId) -> Option<Region>,
+    [] fn is_late_bound: IsLateBound(HirId) -> bool,
+    [] fn object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
         -> Option<Rc<Vec<ObjectLifetimeDefault>>>,
 
-    [] visibility: Visibility(DefId) -> ty::Visibility,
-    [] dep_kind: DepKind(CrateNum) -> DepKind,
-    [] crate_name: CrateName(CrateNum) -> Symbol,
-    [] item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
-    [] extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
+    [] fn visibility: Visibility(DefId) -> ty::Visibility,
+    [] fn dep_kind: DepKind(CrateNum) -> DepKind,
+    [] fn crate_name: CrateName(CrateNum) -> Symbol,
+    [] fn item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
+    [] fn extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
 
-    [] get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
-    [] defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
-    [] missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
-    [] extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
-    [] visible_parent_map: visible_parent_map_node(CrateNum)
+    [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
+    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
+    [] fn missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
+    [] fn extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
+    [] fn visible_parent_map: visible_parent_map_node(CrateNum)
         -> Rc<DefIdMap<DefId>>,
-    [] missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
-    [] used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
-    [] postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
+    [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
+    [] fn used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
+    [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
-    [] freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
-    [] maybe_unused_trait_import: MaybeUnusedTraitImport(HirId) -> bool,
-    [] maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
+    [] fn freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
+    [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(HirId) -> bool,
+    [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
         -> Rc<Vec<(HirId, Span)>>,
+
+    [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1472,4 +1481,8 @@ fn postorder_cnums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn maybe_unused_extern_crates_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::MaybeUnusedExternCrates
+}
+
+fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::StabilityIndex
 }

@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unused_features)]
+#![warn(unused_features)]
 
-#![feature(this_is_not_a_feature)] //~ ERROR: unused or unknown feature
+// FIXME(#44232) we should warn that this isn't used.
+#![feature(this_is_not_a_feature)]
 
-fn main() {}
+#![feature(rustc_attrs)]
+
+#[rustc_error]
+fn main() {} //~ ERROR: compilation successful

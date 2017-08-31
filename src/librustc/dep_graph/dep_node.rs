@@ -511,8 +511,8 @@ define_dep_nodes!( <'tcx>
     [] ParamEnv(DefId),
     [] DescribeDef(DefId),
     [] DefSpan(DefId),
-    [] Stability(DefId),
-    [] Deprecation(DefId),
+    [] LookupStability(DefId),
+    [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
     [] ImplParent(DefId),
@@ -573,6 +573,7 @@ define_dep_nodes!( <'tcx>
     [] Freevars(HirId),
     [] MaybeUnusedTraitImport(HirId),
     [] MaybeUnusedExternCrates,
+    [] StabilityIndex,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
