@@ -16,7 +16,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
-use rustc::middle::region::{RegionMaps, CodeExtent};
+use rustc::middle::region;
 use rustc::ty::Ty;
 use std::rc::Rc;
 use super::FnCtxt;
@@ -25,15 +25,15 @@ use util::nodemap::FxHashMap;
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
-    region_maps: Rc<RegionMaps>,
+    region_scope_tree: Rc<region::ScopeTree>,
 }
 
 impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
-    fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
+    fn record(&mut self, ty: Ty<'tcx>, scope: Option<region::Scope>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
-            self.region_maps.yield_in_scope(s)
+            self.region_scope_tree.yield_in_scope(s)
         });
 
         if let Some(span) = live_across_yield {
@@ -59,7 +59,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxHashMap(),
-        region_maps: fcx.tcx.region_maps(def_id),
+        region_scope_tree: fcx.tcx.region_scope_tree(def_id),
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -93,7 +93,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         if let PatKind::Binding(..) = pat.node {
-            let scope = self.region_maps.var_scope(pat.hir_id.local_id);
+            let scope = self.region_scope_tree.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.tables.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None);
         }
@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        let scope = self.region_maps.temporary_scope(expr.hir_id.local_id);
+        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
         let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
         self.record(ty, scope, Some(expr));
 

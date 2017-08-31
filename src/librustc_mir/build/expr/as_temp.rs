@@ -13,7 +13,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -21,7 +21,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(&mut self,
                       block: BasicBlock,
-                      temp_lifetime: Option<CodeExtent>,
+                      temp_lifetime: Option<region::Scope>,
                       expr: M)
                       -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
@@ -32,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_temp(&mut self,
                     mut block: BasicBlock,
-                    temp_lifetime: Option<CodeExtent>,
+                    temp_lifetime: Option<region::Scope>,
                     expr: Expr<'tcx>)
                     -> BlockAnd<Lvalue<'tcx>> {
         debug!("expr_as_temp(block={:?}, temp_lifetime={:?}, expr={:?})",
@@ -41,8 +41,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
-        if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope((extent, source_info), block, |this| {
+        if let ExprKind::Scope { region_scope, value } = expr.kind {
+            return this.in_scope((region_scope, source_info), block, |this| {
                 this.as_temp(block, temp_lifetime, value)
             });
         }

@@ -152,7 +152,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         {
             let body_owner_def_id = self.tcx.hir.body_owner_def_id(body.id());
-            let region_maps = &self.tcx.region_maps(body_owner_def_id);
+            let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
             let mut delegate = InferBorrowKind {
                 fcx: self,
                 adjust_closure_kinds: FxHashMap(),
@@ -161,7 +161,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             euv::ExprUseVisitor::with_infer(&mut delegate,
                                             &self.infcx,
                                             self.param_env,
-                                            region_maps,
+                                            region_scope_tree,
                                             &self.tables.borrow())
                 .consume_body(body);
 

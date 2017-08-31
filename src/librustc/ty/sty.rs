@@ -213,8 +213,8 @@ pub enum TypeVariants<'tcx> {
 /// as extra type parameters? The reason for this design is that the
 /// upvar types can reference lifetimes that are internal to the
 /// creating function. In my example above, for example, the lifetime
-/// `'b` represents the extent of the closure itself; this is some
-/// subset of `foo`, probably just the extent of the call to the to
+/// `'b` represents the scope of the closure itself; this is some
+/// subset of `foo`, probably just the scope of the call to the to
 /// `do()`. If we just had the lifetime/type parameters from the
 /// enclosing function, we couldn't name this lifetime `'b`. Note that
 /// there can also be lifetimes in the types of the upvars themselves,
@@ -845,10 +845,10 @@ pub enum RegionKind {
     /// region parameters.
     ReFree(FreeRegion),
 
-    /// A concrete region naming some statically determined extent
+    /// A concrete region naming some statically determined scope
     /// (e.g. an expression or sequence of statements) within the
     /// current function.
-    ReScope(region::CodeExtent),
+    ReScope(region::Scope),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,

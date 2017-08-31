@@ -18,7 +18,7 @@ use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization::{cmt};
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
@@ -51,7 +51,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
         MatchVisitor {
             tcx: self.tcx,
             tables: self.tcx.body_tables(b),
-            region_maps: &self.tcx.region_maps(def_id),
+            region_scope_tree: &self.tcx.region_scope_tree(def_id),
             param_env: self.tcx.param_env(def_id),
             identity_substs: Substs::identity_for_item(self.tcx, def_id),
         }.visit_body(self.tcx.hir.body(b));
@@ -72,7 +72,7 @@ struct MatchVisitor<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: &'tcx Substs<'tcx>,
-    region_maps: &'a RegionMaps,
+    region_scope_tree: &'a region::ScopeTree,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
@@ -526,7 +526,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     let mut checker = MutationChecker {
         cx,
     };
-    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_maps, cx.tables)
+    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables)
         .walk_expr(guard);
 }
 

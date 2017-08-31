@@ -603,7 +603,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
         //
         // (Or if you prefer, all the *other* iterations over loans
         // only consider loans that are in scope of some given
-        // CodeExtent)
+        // region::Scope)
         //
         // The (currently skeletal) code here does not encode such a
         // distinction, which means it is almost certainly over

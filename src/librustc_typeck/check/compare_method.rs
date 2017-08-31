@@ -11,7 +11,7 @@
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -340,10 +340,12 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // region obligations that get overlooked.  The right
             // thing to do is the code below. But we keep this old
             // pass around temporarily.
-            let region_maps = RegionMaps::default();
+            let region_scope_tree = region::ScopeTree::default();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
-            infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
+            infcx.resolve_regions_and_report_errors(impl_m.def_id,
+                                                    &region_scope_tree,
+                                                    &free_regions);
         } else {
             let fcx = FnCtxt::new(&inh, param_env, impl_m_node_id);
             fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);

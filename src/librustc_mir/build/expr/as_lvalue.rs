@@ -39,8 +39,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         match expr.kind {
-            ExprKind::Scope { extent, value } => {
-                this.in_scope((extent, source_info), block, |this| this.as_lvalue(block, value))
+            ExprKind::Scope { region_scope, value } => {
+                this.in_scope((region_scope, source_info), block, |this| {
+                    this.as_lvalue(block, value)
+                })
             }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));
@@ -56,7 +58,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
                 let slice = unpack!(block = this.as_lvalue(block, lhs));
-                // extent=None so lvalue indexes live forever. They are scalars so they
+                // region_scope=None so lvalue indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
                 let idx = unpack!(block = this.as_operand(block, None, index));

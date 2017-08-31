@@ -87,7 +87,7 @@ use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use middle::region::{CodeExtent, RegionMaps};
+use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
@@ -179,7 +179,7 @@ pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
-    pub region_maps: Rc<RegionMaps>,
+    pub region_scope_tree: Rc<region::ScopeTree>,
 
     free_region_map: FreeRegionMap<'tcx>,
 
@@ -187,7 +187,7 @@ pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     body_id: ast::NodeId,
 
     // call_site scope of innermost fn
-    call_site_scope: Option<CodeExtent>,
+    call_site_scope: Option<region::Scope>,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
@@ -230,10 +230,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                RepeatingScope(initial_repeating_scope): RepeatingScope,
                initial_body_id: ast::NodeId,
                Subject(subject): Subject) -> RegionCtxt<'a, 'gcx, 'tcx> {
-        let region_maps = fcx.tcx.region_maps(subject);
+        let region_scope_tree = fcx.tcx.region_scope_tree(subject);
         RegionCtxt {
             fcx,
-            region_maps,
+            region_scope_tree,
             repeating_scope: initial_repeating_scope,
             body_id: initial_body_id,
             call_site_scope: None,
@@ -243,8 +243,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn set_call_site_scope(&mut self, call_site_scope: Option<CodeExtent>)
-                           -> Option<CodeExtent> {
+    fn set_call_site_scope(&mut self, call_site_scope: Option<region::Scope>)
+                           -> Option<region::Scope> {
         mem::replace(&mut self.call_site_scope, call_site_scope)
     }
 
@@ -305,7 +305,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let body_id = body.id();
 
-        let call_site = CodeExtent::CallSiteScope(body.value.hir_id.local_id);
+        let call_site = region::Scope::CallSite(body.value.hir_id.local_id);
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
         let fn_sig = {
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let old_body_id = self.set_body_id(body_id.node_id);
         self.relate_free_regions(&fn_sig_tys[..], body_id.node_id, span);
-        self.link_fn_args(CodeExtent::Misc(body.value.hir_id.local_id), &body.arguments);
+        self.link_fn_args(region::Scope::Node(body.value.hir_id.local_id), &body.arguments);
         self.visit_body(body);
         self.visit_region_obligations(body_id.node_id);
 
@@ -580,7 +580,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn resolve_regions_and_report_errors(&self) {
         self.fcx.resolve_regions_and_report_errors(self.subject_def_id,
-                                                   &self.region_maps,
+                                                   &self.region_scope_tree,
                                                    &self.free_region_map);
     }
 
@@ -611,7 +611,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // variable's type enclose at least the variable's scope.
 
             let hir_id = self.tcx.hir.node_to_hir_id(id);
-            let var_scope = self.region_maps.var_scope(hir_id.local_id);
+            let var_scope = self.region_scope_tree.var_scope(hir_id.local_id);
             let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 
             let origin = infer::BindingTypeIsNotValidAtDecl(span);
@@ -668,7 +668,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         // scope of that expression. This also guarantees basic WF.
         let expr_ty = self.resolve_node_type(expr.hir_id);
         // the region corresponding to this expression
-        let expr_region = self.tcx.mk_region(ty::ReScope(CodeExtent::Misc(expr.hir_id.local_id)));
+        let expr_region = self.tcx.mk_region(ty::ReScope(
+            region::Scope::Node(expr.hir_id.local_id)));
         self.type_must_outlive(infer::ExprTypeIsNotInScope(expr_ty, expr.span),
                                expr_ty, expr_region);
 
@@ -950,7 +951,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // call occurs.
         //
         // FIXME(#6268) to support nested method calls, should be callee_id
-        let callee_scope = CodeExtent::Misc(call_expr.hir_id.local_id);
+        let callee_scope = region::Scope::Node(call_expr.hir_id.local_id);
         let callee_region = self.tcx.mk_region(ty::ReScope(callee_scope));
 
         debug!("callee_region={:?}", callee_region);
@@ -979,7 +980,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         where F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'gcx, 'tcx>) -> R
     {
         f(mc::MemCategorizationContext::with_infer(&self.infcx,
-                                                   &self.region_maps,
+                                                   &self.region_scope_tree,
                                                    &self.tables.borrow()))
     }
 
@@ -1002,7 +1003,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // expression.
         self.check_safety_of_rvalue_destructor_if_necessary(cmt.clone(), expr.span);
 
-        let expr_region = self.tcx.mk_region(ty::ReScope(CodeExtent::Misc(expr.hir_id.local_id)));
+        let expr_region = self.tcx.mk_region(ty::ReScope(
+            region::Scope::Node(expr.hir_id.local_id)));
         for adjustment in adjustments {
             debug!("constrain_adjustments: adjustment={:?}, cmt={:?}",
                    adjustment, cmt);
@@ -1095,7 +1097,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("constrain_index(index_expr=?, indexed_ty={}",
                self.ty_to_string(indexed_ty));
 
-        let r_index_expr = ty::ReScope(CodeExtent::Misc(index_expr.hir_id.local_id));
+        let r_index_expr = ty::ReScope(region::Scope::Node(index_expr.hir_id.local_id));
         if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
             match mt.ty.sty {
                 ty::TySlice(_) | ty::TyStr => {
@@ -1176,7 +1178,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
+    fn link_fn_args(&self, body_scope: region::Scope, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
         for arg in args {
             let arg_ty = self.node_ty(arg.hir_id);
@@ -1232,7 +1234,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
-                let r = self.tcx.mk_region(ty::ReScope(CodeExtent::Misc(expr.hir_id.local_id)));
+                let r = self.tcx.mk_region(ty::ReScope(region::Scope::Node(expr.hir_id.local_id)));
                 self.link_region(expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
             }
         }

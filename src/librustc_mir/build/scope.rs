@@ -12,7 +12,7 @@
 Managing the scope stack. The scopes are tied to lexical scopes, so as
 we descend the HAIR, we push a scope on the stack, translate ite
 contents, and then pop it off. Every scope is named by a
-`CodeExtent`.
+`region::Scope`.
 
 ### SEME Regions
 
@@ -23,7 +23,7 @@ via a `break` or `return` or just by fallthrough, that marks an exit
 from the scope. Each lexical scope thus corresponds to a single-entry,
 multiple-exit (SEME) region in the control-flow graph.
 
-For now, we keep a mapping from each `CodeExtent` to its
+For now, we keep a mapping from each `region::Scope` to its
 corresponding SEME region for later reference (see caveat in next
 paragraph). This is because region scopes are tied to
 them. Eventually, when we shift to non-lexical lifetimes, there should
@@ -88,7 +88,7 @@ should go to.
 */
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::ty::Ty;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
@@ -101,11 +101,11 @@ pub struct Scope<'tcx> {
     /// The visibility scope this scope was created in.
     visibility_scope: VisibilityScope,
 
-    /// the extent of this scope within source code.
-    extent: CodeExtent,
+    /// the region span of this scope within source code.
+    region_scope: region::Scope,
 
-    /// the span of that extent
-    extent_span: Span,
+    /// the span of that region_scope
+    region_scope_span: Span,
 
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
@@ -125,7 +125,7 @@ pub struct Scope<'tcx> {
     drops: Vec<DropData<'tcx>>,
 
     /// The cache for drop chain on “normal” exit into a particular BasicBlock.
-    cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
+    cached_exits: FxHashMap<(BasicBlock, region::Scope), BasicBlock>,
 
     /// The cache for drop chain on "generator drop" exit.
     cached_generator_drop: Option<BasicBlock>,
@@ -165,8 +165,8 @@ enum DropKind {
 
 #[derive(Clone, Debug)]
 pub struct BreakableScope<'tcx> {
-    /// Extent of the loop
-    pub extent: CodeExtent,
+    /// Region scope of the loop
+    pub region_scope: region::Scope,
     /// Where the body of the loop begins. `None` if block
     pub continue_block: Option<BasicBlock>,
     /// Block to branch into when the loop or block terminates (either by being `break`-en out
@@ -269,9 +269,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                     f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
-        let extent = self.topmost_scope();
+        let region_scope = self.topmost_scope();
         let scope = BreakableScope {
-            extent,
+            region_scope,
             continue_block: loop_block,
             break_block,
             break_destination,
@@ -279,41 +279,41 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.breakable_scopes.push(scope);
         let res = f(self);
         let breakable_scope = self.breakable_scopes.pop().unwrap();
-        assert!(breakable_scope.extent == extent);
+        assert!(breakable_scope.region_scope == region_scope);
         res
     }
 
     pub fn in_opt_scope<F, R>(&mut self,
-                              opt_extent: Option<(CodeExtent, SourceInfo)>,
+                              opt_scope: Option<(region::Scope, SourceInfo)>,
                               mut block: BasicBlock,
                               f: F)
                               -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
-        debug!("in_opt_scope(opt_extent={:?}, block={:?})", opt_extent, block);
-        if let Some(extent) = opt_extent { self.push_scope(extent); }
+        debug!("in_opt_scope(opt_scope={:?}, block={:?})", opt_scope, block);
+        if let Some(region_scope) = opt_scope { self.push_scope(region_scope); }
         let rv = unpack!(block = f(self));
-        if let Some(extent) = opt_extent {
-            unpack!(block = self.pop_scope(extent, block));
+        if let Some(region_scope) = opt_scope {
+            unpack!(block = self.pop_scope(region_scope, block));
         }
-        debug!("in_scope: exiting opt_extent={:?} block={:?}", opt_extent, block);
+        debug!("in_scope: exiting opt_scope={:?} block={:?}", opt_scope, block);
         block.and(rv)
     }
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
-                          extent: (CodeExtent, SourceInfo),
+                          region_scope: (region::Scope, SourceInfo),
                           mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
-        debug!("in_scope(extent={:?}, block={:?})", extent, block);
-        self.push_scope(extent);
+        debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
+        self.push_scope(region_scope);
         let rv = unpack!(block = f(self));
-        unpack!(block = self.pop_scope(extent, block));
-        debug!("in_scope: exiting extent={:?} block={:?}", extent, block);
+        unpack!(block = self.pop_scope(region_scope, block));
+        debug!("in_scope: exiting region_scope={:?} block={:?}", region_scope, block);
         block.and(rv)
     }
 
@@ -321,13 +321,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    pub fn push_scope(&mut self, extent: (CodeExtent, SourceInfo)) {
-        debug!("push_scope({:?})", extent);
+    pub fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo)) {
+        debug!("push_scope({:?})", region_scope);
         let vis_scope = self.visibility_scope;
         self.scopes.push(Scope {
             visibility_scope: vis_scope,
-            extent: extent.0,
-            extent_span: extent.1.span,
+            region_scope: region_scope.0,
+            region_scope_span: region_scope.1.span,
             needs_cleanup: false,
             drops: vec![],
             cached_generator_drop: None,
@@ -335,14 +335,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         });
     }
 
-    /// Pops a scope, which should have extent `extent`, adding any
-    /// drops onto the end of `block` that are needed.  This must
-    /// match 1-to-1 with `push_scope`.
+    /// Pops a scope, which should have region scope `region_scope`,
+    /// adding any drops onto the end of `block` that are needed.
+    /// This must match 1-to-1 with `push_scope`.
     pub fn pop_scope(&mut self,
-                     extent: (CodeExtent, SourceInfo),
+                     region_scope: (region::Scope, SourceInfo),
                      mut block: BasicBlock)
                      -> BlockAnd<()> {
-        debug!("pop_scope({:?}, {:?})", extent, block);
+        debug!("pop_scope({:?}, {:?})", region_scope, block);
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
         let may_panic =
@@ -351,7 +351,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.diverge_cleanup();
         }
         let scope = self.scopes.pop().unwrap();
-        assert_eq!(scope.extent, extent.0);
+        assert_eq!(scope.region_scope, region_scope.0);
         unpack!(block = build_scope_drops(&mut self.cfg,
                                           &scope,
                                           &self.scopes,
@@ -359,25 +359,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                           self.arg_count,
                                           false));
 
-        self.cfg.push_end_region(block, extent.1, scope.extent);
+        self.cfg.push_end_region(block, region_scope.1, scope.region_scope);
         block.unit()
     }
 
 
     /// Branch out of `block` to `target`, exiting all scopes up to
-    /// and including `extent`.  This will insert whatever drops are
+    /// and including `region_scope`.  This will insert whatever drops are
     /// needed, as well as tracking this exit for the SEME region. See
     /// module comment for details.
     pub fn exit_scope(&mut self,
                       span: Span,
-                      extent: (CodeExtent, SourceInfo),
+                      region_scope: (region::Scope, SourceInfo),
                       mut block: BasicBlock,
                       target: BasicBlock) {
-        debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
-        let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent.0)
-                                                      .unwrap_or_else(||{
-            span_bug!(span, "extent {:?} does not enclose", extent)
-        });
+        debug!("exit_scope(region_scope={:?}, block={:?}, target={:?})",
+               region_scope, block, target);
+        let scope_count = 1 + self.scopes.iter().rev()
+            .position(|scope| scope.region_scope == region_scope.0)
+            .unwrap_or_else(|| {
+                span_bug!(span, "region_scope {:?} does not enclose", region_scope)
+            });
         let len = self.scopes.len();
         assert!(scope_count < len, "should not use `exit_scope` to pop ALL scopes");
 
@@ -393,7 +395,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut rest = &mut self.scopes[(len - scope_count)..];
         while let Some((scope, rest_)) = {rest}.split_last_mut() {
             rest = rest_;
-            block = if let Some(&e) = scope.cached_exits.get(&(target, extent.0)) {
+            block = if let Some(&e) = scope.cached_exits.get(&(target, region_scope.0)) {
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: e });
                 return;
@@ -401,7 +403,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let b = self.cfg.start_new_block();
                 self.cfg.terminate(block, scope.source_info(span),
                                    TerminatorKind::Goto { target: b });
-                scope.cached_exits.insert((target, extent.0), b);
+                scope.cached_exits.insert((target, region_scope.0), b);
                 b
             };
             unpack!(block = build_scope_drops(&mut self.cfg,
@@ -412,7 +414,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               false));
 
             // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(block, extent.1, scope.extent);
+            self.cfg.push_end_region(block, region_scope.1, scope.region_scope);
         }
         }
         let scope = &self.scopes[len - scope_count];
@@ -461,7 +463,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               true));
 
             // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(block, src_info, scope.extent);
+            self.cfg.push_end_region(block, src_info, scope.region_scope);
         }
 
         self.cfg.terminate(block, src_info, TerminatorKind::GeneratorDrop);
@@ -486,12 +488,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// resolving `break` and `continue`.
     pub fn find_breakable_scope(&mut self,
                            span: Span,
-                           label: CodeExtent)
+                           label: region::Scope)
                            -> &mut BreakableScope<'tcx> {
         // find the loop-scope with the correct id
         self.breakable_scopes.iter_mut()
             .rev()
-            .filter(|breakable_scope| breakable_scope.extent == label)
+            .filter(|breakable_scope| breakable_scope.region_scope == label)
             .next()
             .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
     }
@@ -504,23 +506,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns the extent of the scope which should be exited by a
+    /// Returns the `region::Scope` of the scope which should be exited by a
     /// return.
-    pub fn extent_of_return_scope(&self) -> CodeExtent {
+    pub fn region_scope_of_return_scope(&self) -> region::Scope {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
-        assert!(match self.scopes[1].extent {
-            CodeExtent::ParameterScope(_) => true,
+        assert!(match self.scopes[1].region_scope {
+            region::Scope::Arguments(_) => true,
             _ => false,
         });
-        self.scopes[1].extent
+        self.scopes[1].region_scope
     }
 
     /// Returns the topmost active scope, which is known to be alive until
     /// the next scope expression.
-    pub fn topmost_scope(&self) -> CodeExtent {
-        self.scopes.last().expect("topmost_scope: no scopes present").extent
+    pub fn topmost_scope(&self) -> region::Scope {
+        self.scopes.last().expect("topmost_scope: no scopes present").region_scope
     }
 
     /// Returns the scope that we should use as the lifetime of an
@@ -545,7 +547,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// When building statics/constants, returns `None` since
     /// intermediate values do not have to be dropped in that case.
-    pub fn local_scope(&self) -> Option<CodeExtent> {
+    pub fn local_scope(&self) -> Option<region::Scope> {
         match self.hir.src {
             MirSource::Const(_) |
             MirSource::Static(..) =>
@@ -562,10 +564,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Scheduling drops
     // ================
     /// Indicates that `lvalue` should be dropped on exit from
-    /// `extent`.
+    /// `region_scope`.
     pub fn schedule_drop(&mut self,
                          span: Span,
-                         extent: CodeExtent,
+                         region_scope: region::Scope,
                          lvalue: &Lvalue<'tcx>,
                          lvalue_ty: Ty<'tcx>) {
         let needs_drop = self.hir.needs_drop(lvalue_ty);
@@ -580,7 +582,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in self.scopes.iter_mut().rev() {
-            let this_scope = scope.extent == extent;
+            let this_scope = scope.region_scope == region_scope;
             // When building drops, we try to cache chains of drops in such a way so these drops
             // could be reused by the drops which would branch into the cached (already built)
             // blocks.  This, however, means that whenever we add a drop into a scope which already
@@ -633,9 +635,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
-                let extent_span = extent.span(self.hir.tcx(), &self.hir.region_maps);
+                let region_scope_span = region_scope.span(self.hir.tcx(),
+                                                          &self.hir.region_scope_tree);
                 // Attribute scope exit drops to scope's closing brace
-                let scope_end = extent_span.with_lo(extent_span.hi());
+                let scope_end = region_scope_span.with_lo(region_scope_span.hi());
                 scope.drops.push(DropData {
                     span: scope_end,
                     location: lvalue.clone(),
@@ -644,7 +647,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 return;
             }
         }
-        span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
+        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, lvalue);
     }
 
     // Other
@@ -691,7 +694,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(cfg, scope.extent_span, scope, target, generator_drop);
+            target = build_diverge_scope(cfg, scope.region_scope_span,
+                                         scope, target, generator_drop);
         }
         Some(target)
     }
@@ -889,7 +893,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
     // becomes trivial goto after pass that removes all EndRegions.)
     {
         let block = cfg.start_new_cleanup_block();
-        cfg.push_end_region(block, source_info(span), scope.extent);
+        cfg.push_end_region(block, source_info(span), scope.region_scope);
         cfg.terminate(block, source_info(span), TerminatorKind::Goto { target: target });
         target = block
     }

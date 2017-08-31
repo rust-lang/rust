@@ -13,7 +13,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -39,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The operand is known to be live until the end of `scope`.
     pub fn as_operand<M>(&mut self,
                          block: BasicBlock,
-                         scope: Option<CodeExtent>,
+                         scope: Option<region::Scope>,
                          expr: M) -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -49,16 +49,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_operand(&mut self,
                        mut block: BasicBlock,
-                       scope: Option<CodeExtent>,
+                       scope: Option<region::Scope>,
                        expr: Expr<'tcx>)
                        -> BlockAnd<Operand<'tcx>> {
         debug!("expr_as_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { extent, value } = expr.kind {
+        if let ExprKind::Scope { region_scope, value } = expr.kind {
             let source_info = this.source_info(expr.span);
-            let extent = (extent, source_info);
-            return this.in_scope(extent, block, |this| {
+            let region_scope = (region_scope, source_info);
+            return this.in_scope(region_scope, block, |this| {
                 this.as_operand(block, scope, value)
             });
         }

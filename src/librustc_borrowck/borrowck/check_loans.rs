@@ -206,7 +206,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans,
         param_env,
     };
-    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
+    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
         .consume_body(body);
 }
 
@@ -240,14 +240,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
+    pub fn each_in_scope_loan<F>(&self, scope: region::Scope, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,
     {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
         self.each_issued_loan(scope.item_local_id(), |loan| {
-            if self.bccx.region_maps.is_subscope_of(scope, loan.kill_scope) {
+            if self.bccx.region_scope_tree.is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
                 true
@@ -256,7 +256,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn each_in_scope_loan_affecting_path<F>(&self,
-                                            scope: region::CodeExtent,
+                                            scope: region::Scope,
                                             loan_path: &LoanPath<'tcx>,
                                             mut op: F)
                                             -> bool where
@@ -386,7 +386,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                new_loan);
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.bccx.region_maps.scopes_intersect(old_loan.kill_scope,
+        assert!(self.bccx.region_scope_tree.scopes_intersect(old_loan.kill_scope,
                                                        new_loan.kill_scope));
 
         self.report_error_if_loan_conflicts_with_restriction(
@@ -467,7 +467,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             // 3. Where does old loan expire.
 
             let previous_end_span =
-                old_loan.kill_scope.span(self.tcx(), &self.bccx.region_maps).end_point();
+                old_loan.kill_scope.span(self.tcx(), &self.bccx.region_scope_tree).end_point();
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
@@ -714,7 +714,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let mut ret = UseOk;
 
         self.each_in_scope_loan_affecting_path(
-            region::CodeExtent::Misc(expr_id), use_path, |loan| {
+            region::Scope::Node(expr_id), use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -833,7 +833,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
-            let scope = region::CodeExtent::Misc(assignment_id);
+            let scope = region::Scope::Node(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

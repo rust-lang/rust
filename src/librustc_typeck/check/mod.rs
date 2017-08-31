@@ -91,7 +91,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
@@ -608,7 +608,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));
         let implicit_region_bound = body_id.map(|body_id| {
             let body = tcx.hir.body(body_id);
-            tcx.mk_region(ty::ReScope(CodeExtent::CallSiteScope(body.value.hir_id.local_id)))
+            tcx.mk_region(ty::ReScope(region::Scope::CallSite(body.value.hir_id.local_id)))
         });
 
         Inherited {

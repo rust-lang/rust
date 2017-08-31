@@ -14,7 +14,7 @@ use hair::cx::Cx;
 use hair::Pattern;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::{MutVisitor, Lookup};
@@ -355,13 +355,13 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         arguments.len(),
         return_ty);
 
-    let call_site_extent = CodeExtent::CallSiteScope(body.value.hir_id.local_id);
-    let arg_extent = CodeExtent::ParameterScope(body.value.hir_id.local_id);
+    let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
+    let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
-    unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {
-        unpack!(block = builder.in_scope((arg_extent, source_info), block, |builder| {
-            builder.args_and_body(block, &arguments, arg_extent, &body.value)
+    unpack!(block = builder.in_scope((call_site_scope, source_info), block, |builder| {
+        unpack!(block = builder.in_scope((arg_scope, source_info), block, |builder| {
+            builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
         let fn_end = span.with_lo(span.hi());
@@ -503,7 +503,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
-                     argument_extent: CodeExtent,
+                     argument_scope: region::Scope,
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
@@ -547,7 +547,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                               argument_extent, &lvalue, ty);
+                               argument_scope, &lvalue, ty);
 
         }
 

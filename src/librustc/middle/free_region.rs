@@ -16,11 +16,11 @@
 //! region outlives another and so forth.
 
 use hir::def_id::DefId;
-use middle::region::RegionMaps;
+use middle::region;
 use ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
-/// Combines a `RegionMaps` (which governs relationships between
+/// Combines a `region::ScopeTree` (which governs relationships between
 /// scopes) and a `FreeRegionMap` (which governs relationships between
 /// free regions) to yield a complete relation between concrete
 /// regions.
@@ -34,7 +34,7 @@ pub struct RegionRelations<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub context: DefId,
 
     /// region maps for the given context
-    pub region_maps: &'a RegionMaps,
+    pub region_scope_tree: &'a region::ScopeTree,
 
     /// free-region relationships
     pub free_regions: &'a FreeRegionMap<'tcx>,
@@ -44,13 +44,13 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         context: DefId,
-        region_maps: &'a RegionMaps,
+        region_scope_tree: &'a region::ScopeTree,
         free_regions: &'a FreeRegionMap<'tcx>,
     ) -> Self {
         Self {
             tcx,
             context,
-            region_maps,
+            region_scope_tree,
             free_regions,
         }
     }
@@ -68,16 +68,16 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
                     true,
 
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
-                    self.region_maps.is_subscope_of(sub_scope, super_scope),
+                    self.region_scope_tree.is_subscope_of(sub_scope, super_scope),
 
                 (&ty::ReScope(sub_scope), &ty::ReEarlyBound(ref br)) => {
-                    let fr_scope = self.region_maps.early_free_extent(self.tcx, br);
-                    self.region_maps.is_subscope_of(sub_scope, fr_scope)
+                    let fr_scope = self.region_scope_tree.early_free_scope(self.tcx, br);
+                    self.region_scope_tree.is_subscope_of(sub_scope, fr_scope)
                 }
 
                 (&ty::ReScope(sub_scope), &ty::ReFree(ref fr)) => {
-                    let fr_scope = self.region_maps.free_extent(self.tcx, fr);
-                    self.region_maps.is_subscope_of(sub_scope, fr_scope)
+                    let fr_scope = self.region_scope_tree.free_scope(self.tcx, fr);
+                    self.region_scope_tree.is_subscope_of(sub_scope, fr_scope)
                 }
 
                 (&ty::ReEarlyBound(_), &ty::ReEarlyBound(_)) |

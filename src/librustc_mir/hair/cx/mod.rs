@@ -22,7 +22,7 @@ use rustc_const_eval::ConstContext;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -42,7 +42,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Identity `Substs` for use with const-evaluation.
     pub identity_substs: &'gcx Substs<'gcx>,
 
-    pub region_maps: Rc<RegionMaps>,
+    pub region_scope_tree: Rc<region::ScopeTree>,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
@@ -92,7 +92,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             infcx,
             param_env: tcx.param_env(src_def_id),
             identity_substs: Substs::identity_for_item(tcx.global_tcx(), src_def_id),
-            region_maps: tcx.region_maps(src_def_id),
+            region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables: tcx.typeck_tables_of(src_def_id),
             constness,
             src,

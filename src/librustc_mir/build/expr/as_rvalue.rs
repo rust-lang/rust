@@ -21,7 +21,7 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::ty;
 use rustc::mir::*;
 use syntax::ast;
@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
+    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<region::Scope>, expr: M)
                         -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_rvalue(&mut self,
                       mut block: BasicBlock,
-                      scope: Option<CodeExtent>,
+                      scope: Option<region::Scope>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
@@ -58,9 +58,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope { extent, value } => {
-                let extent = (extent, source_info);
-                this.in_scope(extent, block, |this| this.as_rvalue(block, scope, value))
+            ExprKind::Scope { region_scope, value } => {
+                let region_scope = (region_scope, source_info);
+                this.in_scope(region_scope, block, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));

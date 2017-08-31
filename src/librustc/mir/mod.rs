@@ -12,7 +12,7 @@
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
-use middle::region::CodeExtent;
+use middle::region;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
@@ -918,9 +918,9 @@ pub enum StatementKind<'tcx> {
     /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
     Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
 
-    /// Mark one terminating point of an extent (i.e. static region).
+    /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
-    EndRegion(CodeExtent),
+    EndRegion(region::Scope),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -939,7 +939,7 @@ pub enum ValidationOp {
     Release,
     /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
     /// access *until* the given region ends.  Then, access will be recovered.
-    Suspend(CodeExtent),
+    Suspend(region::Scope),
 }
 
 impl Debug for ValidationOp {
@@ -959,7 +959,7 @@ impl Debug for ValidationOp {
 pub struct ValidationOperand<'tcx, T> {
     pub lval: T,
     pub ty: Ty<'tcx>,
-    pub re: Option<CodeExtent>,
+    pub re: Option<region::Scope>,
     pub mutbl: hir::Mutability,
 }
 
@@ -1709,11 +1709,11 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                 inputs: inputs.fold_with(folder)
             },
 
-            // Note for future: If we want to expose the extents
+            // Note for future: If we want to expose the region scopes
             // during the fold, we need to either generalize EndRegion
             // to carry `[ty::Region]`, or extend the `TypeFolder`
-            // trait with a `fn fold_extent`.
-            EndRegion(ref extent) => EndRegion(extent.clone()),
+            // trait with a `fn fold_scope`.
+            EndRegion(ref region_scope) => EndRegion(region_scope.clone()),
 
             Validate(ref op, ref lvals) =>
                 Validate(op.clone(),
@@ -1738,11 +1738,11 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             InlineAsm { ref outputs, ref inputs, .. } =>
                 outputs.visit_with(visitor) || inputs.visit_with(visitor),
 
-            // Note for future: If we want to expose the extents
+            // Note for future: If we want to expose the region scopes
             // during the visit, we need to either generalize EndRegion
             // to carry `[ty::Region]`, or extend the `TypeVisitor`
-            // trait with a `fn visit_extent`.
-            EndRegion(ref _extent) => false,
+            // trait with a `fn visit_scope`.
+            EndRegion(ref _scope) => false,
 
             Validate(ref _op, ref lvalues) =>
                 lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),

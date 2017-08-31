@@ -24,7 +24,7 @@ use syntax_pos::Span;
 type R = Result<(),()>;
 
 pub fn guarantee_lifetime<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
-                                    item_scope: region::CodeExtent,
+                                    item_scope: region::Scope,
                                     span: Span,
                                     cause: euv::LoanCause,
                                     cmt: mc::cmt<'tcx>,
@@ -52,7 +52,7 @@ struct GuaranteeLifetimeContext<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
 
     // the scope of the function body for the enclosing item
-    item_scope: region::CodeExtent,
+    item_scope: region::Scope,
 
     span: Span,
     cause: euv::LoanCause,
@@ -117,7 +117,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             Categorization::Local(local_id) => {
                 let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);
                 self.bccx.tcx.mk_region(ty::ReScope(
-                    self.bccx.region_maps.var_scope(hir_id.local_id)))
+                    self.bccx.region_scope_tree.var_scope(hir_id.local_id)))
             }
             Categorization::StaticItem |
             Categorization::Deref(_, mc::UnsafePtr(..)) => {

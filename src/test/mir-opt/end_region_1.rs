@@ -22,16 +22,16 @@ fn main() {
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     let _1: i32;
-//     let _2: &'10_1rce i32;
+//     let _2: &'10_1rs i32;
 //
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const 3i32;
 //         StorageLive(_2);
-//         _2 = &'10_1rce _1;
+//         _2 = &'10_1rs _1;
 //         _0 = ();
 //         StorageDead(_2);
-//         EndRegion('10_1rce);
+//         EndRegion('10_1rs);
 //         StorageDead(_1);
 //         return;
 //     }

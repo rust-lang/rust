@@ -32,7 +32,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
-use rustc::middle::region::{self, RegionMaps};
+use rustc::middle::region;
 use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
@@ -98,9 +98,9 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
 
     let body_id = tcx.hir.body_owned_by(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-    let region_maps = tcx.region_maps(owner_def_id);
+    let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir.body(body_id);
-    let bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
+    let bccx = &mut BorrowckCtxt { tcx, tables, region_scope_tree, owner_def_id, body };
 
     // Eventually, borrowck will always read the MIR, but at the
     // moment we do not. So, for now, we always force MIR to be
@@ -196,9 +196,9 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let owner_id = tcx.hir.body_owner(body_id);
     let owner_def_id = tcx.hir.local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-    let region_maps = tcx.region_maps(owner_def_id);
+    let region_scope_tree = tcx.region_scope_tree(owner_def_id);
     let body = tcx.hir.body(body_id);
-    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id, body };
+    let mut bccx = BorrowckCtxt { tcx, tables, region_scope_tree, owner_def_id, body };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, true, body_id, |_| cfg);
     (bccx, dataflow_data.unwrap())
@@ -214,7 +214,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
 
-    region_maps: Rc<RegionMaps>,
+    region_scope_tree: Rc<region::ScopeTree>,
 
     owner_def_id: DefId,
 
@@ -255,13 +255,13 @@ pub struct Loan<'tcx> {
     /// cases, notably method arguments, the loan may be introduced
     /// only later, once it comes into scope.  See also
     /// `GatherLoanCtxt::compute_gen_scope`.
-    gen_scope: region::CodeExtent,
+    gen_scope: region::Scope,
 
     /// kill_scope indicates when the loan goes out of scope.  This is
     /// either when the lifetime expires or when the local variable
     /// which roots the loan-path goes out of scope, whichever happens
     /// faster. See also `GatherLoanCtxt::compute_kill_scope`.
-    kill_scope: region::CodeExtent,
+    kill_scope: region::Scope,
     span: Span,
     cause: euv::LoanCause,
 }
@@ -362,16 +362,16 @@ fn closure_to_block(closure_id: DefIndex,
 }
 
 impl<'a, 'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent {
+    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::Scope {
         match self.kind {
             LpVar(local_id) => {
                 let hir_id = bccx.tcx.hir.node_to_hir_id(local_id);
-                bccx.region_maps.var_scope(hir_id.local_id)
+                bccx.region_scope_tree.var_scope(hir_id.local_id)
             }
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
                 let hir_id = bccx.tcx.hir.node_to_hir_id(block_id);
-                region::CodeExtent::Misc(hir_id.local_id)
+                region::Scope::Node(hir_id.local_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(bccx),
@@ -535,7 +535,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     {
         let region_rels = RegionRelations::new(self.tcx,
                                                self.owner_def_id,
-                                               &self.region_maps,
+                                               &self.region_scope_tree,
                                                &self.tables.free_region_map);
         region_rels.is_subregion_of(r_sub, r_sup)
     }
@@ -820,18 +820,18 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 debug!("err_out_of_scope: self.body.is_generator = {:?}",
                        self.body.is_generator);
                 let maybe_borrow_across_yield = if self.body.is_generator {
-                    let body_extent = region::CodeExtent::Misc(self.body.value.hir_id.local_id);
-                    debug!("err_out_of_scope: body_extent = {:?}", body_extent);
+                    let body_scope = region::Scope::Node(self.body.value.hir_id.local_id);
+                    debug!("err_out_of_scope: body_scope = {:?}", body_scope);
                     debug!("err_out_of_scope: super_scope = {:?}", super_scope);
                     debug!("err_out_of_scope: sub_scope = {:?}", sub_scope);
                     match (super_scope, sub_scope) {
-                        (&ty::RegionKind::ReScope(value_extent),
-                         &ty::RegionKind::ReScope(loan_extent)) => {
+                        (&ty::RegionKind::ReScope(value_scope),
+                         &ty::RegionKind::ReScope(loan_scope)) => {
                             if {
-                                // value_extent <= body_extent &&
-                                self.region_maps.is_subscope_of(value_extent, body_extent) &&
-                                    // body_extent <= loan_extent
-                                    self.region_maps.is_subscope_of(body_extent, loan_extent)
+                                // value_scope <= body_scope &&
+                                self.region_scope_tree.is_subscope_of(value_scope, body_scope) &&
+                                    // body_scope <= loan_scope
+                                    self.region_scope_tree.is_subscope_of(body_scope, loan_scope)
                             } {
                                 // We now know that this is a case
                                 // that fits the bill described above:
@@ -846,7 +846,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 // block remainder that starts with
                                 // `let a`) for a yield. We can cite
                                 // that for the user.
-                                self.region_maps.yield_in_scope(value_extent)
+                                self.region_scope_tree.yield_in_scope(value_scope)
                             } else {
                                 None
                             }
@@ -945,7 +945,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
-                                    &self.region_maps,
+                                    &self.region_scope_tree,
                                     &mut db,
                                     "borrowed value must be valid for ",
                                     sub_scope,
@@ -958,7 +958,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
-                                    &self.region_maps,
+                                    &self.region_scope_tree,
                                     &mut db,
                                     "...but borrowed value is only valid for ",
                                     super_scope,
@@ -969,7 +969,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
 
                 if let ty::ReScope(scope) = *super_scope {
-                    let node_id = scope.node_id(self.tcx, &self.region_maps);
+                    let node_id = scope.node_id(self.tcx, &self.region_scope_tree);
                     match self.tcx.hir.find(node_id) {
                         Some(hir_map::NodeStmt(_)) => {
                             db.note("consider using a `let` binding to increase its lifetime");
@@ -994,14 +994,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     None => self.cmt_to_string(&err.cmt),
                 };
                 self.tcx.note_and_explain_region(
-                    &self.region_maps,
+                    &self.region_scope_tree,
                     &mut db,
                     &format!("{} would have to be valid for ",
                             descr),
                     loan_scope,
                     "...");
                 self.tcx.note_and_explain_region(
-                    &self.region_maps,
+                    &self.region_scope_tree,
                     &mut db,
                     &format!("...but {} is only valid for ", descr),
                     ptr_scope,
@@ -1257,7 +1257,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                Some(scope.span(self.tcx, &self.region_maps).end_point())
+                Some(scope.span(self.tcx, &self.region_scope_tree).end_point())
             }
             _ => None
         }

@@ -20,7 +20,7 @@ pub use self::region_inference::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
-use middle::region::RegionMaps;
+use middle::region;
 use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
@@ -1070,7 +1070,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
-                                             region_map: &RegionMaps,
+                                             region_map: &region::ScopeTree,
                                              free_regions: &FreeRegionMap<'tcx>) {
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,

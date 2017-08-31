@@ -43,12 +43,12 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let mut glcx = GatherLoanCtxt {
         bccx,
         all_loans: Vec::new(),
-        item_ub: region::CodeExtent::Misc(bccx.tcx.hir.body(body).value.hir_id.local_id),
+        item_ub: region::Scope::Node(bccx.tcx.hir.body(body).value.hir_id.local_id),
         move_data: MoveData::default(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
+    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
         .consume_body(bccx.body);
 
     glcx.report_potential_errors();
@@ -63,7 +63,7 @@ struct GatherLoanCtxt<'a, 'tcx: 'a> {
     all_loans: Vec<Loan<'tcx>>,
     /// `item_ub` is used as an upper-bound on the lifetime whenever we
     /// ask for the scope of an expression categorized as an upvar.
-    item_ub: region::CodeExtent,
+    item_ub: region::Scope,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
@@ -351,11 +351,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReScope(scope) => scope,
 
                     ty::ReEarlyBound(ref br) => {
-                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                        self.bccx.region_scope_tree.early_free_scope(self.tcx(), br)
                     }
 
                     ty::ReFree(ref fr) => {
-                        self.bccx.region_maps.free_extent(self.tcx(), fr)
+                        self.bccx.region_scope_tree.free_scope(self.tcx(), fr)
                     }
 
                     ty::ReStatic => self.item_ub,
@@ -373,7 +373,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = region::CodeExtent::Misc(borrow_id);
+                let borrow_scope = region::Scope::Node(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -473,23 +473,23 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     pub fn compute_gen_scope(&self,
-                             borrow_scope: region::CodeExtent,
-                             loan_scope: region::CodeExtent)
-                             -> region::CodeExtent {
+                             borrow_scope: region::Scope,
+                             loan_scope: region::Scope)
+                             -> region::Scope {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
-        if self.bccx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
+        if self.bccx.region_scope_tree.is_subscope_of(borrow_scope, loan_scope) {
             borrow_scope
         } else {
             loan_scope
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
-                              -> region::CodeExtent {
+    pub fn compute_kill_scope(&self, loan_scope: region::Scope, lp: &LoanPath<'tcx>)
+                              -> region::Scope {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -512,10 +512,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! do not require restrictions and hence do not cause a loan.
 
         let lexical_scope = lp.kill_scope(self.bccx);
-        if self.bccx.region_maps.is_subscope_of(lexical_scope, loan_scope) {
+        if self.bccx.region_scope_tree.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.region_maps.is_subscope_of(loan_scope, lexical_scope));
+            assert!(self.bccx.region_scope_tree.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

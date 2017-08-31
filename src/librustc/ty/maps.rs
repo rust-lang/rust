@@ -17,7 +17,7 @@ use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference};
 use middle::privacy::AccessLevels;
-use middle::region::RegionMaps;
+use middle::region;
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -1080,10 +1080,9 @@ define_maps! { <'tcx>
 
     [] fn reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
-    /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
-    /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
-    /// fn item.
-    [] fn region_maps: RegionMaps(DefId) -> Rc<RegionMaps>,
+    /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-id for the body;
+    /// in the case of closures, this will be redirected to the enclosing function.
+    [] fn region_scope_tree: RegionScopeTree(DefId) -> Rc<region::ScopeTree>,
 
     [] fn mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 
