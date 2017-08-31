@@ -6,12 +6,24 @@
 # Summary
 [summary]: #summary
 
-One para explanation of the feature.
+This RFC proposes the addition of the support for alternative crates.io servers to be used
+alongside the public crates.io server. This would allow users to publish crates to their
+own private instance of crates.io, while still able to use the public instance of crates.io.
 
 # Motivation
 [motivation]: #motivation
 
-Why are we doing this? What use cases does it support? What is the expected outcome?
+Cargo currently has support for getting crates from a public server, which works well for open
+source projects using Rust, however is problematic for closed source code. A workaround for
+this is to use Git repositories to specify the packages, but that means that the helpful
+versioning and discoverability that Cargo and crates.io provides is lost. We would like to
+change this such that it is possible to have a local crates.io server which crates can be
+pushed to, while still making use of the public crates.io server.
+
+We would also like to support the use of crates.io mirrors. These differ from alternative
+registries in that a mirror completely replicates the functionality and content of
+crates.io. A mirror would be useful if we ever need a fallback for when crates.io
+goes down, or in areas of the world where crates.io is blocked.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
