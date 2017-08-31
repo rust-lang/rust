@@ -77,7 +77,7 @@ Stabilized APIs
 - [`slice::sort_unstable_by_key`]
 - [`slice::sort_unstable_by`]
 - [`slice::sort_unstable`]
-- [`ste::from_boxed_utf8_unchecked`]
+- [`str::from_boxed_utf8_unchecked`]
 - [`str::as_bytes_mut`]
 - [`str::as_bytes_mut`]
 - [`str::from_utf8_mut`]
