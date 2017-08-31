@@ -1,7 +1,18 @@
-error[E0425]: cannot find value `A` in this scope
-  --> $DIR/use_suggestion_placement.rs:21:13
+error[E0412]: cannot find type `Path` in this scope
+  --> $DIR/use_suggestion_placement.rs:25:16
    |
-21 |     let _ = A;
+25 |     type Bar = Path;
+   |                ^^^^ not found in this scope
+   |
+help: possible candidate is found in another module, you can import it into scope
+   |
+20 |     #[derive(use std::path::Path;
+   |
+
+error[E0425]: cannot find value `A` in this scope
+  --> $DIR/use_suggestion_placement.rs:30:13
+   |
+30 |     let _ = A;
    |             ^ not found in this scope
    |
 help: possible candidate is found in another module, you can import it into scope
@@ -10,9 +21,9 @@ help: possible candidate is found in another module, you can import it into scop
    |
 
 error[E0412]: cannot find type `HashMap` in this scope
-  --> $DIR/use_suggestion_placement.rs:26:23
+  --> $DIR/use_suggestion_placement.rs:35:23
    |
-26 |     type Dict<K, V> = HashMap<K, V>;
+35 |     type Dict<K, V> = HashMap<K, V>;
    |                       ^^^^^^^ not found in this scope
    |
 help: possible candidates are found in other modules, you can import them into scope
@@ -23,16 +34,16 @@ help: possible candidates are found in other modules, you can import them into s
    |
 
 error[E0091]: type parameter `K` is unused
-  --> $DIR/use_suggestion_placement.rs:26:15
+  --> $DIR/use_suggestion_placement.rs:35:15
    |
-26 |     type Dict<K, V> = HashMap<K, V>;
+35 |     type Dict<K, V> = HashMap<K, V>;
    |               ^ unused type parameter
 
 error[E0091]: type parameter `V` is unused
-  --> $DIR/use_suggestion_placement.rs:26:18
+  --> $DIR/use_suggestion_placement.rs:35:18
    |
-26 |     type Dict<K, V> = HashMap<K, V>;
+35 |     type Dict<K, V> = HashMap<K, V>;
    |                  ^ unused type parameter
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
