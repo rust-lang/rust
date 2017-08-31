@@ -33,7 +33,6 @@ use traits;
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region};
-use hir::FreevarMap;
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -837,7 +836,7 @@ pub struct GlobalCtxt<'tcx> {
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    pub freevars: RefCell<FreevarMap>,
+    freevars: FxHashMap<HirId, Rc<Vec<hir::Freevar>>>,
 
     pub maybe_unused_trait_imports: NodeSet,
 
@@ -1066,11 +1065,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
+            freevars: resolutions.freevars.into_iter().map(|(k, v)| {
+                (hir.node_to_hir_id(k), Rc::new(v))
+            }).collect(),
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
-            freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
             maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
             rcache: RefCell::new(FxHashMap()),
@@ -2018,4 +2019,5 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(id, LOCAL_CRATE);
         Rc::new(middle::lang_items::collect(tcx))
     };
+    providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
 }

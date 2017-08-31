@@ -730,6 +730,12 @@ impl<'tcx> QueryDescription for queries::postorder_cnums<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::freevars<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("looking up free variables for a node")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1345,6 +1351,8 @@ define_maps! { <'tcx>
     [] missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
     [] used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
     [] postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
+
+    [] freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
