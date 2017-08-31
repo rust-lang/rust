@@ -387,7 +387,7 @@ impl Step for Openssl {
         let dst = build.openssl_install_dir(target).unwrap();
         drop(fs::remove_dir_all(&obj));
         drop(fs::remove_dir_all(&dst));
-        build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
+        build.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
 
         let mut configure = Command::new("perl");
         configure.arg(obj.join("Configure"));
