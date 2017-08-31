@@ -1,0 +1,28 @@
+error: this pattern takes a reference on something that is being de-referenced
+ --> $DIR/needless_borrowed_ref.rs:8:34
+  |
+8 |     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+  |                                  ^^^^^^ help: try removing the `&ref` part and just keep: `a`
+  |
+  = note: `-D needless-borrowed-reference` implied by `-D warnings`
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> $DIR/needless_borrowed_ref.rs:13:17
+   |
+13 |     if let Some(&ref v) = thingy {
+   |                 ^^^^^^ help: try removing the `&ref` part and just keep: `v`
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> $DIR/needless_borrowed_ref.rs:42:27
+   |
+42 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+   |                           ^^^^^^ help: try removing the `&ref` part and just keep: `k`
+
+error: this pattern takes a reference on something that is being de-referenced
+  --> $DIR/needless_borrowed_ref.rs:42:38
+   |
+42 |         (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+   |                                      ^^^^^^ help: try removing the `&ref` part and just keep: `k`
+
+error: aborting due to 4 previous errors
+
