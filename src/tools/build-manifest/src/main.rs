@@ -107,6 +107,7 @@ static MINGW: &'static [&'static str] = &[
 struct Manifest {
     manifest_version: String,
     date: String,
+    git_commit_hash: String,
     pkg: BTreeMap<String, Package>,
 }
 
@@ -205,15 +206,10 @@ impl Builder {
 
         self.digest_and_sign();
         let manifest = self.build_manifest();
-        let filename = format!("channel-rust-{}.toml", self.rust_release);
-        self.write_manifest(&toml::to_string(&manifest).unwrap(), &filename);
-
-        let filename = format!("channel-rust-{}-date.txt", self.rust_release);
-        self.write_date_stamp(&manifest.date, &filename);
+        self.write_channel_files(&self.rust_release, &manifest);
 
         if self.rust_release != "beta" && self.rust_release != "nightly" {
-            self.write_manifest(&toml::to_string(&manifest).unwrap(), "channel-rust-stable.toml");
-            self.write_date_stamp(&manifest.date, "channel-rust-stable-date.txt");
+            self.write_channel_files("stable", &manifest);
         }
     }
 
@@ -230,6 +226,7 @@ impl Builder {
         let mut manifest = Manifest {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
+            git_commit_hash: self.git_commit_hash("rust", "x86_64-unknown-linux-gnu"),
             pkg: BTreeMap::new(),
         };
 
@@ -382,14 +379,31 @@ impl Builder {
            .arg(self.input.join(&filename))
            .arg(format!("{}/version", filename.replace(".tar.gz", "")))
            .arg("-O");
-        let version = t!(cmd.output());
-        if !version.status.success() {
+        let output = t!(cmd.output());
+        if !output.status.success() {
             panic!("failed to learn version:\n\n{:?}\n\n{}\n\n{}",
                    cmd,
-                   String::from_utf8_lossy(&version.stdout),
-                   String::from_utf8_lossy(&version.stderr));
+                   String::from_utf8_lossy(&output.stdout),
+                   String::from_utf8_lossy(&output.stderr));
         }
-        String::from_utf8_lossy(&version.stdout).trim().to_string()
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+
+    fn git_commit_hash(&self, component: &str, target: &str) -> String {
+        let mut cmd = Command::new("tar");
+        let filename = self.filename(component, target);
+        cmd.arg("xf")
+           .arg(self.input.join(&filename))
+           .arg(format!("{}/git-commit-hash", filename.replace(".tar.gz", "")))
+           .arg("-O");
+        let output = t!(cmd.output());
+        if !output.status.success() {
+            panic!("failed to learn git commit hash:\n\n{:?}\n\n{}\n\n{}",
+                   cmd,
+                   String::from_utf8_lossy(&output.stdout),
+                   String::from_utf8_lossy(&output.stderr));
+        }
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 
     fn hash(&self, path: &Path) -> String {
@@ -425,16 +439,15 @@ impl Builder {
         assert!(t!(child.wait()).success());
     }
 
-    fn write_manifest(&self, manifest: &str, name: &str) {
-        let dst = self.output.join(name);
-        t!(t!(File::create(&dst)).write_all(manifest.as_bytes()));
-        self.hash(&dst);
-        self.sign(&dst);
+    fn write_channel_files(&self, channel_name: &str, manifest: &Manifest) {
+        self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
+        self.write(&manifest.date, channel_name, "-date.txt");
+        self.write(&manifest.git_commit_hash, channel_name, "-git-commit-hash.txt");
     }
 
-    fn write_date_stamp(&self, date: &str, name: &str) {
-        let dst = self.output.join(name);
-        t!(t!(File::create(&dst)).write_all(date.as_bytes()));
+    fn write(&self, contents: &str, channel_name: &str, suffix: &str) {
+        let dst = self.output.join(format!("channel-rust-{}{}", channel_name, suffix));
+        t!(t!(File::create(&dst)).write_all(contents.as_bytes()));
         self.hash(&dst);
         self.sign(&dst);
     }

@@ -797,6 +797,11 @@ impl Build {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
     }
 
+    /// Return the full commit hash
+    fn rust_sha(&self) -> Option<&str> {
+        self.rust_info.sha()
+    }
+
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();

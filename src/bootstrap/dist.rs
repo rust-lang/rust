@@ -364,7 +364,9 @@ impl Step for Rustc {
         cp("README.md");
         // tiny morsel of metadata is used by rust-packaging
         let version = build.rust_version();
+        let sha = build.rust_sha().unwrap_or("");
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include. The first argument to this script is where to put these DLLs
