@@ -146,7 +146,7 @@ match error {
 }
 ```
 
-This seems unintended, even tohugh this is currently the best way to make
+This seems unintended, even though this is currently the best way to make
 non-exhaustive enums outside the standard library. In fact, even the standard
 library remarks that this is a hack. Recall the hidden variant for
 [`std::io::ErrorKind`]:
