@@ -327,6 +327,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 
+        let s;
         let mut flags = vec![];
         let direct = match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
@@ -336,11 +337,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if direct {
             // this is a "direct", user-specified, rather than derived,
             // obligation.
-            flags.push("direct");
+            flags.push(("direct", None));
         }
 
-        if let Some(_) = obligation.cause.span.compiler_desugaring_kind() {
-            flags.push("from_desugaring");
+        if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
+            s = k.as_symbol().as_str();
+            flags.push(("from_desugaring", None));
+            flags.push(("from_desugaring", Some(&*s)));
         }
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(

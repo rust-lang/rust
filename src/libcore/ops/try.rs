@@ -21,10 +21,11 @@
                                      (or another type that implements `{Try}`)")]
 #[cfg_attr(not(stage0),
            rustc_on_unimplemented(
-               on(all(direct, from_desugaring),
+               on(all(direct, from_desugaring="?"),
                   message="the `?` operator can only be used in a \
                            function that returns `Result` \
-                           (or another type that implements `{Try}`)")))]
+                           (or another type that implements `{Try}`)",
+                  label="cannot use the `?` operator in a function that returns `{Self}`")))]
 pub trait Try {
     /// The type of this value when viewed as successful.
     #[unstable(feature = "try_trait", issue = "42327")]

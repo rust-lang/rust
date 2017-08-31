@@ -1,37 +1,22 @@
-error: use of unstable library feature 'try_trait' (see issue #42327)
-  --> $DIR/try-operator-on-main.rs:11:5
-   |
-11 | use std::ops::Try;
-   |     ^^^^^^^^^^^^^
-   |
-   = help: add #![feature(try_trait)] to the crate attributes to enable
-
-error: use of unstable library feature 'try_trait' (see issue #42327)
-  --> $DIR/try-operator-on-main.rs:19:25
-   |
-19 | fn try_trait_generic<T: Try>() {}
-   |                         ^^^
-   |
-   = help: add #![feature(try_trait)] to the crate attributes to enable
-
 error[E0277]: the `?` operator can only be used in a function that returns `Result` (or another type that implements `std::ops::Try`)
-  --> $DIR/try-operator-on-main.rs:14:5
+  --> $DIR/try-operator-on-main.rs:16:5
    |
-14 |     std::fs::File::open("foo")?;
+16 |     std::fs::File::open("foo")?;
    |     ---------------------------
    |     |
-   |     the trait `std::ops::Try` is not implemented for `()`
+   |     cannot use the `?` operator in a function that returns `()`
    |     in this macro invocation
    |
+   = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
-  --> $DIR/try-operator-on-main.rs:16:5
+  --> $DIR/try-operator-on-main.rs:18:5
    |
-16 |     try_trait_generic::<()>();
+18 |     try_trait_generic::<()>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `std::ops::Try` is not implemented for `()`
    |
    = note: required by `try_trait_generic`
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 

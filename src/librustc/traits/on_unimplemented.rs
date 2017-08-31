@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     pub fn evaluate(&self,
                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                     trait_ref: ty::TraitRef<'tcx>,
-                    options: &[&str])
+                    options: &[(&str, Option<&str>)])
                     -> OnUnimplementedNote
     {
         let mut message = None;
@@ -180,7 +180,11 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(condition, &tcx.sess.parse_sess, &mut |c| {
-                    options.iter().any(|o| c.check_name(o))
+                    options.contains(&(&c.name().as_str(),
+                                      match c.value_str().map(|s| s.as_str()) {
+                                          Some(ref s) => Some(s),
+                                          None => None
+                                      }))
                 }) {
                     debug!("evaluate: skipping {:?} due to condition", command);
                     continue
