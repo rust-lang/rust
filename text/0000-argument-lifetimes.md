@@ -309,8 +309,7 @@ will be enforced through the existing naming style lints.
 
 When writing a `fn` declaration, if a lifetime appears that is not already in
 scope, it is taken to be a new binding, i.e. treated as a parameter to the
-function. **This rule applies regardless of where the lifetime
-appears**. However, elision for higher-ranked types continues to work as today.
+function.
 
 Thus, where today you would write:
 
@@ -343,6 +342,17 @@ impl MyStruct<'A> {
 fn take_fn_simple(f: fn(&Foo) -> &Bar)
 fn take_fn(x: &'a u32, y: for<'b> fn(&'a u32, &'b u32, &'b u32))
 ```
+
+For higher-ranked types (including cases like `Fn` syntax), elision works as it
+does today. However, **it is an error to mention a lifetime in a higher-ranked
+type that hasn't been explicitly bound** (either at the outer `fn` definition,
+or within an explicit `for<>`). These cases are extremely rare, and making them
+an error keeps our options open for providing an interpretation later on.
+
+Similarly, if a `fn` definition is nested inside another `fn` definition, it is
+an error to mention lifetimes from that outer definition (without binding them
+explicitly). This is again intended for future-proofing and clarity, and is an
+edge case.
 
 ## The wildcard lifetime
 
@@ -483,5 +493,4 @@ lifetimes from an `impl` header.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Should we introduce higher-ranked bounds automatically when using named
-  lifetimes in e.g. an embedded `fn` type?
+- How to treat examples like `fn f() -> &'a str { "static string" }`.
