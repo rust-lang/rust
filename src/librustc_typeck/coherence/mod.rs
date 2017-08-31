@@ -51,7 +51,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
 
 fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_def_id: DefId) {
     let did = Some(trait_def_id);
-    let li = &tcx.lang_items;
+    let li = tcx.lang_items();
 
     // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
     if did == li.sized_trait() {

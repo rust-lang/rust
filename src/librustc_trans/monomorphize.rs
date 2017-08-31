@@ -31,7 +31,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     debug!("fn_once_adapter_shim({:?}, {:?})",
            closure_did,
            substs);
-    let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+    let fn_once = tcx.lang_items().fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)
         .unwrap().def_id;
@@ -132,7 +132,7 @@ fn resolve_associated_item<'a, 'tcx>(
             }
         }
         traits::VtableClosure(closure_data) => {
-            let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
             resolve_closure(scx, closure_data.closure_def_id, closure_data.substs,
                             trait_closure_kind)
         }
@@ -149,7 +149,7 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs
             }
         }
-        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items.clone_trait() => {
+        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
             Instance {
                 def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
                 substs: rcvr_substs
@@ -187,7 +187,7 @@ pub fn resolve<'a, 'tcx>(
                 ty::InstanceDef::Intrinsic(def_id)
             }
             _ => {
-                if Some(def_id) == scx.tcx().lang_items.drop_in_place_fn() {
+                if Some(def_id) == scx.tcx().lang_items().drop_in_place_fn() {
                     let ty = substs.type_at(0);
                     if glue::needs_drop_glue(scx, ty) {
                         debug!(" => nontrivial drop glue");
@@ -224,7 +224,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
+        def_id: scx.tcx().lang_items().coerce_unsized_trait().unwrap(),
         substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
     });
 

@@ -1447,10 +1447,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
-        if Some(did) == tcx.lang_items.phantom_data() {
+        if Some(did) == tcx.lang_items().phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
         }
-        if Some(did) == tcx.lang_items.owned_box() {
+        if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
         match kind {
@@ -1746,7 +1746,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 // we know that `T` is Sized and do not need to check
                 // it on the impl.
 
-                let sized_trait = match tcx.lang_items.sized_trait() {
+                let sized_trait = match tcx.lang_items().sized_trait() {
                     Some(x) => x,
                     _ => return vec![ty]
                 };

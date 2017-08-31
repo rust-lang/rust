@@ -159,7 +159,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
 
         write!(f, "{}", tcx.item_path_str(path_def_id))?;
-        Ok(tcx.lang_items.fn_trait_kind(path_def_id))
+        Ok(tcx.lang_items().fn_trait_kind(path_def_id))
     })?;
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
@@ -802,7 +802,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
                             // Don't print +Sized, but rather +?Sized if absent.
-                            if Some(trait_ref.def_id()) == tcx.lang_items.sized_trait() {
+                            if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
                                 is_sized = true;
                                 continue;
                             }

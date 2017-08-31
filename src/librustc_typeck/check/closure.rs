@@ -139,7 +139,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     })
                     .next();
                 let kind = object_type.principal()
-                    .and_then(|p| self.tcx.lang_items.fn_trait_kind(p.def_id()));
+                    .and_then(|p| self.tcx.lang_items().fn_trait_kind(p.def_id()));
                 (sig, kind)
             }
             ty::TyInfer(ty::TyVar(vid)) => self.deduce_expectations_from_obligations(vid),
@@ -204,7 +204,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ClosureKind(..) => None,
                 };
                 opt_trait_ref.and_then(|tr| self.self_type_matches_expected_vid(tr, expected_vid))
-                    .and_then(|tr| self.tcx.lang_items.fn_trait_kind(tr.def_id()))
+                    .and_then(|tr| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
             })
             .fold(None,
                   |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
@@ -223,7 +223,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
-        if tcx.lang_items.fn_trait_kind(trait_ref.def_id()).is_none() {
+        if tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_none() {
             return None;
         }
 

@@ -1288,8 +1288,8 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             Def::Trait(trait_did) => {
                 // Checks whether `trait_did` refers to one of the builtin
                 // traits, like `Send`, and adds it to `auto_traits` if so.
-                if Some(trait_did) == tcx.lang_items.send_trait() ||
-                    Some(trait_did) == tcx.lang_items.sync_trait() {
+                if Some(trait_did) == tcx.lang_items().send_trait() ||
+                    Some(trait_did) == tcx.lang_items().sync_trait() {
                     let segments = &bound.trait_ref.path.segments;
                     let parameters = &segments[segments.len() - 1].parameters;
                     if !parameters.types.is_empty() {
@@ -1402,7 +1402,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
 
         // If it could be sized, and is, add the sized predicate
         if self.implicitly_sized {
-            if let Some(sized) = tcx.lang_items.sized_trait() {
+            if let Some(sized) = tcx.lang_items().sized_trait() {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[])

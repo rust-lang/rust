@@ -22,6 +22,7 @@ use middle::privacy::AccessLevels;
 use middle::region;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
+use middle::lang_items::LanguageItems;
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -687,6 +688,12 @@ impl<'tcx> QueryDescription for queries::extern_mod_stmt_cnum<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::get_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lang items map")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1292,6 +1299,8 @@ define_maps! { <'tcx>
     [] crate_name: CrateName(CrateNum) -> Symbol,
     [] item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
     [] extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
+
+    [] get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1380,4 +1389,8 @@ fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
 
 fn link_args_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::LinkArgs
+}
+
+fn get_lang_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::GetLangItems
 }

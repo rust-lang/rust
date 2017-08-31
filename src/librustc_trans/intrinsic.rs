@@ -822,7 +822,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         catchswitch.add_handler(cs, catchpad.llbb());
 
         let tcx = ccx.tcx();
-        let tydesc = match tcx.lang_items.msvc_try_filter() {
+        let tydesc = match tcx.lang_items().msvc_try_filter() {
             Some(did) => ::consts::get_static(ccx, did),
             None => bug!("msvc_try_filter not defined"),
         };

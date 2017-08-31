@@ -252,7 +252,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn find_drop_implementation_method_span(&self) -> Option<Span> {
-        self.tcx.lang_items
+        self.tcx.lang_items()
             .drop_trait()
             .and_then(|drop_trait_id| {
                 let mut span = None;
@@ -795,7 +795,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         self.deny_drop();
                     }
 
-                    if Some(def.did) == self.tcx.lang_items.unsafe_cell_type() {
+                    if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(self.mir, self.tcx);
                         self.add_type(ty);
                         assert!(self.qualif.intersects(Qualif::MUTABLE_INTERIOR));

@@ -610,7 +610,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         match operand.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 // Get the def_id for FnOnce::call_once
-                                let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+                                let fn_once = tcx.lang_items().fn_once_trait().unwrap();
                                 let call_once = tcx
                                     .global_tcx().associated_items(fn_once)
                                     .find(|it| it.kind == ty::AssociatedKind::Method)

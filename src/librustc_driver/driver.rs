@@ -913,12 +913,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let time_passes = sess.time_passes();
 
-    let lang_items = time(time_passes, "language item collection", || {
-        sess.track_errors(|| {
-            middle::lang_items::collect_language_items(&sess, &hir_map)
-        })
-    })?;
-
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
                                 || middle::resolve_lifetime::krate(sess, &hir_map))?;
@@ -1028,7 +1022,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
-                             lang_items,
                              index,
                              name,
                              |tcx| {

@@ -851,8 +851,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
 
-    pub lang_items: middle::lang_items::LanguageItems,
-
     /// Set of nodes which mark locals as mutable which end up getting used at
     /// some point. Local variable definitions not in this set can be warned
     /// about.
@@ -992,7 +990,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
-                                  lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,
                                   crate_name: &str,
                                   f: F) -> R
@@ -1079,7 +1076,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
-            lang_items,
             used_mut_nodes: RefCell::new(NodeSet()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
@@ -1098,6 +1094,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
         let cname = self.crate_name(LOCAL_CRATE).as_str();
         self.sess.consider_optimizing(&cname, msg)
+    }
+
+    pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
+        self.get_lang_items(LOCAL_CRATE)
     }
 }
 
@@ -2003,5 +2003,9 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
+    };
+    providers.get_lang_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        Rc::new(middle::lang_items::collect(tcx))
     };
 }

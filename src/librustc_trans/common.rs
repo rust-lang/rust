@@ -423,7 +423,7 @@ pub fn langcall(tcx: TyCtxt,
                 msg: &str,
                 li: LangItem)
                 -> DefId {
-    match tcx.lang_items.require(li) {
+    match tcx.lang_items().require(li) {
         Ok(id) => id,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
@@ -530,7 +530,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
 
             sig.map_bound(|sig| {
-                let state_did = tcx.lang_items.gen_state().unwrap();
+                let state_did = tcx.lang_items().gen_state().unwrap();
                 let state_adt_ref = tcx.adt_def(state_did);
                 let state_substs = tcx.mk_substs([Kind::from(sig.yield_ty),
                     Kind::from(sig.return_ty)].iter());

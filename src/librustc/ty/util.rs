@@ -418,7 +418,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         adt_did: DefId,
         validate: &mut FnMut(Self, DefId) -> Result<(), ErrorReported>
     ) -> Option<ty::Destructor> {
-        let drop_trait = if let Some(def_id) = self.lang_items.drop_trait() {
+        let drop_trait = if let Some(def_id) = self.lang_items().drop_trait() {
             def_id
         } else {
             return None;

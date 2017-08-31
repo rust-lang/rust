@@ -94,17 +94,18 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
 fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
+    let lang_items = tcx.lang_items();
     let all = vec![
-        (tcx.lang_items.phantom_data(), vec![ty::Covariant]),
-        (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant]),
+        (lang_items.phantom_data(), vec![ty::Covariant]),
+        (lang_items.unsafe_cell_type(), vec![ty::Invariant]),
 
         // Deprecated:
-        (tcx.lang_items.covariant_type(), vec![ty::Covariant]),
-        (tcx.lang_items.contravariant_type(), vec![ty::Contravariant]),
-        (tcx.lang_items.invariant_type(), vec![ty::Invariant]),
-        (tcx.lang_items.covariant_lifetime(), vec![ty::Covariant]),
-        (tcx.lang_items.contravariant_lifetime(), vec![ty::Contravariant]),
-        (tcx.lang_items.invariant_lifetime(), vec![ty::Invariant]),
+        (lang_items.covariant_type(), vec![ty::Covariant]),
+        (lang_items.contravariant_type(), vec![ty::Contravariant]),
+        (lang_items.invariant_type(), vec![ty::Invariant]),
+        (lang_items.covariant_lifetime(), vec![ty::Covariant]),
+        (lang_items.contravariant_lifetime(), vec![ty::Contravariant]),
+        (lang_items.invariant_lifetime(), vec![ty::Invariant]),
 
         ];
 

@@ -547,7 +547,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.lang_items.debug_trait() {
+        let debug = match cx.tcx.lang_items().debug_trait() {
             Some(debug) => debug,
             None => return,
         };

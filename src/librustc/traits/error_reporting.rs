@@ -919,7 +919,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // anyway. In that case, why inundate the user.
                 if !self.tcx.sess.has_errors() {
                     if
-                        self.tcx.lang_items.sized_trait()
+                        self.tcx.lang_items().sized_trait()
                         .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                     {
                         self.need_type_info(body_id, span, self_ty);

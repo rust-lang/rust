@@ -616,7 +616,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
             return llpersonality
         }
         let tcx = self.tcx();
-        let llfn = match tcx.lang_items.eh_personality() {
+        let llfn = match tcx.lang_items().eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
                 callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
@@ -645,7 +645,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
         let tcx = self.tcx();
         assert!(self.sess().target.target.options.custom_unwind_resume);
-        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
+        if let Some(def_id) = tcx.lang_items().eh_unwind_resume() {
             let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;

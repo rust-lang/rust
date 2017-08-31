@@ -715,7 +715,7 @@ impl MirPass for StateTransform {
         let gen_ty = mir.local_decls.raw[1].ty;
 
         // Compute GeneratorState<yield_ty, return_ty>
-        let state_did = tcx.lang_items.gen_state().unwrap();
+        let state_did = tcx.lang_items().gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
         let state_substs = tcx.mk_substs([Kind::from(yield_ty),
             Kind::from(mir.return_ty)].iter());

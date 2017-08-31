@@ -21,10 +21,8 @@
 
 pub use self::LangItem::*;
 
-use hir::map as hir_map;
-use session::Session;
 use hir::def_id::DefId;
-use ty;
+use ty::{self, TyCtxt};
 use middle::weak_lang_items;
 use util::nodemap::FxHashMap;
 
@@ -116,9 +114,7 @@ impl LanguageItems {
 struct LanguageItemCollector<'a, 'tcx: 'a> {
     items: LanguageItems,
 
-    hir_map: &'a hir_map::Map<'tcx>,
-
-    session: &'a Session,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     item_refs: FxHashMap<&'static str, usize>,
 }
@@ -129,10 +125,11 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
             let item_index = self.item_refs.get(&*value.as_str()).cloned();
 
             if let Some(item_index) = item_index {
-                self.collect_item(item_index, self.hir_map.local_def_id(item.id))
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                self.collect_item(item_index, def_id);
             } else {
-                let span = self.hir_map.span(item.id);
-                span_err!(self.session, span, E0522,
+                let span = self.tcx.hir.span(item.id);
+                span_err!(self.tcx.sess, span, E0522,
                           "definition of an unknown language item: `{}`.",
                           value);
             }
@@ -149,45 +146,41 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
-    pub fn new(session: &'a Session, hir_map: &'a hir_map::Map<'tcx>)
-               -> LanguageItemCollector<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItemCollector<'a, 'tcx> {
         let mut item_refs = FxHashMap();
 
         $( item_refs.insert($name, $variant as usize); )*
 
         LanguageItemCollector {
-            session,
-            hir_map,
+            tcx,
             items: LanguageItems::new(),
             item_refs,
         }
     }
 
-    pub fn collect_item(&mut self, item_index: usize,
-                        item_def_id: DefId) {
+    fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                let cstore = &self.session.cstore;
                 let name = LanguageItems::item_name(item_index);
-                let mut err = match self.hir_map.span_if_local(item_def_id) {
+                let mut err = match self.tcx.hir.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
-                        self.session,
+                        self.tcx.sess,
                         span,
                         E0152,
                         "duplicate lang item found: `{}`.",
                         name),
-                    None => self.session.struct_err(&format!(
+                    None => self.tcx.sess.struct_err(&format!(
                             "duplicate lang item in crate `{}`: `{}`.",
-                            cstore.crate_name_untracked(item_def_id.krate),
+                            self.tcx.crate_name(item_def_id.krate),
                             name)),
                 };
-                if let Some(span) = self.hir_map.span_if_local(original_def_id) {
+                if let Some(span) = self.tcx.hir.span_if_local(original_def_id) {
                     span_note!(&mut err, span,
                                "first defined here.");
                 } else {
                     err.note(&format!("first defined in crate `{}`.",
-                                      cstore.crate_name_untracked(original_def_id.krate)));
+                                      self.tcx.crate_name(original_def_id.krate)));
                 }
                 err.emit();
             }
@@ -198,26 +191,6 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
         // Matched.
         self.items.items[item_index] = Some(item_def_id);
-    }
-
-    pub fn collect_local_language_items(&mut self, krate: &hir::Crate) {
-        krate.visit_all_item_likes(self);
-    }
-
-    pub fn collect_external_language_items(&mut self) {
-        let cstore = &self.session.cstore;
-
-        for cnum in cstore.crates() {
-            for (index, item_index) in cstore.lang_items(cnum) {
-                let def_id = DefId { krate: cnum, index: index };
-                self.collect_item(item_index, def_id);
-            }
-        }
-    }
-
-    pub fn collect(&mut self, krate: &hir::Crate) {
-        self.collect_external_language_items();
-        self.collect_local_language_items(krate);
     }
 }
 
@@ -233,14 +206,17 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     return None;
 }
 
-pub fn collect_language_items(session: &Session,
-                              map: &hir_map::Map)
-                              -> LanguageItems {
-    let krate: &hir::Crate = map.krate();
-    let mut collector = LanguageItemCollector::new(session, map);
-    collector.collect(krate);
+pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
+    let mut collector = LanguageItemCollector::new(tcx);
+    for cnum in tcx.sess.cstore.crates() {
+        for (index, item_index) in tcx.sess.cstore.lang_items(cnum) {
+            let def_id = DefId { krate: cnum, index: index };
+            collector.collect_item(item_index, def_id);
+        }
+    }
+    tcx.hir.krate().visit_all_item_likes(&mut collector);
     let LanguageItemCollector { mut items, .. } = collector;
-    weak_lang_items::check_crate(krate, session, &mut items);
+    weak_lang_items::check_crate(tcx, &mut items);
     items
 }
 
@@ -366,7 +342,7 @@ language_item_table! {
 
 impl<'a, 'tcx, 'gcx> ty::TyCtxt<'a, 'tcx, 'gcx> {
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
-        self.lang_items.require(lang_item).unwrap_or_else(|msg| {
+        self.lang_items().require(lang_item).unwrap_or_else(|msg| {
             self.sess.fatal(&msg)
         })
     }

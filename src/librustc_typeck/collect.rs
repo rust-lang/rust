@@ -1309,7 +1309,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         }
     }
 
-    let kind_id = tcx.lang_items.require(SizedTraitLangItem);
+    let kind_id = tcx.lang_items().require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.

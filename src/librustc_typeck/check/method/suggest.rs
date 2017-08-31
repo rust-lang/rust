@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyFnPtr(_) => true,
             // If it's not a simple function, look for things which implement FnOnce
             _ => {
-                let fn_once = match tcx.lang_items.require(FnOnceTraitLangItem) {
+                let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
                     Ok(fn_once) => fn_once,
                     Err(..) => return false,
                 };

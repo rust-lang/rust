@@ -392,7 +392,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     for (id, _) in &access_levels.map {
         reachable_context.worklist.push(*id);
     }
-    for item in tcx.lang_items.items().iter() {
+    for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.hir.as_local_node_id(did) {
                 reachable_context.worklist.push(node_id);

@@ -482,7 +482,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let box_ty = bcx.tcx().mk_box(content_ty);
 
                 // Allocate space:
-                let def_id = match bcx.tcx().lang_items.require(ExchangeMallocFnLangItem) {
+                let def_id = match bcx.tcx().lang_items().require(ExchangeMallocFnLangItem) {
                     Ok(id) => id,
                     Err(s) => {
                         bcx.sess().fatal(&format!("allocation of `{}` {}", box_ty, s));

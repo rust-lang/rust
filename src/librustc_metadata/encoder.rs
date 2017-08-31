@@ -991,7 +991,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 // "unsized info", else just store None
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
-                        if Some(t.def_id) == tcx.lang_items.coerce_unsized_trait() {
+                        if Some(t.def_id) == tcx.lang_items().coerce_unsized_trait() {
                             Some(tcx.at(item.span).coerce_unsized_info(def_id))
                         } else {
                             None
@@ -1322,7 +1322,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_lang_items(&mut self, _: ()) -> LazySeq<(DefIndex, usize)> {
         let tcx = self.tcx;
-        let lang_items = tcx.lang_items.items().iter();
+        let lang_items = tcx.lang_items();
+        let lang_items = lang_items.items().iter();
         self.lazy_seq(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
             if let Some(def_id) = opt_def_id {
                 if def_id.is_local() {
@@ -1335,7 +1336,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_lang_items_missing(&mut self, _: ()) -> LazySeq<lang_items::LangItem> {
         let tcx = self.tcx;
-        self.lazy_seq_ref(&tcx.lang_items.missing)
+        self.lazy_seq_ref(&tcx.lang_items().missing)
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.

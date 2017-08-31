@@ -393,6 +393,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn assemble_probe(&mut self, self_ty: Ty<'tcx>) {
         debug!("assemble_probe: self_ty={:?}", self_ty);
+        let lang_items = self.tcx.lang_items();
 
         match self_ty.sty {
             ty::TyDynamic(ref data, ..) => {
@@ -408,79 +409,79 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }
             ty::TyChar => {
-                let lang_def_id = self.tcx.lang_items.char_impl();
+                let lang_def_id = lang_items.char_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyStr => {
-                let lang_def_id = self.tcx.lang_items.str_impl();
+                let lang_def_id = lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TySlice(_) => {
-                let lang_def_id = self.tcx.lang_items.slice_impl();
+                let lang_def_id = lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                let lang_def_id = self.tcx.lang_items.const_ptr_impl();
+                let lang_def_id = lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                let lang_def_id = self.tcx.lang_items.mut_ptr_impl();
+                let lang_def_id = lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::I8) => {
-                let lang_def_id = self.tcx.lang_items.i8_impl();
+                let lang_def_id = lang_items.i8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::I16) => {
-                let lang_def_id = self.tcx.lang_items.i16_impl();
+                let lang_def_id = lang_items.i16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::I32) => {
-                let lang_def_id = self.tcx.lang_items.i32_impl();
+                let lang_def_id = lang_items.i32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::I64) => {
-                let lang_def_id = self.tcx.lang_items.i64_impl();
+                let lang_def_id = lang_items.i64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::I128) => {
-                let lang_def_id = self.tcx.lang_items.i128_impl();
+                let lang_def_id = lang_items.i128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyInt(ast::IntTy::Is) => {
-                let lang_def_id = self.tcx.lang_items.isize_impl();
+                let lang_def_id = lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::U8) => {
-                let lang_def_id = self.tcx.lang_items.u8_impl();
+                let lang_def_id = lang_items.u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::U16) => {
-                let lang_def_id = self.tcx.lang_items.u16_impl();
+                let lang_def_id = lang_items.u16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::U32) => {
-                let lang_def_id = self.tcx.lang_items.u32_impl();
+                let lang_def_id = lang_items.u32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::U64) => {
-                let lang_def_id = self.tcx.lang_items.u64_impl();
+                let lang_def_id = lang_items.u64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::U128) => {
-                let lang_def_id = self.tcx.lang_items.u128_impl();
+                let lang_def_id = lang_items.u128_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyUint(ast::UintTy::Us) => {
-                let lang_def_id = self.tcx.lang_items.usize_impl();
+                let lang_def_id = lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F32) => {
-                let lang_def_id = self.tcx.lang_items.f32_impl();
+                let lang_def_id = lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F64) => {
-                let lang_def_id = self.tcx.lang_items.f64_impl();
+                let lang_def_id = lang_items.f64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             _ => {}

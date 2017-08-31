@@ -338,7 +338,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
-                let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
+                let is_box_free = Some(callsite.callee) == self.tcx.lang_items().box_free_fn();
 
                 let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_mir.visibility_scopes.len());

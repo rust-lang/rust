@@ -211,9 +211,9 @@ enum OverloadedCallType {
 impl OverloadedCallType {
     fn from_trait_id(tcx: TyCtxt, trait_id: DefId) -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
-            (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
-            (tcx.lang_items.fn_mut_trait(), FnMutOverloadedCall),
-            (tcx.lang_items.fn_trait(), FnOverloadedCall)
+            (tcx.lang_items().fn_once_trait(), FnOnceOverloadedCall),
+            (tcx.lang_items().fn_mut_trait(), FnMutOverloadedCall),
+            (tcx.lang_items().fn_trait(), FnOverloadedCall)
         ] {
             match maybe_function_trait {
                 Some(function_trait) if function_trait == trait_id => {

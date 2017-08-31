@@ -432,7 +432,7 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
     debug!(" => recursion depth={}", recursion_depth);
 
-    let recursion_depth = if Some(def_id) == tcx.lang_items.drop_in_place_fn() {
+    let recursion_depth = if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
         // HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
         recursion_depth / 4
@@ -550,7 +550,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.scx.tcx();
                 let exchange_malloc_fn_def_id = tcx
-                    .lang_items
+                    .lang_items()
                     .require(ExchangeMallocFnLangItem)
                     .unwrap_or_else(|e| self.scx.sess().fatal(&e));
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);

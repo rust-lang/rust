@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
-        let sized_def_id = match self.lang_items.sized_trait() {
+        let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
         };
