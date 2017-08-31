@@ -288,7 +288,7 @@ impl Diagnostic {
 
     /// Convenience function for internal use, clients should use one of the
     /// public methods above.
-    fn sub(&mut self,
+    pub(crate) fn sub(&mut self,
            level: Level,
            message: &str,
            span: MultiSpan,

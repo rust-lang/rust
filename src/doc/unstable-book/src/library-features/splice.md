@@ -18,7 +18,6 @@ let mut s = String::from("α is alpha, β is beta");
 let beta_offset = s.find('β').unwrap_or(s.len());
 
 // Replace the range up until the β from the string
-let t: String = s.splice(..beta_offset, "Α is capital alpha; ").collect();
-assert_eq!(t, "α is alpha, ");
+s.splice(..beta_offset, "Α is capital alpha; ");
 assert_eq!(s, "Α is capital alpha; β is beta");
 ```
