@@ -20,7 +20,7 @@ use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap, DefIdMap};
+use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
@@ -95,7 +95,6 @@ pub struct CStore {
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    pub visible_parent_map: RefCell<DefIdMap<DefId>>,
     pub metadata_loader: Box<MetadataLoader>,
 }
 
@@ -105,7 +104,6 @@ impl CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FxHashMap()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
-            visible_parent_map: RefCell::new(FxHashMap()),
             metadata_loader,
         }
     }

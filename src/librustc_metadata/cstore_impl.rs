@@ -222,6 +222,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         debug!("item_body({:?}): inlining item", def_id);
         cdata.item_body(tcx, def_id.index)
     }
+
+    missing_extern_crate_item => {
+        match cdata.extern_crate.get() {
+            Some(extern_crate) if !extern_crate.direct => true,
+            _ => false,
+        }
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -267,6 +274,64 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             let id = tcx.hir.definitions().find_node_for_hir_id(id);
             tcx.sess.cstore.extern_mod_stmt_cnum_untracked(id)
         },
+
+        // Returns a map from a sufficiently visible external item (i.e. an
+        // external item that is visible from at least one local module) to a
+        // sufficiently visible parent (considering modules that re-export the
+        // external item to be parents).
+        visible_parent_map: |tcx, cnum| {
+            use std::collections::vec_deque::VecDeque;
+            use std::collections::hash_map::Entry;
+
+            assert_eq!(cnum, LOCAL_CRATE);
+            let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
+
+            for cnum in tcx.sess.cstore.crates() {
+                // Ignore crates without a corresponding local `extern crate` item.
+                if tcx.missing_extern_crate_item(cnum) {
+                    continue
+                }
+
+                let bfs_queue = &mut VecDeque::new();
+                let visible_parent_map = &mut visible_parent_map;
+                let mut add_child = |bfs_queue: &mut VecDeque<_>,
+                                     child: &def::Export,
+                                     parent: DefId| {
+                    let child = child.def.def_id();
+
+                    if tcx.visibility(child) != ty::Visibility::Public {
+                        return;
+                    }
+
+                    match visible_parent_map.entry(child) {
+                        Entry::Occupied(mut entry) => {
+                            // If `child` is defined in crate `cnum`, ensure
+                            // that it is mapped to a parent in `cnum`.
+                            if child.krate == cnum && entry.get().krate != cnum {
+                                entry.insert(parent);
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            entry.insert(parent);
+                            bfs_queue.push_back(child);
+                        }
+                    }
+                };
+
+                bfs_queue.push_back(DefId {
+                    krate: cnum,
+                    index: CRATE_DEF_INDEX
+                });
+                while let Some(def) = bfs_queue.pop_front() {
+                    for child in tcx.item_children(def).iter() {
+                        add_child(bfs_queue, child, def);
+                    }
+                }
+            }
+
+            Rc::new(visible_parent_map)
+        },
+
         ..*providers
     };
 }
@@ -439,68 +504,5 @@ impl CrateStore for cstore::CStore {
     fn metadata_encoding_version(&self) -> &[u8]
     {
         schema::METADATA_HEADER
-    }
-
-    /// Returns a map from a sufficiently visible external item (i.e. an external item that is
-    /// visible from at least one local module) to a sufficiently visible parent (considering
-    /// modules that re-export the external item to be parents).
-    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
-        {
-            let visible_parent_map = self.visible_parent_map.borrow();
-            if !visible_parent_map.is_empty() {
-                return visible_parent_map;
-            }
-        }
-
-        use std::collections::vec_deque::VecDeque;
-        use std::collections::hash_map::Entry;
-
-        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
-
-        for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
-            let cdata = self.get_crate_data(cnum);
-
-            match cdata.extern_crate.get() {
-                // Ignore crates without a corresponding local `extern crate` item.
-                Some(extern_crate) if !extern_crate.direct => continue,
-                _ => {},
-            }
-
-            let bfs_queue = &mut VecDeque::new();
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
-                let child = child.def.def_id();
-
-                if self.visibility_untracked(child) != ty::Visibility::Public {
-                    return;
-                }
-
-                match visible_parent_map.entry(child) {
-                    Entry::Occupied(mut entry) => {
-                        // If `child` is defined in crate `cnum`, ensure
-                        // that it is mapped to a parent in `cnum`.
-                        if child.krate == cnum && entry.get().krate != cnum {
-                            entry.insert(parent);
-                        }
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(parent);
-                        bfs_queue.push_back(child);
-                    }
-                }
-            };
-
-            bfs_queue.push_back(DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX
-            });
-            while let Some(def) = bfs_queue.pop_front() {
-                for child in self.item_children_untracked(def, sess) {
-                    add_child(bfs_queue, child, def);
-                }
-            }
-        }
-
-        drop(visible_parent_map);
-        self.visible_parent_map.borrow()
     }
 }

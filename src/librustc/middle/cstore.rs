@@ -31,7 +31,7 @@ use ich;
 use ty::{self, TyCtxt};
 use session::Session;
 use session::search_paths::PathKind;
-use util::nodemap::{NodeSet, DefIdMap};
+use util::nodemap::NodeSet;
 
 use std::any::Any;
 use std::path::{Path, PathBuf};
@@ -235,7 +235,6 @@ pub trait CrateStore {
     fn metadata_loader(&self) -> &MetadataLoader;
 
     // item info
-    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
 
     // trait/impl-item info
@@ -309,11 +308,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self, session: &Session)
-        -> ::std::cell::Ref<'a, DefIdMap<DefId>>
-    {
-        bug!("visible_parent_map")
-    }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
 

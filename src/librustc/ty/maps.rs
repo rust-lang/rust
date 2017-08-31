@@ -33,7 +33,7 @@ use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
-use util::nodemap::{DefIdSet, NodeSet};
+use util::nodemap::{DefIdSet, NodeSet, DefIdMap};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -706,6 +706,18 @@ impl<'tcx> QueryDescription for queries::missing_lang_items<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::visible_parent_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the visible parent map")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::missing_extern_crate_item<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("seeing if we're missing an `extern crate` item for this crate")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1316,6 +1328,9 @@ define_maps! { <'tcx>
     [] defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
     [] missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
     [] item_body: ItemBody(DefId) -> &'tcx hir::Body,
+    [] visible_parent_map: visible_parent_map_node(CrateNum)
+        -> Rc<DefIdMap<DefId>>,
+    [] missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1408,4 +1423,8 @@ fn link_args_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn get_lang_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::GetLangItems
+}
+
+fn visible_parent_map_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::VisibleParentMap
 }
