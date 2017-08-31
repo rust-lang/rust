@@ -439,6 +439,11 @@ impl Step for Openssl {
         if target == "sparc64-unknown-netbsd" {
             // Need -m64 to get assembly generated correctly for sparc64.
             configure.arg("-m64");
+            if build.build.contains("netbsd") {
+                // Disable sparc64 asm on NetBSD builders, it uses
+                // m4(1)'s -B flag, which NetBSD m4 does not support.
+                configure.arg("no-asm");
+            }
         }
         // Make PIE binaries
         // Non-PIE linker support was removed in Lollipop
