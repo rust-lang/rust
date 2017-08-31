@@ -10,7 +10,6 @@
 
 use io::{self, Error, ErrorKind};
 use libc::{self, c_int, gid_t, pid_t, uid_t};
-use mem;
 use ptr;
 
 use sys::cvt;
@@ -184,7 +183,9 @@ impl Command {
         }
 
         // NaCl has no signal support.
-        if cfg!(not(any(target_os = "nacl", target_os = "emscripten"))) {
+        #[cfg(not(any(target_os = "nacl", target_os = "emscripten")))]
+        {
+            use mem;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored

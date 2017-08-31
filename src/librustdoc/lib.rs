@@ -28,6 +28,7 @@
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
+extern crate html_diff;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_data_structures;

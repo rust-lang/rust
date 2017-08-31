@@ -62,11 +62,13 @@ macro_rules! panic {
 /// # Custom Messages
 ///
 /// This macro has a second form, where a custom panic message can
-/// be provided with or without arguments for formatting.
+/// be provided with or without arguments for formatting.  See [`std::fmt`]
+/// for syntax for this form.
 ///
 /// [`panic!`]: macro.panic.html
 /// [`debug_assert!`]: macro.debug_assert.html
-/// [testing]: ../book/first-edition/testing.html
+/// [testing]: ../book/second-edition/ch11-01-writing-tests.html#checking-results-with-the-assert-macro
+/// [`std::fmt`]: ../std/fmt/index.html
 ///
 /// # Examples
 ///
@@ -252,12 +254,14 @@ macro_rules! debug_assert {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Unlike `assert_eq!`, `debug_assert_eq!` statements are only enabled in non
+/// Unlike [`assert_eq!`], `debug_assert_eq!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
 /// `debug_assert_eq!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_eq!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
 /// development.
+///
+/// [`assert_eq!`]: ../std/macro.assert_eq.html
 ///
 /// # Examples
 ///
@@ -277,12 +281,14 @@ macro_rules! debug_assert_eq {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Unlike `assert_ne!`, `debug_assert_ne!` statements are only enabled in non
+/// Unlike [`assert_ne!`], `debug_assert_ne!` statements are only enabled in non
 /// optimized builds by default. An optimized build will omit all
 /// `debug_assert_ne!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_ne!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
 /// development.
+///
+/// [`assert_ne!`]: ../std/macro.assert_ne.html
 ///
 /// # Examples
 ///
@@ -300,10 +306,9 @@ macro_rules! debug_assert_ne {
 /// Helper macro for reducing boilerplate code for matching `Result` together
 /// with converting downstream errors.
 ///
-/// Prefer using `?` syntax to `try!`. `?` is built in to the language and is
-/// more succinct than `try!`. It is the standard method for error propagation.
+/// The `?` operator was added to replace `try!` and should be used instead.
 ///
-/// `try!` matches the given `Result`. In case of the `Ok` variant, the
+/// `try!` matches the given [`Result`]. In case of the `Ok` variant, the
 /// expression has the value of the wrapped value.
 ///
 /// In case of the `Err` variant, it retrieves the inner error. `try!` then
@@ -312,7 +317,9 @@ macro_rules! debug_assert_ne {
 /// error is then immediately returned.
 ///
 /// Because of the early return, `try!` can only be used in functions that
-/// return `Result`.
+/// return [`Result`].
+///
+/// [`Result`]: ../std/result/enum.Result.html
 ///
 /// # Examples
 ///
@@ -331,12 +338,19 @@ macro_rules! debug_assert_ne {
 ///     }
 /// }
 ///
+/// // The prefered method of quick returning Errors
+/// fn write_to_file_question() -> Result<(), MyError> {
+///     let mut file = File::create("my_best_friends.txt")?;
+///     Ok(())
+/// }
+///
+/// // The previous method of quick returning Errors
 /// fn write_to_file_using_try() -> Result<(), MyError> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     try!(file.write_all(b"This is a list of my best friends."));
-///     println!("I wrote to the file");
 ///     Ok(())
 /// }
+///
 /// // This is equivalent to:
 /// fn write_to_file_using_match() -> Result<(), MyError> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
@@ -344,7 +358,6 @@ macro_rules! debug_assert_ne {
 ///         Ok(v) => v,
 ///         Err(e) => return Err(From::from(e)),
 ///     }
-///     println!("I wrote to the file");
 ///     Ok(())
 /// }
 /// ```
@@ -365,7 +378,7 @@ macro_rules! try {
 /// formatted according to the specified format string and the result will be passed to the writer.
 /// The writer may be any value with a `write_fmt` method; generally this comes from an
 /// implementation of either the [`std::fmt::Write`] or the [`std::io::Write`] trait. The macro
-/// returns whatever the 'write_fmt' method returns; commonly a [`std::fmt::Result`], or an
+/// returns whatever the `write_fmt` method returns; commonly a [`std::fmt::Result`], or an
 /// [`io::Result`].
 ///
 /// See [`std::fmt`] for more information on the format string syntax.
@@ -470,10 +483,20 @@ macro_rules! writeln {
 /// * Loops that dynamically terminate.
 /// * Iterators that dynamically terminate.
 ///
+/// If the determination that the code is unreachable proves incorrect, the
+/// program immediately terminates with a [`panic!`].  The function [`unreachable`],
+/// which belongs to the [`std::intrinsics`] module, informs the compilier to
+/// optimize the code out of the release version entirely.
+///
+/// [`panic!`]:  ../std/macro.panic.html
+/// [`unreachable`]: ../std/intrinsics/fn.unreachable.html
+/// [`std::intrinsics`]: ../std/intrinsics/index.html
+///
 /// # Panics
 ///
-/// This will always [panic!](macro.panic.html)
+/// This will always [`panic!`]
 ///
+/// [`panic!`]: ../std/macro.panic.html
 /// # Examples
 ///
 /// Match arms:

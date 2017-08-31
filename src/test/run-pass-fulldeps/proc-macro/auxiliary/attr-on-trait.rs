@@ -8,20 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+// no-prefer-dynamic
 
-const NONE_CELL_STRING: Option<Cell<String>> = None;
+#![feature(proc_macro)]
+#![crate_type = "proc-macro"]
 
-struct Foo<T>(T);
-impl<T> Foo<T> {
-    const FOO: Option<Box<T>> = None;
-}
+extern crate proc_macro;
 
-fn main() {
-    let _: &'static u32 = &42;
-    let _: &'static Option<u32> = &None;
+use proc_macro::TokenStream;
 
-    // We should be able to peek at consts and see they're None.
-    let _: &'static Option<Cell<String>> = &NONE_CELL_STRING;
-    let _: &'static Option<Box<()>> = &Foo::FOO;
+#[proc_macro_attribute]
+pub fn foo(attr: TokenStream, item: TokenStream) -> TokenStream {
+    drop(attr);
+    assert_eq!(item.to_string(), "fn foo() { }");
+    "fn foo(&self);".parse().unwrap()
 }

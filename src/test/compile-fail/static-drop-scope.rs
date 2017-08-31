@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+#![feature(drop_types_in_const)]
 
-const NONE_CELL_STRING: Option<Cell<String>> = None;
+struct WithDtor;
 
-struct Foo<T>(T);
-impl<T> Foo<T> {
-    const FOO: Option<Box<T>> = None;
+impl Drop for WithDtor {
+    fn drop(&mut self) {}
 }
 
-fn main() {
-    let _: &'static u32 = &42;
-    let _: &'static Option<u32> = &None;
+static FOO: Option<&'static WithDtor> = Some(&WithDtor);
+//~^ ERROR statics are not allowed to have destructors
+//~| ERROR borrowed value does not live long enoug
 
-    // We should be able to peek at consts and see they're None.
-    let _: &'static Option<Cell<String>> = &NONE_CELL_STRING;
-    let _: &'static Option<Box<()>> = &Foo::FOO;
-}
+static BAR: i32 = (WithDtor, 0).1;
+//~^ ERROR statics are not allowed to have destructors
+
+fn main () {}

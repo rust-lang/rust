@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::Cell;
+// aux-build:attr-on-trait.rs
 
-const NONE_CELL_STRING: Option<Cell<String>> = None;
+#![feature(proc_macro)]
 
-struct Foo<T>(T);
-impl<T> Foo<T> {
-    const FOO: Option<Box<T>> = None;
+extern crate attr_on_trait;
+
+trait Foo {
+    #[attr_on_trait::foo]
+    fn foo() {}
+}
+
+impl Foo for i32 {
+    fn foo(&self) {}
 }
 
 fn main() {
-    let _: &'static u32 = &42;
-    let _: &'static Option<u32> = &None;
-
-    // We should be able to peek at consts and see they're None.
-    let _: &'static Option<Cell<String>> = &NONE_CELL_STRING;
-    let _: &'static Option<Box<()>> = &Foo::FOO;
+    3i32.foo();
 }
