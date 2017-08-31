@@ -16,7 +16,7 @@ fn main() {
     // error for a `Try` type on a non-`Try` fn
     std::fs::File::open("foo")?;
 
-    // a non-`Try` type on a `Try` fn
+    // a non-`Try` type on a non-`Try` fn
     ()?;
 
     // an unrelated use of `Try`
