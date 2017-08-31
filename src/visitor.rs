@@ -197,7 +197,7 @@ impl<'a> FmtVisitor<'a> {
 
         let mut unindent_comment = self.is_if_else_block && !b.stmts.is_empty();
         if unindent_comment {
-            let end_pos = source!(self, b.span).hi - brace_compensation - remove_len;
+            let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
             let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
             unindent_comment = snippet.contains("//") || snippet.contains("/*");
         }
@@ -352,7 +352,7 @@ impl<'a> FmtVisitor<'a> {
                 self.format_import(&item.vis, vp, item.span, &item.attrs);
             }
             ast::ItemKind::Impl(..) => {
-                self.format_missing_with_indent(source!(self, item.span).lo);
+                self.format_missing_with_indent(source!(self, item.span).lo());
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
@@ -667,7 +667,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let rewrite = attrs.rewrite(&self.get_context(), self.shape());
-        let span = mk_sp(attrs[0].span.lo, attrs[attrs.len() - 1].span.hi);
+        let span = mk_sp(attrs[0].span.lo(), attrs[attrs.len() - 1].span.hi());
         self.push_rewrite(span, rewrite);
 
         false
@@ -943,7 +943,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 };
 
                 let comment = try_opt!(recover_missing_comment_in_span(
-                    mk_sp(self[i - 1].span.hi, a.span.lo),
+                    mk_sp(self[i - 1].span.hi(), a.span.lo()),
                     shape.with_max_width(context.config),
                     context,
                     0,

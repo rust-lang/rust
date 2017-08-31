@@ -1198,11 +1198,11 @@ impl<'a> ControlFlow<'a> {
 
         // `for event in event`
         // Do not include label in the span.
-        let lo = self.label.map_or(self.span.lo, |label| label.span.hi);
+        let lo = self.label.map_or(self.span.lo(), |label| label.span.hi());
         let between_kwd_cond = mk_sp(
             context
                 .codemap
-                .span_after(mk_sp(lo, self.span.hi), self.keyword.trim()),
+                .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
             self.pat
                 .map_or(cond_span.lo(), |p| if self.matcher.is_empty() {
                     p.span.lo()
@@ -1611,11 +1611,14 @@ fn rewrite_match_arm(
             ));
         }
         (
-            mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi(), arm.pats[0].span.lo()),
+            mk_sp(
+                arm.attrs[arm.attrs.len() - 1].span.hi(),
+                arm.pats[0].span.lo(),
+            ),
             try_opt!(arm.attrs.rewrite(context, shape)),
         )
     } else {
-        (mk_sp(arm.span().lo, arm.span().lo), String::new())
+        (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
     };
     let pats_str = try_opt!(
         rewrite_match_pattern(context, &arm.pats, &arm.guard, shape).and_then(|pats_str| {

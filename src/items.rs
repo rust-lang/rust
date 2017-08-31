@@ -67,7 +67,10 @@ impl Rewrite for ast::Local {
                 context,
                 &attrs_str,
                 "let ",
-                mk_sp(self.attrs.last().map(|a| a.span.hi).unwrap(), self.span.lo),
+                mk_sp(
+                    self.attrs.last().map(|a| a.span.hi()).unwrap(),
+                    self.span.lo(),
+                ),
                 shape,
                 false,
             ))
@@ -556,7 +559,7 @@ pub fn format_impl(
         if generics.where_clause.predicates.is_empty() {
             if let Some(hi) = where_span_end {
                 match recover_missing_comment_in_span(
-                    mk_sp(self_ty.span.hi, hi),
+                    mk_sp(self_ty.span.hi(), hi),
                     Shape::indented(offset, context.config),
                     context,
                     last_line_width(&result),
@@ -965,7 +968,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
                 // 1 = `{`
                 let comment_hi = body_lo - BytePos(1);
-                let comment_lo = item.span.lo + BytePos(lo as u32);
+                let comment_lo = item.span.lo() + BytePos(lo as u32);
                 if comment_lo < comment_hi {
                     match recover_missing_comment_in_span(
                         mk_sp(comment_lo, comment_hi),
