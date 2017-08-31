@@ -65,6 +65,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/rtstartup", // Not sure what to do about this. magic stuff for mingw
 
     // temporary exceptions
+    "src/libstd/lib.rs", // FIXME(#44217)
     "src/libstd/path.rs",
     "src/libstd/f32.rs",
     "src/libstd/f64.rs",

@@ -322,9 +322,12 @@
 // if the user has disabled jemalloc in `./configure`).
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
-#![cfg_attr(any(stage0, feature = "force_alloc_system"),
+// FIXME(#44236) shouldn't need MSVC logic
+#![cfg_attr(all(not(target_env = "msvc"),
+                any(stage0, feature = "force_alloc_system")),
             feature(global_allocator))]
-#[cfg(any(stage0, feature = "force_alloc_system"))]
+#[cfg(all(not(target_env = "msvc"),
+          any(stage0, feature = "force_alloc_system")))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 
