@@ -22,6 +22,7 @@
 use syntax::ast;
 use syntax::codemap::BytePos;
 use syntax::parse::new_parser_from_tts;
+use syntax::parse::parser::Parser;
 use syntax::parse::token::Token;
 use syntax::symbol;
 use syntax::tokenstream::TokenStream;
@@ -61,6 +62,51 @@ impl MacroStyle {
     }
 }
 
+pub enum MacroArg {
+    Expr(ast::Expr),
+    Ty(ast::Ty),
+    Pat(ast::Pat),
+}
+
+impl Rewrite for MacroArg {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        match self {
+            &MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
+            &MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
+            &MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
+        }
+    }
+}
+
+fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
+    macro_rules! parse_macro_arg {
+        ($target:tt, $macro_arg:ident, $parser:ident) => {
+            let mut cloned_parser = (*parser).clone();
+            match cloned_parser.$parser() {
+                Ok($target) => {
+                    if parser.sess.span_diagnostic.has_errors() {
+                        parser.sess.span_diagnostic.reset_err_count();
+                    } else {
+                        // Parsing succeeded.
+                        *parser = cloned_parser;
+                        return Some(MacroArg::$macro_arg((*$target).clone()));
+                    }
+                }
+                Err(mut e) => {
+                    e.cancel();
+                    parser.sess.span_diagnostic.reset_err_count();
+                }
+            }
+        }
+    }
+
+    parse_macro_arg!(expr, Expr, parse_expr);
+    parse_macro_arg!(ty, Ty, parse_ty);
+    parse_macro_arg!(pat, Pat, parse_pat);
+
+    return None;
+}
+
 pub fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
@@ -93,7 +139,7 @@ pub fn rewrite_macro(
         original_style
     };
 
-    let ts: TokenStream = mac.node.tts.clone().into();
+    let ts: TokenStream = mac.node.stream();
     if ts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
         return match style {
             MacroStyle::Parens if position == MacroPosition::Item => {
@@ -106,32 +152,16 @@ pub fn rewrite_macro(
     }
 
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
-    let mut expr_vec = Vec::new();
+    let mut arg_vec = Vec::new();
     let mut vec_with_semi = false;
     let mut trailing_comma = false;
 
     if MacroStyle::Braces != style {
         loop {
-            let expr = match parser.parse_expr() {
-                Ok(expr) => {
-                    // Recovered errors.
-                    if context.parse_session.span_diagnostic.has_errors() {
-                        return indent_macro_snippet(
-                            context,
-                            &context.snippet(mac.span),
-                            shape.indent,
-                        );
-                    }
-
-                    expr
-                }
-                Err(mut e) => {
-                    e.cancel();
-                    return indent_macro_snippet(context, &context.snippet(mac.span), shape.indent);
-                }
-            };
-
-            expr_vec.push(expr);
+            match parse_macro_arg(&mut parser) {
+                Some(arg) => arg_vec.push(arg),
+                None => return Some(context.snippet(mac.span)),
+            }
 
             match parser.token {
                 Token::Eof => break,
@@ -141,25 +171,22 @@ pub fn rewrite_macro(
                     if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
                         parser.bump();
                         if parser.token != Token::Eof {
-                            match parser.parse_expr() {
-                                Ok(expr) => {
-                                    if context.parse_session.span_diagnostic.has_errors() {
-                                        return None;
-                                    }
-                                    expr_vec.push(expr);
+                            match parse_macro_arg(&mut parser) {
+                                Some(arg) => {
+                                    arg_vec.push(arg);
                                     parser.bump();
-                                    if parser.token == Token::Eof && expr_vec.len() == 2 {
+                                    if parser.token == Token::Eof && arg_vec.len() == 2 {
                                         vec_with_semi = true;
                                         break;
                                     }
                                 }
-                                Err(mut e) => e.cancel(),
+                                None => return Some(context.snippet(mac.span)),
                             }
                         }
                     }
-                    return None;
+                    return Some(context.snippet(mac.span));
                 }
-                _ => return None,
+                _ => return Some(context.snippet(mac.span)),
             }
 
             parser.bump();
@@ -178,7 +205,7 @@ pub fn rewrite_macro(
             let rw = rewrite_call_inner(
                 context,
                 &macro_name,
-                &expr_vec.iter().map(|e| &**e).collect::<Vec<_>>()[..],
+                &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..],
                 mac.span,
                 shape,
                 context.config.fn_call_width(),
@@ -201,8 +228,8 @@ pub fn rewrite_macro(
                 // 6 = `vec!` + `; `
                 let total_overhead = lbr.len() + rbr.len() + 6;
                 let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
-                let lhs = try_opt!(expr_vec[0].rewrite(context, nested_shape));
-                let rhs = try_opt!(expr_vec[1].rewrite(context, nested_shape));
+                let lhs = try_opt!(arg_vec[0].rewrite(context, nested_shape));
+                let rhs = try_opt!(arg_vec[1].rewrite(context, nested_shape));
                 if !lhs.contains('\n') && !rhs.contains('\n') &&
                     lhs.len() + rhs.len() + total_overhead <= shape.width
                 {
@@ -228,14 +255,26 @@ pub fn rewrite_macro(
                     context.inside_macro = false;
                     trailing_comma = false;
                 }
+                // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
+                let expr_vec: Vec<_> = arg_vec
+                    .iter()
+                    .filter_map(|e| match *e {
+                        MacroArg::Expr(ref e) => Some(e.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                if expr_vec.len() != arg_vec.len() {
+                    return Some(context.snippet(mac.span));
+                }
+                let sp = mk_sp(
+                    context
+                        .codemap
+                        .span_after(mac.span, original_style.opener()),
+                    mac.span.hi() - BytePos(1),
+                );
                 let rewrite = try_opt!(rewrite_array(
-                    expr_vec.iter().map(|x| &**x),
-                    mk_sp(
-                        context
-                            .codemap
-                            .span_after(mac.span, original_style.opener()),
-                        mac.span.hi() - BytePos(1),
-                    ),
+                    expr_vec.iter(),
+                    sp,
                     context,
                     mac_shape,
                     trailing_comma,

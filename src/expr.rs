@@ -26,7 +26,7 @@ use items::{span_hi_for_arg, span_lo_for_arg};
 use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
             struct_lit_shape, struct_lit_tactic, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
-use macros::{rewrite_macro, MacroPosition};
+use macros::{rewrite_macro, MacroArg, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use string::{rewrite_string, StringFormat};
@@ -3010,5 +3010,22 @@ impl<'a> ToExpr for ast::StructField {
 
     fn can_be_overflowed(&self, _: &RewriteContext, _: usize) -> bool {
         false
+    }
+}
+
+impl<'a> ToExpr for MacroArg {
+    fn to_expr(&self) -> Option<&ast::Expr> {
+        match self {
+            &MacroArg::Expr(ref expr) => Some(expr),
+            _ => None,
+        }
+    }
+
+    fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
+        match self {
+            &MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
+            &MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
+            &MacroArg::Pat(..) => false,
+        }
     }
 }

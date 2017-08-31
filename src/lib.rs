@@ -34,6 +34,7 @@ use std::rc::Rc;
 
 use errors::{DiagnosticBuilder, Handler};
 use errors::emitter::{ColorConfig, EmitterWriter};
+use macros::MacroArg;
 use strings::string_buffer::StringBuffer;
 use syntax::ast;
 use syntax::codemap::{CodeMap, FilePathMapping, Span};
@@ -212,6 +213,16 @@ impl Spanned for ast::TyParamBound {
         match *self {
             ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span,
             ast::TyParamBound::RegionTyParamBound(ref l) => l.span,
+        }
+    }
+}
+
+impl Spanned for MacroArg {
+    fn span(&self) -> Span {
+        match *self {
+            MacroArg::Expr(ref expr) => expr.span(),
+            MacroArg::Ty(ref ty) => ty.span(),
+            MacroArg::Pat(ref pat) => pat.span(),
         }
     }
 }
@@ -682,7 +693,6 @@ fn format_ast<F>(
     parse_session: &mut ParseSess,
     main_file: &Path,
     config: &Config,
-    codemap: &Rc<CodeMap>,
     mut after_file: F,
 ) -> Result<(FileMap, bool), io::Error>
 where
@@ -703,29 +713,19 @@ where
         if config.verbose() {
             println!("Formatting {}", path_str);
         }
-        {
-            let mut visitor = FmtVisitor::from_codemap(parse_session, config);
-            let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
-            // Format inner attributes if available.
-            if !krate.attrs.is_empty() && path == main_file {
-                visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner);
-            } else {
-                visitor.last_pos = filemap.start_pos;
-            }
-            visitor.format_separate_mod(module, &*filemap);
-
-            has_diff |= after_file(path_str, &mut visitor.buffer)?;
-
-            result.push((path_str.to_owned(), visitor.buffer));
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
+        let filemap = visitor.codemap.lookup_char_pos(module.inner.lo()).file;
+        // Format inner attributes if available.
+        if !krate.attrs.is_empty() && path == main_file {
+            visitor.visit_attrs(&krate.attrs, ast::AttrStyle::Inner);
+        } else {
+            visitor.last_pos = filemap.start_pos;
         }
-        // Reset the error count.
-        if parse_session.span_diagnostic.has_errors() {
-            let silent_emitter = Box::new(EmitterWriter::new(
-                Box::new(Vec::new()),
-                Some(codemap.clone()),
-            ));
-            parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
-        }
+        visitor.format_separate_mod(module, &*filemap);
+
+        has_diff |= after_file(path_str, &mut visitor.buffer)?;
+
+        result.push((path_str.to_owned(), visitor.buffer));
     }
 
     Ok((result, has_diff))
@@ -912,7 +912,6 @@ pub fn format_input<T: Write>(
         &mut parse_session,
         &main_file,
         config,
-        &codemap,
         |file_name, file| {
             // For some reason, the codemap does not include terminating
             // newlines so we must add one on for each file. This is sad.

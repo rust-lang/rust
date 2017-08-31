@@ -208,9 +208,6 @@ fn issue_1921() {
     }
 }
 
-// Put the following tests with macro invocations whose arguments cannot be parsed as expressioins
-// at the end of the file for now.
-
 // #1577
 fn issue1577() {
     let json = json!({
@@ -222,3 +219,24 @@ gfx_pipeline!(pipe {
     vbuf: gfx::VertexBuffer<Vertex> = (),
     out: gfx::RenderTarget<ColorFormat> = "Target0",
 });
+
+// #1919
+#[test]
+fn __bindgen_test_layout_HandleWithDtor_open0_int_close0_instantiation() {
+    assert_eq!(
+        ::std::mem::size_of::<HandleWithDtor<::std::os::raw::c_int>>(),
+        8usize,
+        concat!(
+            "Size of template specialization: ",
+            stringify!(HandleWithDtor<::std::os::raw::c_int>)
+        )
+    );
+    assert_eq!(
+        ::std::mem::align_of::<HandleWithDtor<::std::os::raw::c_int>>(),
+        8usize,
+        concat!(
+            "Alignment of template specialization: ",
+            stringify!(HandleWithDtor<::std::os::raw::c_int>)
+        )
+    );
+}
