@@ -126,7 +126,7 @@ fn check_collapsible_no_if_let(cx: &EarlyContext, expr: &ast::Expr, check: &ast:
         let Some(inner) = expr_block(then),
         let ast::ExprKind::If(ref check_inner, ref content, None) = inner.node,
     ], {
-        if expr.span.ctxt != inner.span.ctxt {
+        if expr.span.ctxt() != inner.span.ctxt() {
             return;
         }
         span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this if statement can be collapsed", |db| {

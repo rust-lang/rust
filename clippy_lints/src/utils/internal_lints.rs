@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             // Therefore, we need to climb the macro expansion tree and find the
             // actual span that invoked `declare_lint!`:
             let lint_span = lint_span
-                .ctxt
+                .ctxt()
                 .outer()
                 .expn_info()
                 .map(|ei| ei.call_site)

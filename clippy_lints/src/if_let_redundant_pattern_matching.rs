@@ -1,6 +1,5 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use syntax::codemap::Span;
 use utils::{paths, span_lint_and_then, match_qpath, snippet};
 
 /// **What it does:*** Lint for redundant pattern matching over `Result` or
@@ -74,11 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                    arms[0].pats[0].span,
                                    &format!("redundant pattern matching, consider using `{}`", good_method),
                                    |db| {
-                    let span = Span {
-                        lo: expr.span.lo,
-                        hi: op.span.hi,
-                        ctxt: expr.span.ctxt,
-                    };
+                    let span = expr.span.with_hi(op.span.hi());
                     db.span_suggestion(span, "try this", format!("if {}.{}", snippet(cx, op.span, "_"), good_method));
                 });
             }

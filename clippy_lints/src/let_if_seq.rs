@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::BindingAnnotation;
-use syntax_pos::{Span, NO_EXPANSION};
 use utils::{snippet, span_lint_and_then};
 
 /// **What it does:** Checks for variable declarations immediately followed by a
@@ -74,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 let Some(value) = check_assign(cx, def_id, &*then),
                 !used_in_expr(cx, def_id, value),
             ], {
-                let span = Span { lo: stmt.span.lo, hi: if_.span.hi, ctxt: NO_EXPANSION };
+                let span = stmt.span.to(if_.span);
 
                 let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                     if let hir::ExprBlock(ref else_) = else_.node {
