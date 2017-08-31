@@ -29,13 +29,127 @@ For implementation-oriented RFCs (e.g. for compiler internals), this section sho
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-This is the technical portion of the RFC. Explain the design in sufficient detail that:
+## Registry index format specification
 
-- Its interaction with other features is clear.
-- It is reasonably clear how the feature would be implemented.
-- Corner cases are dissected by example.
+Cargo needs to be able to get a registry index containing metadata for all
+crates and their dependencies available from an alternate registry in order to
+perform offline version resolution. The registry index for crates.io is
+available at
+[https://github.com/rust-lang/crates.io-index](https://github.com/rust-lang/crat
+es.io-index), and this section aims to specify the format of this registry
+index so that other registries can provide their own registry index that Cargo
+will understand.
 
-The section should return to the examples given in the previous section, and explain more fully how the detailed proposal makes those examples work.
+This is version 1 of the registry index format specification. There may be
+other versions of the specification someday. Along with a new specification
+version will be a plan for supporting registries using the older specification
+and a migration plan for registries to upgrade the specification version their
+index is using.
+
+A valid registry index meets the following criteria:
+
+- The registry index is stored in a git repository so that Cargo can
+  efficiently fetch incremental updates to the index.
+- There will be a file at
+  the top level named `config.json`. This file will be a valid JSON object with
+  the following keys:
+
+  ```json
+  {
+    "dl": "https://crates.io/api/v1/crates",
+    "api": "https://crates.io/"
+  }
+  ```
+
+  The `dl` key is required specifies where Cargo can download the tarballs
+  containing the source files of the crates listed in the registry.
+
+  The `api` key is optional and specifies where Cargo can find the API server
+  that provides the same API functionality that crates.io does today, such as
+  publishing and searching. Without the `api` key, these features will not be
+  available. This RFC is not attempting to standardize crates.io's API in any
+  way, although that could be a future enhancement.
+
+- There will be a number of directories in the git repository.
+  - `1/` - holds files for all crates whose names have one letter.
+  - `2/` - holds files for all crates whose names have two letters.
+  - `3/` - holds files for all crates whose names have three letters.
+  - `aa/aa/` etc - for all crates whose names have four or more letters, their
+    files will be in a directory named with the first and second letters of
+    their name, then in a subdirectory named with the third and fourth letters
+    of their name. For example, a file for a crate named `sample` would be
+    found in `sa/mp/`.
+
+- For each crate in the registry, there will be a file with the name of that
+  crate in the directory structure as specified above. The file will contain
+  metadata about each version of the crate, with one version per line. Each
+  line will be valid JSON with, minimally, the keys as shown. More keys may be
+  added, but Cargo may ignore them. The contents of one line are pretty-printed
+  here for readability.
+
+  ```json
+  {
+      "name": "serde",
+      "vers": "1.0.11",
+      "deps": [
+          {
+              "name": "serde_derive",
+              "req": "^1.0",
+              "features": [
+
+              ],
+              "optional": true,
+              "default_features": true,
+              "target": null,
+              "kind": "normal"
+          },
+          {
+              "name": "serde_derive",
+              "req": "^1.0",
+              "features": [
+
+              ],
+              "optional": false,
+              "default_features": true,
+              "target": null,
+              "kind": "dev"
+          }
+      ],
+      "cksum": "f7726f29ddf9731b17ff113c461e362c381d9d69433f79de4f3dd572488823e9",
+      "features": {
+          "default": [
+              "std"
+          ],
+          "derive": [
+              "serde_derive"
+          ],
+          "playground": [
+              "serde_derive"
+          ],
+          "alloc": [
+              "unstable"
+          ],
+          "unstable": [
+
+          ],
+          "std": [
+
+          ],
+          "rc": [
+
+          ]
+      },
+      "yanked": false
+  }
+  ```
+
+TODO: explain this format, put placeholders where repetition may occur, etc
+
+Currently, the knowledge of how to create a file in this format is spread
+between Cargo and crates.io. This RFC proposes the addition of a Cargo command
+that would generate this file locally for the current crate so that it can be
+added to the git repository using a mechanism other than a server running
+crates.io's codebase.
 
 # Drawbacks
 [drawbacks]: #drawbacks
