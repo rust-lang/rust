@@ -14,6 +14,7 @@
 /// in terms of a success/failure dichotomy.  This trait allows both
 /// extracting those success or failure values from an existing instance and
 /// creating a new instance from a success or failure value.
+#[cfg_attr(not(stage0), lang = "try")]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[rustc_on_unimplemented = "the `?` operator can only be used in a function that returns `Result` \
                             (or another type that implements `{Try}`)"]

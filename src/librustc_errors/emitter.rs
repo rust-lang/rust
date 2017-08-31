@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
+use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos, CompilerDesugaringKind};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
 use RenderSpan::*;
@@ -726,7 +726,9 @@ impl EmitterWriter {
 
             // First, find all the spans in <*macros> and point instead at their use site
             for sp in span.primary_spans() {
-                if *sp == DUMMY_SP {
+                if *sp == DUMMY_SP ||
+                    sp.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
+                {
                     continue;
                 }
                 let call_sp = cm.call_span_if_macro(*sp);
