@@ -838,9 +838,9 @@ pub struct GlobalCtxt<'tcx> {
     // scratch every time.
     freevars: FxHashMap<HirId, Rc<Vec<hir::Freevar>>>,
 
-    pub maybe_unused_trait_imports: NodeSet,
+    maybe_unused_trait_imports: FxHashSet<HirId>,
 
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_extern_crates: Vec<(HirId, Span)>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1068,12 +1068,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             freevars: resolutions.freevars.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
+            maybe_unused_trait_imports:
+                resolutions.maybe_unused_trait_imports
+                    .into_iter()
+                    .map(|id| hir.node_to_hir_id(id))
+                    .collect(),
+            maybe_unused_extern_crates:
+                resolutions.maybe_unused_extern_crates
+                    .into_iter()
+                    .map(|(id, sp)| (hir.node_to_hir_id(id), sp))
+                    .collect(),
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
-            maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
@@ -2020,4 +2028,11 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         Rc::new(middle::lang_items::collect(tcx))
     };
     providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
+    providers.maybe_unused_trait_import = |tcx, id| {
+        tcx.maybe_unused_trait_imports.contains(&id)
+    };
+    providers.maybe_unused_extern_crates = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.maybe_unused_extern_crates.clone())
+    };
 }

@@ -14,8 +14,9 @@ use rustc::ty::TyCtxt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir;
 use rustc::util::nodemap::DefIdSet;
 
 struct CheckVisitor<'a, 'tcx: 'a> {
@@ -25,7 +26,8 @@ struct CheckVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
     fn check_import(&self, id: ast::NodeId, span: Span) {
-        if !self.tcx.maybe_unused_trait_imports.contains(&id) {
+        let hir_id = self.tcx.hir.node_to_hir_id(id);
+        if !self.tcx.maybe_unused_trait_import(hir_id) {
             return;
         }
 
@@ -73,15 +75,20 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
     tcx.hir.krate().visit_all_item_likes(&mut visitor);
 
-    for &(id, span) in &tcx.maybe_unused_extern_crates {
-        let hir_id = tcx.hir.node_to_hir_id(id);
+    for &(hir_id, span) in tcx.maybe_unused_extern_crates(LOCAL_CRATE).iter() {
         let cnum = tcx.extern_mod_stmt_cnum(hir_id).unwrap();
-        if !tcx.is_compiler_builtins(cnum)
-            && !tcx.is_panic_runtime(cnum)
-            && !tcx.has_global_allocator(cnum) {
-                let lint = lint::builtin::UNUSED_EXTERN_CRATES;
-                let msg = "unused extern crate";
-                tcx.lint_node(lint, id, span, msg);
-            }
+        if tcx.is_compiler_builtins(cnum) {
+            continue
+        }
+        if tcx.is_panic_runtime(cnum) {
+            continue
+        }
+        if tcx.has_global_allocator(cnum) {
+            continue
+        }
+        let id = tcx.hir.definitions().find_node_for_hir_id(hir_id);
+        let lint = lint::builtin::UNUSED_EXTERN_CRATES;
+        let msg = "unused extern crate";
+        tcx.lint_node(lint, id, span, msg);
     }
 }

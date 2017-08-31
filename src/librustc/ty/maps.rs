@@ -736,6 +736,18 @@ impl<'tcx> QueryDescription for queries::freevars<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::maybe_unused_trait_import<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("testing if a trait import is unused")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::maybe_unused_extern_crates<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up all possibly unused extern crates")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1353,6 +1365,9 @@ define_maps! { <'tcx>
     [] postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
     [] freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
+    [] maybe_unused_trait_import: MaybeUnusedTraitImport(HirId) -> bool,
+    [] maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
+        -> Rc<Vec<(HirId, Span)>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1453,4 +1468,8 @@ fn visible_parent_map_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn postorder_cnums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::PostorderCnums
+}
+
+fn maybe_unused_extern_crates_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::MaybeUnusedExternCrates
 }
