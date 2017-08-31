@@ -567,6 +567,8 @@ define_dep_nodes!( <'tcx>
     [] VisibleParentMap,
     [] IsDirectExternCrate(CrateNum),
     [] MissingExternCrateItem(CrateNum),
+    [] UsedCrateSource(CrateNum),
+    [] PostorderCnums,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

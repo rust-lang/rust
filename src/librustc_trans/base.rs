@@ -41,7 +41,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
-use rustc::middle::cstore::LinkMeta;
+use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
@@ -1508,7 +1508,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 }
 
 impl CrateInfo {
-    pub fn new(tcx: TyCtxt) -> CrateInfo {
+    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CrateInfo {
         let mut info = CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,
@@ -1519,11 +1519,15 @@ impl CrateInfo {
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
             crate_name: FxHashMap(),
+            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
+            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crate_source: FxHashMap(),
         };
 
         for cnum in tcx.sess.cstore.crates() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
+            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
             if tcx.is_panic_runtime(cnum) {
                 info.panic_runtime = Some(cnum);
             }

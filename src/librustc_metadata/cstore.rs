@@ -150,52 +150,12 @@ impl CStore {
         ordering.push(krate);
     }
 
-    // This method is used when generating the command line to pass through to
-    // system linker. The linker expects undefined symbols on the left of the
-    // command line to be defined in libraries on the right, not the other way
-    // around. For more info, see some comments in the add_used_library function
-    // below.
-    //
-    // In order to get this left-to-right dependency ordering, we perform a
-    // topological sort of all crates putting the leaves at the right-most
-    // positions.
-    pub fn do_get_used_crates(&self,
-                              prefer: LinkagePreference)
-                              -> Vec<(CrateNum, LibSource)> {
+    pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);
         }
-        info!("topological ordering: {:?}", ordering);
-        ordering.reverse();
-        let mut libs = self.metas
-            .borrow()
-            .iter()
-            .filter_map(|(&cnum, data)| {
-                if data.dep_kind.get().macros_only() { return None; }
-                let path = match prefer {
-                    LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
-                    LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
-                };
-                let path = match path {
-                    Some(p) => LibSource::Some(p),
-                    None => {
-                        if data.source.rmeta.is_some() {
-                            LibSource::MetadataOnly
-                        } else {
-                            LibSource::None
-                        }
-                    }
-                };
-                Some((cnum, path))
-            })
-            .collect::<Vec<_>>();
-        libs.sort_by(|&(a, _), &(b, _)| {
-            let a = ordering.iter().position(|x| *x == a);
-            let b = ordering.iter().position(|x| *x == b);
-            a.cmp(&b)
-        });
-        libs
+        return ordering
     }
 
     pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {

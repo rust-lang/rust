@@ -66,7 +66,7 @@ use hir::def_id::CrateNum;
 use session;
 use session::config;
 use ty::TyCtxt;
-use middle::cstore::DepKind;
+use middle::cstore::{self, DepKind};
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FxHashMap;
 use rustc_back::PanicStrategy;
@@ -134,7 +134,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             for cnum in sess.cstore.crates() {
                 if tcx.dep_kind(cnum).macros_only() { continue }
-                let src = sess.cstore.used_crate_source(cnum);
+                let src = tcx.used_crate_source(cnum);
                 if src.rlib.is_some() { continue }
                 sess.err(&format!("dependency `{}` not found in rlib format",
                                   tcx.crate_name(cnum)));
@@ -168,7 +168,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     for cnum in sess.cstore.crates() {
         if tcx.dep_kind(cnum).macros_only() { continue }
         let name = tcx.crate_name(cnum);
-        let src = sess.cstore.used_crate_source(cnum);
+        let src = tcx.used_crate_source(cnum);
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
             add_library(tcx, cnum, RequireDynamic, &mut formats);
@@ -196,7 +196,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // If the crate hasn't been included yet and it's not actually required
     // (e.g. it's an allocator) then we skip it here as well.
     for cnum in sess.cstore.crates() {
-        let src = sess.cstore.used_crate_source(cnum);
+        let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
            tcx.dep_kind(cnum) == DepKind::Explicit {
@@ -225,7 +225,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
         let cnum = CrateNum::new(cnum + 1);
-        let src = sess.cstore.used_crate_source(cnum);
+        let src = tcx.used_crate_source(cnum);
         match *kind {
             Linkage::NotLinked |
             Linkage::IncludedFromDylib => {}
@@ -274,7 +274,7 @@ fn add_library(tcx: TyCtxt,
 
 fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyList> {
     let sess = &tcx.sess;
-    let crates = sess.cstore.used_crates(RequireStatic);
+    let crates = cstore::used_crates(tcx, RequireStatic);
     if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
         return None
     }

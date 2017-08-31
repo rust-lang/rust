@@ -70,7 +70,7 @@ use std::rc::Rc;
 
 use rustc::hir::def_id::CrateNum;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
-use rustc::middle::cstore::NativeLibrary;
+use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
 
 pub mod back {
     mod archive;
@@ -237,6 +237,9 @@ pub struct CrateInfo {
     crate_name: FxHashMap<CrateNum, String>,
     used_libraries: Rc<Vec<NativeLibrary>>,
     link_args: Rc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Rc<CrateSource>>,
+    used_crates_static: Vec<(CrateNum, LibSource)>,
+    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

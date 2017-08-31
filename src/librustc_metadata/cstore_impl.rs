@@ -15,9 +15,9 @@ use native_libs;
 use schema;
 
 use rustc::ty::maps::QueryConfig;
-use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
+use rustc::middle::cstore::{CrateStore, DepKind,
                             MetadataLoader, LinkMeta,
-                            LinkagePreference, LoadedMacro, EncodedMetadata,
+                            LoadedMacro, EncodedMetadata,
                             EncodedMetadataHashes, NativeLibraryKind};
 use rustc::hir::def;
 use rustc::session::Session;
@@ -229,6 +229,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             _ => false,
         }
     }
+
+    used_crate_source => { Rc::new(cdata.source.clone()) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -330,6 +332,11 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             }
 
             Rc::new(visible_parent_map)
+        },
+
+        postorder_cnums: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(tcx.sess.cstore.postorder_cnums_untracked())
         },
 
         ..*providers
@@ -477,19 +484,13 @@ impl CrateStore for cstore::CStore {
         result
     }
 
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
-    {
-        self.do_get_used_crates(prefer)
-    }
-
-    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource
-    {
-        self.get_crate_data(cnum).source.clone()
-    }
-
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>
     {
         self.do_extern_mod_stmt_cnum(emod_id)
+    }
+
+    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
+        self.do_postorder_cnums_untracked()
     }
 
     fn encode_metadata<'a, 'tcx>(&self,

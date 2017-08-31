@@ -24,7 +24,7 @@ use rustc::session::config::{Sanitizer, self};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
-use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
+use rustc::middle::cstore::{validate_crate_name, ExternCrate};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
@@ -166,7 +166,7 @@ impl<'a> CrateLoader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.cstore.used_crate_source(cnum);
+            let source = &self.cstore.get_crate_data(cnum).source;
             if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();

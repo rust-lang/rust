@@ -17,7 +17,7 @@ use hir::svh::Svh;
 use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
-use middle::cstore::{NativeLibraryKind, DepKind};
+use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use middle::privacy::AccessLevels;
 use middle::region;
 use middle::region::RegionMaps;
@@ -718,6 +718,18 @@ impl<'tcx> QueryDescription for queries::missing_extern_crate_item<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::used_crate_source<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking at the source for a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::postorder_cnums<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("generating a postorder list of CrateNums")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1331,6 +1343,8 @@ define_maps! { <'tcx>
     [] visible_parent_map: visible_parent_map_node(CrateNum)
         -> Rc<DefIdMap<DefId>>,
     [] missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
+    [] used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
+    [] postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1427,4 +1441,8 @@ fn get_lang_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn visible_parent_map_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::VisibleParentMap
+}
+
+fn postorder_cnums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::PostorderCnums
 }

@@ -19,8 +19,7 @@ use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, Pri
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, LinkagePreference,
-                            NativeLibraryKind};
+use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
@@ -218,7 +217,7 @@ fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilen
 pub fn each_linked_rlib(sess: &Session,
                         info: &CrateInfo,
                         f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
-    let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
+    let crates = info.used_crates_static.iter();
     let fmts = sess.dependency_formats.borrow();
     let fmts = fmts.get(&config::CrateTypeExecutable)
                    .or_else(|| fmts.get(&config::CrateTypeStaticlib))
@@ -228,7 +227,7 @@ pub fn each_linked_rlib(sess: &Session,
         Some(f) => f,
         None => return Err(format!("could not find formats for rlibs"))
     };
-    for (cnum, path) in crates {
+    for &(cnum, ref path) in crates {
         match fmts.get(cnum.as_usize() - 1) {
             Some(&Linkage::NotLinked) |
             Some(&Linkage::IncludedFromDylib) => continue,
@@ -236,8 +235,8 @@ pub fn each_linked_rlib(sess: &Session,
             None => return Err(format!("could not find formats for rlibs"))
         }
         let name = &info.crate_name[&cnum];
-        let path = match path {
-            LibSource::Some(p) => p,
+        let path = match *path {
+            LibSource::Some(ref p) => p,
             LibSource::MetadataOnly => {
                 return Err(format!("could not find rlib for: `{}`, found rmeta (metadata) file",
                                    name))
@@ -1028,7 +1027,7 @@ fn link_args(cmd: &mut Linker,
             path
         };
         let mut rpath_config = RPathConfig {
-            used_crates: sess.cstore.used_crates(LinkagePreference::RequireDynamic),
+            used_crates: &trans.crate_info.used_crates_dynamic,
             out_filename: out_filename.to_path_buf(),
             has_rpath: sess.target.target.options.has_rpath,
             is_like_osx: sess.target.target.options.is_like_osx,
@@ -1107,21 +1106,21 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 
     // Invoke get_used_crates to ensure that we get a topological sorting of
     // crates.
-    let deps = sess.cstore.used_crates(LinkagePreference::RequireDynamic);
+    let deps = &trans.crate_info.used_crates_dynamic;
 
     let mut compiler_builtins = None;
 
-    for &(cnum, _) in &deps {
+    for &(cnum, _) in deps.iter() {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
-        let src = sess.cstore.used_crate_source(cnum);
+        let src = &trans.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if trans.crate_info.profiler_runtime == Some(cnum) => {
                 add_static_crate(cmd, sess, trans, tmpdir, crate_type, cnum);
             }
             _ if trans.crate_info.sanitizer_runtime == Some(cnum) => {
-                link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
+                link_sanitizer_runtime(cmd, sess, trans, tmpdir, cnum);
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -1135,7 +1134,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                 add_static_crate(cmd, sess, trans, tmpdir, crate_type, cnum);
             }
             Linkage::Dynamic => {
-                add_dynamic_crate(cmd, sess, &src.dylib.unwrap().0)
+                add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0)
             }
         }
     }
@@ -1164,10 +1163,11 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
     // linking it.
     fn link_sanitizer_runtime(cmd: &mut Linker,
                               sess: &Session,
+                              trans: &CrateTranslation,
                               tmpdir: &Path,
                               cnum: CrateNum) {
-        let src = sess.cstore.used_crate_source(cnum);
-        let cratepath = &src.rlib.unwrap().0;
+        let src = &trans.crate_info.used_crate_source[&cnum];
+        let cratepath = &src.rlib.as_ref().unwrap().0;
 
         if sess.target.target.options.is_like_osx {
             // On Apple platforms, the sanitizer is always built as a dylib, and
@@ -1236,8 +1236,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
                         tmpdir: &Path,
                         crate_type: config::CrateType,
                         cnum: CrateNum) {
-        let src = sess.cstore.used_crate_source(cnum);
-        let cratepath = &src.rlib.unwrap().0;
+        let src = &trans.crate_info.used_crate_source[&cnum];
+        let cratepath = &src.rlib.as_ref().unwrap().0;
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
         // there's a static library that's not relevant we skip all object
@@ -1371,8 +1371,8 @@ fn add_upstream_native_libraries(cmd: &mut Linker,
     let formats = sess.dependency_formats.borrow();
     let data = formats.get(&crate_type).unwrap();
 
-    let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
-    for (cnum, _) in crates {
+    let crates = &trans.crate_info.used_crates_static;
+    for &(cnum, _) in crates {
         for lib in trans.crate_info.native_libraries[&cnum].iter() {
             if !relevant_lib(sess, &lib) {
                 continue
