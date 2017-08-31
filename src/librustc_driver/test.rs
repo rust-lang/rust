@@ -15,7 +15,6 @@ use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
-use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
@@ -140,7 +139,6 @@ fn test_env<F>(source_string: &str,
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
     let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
     let index = stability::Index::new(&sess);
     TyCtxt::create_and_enter(&sess,
@@ -152,7 +150,6 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
-                             lang_items,
                              index,
                              "test_crate",
                              |tcx| {

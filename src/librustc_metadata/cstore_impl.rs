@@ -20,11 +20,10 @@ use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
                             LinkagePreference, LoadedMacro, EncodedMetadata,
                             EncodedMetadataHashes, NativeLibraryKind};
 use rustc::hir::def;
-use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
@@ -213,6 +212,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
         Rc::new(result)
     }
+    defined_lang_items => { Rc::new(cdata.get_lang_items(&tcx.dep_graph)) }
+    missing_lang_items => { Rc::new(cdata.get_missing_lang_items(&tcx.dep_graph)) }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -303,17 +304,6 @@ impl CrateStore for cstore::CStore {
         if data.dep_kind.get() == DepKind::UnexportedMacrosOnly {
             data.dep_kind.set(DepKind::MacrosOnly)
         }
-    }
-
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
-    {
-        self.get_crate_data(cnum).get_lang_items(&self.dep_graph)
-    }
-
-    fn missing_lang_items(&self, cnum: CrateNum)
-                          -> Vec<lang_items::LangItem>
-    {
-        self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol

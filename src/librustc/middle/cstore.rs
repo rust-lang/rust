@@ -28,7 +28,6 @@ use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DefPathTable};
 use hir::svh::Svh;
 use ich;
-use middle::lang_items;
 use ty::{self, TyCtxt};
 use session::Session;
 use session::search_paths::PathKind;
@@ -243,10 +242,6 @@ pub trait CrateStore {
     // trait/impl-item info
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
-    // crate metadata
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
-    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
@@ -332,10 +327,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("associated_item_cloned") }
 
     // crate metadata
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
-        { bug!("lang_items") }
-    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
-        { bug!("missing_lang_items") }
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
     fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }

@@ -10,7 +10,7 @@
 
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, HirId};
 use hir::svh::Svh;
@@ -22,7 +22,7 @@ use middle::privacy::AccessLevels;
 use middle::region;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
-use middle::lang_items::LanguageItems;
+use middle::lang_items::{LanguageItems, LangItem};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -694,6 +694,18 @@ impl<'tcx> QueryDescription for queries::get_lang_items<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::defined_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lang items defined in a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::missing_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the missing lang items in a crate")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1301,6 +1313,8 @@ define_maps! { <'tcx>
     [] extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
 
     [] get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
+    [] defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
+    [] missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

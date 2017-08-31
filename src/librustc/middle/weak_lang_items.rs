@@ -84,7 +84,7 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut missing = HashSet::new();
     for cnum in tcx.sess.cstore.crates() {
-        for item in tcx.sess.cstore.missing_lang_items(cnum) {
+        for &item in tcx.missing_lang_items(cnum).iter() {
             missing.insert(item);
         }
     }

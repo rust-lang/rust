@@ -125,9 +125,9 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         {
             let mut r = cx.renderinfo.borrow_mut();
-            r.deref_trait_did = cx.tcx.lang_items.deref_trait();
-            r.deref_mut_trait_did = cx.tcx.lang_items.deref_mut_trait();
-            r.owned_box_did = cx.tcx.lang_items.owned_box();
+            r.deref_trait_did = cx.tcx.lang_items().deref_trait();
+            r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+            r.owned_box_did = cx.tcx.lang_items().owned_box();
         }
 
         let mut externs = Vec::new();
@@ -689,7 +689,7 @@ impl TyParamBound {
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
         if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id() == cx.tcx.lang_items.sized_trait() {
+            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
         }
@@ -713,7 +713,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items.fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
                 ty::TyTuple(ref tys, _) => tys.iter().map(|t| t.clean(cx)).collect(),
@@ -2526,7 +2526,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items.deref_trait() {
+        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 
@@ -2582,27 +2582,27 @@ fn build_deref_target_impls(cx: &DocContext,
             }
         };
         let did = match primitive {
-            Isize => tcx.lang_items.isize_impl(),
-            I8 => tcx.lang_items.i8_impl(),
-            I16 => tcx.lang_items.i16_impl(),
-            I32 => tcx.lang_items.i32_impl(),
-            I64 => tcx.lang_items.i64_impl(),
-            I128 => tcx.lang_items.i128_impl(),
-            Usize => tcx.lang_items.usize_impl(),
-            U8 => tcx.lang_items.u8_impl(),
-            U16 => tcx.lang_items.u16_impl(),
-            U32 => tcx.lang_items.u32_impl(),
-            U64 => tcx.lang_items.u64_impl(),
-            U128 => tcx.lang_items.u128_impl(),
-            F32 => tcx.lang_items.f32_impl(),
-            F64 => tcx.lang_items.f64_impl(),
-            Char => tcx.lang_items.char_impl(),
+            Isize => tcx.lang_items().isize_impl(),
+            I8 => tcx.lang_items().i8_impl(),
+            I16 => tcx.lang_items().i16_impl(),
+            I32 => tcx.lang_items().i32_impl(),
+            I64 => tcx.lang_items().i64_impl(),
+            I128 => tcx.lang_items().i128_impl(),
+            Usize => tcx.lang_items().usize_impl(),
+            U8 => tcx.lang_items().u8_impl(),
+            U16 => tcx.lang_items().u16_impl(),
+            U32 => tcx.lang_items().u32_impl(),
+            U64 => tcx.lang_items().u64_impl(),
+            U128 => tcx.lang_items().u128_impl(),
+            F32 => tcx.lang_items().f32_impl(),
+            F64 => tcx.lang_items().f64_impl(),
+            Char => tcx.lang_items().char_impl(),
             Bool => None,
-            Str => tcx.lang_items.str_impl(),
-            Slice => tcx.lang_items.slice_impl(),
-            Array => tcx.lang_items.slice_impl(),
+            Str => tcx.lang_items().str_impl(),
+            Slice => tcx.lang_items().slice_impl(),
+            Array => tcx.lang_items().slice_impl(),
             Tuple => None,
-            RawPointer => tcx.lang_items.const_ptr_impl(),
+            RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,
         };

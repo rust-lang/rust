@@ -1097,7 +1097,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
-        self.get_lang_items(LOCAL_CRATE)
+        // Right now we insert a `with_ignore` node in the dep graph here to
+        // ignore the fact that `get_lang_items` below depends on the entire
+        // crate.  For now this'll prevent false positives of recompiling too
+        // much when anything changes.
+        //
+        // Once red/green incremental compilation lands we should be able to
+        // remove this because while the crate changes often the lint level map
+        // will change rarely.
+        self.dep_graph.with_ignore(|| {
+            self.get_lang_items(LOCAL_CRATE)
+        })
     }
 }
 
