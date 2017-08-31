@@ -176,6 +176,8 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
     {
         let mut message = None;
         let mut label = None;
+        info!("evaluate({:?}, trait_ref={:?}, options={:?})",
+              self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
@@ -191,8 +193,13 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
                 }
             }
             debug!("evaluate: {:?} succeeded", command);
-            message = command.message.clone();
-            label = command.label.clone();
+            if let Some(ref message_) = command.message {
+                message = Some(message_.clone());
+            }
+
+            if let Some(ref label_) = command.label {
+                label = Some(label_.clone());
+            }
         }
 
         OnUnimplementedNote {

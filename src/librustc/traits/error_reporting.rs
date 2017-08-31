@@ -327,7 +327,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 
-        let s;
+        let desugaring;
+        let method;
         let mut flags = vec![];
         let direct = match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
@@ -340,10 +341,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("direct", None));
         }
 
+        if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
+            // FIXME: maybe also have some way of handling methods
+            // from other traits? That would require name resolution,
+            // which we might want to be some sort of hygienic.
+            //
+            // Currently I'm leaving it for what I need for `try`.
+            if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
+                method = self.tcx.item_name(item).as_str();
+                flags.push(("from_method", None));
+                flags.push(("from_method", Some(&*method)));
+            }
+        }
+
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            s = k.as_symbol().as_str();
+            desugaring = k.as_symbol().as_str();
             flags.push(("from_desugaring", None));
-            flags.push(("from_desugaring", Some(&*s)));
+            flags.push(("from_desugaring", Some(&*desugaring)));
         }
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(

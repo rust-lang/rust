@@ -21,7 +21,9 @@
                                      (or another type that implements `{Try}`)")]
 #[cfg_attr(not(stage0),
            rustc_on_unimplemented(
-               on(all(direct, from_desugaring="?"),
+               on(all(
+                   any(from_method="from_error", from_method="from_ok"),
+                   from_desugaring="?"),
                   message="the `?` operator can only be used in a \
                            function that returns `Result` \
                            (or another type that implements `{Try}`)",

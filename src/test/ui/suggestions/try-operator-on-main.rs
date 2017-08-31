@@ -13,9 +13,21 @@
 use std::ops::Try;
 
 fn main() {
+    // error for a `Try` type on a non-`Try` fn
     std::fs::File::open("foo")?;
 
+    // a non-`Try` type on a `Try` fn
+    ()?;
+
+    // an unrelated use of `Try`
     try_trait_generic::<()>();
 }
 
-fn try_trait_generic<T: Try>() {}
+
+
+fn try_trait_generic<T: Try>() -> T {
+    // and a non-`Try` object on a `Try` fn.
+    ()?;
+
+    loop {}
+}
