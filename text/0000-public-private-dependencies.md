@@ -68,10 +68,10 @@ A: For now, it will not be strictly permissible to privately depend on a crate a
 type from there as your own. The reason for this is that at the moment it is not possible
 to force this type to be distinct. This means that users of the crate might accidentally
 start depending on that type to be compatible if the user starts to depend on the crate
-that actually implements that type. The limitations from the previous answer apply (eg: you
-can currently overrule the restrictions).
+that actually implements that type. The limitations from the previous answer apply (e.g.:
+you can currently overrule the restrictions).
 
-**Q: How do semver and depenencies interact?**<br>
+**Q: How do semver and dependencies interact?**<br>
 A: It is already the case that changing your own dependencies would require a semver bump
 for your own library because your API contract to the outside world changes. This RFC,
 however, makes it possible to only have this requirement for public dependencies and would
@@ -272,7 +272,7 @@ It is assumed that this feature will eventually become quite popular due to patt
 that already exist in the crate ecosystem. It's likely that it will evoke some
 negative opinions initially. As such, it would be a good idea to make a run with
 cargobomb/crater to see what the actual impact of the new linter warnings is and
-how far we are off to making them errors.
+how far away we are from making them errors.
 
 Crates.io should be updated to render public and private dependencies separately.
 
@@ -281,7 +281,9 @@ Crates.io should be updated to render public and private dependencies separately
 
 ## Author of a crate with one dependency
 
-Assume today that an author of a library crate `onedep` has a dependency on the `url` crate and the `url::Url` type is exposed in `onedep`'s public API.
+Assume today that an author of a library crate `onedep` has a
+dependency on the `url` crate and the `url::Url` type is exposed in
+`onedep`'s public API.
 
 `onedep`'s `Cargo.toml`:
 
@@ -334,12 +336,12 @@ warning would say something like:
         to:
 
         ```
-        url = { version = "1.0.0", public = true}
+        url = { version = "1.0.0", public = true }
         ```
     ```
 
 The warning could also encourage the author to then bump their crate's major
-version, since adding public dependencies is a breaking change.
+version since adding public dependencies is a breaking change.
 
 2. When they run `cargo publish`, the build check that happens after packaging will
 fail and the publish will fail. This is because [deriving `Hash` on `url::Origin`
@@ -427,7 +429,7 @@ linters and error messages).
 [alternatives]: #alternatives
 
 For me, the biggest alternative to this RFC would be a variation of it where type
-and trait aliasing becomes immediately part of it. This would meant that a crate
+and trait aliasing becomes immediately part of it. This would mean that a crate
 can have a private dependency and re-export it as its own type, hiding where it
 came from originally. This would most likely be easier to teach users and can get
 rid of a few "cul-de-sac" situations users can end up in where their only way
