@@ -3,7 +3,7 @@ Version 1.20.0 (2017-08-31)
 
 Language
 --------
-- [Associated constants in traits is now stabilised.][42809]
+- [Associated constants are now stabilised.][42809]
 - [A lot of macro bugs are now fixed.][42913]
 
 Compiler
