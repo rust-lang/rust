@@ -127,8 +127,9 @@ A valid registry index meets the following criteria:
 
   ```json
   {
-    "dl": "https://crates.io/api/v1/crates",
-    "api": "https://crates.io/"
+    "dl": "https://my-crates-server.com/api/v1/crates",
+    "api": "https://my-crates-server.com/",
+    "allowed-registries": ["https://crates.io", "https://my-other-crates-server.com"]
   }
   ```
 
@@ -140,6 +141,13 @@ A valid registry index meets the following criteria:
   publishing and searching. Without the `api` key, these features will not be
   available. This RFC is not attempting to standardize crates.io's API in any
   way, although that could be a future enhancement.
+
+  The `allowed-registries` key is optional and specifies the other registries
+  that crates in this index are allowed to have dependencies on. The default
+  will be nothing, which will mean only crates that depend on other crates in
+  the current registry are allowed. This is currently the case for crates.io
+  and will remain the case for crates.io going forward. Alternate registries
+  will probably want to add crates.io to this list.
 
 - There will be a number of directories in the git repository.
   - `1/` - holds files for all crates whose names have one letter.
@@ -160,30 +168,18 @@ A valid registry index meets the following criteria:
 
   ```json
   {
-      "name": "serde",
+      "name": "my_serde",
       "vers": "1.0.11",
       "deps": [
           {
-              "name": "serde_derive",
+              "name": "serde",
               "req": "^1.0",
-              "features": [
-
-              ],
+              "registry": "https://crates.io",
+              "features": [],
               "optional": true,
               "default_features": true,
               "target": null,
               "kind": "normal"
-          },
-          {
-              "name": "serde_derive",
-              "req": "^1.0",
-              "features": [
-
-              ],
-              "optional": false,
-              "default_features": true,
-              "target": null,
-              "kind": "dev"
           }
       ],
       "cksum": "f7726f29ddf9731b17ff113c461e362c381d9d69433f79de4f3dd572488823e9",
@@ -194,27 +190,38 @@ A valid registry index meets the following criteria:
           "derive": [
               "serde_derive"
           ],
-          "playground": [
-              "serde_derive"
-          ],
-          "alloc": [
-              "unstable"
-          ],
-          "unstable": [
-
-          ],
           "std": [
 
           ],
-          "rc": [
-
-          ]
       },
       "yanked": false
   }
   ```
 
-TODO: explain this format, put placeholders where repetition may occur, etc
+  The top-level keys for a crate are:
+
+    - `name`: the name of the crate
+    - `vers`: the version of the crate this row is describing
+    - `deps`: a list of all dependencies of this crate
+    - `cksum`: a checksum of this version's files
+    - `features`: a list of the features available from this crate
+    - `yanked`: whether or not this version has been yanked
+
+  Within the `deps` list, each dependency should be listed as an item in the `deps` array with the following keys:
+
+    - `name`: the name of the dependency
+    - `req`: the semver version requirement string on this dependency
+    - `registry`: **New to this RFC: the registry from which this crate is
+      available**
+    - `features`: a list of the features available from this crate
+    - `optional`: whether this dependency is optional or not
+    - `default_features`: whether the parent crate uses the default features of
+      this dependency or not
+    - `target`: on which target this dependency is needed
+    - `kind`: can be `normal`, `build`, or `dev` to be a regular dependency, a
+      build-time dependency, or a development dependency
+
+If a dependency's registry is not specified, Cargo will assume the dependency can be located in the current registry. By specifying the registry of a dependency in the index, cargo will have the information it needs to fetch crate files from the registry indices involved without needing to involve an API server.
 
 Currently, the knowledge of how to create a file in this format is spread
 between Cargo and crates.io. This RFC proposes the addition of a Cargo command
