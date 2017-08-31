@@ -234,6 +234,7 @@ pub struct CrateInfo {
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
     native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    crate_name: FxHashMap<CrateNum, String>,
     used_libraries: Rc<Vec<NativeLibrary>>,
     link_args: Rc<Vec<String>>,
 }

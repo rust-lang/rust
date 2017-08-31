@@ -120,7 +120,7 @@ pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
-    let crate_name = cx.tcx.sess.cstore.crate_name(did.krate).to_string();
+    let crate_name = cx.tcx.crate_name(did.krate).to_string();
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
         let s = elem.data.to_string();
@@ -445,9 +445,9 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = FxHashSet();
-        for item in cx.tcx.sess.cstore.item_children(did, cx.tcx.sess) {
+        for &item in cx.tcx.item_children(did).iter() {
             let def_id = item.def.def_id();
-            if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
+            if cx.tcx.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
                 if let Some(i) = try_inline(cx, item.def, item.ident.name) {
                     items.extend(i)

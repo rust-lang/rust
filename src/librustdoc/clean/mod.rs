@@ -244,7 +244,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
+            cx.tcx.item_children(root).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 

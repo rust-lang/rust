@@ -216,6 +216,7 @@ fn filename_for_metadata(sess: &Session, crate_name: &str, outputs: &OutputFilen
 }
 
 pub fn each_linked_rlib(sess: &Session,
+                        info: &CrateInfo,
                         f: &mut FnMut(CrateNum, &Path)) -> Result<(), String> {
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic).into_iter();
     let fmts = sess.dependency_formats.borrow();
@@ -234,7 +235,7 @@ pub fn each_linked_rlib(sess: &Session,
             Some(_) => {}
             None => return Err(format!("could not find formats for rlibs"))
         }
-        let name = sess.cstore.crate_name(cnum).clone();
+        let name = &info.crate_name[&cnum];
         let path = match path {
             LibSource::Some(p) => p,
             LibSource::MetadataOnly => {
@@ -611,8 +612,8 @@ fn link_staticlib(sess: &Session,
                            tempdir);
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(sess, &mut |cnum, path| {
-        let name = sess.cstore.crate_name(cnum);
+    let res = each_linked_rlib(sess, &trans.crate_info, &mut |cnum, path| {
+        let name = &trans.crate_info.crate_name[&cnum];
         let native_libs = &trans.crate_info.native_libraries[&cnum];
 
         // Here when we include the rlib into our staticlib we need to make a

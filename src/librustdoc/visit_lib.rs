@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::{AccessLevels, AccessLevel};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
@@ -25,7 +24,6 @@ use clean::{AttributesExt, NestedAttributesExt};
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
 pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
     cx: &'a ::core::DocContext<'b, 'tcx>,
-    cstore: &'a CrateStore,
     // Accessibility levels for reachable nodes
     access_levels: RefMut<'a, AccessLevels<DefId>>,
     // Previous accessibility level, None means unreachable
@@ -38,7 +36,6 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
     pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
         LibEmbargoVisitor {
             cx,
-            cstore: &*cx.sess().cstore,
             access_levels: cx.access_levels.borrow_mut(),
             prev_level: Some(AccessLevel::Public),
             visited_mods: FxHashSet()
@@ -70,14 +67,14 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
             return;
         }
 
-        for item in self.cstore.item_children(def_id, self.cx.tcx.sess) {
+        for item in self.cx.tcx.item_children(def_id).iter() {
             self.visit_item(item.def);
         }
     }
 
     fn visit_item(&mut self, def: Def) {
         let def_id = def.def_id();
-        let vis = self.cstore.visibility(def_id);
+        let vis = self.cx.tcx.visibility(def_id);
         let inherited_item_level = if vis == Visibility::Public {
             self.prev_level
         } else {

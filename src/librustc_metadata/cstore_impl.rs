@@ -205,6 +205,14 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_dllimport_foreign_item => {
         cdata.is_dllimport_foreign_item(def_id.index, &tcx.dep_graph)
     }
+    visibility => { cdata.get_visibility(def_id.index) }
+    dep_kind => { cdata.dep_kind.get() }
+    crate_name => { cdata.name }
+    item_children => {
+        let mut result = vec![];
+        cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
+        Rc::new(result)
+    }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -246,6 +254,10 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             Rc::new(link_args::collect(tcx))
         },
+        extern_mod_stmt_cnum: |tcx, id| {
+            let id = tcx.hir.definitions().find_node_for_hir_id(id);
+            tcx.sess.cstore.extern_mod_stmt_cnum_untracked(id)
+        },
         ..*providers
     };
 }
@@ -259,7 +271,7 @@ impl CrateStore for cstore::CStore {
         &*self.metadata_loader
     }
 
-    fn visibility(&self, def: DefId) -> ty::Visibility {
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
@@ -275,7 +287,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind
     {
         let data = self.get_crate_data(cnum);
         let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
@@ -283,7 +295,7 @@ impl CrateStore for cstore::CStore {
         data.dep_kind.get()
     }
 
-    fn export_macros(&self, cnum: CrateNum) {
+    fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
         let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
 
@@ -304,7 +316,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
     }
 
-    fn crate_name(&self, cnum: CrateNum) -> Symbol
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
     }
@@ -338,13 +350,13 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).def_path_table.clone()
     }
 
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>
     {
         self.read_dep_node(def);
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    fn item_children(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
+    fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
     {
         self.read_dep_node(def_id);
         let mut result = vec![];
@@ -353,7 +365,7 @@ impl CrateStore for cstore::CStore {
         result
     }
 
-    fn load_macro(&self, id: DefId, sess: &Session) -> LoadedMacro {
+    fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
@@ -427,7 +439,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).source.clone()
     }
 
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>
     {
         self.do_extern_mod_stmt_cnum(emod_id)
     }
@@ -475,7 +487,7 @@ impl CrateStore for cstore::CStore {
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
                 let child = child.def.def_id();
 
-                if self.visibility(child) != ty::Visibility::Public {
+                if self.visibility_untracked(child) != ty::Visibility::Public {
                     return;
                 }
 
@@ -499,7 +511,7 @@ impl CrateStore for cstore::CStore {
                 index: CRATE_DEF_INDEX
             });
             while let Some(def) = bfs_queue.pop_front() {
-                for child in self.item_children(def, sess) {
+                for child in self.item_children_untracked(def, sess) {
                     add_child(bfs_queue, child, def);
                 }
             }

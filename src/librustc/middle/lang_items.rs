@@ -179,7 +179,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                         name),
                     None => self.session.struct_err(&format!(
                             "duplicate lang item in crate `{}`: `{}`.",
-                            cstore.crate_name(item_def_id.krate),
+                            cstore.crate_name_untracked(item_def_id.krate),
                             name)),
                 };
                 if let Some(span) = self.hir_map.span_if_local(original_def_id) {
@@ -187,7 +187,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
                                "first defined here.");
                 } else {
                     err.note(&format!("first defined in crate `{}`.",
-                                      cstore.crate_name(original_def_id.krate)));
+                                      cstore.crate_name_untracked(original_def_id.krate)));
                 }
                 err.emit();
             }

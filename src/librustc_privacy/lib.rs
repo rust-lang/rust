@@ -630,7 +630,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                 };
                 ty::Visibility::from_hir(vis, node_id, self.tcx)
             }
-            None => self.tcx.sess.cstore.visibility(did),
+            None => self.tcx.visibility(did),
         }
     }
 

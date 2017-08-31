@@ -1130,7 +1130,7 @@ fn start_executing_work(sess: &Session,
     }).expect("failed to spawn helper thread");
 
     let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
+    drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
         if link::ignored_for_lto(crate_info, cnum) {
             return
         }

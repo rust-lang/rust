@@ -2315,7 +2315,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let node_id = self.hir.as_local_node_id(impl_did).unwrap();
             Ok(self.hir.span(node_id))
         } else {
-            Err(self.sess.cstore.crate_name(impl_did.krate))
+            Err(self.crate_name(impl_did.krate))
         }
     }
 

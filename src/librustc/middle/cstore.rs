@@ -222,6 +222,14 @@ pub trait MetadataLoader {
 
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
+///
+/// Note that this trait should probably not be expanding today. All new
+/// functionality should be driven through queries instead!
+///
+/// If you find a method on this trait named `{name}_untracked` it signifies
+/// that it's *not* tracked for dependency information throughout compilation
+/// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
+/// during resolve)
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
@@ -229,7 +237,6 @@ pub trait CrateStore {
     fn metadata_loader(&self) -> &MetadataLoader;
 
     // item info
-    fn visibility(&self, def: DefId) -> ty::Visibility;
     fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
 
@@ -237,22 +244,24 @@ pub trait CrateStore {
     fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
 
     // crate metadata
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind;
-    fn export_macros(&self, cnum: CrateNum);
     fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    /// The name of the crate as it is referred to in source code of the current
-    /// crate.
-    fn crate_name(&self, cnum: CrateNum) -> Symbol;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
-    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
+
+    // "queries" used in resolve that aren't tracked for incremental compilation
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
+    fn export_macros_untracked(&self, cnum: CrateNum);
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
+    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
+    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
 
     // misc. metadata
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -265,7 +274,6 @@ pub trait CrateStore {
     // utility functions
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
@@ -310,7 +318,7 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
     fn visible_parent_map<'a>(&'a self, session: &Session)
         -> ::std::cell::Ref<'a, DefIdMap<DefId>>
     {
@@ -328,9 +336,9 @@ impl CrateStore for DummyCrateStore {
         { bug!("lang_items") }
     fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
         { bug!("missing_lang_items") }
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
-    fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
+    fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
@@ -343,11 +351,13 @@ impl CrateStore for DummyCrateStore {
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
         bug!("def_path_table")
     }
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
-    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
+        bug!("struct_field_names")
+    }
+    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
         bug!("item_children")
     }
-    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
+    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
     fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
@@ -363,7 +373,7 @@ impl CrateStore for DummyCrateStore {
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,

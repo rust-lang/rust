@@ -133,11 +133,11 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 return v;
             }
             for cnum in sess.cstore.crates() {
-                if sess.cstore.dep_kind(cnum).macros_only() { continue }
+                if tcx.dep_kind(cnum).macros_only() { continue }
                 let src = sess.cstore.used_crate_source(cnum);
                 if src.rlib.is_some() { continue }
                 sess.err(&format!("dependency `{}` not found in rlib format",
-                                  sess.cstore.crate_name(cnum)));
+                                  tcx.crate_name(cnum)));
             }
             return Vec::new();
         }
@@ -166,17 +166,16 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
     for cnum in sess.cstore.crates() {
-        if sess.cstore.dep_kind(cnum).macros_only() { continue }
-        let name = sess.cstore.crate_name(cnum);
+        if tcx.dep_kind(cnum).macros_only() { continue }
+        let name = tcx.crate_name(cnum);
         let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_some() {
             info!("adding dylib: {}", name);
-            add_library(sess, cnum, RequireDynamic, &mut formats);
+            add_library(tcx, cnum, RequireDynamic, &mut formats);
             let deps = tcx.dylib_dependency_formats(cnum);
             for &(depnum, style) in deps.iter() {
-                info!("adding {:?}: {}", style,
-                      sess.cstore.crate_name(depnum));
-                add_library(sess, depnum, style, &mut formats);
+                info!("adding {:?}: {}", style, tcx.crate_name(depnum));
+                add_library(tcx, depnum, style, &mut formats);
             }
         }
     }
@@ -200,10 +199,10 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let src = sess.cstore.used_crate_source(cnum);
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
-           sess.cstore.dep_kind(cnum) == DepKind::Explicit {
+           tcx.dep_kind(cnum) == DepKind::Explicit {
             assert!(src.rlib.is_some() || src.rmeta.is_some());
-            info!("adding staticlib: {}", sess.cstore.crate_name(cnum));
-            add_library(sess, cnum, RequireStatic, &mut formats);
+            info!("adding staticlib: {}", tcx.crate_name(cnum));
+            add_library(tcx, cnum, RequireStatic, &mut formats);
             ret[cnum.as_usize() - 1] = Linkage::Static;
         }
     }
@@ -237,7 +236,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                let name = sess.cstore.crate_name(cnum);
+                let name = tcx.crate_name(cnum);
                 sess.err(&format!("crate `{}` required to be available in {}, \
                                   but it was not available in this form",
                                   name, kind));
@@ -248,7 +247,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return ret;
 }
 
-fn add_library(sess: &session::Session,
+fn add_library(tcx: TyCtxt,
                cnum: CrateNum,
                link: LinkagePreference,
                m: &mut FxHashMap<CrateNum, LinkagePreference>) {
@@ -262,8 +261,8 @@ fn add_library(sess: &session::Session,
             // This error is probably a little obscure, but I imagine that it
             // can be refined over time.
             if link2 != link || link == RequireStatic {
-                sess.struct_err(&format!("cannot satisfy dependencies so `{}` only \
-                                          shows up once", sess.cstore.crate_name(cnum)))
+                tcx.sess.struct_err(&format!("cannot satisfy dependencies so `{}` only \
+                                              shows up once", tcx.crate_name(cnum)))
                     .help("having upstream crates all available in one format \
                            will likely make this go away")
                     .emit();
@@ -284,7 +283,7 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // everything in explicitly so long as it's actually required.
     let last_crate = sess.cstore.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
-        if sess.cstore.dep_kind(CrateNum::new(cnum)) == DepKind::Explicit {
+        if tcx.dep_kind(CrateNum::new(cnum)) == DepKind::Explicit {
             Linkage::Static
         } else {
             Linkage::NotLinked
@@ -357,8 +356,8 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
 
         if tcx.is_panic_runtime(cnum) {
             if let Some((prev, _)) = panic_runtime {
-                let prev_name = sess.cstore.crate_name(prev);
-                let cur_name = sess.cstore.crate_name(cnum);
+                let prev_name = tcx.crate_name(prev);
+                let cur_name = tcx.crate_name(cnum);
                 sess.err(&format!("cannot link together two \
                                    panic runtimes: {} and {}",
                                   prev_name, cur_name));
@@ -379,7 +378,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
             sess.err(&format!("the linked panic runtime `{}` is \
                                not compiled with this crate's \
                                panic strategy `{}`",
-                              sess.cstore.crate_name(cnum),
+                              tcx.crate_name(cnum),
                               desired_strategy.desc()));
         }
 
@@ -405,7 +404,7 @@ fn verify_ok<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, list: &[Linkage]) {
                                panic strategy `{}` which is \
                                incompatible with this crate's \
                                strategy of `{}`",
-                              sess.cstore.crate_name(cnum),
+                              tcx.crate_name(cnum),
                               found_strategy.desc(),
                               desired_strategy.desc()));
         }

@@ -17,7 +17,7 @@ use hir::svh::Svh;
 use lint;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
-use middle::cstore::NativeLibraryKind;
+use middle::cstore::{NativeLibraryKind, DepKind};
 use middle::privacy::AccessLevels;
 use middle::region;
 use middle::region::RegionMaps;
@@ -669,6 +669,24 @@ impl<'tcx> QueryDescription for queries::object_lifetime_defaults<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::dep_kind<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching what a dependency looks like")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::crate_name<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching what a crate is named")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::extern_mod_stmt_cnum<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("looking up the CrateNum for an `extern mod` statement")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1268,6 +1286,12 @@ define_maps! { <'tcx>
     [] is_late_bound: IsLateBound(HirId) -> bool,
     [] object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
         -> Option<Rc<Vec<ObjectLifetimeDefault>>>,
+
+    [] visibility: Visibility(DefId) -> ty::Visibility,
+    [] dep_kind: DepKind(CrateNum) -> DepKind,
+    [] crate_name: CrateName(CrateNum) -> Symbol,
+    [] item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
+    [] extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

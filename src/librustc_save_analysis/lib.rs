@@ -119,7 +119,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             };
             let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
-                name: self.tcx.sess.cstore.crate_name(n).to_string(),
+                name: self.tcx.crate_name(n).to_string(),
                 num: n.as_u32(),
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             });

@@ -554,6 +554,12 @@ define_dep_nodes!( <'tcx>
     [] NamedRegion(HirId),
     [] IsLateBound(HirId),
     [] ObjectLifetimeDefaults(HirId),
+
+    [] Visibility(DefId),
+    [] DepKind(CrateNum),
+    [] CrateName(CrateNum),
+    [] ItemChildren(DefId),
+    [] ExternModStmtCnum(HirId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

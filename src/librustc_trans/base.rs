@@ -1518,10 +1518,12 @@ impl CrateInfo {
             native_libraries: FxHashMap(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
+            crate_name: FxHashMap(),
         };
 
         for cnum in tcx.sess.cstore.crates() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
+            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             if tcx.is_panic_runtime(cnum) {
                 info.panic_runtime = Some(cnum);
             }

@@ -909,14 +909,6 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn crate_name(self, cnum: CrateNum) -> Symbol {
-        if cnum == LOCAL_CRATE {
-            self.crate_name
-        } else {
-            self.sess.cstore.crate_name(cnum)
-        }
-    }
-
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -2007,5 +1999,9 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.is_late_bound = |tcx, id| tcx.gcx.named_region_map.late_bound.contains(&id);
     providers.object_lifetime_defaults = |tcx, id| {
         tcx.gcx.named_region_map.object_lifetime_defaults.get(&id).cloned()
+    };
+    providers.crate_name = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        tcx.crate_name
     };
 }

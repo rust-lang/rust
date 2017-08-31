@@ -476,7 +476,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        let visibility = self.sess.cstore.visibility(def_id);
+        let visibility = self.visibility(def_id);
 
         match visibility {
             // must check stability for pub items.
@@ -610,7 +610,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span == DUMMY_SP { return }
 
-                let cnum = match self.tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
+                let hir_id = self.tcx.hir.node_to_hir_id(item.id);
+                let cnum = match self.tcx.extern_mod_stmt_cnum(hir_id) {
                     Some(cnum) => cnum,
                     None => return,
                 };
