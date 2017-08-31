@@ -516,12 +516,15 @@ macro_rules! unreachable {
     });
 }
 
-/// A standardized placeholder for marking unfinished code. It panics with the
-/// message `"not yet implemented"` when executed.
+/// A standardized placeholder for marking unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
 /// code typecheck, or if you're implementing a trait that requires multiple
 /// methods, and you're only planning on using one of them.
+///
+/// # Panics
+///
+/// This will always [panic!](macro.panic.html)
 ///
 /// # Examples
 ///
