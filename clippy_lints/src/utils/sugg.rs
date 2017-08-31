@@ -392,7 +392,7 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 /// Return the indentation before `span` if there are nothing but `[ \t]`
 /// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
-    let lo = cx.sess().codemap().lookup_char_pos(span.lo);
+    let lo = cx.sess().codemap().lookup_char_pos(span.lo());
     if let Some(line) = lo.file.get_line(
         lo.line - 1, /* line numbers in `Loc` are 1-based */
     )
@@ -443,10 +443,7 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
 impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
     fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D) {
         if let Some(indent) = indentation(cx, item) {
-            let span = Span {
-                hi: item.lo,
-                ..item
-            };
+            let span = item.with_hi(item.lo());
 
             self.span_suggestion(span, msg, format!("{}\n{}", attr, indent));
         }
@@ -454,10 +451,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
 
     fn suggest_prepend_item(&mut self, cx: &T, item: Span, msg: &str, new_item: &str) {
         if let Some(indent) = indentation(cx, item) {
-            let span = Span {
-                hi: item.lo,
-                ..item
-            };
+            let span = item.with_hi(item.lo());
 
             let mut first = true;
             let new_item = new_item

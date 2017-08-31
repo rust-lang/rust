@@ -1,6 +1,5 @@
 use rustc::lint::*;
 use syntax::ast;
-use syntax_pos::{Span, NO_EXPANSION};
 use utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
 
@@ -106,19 +105,11 @@ impl EarlyLintPass for Formatting {
 fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
     if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
         if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span) {
-            let eq_span = Span {
-                lo: lhs.span.hi,
-                hi: rhs.span.lo,
-                ctxt: NO_EXPANSION,
-            };
+            let eq_span = lhs.span.between(rhs.span);
             if let ast::ExprKind::Unary(op, ref sub_rhs) = rhs.node {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
                     let op = ast::UnOp::to_string(op);
-                    let eqop_span = Span {
-                        lo: lhs.span.hi,
-                        hi: sub_rhs.span.lo,
-                        ctxt: NO_EXPANSION,
-                    };
+                    let eqop_span = lhs.span.between(sub_rhs.span);
                     if eq_snippet.ends_with('=') {
                         span_note_and_lint(
                             cx,
@@ -146,11 +137,7 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
             // this will be a span from the closing ‘}’ of the “then” block (excluding) to
             // the
             // “if” of the “else if” block (excluding)
-            let else_span = Span {
-                lo: then.span.hi,
-                hi: else_.span.lo,
-                ctxt: NO_EXPANSION,
-            };
+            let else_span = then.span.between(else_.span);
 
             // the snippet should look like " else \n    " with maybe comments anywhere
             // it’s bad when there is a ‘\n’ after the “else”
@@ -181,17 +168,9 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
         for element in array {
             if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
                 if !differing_macro_contexts(lhs.span, op.span) {
-                    let space_span = Span {
-                        lo: lhs.span.hi,
-                        hi: op.span.lo,
-                        ctxt: NO_EXPANSION,
-                    };
+                    let space_span = lhs.span.between(op.span);
                     if let Some(space_snippet) = snippet_opt(cx, space_span) {
-                        let lint_span = Span {
-                            lo: lhs.span.hi,
-                            hi: lhs.span.hi,
-                            ctxt: NO_EXPANSION,
-                        };
+                        let lint_span = lhs.span.with_lo(lhs.span.hi());
                         if space_snippet.contains('\n') {
                             span_note_and_lint(
                                 cx,
@@ -215,11 +194,7 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
         unsugar_if(second).is_some()
     {
         // where the else would be
-        let else_span = Span {
-            lo: first.span.hi,
-            hi: second.span.lo,
-            ctxt: NO_EXPANSION,
-        };
+        let else_span = first.span.between(second.span);
 
         if let Some(else_snippet) = snippet_opt(cx, else_span) {
             if !else_snippet.contains('\n') {

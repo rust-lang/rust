@@ -1092,7 +1092,7 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
+        let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
         if same_span && !multiline {
             span_note_and_lint(
                 cx,
@@ -1125,7 +1125,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or_else() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
+        let same_span = map_args[1].span.ctxt() == unwrap_args[1].span.ctxt();
         if same_span && !multiline {
             span_note_and_lint(
                 cx,

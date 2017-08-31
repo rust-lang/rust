@@ -96,10 +96,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
                 vec![
                     (
                         doc.len(),
-                        Span {
-                            lo: span.lo + BytePos(prefix.len() as u32),
-                            ..span
-                        }
+                        span.with_lo(span.lo() + BytePos(prefix.len() as u32)),
                     ),
                 ],
             );
@@ -117,10 +114,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             // +1 for the newline
             sizes.push((
                 line.len() + 1,
-                Span {
-                    lo: span.lo + BytePos(offset as u32),
-                    ..span
-                },
+                span.with_lo(span.lo() + BytePos(offset as u32)),
             ));
         }
         if !contains_initial_stars {
@@ -228,10 +222,7 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
                     let (begin, span) = spans[index];
 
                     // Adjust for the begining of the current `Event`
-                    let span = Span {
-                        lo: span.lo + BytePos::from_usize(offset - begin),
-                        ..span
-                    };
+                    let span = span.with_lo(span.lo() + BytePos::from_usize(offset - begin));
 
                     check_text(cx, valid_idents, &text, span);
                 }
@@ -253,11 +244,11 @@ fn check_text(cx: &EarlyContext, valid_idents: &[String], text: &str, span: Span
 
         // Adjust for the current word
         let offset = word.as_ptr() as usize - text.as_ptr() as usize;
-        let span = Span {
-            lo: span.lo + BytePos::from_usize(offset),
-            hi: span.lo + BytePos::from_usize(offset + word.len()),
-            ..span
-        };
+        let span = Span::new(
+            span.lo() + BytePos::from_usize(offset),
+            span.lo() + BytePos::from_usize(offset + word.len()),
+            span.ctxt(),
+        );
 
         check_word(cx, word, span);
     }

@@ -140,11 +140,11 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
 
     match (si.next(), si.next()) {
         (Some((l, _)), Some((h, _))) => {
-            Span {
-                lo: base.lo + BytePos(l as u32),
-                hi: base.lo + BytePos(h as u32),
-                ..base
-            }
+            Span::new(
+                base.lo() + BytePos(l as u32),
+                base.lo() + BytePos(h as u32),
+                base.ctxt(),
+            )
         },
         _ => base,
     }

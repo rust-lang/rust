@@ -98,7 +98,7 @@ pub mod higher;
 /// from a macro and one
 /// isn't).
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
-    rhs.ctxt != lhs.ctxt
+    rhs.ctxt() != lhs.ctxt()
 }
 
 pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
@@ -114,7 +114,7 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    span.ctxt.outer().expn_info().map_or(false, |info| {
+    span.ctxt().outer().expn_info().map_or(false, |info| {
         match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
             ExpnFormat::CompilerDesugaring(kind) => kind != CompilerDesugaringKind::DotFill,
             _ => true,
@@ -147,7 +147,7 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
         })
     }
 
-    span.ctxt.outer().expn_info().map_or(false, |info| {
+    span.ctxt().outer().expn_info().map_or(false, |info| {
         in_macro_ext(cx, &info)
     })
 }
@@ -740,7 +740,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt.outer().expn_info().map(|ei| {
+        let span_name_span = span.ctxt().outer().expn_info().map(|ei| {
             (ei.callee.name(), ei.call_site)
         });
 
@@ -762,7 +762,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt.outer().expn_info().map(|ei| {
+    let span_name_span = span.ctxt().outer().expn_info().map(|ei| {
         (ei.callee.name(), ei.call_site)
     });
 
