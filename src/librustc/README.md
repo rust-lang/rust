@@ -13,49 +13,82 @@ https://github.com/rust-lang/rust/issues
 
 Your concerns are probably the same as someone else's.
 
+You may also be interested in the
+[Rust Forge](https://forge.rust-lang.org/), which includes a number of
+interesting bits of information.
+
+Finally, at the end of this file is a GLOSSARY defining a number of
+common (and not necessarily obvious!) names that are used in the Rust
+compiler code. If you see some funky name and you'd like to know what
+it stands for, check there!
+
 The crates of rustc
 ===================
 
-Rustc consists of a number of crates, including `libsyntax`,
-`librustc`, `librustc_back`, `librustc_trans`, and `librustc_driver`
-(the names and divisions are not set in stone and may change;
-in general, a finer-grained division of crates is preferable):
+Rustc consists of a number of crates, including `syntax`,
+`rustc`, `rustc_back`, `rustc_trans`, `rustc_driver`, and
+many more. The source for each crate can be found in a directory
+like `src/libXXX`, where `XXX` is the crate name.
 
-- [`libsyntax`][libsyntax] contains those things concerned purely with syntax –
-  that is, the AST, parser, pretty-printer, lexer, macro expander, and
-  utilities for traversing ASTs – are in a separate crate called
-  "syntax", whose files are in `./../libsyntax`, where `.` is the
-  current directory (that is, the parent directory of front/, middle/,
-  back/, and so on).
+(NB. The names and divisions of these crates are not set in
+stone and may change over time -- for the time being, we tend towards
+a finer-grained division to help with compilation time, though as
+incremental improves that may change.)
 
-- `librustc` (the current directory) contains the high-level analysis
-  passes, such as the type checker, borrow checker, and so forth.
-  It is the heart of the compiler.
+The dependency structure of these crates is roughly a diamond:
 
-- [`librustc_back`][back] contains some very low-level details that are
-  specific to different LLVM targets and so forth.
-
-- [`librustc_trans`][trans] contains the code to convert from Rust IR into LLVM
-  IR, and then from LLVM IR into machine code, as well as the main
-  driver that orchestrates all the other passes and various other bits
-  of miscellany. In general it contains code that runs towards the
-  end of the compilation process.
-
-- [`librustc_driver`][driver] invokes the compiler from
-  [`libsyntax`][libsyntax], then the analysis phases from `librustc`, and
-  finally the lowering and codegen passes from [`librustc_trans`][trans].
-
-Roughly speaking the "order" of the three crates is as follows:
-
-              librustc_driver
-                      |
-    +-----------------+-------------------+
-    |                                     |
-    libsyntax -> librustc -> librustc_trans
+````
+                  rustc_driver
+                /      |       \
+              /        |         \
+            /          |           \
+          /            v             \
+rustc_trans    rustc_borrowck   ...  rustc_metadata
+          \            |            /
+            \          |          /
+              \        |        /
+                \      v      /
+                    rustc
+                       |
+                       v
+                    syntax
+                    /    \
+                  /       \
+           syntax_pos  syntax_ext
+```                    
 
 
-The compiler process:
-=====================
+The idea is that `rustc_driver`, at the top of this lattice, basically
+defines the overall control-flow of the compiler. It doesn't have much
+"real code", but instead ties together all of the code defined in the
+other crates and defines the overall flow of execution.
+
+At the other extreme, the `rustc` crate defines the common and
+pervasive data structures that all the rest of the compiler uses
+(e.g., how to represent types, traits, and the program itself). It
+also contains some amount of the compiler itself, although that is
+relatively limited.
+
+Finally, all the crates in the bulge in the middle define the bulk of
+the compiler -- they all depend on `rustc`, so that they can make use
+of the various types defined there, and they export public routines
+that `rustc_driver` will invoke as needed (more and more, what these
+crates export are "query definitions", but those are covered later
+on).
+
+Below `rustc` lie various crates that make up the parser and error
+reporting mechanism. For historical reasons, these crates do not have
+the `rustc_` prefix, but they are really just as much an internal part
+of the compiler and not intended to be stable (though they do wind up
+getting used by some crates in the wild; a practice we hope to
+gradually phase out).
+
+Each crate has a `README.md` file that describes, at a high-level,
+what it contains, and tries to give some kind of explanation (some
+better than others).
+
+The compiler process
+====================
 
 The Rust compiler is comprised of six main compilation phases.
 
@@ -172,3 +205,29 @@ The 3 central data structures:
 [back]: https://github.com/rust-lang/rust/tree/master/src/librustc_back/
 [rustc]: https://github.com/rust-lang/rust/tree/master/src/librustc/
 [driver]: https://github.com/rust-lang/rust/tree/master/src/librustc_driver
+
+Glossary
+========
+
+The compiler uses a number of...idiosyncratic abbreviations and
+things. This glossary attempts to list them and give you a few
+pointers for understanding them better.
+
+- AST -- the **abstract syntax tree** produced the `syntax` crate; reflects user syntax
+  very closely.
+- cx -- we tend to use "cx" as an abbrevation for context. See also tcx, infcx, etc.
+- HIR -- the **High-level IR**, created by lowering and desugaring the AST. See `librustc/hir`.
+- `'gcx` -- the lifetime of the global arena (see `librustc/ty`).
+- generics -- the set of generic type parameters defined on a type or item
+- infcx -- the inference context (see `librustc/infer`)
+- MIR -- the **Mid-level IR** that is created after type-checking for use by borrowck and trans.
+  Defined in the `src/librustc/mir/` module, but much of the code that manipulates it is
+  found in `src/librustc_mir`.
+- obligation -- something that must be proven by the trait system.
+- sess -- the **compiler session**, which stores global data used throughout compilation
+- substs -- the **substitutions** for a given generic type or item
+  (e.g., the `i32, u32` in `HashMap<i32, u32>`)
+- tcx -- the "typing context", main data structure of the compiler (see `librustc/ty`).
+- trans -- the code to **translate** MIR into LLVM IR.
+- trait reference -- a trait and values for its type parameters (see `librustc/ty`).
+- ty -- the internal representation of a **type** (see `librustc/ty`).
