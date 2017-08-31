@@ -107,13 +107,13 @@ and represent a release in which several elements come together:
 - The standard library and other core ecosystem crates have been updated to use the new features as appropriate.
 - A new edition of the Rust Cookbook has been prepared, providing an updated set of guidance for which crates to use for various tasks.
 
-The precise list of elements going into a epoch is expected to evolve over
+The precise list of elements going into an epoch is expected to evolve over
 time, as the Rust project and ecosystem grow.
 
 Sometimes a feature we want to make available in a new epoch would require
 backwards-incompatible changes, like introducing a new keyword. In that case,
 the feature is only available by explicitly opting in to the new
-epoch. Each **crate** can declare a epoch in its `Cargo.toml` like
+epoch. Each **crate** can declare an epoch in its `Cargo.toml` like
 `epoch = "2019"`; otherwise it is assumed to have epoch 2015,
 coinciding with Rust 1.0. Thus, new epochs are *opt in*, and the
 dependencies of a crate may use older or newer epochs than the crate
@@ -153,7 +153,7 @@ the next epoch**.
 Rather, epochs, as their name suggests, represent a point of *global
 coherence*, where documentation, tooling, the compiler, and core libraries are
 all fully aligned on a new set of (already stabilized!) features and other
-changes. This alignment can happen incrementally, but a epoch signals that
+changes. This alignment can happen incrementally, but an epoch signals that
 it *has* happened.
 
 At the same time, epochs serve as a rallying point for making sure this
@@ -182,7 +182,7 @@ impetus for coming together as a community and putting together a polished produ
 
 There's an important tension around stabilization and epochs:
 
-- We want to enable new features, including those that require a epoch
+- We want to enable new features, including those that require an epoch
   opt-in, to be available on the stable channel as they become ready.
 
   - That means that we must enable some form of the opt in before the epoch
@@ -193,36 +193,23 @@ There's an important tension around stabilization and epochs:
 
   - That means that, once *any* form of the opt in is shipped, it cannot introduce *new* hard errors.
 
-Thus, at some point within a epoch year, we will enable the opt-in on the
+Thus, at some point within an epoch year, we will enable the opt-in on the
 stable release channel, which must include *all* of the hard errors that will be
 introduced in the next epoch, but not yet all of the stabilizations (or
 other artifacts that go into the full epoch release). This is the *preview
 period* for the epoch, which ends when a release is produced that
-synchronizes all of the elements that go into a epoch and the epoch is
+synchronizes all of the elements that go into an epoch and the epoch is
 formally announced.
 
 ## A broad policy on epoch changes
 
 There are numerous reasons to limit the scope of changes for new epochs, among them:
 
-- **Limiting churn**. Even if you aren't *forced* to update your code, even if
-  there are automated tools to do so, churn is still a pain for existing
-  users. It also invalidates, or at least makes harder to use, existing content
-  on the internet, like StackOverflow answers and blog posts. And finally, it
-  plays against the important and hard work we've done to make Rust stable in
-  both reality and perception. In short, while epochs avoid *ecosystem* splits
-  and make churn opt-in, they do not eliminate *all* drawbacks.
+- **Limiting churn**. Even if you aren't *forced* to update your code, even if there are automated tools to do so, churn is still a pain for existing users. It also invalidates, or at least makes harder to use, existing content on the internet, like StackOverflow answers and blog posts. And finally, it plays against the important and hard work we've done to make Rust stable in both reality and perception. In short, while epochs avoid *ecosystem* splits and make churn opt-in, they do not eliminate *all* drawbacks.
 
-- **Limiting technical debt**. The compiler retains compatibility for old
-  epochs, and thus must have distinct "modes" for dealing with them. We need to
-  strongly limit the amount and complexity of code needed for these modes, or
-  the compiler will become very difficult to maintain.
+- **Limiting technical debt**. The compiler retains compatibility for old epochs, and thus must have distinct "modes" for dealing with them. We need to strongly limit the amount and complexity of code needed for these modes, or the compiler will become very difficult to maintain.
 
-- **Limiting deep conceptual changes**. Just as we want to keep the compiler
-  maintainable, so too do we want to keep the conceptual model sustainable. That
-  is, if we make truly radical changes in a new epoch, it will be very
-  difficult for people to reason about code involving different epochs, or
-  to remember the precise differences.
+- **Limiting deep conceptual changes**. Just as we want to keep the compiler maintainable, so too do we want to keep the conceptual model sustainable. That is, if we make truly radical changes in a new epoch, it will be very difficult for people to reason about code involving different epochs, or to remember the precise differences.
 
 These lead to some hard and soft constraints.
 
@@ -234,48 +221,24 @@ same behavior.**
 There are only two things a new epoch can do that a normal release cannot:
 
 - Change an existing deprecation into a hard error.
-  - This option is only available when the deprecation is expected to hit a
-    relatively small percentage of code.
-- Change an existing deprecation to *deny* by default, and leverage the
-  corresponding lint setting to produce error messages *as if* the feature were
-  removed entirely.
+  - This option is only available when the deprecation is expected to hit a relatively small percentage of code.
+- Change an existing deprecation to *deny* by default, and leverage the corresponding lint setting to produce error messages *as if* the feature were removed entirely.
 
-The second option is to be preferred whenever possible. Note that warning-free
-code in one epoch might produce warnings in the next epoch, but it should still
-compile successfully.
+The second option is to be preferred whenever possible. Note that warning-free code in one epoch might produce warnings in the next epoch, but it should still compile successfully.
 
-The Rust compiler supports multiple epochs, but **must only support a single
-version of "core Rust"**. We identify "core Rust" as being, roughly, MIR and the
-core trait system; this specification will be made more precise over time.  The
-implication is that the "epoch modes" boil down to keeping around multiple
-desugarings into this core Rust, which greatly limits the complexity and
-technical debt involved. Similar, core Rust encompasses the core *conceptual*
-model of the language, and this constraint guarantees that, even when working
-with multiple epochs, those core concepts remain fixed.
+The Rust compiler supports multiple epochs, but **must only support a single version of "core Rust"**. We identify "core Rust" as being, roughly, MIR and the core trait system; this specification will be made more precise over time.  The implication is that the "epoch modes" boil down to keeping around multiple desugarings into this core Rust, which greatly limits the complexity and technical debt involved. Similar, core Rust encompasses the core *conceptual* model of the language, and this constraint guarantees that, even when working with multiple epochs, those core concepts remain fixed.
 
 ### Soft constraints
 
-**TL;DR: *Most* code *with* warnings on epoch N should, after running `rustfix`,
-compile on epoch N+1 and have the same behavior.**
+**TL;DR: *Most* code *with* warnings on epoch N should, after running `rustfix`, compile on epoch N+1 and have the same behavior.**
 
-The core epoch design avoids an ecosystem split, which is very important. But
-it's *also* important that upgrading your own code to a new epoch is minimally
-disruptive. The basic principle is that **changes that cannot be automated must
-be required only in a small minority of crates, and even there not require
-extensive work**. This principle applies not just to epochs, but also to cases
-where we'd like to make a widespread deprecation.
+The core epoch design avoids an ecosystem split, which is very important. But it's *also* important that upgrading your own code to a new epoch is minimally disruptive. The basic principle is that **changes that cannot be automated must be required only in a small minority of crates, and even there not require extensive work**. This principle applies not just to epochs, but also to cases where we'd like to make a widespread deprecation.
 
-Note that a `rustfix` tool will never be perfect, because of conditional
-compilation and code generation. So it's important that, in the cases it
-inevitably fails, the manual fixes are not too onerous.
+Note that a `rustfix` tool will never be perfect, because of conditional compilation and code generation. So it's important that, in the cases it inevitably fails, the manual fixes are not too onerous.
 
-In addition, migrations that affect a large percentage of code must be "small
-tweaks" (e.g. clarifying syntax), and as above, must keep the old form intact
-(though they can enact a deny-by-default lint on it).
+In addition, migrations that affect a large percentage of code must be "small tweaks" (e.g. clarifying syntax), and as above, must keep the old form intact (though they can enact a deny-by-default lint on it).
 
-These are "soft constraints" because they use terms like "small minority" and
-"small tweaks", which are open for interpretation. More broadly, the more
-disruption involved, the higher the bar for the change.
+These are "soft constraints" because they use terms like "small minority" and "small tweaks", which are open for interpretation. More broadly, the more disruption involved, the higher the bar for the change.
 
 ### Positive examples: What epoch opt-ins can do
 
@@ -369,7 +332,7 @@ Suppose we wanted to carry out such a change. We could do it over multiple steps
 
 - First, introduce and stabilize `dyn Trait`.
 - Deprecate bare `Trait` syntax in favor of `dyn Trait`.
-- In a epoch preview period, make it an error to use bare `Trait` syntax.
+- In an epoch preview period, make it an error to use bare `Trait` syntax.
 - Ship the new epoch, and wait until bare `Trait` syntax is obscure.
 - Re-introduce bare `Trait` syntax, stabilize it, and deprecate `impl Trait` in
   favor of it.
@@ -435,7 +398,7 @@ We'll wrap up with the full details of the mechanisms at play.
 - `Cargo.toml` can include an `epoch` value, which is used to pass to `rustc`.
   - If left off, it will assume epoch 2015.
 - `cargo new` will produce a `Cargo.toml` with the latest `epoch` value
-  (including a epoch currently in its preview period).
+  (including an epoch currently in its preview period).
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -580,8 +543,6 @@ what kinds of changes we want to allow. Downsides:
   new keyword.
 
 - Is "epoch" the right key in Cargo.toml? Would it be more clear to just say `rust = "2019"`?
-
-- Do we want to require a `rustfix` for all epoch changes?
 
 - Will we ever consider dropping support for very old epochs? Given the
   constraints in this RFC, it seems unlikely to ever be worth it.
