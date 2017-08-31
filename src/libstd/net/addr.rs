@@ -767,7 +767,7 @@ impl hash::Hash for SocketAddrV6 {
 ///
 /// let stream = TcpStream::connect(("127.0.0.1", 443));
 /// // or
-/// let stream = TcpStream::connect("127.0.0.1.443");
+/// let stream = TcpStream::connect("127.0.0.1:443");
 /// // or
 /// let stream = TcpStream::connect((Ipv4Addr::new(127, 0, 0, 1), 443));
 /// ```
