@@ -1317,6 +1317,55 @@ let x: i32 = "I am not a number!";
 //      |
 //    type `i32` assigned to variable `x`
 ```
+
+You will get this error too if you want to return a trait (implementor):
+
+```compile_fail,E0308
+trait A {}
+
+struct B;
+
+impl A for B {}
+
+fn foo(b: B) -> A {
+    // will not work
+    b
+}
+```
+
+To fix this, the return type must be generic. Here are two solutions:
+
+1. 
+```rust
+# use std::boxed::Box;
+# 
+# trait A {}
+#
+# struct B;
+#
+# impl A for B {}
+#
+fn foo(b: B) -> Box<A> {
+    // the return type has been "generified" since the `Box<T>` input parameter is generic.
+    // successful compilation.
+    Box::new(b)
+}
+```
+
+2.
+```rust
+# trait A {}
+#
+# struct B;
+#
+# impl A for B {}
+#
+fn foo<T: A>(b: T) -> T {
+    // generic return type, ok !
+    b
+}
+```
+
 "##,
 
 E0309: r##"
