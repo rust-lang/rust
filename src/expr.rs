@@ -933,7 +933,7 @@ struct ControlFlow<'a> {
     span: Span,
 }
 
-fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow> {
+fn to_control_flow<'a>(expr: &'a ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'a>> {
     match expr.node {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => Some(ControlFlow::new_if(
             cond,

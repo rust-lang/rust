@@ -280,11 +280,11 @@ macro_rules! create_config {
             }
             )+
 
-            pub fn set(&mut self) -> ConfigSetter {
+            pub fn set<'a>(&'a mut self) -> ConfigSetter<'a> {
                 ConfigSetter(self)
             }
 
-            pub fn was_set(&self) -> ConfigWasSet {
+            pub fn was_set<'a>(&'a self) -> ConfigWasSet<'a> {
                 ConfigWasSet(self)
             }
 
