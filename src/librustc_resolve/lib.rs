@@ -605,7 +605,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
-                    if item.span == DUMMY_SP {
+                    if item.span.ctxt.outer().expn_info().is_none() {
                         let mut span = item.span;
                         span.hi = span.lo;
                         self.span = Some(span);
@@ -617,9 +617,23 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    let mut span = item.span;
-                    span.hi = span.lo;
-                    self.span = Some(span);
+                    if item.span.ctxt.outer().expn_info().is_none() {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            let mut span = item.span;
+                            span.hi = span.lo;
+                            self.span = Some(span);
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    let mut span = attr.span;
+                                    span.hi = span.lo;
+                                    self.span = Some(span);
+                                }
+                            }
+                        }
+                    }
                 },
             }
         }

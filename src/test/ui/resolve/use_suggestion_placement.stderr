@@ -6,7 +6,7 @@ error[E0412]: cannot find type `Path` in this scope
    |
 help: possible candidate is found in another module, you can import it into scope
    |
-20 |     #[derive(use std::path::Path;
+21 |     use std::path::Path;
    |
 
 error[E0425]: cannot find value `A` in this scope
