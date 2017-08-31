@@ -1,6 +1,10 @@
 // rustfmt-item_brace_style: AlwaysNextLine
 // Item brace style
 
+enum Foo {}
+
+struct Bar {}
+
 struct Lorem {
     ipsum: bool,
 }
