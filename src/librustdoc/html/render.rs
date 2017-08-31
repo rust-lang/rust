@@ -1645,30 +1645,37 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
     Ok(())
 }
 
-fn get_html_diff(w: &mut fmt::Formatter, md_text: &str, render_type: RenderType,
+fn render_markdown(w: &mut fmt::Formatter, md_text: &str, render_type: RenderType,
                  prefix: &str) -> fmt::Result {
-    let output = format!("{}", Markdown(md_text, render_type));
-    let old = format!("{}", Markdown(md_text, match render_type {
-                                                  RenderType::Hoedown => RenderType::Pulldown,
-                                                  RenderType::Pulldown => RenderType::Hoedown,
-                                              }));
-    let differences = html_diff::get_differences(&output, &old);
-    if !differences.is_empty() {
-        println!("Differences spotted in {:?}:\n{}",
-                 md_text,
-                 differences.iter()
-                            .filter_map(|s| {
-                                match *s {
-                                    html_diff::Difference::NodeText { ref elem_text,
-                                                                      ref opposite_elem_text,
-                                                                      .. }
-                                        if elem_text.trim() == opposite_elem_text.trim() => None,
-                                    _ => Some(format!("=> {}", s.to_string())),
-                                }
-                            })
-                            .collect::<Vec<String>>()
-                            .join("\n"));
-    }
+    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
+    // We only emit warnings if the user has opted-in to Pulldown rendering.
+    let output = if render_type == RenderType::Pulldown {
+        let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
+        let differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
+        let differences = differences.iter()
+            .filter_map(|s| {
+                match *s {
+                    html_diff::Difference::NodeText { ref elem_text,
+                                                      ref opposite_elem_text,
+                                                      .. }
+                        if elem_text.trim() == opposite_elem_text.trim() => None,
+                    _ => Some(format!("=> {}", s.to_string())),
+                }
+            })
+            .collect::<Vec<String>>();
+
+        if !differences.is_empty() {
+            // Emit warnings if there are differences.
+            println!("Differences spotted in {:?}:\n{}",
+                     md_text,
+                     differences.join("\n"));
+        }
+
+        pulldown_output
+    } else {
+        hoedown_output
+    };
+
     write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
 }
 
@@ -1681,7 +1688,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        get_html_diff(w, &markdown, render_type, prefix)?;
+        render_markdown(w, &markdown, render_type, prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -1705,7 +1712,7 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  render_type: RenderType, prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        get_html_diff(w, s, render_type, prefix)?;
+        render_markdown(w, s, render_type, prefix)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
