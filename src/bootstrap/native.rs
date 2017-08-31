@@ -366,7 +366,7 @@ impl Step for Openssl {
             if !ok {
                 panic!("failed to download openssl source")
             }
-            let mut shasum = if target.contains("apple") {
+            let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
                 let mut cmd = Command::new("shasum");
                 cmd.arg("-a").arg("256");
                 cmd
