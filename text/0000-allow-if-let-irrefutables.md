@@ -12,7 +12,7 @@ The current state breaks macros who want to accept patterns generically and this
 # Motivation
 [motivation]: #motivation
 
-The use cases for this is in the creation of macros where patterns are allowed because to support the `_` patterns the code has to be rewritten to be both much larger and include a compiler allow.
+The use cases for this is in the creation of macros where patterns are allowed because to support the `_` patterns the code has to be rewritten to be both much larger and include an \[#allow\] statement.
 The expected outcome is for irrefutable patterns to be compiled to a tautology and have the if block accept it as if it was `if true { }`.
 To support this, currently you must do something roughly the following, which seems to counteract the benefit of having if-let and while-let in the spec.
 
