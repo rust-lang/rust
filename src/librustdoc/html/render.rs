@@ -608,7 +608,7 @@ pub fn run(mut krate: clean::Crate,
 // A short, single-line view of `s`.
 fn concise_str(s: &str) -> String {
     if s.contains('\n') {
-        return format!("{}...", &s[..s.find('\n').unwrap()]);
+        return format!("{}...", s.lines().next().expect("Impossible! We just found a newline"));
     }
     if s.len() > 70 {
         return format!("{} ... {}", &s[..50], &s[s.len()-20..]);
