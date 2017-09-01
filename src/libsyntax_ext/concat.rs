@@ -57,5 +57,6 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
+    let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

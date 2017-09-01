@@ -32,6 +32,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
         Some(v) => v,
     };
 
+    let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
             cx.expr_path(cx.path_all(sp,

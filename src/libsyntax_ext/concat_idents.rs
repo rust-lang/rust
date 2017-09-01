@@ -92,6 +92,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
 
     Box::new(Result {
         ident: res,
-        span: sp,
+        span: sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark)),
     })
 }

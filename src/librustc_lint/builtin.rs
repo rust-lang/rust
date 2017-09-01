@@ -44,7 +44,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
-use syntax_pos::Span;
+use syntax_pos::{Span, SyntaxContext};
 use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
@@ -75,9 +75,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
         if let hir::ExprWhile(ref cond, ..) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
-                    cx.span_lint(WHILE_TRUE,
-                                 e.span,
-                                 "denote infinite loops with loop { ... }");
+                    if lit.span.ctxt() == SyntaxContext::empty() {
+                        cx.span_lint(WHILE_TRUE,
+                                    e.span,
+                                    "denote infinite loops with loop { ... }");
+                    }
                 }
             }
         }
