@@ -1137,6 +1137,7 @@ Rust only looks at the signature of the called function, as such it must
 already specify all requirements that will be used for every type parameter.
 
 Here's another erroneous code example:
+
 ```compile_fail,E0277
 trait A {}
 
@@ -1153,6 +1154,7 @@ fn foo(b: B) -> A {
 Here are two solutions to fix this issue:
 
 1. `Box` your returned value
+
 ```rust
 # use std::boxed::Box;
 # use std::borrow::Borrow;
@@ -1168,6 +1170,7 @@ Here are two solutions to fix this issue:
 fn foo(b: B) -> Box<A> {
     Box::new(b) // The `Sized` trait bound has been removed.
 }
+
 // Once this value was returned, it can be used as follow:
 // `A` trait must implement `Debug`, of course.
 let boxed_object: Box<A> = foo(B);
@@ -1175,6 +1178,7 @@ println!("{:?}", boxed_object); // prints B
 ```
 
 2. Add a generic data type
+
 ```rust
 # use std::fmt::Debug;
 #
