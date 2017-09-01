@@ -29,7 +29,7 @@ pub const CFG_RELEASE_NUM: &str = "1.21.0";
 // An optional number to put after the label, e.g. '.2' -> '-beta.2'
 // Be sure to make this starts with a dot to conform to semver pre-release
 // versions (section 9)
-pub const CFG_PRERELEASE_VERSION: &str = ".1";
+pub const CFG_PRERELEASE_VERSION: &str = ".2";
 
 pub struct GitInfo {
     inner: Option<Info>,
