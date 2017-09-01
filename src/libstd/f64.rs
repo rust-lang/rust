@@ -971,7 +971,7 @@ impl f64 {
     }
 
     /// Returns max if self is greater than max, and min if self is less than min.
-    /// Otherwise this returns self.  Panics if min > max, min is NaN, or max is NaN.
+    /// Otherwise this returns self.
     ///
     /// # Examples
     ///
@@ -983,6 +983,9 @@ impl f64 {
     /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
     /// assert!((NAN).clamp(-2.0f64, 1.0f64).is_nan());
     /// ```
+    ///
+    /// # Panics
+    /// Panics if min > max, min is NaN, or max is NaN.
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
     pub fn clamp(self, min: f64, max: f64) -> f64 {
