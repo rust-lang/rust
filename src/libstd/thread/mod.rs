@@ -1067,6 +1067,34 @@ impl Thread {
     fn cname(&self) -> Option<&CStr> {
         self.inner.name.as_ref().map(|s| &**s)
     }
+
+    /// Change the name of a thread
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new()
+    ///     .name("foo".into());
+    ///
+    /// let handler = builder.spawn(|| {
+    ///     assert_eq!(thread::current().name(), Some("foo"));
+    ///     thread::current().set_name("bar");
+    ///     assert_eq!(thread::current().name(), Some("bar"));
+    /// }).unwrap();
+    ///
+    /// handler.join().unwrap();
+    /// ```
+    #[unstable(feature = "thread_rename", reason = "the compiler threw an error at me ;)",
+               issue = "27802")]
+    pub fn set_name(&mut self, name: &str) {
+        let cname = CString::new(name).expect("thread name may not contain interior null bytes");
+        imp::Thread::set_name(&cname);
+        let target: *const Option<CString> = &self.inner.name;
+        unsafe {
+            let target = ::mem::transmute::<*const Option<CString>, &mut Option<CString>>(target);
+            *target = Some(cname);
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
