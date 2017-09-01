@@ -114,7 +114,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             return Err(ErrorReported);
         }
 
-        let region_maps = RegionMaps::new();
+        let region_maps = RegionMaps::default();
         let free_regions = FreeRegionMap::new();
         infcx.resolve_regions_and_report_errors(drop_impl_did, &region_maps, &free_regions);
         Ok(())

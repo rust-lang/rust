@@ -861,8 +861,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
-    pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region<'tcx>
-    {
+    pub fn temporary_scope(&self, id: hir::ItemLocalId) -> ty::Region<'tcx> {
         let scope = self.region_maps.temporary_scope(id);
         self.tcx.mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
@@ -890,7 +889,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let re = if promotable {
             self.tcx.types.re_static
         } else {
-            self.temporary_scope(id)
+            self.temporary_scope(self.tcx.hir.node_to_hir_id(id).local_id)
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {:?}", ret);

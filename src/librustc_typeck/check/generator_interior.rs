@@ -13,21 +13,17 @@
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
 //! types computed here.
 
-use log;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Body, Pat, PatKind, Expr};
 use rustc::middle::region::{RegionMaps, CodeExtent};
 use rustc::ty::Ty;
-use syntax::ast::NodeId;
-use syntax::codemap::Span;
 use std::rc::Rc;
 use super::FnCtxt;
 use util::nodemap::FxHashMap;
 
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
-    cache: FxHashMap<NodeId, Option<Span>>,
     types: FxHashMap<Ty<'tcx>, usize>,
     region_maps: Rc<RegionMaps>,
 }
@@ -36,18 +32,15 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<CodeExtent>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        let live_across_yield = scope.map(|s| {
-            self.fcx.tcx.yield_in_extent(s, &mut self.cache).is_some()
-        }).unwrap_or(true);
+        let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
+            self.region_maps.yield_in_scope(s)
+        });
 
-        if live_across_yield {
+        if let Some(span) = live_across_yield {
             let ty = self.fcx.resolve_type_vars_if_possible(&ty);
 
-            if log_enabled!(log::LogLevel::Debug) {
-                let span = scope.map(|s| s.span(&self.fcx.tcx.hir).unwrap_or(DUMMY_SP));
-                debug!("type in expr = {:?}, scope = {:?}, type = {:?}, span = {:?}",
-                       expr, scope, ty, span);
-            }
+            debug!("type in expr = {:?}, scope = {:?}, type = {:?}, span = {:?}",
+                   expr, scope, ty, span);
 
             // Map the type to the number of types added before it
             let entries = self.types.len();
@@ -66,7 +59,6 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxHashMap(),
-        cache: FxHashMap(),
         region_maps: fcx.tcx.region_maps(def_id),
     };
     intravisit::walk_body(&mut visitor, body);
@@ -101,7 +93,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         if let PatKind::Binding(..) = pat.node {
-            let scope = self.region_maps.var_scope(pat.id);
+            let scope = self.region_maps.var_scope(pat.hir_id.local_id);
             let ty = self.fcx.tables.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None);
         }
@@ -110,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        let scope = self.region_maps.temporary_scope(expr.id);
+        let scope = self.region_maps.temporary_scope(expr.hir_id.local_id);
         let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
         self.record(ty, scope, Some(expr));
 

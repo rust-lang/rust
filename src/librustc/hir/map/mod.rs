@@ -26,7 +26,7 @@ use syntax_pos::Span;
 
 use hir::*;
 use hir::print::Nested;
-use util::nodemap::DefIdMap;
+use util::nodemap::{DefIdMap, FxHashMap};
 
 use arena::TypedArena;
 use std::cell::RefCell;
@@ -251,6 +251,9 @@ pub struct Map<'hir> {
 
     /// Bodies inlined from other crates are cached here.
     inlined_bodies: RefCell<DefIdMap<&'hir Body>>,
+
+    /// The reverse mapping of `node_to_hir_id`.
+    hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
 impl<'hir> Map<'hir> {
@@ -337,6 +340,11 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         self.definitions.as_local_node_id(def_id)
+    }
+
+    #[inline]
+    pub fn hir_to_node_id(&self, hir_id: HirId) -> NodeId {
+        self.hir_to_node_id[&hir_id]
     }
 
     #[inline]
@@ -1021,10 +1029,15 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
+    // Build the reverse mapping of `node_to_hir_id`.
+    let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
+        .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
+
     let map = Map {
         forest,
         dep_graph: forest.dep_graph.clone(),
         map,
+        hir_to_node_id,
         definitions,
         inlined_bodies: RefCell::new(DefIdMap()),
     };

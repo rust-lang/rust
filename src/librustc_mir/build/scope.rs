@@ -633,8 +633,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if let DropKind::Value { .. } = drop_kind {
                     scope.needs_cleanup = true;
                 }
-                let tcx = self.hir.tcx();
-                let extent_span = extent.span(&tcx.hir).unwrap();
+                let extent_span = extent.span(self.hir.tcx(), &self.hir.region_maps);
                 // Attribute scope exit drops to scope's closing brace
                 let scope_end = extent_span.with_lo(extent_span.hi());
                 scope.drops.push(DropData {

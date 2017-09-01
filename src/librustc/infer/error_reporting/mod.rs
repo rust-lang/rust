@@ -64,7 +64,7 @@ use std::fmt;
 use hir;
 use hir::map as hir_map;
 use hir::def_id::DefId;
-use middle::region;
+use middle::region::{self, RegionMaps};
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, Region, TyCtxt, TypeFoldable};
 use ty::error::TypeError;
@@ -83,6 +83,7 @@ mod anon_anon_conflict;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
+                                   region_maps: &RegionMaps,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
                                    region: ty::Region<'tcx>,
@@ -130,14 +131,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.hir) {
-                    Some(s) => s,
-                    None => {
-                        err.note(&unknown_scope());
-                        return;
-                    }
-                };
-                let tag = match self.hir.find(scope.node_id()) {
+                let span = scope.span(self, region_maps);
+                let tag = match self.hir.find(scope.node_id(self, region_maps)) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -260,8 +255,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-
-    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
+    pub fn report_region_errors(&self,
+                                region_maps: &RegionMaps,
+                                errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -285,16 +281,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                   // the error. If all of these fails, we fall back to a rather
                   // general bit of code that displays the error information
                   ConcreteFailure(origin, sub, sup) => {
-
-                      self.report_concrete_failure(origin, sub, sup).emit();
+                      self.report_concrete_failure(region_maps, origin, sub, sup).emit();
                   }
 
                   GenericBoundFailure(kind, param_ty, sub) => {
-                      self.report_generic_bound_failure(kind, param_ty, sub);
+                      self.report_generic_bound_failure(region_maps, kind, param_ty, sub);
                   }
 
                   SubSupConflict(var_origin, sub_origin, sub_r, sup_origin, sup_r) => {
-                        self.report_sub_sup_conflict(var_origin,
+                        self.report_sub_sup_conflict(region_maps,
+                                                     var_origin,
                                                      sub_origin,
                                                      sub_r,
                                                      sup_origin,
@@ -773,6 +769,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_generic_bound_failure(&self,
+                                    region_maps: &RegionMaps,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
                                     sub: Region<'tcx>)
@@ -840,6 +837,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.help(&format!("consider adding an explicit lifetime bound for `{}`",
                                   bound_kind));
                 self.tcx.note_and_explain_region(
+                    region_maps,
                     &mut err,
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
@@ -853,6 +851,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_sub_sup_conflict(&self,
+                               region_maps: &RegionMaps,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
                                sub_region: Region<'tcx>,
@@ -860,14 +859,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
-        self.tcx.note_and_explain_region(&mut err,
+        self.tcx.note_and_explain_region(region_maps, &mut err,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...");
 
         self.note_region_origin(&mut err, &sup_origin);
 
-        self.tcx.note_and_explain_region(&mut err,
+        self.tcx.note_and_explain_region(region_maps, &mut err,
             "but, the lifetime must be valid for ",
             sub_region,
             "...");

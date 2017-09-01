@@ -355,8 +355,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         arguments.len(),
         return_ty);
 
-    let call_site_extent = CodeExtent::CallSiteScope(body.id());
-    let arg_extent = CodeExtent::ParameterScope(body.id());
+    let call_site_extent = CodeExtent::CallSiteScope(body.value.hir_id.local_id);
+    let arg_extent = CodeExtent::ParameterScope(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {

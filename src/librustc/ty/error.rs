@@ -36,11 +36,11 @@ pub enum TypeError<'tcx> {
     TupleSize(ExpectedFound<usize>),
     FixedArraySize(ExpectedFound<usize>),
     ArgCount,
+
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
-    RegionsNotSame(Region<'tcx>, Region<'tcx>),
-    RegionsNoOverlap(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegion, Region<'tcx>),
     RegionsOverlyPolymorphic(BoundRegion, Region<'tcx>),
+
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
@@ -109,12 +109,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             RegionsDoesNotOutlive(..) => {
                 write!(f, "lifetime mismatch")
-            }
-            RegionsNotSame(..) => {
-                write!(f, "lifetimes are not the same")
-            }
-            RegionsNoOverlap(..) => {
-                write!(f, "lifetimes do not intersect")
             }
             RegionsInsufficientlyPolymorphic(br, _) => {
                 write!(f,
@@ -243,33 +237,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         use self::TypeError::*;
 
         match err.clone() {
-            RegionsDoesNotOutlive(subregion, superregion) => {
-                self.note_and_explain_region(db, "", subregion, "...");
-                self.note_and_explain_region(db, "...does not necessarily outlive ",
-                                           superregion, "");
-            }
-            RegionsNotSame(region1, region2) => {
-                self.note_and_explain_region(db, "", region1, "...");
-                self.note_and_explain_region(db, "...is not the same lifetime as ",
-                                           region2, "");
-            }
-            RegionsNoOverlap(region1, region2) => {
-                self.note_and_explain_region(db, "", region1, "...");
-                self.note_and_explain_region(db, "...does not overlap ",
-                                           region2, "");
-            }
-            RegionsInsufficientlyPolymorphic(_, conc_region) => {
-                self.note_and_explain_region(db, "concrete lifetime that was found is ",
-                                           conc_region, "");
-            }
-            RegionsOverlyPolymorphic(_, &ty::ReVar(_)) => {
-                // don't bother to print out the message below for
-                // inference variables, it's not very illuminating.
-            }
-            RegionsOverlyPolymorphic(_, conc_region) => {
-                self.note_and_explain_region(db, "expected concrete lifetime is ",
-                                           conc_region, "");
-            }
             Sorts(values) => {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);

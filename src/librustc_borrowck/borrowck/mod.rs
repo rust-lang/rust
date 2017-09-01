@@ -36,7 +36,6 @@ use rustc::middle::region::{self, RegionMaps};
 use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::util::nodemap::FxHashMap;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 
 use std::fmt;
@@ -167,9 +166,10 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.item_local_id(), loan_idx);
         loan_dfcx.add_kill(KillFrom::ScopeEnd,
-                           loan.kill_scope.node_id(), loan_idx);
+                           loan.kill_scope.item_local_id(),
+                           loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, this.body);
@@ -364,10 +364,14 @@ fn closure_to_block(closure_id: DefIndex,
 impl<'a, 'tcx> LoanPath<'tcx> {
     pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent {
         match self.kind {
-            LpVar(local_id) => bccx.region_maps.var_scope(local_id),
+            LpVar(local_id) => {
+                let hir_id = bccx.tcx.hir.node_to_hir_id(local_id);
+                bccx.region_maps.var_scope(hir_id.local_id)
+            }
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
-                region::CodeExtent::Misc(block_id)
+                let hir_id = bccx.tcx.hir.node_to_hir_id(block_id);
+                region::CodeExtent::Misc(hir_id.local_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(bccx),
@@ -640,19 +644,22 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
         // Get type of value and span where it was previously
         // moved.
+        let node_id = self.tcx.hir.hir_to_node_id(hir::HirId {
+            owner: self.body.value.hir_id.owner,
+            local_id: the_move.id
+        });
         let (move_span, move_note) = match the_move.kind {
             move_data::Declared => {
                 unreachable!();
             }
 
             move_data::MoveExpr |
-            move_data::MovePat =>
-                (self.tcx.hir.span(the_move.id), ""),
+            move_data::MovePat => (self.tcx.hir.span(node_id), ""),
 
             move_data::Captured =>
-                (match self.tcx.hir.expect_expr(the_move.id).node {
+                (match self.tcx.hir.expect_expr(node_id).node {
                     hir::ExprClosure(.., fn_decl_span, _) => fn_decl_span,
-                    ref r => bug!("Captured({}) maps to non-closure: {:?}",
+                    ref r => bug!("Captured({:?}) maps to non-closure: {:?}",
                                   the_move.id, r),
                 }, " (into closure)"),
         };
@@ -813,7 +820,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 debug!("err_out_of_scope: self.body.is_generator = {:?}",
                        self.body.is_generator);
                 let maybe_borrow_across_yield = if self.body.is_generator {
-                    let body_extent = region::CodeExtent::Misc(self.body.id().node_id);
+                    let body_extent = region::CodeExtent::Misc(self.body.value.hir_id.local_id);
                     debug!("err_out_of_scope: body_extent = {:?}", body_extent);
                     debug!("err_out_of_scope: super_scope = {:?}", super_scope);
                     debug!("err_out_of_scope: sub_scope = {:?}", sub_scope);
@@ -839,7 +846,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 // block remainder that starts with
                                 // `let a`) for a yield. We can cite
                                 // that for the user.
-                                self.tcx.yield_in_extent(value_extent, &mut FxHashMap())
+                                self.region_maps.yield_in_scope(value_extent)
                             } else {
                                 None
                             }
@@ -938,6 +945,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
+                                    &self.region_maps,
                                     &mut db,
                                     "borrowed value must be valid for ",
                                     sub_scope,
@@ -950,6 +958,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             }
                             None => {
                                 self.tcx.note_and_explain_region(
+                                    &self.region_maps,
                                     &mut db,
                                     "...but borrowed value is only valid for ",
                                     super_scope,
@@ -959,8 +968,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     }
                 }
 
-                if let Some(_) = statement_scope_span(self.tcx, super_scope) {
-                    db.note("consider using a `let` binding to increase its lifetime");
+                if let ty::ReScope(scope) = *super_scope {
+                    let node_id = scope.node_id(self.tcx, &self.region_maps);
+                    match self.tcx.hir.find(node_id) {
+                        Some(hir_map::NodeStmt(_)) => {
+                            db.note("consider using a `let` binding to increase its lifetime");
+                        }
+                        _ => {}
+                    }
                 }
 
                 db.emit();
@@ -979,12 +994,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     None => self.cmt_to_string(&err.cmt),
                 };
                 self.tcx.note_and_explain_region(
+                    &self.region_maps,
                     &mut db,
                     &format!("{} would have to be valid for ",
                             descr),
                     loan_scope,
                     "...");
                 self.tcx.note_and_explain_region(
+                    &self.region_maps,
                     &mut db,
                     &format!("...but {} is only valid for ", descr),
                     ptr_scope,
@@ -1240,14 +1257,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: ty::Region<'tcx>) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                match scope.span(&self.tcx.hir) {
-                    Some(s) => {
-                        Some(s.end_point())
-                    }
-                    None => {
-                        None
-                    }
-                }
+                Some(scope.span(self.tcx, &self.region_maps).end_point())
             }
             _ => None
         }
@@ -1381,18 +1391,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             Some(lp) => format!("`{}`", self.loan_path_to_string(&lp)),
             None => self.cmt_to_string(cmt),
         }
-    }
-}
-
-fn statement_scope_span(tcx: TyCtxt, region: ty::Region) -> Option<Span> {
-    match *region {
-        ty::ReScope(scope) => {
-            match tcx.hir.find(scope.node_id()) {
-                Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),
-                _ => None
-            }
-        }
-        _ => None
     }
 }
 
