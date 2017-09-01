@@ -11,10 +11,9 @@ use syntax::codemap::{Span, BytePos};
 use syntax::symbol::InternedString;
 use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_and_lint};
 
-/// **What it does:** Checks [regex] creation (with `Regex::new`,
-/// `RegexBuilder::new` or `RegexSet::new`) for correct regex syntax.
-///
-/// [regex]: https://crates.io/crates/regex
+/// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
+/// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
+/// regex syntax.
 ///
 /// **Why is this bad?** This will lead to a runtime panic.
 ///

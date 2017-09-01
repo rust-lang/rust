@@ -1008,7 +1008,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
 /// that is is possible for `x` to be less than the minimum. Expressions like
 /// `max < x` are probably mistakes.
 ///
-/// **Known problems:** None.
+/// **Known problems:** For `usize` the size of the current compile target will
+/// be assumed (e.g. 64 bits on 64 bit systems). This means code that uses such
+/// a comparison to detect target pointer width will trigger this lint. One can
+/// use `mem::sizeof` and compare its value or conditional compilation attributes
+/// like `#[cfg(target_pointer_width = "64")] ..` instead.
 ///
 /// **Example:**
 /// ```rust

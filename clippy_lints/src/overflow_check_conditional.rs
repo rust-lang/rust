@@ -13,7 +13,6 @@ use utils::span_lint;
 /// ```rust
 /// a + b < a
 /// ```
-
 declare_lint! {
     pub OVERFLOW_CHECK_CONDITIONAL,
     Warn,
