@@ -50,13 +50,12 @@
 
 use fmt;
 
-/// An uninhabited type used as the error type for implementations of fallible
-/// conversion traits in cases where they cannot actually fail.
+/// A type used as the error type for implementations of fallible conversion
+/// traits in cases where conversions cannot actually fail.
 ///
-/// Because `Infallible` has no constructors (variants), a value of this type
-/// can never exist. It is used only to satisfy trait signatures that expect
-/// an error type, and signals to both the compiler and the user that the error
-/// case is impossible.
+/// Because `Infallible` has no variants, a value of this type can never exist.
+/// It is used only to satisfy trait signatures that expect an error type, and
+/// signals to both the compiler and the user that the error case is impossible.
 #[unstable(feature = "try_from", issue = "33417")]
 pub enum Infallible {}
 
