@@ -28,6 +28,30 @@ goes down, or in areas of the world where crates.io is blocked.
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
+## Registry definition specification
+
+We need a way to define what registries are valid for Cargo to pull from and publish to. For this
+purpose, we propose that users would be able to define multiple registries in the global
+`~/.cargo/config` file. This would allow the user to specify what registry they want to publish
+to without binding registries directly with projects.
+
+config doesn't have to be global - goes up reference tree from project to project, goes to first
+one finds
+
+token moved to cargo credentials so different file permissions
+registry file index location exists, keep
+need to add name
+
+[registry.new-registry]
+index or host
+[registry.other-registry]
+
+in cargo toml could say registry = new-registry, and would know to look in config for registry host/index
+
+
+TODO what do users specify in the config for the registry? name, where does the token come from?
+TODO how do individual crates specify what registry to use?
+
 Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
 
 - Introducing new named concepts.
