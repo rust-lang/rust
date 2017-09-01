@@ -100,10 +100,10 @@ There are a few areas that need to be changed for this RFC:
 ## Compiler Changes
 
 The main change to the compiler will be to accept a new parameter that Cargo
-supplies which is a list of public dependencies. The compiler then emits
-warnings if it encounters private dependencies leaking to the public API of a
-crate. `cargo publish` might change this warning into an error in its lint
-step.
+supplies which is a list of public dependencies. The flag will be called
+`--extern-public`. The compiler then emits warnings if it encounters private
+dependencies leaking to the public API of a crate. `cargo publish` might change
+this warning into an error in its lint step.
 
 Additionally, later on, the warning can turn into a hard error in general.
 
