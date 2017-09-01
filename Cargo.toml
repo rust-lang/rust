@@ -10,18 +10,15 @@ build = "build.rs"
 [[bin]]
 doc = false
 name = "miri"
-test = false
 path = "miri/bin/miri.rs"
 
 [[bin]]
 doc = false
 name = "cargo-miri"
-test = false
 path = "miri/bin/cargo-miri.rs"
 required-features = ["cargo_miri"]
 
 [lib]
-test = false
 path = "miri/lib.rs"
 
 [dependencies]
