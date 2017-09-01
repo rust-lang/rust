@@ -308,7 +308,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.74 — 2016-06-07
 * Fix bug with `cargo-clippy` JSON parsing
-* Add the `CLIPPY_DISABLE_WIKI_LINKS` environment variable to deactivate the
+* Add the `CLIPPY_DISABLE_DOCS_LINKS` environment variable to deactivate the
   “for further information visit *wiki-link*” message.
 
 ## 0.0.73 — 2016-06-05

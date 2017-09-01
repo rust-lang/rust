@@ -152,7 +152,7 @@ You can also specify the path to the configuration file with:
 ```
 
 To deactivate the “for further information visit *wiki-link*” message you can
-define the `CLIPPY_DISABLE_WIKI_LINKS` environment variable.
+define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
 
 ### Allowing/denying lints
 
