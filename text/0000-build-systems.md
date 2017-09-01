@@ -10,7 +10,9 @@ This **experimental RFC** lays out a high-level plan for improving Cargo's
 ability to integrate with other build systems and environments. As an
 experimental RFC, it opens the door to landing [unstable features] in Cargo to
 try out ideas, but *not* to stabilizing those features, which will require
-follow-up RFCs.
+follow-up RFCs. It proposes a variety of features which, in total, permit a wide
+spectrum of integration cases -- from customizing a single aspect of Cargo to
+letting an external build system run almost the entire show.
 
 [unstable features]: https://github.com/rust-lang/cargo/pull/4433/
 
