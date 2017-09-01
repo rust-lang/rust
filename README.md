@@ -7,9 +7,12 @@
 
 A collection of lints to catch common mistakes and improve your Rust code.
 
+[There are 209 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+
+More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
+
 Table of contents:
 
-*   [Lint list](#lints)
 *   [Usage instructions](#usage)
 *   [Configuration](#configuration)
 *   [License](#license)
@@ -176,12 +179,6 @@ transparently:
 ```rust
 #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 ```
-
-## Lints
-
-[There are 209 lints included in this crate](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
-
-More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
 
 ## License
 
