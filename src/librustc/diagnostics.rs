@@ -1335,7 +1335,8 @@ fn foo(b: B) -> A {
 
 To fix this, the return type must be generic. Here are two solutions:
 
-1. 
+1.
+
 ```rust
 # use std::boxed::Box;
 # 
@@ -1353,6 +1354,7 @@ fn foo(b: B) -> Box<A> {
 ```
 
 2.
+
 ```rust
 # trait A {}
 #
