@@ -1444,6 +1444,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                span,
                                "Use of a '|' at the beginning of a match arm is experimental")
         }
+        visit::walk_arm(self, arm)
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
