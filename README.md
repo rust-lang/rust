@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.org/rust-lang-nursery/rust-clippy.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-clippy)
 [![Windows build status](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rust-clippy?svg=true)](https://ci.appveyor.com/project/rust-lang-nursery/rust-clippy)
-[![Clippy Linting Result](http://clippy.bashy.io/github/rust-lang-nursery/rust-clippy/master/badge.svg)](http://clippy.bashy.io/github/rust-lang-nursery/rust-clippy/master/log)
 [![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MPL-2.0](https://img.shields.io/crates/l/clippy.svg)](#License)
 
