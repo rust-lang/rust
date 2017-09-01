@@ -563,10 +563,11 @@ impl<'a> Drop for DiagnosticWrapper<'a> {
 }
 
 impl<'a> DiagnosticWrapper<'a> {
-    fn wiki_link(&mut self, lint: &'static Lint) {
-        if env::var("CLIPPY_DISABLE_WIKI_LINKS").is_err() {
+    fn docs_link(&mut self, lint: &'static Lint) {
+        if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
             self.0.help(&format!(
-                "for further information visit https://github.com/rust-lang-nursery/rust-clippy/wiki#{}",
+                "for further information visit https://rust-lang-nursery.github.io/rust-clippy/{}/index.html#{}",
+                env!("CARGO_PKG_VERSION"),
                 lint.name_lower()
             ));
         }
@@ -574,7 +575,7 @@ impl<'a> DiagnosticWrapper<'a> {
 }
 
 pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
-    DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).wiki_link(lint);
+    DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).docs_link(lint);
 }
 
 pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -586,7 +587,7 @@ pub fn span_help_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
 ) {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, span, msg));
     db.0.help(help);
-    db.wiki_link(lint);
+    db.docs_link(lint);
 }
 
 pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
@@ -603,7 +604,7 @@ pub fn span_note_and_lint<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     } else {
         db.0.span_note(note_span, note);
     }
-    db.wiki_link(lint);
+    db.docs_link(lint);
 }
 
 pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
@@ -617,7 +618,7 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
 {
     let mut db = DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg));
     f(&mut db.0);
-    db.wiki_link(lint);
+    db.docs_link(lint);
 }
 
 pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
