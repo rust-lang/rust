@@ -1147,7 +1147,7 @@ impl A for B {}
 
 // Let's assume that you would like to return a trait like below:
 fn foo(b: B) -> A {
-    b // won't compile
+    b // error[E0277]: the trait bound `A + 'static: std::marker::Sized` is not satisfied
 }
 ```
 
