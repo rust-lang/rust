@@ -46,6 +46,7 @@ Name: gcc; Description: "Linker and platform libraries"; Types: full
 Name: docs; Description: "HTML documentation"; Types: full
 Name: cargo; Description: "Cargo, the Rust package manager"; Types: full
 Name: std; Description: "The Rust Standard Library"; Types: full
+Name: rls; Description: "RLS, the Rust Language Server"
 
 [Files]
 Source: "rustc/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: rust
@@ -55,6 +56,8 @@ Source: "rust-mingw/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs;
 Source: "rust-docs/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: docs
 Source: "cargo/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: cargo
 Source: "rust-std/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: std
+Source: "rls/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: rls
+Source: "rust-analysis/*.*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs; Components: rls
 
 [Code]
 const

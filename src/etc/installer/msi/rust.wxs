@@ -170,6 +170,8 @@
                     <Directory Id="Docs" Name="." />
                     <Directory Id="Cargo" Name="." />
                     <Directory Id="Std" Name="." />
+                    <Directory Id="Rls" Name="." />
+                    <Directory Id="Analysis" Name="." />
                 </Directory>
             </Directory>
 
@@ -272,6 +274,14 @@
                  AllowAdvertise="no">
                  <ComponentRef Id="PathEnvPerMachine" />
                  <ComponentRef Id="PathEnvPerUser" />
+        </Feature>
+        <Feature Id="RLS"
+                 Title="RLS, the Rust Language Server"
+                 Display="7"
+                 Level="2"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="RlsGroup" />
+                 <ComponentGroupRef Id="AnalysisGroup" />
         </Feature>
 
         <UIRef Id="RustUI" />
