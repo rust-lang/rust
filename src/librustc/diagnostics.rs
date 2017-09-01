@@ -1346,8 +1346,8 @@ To fix this, the return type must be generic. Here are two solutions:
 # impl A for B {}
 #
 fn foo(b: B) -> Box<A> {
-    // the return type has been "generified" since the `Box<T>` input parameter is generic.
-    // successful compilation.
+    // Since the `Box<T>` input parameter is generic, `Box<A>` can take all `A` trait implementors (in this case `B`).
+    // Successful compilation.
     Box::new(b)
 }
 ```
@@ -1361,7 +1361,8 @@ fn foo(b: B) -> Box<A> {
 # impl A for B {}
 #
 fn foo<T: A>(b: T) -> T {
-    // generic return type, ok !
+    // The `T` generic type takes all `A` trait implementors (in this case `B`).
+    // `rustc` is happy!
     b
 }
 ```
