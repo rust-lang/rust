@@ -62,6 +62,41 @@ Explain the proposal as if it was already included in the language and you were 
 
 For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
 
+----
+
+A crate that describes where it publishes to would add
+the `registry` key to the `package` section of Cargo.toml:
+
+```toml
+[package]
+name = "serde"
+registry = "http://example.com/"
+```
+
+A crate using a dependency from a different registry would add
+the `registry` key to the `dependencies` section of Cargo.toml:
+
+```toml
+[dependencies.serde]
+registry = "http://example.com/"
+```
+
+Without further configuration, the value of the key for `registry`
+will be used as the URL for the registry. Optionally, a user can
+configure settings for a registry in the `.cargo` configuration files:
+
+```
+[registries."http://example.com/"]
+url = "https://example.org/api"
+username = "anna"
+token = "secret"
+```
+
+This allows for user-wide settings like usernames and tokens. A user
+may even use a `registry` key like `my-registry` if they wanted
+increased indirection.
+
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
