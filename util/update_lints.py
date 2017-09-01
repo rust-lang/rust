@@ -159,8 +159,8 @@ def main(print_only=False, check=False):
     # update the lint counter in README.md
     changed = replace_region(
         'README.md',
-        r'^There are \d+ lints included in this crate:', "",
-        lambda: ['There are %d lints included in this crate:\n' %
+        r'^\[There are \d+ lints included in this crate\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)$', "",
+        lambda: ['[There are %d lints included in this crate](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)\n' %
                  (len(lints) + len(restriction_lints))],
         write_back=not check)
 
