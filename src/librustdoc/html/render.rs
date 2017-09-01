@@ -1763,7 +1763,7 @@ fn render_markdown(w: &mut fmt::Formatter,
                     html_diff::Difference::NodeText { ref elem_text,
                                                       ref opposite_elem_text,
                                                       .. }
-                        if elem_text.trim() == opposite_elem_text.trim() => false,
+                        if match_non_whitespace(elem_text, opposite_elem_text) => false,
                     _ => true,
                 }
             })
@@ -1779,6 +1779,40 @@ fn render_markdown(w: &mut fmt::Formatter,
     };
 
     write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
+}
+
+// Returns true iff s1 and s2 match, ignoring whitespace.
+fn match_non_whitespace(s1: &str, s2: &str) -> bool {
+    let s1 = s1.trim();
+    let s2 = s2.trim();
+    let mut cs1 = s1.chars();
+    let mut cs2 = s2.chars();
+    while let Some(c1) = cs1.next() {
+        if c1.is_whitespace() {
+            continue;
+        }
+
+        loop {
+            if let Some(c2) = cs2.next() {
+                if !c2.is_whitespace() {
+                    if c1 != c2 {
+                        return false;
+                    }
+                    break;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    while let Some(c2) = cs2.next() {
+        if !c2.is_whitespace() {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
@@ -3694,4 +3728,36 @@ fn test_name_sorting() {
     let mut sorted = names.to_owned();
     sorted.sort_by_key(|&s| name_key(s));
     assert_eq!(names, sorted);
+}
+
+#[cfg(test)]
+#[test]
+fn test_match_non_whitespace() {
+    assert!(match_non_whitespace("", ""));
+    assert!(match_non_whitespace("  ", ""));
+    assert!(match_non_whitespace("", "  "));
+
+    assert!(match_non_whitespace("a", "a"));
+    assert!(match_non_whitespace(" a ", "a"));
+    assert!(match_non_whitespace("a", "  a"));
+    assert!(match_non_whitespace("abc", "abc"));
+    assert!(match_non_whitespace("abc", " abc "));
+    assert!(match_non_whitespace("abc  ", "abc"));
+    assert!(match_non_whitespace("abc xyz", "abc xyz"));
+    assert!(match_non_whitespace("abc xyz", "abc\nxyz"));
+    assert!(match_non_whitespace("abc xyz", "abcxyz"));
+    assert!(match_non_whitespace("abcxyz", "abc xyz"));
+    assert!(match_non_whitespace("abc    xyz ", " abc xyz\n"));
+
+    assert!(!match_non_whitespace("a", "b"));
+    assert!(!match_non_whitespace(" a ", "c"));
+    assert!(!match_non_whitespace("a", "  aa"));
+    assert!(!match_non_whitespace("abc", "ac"));
+    assert!(!match_non_whitespace("abc", " adc "));
+    assert!(!match_non_whitespace("abc  ", "abca"));
+    assert!(!match_non_whitespace("abc xyz", "abc xy"));
+    assert!(!match_non_whitespace("abc xyz", "bc\nxyz"));
+    assert!(!match_non_whitespace("abc xyz", "abc.xyz"));
+    assert!(!match_non_whitespace("abcxyz", "abc.xyz"));
+    assert!(!match_non_whitespace("abc    xyz ", " abc xyz w"));
 }
