@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that `Clone` is correctly implemented for builtin types.
-
-fn test_clone<T: Clone>(arg: T) {
-    let _ = arg.clone();
-}
-
-fn foo() { }
+#[derive(Clone)]
+struct S;
 
 fn main() {
-    test_clone((1, 1, 1));
-    test_clone([1, 1, 1]);
+    let a = (S, S, S, S, S, S, S, S, S, S, S, S, S).clone();
+    //~^ ERROR no method named `clone` found for type
 
-    test_clone(foo);
-    test_clone([1; 56]);
-    test_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
+    let a = [S, S, S].clone();
+    //~^ ERROR no method named `clone` found for type
 }

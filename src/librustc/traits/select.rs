@@ -1257,8 +1257,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
          } else {
              if self.tcx().lang_items.clone_trait() == Some(def_id) {
                  // Same builtin conditions as `Copy`, i.e. every type which has builtin support
-                 // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
-                 // types have builtin support for `Clone`.
+                 // for `Copy` also has builtin support for `Clone`.
                  let clone_conditions = self.copy_conditions(obligation);
                  self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
              }
@@ -1871,6 +1870,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 false
             },
+            BuiltinCandidate { .. } => {
+                // Hack: we always prefer a builtin impl over another one. Should apply
+                // ONLY for `Clone` on tuples.
+                other.evaluation == EvaluatedToOk
+            }
             _ => false
         }
     }
@@ -2156,7 +2160,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,
                          candidate: SelectionCandidate<'tcx>)
-                         -> Result<Selection<'tcx>,SelectionError<'tcx>>
+                         -> Result<Selection<'tcx>, SelectionError<'tcx>>
     {
         debug!("confirm_candidate({:?}, {:?})",
                obligation,
@@ -2267,15 +2271,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                obligation, has_nested);
 
         let obligations = if has_nested {
-            let trait_def = obligation.predicate.def_id();
+            let mut trait_def = obligation.predicate.def_id();
+
+            // Hack: for having a builtin `Clone` impl, the nested types need to
+            // implement `Copy`.
+            if Some(trait_def) == self.tcx().lang_items.clone_trait() {
+                trait_def = self.tcx().lang_items.copy_trait().unwrap();
+            }
+
             let conditions = match trait_def {
                 _ if Some(trait_def) == self.tcx().lang_items.sized_trait() => {
                     self.sized_conditions(obligation)
                 }
                 _ if Some(trait_def) == self.tcx().lang_items.copy_trait() => {
-                    self.copy_conditions(obligation)
-                }
-                _ if Some(trait_def) == self.tcx().lang_items.clone_trait() => {
                     self.copy_conditions(obligation)
                 }
                 _ => bug!("unexpected builtin trait {:?}", trait_def)
