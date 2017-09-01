@@ -12,7 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use convert::TryFrom;
+use convert::{Infallible, TryFrom};
 use fmt;
 use intrinsics;
 use str::FromStr;
@@ -2500,6 +2500,13 @@ impl TryFromIntError {
 impl fmt::Display for TryFromIntError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.__description().fmt(fmt)
+    }
+}
+
+#[unstable(feature = "try_from", issue = "33417")]
+impl From<Infallible> for TryFromIntError {
+    fn from(_: Infallible) -> TryFromIntError {
+        TryFromIntError(())
     }
 }
 
