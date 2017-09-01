@@ -212,7 +212,7 @@
 //! # }
 //! ```
 //!
-//! [functions-list]: #functions-2
+//! [functions-list]: #functions-1
 //!
 //! ## io::Result
 //!
