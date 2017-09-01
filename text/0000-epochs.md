@@ -215,7 +215,7 @@ These lead to some hard and soft constraints.
 
 ### Hard constraints
 
-**TL;DR: Warning-free code on epoch N should compile on epoch N+1 and have the
+**TL;DR: Warning-free code on epoch N must compile on epoch N+1 and have the
 same behavior.**
 
 There are only two things a new epoch can do that a normal release cannot:
