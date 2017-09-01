@@ -1,4 +1,4 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::imp::{foreach_symbol_fileline, resolve_symname};
+mod dladdr;
+
+use sys::backtrace::BacktraceContext;
+use sys_common::backtrace::Frame;
+use io;
 
 #[cfg(target_os = "emscripten")]
-#[path = "dladdr.rs"]
-mod imp;
+pub use self::dladdr::resolve_symname;
+
+#[cfg(target_os = "emscripten")]
+pub fn foreach_symbol_fileline<F>(_: Frame, _: F, _: &BacktraceContext) -> io::Result<bool>
+where
+    F: FnMut(&[u8], ::libc::c_int) -> io::Result<()>
+{
+    Ok(false)
+}
 
 #[cfg(not(target_os = "emscripten"))]
-mod imp {
-    pub use sys_common::gnu::libbacktrace::{foreach_symbol_fileline, resolve_symname};
+pub use sys_common::gnu::libbacktrace::foreach_symbol_fileline;
+
+#[cfg(not(target_os = "emscripten"))]
+pub fn resolve_symname<F>(frame: Frame, callback: F, bc: &BacktraceContext) -> io::Result<()>
+where
+    F: FnOnce(Option<&str>) -> io::Result<()>
+{
+    ::sys_common::gnu::libbacktrace::resolve_symname(frame, |symname| {
+        if symname.is_some() {
+            callback(symname)
+        } else {
+            dladdr::resolve_symname(frame, callback, bc)
+        }
+    }, bc)
 }
