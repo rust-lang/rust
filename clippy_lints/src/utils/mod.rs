@@ -566,7 +566,8 @@ impl<'a> DiagnosticWrapper<'a> {
     fn docs_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
             self.0.help(&format!(
-                "for further information visit https://rust-lang-nursery.github.io/rust-clippy/master/index.html#{}",
+                "for further information visit https://rust-lang-nursery.github.io/rust-clippy/{}/index.html#{}",
+                env!("CARGO_PKG_VERSION"),
                 lint.name_lower()
             ));
         }
