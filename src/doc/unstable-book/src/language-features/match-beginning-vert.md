@@ -8,12 +8,14 @@ match arm:
 ```rust
 #![feature(match_beginning_vert)]
 
-enum Foo { A, B }
+enum Foo { A, B, C }
 
 fn main() {
     let x = Foo::A;
     match x {
-        | A | B => {},
+        | Foo::A 
+        | Foo::B => println!("AB"),
+        | Foo::C => println!("C"),
     }
 }
 ```
