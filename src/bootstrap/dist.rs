@@ -846,6 +846,8 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
+        let sha = build.rust_sha().unwrap_or("");
+        write_file(&plain_dst_src.join("git-commit-hash"), sha.as_bytes());
 
         // If we're building from git sources, we need to vendor a complete distribution.
         if build.rust_info.is_git() {
@@ -1158,7 +1160,9 @@ impl Step for Extended {
         install(&build.src.join("LICENSE-APACHE"), &overlay, 0o644);
         install(&build.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = build.rust_version();
+        let sha = build.rust_sha().unwrap_or("");
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
         install(&etc.join("README.md"), &overlay, 0o644);
 
         // When rust-std package split from rustc, we needed to ensure that during
