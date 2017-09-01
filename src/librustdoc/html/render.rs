@@ -124,6 +124,9 @@ pub struct SharedContext {
     /// The given user css file which allow to customize the generated
     /// documentation theme.
     pub css_file_extension: Option<PathBuf>,
+    /// Warnings for the user if rendering would differ using different markdown
+    /// parsers.
+    pub markdown_warnings: RefCell<Vec<(String, Vec<String>)>>,
 }
 
 /// Indicates where an external crate can be found.
@@ -457,6 +460,7 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
         },
         css_file_extension: css_file_extension.clone(),
+        markdown_warnings: RefCell::new(vec![]),
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -579,8 +583,19 @@ pub fn run(mut krate: clean::Crate,
 
     write_shared(&cx, &krate, &*cache, index)?;
 
+    let scx = cx.shared.clone();
+
     // And finally render the whole crate's documentation
-    cx.krate(krate)
+    let result = cx.krate(krate);
+
+    let markdown_warnings = scx.markdown_warnings.borrow();
+    for &(ref text, ref diffs) in &*markdown_warnings {
+        println!("Differences spotted in {:?}:\n{}",
+             text,
+             diffs.join("\n"));
+    }
+
+    result
 }
 
 /// Build the search index from the collected metadata
@@ -1641,12 +1656,18 @@ fn plain_summary_line(s: Option<&str>) -> String {
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
     let prefix = render_assoc_const_value(item);
-    document_full(w, item, cx.render_type, &prefix)?;
+    document_full(w, item, cx, &prefix)?;
     Ok(())
 }
 
-fn render_markdown(w: &mut fmt::Formatter, md_text: &str, render_type: RenderType,
-                 prefix: &str) -> fmt::Result {
+/// Render md_text as markdown. Warns the user if there are difference in
+/// rendering between Pulldown and Hoedown.
+fn render_markdown(w: &mut fmt::Formatter,
+                   md_text: &str,
+                   render_type: RenderType,
+                   prefix: &str,
+                   scx: &SharedContext)
+                   -> fmt::Result {
     let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
     // We only emit warnings if the user has opted-in to Pulldown rendering.
     let output = if render_type == RenderType::Pulldown {
@@ -1665,10 +1686,7 @@ fn render_markdown(w: &mut fmt::Formatter, md_text: &str, render_type: RenderTyp
             .collect::<Vec<String>>();
 
         if !differences.is_empty() {
-            // Emit warnings if there are differences.
-            println!("Differences spotted in {:?}:\n{}",
-                     md_text,
-                     differences.join("\n"));
+            scx.markdown_warnings.borrow_mut().push((md_text.to_owned(), differences));
         }
 
         pulldown_output
@@ -1680,7 +1698,7 @@ fn render_markdown(w: &mut fmt::Formatter, md_text: &str, render_type: RenderTyp
 }
 
 fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
-                  render_type: RenderType, prefix: &str) -> fmt::Result {
+                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1688,7 +1706,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        render_markdown(w, &markdown, render_type, prefix)?;
+        render_markdown(w, &markdown, cx.render_type, prefix, &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -1710,9 +1728,9 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
 }
 
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
-                 render_type: RenderType, prefix: &str) -> fmt::Result {
+                 cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        render_markdown(w, s, render_type, prefix)?;
+        render_markdown(w, s, cx.render_type, prefix, &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -3111,20 +3129,20 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
                         if item.doc_value().is_some() {
-                            document_full(w, item, cx.render_type, &prefix)?;
+                            document_full(w, item, cx, &prefix)?;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link, cx.render_type, &prefix)?;
+                            document_short(w, it, link, cx, &prefix)?;
                         }
                     }
                 } else {
                     document_stability(w, cx, item)?;
-                    document_full(w, item, cx.render_type, &prefix)?;
+                    document_full(w, item, cx, &prefix)?;
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link, cx.render_type, &prefix)?;
+                document_short(w, item, link, cx, &prefix)?;
             }
         }
         Ok(())
