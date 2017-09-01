@@ -63,7 +63,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc::session::config::nightly_options::is_nightly_build;
 use rustc_data_structures::flock;
 
-use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
+use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -126,7 +126,7 @@ pub struct SharedContext {
     pub css_file_extension: Option<PathBuf>,
     /// Warnings for the user if rendering would differ using different markdown
     /// parsers.
-    pub markdown_warnings: RefCell<Vec<(String, Vec<String>)>>,
+    pub markdown_warnings: RefCell<Vec<(Span, String, Vec<html_diff::Difference>)>>,
 }
 
 /// Indicates where an external crate can be found.
@@ -589,13 +589,96 @@ pub fn run(mut krate: clean::Crate,
     let result = cx.krate(krate);
 
     let markdown_warnings = scx.markdown_warnings.borrow();
-    for &(ref text, ref diffs) in &*markdown_warnings {
-        println!("Differences spotted in {:?}:\n{}",
-             text,
-             diffs.join("\n"));
+    if !markdown_warnings.is_empty() {
+        println!("WARNING: documentation for this crate may be rendered \
+                  differently using the new Pulldown renderer.");
+        println!("    See https://github.com/rust-lang/rust/issues/44229 for details.");
+        for &(ref span, ref text, ref diffs) in &*markdown_warnings {
+            println!("WARNING: rendering difference in `{}`", concise_str(text));
+            println!("   --> {}:{}:{}", span.filename, span.loline, span.locol);
+            for d in diffs {
+                render_difference(d);
+            }
+        }
     }
 
     result
+}
+
+// A short, single-line view of `s`.
+fn concise_str(s: &str) -> String {
+    if s.contains('\n') {
+        return format!("{}...", &s[..s.find('\n').unwrap()]);
+    }
+    if s.len() > 70 {
+        return format!("{} ... {}", &s[..50], &s[s.len()-20..]);
+    }
+    s.to_owned()
+}
+
+// Returns short versions of s1 and s2, starting from where the strings differ.
+fn concise_compared_strs(s1: &str, s2: &str) -> (String, String) {
+    let s1 = s1.trim();
+    let s2 = s2.trim();
+    if !s1.contains('\n') && !s2.contains('\n') && s1.len() <= 70 && s2.len() <= 70 {
+        return (s1.to_owned(), s2.to_owned());
+    }
+
+    let mut start_byte = 0;
+    for (c1, c2) in s1.chars().zip(s2.chars()) {
+        if c1 != c2 {
+            break;
+        }
+
+        start_byte += c1.len_utf8();
+    }
+
+    if start_byte == 0 {
+        return (concise_str(s1), concise_str(s2));
+    }
+
+    let s1 = &s1[start_byte..];
+    let s2 = &s2[start_byte..];
+    (format!("...{}", concise_str(s1)), format!("...{}", concise_str(s2)))
+}
+
+fn render_difference(diff: &html_diff::Difference) {
+    match *diff {
+        html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
+            println!("    {} Types differ: expected: `{}`, found: `{}`",
+                     elem.path, elem.element_name, opposite_elem.element_name);
+        }
+        html_diff::Difference::NodeName { ref elem, ref opposite_elem } => {
+            println!("    {} Tags differ: expected: `{}`, found: `{}`",
+                     elem.path, elem.element_name, opposite_elem.element_name);
+        }
+        html_diff::Difference::NodeAttributes { ref elem,
+                                     ref elem_attributes,
+                                     ref opposite_elem_attributes,
+                                     .. } => {
+            println!("    {} Attributes differ in `{}`: expected: `{:?}`, found: `{:?}`",
+                     elem.path, elem.element_name, elem_attributes, opposite_elem_attributes);
+        }
+        html_diff::Difference::NodeText { ref elem, ref elem_text, ref opposite_elem_text, .. } => {
+            let (s1, s2) = concise_compared_strs(elem_text, opposite_elem_text);
+            println!("    {} Text differs:\n        expected: `{}`\n        found:    `{}`",
+                     elem.path, s1, s2);
+        }
+        html_diff::Difference::NotPresent { ref elem, ref opposite_elem } => {
+            if let Some(ref elem) = *elem {
+                println!("    {} One element is missing: expected: `{}`",
+                         elem.path, elem.element_name);
+            } else if let Some(ref elem) = *opposite_elem {
+                if elem.element_name.is_empty() {
+                    println!("    {} Unexpected element: `{}`",
+                             elem.path, concise_str(&elem.element_content));
+                } else {
+                    println!("    {} Unexpected element `{}`: found: `{}`",
+                             elem.path, elem.element_name, concise_str(&elem.element_content));
+                }
+            }
+        }
+    }
 }
 
 /// Build the search index from the collected metadata
@@ -1664,6 +1747,7 @@ fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Re
 /// rendering between Pulldown and Hoedown.
 fn render_markdown(w: &mut fmt::Formatter,
                    md_text: &str,
+                   span: Span,
                    render_type: RenderType,
                    prefix: &str,
                    scx: &SharedContext)
@@ -1673,20 +1757,20 @@ fn render_markdown(w: &mut fmt::Formatter,
     let output = if render_type == RenderType::Pulldown {
         let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
         let differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
-        let differences = differences.iter()
-            .filter_map(|s| {
+        let differences = differences.into_iter()
+            .filter(|s| {
                 match *s {
                     html_diff::Difference::NodeText { ref elem_text,
                                                       ref opposite_elem_text,
                                                       .. }
-                        if elem_text.trim() == opposite_elem_text.trim() => None,
-                    _ => Some(format!("=> {}", s.to_string())),
+                        if elem_text.trim() == opposite_elem_text.trim() => false,
+                    _ => true,
                 }
             })
-            .collect::<Vec<String>>();
+            .collect::<Vec<_>>();
 
         if !differences.is_empty() {
-            scx.markdown_warnings.borrow_mut().push((md_text.to_owned(), differences));
+            scx.markdown_warnings.borrow_mut().push((span, md_text.to_owned(), differences));
         }
 
         pulldown_output
@@ -1706,7 +1790,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        render_markdown(w, &markdown, cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w, &markdown, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -1730,7 +1814,7 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        render_markdown(w, s, cx.render_type, prefix, &cx.shared)?;
+        render_markdown(w, s, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
