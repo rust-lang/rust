@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions -Z span_free_formats
+// compile-flags: -Z identify_regions -Z span_free_formats -Z emit-end-regions
 // ignore-tidy-linelength
 
 // Regression test for #43457: an `EndRegion` was missing from output
