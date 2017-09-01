@@ -18,6 +18,7 @@ members = [
   "tools/cargo",
   "tools/rustdoc",
   "tools/rls",
+  "tools/rustfmt",
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
   "tools/rls/test_data/borrow_error",
   "tools/rls/test_data/completion",
@@ -58,3 +59,9 @@ debug-assertions = false
 
 [patch.'https://github.com/rust-lang/cargo']
 cargo = { path = "tools/cargo" }
+
+[patch.'https://github.com/rust-lang-nursery/rustfmt']
+rustfmt-nightly = { path = "tools/rustfmt" }
+
+[patch.crates-io]
+rustfmt-nightly = { path = "tools/rustfmt" }
