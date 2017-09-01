@@ -757,7 +757,7 @@ impl Step for Src {
             "src/libprofiler_builtins",
         ];
         let std_src_dirs_exclude = [
-            "src/compiler-rt/test",
+            "src/libcompiler_builtins/compiler-rt/test",
             "src/jemalloc/test/unit",
         ];
 

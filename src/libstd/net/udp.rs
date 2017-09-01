@@ -69,14 +69,34 @@ impl UdpSocket {
     /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
     ///
+    /// If `addr` yields multiple addresses, `bind` will be attempted with
+    /// each of the addresses until one succeeds and returns the socket. If none
+    /// of the addresses succeed in creating a socket, the error returned from
+    /// the last attempt (the last address) is returned.
+    ///
     /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
+    /// Create a UDP socket bound to `127.0.0.1:3400`:
+    ///
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
+    /// ```
+    ///
+    /// Create a UDP socket bound to `127.0.0.1:3400`. If the socket cannot be
+    /// bound to that address, create a UDP socket bound to `127.0.0.1:3401`:
+    ///
+    /// ```no_run
+    /// use std::net::{SocketAddr, UdpSocket};
+    ///
+    /// let addrs = [
+    ///     SocketAddr::from(([127, 0, 0, 1], 3400)),
+    ///     SocketAddr::from(([127, 0, 0, 1], 3401)),
+    /// ];
+    /// let socket = UdpSocket::bind(&addrs[..]).expect("couldn't bind to address");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
@@ -129,6 +149,9 @@ impl UdpSocket {
     ///
     /// Address type can be any implementor of [`ToSocketAddrs`] trait. See its
     /// documentation for concrete examples.
+    ///
+    /// It is possible for `addr` to yield multiple addresses, but `send_to`
+    /// will only send data to the first address yielded by `addr`.
     ///
     /// This will return an error when the IP version of the local socket
     /// does not match that returned from [`ToSocketAddrs`].
@@ -562,13 +585,36 @@ impl UdpSocket {
     /// `recv` syscalls to be used to send data and also applies filters to only
     /// receive data from the specified address.
     ///
+    /// If `addr` yields multiple addresses, `connect` will be attempted with
+    /// each of the addresses until a connection is successful. If none of
+    /// the addresses are able to be connected, the error returned from the
+    /// last connection attempt (the last address) is returned.
+    ///
     /// # Examples
+    ///
+    /// Create a UDP socket bound to `127.0.0.1:3400` and connect the socket to
+    /// `127.0.0.1:8080`:
     ///
     /// ```no_run
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
+    /// ```
+    ///
+    /// Create a UDP socket bound to `127.0.0.1:3400` and connect the socket to
+    /// `127.0.0.1:8080`. If that connection fails, then the UDP socket will
+    /// connect to `127.0.0.1:8081`:
+    ///
+    /// ```no_run
+    /// use std::net::{SocketAddr, UdpSocket};
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
+    /// let connect_addrs = [
+    ///     SocketAddr::from(([127, 0, 0, 1], 8080)),
+    ///     SocketAddr::from(([127, 0, 0, 1], 8081)),
+    /// ];
+    /// socket.connect(&connect_addrs[..]).expect("connect function failed");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
