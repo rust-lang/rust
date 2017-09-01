@@ -443,10 +443,9 @@ exist.
 There are a few open questions about how to best hook into the compiler and Cargo
 infrastructure:
 
-* Is passing in the list of public dependencies the correct way to get around it?
-  If yes, what is the parameter supposed to be called?
 * What is the impact of this change going to be? This most likely can be answered
   running cargobomb/crater.
 * Since changing public dependency pins/ranges requires a change in semver, it might
   be worth exploring if Cargo could prevent the user from publishing new crate
   versions that violate that constraint.
+* If this is implemented before [the RFC to deprecate `extern crate`](https://github.com/rust-lang/rfcs/pull/2126), how would this work if you're not using `--extern`?
