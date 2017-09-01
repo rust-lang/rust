@@ -38,6 +38,7 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc::hir::svh::Svh;
 use rustc::hir;
 
@@ -106,7 +107,9 @@ provide! { <'tcx> tcx, def_id, cdata,
         mir
     }
     generator_sig => { cdata.generator_sig(def_id.index, tcx) }
-    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
+    mir_const_qualif => {
+        (cdata.mir_const_qualif(def_id.index), Rc::new(IdxSetBuf::new_empty(0)))
+    }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
