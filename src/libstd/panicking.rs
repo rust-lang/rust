@@ -522,40 +522,6 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
     begin_panic(s, file_line_col)
 }
 
-// FIXME: In PR #42938, we have added the column as info passed to the panic
-// handling code. For this, we want to break the ABI of begin_panic.
-// This is not possible to do directly, as the stage0 compiler is hardcoded
-// to emit a call to begin_panic in src/libsyntax/ext/build.rs, only
-// with the file and line number being passed, but not the colum number.
-// By changing the compiler source, we can only affect behaviour of higher
-// stages. We need to perform the switch over two stage0 replacements, using
-// a temporary function begin_panic_new while performing the switch:
-// 0. Before the current switch, we told stage1 onward to emit a call
-//    to begin_panic_new.
-// 1. Right now, stage0 calls begin_panic_new with the new ABI,
-//    begin_panic stops being used. We have changed begin_panic to
-//    the new ABI, and started to emit calls to begin_panic in higher
-//    stages again, this time with the new ABI.
-// 2. After the second SNAP, stage0 calls begin_panic with the new ABI,
-//    and we can remove the temporary begin_panic_new function.
-
-/// This is the entry point of panicking for panic!() and assert!().
-#[cfg(stage0)]
-#[unstable(feature = "libstd_sys_internals",
-           reason = "used by the panic! macro",
-           issue = "0")]
-#[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
-pub fn begin_panic_new<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u32)) -> ! {
-    // Note that this should be the only allocation performed in this code path.
-    // Currently this means that panic!() on OOM will invoke this code path,
-    // but then again we're not really ready for panic on OOM anyway. If
-    // we do start doing this, then we should propagate this allocation to
-    // be performed in the parent of this thread instead of the thread that's
-    // panicking.
-
-    rust_panic_with_hook(Box::new(msg), file_line_col)
-}
-
 /// This is the entry point of panicking for panic!() and assert!().
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",

@@ -279,7 +279,7 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
                                 ptr::null_mut());
 
             let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-            let mut db = data.as_mut_ptr()
+            let db = data.as_mut_ptr()
                             as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
             let buf = &mut (*db).ReparseTarget as *mut _;
             let mut i = 0;
