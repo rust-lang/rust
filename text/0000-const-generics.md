@@ -211,11 +211,34 @@ When comparing the evaluation of an abstract const expression - which we'll
 call a *const projection* - to another const of the same type, its equality is
 always unknown.
 
-Therefore we can neither unify nor guarantee the nonunification of any const
-projection with any other const unless they are *syntactically identical.* That
-is, because we require that const equality is reflexive, we know that `{N + 1}`
-is equal to `{N + 1}`, but we don't know whether or not it is equal to
-`{N * 2}` or even to `N` or `{1 + N}`.
+Each const expression generates a new projection, which is inherently
+anonymous. It is not possible to unify two anonymous projections (imagine two
+associated types on a generic - `T::Assoc` and `T::Item`: you can't prove or
+disprove that they are the same type). For this reason, const expressions do
+not unify with one another unless they are *literally references to the same
+AST node*. That means that one instance of `N + 1` does not unify with another
+instance of `N + 1` in a type.
+
+To be clearer, this does not typecheck, because `N + 1` appears in two
+different types:
+
+```rust
+fn foo<const N: usize>() -> [i32; N + 1] {
+    let x: [i32; N + 1] = [0; N + 1];
+    x
+}
+```
+
+But this does, because it appears only once:
+
+```rust
+type Foo<const N: usize> = [i32; N + 1];
+
+fn foo<const N: usize>() -> Foo<N> {
+    let x: Foo<N> = [i32; N + 1];
+    x
+}
+```
 
 #### Future extensions
 
@@ -282,6 +305,21 @@ types with a semicolon.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None known at this time (at least, none recalled).
+- **Unification of abstract const expressions:** This RFC performs the most
+  minimal unification of abstract const expressions possible - it essentially
+  doesn't unify them. Possibly this will be an unacceptable UX for
+  stabilization and we will want to perform some more advanced unification
+  before we stabilize this feature.
+- **Well formedness of const expressions:** Types should be considered well
+  formed only if during monomorphization they will not panic. This is tricky
+  for overflow and out of bound array access. However, we can only actually
+  provide well formedness constraints of expressions in the signature of
+  functions; what to do about abstract const expressions appearing in function
+  bodies in regards to well formedness is currently unclear & is delayed to
+  implementation.
+- **Ordering and default parameters:** Do all const parameters come last, or
+  can they be mixed with types? Do all parameters with defaults have to come
+  after parameters without defaults? We delay this decision to implementation
+  of the grammar.
 
 [1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
