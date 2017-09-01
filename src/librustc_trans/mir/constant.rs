@@ -365,7 +365,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     if let Some((ref dest, target)) = *destination {
                         let result = if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
-                            match &tcx.item_name(def_id).as_str()[..] {
+                            match &tcx.item_name(def_id)[..] {
                                 "size_of" => {
                                     let llval = C_uint(self.ccx,
                                         self.ccx.size_of(substs.type_at(0)));

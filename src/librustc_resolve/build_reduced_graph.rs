@@ -42,6 +42,7 @@ use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token;
 use syntax::symbol::keywords;
+use syntax::symbol::Symbol;
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -522,14 +523,14 @@ impl<'a> Resolver<'a> {
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.session.cstore.crate_name_untracked(def_id.krate), None)
+            (self.session.cstore.crate_name_untracked(def_id.krate).as_str(), None)
         } else {
             let def_key = self.session.cstore.def_key(def_id);
             (def_key.disambiguated_data.data.get_opt_name().unwrap(),
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
 
-        let kind = ModuleKind::Def(Def::Mod(def_id), name);
+        let kind = ModuleKind::Def(Def::Mod(def_id), Symbol::intern(&name));
         let module =
             self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
         self.extern_module_map.insert((def_id, macros_only), module);

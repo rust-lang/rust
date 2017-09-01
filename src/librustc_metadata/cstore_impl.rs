@@ -40,7 +40,6 @@ use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
 use rustc_data_structures::indexed_set::IdxSetBuf;
-use rustc::hir::svh::Svh;
 use rustc::hir;
 
 macro_rules! provide {
@@ -469,7 +468,7 @@ impl CrateStore for cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::with_empty_ctxt(name),
+            ident: ast::Ident::from_str(&name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),

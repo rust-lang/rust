@@ -242,7 +242,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
             return name.to_string();
         }
         // Don't mangle foreign items.
-        return tcx.item_name(def_id).as_str().to_string();
+        return tcx.item_name(def_id).to_string();
     }
 
     if let Some(name) = attr::find_export_name_attr(tcx.sess.diagnostic(), &attrs) {
@@ -252,7 +252,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     if attr::contains_name(&attrs, "no_mangle") {
         // Don't mangle
-        return tcx.item_name(def_id).as_str().to_string();
+        return tcx.item_name(def_id).to_string();
     }
 
     // We want to compute the "type" of this item. Unfortunately, some

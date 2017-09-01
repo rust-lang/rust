@@ -348,7 +348,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                method = self.tcx.item_name(item).as_str();
+                method = self.tcx.item_name(item);
                 flags.push(("from_method", None));
                 flags.push(("from_method", Some(&*method)));
             }

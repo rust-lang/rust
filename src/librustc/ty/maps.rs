@@ -20,7 +20,6 @@ use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
 use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use middle::privacy::AccessLevels;
 use middle::region;
-use middle::region::RegionMaps;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};

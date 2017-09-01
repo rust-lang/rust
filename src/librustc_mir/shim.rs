@@ -100,7 +100,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::CloneShim(def_id, ty) => {
-            let name = tcx.item_name(def_id).as_str();
+            let name = tcx.item_name(def_id);
             if name == "clone" {
                 build_clone_shim(tcx, def_id, ty)
             } else if name == "clone_from" {

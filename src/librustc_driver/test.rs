@@ -18,7 +18,6 @@ use rustc_trans;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
-use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -140,7 +139,6 @@ fn test_env<F>(source_string: &str,
 
     // run just enough stuff to build a tcx:
     let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
-    let index = stability::Index::new(&sess);
     TyCtxt::create_and_enter(&sess,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
@@ -150,7 +148,6 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
-                             index,
                              "test_crate",
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {

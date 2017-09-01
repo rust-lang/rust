@@ -41,6 +41,7 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::codemap;
+use syntax::symbol::{InternedString, Symbol};
 use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 
@@ -473,7 +474,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn item_name(&self, item_index: DefIndex) -> ast::Name {
+    pub fn item_name(&self, item_index: DefIndex) -> InternedString {
         self.def_key(item_index)
             .disambiguated_data
             .data
@@ -520,12 +521,12 @@ impl<'a, 'tcx> CrateMetadata {
 
         ty::VariantDef {
             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
-            name: self.item_name(index),
+            name: Symbol::intern(&self.item_name(index)),
             fields: item.children.decode(self).map(|index| {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
-                    name: self.item_name(index),
+                    name: Symbol::intern(&self.item_name(index)),
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
@@ -705,7 +706,7 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(def) = self.get_def(child_index) {
                                 callback(def::Export {
                                     def,
-                                    ident: Ident::with_empty_ctxt(self.item_name(child_index)),
+                                    ident: Ident::from_str(&self.item_name(child_index)),
                                     span: self.entry(child_index).span.decode((self, sess)),
                                 });
                             }
@@ -722,7 +723,7 @@ impl<'a, 'tcx> CrateMetadata {
                 let span = child.span.decode((self, sess));
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
-                    let ident = Ident::with_empty_ctxt(name);
+                    let ident = Ident::from_str(&name);
                     callback(def::Export { def: def, ident: ident, span: span });
                     // For non-reexport structs and variants add their constructors to children.
                     // Reexport lists automatically contain constructors when necessary.
@@ -836,7 +837,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         ty::AssociatedItem {
-            name,
+            name: Symbol::intern(&name),
             kind,
             vis: item.visibility.decode(self),
             defaultness: container.defaultness(),
@@ -906,7 +907,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id)
             .children
             .decode(self)
-            .map(|index| self.item_name(index))
+            .map(|index| Symbol::intern(&self.item_name(index)))
             .collect()
     }
 
@@ -1038,7 +1039,7 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    pub fn get_macro(&self, id: DefIndex) -> (ast::Name, MacroDef) {
+    pub fn get_macro(&self, id: DefIndex) -> (InternedString, MacroDef) {
         let entry = self.entry(id);
         match entry.kind {
             EntryKind::MacroDef(macro_def) => (self.item_name(id), macro_def.decode(self)),

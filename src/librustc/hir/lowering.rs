@@ -2863,7 +2863,7 @@ impl<'a> LoweringContext<'a> {
         let parent_def = self.parent_def.unwrap();
         let def_id = {
             let defs = self.resolver.definitions();
-            let def_path_data = DefPathData::Binding(name);
+            let def_path_data = DefPathData::Binding(name.as_str());
             let def_index = defs.create_def_with_parent(parent_def,
                                                         node_id,
                                                         def_path_data,
