@@ -235,7 +235,7 @@ But this does, because it appears only once:
 type Foo<const N: usize> = [i32; N + 1];
 
 fn foo<const N: usize>() -> Foo<N> {
-    let x: Foo<N> = [i32; N + 1];
+    let x: Foo<N> = Default::default();
     x
 }
 ```
