@@ -1328,7 +1328,7 @@ struct B;
 impl A for B {}
 
 fn foo(b: B) -> A {
-    // will not work
+    // error[E0308]: mismatched types
     b
 }
 ```
