@@ -253,6 +253,47 @@ impl Step for Rls {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Rustfmt {
+    stage: u32,
+    host: Interned<String>,
+}
+
+impl Step for Rustfmt {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rustfmt")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustfmt {
+            stage: run.builder.top_stage,
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for rustfmt.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rustfmt/Cargo.toml"));
+
+        // Don't build tests dynamically, just a pain to work with
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run(build, &mut cargo);
+    }
+}
+
 fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
     // and not RUSTC because the Cargo test suite has tests that will
