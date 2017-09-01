@@ -447,6 +447,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
             ty::TyClosure(def_id, ..) |
+            ty::TyGenerator(def_id, ..) |
             ty::TyAnon(def_id, _) => Some(def_id),
             _ => None
         };
