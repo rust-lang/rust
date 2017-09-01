@@ -97,12 +97,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
                 let result = this.temp(expr.ty, expr_span);
+                this.cfg.push(block, Statement {
+                    source_info,
+                    kind: StatementKind::StorageLive(result.clone())
+                });
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.cfg.push(block, Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(result.clone())
-                    });
                     this.schedule_drop(expr_span, scope, &result, value.ty);
                 }
 
