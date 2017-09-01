@@ -34,6 +34,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
+            "align_offset" => {
+                // FIXME: return a real value in case the target allocation has an
+                // alignment bigger than the one requested
+                self.write_primval(dest, PrimVal::Bytes(u128::max_value()), dest_ty)?;
+            },
+
             "add_with_overflow" => {
                 self.intrinsic_with_overflow(
                     mir::BinOp::Add,
