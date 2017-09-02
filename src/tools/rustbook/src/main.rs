@@ -41,7 +41,6 @@ fn main() {
     // Check which subcomamnd the user ran...
     let res = match matches.subcommand() {
         ("build", Some(sub_matches)) => build(sub_matches),
-        ("test", Some(sub_matches)) => test(sub_matches),
         (_, _) => unreachable!(),
     };
 
@@ -53,10 +52,10 @@ fn main() {
 
 // Build command implementation
 fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let book = build_mdbook_struct(args);
+    let book = build_mdbook_struct(args)?;
 
     let mut book = match args.value_of("dest-dir") {
-        Some(dest_dir) => book.set_dest(Path::new(dest_dir)),
+        Some(dest_dir) => book.with_destination(Path::new(dest_dir)),
         None => book
     };
 
@@ -65,17 +64,9 @@ fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
     Ok(())
 }
 
-fn test(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let mut book = build_mdbook_struct(args);
-
-    try!(book.test());
-
-    Ok(())
-}
-
-fn build_mdbook_struct(args: &ArgMatches) -> mdbook::MDBook {
+fn build_mdbook_struct(args: &ArgMatches) -> Result<mdbook::MDBook, Box<Error>> {
     let book_dir = get_book_dir(args);
-    let mut book = MDBook::new(&book_dir).read_config();
+    let mut book = MDBook::new(&book_dir).read_config()?;
 
     // By default mdbook will attempt to create non-existent files referenced
     // from SUMMARY.md files. This is problematic on CI where we mount the
@@ -83,7 +74,7 @@ fn build_mdbook_struct(args: &ArgMatches) -> mdbook::MDBook {
     // mdbook's implicit file creation feature.
     book.create_missing = false;
 
-    book
+    Ok(book)
 }
 
 fn get_book_dir(args: &ArgMatches) -> PathBuf {
