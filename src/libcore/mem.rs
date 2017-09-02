@@ -711,39 +711,39 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 /// Opaque type representing the discriminant of an enum.
 ///
 /// See the `discriminant` function in this module for more information.
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 pub struct Discriminant<T>(u64, PhantomData<*const T>);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> Copy for Discriminant<T> {}
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> clone::Clone for Discriminant<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> cmp::PartialEq for Discriminant<T> {
     fn eq(&self, rhs: &Self) -> bool {
         self.0 == rhs.0
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> cmp::Eq for Discriminant<T> {}
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> hash::Hash for Discriminant<T> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 impl<T> fmt::Debug for Discriminant<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_tuple("Discriminant")
@@ -768,7 +768,6 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// the actual data:
 ///
 /// ```
-/// #![feature(discriminant_value)]
 /// use std::mem;
 ///
 /// enum Foo { A(&'static str), B(i32), C(i32) }
@@ -777,7 +776,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
 /// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
 /// ```
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.22.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     unsafe {
         Discriminant(intrinsics::discriminant_value(v), PhantomData)
