@@ -684,7 +684,7 @@ version = "0.1.0"
 
 [[package]]
 name = "html-diff"
-version = "0.0.3"
+version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "kuchiki 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1794,7 +1794,7 @@ dependencies = [
  "build_helper 0.1.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.51 (registry+https://github.com/rust-lang/crates.io-index)",
- "html-diff 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "html-diff 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2480,7 +2480,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum handlebars 0.26.2 (registry+https://github.com/rust-lang/crates.io-index)" = "fbba80e74e9591a5f6a4ffff6b7f9d645759a896e431cfbdc853e9184370294a"
 "checksum hex 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d6a22814455d41612f41161581c2883c0c6a1c41852729b17d5ed88f01e153aa"
 "checksum home 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9f25ae61099d8f3fee8b483df0bd4ecccf4b2731897aad40d50eca1b641fe6db"
-"checksum html-diff 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "17dbc64943cae56925cf9ff22e8c76ccdb8010f6675a1a56660ec7e597ffa7c7"
+"checksum html-diff 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "5298d63081a642508fce965740ddb03a386c5d81bf1fef0579a815cf49cb8c68"
 "checksum html5ever 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a49d5001dd1bddf042ea41ed4e0a671d50b1bf187e66b349d7ec613bdce4ad90"
 "checksum idna 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "014b298351066f1512874135335d62a789ffe78a9974f94b43ed5621951eaf7d"
 "checksum ignore 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b3fcaf2365eb14b28ec7603c98c06cc531f19de9eb283d89a3dff8417c8c99f5"

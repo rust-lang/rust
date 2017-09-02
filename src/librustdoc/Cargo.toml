@@ -12,7 +12,7 @@ path = "lib.rs"
 env_logger = { version = "0.4", default-features = false }
 log = "0.3"
 pulldown-cmark = { version = "0.0.14", default-features = false }
-html-diff = "0.0.3"
+html-diff = "0.0.4"
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
