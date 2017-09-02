@@ -7,6 +7,8 @@ build = "build.rs"
 [lib]
 name = "rustdoc"
 path = "lib.rs"
+# SNAP/stage0(cargo)
+doctest = false
 
 [dependencies]
 env_logger = { version = "0.4", default-features = false }
