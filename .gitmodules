@@ -33,3 +33,6 @@
 [submodule "src/libcompiler_builtins"]
 	path = src/libcompiler_builtins
 	url = https://github.com/rust-lang-nursery/compiler-builtins
+[submodule "src/tools/clippy"]
+	path = src/tools/clippy
+	url = https://github.com/rust-lang-nursery/rust-clippy.git
