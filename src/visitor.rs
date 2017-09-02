@@ -973,7 +973,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                         Some(&(_, next_attr)) if is_derive(next_attr) => insert_new_line = false,
                         // If not, rewrite the merged derives.
                         _ => {
-                            result.push_str(&format!("#[derive({})]", derive_args.join(", ")));
+                            result.push_str(&try_opt!(format_derive(context, &derive_args, shape)));
                             derive_args.clear();
                         }
                     }
@@ -988,6 +988,38 @@ impl<'a> Rewrite for [ast::Attribute] {
         }
         Some(result)
     }
+}
+
+// Format `#[derive(..)]`, using visual indent & mixed style when we need to go multiline.
+fn format_derive(context: &RewriteContext, derive_args: &[String], shape: Shape) -> Option<String> {
+    let mut result = String::with_capacity(128);
+    result.push_str("#[derive(");
+    // 11 = `#[derive()]`
+    let initial_budget = try_opt!(shape.width.checked_sub(11));
+    let mut budget = initial_budget;
+    let num = derive_args.len();
+    for (i, a) in derive_args.iter().enumerate() {
+        // 2 = `, ` or `)]`
+        let width = a.len() + 2;
+        if width > budget {
+            if i > 0 {
+                // Remove trailing whitespace.
+                result.pop();
+            }
+            result.push('\n');
+            // 9 = `#[derive(`
+            result.push_str(&(shape.indent + 9).to_string(context.config));
+            budget = initial_budget;
+        } else {
+            budget = budget.checked_sub(width).unwrap_or(0);
+        }
+        result.push_str(a);
+        if i != num - 1 {
+            result.push_str(", ")
+        }
+    }
+    result.push_str(")]");
+    Some(result)
 }
 
 fn is_derive(attr: &ast::Attribute) -> bool {
