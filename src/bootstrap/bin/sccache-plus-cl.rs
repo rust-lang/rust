@@ -18,7 +18,7 @@ fn main() {
     // Locate the actual compiler that we're invoking
     env::remove_var("CC");
     env::remove_var("CXX");
-    let mut cfg = gcc::Config::new();
+    let mut cfg = gcc::Build::new();
     cfg.cargo_metadata(false)
        .out_dir("/")
        .target(&target)

@@ -289,7 +289,7 @@ impl Step for TestHelpers {
         let _folder = build.fold_output(|| "build_test_helpers");
         println!("Building test helpers");
         t!(fs::create_dir_all(&dst));
-        let mut cfg = gcc::Config::new();
+        let mut cfg = gcc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform gcc of these compilers. Note, though, that
