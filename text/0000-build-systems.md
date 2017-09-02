@@ -285,13 +285,13 @@ in the first place.
 
 Reliably building native dependencies in a cross-platform way
 is... challenging. Today, Rust offers some help with this through crates like
-[`gcc`] and `[pkgconfig]`, which provide building blocks for writing build
+[`gcc`] and [`pkgconfig`], which provide building blocks for writing build
 scripts that discover or build native dependencies. But still, today, each build
 script is a bespoke affair, customizing the use of these crates in arbitrary
 ways. It's difficult, error-prone work.
 
 [`gcc`]: https://docs.rs/gcc
-`[pkgconfig`]: https://docs.rs/pkg-config
+[`pkgconfig`]: https://docs.rs/pkg-config
 
 This RFC proposes to start a *long term* effort to provide a more first-class
 way of specifying native dependencies. The hope is that we can get coverage of,
@@ -392,7 +392,7 @@ follow-up RFCs after experimentation has concluded.
 It's somewhat difficult to state drawbacks for such a high-level plan; they're
 more likely to arise through the particulars.
 
-That said, it's unquestionable that following the plan in this RFC will result
+That said, it's plausible that following the plan in this RFC will result
 in greater overall complexity for Cargo. The key to managing this complexity
 will be ensuring that it's surfaced only on an as-needed basis. That is, uses of
 Cargo in the pure crates.io ecosystem should not become more complex -- if
