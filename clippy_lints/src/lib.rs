@@ -506,7 +506,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         panic::PANIC_PARAMS,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
-        is_unit_expr::UnitExpr,
+        is_unit_expr::UNIT_EXPR,
         print::PRINT_WITH_NEWLINE,
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
