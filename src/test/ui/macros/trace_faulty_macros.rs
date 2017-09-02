@@ -18,13 +18,13 @@ macro_rules! my_faulty_macro {
     };
 }
 
-macro_rules! nested_pat_macro {
+macro_rules! pat_macro {
     () => {
-        nested_pat_macro!(inner);
+        pat_macro!(A{a:a, b:0, c:_, ..});
     };
-    (inner) => {
-        a | b | 1 ... 3 | _
-    }
+    ($a:pat) => {
+        $a
+    };
 }
 
 macro_rules! my_recursive_macro {
@@ -41,11 +41,11 @@ macro_rules! my_macro {
 
 fn main() {
     my_faulty_macro!();
-    nested_pat_macro!();
     my_recursive_macro!();
     test!();
     non_exisiting!();
     derive!(Debug);
+    let a = pat_macro!();
 }
 
 #[my_macro]

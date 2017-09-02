@@ -792,7 +792,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
-    pub fn trace_macros_diag(&self) {
+    pub fn trace_macros_diag(&mut self) {
         for (sp, notes) in self.expansions.iter() {
             let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
             for note in notes {
@@ -800,6 +800,8 @@ impl<'a> ExtCtxt<'a> {
             }
             db.emit();
         }
+        // Fixme: does this result in errors?
+        self.expansions.clear();
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.bug(msg);
