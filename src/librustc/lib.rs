@@ -24,7 +24,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![feature(discriminant_value)]
 #![feature(i128_type)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
@@ -34,7 +33,6 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
-#![feature(discriminant_value)]
 #![feature(trace_macros)]
 #![feature(test)]
 
