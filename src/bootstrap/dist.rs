@@ -20,7 +20,7 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
 
@@ -900,7 +900,11 @@ impl Step for PlainSourceTarball {
 fn install(src: &Path, dstdir: &Path, perms: u32) {
     let dst = dstdir.join(src.file_name().unwrap());
     t!(fs::create_dir_all(dstdir));
-    t!(fs::copy(src, &dst));
+    {
+        let mut s = t!(fs::File::open(&src));
+        let mut d = t!(fs::File::create(&dst));
+        io::copy(&mut s, &mut d).expect("failed to copy");
+    }
     chmod(&dst, perms);
 }
 
