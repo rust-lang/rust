@@ -207,7 +207,7 @@ during the planning stage.
 
 ### Using crates managed by the build system
 
-Many organization want to employ a their own strategy for maintaining and
+Many organization want to employ their own strategy for maintaining and
 versioning code, and for resolving dependencies. In this case, they may wish to
 entirely forgo producing a meaningful Cargo.toml for the code the write, instead
 having one that just forwards to a plugin. The description of dependencies is
