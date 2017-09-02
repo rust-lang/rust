@@ -244,6 +244,7 @@ use boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
+use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
@@ -604,6 +605,46 @@ impl<T: Clone> Rc<T> {
         // reference to the inner value.
         unsafe {
             &mut this.ptr.as_mut().value
+        }
+    }
+}
+
+impl Rc<Any> {
+    #[inline]
+    #[unstable(feature = "rc_downcast", issue = "0")]
+    /// Attempt to downcast the `Rc<Any>` to a concrete type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_downcast)]
+    /// use std::any::Any;
+    /// use std::rc::Rc;
+    ///
+    /// fn print_if_string(value: Rc<Any>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Rc::new(my_string));
+    ///     print_if_string(Rc::new(0i8));
+    /// }
+    /// ```
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<Any>> {
+        if (*self).is::<T>() {
+            // avoid the pointer arithmetic in from_raw
+            unsafe {
+                let raw: *const RcBox<Any> = self.ptr.as_ptr();
+                forget(self);
+                Ok(Rc {
+                    ptr: Shared::new_unchecked(raw as *const RcBox<T> as *mut _),
+                })
+            }
+        } else {
+            Err(self)
         }
     }
 }
@@ -1695,6 +1736,26 @@ mod tests {
         let r: Rc<[u32]> = Rc::from(v);
 
         assert_eq!(&r[..], [1, 2, 3]);
+    }
+
+    #[test]
+    fn test_downcast() {
+        use std::any::Any;
+
+        let r1: Rc<Any> = Rc::new(i32::max_value());
+        let r2: Rc<Any> = Rc::new("abc");
+
+        assert!(r1.clone().downcast::<u32>().is_err());
+
+        let r1i32 = r1.downcast::<i32>();
+        assert!(r1i32.is_ok());
+        assert_eq!(r1i32.unwrap(), Rc::new(i32::max_value()));
+
+        assert!(r2.clone().downcast::<i32>().is_err());
+
+        let r2str = r2.downcast::<&'static str>();
+        assert!(r2str.is_ok());
+        assert_eq!(r2str.unwrap(), Rc::new("abc"));
     }
 }
 
