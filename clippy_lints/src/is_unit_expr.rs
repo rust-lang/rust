@@ -46,12 +46,31 @@ impl EarlyLintPass for UnitExpr {
                 )
             }
         }
-        // if let ExprKind::MethodCall(ref path, ref args) = expr.node {
-        //     unimplemented!();
-        // }
-        // if let ExprKind::Call(ref path, ref args) = expr.node{
-        //     unimplemented!();
-        // }
+        if let ExprKind::MethodCall(_, ref args) = expr.node {
+            for ref arg in args{
+                if is_unit_expr(arg){
+                    span_lint_and_sugg(
+                        cx,
+                        UNIT_EXPR,
+                        arg.span,
+                        "trailing semicolons can be tricky",
+                        "remove the last semicolon",
+                        "TODO".to_owned()
+                    )
+                }            }
+        }
+        if let ExprKind::Call( _, ref args) = expr.node{
+            for ref arg in args{
+                if is_unit_expr(arg){
+                    span_lint_and_sugg(
+                        cx,
+                        UNIT_EXPR,
+                        arg.span,
+                        "trailing semicolons can be tricky",
+                        "remove the last semicolon",
+                        "TODO".to_owned()
+                    )
+                }            }        }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, stmt: &Stmt) {
