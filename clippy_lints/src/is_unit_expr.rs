@@ -2,7 +2,7 @@ use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
 use utils::{span_lint_and_sugg, snippet};
-
+use std::ops::Deref;
 
 /// **What it does:** Checks for 
 ///  - () being assigned to a variable
@@ -34,7 +34,7 @@ impl LintPass for UnitExpr {
 
 impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if let ExprKind::Assign(ref left, ref right) = expr.node {
+        if let ExprKind::Assign(ref _left, ref right) = expr.node {
             if is_unit_expr(right){
                 span_lint_and_sugg(
                     cx,
@@ -46,7 +46,7 @@ impl EarlyLintPass for UnitExpr {
                 )
             }
         }
-        if let ExprKind::MethodCall(_, ref args) = expr.node {
+        if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
             for ref arg in args{
                 if is_unit_expr(arg){
                     span_lint_and_sugg(
@@ -97,15 +97,26 @@ impl EarlyLintPass for UnitExpr {
 
 fn is_unit_expr(expr: &Expr)->bool{
     match expr.node{
-         ExprKind::Block(ref next) => {
-            let ref final_stmt = &next.stmts[next.stmts.len()-1];
-            if let StmtKind::Expr(_) = final_stmt.node{
+         ExprKind::Block(ref block) => {
+             return check_last_stmt_in_block(block);
+        },
+        ExprKind::If(_, ref then, ref else_)=>{
+            let check_then = check_last_stmt_in_block(then);
+            if let Some(ref else_) = *else_{
+                return check_then && is_unit_expr(else_.deref());
+            } 
+            return check_then;
+        }
+        _ => return false,
+    }
+}
+
+fn check_last_stmt_in_block(block: &Block)->bool{
+    let ref final_stmt = &block.stmts[block.stmts.len()-1];
+        if let StmtKind::Expr(_) = final_stmt.node{
                 return false;
             }
             else{
                 return true;
             }
-        },
-        _ => return false,
-    }
 }
