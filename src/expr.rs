@@ -630,22 +630,10 @@ fn rewrite_closure(
             false
         };
         if no_return_type && !needs_block {
-            // lock.stmts.len() == 1
+            // block.stmts.len() == 1
             if let Some(expr) = stmt_expr(&block.stmts[0]) {
                 if let Some(rw) = rewrite_closure_expr(expr, &prefix, context, body_shape) {
                     return Some(rw);
-                }
-            }
-        }
-
-        if !needs_block {
-            // We need braces, but we might still prefer a one-liner.
-            let stmt = &block.stmts[0];
-            // 4 = braces and spaces.
-            if let Some(body_shape) = body_shape.sub_width(4) {
-                // Checks if rewrite succeeded and fits on a single line.
-                if let Some(rewrite) = and_one_line(stmt.rewrite(context, body_shape)) {
-                    return Some(format!("{} {{ {} }}", prefix, rewrite));
                 }
             }
         }

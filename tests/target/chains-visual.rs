@@ -42,7 +42,9 @@ fn main() {
     });
 
     fffffffffffffffffffffffffffffffffff(a, {
-        SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
+        SCRIPT_TASK_ROOT.with(|root| {
+            *root.borrow_mut() = Some(&script_task);
+        });
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
