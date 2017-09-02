@@ -172,7 +172,9 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     }
 
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
-    cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
+    cx.span_err(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
+    cx.trace_macros_diag();
+    DummyResult::any(sp)
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

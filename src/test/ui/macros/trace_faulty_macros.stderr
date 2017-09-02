@@ -1,0 +1,77 @@
+error: no rules expected the token `bcd`
+  --> $DIR/trace_faulty_macros.rs:17:26
+   |
+17 |         my_faulty_macro!(bcd);
+   |                          ^^^
+...
+43 |     my_faulty_macro!();
+   |     ------------------- in this macro invocation
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:43:5
+   |
+43 |     my_faulty_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `my_faulty_macro! {  }`
+   = note: to `my_faulty_macro ! ( bcd ) ;`
+   = note: expanding `my_faulty_macro! { bcd }`
+
+error: expected expression, found `_`
+  --> $DIR/trace_faulty_macros.rs:26:27
+   |
+26 |         a | b | 1 ... 3 | _
+   |                           ^
+...
+44 |     nested_pat_macro!();
+   |     -------------------- in this macro invocation
+
+error: recursion limit reached while expanding the macro `my_recursive_macro`
+  --> $DIR/trace_faulty_macros.rs:32:9
+   |
+32 |         my_recursive_macro!();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+...
+45 |     my_recursive_macro!();
+   |     ---------------------- in this macro invocation
+   |
+   = help: consider adding a `#![recursion_limit="8"]` attribute to your crate
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:45:5
+   |
+45 |     my_recursive_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro ! (  ) ;`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro ! (  ) ;`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro ! (  ) ;`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro ! (  ) ;`
+   = note: expanding `my_recursive_macro! {  }`
+   = note: to `my_recursive_macro ! (  ) ;`
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:43:5
+   |
+43 |     my_faulty_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `my_faulty_macro! {  }`
+   = note: to `my_faulty_macro ! ( bcd ) ;`
+   = note: expanding `my_faulty_macro! { bcd }`
+
+note: trace_macro
+  --> $DIR/trace_faulty_macros.rs:44:5
+   |
+44 |     nested_pat_macro!();
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expanding `nested_pat_macro! {  }`
+   = note: to `nested_pat_macro ! ( inner ) ;`
+   = note: expanding `nested_pat_macro! { inner }`
+   = note: to `a | b | 1 ... 3 | _`
+
