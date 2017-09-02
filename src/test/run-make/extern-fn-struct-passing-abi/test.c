@@ -43,6 +43,16 @@ struct FloatPoint {
     double y;
 };
 
+struct FloatOne {
+    double x;
+};
+
+struct IntOdd {
+    int8_t a;
+    int8_t b;
+    int8_t c;
+};
+
 // System V x86_64 ABI:
 // a, b, c, d, e should be in registers
 // s should be byval pointer
@@ -283,7 +293,7 @@ struct Huge huge_struct(struct Huge s) {
 // p should be in registers
 // return should be in registers
 //
-// Win64 ABI:
+// Win64 ABI and 64-bit PowerPC ELFv1 ABI:
 // p should be a byval pointer
 // return should be in a hidden sret pointer
 struct FloatPoint float_point(struct FloatPoint p) {
@@ -291,4 +301,24 @@ struct FloatPoint float_point(struct FloatPoint p) {
     assert(p.y == -3.);
 
     return p;
+}
+
+// 64-bit PowerPC ELFv1 ABI:
+// f1 should be in a register
+// return should be in a hidden sret pointer
+struct FloatOne float_one(struct FloatOne f1) {
+    assert(f1.x == 7.);
+
+    return f1;
+}
+
+// 64-bit PowerPC ELFv1 ABI:
+// i should be in the least-significant bits of a register
+// return should be in a hidden sret pointer
+struct IntOdd int_odd(struct IntOdd i) {
+    assert(i.a == 1);
+    assert(i.b == 2);
+    assert(i.c == 3);
+
+    return i;
 }
