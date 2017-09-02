@@ -1017,6 +1017,10 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // levels.
         ty::Binder(self.0.projection_ty.trait_ref(tcx))
     }
+
+    pub fn ty(&self) -> Binder<Ty<'tcx>> {
+        Binder(self.skip_binder().ty) // preserves binding levels
+    }
 }
 
 pub trait ToPolyTraitRef<'tcx> {
