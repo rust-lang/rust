@@ -311,6 +311,15 @@ Needless to say, this approach will need significant experimentation. But if
 successful, it would have benefits not just for build system integration, but
 for using external dependencies *anywhere*.
 
+### The story for externally-managed native dependencies
+
+Finally, in the case where the external build system is the one specifying and
+providing a native dependency, all we need is for that to result in the
+appropriate flags to the lowered `rustc` invocations. If the external build
+system is producing those lowered calls itself, it can completely manage this
+concern. Otherwise, we will need for the plugin interface to provide a way to
+plumb this information through to Cargo.
+
 ## Specifics for the mixed build system case
 
 Switching gears, let's look at mixed build systems. Here, we generally don't
