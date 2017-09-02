@@ -1,11 +1,8 @@
-error[E0493]: constants are not allowed to have destructors
-  --> $DIR/E0493.rs:29:17
+error[E0493]: destructors cannot be evaluated at compile-time
+  --> $DIR/E0493.rs:27:17
    |
-18 |     fn drop(&mut self) {}
-   |     --------------------- destructor defined here
-...
-29 | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constants cannot have destructors
+27 | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constants cannot evaluate destructors
 
 error: aborting due to previous error
 

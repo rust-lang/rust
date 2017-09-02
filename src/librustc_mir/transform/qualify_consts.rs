@@ -18,7 +18,6 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
-use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
@@ -194,91 +193,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         self.qualif = Qualif::empty();
         f(self);
         self.add(original);
-    }
-
-    /// Check for NEEDS_DROP (from an ADT or const fn call) and
-    /// error, unless we're in a function.
-    fn always_deny_drop(&self) {
-        self.deny_drop_with_feature_gate_override(false);
-    }
-
-    /// Check for NEEDS_DROP (from an ADT or const fn call) and
-    /// error, unless we're in a function, or the feature-gate
-    /// for constant with destructors is enabled.
-    fn deny_drop(&self) {
-        self.deny_drop_with_feature_gate_override(true);
-    }
-
-    fn deny_drop_with_feature_gate_override(&self, allow_gate: bool) {
-        if self.mode == Mode::Fn || !self.qualif.intersects(Qualif::NEEDS_DROP) {
-            return;
-        }
-
-        // Constants allow destructors, but they're feature-gated.
-        let msg = if allow_gate {
-            // Feature-gate for constant with destructors is enabled.
-            if self.tcx.sess.features.borrow().drop_types_in_const {
-                return;
-            }
-
-            // This comes from a macro that has #[allow_internal_unstable].
-            if self.span.allows_unstable() {
-                return;
-            }
-
-            format!("destructors in {}s are an unstable feature",
-                    self.mode)
-        } else {
-            format!("{}s are not allowed to have destructors",
-                    self.mode)
-        };
-
-        let mut err =
-            struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
-
-        if allow_gate {
-            help!(&mut err,
-                  "in Nightly builds, add `#![feature(drop_types_in_const)]` \
-                   to the crate attributes to enable");
-        } else {
-            // FIXME(eddyb) this looks up `self.mir.return_ty`.
-            // We probably want the actual return type here, if at all.
-            self.find_drop_implementation_method_span()
-                .map(|span| err.span_label(span, "destructor defined here"));
-
-            err.span_label(self.span,
-                format!("{}s cannot have destructors", self.mode));
-        }
-
-        err.emit();
-    }
-
-    fn find_drop_implementation_method_span(&self) -> Option<Span> {
-        self.tcx.lang_items()
-            .drop_trait()
-            .and_then(|drop_trait_id| {
-                let mut span = None;
-
-                self.tcx
-                    .for_each_relevant_impl(drop_trait_id, self.mir.return_ty, |impl_did| {
-                        self.tcx.hir
-                            .as_local_node_id(impl_did)
-                            .and_then(|impl_node_id| self.tcx.hir.find(impl_node_id))
-                            .map(|node| {
-                                if let hir_map::NodeItem(item) = node {
-                                    if let hir::ItemImpl(.., ref impl_item_refs) = item.node {
-                                        span = impl_item_refs.first()
-                                                             .map(|iiref| {
-                                                                 self.tcx.hir.impl_item(iiref.id)
-                                                                             .span
-                                                             });
-                                    }
-                                }
-                            });
-                    });
-
-                span
-            })
     }
 
     /// Check if an Lvalue with the current qualifications could
@@ -457,24 +371,16 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        let return_ty = mir.return_ty;
         self.qualif = self.return_qualif.unwrap_or(Qualif::NOT_CONST);
 
-        match self.mode {
-            Mode::StaticMut => {
-                // Check for destructors in static mut.
-                self.add_type(return_ty);
-                self.deny_drop();
-            }
-            _ => {
-                // Account for errors in consts by using the
-                // conservative type qualification instead.
-                if self.qualif.intersects(Qualif::CONST_ERROR) {
-                    self.qualif = Qualif::empty();
-                    self.add_type(return_ty);
-                }
-            }
+        // Account for errors in consts by using the
+        // conservative type qualification instead.
+        if self.qualif.intersects(Qualif::CONST_ERROR) {
+            self.qualif = Qualif::empty();
+            let return_ty = mir.return_ty;
+            self.add_type(return_ty);
         }
+
 
         // Collect all the temps we need to promote.
         let mut promoted_temps = IdxSetBuf::new_empty(self.temp_promotion_state.len());
@@ -637,12 +543,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         // with type parameters, take it into account.
                         self.qualif.restrict(constant.ty, self.tcx, self.param_env);
                     }
-
-                    // Let `const fn` transitively have destructors,
-                    // but they do get stopped in `const` or `static`.
-                    if self.mode != Mode::ConstFn {
-                        self.deny_drop();
-                    }
                 }
             }
         }
@@ -687,12 +587,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let allow = if self.mode == Mode::StaticMut {
                         // Inside a `static mut`, &mut [...] is also allowed.
                         match ty.sty {
-                            ty::TyArray(..) | ty::TySlice(_) => {
-                                // Mutating can expose drops, be conservative.
-                                self.add_type(ty);
-                                self.deny_drop();
-                                true
-                            }
+                            ty::TyArray(..) | ty::TySlice(_) => true,
                             _ => false
                         }
                     } else if let ty::TyArray(_, 0) = ty.sty {
@@ -794,18 +689,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if def.has_dtor(self.tcx) {
                         self.add(Qualif::NEEDS_DROP);
-                        self.deny_drop();
                     }
 
                     if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(self.mir, self.tcx);
                         self.add_type(ty);
                         assert!(self.qualif.intersects(Qualif::MUTABLE_INTERIOR));
-                        // Even if the value inside may not need dropping,
-                        // mutating it would change that.
-                        if !self.qualif.intersects(Qualif::NOT_CONST) {
-                            self.deny_drop();
-                        }
                     }
                 }
             }
@@ -915,12 +804,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let ty = dest.ty(self.mir, tcx).to_ty(tcx);
                     self.qualif = Qualif::empty();
                     self.add_type(ty);
-
-                    // Let `const fn` transitively have destructors,
-                    // but they do get stopped in `const` or `static`.
-                    if self.mode != Mode::ConstFn {
-                        self.deny_drop();
-                    }
                 }
                 self.assign(dest, location);
             }
@@ -938,14 +821,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 };
 
                 if let Some(span) = needs_drop {
+                    // Double-check the type being dropped, to minimize false positives.
                     let ty = lvalue.ty(self.mir, self.tcx).to_ty(self.tcx);
-                    self.add_type(ty);
-
-                    // Use the original assignment span to be more precise.
-                    let old_span = self.span;
-                    self.span = span;
-                    self.always_deny_drop();
-                    self.span = old_span;
+                    if ty.needs_drop(self.tcx, self.param_env) {
+                        struct_span_err!(self.tcx.sess, span, E0493,
+                                         "destructors cannot be evaluated at compile-time")
+                            .span_label(span, format!("{}s cannot evaluate destructors",
+                                                      self.mode))
+                            .emit();
+                    }
                 }
             }
         } else {

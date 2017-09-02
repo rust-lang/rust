@@ -269,9 +269,6 @@ declare_features! (
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
-    // Allow Drop types in statics/const functions (RFC 1440)
-    (active, drop_types_in_const, "1.9.0", Some(33156)),
-
     // Allows cfg(target_has_atomic = "...").
     (active, cfg_target_has_atomic, "1.9.0", Some(32976)),
 
@@ -466,6 +463,8 @@ declare_features! (
     (accepted, compile_error, "1.20.0", Some(40872)),
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
+    // Allow Drop types in constants (RFC 1440)
+    (accepted, drop_types_in_const, "1.22.0", Some(33156)),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

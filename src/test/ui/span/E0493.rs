@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(drop_types_in_const)]
-
 struct Foo {
     a: u32
 }

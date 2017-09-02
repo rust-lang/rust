@@ -16,9 +16,15 @@
 
 use std::intrinsics::needs_drop;
 
-// drop types in destructors should not require
-// drop_types_in_const
-static X: Option<NoDrop<Box<u8>>> = None;
+struct NeedDrop;
+
+impl Drop for NeedDrop {
+    fn drop(&mut self) {}
+}
+
+// Constant expressios allow `NoDrop` to go out of scope,
+// unlike a value of the interior type implementing `Drop`.
+static X: () = (NoDrop { inner: NeedDrop }, ()).1;
 
 // A union that scrubs the drop glue from its inner type
 union NoDrop<T> {inner: T}
