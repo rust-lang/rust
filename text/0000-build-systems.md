@@ -37,7 +37,7 @@ kinds of use-cases (or "customers") involved here:
   handling for native dependencies, and so on. Addressing these concerns well
   means adding new points of extensibility or control to Cargo.
 
-- **Homogenous build systems** like [Bazel], where there is a single prevailing
+- **Homogeneous build systems** like [Bazel], where there is a single prevailing
   build system and methodology that works across languages and projects and is
   expected to drive all aspects of the build. In such cases the goal of Cargo
   integration is largely *interoperability*, including easy use of the crates.io
@@ -164,9 +164,9 @@ functionality into numerous small pieces that can be re-used when integrating
 into a larger build system. This finer division is left as a question for
 experimentation.
 
-## Specifics for the homogenous build system case
+## Specifics for the homogeneous build system case
 
-For homogenous build systems, there are two kinds of code that must be dealt
+For homogeneous build systems, there are two kinds of code that must be dealt
 with: code originally written using vanilla Cargo and a crate registry, and code
 written "natively" in the context of the external build system.  Any integration
 has to handle the first case (to have access to crates.io or a vendored mirror
@@ -239,7 +239,7 @@ lockfile, at least.
 
 ### The complete picture
 
-In general, any integration with a homogenous build system needs to be able to
+In general, any integration with a homogeneous build system needs to be able to
 handle (vendored) crate registries, because access to crates.io is a hard constraint.
 
 Usually, you'll want to combine the handling of these external registries with
@@ -362,7 +362,7 @@ work. For example:
 - **Profiles**. Putting the idea of the "build configuration" step on firmer
   footing will require clarifying the precise role of profiles, which today blur
   the line somewhat between *workflows* (e.g. `test` vs `bench`) and flags
-  (e.g. `--release`). Moreover, integration with a homogenous build system
+  (e.g. `--release`). Moreover, integration with a homogeneous build system
   effectively requires that we can translate profiles on the Cargo side back and
   forth to *something* meaningful to the external build system, so that for
   example we can make `cargo test` invoke the external build system in a
@@ -371,7 +371,7 @@ work. For example:
   possible to control enough about the `rustc` invocation for at least some
   integration cases, and the answer may in part lie in improvements to profiles.
 
-- **Build scripts**. Especially for homogenous build systems, build scripts can
+- **Build scripts**. Especially for homogeneous build systems, build scripts can
   pose some serious pain, because in general they may depend on numerous
   environmental factors invisibly. It may be useful to grow some ways of telling
   Cargo the precise inputs and outputs of the build script, declaratively.
