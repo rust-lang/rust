@@ -57,7 +57,8 @@ impl EarlyLintPass for UnitExpr {
                         "remove the last semicolon",
                         "TODO".to_owned()
                     )
-                }            }
+                }            
+            }
         }
         if let ExprKind::Call( _, ref args) = expr.node{
             for ref arg in args{
@@ -70,7 +71,9 @@ impl EarlyLintPass for UnitExpr {
                         "remove the last semicolon",
                         "TODO".to_owned()
                     )
-                }            }        }
+                }            
+            }        
+        }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, stmt: &Stmt) {
