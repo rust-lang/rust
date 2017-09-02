@@ -112,26 +112,51 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return Vec::new();
     }
 
-    match ty {
-        // If the global prefer_dynamic switch is turned off, first attempt
-        // static linkage (this can fail).
-        config::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic => {
-            if let Some(v) = attempt_static(tcx) {
-                return v;
-            }
-        }
+    let preferred_linkage = match ty {
+        // cdylibs must have all static dependencies.
+        config::CrateTypeCdylib => Linkage::Static,
+
+        // Generating a dylib without `-C prefer-dynamic` means that we're going
+        // to try to eagerly statically link all dependencies. This is normally
+        // done for end-product dylibs, not intermediate products.
+        config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
+        config::CrateTypeDylib => Linkage::Dynamic,
+
+        // If the global prefer_dynamic switch is turned off, or the final
+        // executable will be statically linked, prefer static crate linkage.
+        config::CrateTypeExecutable if !sess.opts.cg.prefer_dynamic ||
+            sess.crt_static() => Linkage::Static,
+        config::CrateTypeExecutable => Linkage::Dynamic,
+
+        // proc-macro crates are required to be dylibs, and they're currently
+        // required to link to libsyntax as well.
+        config::CrateTypeProcMacro => Linkage::Dynamic,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
-        config::CrateTypeRlib => return Vec::new(),
+        config::CrateTypeRlib => Linkage::NotLinked,
 
-        // Staticlibs and cdylibs must have all static dependencies. If any fail
-        // to be found, we generate some nice pretty errors.
-        config::CrateTypeStaticlib |
-        config::CrateTypeCdylib => {
-            if let Some(v) = attempt_static(tcx) {
-                return v;
-            }
+        // staticlibs must have all static dependencies.
+        config::CrateTypeStaticlib => Linkage::Static,
+    };
+
+    if preferred_linkage == Linkage::NotLinked {
+        // If the crate is not linked, there are no link-time dependencies.
+        return Vec::new();
+    }
+
+    if preferred_linkage == Linkage::Static {
+        // Attempt static linkage first. For dylibs and executables, we may be
+        // able to retry below with dynamic linkage.
+        if let Some(v) = attempt_static(tcx) {
+            return v;
+        }
+
+        // Staticlibs, cdylibs, and static executables must have all static
+        // dependencies. If any are not found, generate some nice pretty errors.
+        if ty == config::CrateTypeCdylib || ty == config::CrateTypeStaticlib ||
+                (ty == config::CrateTypeExecutable && sess.crt_static() &&
+                !sess.target.target.options.crt_static_allows_dylibs) {
             for cnum in sess.cstore.crates() {
                 if sess.cstore.dep_kind(cnum).macros_only() { continue }
                 let src = sess.cstore.used_crate_source(cnum);
@@ -141,23 +166,6 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             return Vec::new();
         }
-
-        // Generating a dylib without `-C prefer-dynamic` means that we're going
-        // to try to eagerly statically link all dependencies. This is normally
-        // done for end-product dylibs, not intermediate products.
-        config::CrateTypeDylib if !sess.opts.cg.prefer_dynamic => {
-            if let Some(v) = attempt_static(tcx) {
-                return v;
-            }
-        }
-
-        // Everything else falls through below. This will happen either with the
-        // `-C prefer-dynamic` or because we're a proc-macro crate. Note that
-        // proc-macro crates are required to be dylibs, and they're currently
-        // required to link to libsyntax as well.
-        config::CrateTypeExecutable |
-        config::CrateTypeDylib |
-        config::CrateTypeProcMacro => {},
     }
 
     let mut formats = FxHashMap();
