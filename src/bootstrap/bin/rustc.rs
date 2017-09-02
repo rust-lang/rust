@@ -159,7 +159,7 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
-        if cfg!(not(feature="llvm")) && stage != "0" {
+        if env::var("RUSTC_LLVM_ENABLED") == Ok("0".to_string()) && stage != "0" {
             cmd.arg("-Zno-trans");
         }
 

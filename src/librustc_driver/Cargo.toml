@@ -41,4 +41,4 @@ syntax_pos = { path = "../libsyntax_pos" }
 ar = "0.3.0"
 
 [features]
-llvm = ["rustc_trans"]
+llvm = ["rustc_trans", "rustc_metadata/llvm"]
