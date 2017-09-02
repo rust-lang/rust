@@ -31,7 +31,7 @@ After extensive discussion with stakeholders, there appear to be two distinct
 kinds of use-cases (or "customers") involved here:
 
 - **Mixed build systems**, where building already involves a variety of
-  language- or proeject-specific build systems. For this use case, the desire is
+  language- or project-specific build systems. For this use case, the desire is
   to use Cargo as-is, except for some specific concerns. Those concerns take a
   variety of shapes: customizing caching, having a local crate registry, custom
   handling for native dependencies, and so on. Addressing these concerns well
@@ -166,20 +166,30 @@ experimentation.
 
 ## Specifics for the homogenous build system case
 
-For homogenous build systems, there's a key question: how is the Rust code
-itself managed, through a crate registry or though some external system? Any
-integration has to handle the first case (to have access to crates.io or a
-mirror thereof), but organizations can choose whether to manage their own crates
-through a custom registry (more on that below) or some other means.
+For homogenous build systems, there are two kinds of code that must be dealt
+with: code originally written using vanilla Cargo and a crate registry, and code
+written "natively" in the context of the external build system.  Any integration
+has to handle the first case (to have access to crates.io or a vendored mirror
+thereof).
 
-### Using crates managed by a crate registry
+### Using crates vendored from or managed by a crate registry
 
-Using a crate registry implies using Cargo's dependency resolution, and, in
-particular, `Cargo.toml`. In this case, the external build system should invoke
-Cargo for *at least* the dependency resolution and build configuration steps,
-and likely the build lowering step as well. In such a world, Cargo is
-responsible for *planning* the build (which involves largely Rust-specific
-concerns), but the external build system is responsible for *executing* it.
+Whether using a registry server or a vendored copy, if you're building Rust code
+that is written using vanilla Cargo, you will at some level need to use Cargo's
+dependency resolution and `Cargo.toml` files. In this case, the external build
+system should invoke Cargo for *at least* the dependency resolution and build
+configuration steps, and likely the build lowering step as well. In such a
+world, Cargo is responsible for *planning* the build (which involves largely
+Rust-specific concerns), but the external build system is responsible for
+*executing* it.
+
+A typical pattern of usage is to have a whitelist of "root dependencies" from an
+external registry which will be permitted as dependencies within the
+organization, often pinning to a specific version and set of Cargo
+features. This whitelist can be described as a single `Cargo.toml` file, which
+can then drive Cargo's dependency resolution just once for the entire registry.
+The resulting lockfile can be used to guide vendoring and construction of a
+build plan for consumption by the external build system.
 
 One important concern is: how do you depend on code from other languages, which
 is being managed by the external build system? That's a narrow version of a more
@@ -189,64 +199,54 @@ separately in a later section.
 #### Workflow and interop story
 
 On the external build system side, a rule or plugin will need to be written that
-knows how to invoke Cargo to produce a build plan, then translate that build
-plan back into appropriate rules for the build system. Thus, when doing normal
-builds, the external build system drives the entire process, but invokes Cargo
-for guidance during the planning stage.
+knows how to invoke Cargo to produce a build plan corresponding to a whitelisted
+(and potentially vendored) registry, then translate that build plan back into
+appropriate rules for the build system. Thus, when doing normal builds, the
+external build system drives the entire process, but invokes Cargo for guidance
+during the planning stage.
+
+### Using crates managed by the build system
+
+Many organization want to employ a their own strategy for maintaining and
+versioning code, and for resolving dependencies. In this case, they may wish to
+entirely forgo producing a meaningful Cargo.toml for the code the write, instead
+having one that just forwards to a plugin. The description of dependencies is
+then written in the external build system's rule format. Here, Cargo acts
+primarily as a *workflow and tool orchestrator*, since it is not involved in
+either planning or executing the build.
+
+#### Workflow and interop story
+
+Even though the external build system is entirely handling both dependency
+resolution and build execution for the crates under its management, it may still
+use Cargo for *lowering*, i.e. to produce the actual `rustc` invocations from a
+higher-level configuration. Cargo will provide a way to do this.
 
 When *developing* a crate, it should be possible to invoke Cargo commands as
 usual. We do this via a plugin. When invoking, for example, `cargo build`, the
 plugin will translate that to a request to the external build system, which will
-in turn re-invoke Cargo to request a build plan (the exact mechanics here are
-TBD), and then execute the build. For `cargo run`, the same steps are followed
-by putting the resulting build artifact in an appropriate location, and then
-following Cargo's usual logic. And so on.
+then execute the build (possibly re-invoking Cargo for lowering). For `cargo
+run`, the same steps are followed by putting the resulting build artifact in an
+appropriate location, and then following Cargo's usual logic. And so on.
 
 A similar story plays out when using, for example, the RLS or rustfmt. Ideally,
 these tools will have no idea that a Cargo plugin is in play; the information
-and artifacts they need can be obtained by using Cargo in the appropriate way,
-transparently.
+and artifacts they need can be obtained by using Cargo's in a standard way,
+transparently -- but the underlying information will be coming from the external
+build system, via the plugin. Thus the plugin for the external build system must
+be able to translate its dependencies back into something equivalent to a
+lockfile, at least.
 
-While the details here are quite hazy, the overall point is that control swaps
-back and forth between Cargo and the external build system, depending on the
-concerns at play. We set things up so that the Rust-specific pieces (including
-Cargo workflows) continue to be handled by Cargo whenever possible.
-
-### Using "unmanaged" crates
-
-In some cases, an organization may want to employ a their own strategy for
-maintaining and versioning code, and for resolving dependencies. In this case,
-they may wish to entirely forgo writing a meaningful Cargo.toml, instead having
-one that simply forwards to a plugin. The description of dependencies is then
-written in the external build system's rule format. Here, Cargo acts primarily
-as a *workflow and tool orchestrator*, since it is not involved in either
-planning or executing the build.
-
-#### Workflow and interop story
-
-As with the workflow for crate registries, a plugin is used to manage control
-passing back-and-forth between Cargo and the external build system. The main
-difference is that Cargo is used for fewer steps. So, for example, when running
-`cargo test`, the external build system is invoked directly (in an appropriate
-mode for building tests) and performs the build without consulting Cargo at all
-(or, perhaps it uses Cargo strictly for lowering, i.e. to determine `rustc`
-invocations from higher-level configuration). Once the build is complete, Cargo
-takes over, actually executing the resulting test binary.
-
-For the RLS or other tools that need to explore the dependency structure of the
-crate, again they should work with a clear Cargo interface that hides any use of
-plugins. The plugin for the external build system must be able to translate its
-dependencies back into something equivalent to a lockfile, at least.
-
-### A hybrid
+### The complete picture
 
 In general, any integration with a homogenous build system needs to be able to
-handle crate registries, because access to crates.io is a hard constraint.
+handle (vendored) crate registries, because access to crates.io is a hard constraint.
 
-However, it's possible to *mix* this model for crates.io with the model for
-unmanaged crates. All that's needed is a distinction within the external build
-system between these two kinds of dependencies, which then drives the plugin
-interactions accordingly.
+Usually, you'll want to combine the handling of these external registries with
+crates managed purely by the external build system, meaning that there are
+effectively *two* modes of building crates at play overall. All that's needed to
+do this is a distinction within the external build system between these two
+kinds of dependencies, which then drives the plugin interactions accordingly.
 
 ## Cross-cutting concern: native dependencies
 
