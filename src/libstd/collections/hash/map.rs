@@ -2161,6 +2161,36 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     fn take_key(&mut self) -> Option<K> {
         self.key.take()
     }
+
+    /// Replaces the entry, returning the old key and value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    /// use std::collections::hash_map::Entry;
+    ///
+    /// let mut map: HashMap<String, u32> = HashMap::new();
+    /// map.insert(String::from("poneyland"), 15);
+    ///
+    /// if let Entry::Occupied(entry) = map.entry(String::from("poneyland")) {
+    ///     let (old_key, old_value): (String, u32) = entry.replace(16);
+    ///     assert_eq!(old_key, "poneyland");
+    ///     assert_eq!(old_value, 15);
+    /// }
+    ///
+    /// assert_eq!(map.get("poneyland"), Some(&16));
+    ///
+    /// ```
+    #[stable(feature = "rust1", since = "1.20.0")]
+    pub fn replace(mut self, value: V) -> (K, V) {
+        let (old_key, old_value) = self.elem.read_mut();
+
+        let old_key = mem::replace(old_key, self.key.unwrap());
+        let old_value = mem::replace(old_value, value);
+
+        (old_key, old_value)
+    }
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
