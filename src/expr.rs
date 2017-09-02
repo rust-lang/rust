@@ -876,13 +876,8 @@ impl Rewrite for ast::Stmt {
                     ""
                 };
 
-                let expr_type = match self.node {
-                    ast::StmtKind::Expr(_) => ExprType::SubExpression,
-                    ast::StmtKind::Semi(_) => ExprType::Statement,
-                    _ => unreachable!(),
-                };
                 let shape = try_opt!(shape.sub_width(suffix.len()));
-                format_expr(ex, expr_type, context, shape).map(|s| s + suffix)
+                format_expr(ex, ExprType::Statement, context, shape).map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
         };

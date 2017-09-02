@@ -22,7 +22,6 @@ use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, C
               FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use expr::{format_expr, ExprType};
 use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
             rewrite_static, rewrite_type_alias};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
@@ -77,12 +76,7 @@ impl<'a> FmtVisitor<'a> {
                 let rewrite = stmt.rewrite(&self.get_context(), self.shape());
                 self.push_rewrite(stmt.span(), rewrite);
             }
-            ast::StmtKind::Expr(ref expr) => {
-                let rewrite =
-                    format_expr(expr, ExprType::Statement, &self.get_context(), self.shape());
-                self.push_rewrite(stmt.span(), rewrite)
-            }
-            ast::StmtKind::Semi(..) => {
+            ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(), self.shape());
                 self.push_rewrite(stmt.span(), rewrite)
             }
