@@ -44,4 +44,10 @@ impl EarlyLintPass for UnitExpr {
             unimplemented!();
         }
     }
+
+    fn check_stmt(&mut self, cx: &EarlyContext, stmt: &Stmt) {
+        if let StmtKind::Local(ref data) = stmt.node{
+            unimplemented!();
+        }
+    }
 }
