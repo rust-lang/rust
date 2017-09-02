@@ -312,6 +312,9 @@ declare_features! (
     // The `i128` type
     (active, i128_type, "1.16.0", Some(35118)),
 
+    // The `repr(i128)` annotation for enums
+    (active, repr128, "1.16.0", Some(35118)),
+
     // The `unadjusted` ABI. Perma unstable.
     (active, abi_unadjusted, "1.16.0", None),
 
