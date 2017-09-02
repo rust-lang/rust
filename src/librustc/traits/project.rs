@@ -24,7 +24,7 @@ use super::VtableImplData;
 use super::util;
 
 use hir::def_id::DefId;
-use infer::InferOk;
+use infer::{InferCtxt, InferOk};
 use infer::type_variable::TypeVariableOrigin;
 use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::ast;
@@ -415,7 +415,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
-    match infcx.projection_cache.borrow_mut().try_start(cache_key) {
+    let cache_result = infcx.projection_cache.borrow_mut().try_start(cache_key);
+    match cache_result {
         Ok(()) => { }
         Err(ProjectionCacheEntry::Ambiguous) => {
             // If we found ambiguity the last time, that generally
@@ -465,7 +466,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                                                     projection_ty);
             selcx.infcx().report_overflow_error(&obligation, false);
         }
-        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+        Err(ProjectionCacheEntry::NormalizedTy(mut ty)) => {
             // If we find the value in the cache, then return it along
             // with the obligations that went along with it. Note
             // that, when using a fulfillment context, these
@@ -478,6 +479,14 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             debug!("opt_normalize_projection_type: \
                     found normalized ty `{:?}`",
                    ty);
+
+            // Once we have inferred everything we need to know, we
+            // can ignore the `obligations` from that point on.
+            if !infcx.any_unresolved_type_vars(&ty.value) {
+                infcx.projection_cache.borrow_mut().complete(cache_key);
+                ty.obligations = vec![];
+            }
+
             return Some(ty);
         }
         Err(ProjectionCacheEntry::Error) => {
@@ -526,7 +535,10 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                     obligations,
                 }
             };
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, &result);
+
+            let cache_value = prune_cache_value_obligations(infcx, &result);
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, cache_value);
+
             Some(result)
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
@@ -537,7 +549,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 value: projected_ty,
                 obligations: vec![]
             };
-            infcx.projection_cache.borrow_mut().insert_ty(cache_key, &result);
+            infcx.projection_cache.borrow_mut().insert_ty(cache_key, result.clone());
             Some(result)
         }
         Err(ProjectionTyError::TooManyCandidates) => {
@@ -559,6 +571,44 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             Some(normalize_to_error(selcx, param_env, projection_ty, cause, depth))
         }
     }
+}
+
+/// If there are unresolved type variables, then we need to include
+/// any subobligations that bind them, at least until those type
+/// variables are fully resolved.
+fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                                                 result: &NormalizedTy<'tcx>)
+                                                 -> NormalizedTy<'tcx> {
+    if !infcx.any_unresolved_type_vars(&result.value) {
+        return NormalizedTy { value: result.value, obligations: vec![] };
+    }
+
+    let mut obligations: Vec<_> =
+        result.obligations
+              .iter()
+              .filter(|obligation| match obligation.predicate {
+                  // We found a `T: Foo<X = U>` predicate, let's check
+                  // if `U` references any unresolved type
+                  // variables. In principle, we only care if this
+                  // projection can help resolve any of the type
+                  // variables found in `result.value` -- but we just
+                  // check for any type variables here, for fear of
+                  // indirect obligations (e.g., we project to `?0`,
+                  // but we have `T: Foo<X = ?1>` and `?1: Bar<X =
+                  // ?0>`).
+                  ty::Predicate::Projection(ref data) =>
+                      !infcx.any_unresolved_type_vars(&data.ty()),
+
+                  // We are only interested in `T: Foo<X = U>` predicates, whre
+                  // `U` references one of `unresolved_type_vars`. =)
+                  _ => false,
+              })
+              .cloned()
+              .collect();
+
+    obligations.shrink_to_fit();
+
+    NormalizedTy { value: result.value, obligations }
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
@@ -1435,10 +1485,10 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     /// Indicates that `key` was normalized to `value`.
-    fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: &NormalizedTy<'tcx>) {
+    fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTy<'tcx>) {
         debug!("ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
                key, value);
-        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value.clone()));
+        let fresh_key = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
         assert!(!fresh_key, "never started projecting `{:?}`", key);
     }
 

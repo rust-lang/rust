@@ -10,7 +10,7 @@
 
 use super::{InferCtxt, FixupError, FixupResult};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::TypeFolder;
+use ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER
@@ -76,6 +76,43 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
         match *r {
             ty::ReVar(rid) => self.infcx.region_vars.opportunistic_resolve_var(rid),
             _ => r,
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// UNRESOLVED TYPE FINDER
+
+/// The unresolved type **finder** walks your type and searches for
+/// type variables that don't yet have a value. They get pushed into a
+/// vector. It does not construct the fully resolved type (which might
+/// involve some hashing and so forth).
+pub struct UnresolvedTypeFinder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+        UnresolvedTypeFinder { infcx }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+        let t = self.infcx.shallow_resolve(t);
+        if t.has_infer_types() {
+            if let ty::TyInfer(_) = t.sty {
+                // Since we called `shallow_resolve` above, this must
+                // be an (as yet...) unresolved inference variable.
+                true
+            } else {
+                // Otherwise, visit its contents.
+                t.super_visit_with(self)
+            }
+        } else {
+            // Micro-optimize: no inference types at all Can't have unresolved type
+            // variables, no need to visit the contents.
+            false
         }
     }
 }
