@@ -35,19 +35,55 @@ impl LintPass for UnitExpr {
 impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Assign(ref left, ref right) = expr.node {
-            unimplemented!();
+            if is_unit_expr(right){
+                span_lint_and_sugg(
+                    cx,
+                    UNIT_EXPR,
+                    right.span,
+                    "trailing semicolons can be tricky",
+                    "remove the last semicolon",
+                    "TODO".to_owned()
+                )
+            }
         }
-        if let ExprKind::MethodCall(ref path, ref args) = expr.node {
-            unimplemented!();
-        }
-        if let ExprKind::Call(ref path, ref args) = expr.node{
-            unimplemented!();
-        }
+        // if let ExprKind::MethodCall(ref path, ref args) = expr.node {
+        //     unimplemented!();
+        // }
+        // if let ExprKind::Call(ref path, ref args) = expr.node{
+        //     unimplemented!();
+        // }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, stmt: &Stmt) {
-        if let StmtKind::Local(ref data) = stmt.node{
-            unimplemented!();
-        }
+        if let StmtKind::Local(ref local) = stmt.node{
+            if local.pat.node == PatKind::Wild {return;}
+            if let Some(ref expr) = local.init{
+                if is_unit_expr(expr){
+                    span_lint_and_sugg(
+                        cx,
+                        UNIT_EXPR,
+                        local.span,
+                        "trailing semicolons can be tricky",
+                        "remove the last semicolon",
+                        "TODO".to_owned()
+                    )
+                }
+            }        
+            }
+    }
+}
+
+fn is_unit_expr(expr: &Expr)->bool{
+    match expr.node{
+         ExprKind::Block(ref next) => {
+            let ref final_stmt = &next.stmts[next.stmts.len()-1];
+            if let StmtKind::Expr(_) = final_stmt.node{
+                return false;
+            }
+            else{
+                return true;
+            }
+        },
+        _ => return false,
     }
 }
