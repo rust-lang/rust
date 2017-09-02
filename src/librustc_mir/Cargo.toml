@@ -16,4 +16,4 @@ log = "0.3.6"
 log_settings = "0.1.1"
 lazy_static = "0.2.8"
 regex = "0.2.2"
-backtrace = { version = "0.3", git = "https://github.com/alexcrichton/backtrace-rs" }
+backtrace = "0.3.3"
