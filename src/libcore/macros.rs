@@ -8,16 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_export]
-// This stability attribute is totally useless.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-macro_rules! __rust_unstable_column {
-    () => {
-        column!()
-    }
-}
-
 /// Entry point of thread panic, for details, see std::macros
 #[macro_export]
 #[allow_internal_unstable]

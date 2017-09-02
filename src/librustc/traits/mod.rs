@@ -532,7 +532,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: normalized predicates={:?}",
             predicates);
 
-        let region_maps = RegionMaps::new();
+        let region_maps = RegionMaps::default();
         let free_regions = FreeRegionMap::new();
         infcx.resolve_regions_and_report_errors(region_context, &region_maps, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {

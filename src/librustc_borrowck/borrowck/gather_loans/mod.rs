@@ -43,8 +43,8 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let mut glcx = GatherLoanCtxt {
         bccx,
         all_loans: Vec::new(),
-        item_ub: region::CodeExtent::Misc(body.node_id),
-        move_data: MoveData::new(),
+        item_ub: region::CodeExtent::Misc(bccx.tcx.hir.body(body).value.hir_id.local_id),
+        move_data: MoveData::default(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
@@ -79,7 +79,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    consume_id, cmt, move_reason);
+                    self.bccx.tcx.hir.node_to_hir_id(consume_id).local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -126,7 +126,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-        self.guarantee_valid(borrow_id,
+        let hir_id = self.bccx.tcx.hir.node_to_hir_id(borrow_id);
+        self.guarantee_valid(hir_id.local_id,
                              borrow_span,
                              cmt,
                              bk,
@@ -272,8 +273,12 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                assignment_id, assignment_span,
-                                                lp, cmt.id, mode);
+                                                self.bccx.tcx.hir.node_to_hir_id(assignment_id)
+                                                    .local_id,
+                                                assignment_span,
+                                                lp,
+                                                self.bccx.tcx.hir.node_to_hir_id(cmt.id).local_id,
+                                                mode);
             }
             None => {
                 // This can occur with e.g. `*foo() = 5`.  In such
@@ -287,13 +292,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     /// reports an error.  This may entail taking out loans, which will be added to the
     /// `req_loan_map`.
     fn guarantee_valid(&mut self,
-                       borrow_id: ast::NodeId,
+                       borrow_id: hir::ItemLocalId,
                        borrow_span: Span,
                        cmt: mc::cmt<'tcx>,
                        req_kind: ty::BorrowKind,
                        loan_region: ty::Region<'tcx>,
                        cause: euv::LoanCause) {
-        debug!("guarantee_valid(borrow_id={}, cmt={:?}, \
+        debug!("guarantee_valid(borrow_id={:?}, cmt={:?}, \
                 req_mutbl={:?}, loan_region={:?})",
                borrow_id,
                cmt,
@@ -392,7 +397,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             }
         };
 
-        debug!("guarantee_valid(borrow_id={}), loan={:?}",
+        debug!("guarantee_valid(borrow_id={:?}), loan={:?}",
                borrow_id, loan);
 
         // let loan_path = loan.loan_path;

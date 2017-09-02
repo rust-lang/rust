@@ -50,7 +50,7 @@ struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 struct RH<'a> {
-    id: ast::NodeId,
+    id: hir::ItemLocalId,
     sub: &'a [RH<'a>],
 }
 
@@ -157,7 +157,7 @@ fn test_env<F>(source_string: &str,
                              "test_crate",
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
-            let mut region_maps = RegionMaps::new();
+            let mut region_maps = RegionMaps::default();
             body(Env {
                 infcx: &infcx,
                 region_maps: &mut region_maps,
@@ -188,21 +188,19 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
 
-        let node = ast::NodeId::from_u32;
-        let dscope = CodeExtent::DestructionScope(node(1));
+        let dscope = CodeExtent::DestructionScope(hir::ItemLocalId(1));
         self.region_maps.record_code_extent(dscope, None);
         self.create_region_hierarchy(&RH {
-                                         id: node(1),
-                                         sub: &[RH {
-                                                    id: node(10),
-                                                    sub: &[],
-                                                },
-                                                RH {
-                                                    id: node(11),
-                                                    sub: &[],
-                                                }],
-                                     },
-                                     dscope);
+            id: hir::ItemLocalId(1),
+            sub: &[RH {
+                id: hir::ItemLocalId(10),
+                sub: &[],
+            },
+            RH {
+                id: hir::ItemLocalId(11),
+                sub: &[],
+            }],
+        }, dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -335,7 +333,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
-        let r = ty::ReScope(CodeExtent::Misc(ast::NodeId::from_u32(id)));
+        let r = ty::ReScope(CodeExtent::Misc(hir::ItemLocalId(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 

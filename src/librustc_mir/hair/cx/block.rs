@@ -13,7 +13,6 @@ use hair::cx::Cx;
 use hair::cx::to_ref::ToRef;
 use rustc::middle::region::{BlockRemainder, CodeExtent};
 use rustc::hir;
-use syntax::ast;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;
@@ -21,11 +20,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
         // We have to eagerly translate the "spine" of the statements
         // in order to get the lexical scoping correctly.
-        let stmts = mirror_stmts(cx, self.id, &*self.stmts);
-        let opt_destruction_extent = cx.region_maps.opt_destruction_extent(self.id);
+        let stmts = mirror_stmts(cx, self.hir_id.local_id, &*self.stmts);
+        let opt_destruction_extent = cx.region_maps.opt_destruction_extent(self.hir_id.local_id);
         Block {
             targeted_by_break: self.targeted_by_break,
-            extent: CodeExtent::Misc(self.id),
+            extent: CodeExtent::Misc(self.hir_id.local_id),
             opt_destruction_extent,
             span: self.span,
             stmts,
@@ -35,25 +34,25 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
 }
 
 fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                block_id: ast::NodeId,
+                                block_id: hir::ItemLocalId,
                                 stmts: &'tcx [hir::Stmt])
                                 -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
     for (index, stmt) in stmts.iter().enumerate() {
-        let opt_dxn_ext = cx.region_maps.opt_destruction_extent(stmt.node.id());
+        let hir_id = cx.tcx.hir.node_to_hir_id(stmt.node.id());
+        let opt_dxn_ext = cx.region_maps.opt_destruction_extent(hir_id.local_id);
         match stmt.node {
-            hir::StmtExpr(ref expr, id) |
-            hir::StmtSemi(ref expr, id) => {
+            hir::StmtExpr(ref expr, _) |
+            hir::StmtSemi(ref expr, _) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
-                    span: stmt.span,
                     kind: StmtKind::Expr {
-                        scope: CodeExtent::Misc(id),
+                        scope: CodeExtent::Misc(hir_id.local_id),
                         expr: expr.to_ref(),
                     },
                     opt_destruction_extent: opt_dxn_ext,
                 })))
             }
-            hir::StmtDecl(ref decl, id) => {
+            hir::StmtDecl(ref decl, _) => {
                 match decl.node {
                     hir::DeclItem(..) => {
                         // ignore for purposes of the MIR
@@ -69,10 +68,9 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                                         cx.tables(),
                                                         &local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
-                            span: stmt.span,
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_extent,
-                                init_scope: CodeExtent::Misc(id),
+                                init_scope: CodeExtent::Misc(hir_id.local_id),
                                 pattern,
                                 initializer: local.init.to_ref(),
                             },
@@ -90,7 +88,7 @@ pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    block: &'tcx hir::Block)
                                    -> ExprRef<'tcx> {
     let block_ty = cx.tables().node_id_to_type(block.hir_id);
-    let temp_lifetime = cx.region_maps.temporary_scope(block.id);
+    let temp_lifetime = cx.region_maps.temporary_scope(block.hir_id.local_id);
     let expr = Expr {
         ty: block_ty,
         temp_lifetime,

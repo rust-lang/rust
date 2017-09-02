@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let outer_visibility_scope = this.visibility_scope;
         let source_info = this.source_info(span);
         for stmt in stmts {
-            let Stmt { span, kind, opt_destruction_extent } = this.hir.mirror(stmt);
+            let Stmt { kind, opt_destruction_extent } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Expr { scope, expr } => {
                     unpack!(block = this.in_opt_scope(
@@ -83,15 +83,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         }));
                 }
                 StmtKind::Let { remainder_scope, init_scope, pattern, initializer } => {
-                    let tcx = this.hir.tcx();
-
                     // Enter the remainder scope, i.e. the bindings' destruction scope.
                     this.push_scope((remainder_scope, source_info));
                     let_extent_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a visibility scope.
-                    let remainder_span = remainder_scope.span(&tcx.hir);
-                    let remainder_span = remainder_span.unwrap_or(span);
+                    let remainder_span = remainder_scope.span(this.hir.tcx(),
+                                                              &this.hir.region_maps);
                     let scope = this.declare_bindings(None, remainder_span, &pattern);
 
                     // Evaluate the initializer, if present.

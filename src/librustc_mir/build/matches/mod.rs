@@ -202,7 +202,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
         let local_id = self.var_indices[&var];
         let var_ty = self.local_decls[local_id].ty;
-        let extent = self.hir.region_maps.var_scope(var);
+        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let extent = self.hir.region_maps.var_scope(hir_id.local_id);
         self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty);
     }
 

@@ -247,13 +247,27 @@ impl<'a> LintLevelsBuilder<'a> {
                                                                     self.cur,
                                                                     Some(&specs));
                         let msg = format!("unknown lint: `{}`", name);
-                        lint::struct_lint_level(self.sess,
+                        let mut db = lint::struct_lint_level(self.sess,
                                                 lint,
                                                 level,
                                                 src,
                                                 Some(li.span.into()),
-                                                &msg)
-                            .emit();
+                                                &msg);
+                        if name.as_str().chars().any(|c| c.is_uppercase()) {
+                            let name_lower = name.as_str().to_lowercase();
+                            if let CheckLintNameResult::NoLint =
+                                    store.check_lint_name(&name_lower) {
+                                db.emit();
+                            } else {
+                                db.span_suggestion(
+                                    li.span,
+                                    "lowercase the lint name",
+                                    name_lower
+                                ).emit();
+                            }
+                        } else {
+                            db.emit();
+                        }
                     }
                 }
             }

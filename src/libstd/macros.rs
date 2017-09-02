@@ -14,16 +14,6 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#[macro_export]
-// This stability attribute is totally useless.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-macro_rules! __rust_unstable_column {
-    () => {
-        column!()
-    }
-}
-
 /// The entry point for panic of Rust threads.
 ///
 /// This allows a program to to terminate immediately and provide feedback

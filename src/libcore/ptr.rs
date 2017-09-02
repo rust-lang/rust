@@ -875,36 +875,9 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<T: ?Sized> Clone for *const T {
-    #[inline]
-    fn clone(&self) -> *const T {
-        *self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<T: ?Sized> Clone for *mut T {
-    #[inline]
-    fn clone(&self) -> *mut T {
-        *self
-    }
-}
-
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(stage0)]
-        impl<Ret, $($Arg),*> Clone for $FnTy {
-            #[inline]
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> PartialEq for $FnTy {
             #[inline]

@@ -10,8 +10,6 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-#![cfg_attr(stage0, allow(overflowing_literals))]
-
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use intrinsics;

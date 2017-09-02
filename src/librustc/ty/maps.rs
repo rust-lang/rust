@@ -593,7 +593,7 @@ macro_rules! profq_key {
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
-       [$($modifiers:tt)*] $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
+       [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
         define_map_struct! {
             tcx: $tcx,
             input: ($(([$($modifiers)*] [$($attr)*] [$name]))*)
@@ -954,12 +954,12 @@ macro_rules! define_provider_struct {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    [] type_of: TypeOfItem(DefId) -> Ty<'tcx>,
+    [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
-    [] generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
-    [] predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+    [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
+    [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -967,145 +967,146 @@ define_maps! { <'tcx>
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    [] super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+    [] fn super_predicates_of: SuperPredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
-    [] type_param_predicates: type_param_predicates((DefId, DefId))
+    [] fn type_param_predicates: type_param_predicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
-    [] trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
-    [] adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
-    [] adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-    [] adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
-    [] adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+    [] fn trait_def: TraitDefOfItem(DefId) -> &'tcx ty::TraitDef,
+    [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
+    [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
+    [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
     /// True if this is a const fn
-    [] is_const_fn: IsConstFn(DefId) -> bool,
+    [] fn is_const_fn: IsConstFn(DefId) -> bool,
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
-    [] is_foreign_item: IsForeignItem(DefId) -> bool,
+    [] fn is_foreign_item: IsForeignItem(DefId) -> bool,
 
     /// True if this is a default impl (aka impl Foo for ..)
-    [] is_default_impl: IsDefaultImpl(DefId) -> bool,
+    [] fn is_default_impl: IsDefaultImpl(DefId) -> bool,
 
     /// Get a map with the variance of every item; use `item_variance`
     /// instead.
-    [] crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,
+    [] fn crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    [] variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
+    [] fn variances_of: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    [] associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
+    [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
 
     /// Maps from a trait item to the trait item "descriptor"
-    [] associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
+    [] fn associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
-    [] impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
-    [] impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
+    [] fn impl_trait_ref: ImplTraitRef(DefId) -> Option<ty::TraitRef<'tcx>>,
+    [] fn impl_polarity: ImplPolarity(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    [] inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
+    [] fn inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
 
     /// Set of all the def-ids in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
-    [] mir_keys: mir_keys(CrateNum) -> Rc<DefIdSet>,
+    [] fn mir_keys: mir_keys(CrateNum) -> Rc<DefIdSet>,
 
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
-    [] mir_const_qualif: MirConstQualif(DefId) -> u8,
+    [] fn mir_const_qualif: MirConstQualif(DefId) -> u8,
 
     /// Fetch the MIR for a given def-id up till the point where it is
     /// ready for const evaluation.
     ///
     /// See the README for the `mir` module for details.
-    [] mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] fn mir_const: MirConst(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
-    [] mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
+    [] fn mir_validated: MirValidated(DefId) -> &'tcx Steal<mir::Mir<'tcx>>,
 
     /// MIR after our optimization passes have run. This is MIR that is ready
     /// for trans. This is also the only query that can fetch non-local MIR, at present.
-    [] optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
+    [] fn optimized_mir: MirOptimized(DefId) -> &'tcx mir::Mir<'tcx>,
 
     /// Type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    [] closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
+    [] fn closure_kind: ClosureKind(DefId) -> ty::ClosureKind,
 
     /// The signature of functions and closures.
-    [] fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
+    [] fn fn_sig: FnSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
     /// Records the signature of each generator. The def ID is the ID of the
     /// expression defining the closure.
-    [] generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
+    [] fn generator_sig: GenSignature(DefId) -> Option<ty::PolyGenSig<'tcx>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    [] coerce_unsized_info: CoerceUnsizedInfo(DefId)
+    [] fn coerce_unsized_info: CoerceUnsizedInfo(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
-    [] typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
+    [] fn typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
 
-    [] typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
+    [] fn typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
-    [] has_typeck_tables: HasTypeckTables(DefId) -> bool,
+    [] fn has_typeck_tables: HasTypeckTables(DefId) -> bool,
 
-    [] coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
+    [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    [] borrowck: BorrowCheck(DefId) -> (),
+    [] fn borrowck: BorrowCheck(DefId) -> (),
     // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
-    [] mir_borrowck: MirBorrowCheck(DefId) -> (),
+    [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+    [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
 
     /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
-    [] crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum) -> (),
+    [] fn crate_inherent_impls_overlap_check: inherent_impls_overlap_check_dep_node(CrateNum) -> (),
 
     /// Results of evaluating const items or constants embedded in
     /// other items (such as enum variant explicit discriminants).
-    [] const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
+    [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, (DefId, &'tcx Substs<'tcx>)>)
         -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
-    [] privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
+    [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    [] reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
+    [] fn reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
     /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
     /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
     /// fn item.
-    [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps>,
+    [] fn region_maps: RegionMaps(DefId) -> Rc<RegionMaps>,
 
-    [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
+    [] fn mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 
-    [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
-    [] symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
+    [] fn def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
+    [] fn symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName,
 
-    [] describe_def: DescribeDef(DefId) -> Option<Def>,
-    [] def_span: DefSpan(DefId) -> Span,
-    [] stability: Stability(DefId) -> Option<attr::Stability>,
-    [] deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
-    [] item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
-    [] fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
-    [] impl_parent: ImplParent(DefId) -> Option<DefId>,
-    [] trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
-    [] is_exported_symbol: IsExportedSymbol(DefId) -> bool,
-    [] item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
-    [] const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
-    [] is_mir_available: IsMirAvailable(DefId) -> bool,
+    [] fn describe_def: DescribeDef(DefId) -> Option<Def>,
+    [] fn def_span: DefSpan(DefId) -> Span,
+    [] fn stability: Stability(DefId) -> Option<attr::Stability>,
+    [] fn deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
+    [] fn item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
+    [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
+    [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
+    [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
+    [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
+    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId)
+        -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
+    [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
 
-    [] trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
-    [] specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
-    [] is_object_safe: ObjectSafety(DefId) -> bool,
+    [] fn trait_impls_of: TraitImpls(DefId) -> Rc<ty::trait_def::TraitImpls>,
+    [] fn specialization_graph_of: SpecializationGraph(DefId) -> Rc<specialization_graph::Graph>,
+    [] fn is_object_safe: ObjectSafety(DefId) -> bool,
 
     // Get the ParameterEnvironment for a given item; this environment
     // will be in "user-facing" mode, meaning that it is suitabe for
@@ -1113,32 +1114,32 @@ define_maps! { <'tcx>
     // associated types. This is almost always what you want,
     // unless you are doing MIR optimizations, in which case you
     // might want to use `reveal_all()` method to change modes.
-    [] param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
+    [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
     // Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
     // `ty.is_copy()`, etc, since that will prune the environment where possible.
-    [] is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
-    [] is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
-    [] is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
-    [] needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
-    [] layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+    [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
 
-    [] dylib_dependency_formats: DylibDepFormats(DefId)
+    [] fn dylib_dependency_formats: DylibDepFormats(DefId)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] is_allocator: IsAllocator(DefId) -> bool,
-    [] is_panic_runtime: IsPanicRuntime(DefId) -> bool,
-    [] is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
-    [] has_global_allocator: HasGlobalAllocator(DefId) -> bool,
+    [] fn is_allocator: IsAllocator(DefId) -> bool,
+    [] fn is_panic_runtime: IsPanicRuntime(DefId) -> bool,
+    [] fn is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
+    [] fn has_global_allocator: HasGlobalAllocator(DefId) -> bool,
 
-    [] extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
+    [] fn extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 
-    [] lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
+    [] fn lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 
-    [] specializes: specializes_node((DefId, DefId)) -> bool,
-    [] in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
-    [] module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
+    [] fn specializes: specializes_node((DefId, DefId)) -> bool,
+    [] fn in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
+    [] fn module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

@@ -371,12 +371,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsDoesNotOutlive(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsDoesNotOutlive(a, b))
             }
-            RegionsNotSame(a, b) => {
-                return tcx.lift(&(a, b)).map(|(a, b)| RegionsNotSame(a, b))
-            }
-            RegionsNoOverlap(a, b) => {
-                return tcx.lift(&(a, b)).map(|(a, b)| RegionsNoOverlap(a, b))
-            }
             RegionsInsufficientlyPolymorphic(a, b) => {
                 return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b))
             }
@@ -1057,12 +1051,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
             RegionsDoesNotOutlive(a, b) => {
                 RegionsDoesNotOutlive(a.fold_with(folder), b.fold_with(folder))
             },
-            RegionsNotSame(a, b) => {
-                RegionsNotSame(a.fold_with(folder), b.fold_with(folder))
-            },
-            RegionsNoOverlap(a, b) => {
-                RegionsNoOverlap(a.fold_with(folder), b.fold_with(folder))
-            },
             RegionsInsufficientlyPolymorphic(a, b) => {
                 RegionsInsufficientlyPolymorphic(a, b.fold_with(folder))
             },
@@ -1088,9 +1076,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::error::TypeError<'tcx> {
         match *self {
             UnsafetyMismatch(x) => x.visit_with(visitor),
             AbiMismatch(x) => x.visit_with(visitor),
-            RegionsDoesNotOutlive(a, b) |
-            RegionsNotSame(a, b) |
-            RegionsNoOverlap(a, b) => {
+            RegionsDoesNotOutlive(a, b) => {
                 a.visit_with(visitor) || b.visit_with(visitor)
             },
             RegionsInsufficientlyPolymorphic(_, b) |
