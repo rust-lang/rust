@@ -699,7 +699,7 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLibrary]) {
                                  against this static library. The order and any duplication \
                                  can be significant on some platforms.");
         // Prefix for greppability
-        sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 
