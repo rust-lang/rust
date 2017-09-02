@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(improper_ctypes)]
-#![feature(libc)]
+#![feature(libc, i128_type)]
 
 extern crate libc;
 
@@ -39,6 +39,8 @@ extern {
     pub fn str_type(p: &str); //~ ERROR: found Rust type
     pub fn box_type(p: Box<u32>); //~ ERROR found struct without
     pub fn char_type(p: char); //~ ERROR found Rust type
+    pub fn i128_type(p: i128); //~ ERROR found Rust type
+    pub fn u128_type(p: u128); //~ ERROR found Rust type
     pub fn trait_type(p: &Clone); //~ ERROR found Rust trait type
     pub fn tuple_type(p: (i32, i32)); //~ ERROR found Rust tuple type
     pub fn tuple_type2(p: I32Pair); //~ ERROR found Rust tuple type
