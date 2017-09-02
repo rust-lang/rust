@@ -344,12 +344,14 @@ pub fn fold_thin_attrs<T: Folder>(attrs: ThinVec<Attribute>, fld: &mut T) -> Thi
     fold_attrs(attrs.into(), fld).into()
 }
 
-pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T) -> Arm {
+pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body, beginning_vert}: Arm,
+    fld: &mut T) -> Arm {
     Arm {
         attrs: fold_attrs(attrs, fld),
         pats: pats.move_map(|x| fld.fold_pat(x)),
         guard: guard.map(|x| fld.fold_expr(x)),
         body: fld.fold_expr(body),
+        beginning_vert,
     }
 }
 
