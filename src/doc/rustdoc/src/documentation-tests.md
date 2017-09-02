@@ -16,6 +16,19 @@ The basic idea is this:
 The triple backticks start and end code blocks. If this were in a file named `foo.rs`,
 running `rustdoc --test foo.rs` will extract this example, and then run it as a test.
 
+Please note that by default, if no language is set for the block code, `rustdoc`
+assumes it is `Rust` code. So the following:
+
+```rust
+let x = 5;
+```
+
+is strictly equivalent to:
+
+```
+let x = 5;
+```
+
 There's some subtlety though! Read on for more details.
 
 ## Pre-processing examples
