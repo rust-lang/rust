@@ -35,7 +35,7 @@ macro_rules! my_recursive_macro {
 
 macro_rules! my_macro {
     () => {
-        
+
     };
 }
 
