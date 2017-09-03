@@ -134,6 +134,8 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
 fn check_last_stmt_in_block(block: &Block) -> bool {
     let final_stmt = &block.stmts[block.stmts.len() - 1];
 
+
+    //Made a choice here to risk false positives on divergent macro invocations like `panic!()`
     match final_stmt.node {
         StmtKind::Expr(_) => false,
         StmtKind::Semi(ref expr) => match expr.node {
