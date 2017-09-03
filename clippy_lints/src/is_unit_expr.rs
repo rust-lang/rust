@@ -78,7 +78,7 @@ fn is_unit_expr(expr: &Expr)->Option<Span>{
         ExprKind::If(_, ref then, ref else_)=>{
             let check_then = check_last_stmt_in_block(then);
             if let Some(ref else_) = *else_{
-                let check_else = is_unit_expr(*else_);
+                let check_else = is_unit_expr(else_.deref());
                 if let Some(ref expr_else) = check_else{
                     return Some(expr_else.clone());
                 }else{
