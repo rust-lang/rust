@@ -1713,6 +1713,18 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    /// Same as `sized_constraint`, but for DynSized
+    pub fn dynsized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
+        match queries::adt_dynsized_constraint::try_get(tcx, DUMMY_SP, self.did) {
+            Ok(tys) => tys,
+            Err(mut bug) => {
+                debug!("adt_dynsized_constraint: {:?} is recursive", self);
+                bug.delay_as_bug();
+                tcx.intern_type_list(&[tcx.types.err])
+            }
+        }
+    }
+
     fn sized_constraint_for_ty(&self,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                ty: Ty<'tcx>)
@@ -1780,6 +1792,74 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
         };
         debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
+        result
+    }
+
+    fn dynsized_constraint_for_ty(&self,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   ty: Ty<'tcx>)
+                                   -> Vec<Ty<'tcx>> {
+        let result = match ty.sty {
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyStr | TyDynamic(..) | TySlice(_) | TyArray(..) |
+            TyTuple(..) | TyAdt(..) | TyClosure(..) | TyGenerator(..) |
+            TyNever => {
+                vec![]
+            }
+
+            TyForeign(..) | TyError => {
+                // these are never DynSized - return the target type
+                vec![ty]
+            }
+
+            TyProjection(..) | TyAnon(..) => {
+                // must calculate explicitly.
+                // FIXME: consider special-casing always-DynSized projections
+                vec![ty]
+            }
+
+            TyParam(..) => {
+                // perf hack: if there is a `T: Sized` or `T: DynSized` bound, then
+                // we know that `T` is DynSized and do not need to check
+                // it on the impl.
+
+                let sized_trait = match tcx.lang_items().sized_trait() {
+                    Some(x) => x,
+                    _ => return vec![ty]
+                };
+
+                let dynsized_trait = match tcx.lang_items().dynsized_trait() {
+                    Some(x) => x,
+                    _ => return vec![ty]
+                };
+
+                let sized_predicate = Binder(TraitRef {
+                    def_id: sized_trait,
+                    substs: tcx.mk_substs_trait(ty, &[])
+                }).to_predicate();
+
+                let dynsized_predicate = Binder(TraitRef {
+                    def_id: dynsized_trait,
+                    substs: tcx.mk_substs_trait(ty, &[])
+                }).to_predicate();
+
+                let predicates = tcx.predicates_of(self.did).predicates;
+                if predicates.into_iter().any(|p| {
+                    p == sized_predicate || p == dynsized_predicate
+                }) {
+                    vec![]
+                } else {
+                    vec![ty]
+                }
+            }
+
+            TyInfer(..) => {
+                bug!("unexpected type `{:?}` in dynsized_constraint_for_ty",
+                     ty)
+            }
+        };
+        debug!("dynsized_constraint_for_ty({:?}) = {:?}", ty, result);
         result
     }
 }
@@ -2371,6 +2451,22 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
+fn adt_dynsized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId)
+                                  -> &'tcx [Ty<'tcx>] {
+    let def = tcx.adt_def(def_id);
+
+    let result = tcx.intern_type_list(&def.variants.iter().flat_map(|v| {
+        v.fields.last()
+    }).flat_map(|f| {
+        def.dynsized_constraint_for_ty(tcx, tcx.type_of(f.did))
+    }).collect::<Vec<_>>());
+
+    debug!("adt_dynsized_constraint: {:?} => {:?}", def, result);
+
+    result
+}
+
 /// Calculates the dtorck constraint for a type.
 fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
@@ -2493,6 +2589,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
+        adt_dynsized_constraint,
         adt_dtorck_constraint,
         def_span,
         param_env,
@@ -2507,6 +2604,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 pub fn provide_extern(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         adt_sized_constraint,
+        adt_dynsized_constraint,
         adt_dtorck_constraint,
         trait_impls_of: trait_def::trait_impls_of_provider,
         param_env,

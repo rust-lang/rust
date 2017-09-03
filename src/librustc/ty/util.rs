@@ -799,9 +799,17 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn is_sized(&'tcx self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     param_env: ty::ParamEnv<'tcx>,
-                    span: Span)-> bool
+                    span: Span) -> bool
     {
         tcx.at(span).is_sized_raw(param_env.and(self))
+    }
+
+    pub fn is_dynsized(&'tcx self,
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                param_env: ty::ParamEnv<'tcx>,
+                                span: Span) -> bool
+    {
+        tcx.at(span).is_dynsized_raw(param_env.and(self))
     }
 
     pub fn is_freeze(&'tcx self,
@@ -1064,6 +1072,20 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        DUMMY_SP))
 }
 
+fn is_dynsized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
+                          -> bool
+{
+    let (param_env, ty) = query.into_parts();
+    let trait_def_id = tcx.require_lang_item(lang_items::DynSizedTraitLangItem);
+    tcx.infer_ctxt()
+       .enter(|infcx| traits::type_known_to_meet_bound(&infcx,
+                                                       param_env,
+                                                       ty,
+                                                       trait_def_id,
+                                                       DUMMY_SP))
+}
+
 fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                            -> bool
@@ -1182,6 +1204,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_copy_raw,
         is_sized_raw,
+        is_dynsized_raw,
         is_freeze_raw,
         needs_drop_raw,
         layout_raw,

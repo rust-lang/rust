@@ -149,6 +149,10 @@ pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> boo
     ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
 }
 
+pub fn type_is_dynsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_dynsized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+}
+
 pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_freeze(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
 }

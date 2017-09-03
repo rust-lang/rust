@@ -477,6 +477,7 @@ define_dep_nodes!( <'tcx>
     [] IsForeignItem(DefId),
     [] TypeParamPredicates { item_id: DefId, param_id: DefId },
     [] SizedConstraint(DefId),
+    [] DynSizedConstraint(DefId),
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
@@ -492,6 +493,7 @@ define_dep_nodes!( <'tcx>
 
     [anon] IsCopy,
     [anon] IsSized,
+    [anon] IsDynSized,
     [anon] IsFreeze,
     [anon] NeedsDrop,
     [anon] Layout,

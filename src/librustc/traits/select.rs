@@ -1348,6 +1348,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let sized_conditions = self.sized_conditions(obligation);
             self.assemble_builtin_bound_candidates(sized_conditions,
                                                    &mut candidates)?;
+        } else if lang_items.dynsized_trait() == Some(def_id) {
+            // DynSized is never implementable by end-users, it is
+            // always automatically computed.
+            let dynsized_conditions = self.dynsized_conditions(obligation);
+            self.assemble_builtin_bound_candidates(dynsized_conditions,
+                                                   &mut candidates)?;
          } else if lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
          } else {
@@ -2056,6 +2062,53 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn dynsized_conditions(&mut self, obligation: &TraitObligation<'tcx>)
+                     -> BuiltinImplConditions<'tcx>
+    {
+        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
+
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(
+            obligation.predicate.skip_binder().self_ty());
+
+        match self_ty.sty {
+            ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
+            ty::TyChar | ty::TyRef(..) | ty::TyGenerator(..) |
+            ty::TyArray(..) | ty::TyClosure(..) | ty::TyNever |
+            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) |
+            ty::TyError  => {
+                // safe for everything
+                Where(ty::Binder(Vec::new()))
+            }
+
+            ty::TyTuple(tys, _) => {
+                Where(ty::Binder(tys.last().into_iter().cloned().collect()))
+            }
+
+            ty::TyAdt(def, substs) => {
+                let dynsized_crit = def.dynsized_constraint(self.tcx());
+                // (*) binder moved here
+                Where(ty::Binder(
+                    dynsized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                ))
+            }
+
+            ty::TyForeign(..) => Never,
+
+            ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
+            ty::TyInfer(ty::TyVar(_)) => Ambiguous,
+
+            ty::TyInfer(ty::FreshTy(_))
+            | ty::TyInfer(ty::FreshIntTy(_))
+            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}",
+                     self_ty);
+            }
+        }
+    }
+
     fn copy_clone_conditions(&mut self, obligation: &TraitObligation<'tcx>)
                      -> BuiltinImplConditions<'tcx>
     {
@@ -2391,6 +2444,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let conditions = match trait_def {
                 _ if Some(trait_def) == lang_items.sized_trait() => {
                     self.sized_conditions(obligation)
+                }
+                _ if Some(trait_def) == lang_items.dynsized_trait() => {
+                    self.dynsized_conditions(obligation)
                 }
                 _ if Some(trait_def) == lang_items.copy_trait() => {
                     self.copy_clone_conditions(obligation)

@@ -811,12 +811,16 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                     let mut first = true;
                     let mut is_sized = false;
+                    let mut is_dynsized = false;
                     write!(f, "impl")?;
                     for predicate in bounds.predicates {
                         if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                            // Don't print +Sized, but rather +?Sized if absent.
+                            // Don't print +Sized/DynSized, but rather +?Sized/DynSized if absent.
                             if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
                                 is_sized = true;
+                                continue;
+                            } else if Some(trait_ref.def_id()) == tcx.lang_items().dynsized_trait() {
+                                is_dynsized = true;
                                 continue;
                             }
 
@@ -824,7 +828,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                             first = false;
                         }
                     }
-                    if !is_sized {
+                    if !is_dynsized {
+                        write!(f, "{}?DynSized", if first { " " } else { "+" })?;
+                    } else if !is_sized {
                         write!(f, "{}?Sized", if first { " " } else { "+" })?;
                     }
                     Ok(())

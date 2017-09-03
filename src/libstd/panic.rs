@@ -22,6 +22,12 @@ use rc::Rc;
 use sync::{Arc, Mutex, RwLock, atomic};
 use thread::Result;
 
+#[cfg(stage0)]
+use core::marker::Sized as DynSized;
+
+#[cfg(not(stage0))]
+use core::marker::DynSized;
+
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 
@@ -101,6 +107,14 @@ pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
                             across an unwind boundary"]
+#[cfg(not(stage0))]
+pub trait UnwindSafe: ?DynSized {}
+
+/// docs
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
+                            across an unwind boundary"]
+#[cfg(stage0)]
 pub trait UnwindSafe {}
 
 /// A marker trait representing types where a shared reference is considered
@@ -115,6 +129,15 @@ pub trait UnwindSafe {}
 #[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
                             and a reference may not be safely transferrable \
                             across a catch_unwind boundary"]
+#[cfg(not(stage0))]
+pub trait RefUnwindSafe: ?DynSized {}
+
+/// docs
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
+                            and a reference may not be safely transferrable \
+                            across a catch_unwind boundary"]
+#[cfg(stage0)]
 pub trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
@@ -190,13 +213,13 @@ pub struct AssertUnwindSafe<T>(
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl UnwindSafe for .. {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<'a, T: ?Sized> !UnwindSafe for &'a mut T {}
+impl<'a, T: ?DynSized> !UnwindSafe for &'a mut T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<'a, T: RefUnwindSafe + ?Sized> UnwindSafe for &'a T {}
+impl<'a, T: RefUnwindSafe + ?DynSized> UnwindSafe for &'a T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
+impl<T: RefUnwindSafe + ?DynSized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
+impl<T: RefUnwindSafe + ?DynSized> UnwindSafe for *mut T {}
 #[unstable(feature = "unique", issue = "27730")]
 impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
 #[unstable(feature = "shared", issue = "27730")]

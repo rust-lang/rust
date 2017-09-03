@@ -53,7 +53,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
     let did = Some(trait_def_id);
     let li = tcx.lang_items();
 
-    // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
+    // Disallow *all* explicit impls of `Sized`, `DynSized` and `Unsize` for now.
     if did == li.sized_trait() {
         let span = tcx.span_of_impl(impl_def_id).unwrap();
         struct_span_err!(tcx.sess,
@@ -61,6 +61,14 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
                          E0322,
                          "explicit impls for the `Sized` trait are not permitted")
             .span_label(span, "impl of 'Sized' not allowed")
+            .emit();
+        return;
+    }
+
+    if did == li.dynsized_trait() {
+        let span = tcx.span_of_impl(impl_def_id).unwrap();
+        tcx.sess.struct_span_err(span, "explicit impls for the `DynSized` trait are not permitted")
+            .span_label(span, "impl of 'DynSized' not allowed")
             .emit();
         return;
     }

@@ -1125,6 +1125,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StructInitializerSized => {
                 err.note("structs must have a statically known size to be initialized");
             }
+            ObligationCauseCode::FieldDynSized => {
+                err.note("the last field of a struct or tuple must have a dynamically sized type");
+            }
             ObligationCauseCode::FieldSized(ref item) => {
                 match *item {
                     AdtKind::Struct => {

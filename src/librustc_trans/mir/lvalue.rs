@@ -153,21 +153,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                     ptr_val, adt::struct_llfields_index(st, ix)), alignment);
         }
 
-        // If the type of the last field is [T], str or a foreign type, then we don't need to do
-        // any adjusments
+        // If the type of the last field is [T] or str, then we don't need to do
+        // any adjusments. Otherwise it must a trait object.
         match fty.sty {
-            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => {
+            ty::TySlice(..) | ty::TyStr => {
                 return (bcx.struct_gep(
                         ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
-            _ => ()
-        }
 
-        // There's no metadata available, log the case and just do the GEP.
-        if !self.has_extra() {
-            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(ptr_val));
-            return (bcx.struct_gep(ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+            ty::TyDynamic(..) => (),
+            _ => bug!("unexpected DST tail: {:?}", fty.sty),
         }
 
         // We need to get the pointer manually now.

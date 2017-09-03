@@ -40,6 +40,16 @@ use hash::Hasher;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "send"]
+#[cfg(not(stage0))]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+pub unsafe trait Send: ?DynSized {
+    // empty.
+}
+
+/// docs
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "send"]
+#[cfg(stage0)]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 pub unsafe trait Send {
     // empty.
@@ -49,9 +59,9 @@ pub unsafe trait Send {
 unsafe impl Send for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *const T { }
+impl<T: ?DynSized> !Send for *const T { }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Send for *mut T { }
+impl<T: ?DynSized> !Send for *mut T { }
 
 /// Types with a constant size known at compile time.
 ///
@@ -93,6 +103,29 @@ impl<T: ?Sized> !Send for *mut T { }
 pub trait Sized {
     // Empty.
 }
+
+/// Types with a size known at run time.
+///
+/// This trait is implemented both by `Sized` types, and by dynamically sized
+/// types such as slices and [trait objects]. [Extern types], whose size is not
+/// known, even at runtime, do not implement this trait.
+///
+/// All traits and type parameters have an implicit bound of `DynSized`. The
+/// special syntax `?DynSized` can be used to remove this bound if it's not
+/// appropriate.
+///
+/// [trait object]: ../../book/first-edition/trait-objects.html
+#[cfg(not(stage0))]
+#[unstable(feature = "dynsized", issue = "0")]
+#[lang = "dynsized"]
+#[rustc_on_unimplemented = "`{Self}` does not have a size known at run-time"]
+#[fundamental]
+pub trait DynSized: ?DynSized {
+    // Empty.
+}
+
+#[cfg(stage0)]
+use self::Sized as DynSized; // This is just so we don't have to stage too much stuff
 
 /// Types that can be "unsized" to a dynamically-sized type.
 ///
@@ -343,6 +376,16 @@ pub trait Copy : Clone {
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
+#[cfg(not(stage0))]
+#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+pub unsafe trait Sync: ?DynSized {
+    // Empty
+}
+
+/// docs
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "sync"]
+#[cfg(stage0)]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
     // Empty
@@ -352,56 +395,56 @@ pub unsafe trait Sync {
 unsafe impl Sync for .. { }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *const T { }
+impl<T: ?DynSized> !Sync for *const T { }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> !Sync for *mut T { }
+impl<T: ?DynSized> !Sync for *mut T { }
 
 macro_rules! impls{
     ($t: ident) => (
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Hash for $t<T> {
+        impl<T:?DynSized> Hash for $t<T> {
             #[inline]
             fn hash<H: Hasher>(&self, _: &mut H) {
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::PartialEq for $t<T> {
+        impl<T:?DynSized> cmp::PartialEq for $t<T> {
             fn eq(&self, _other: &$t<T>) -> bool {
                 true
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::Eq for $t<T> {
+        impl<T:?DynSized> cmp::Eq for $t<T> {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::PartialOrd for $t<T> {
+        impl<T:?DynSized> cmp::PartialOrd for $t<T> {
             fn partial_cmp(&self, _other: &$t<T>) -> Option<cmp::Ordering> {
                 Option::Some(cmp::Ordering::Equal)
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> cmp::Ord for $t<T> {
+        impl<T:?DynSized> cmp::Ord for $t<T> {
             fn cmp(&self, _other: &$t<T>) -> cmp::Ordering {
                 cmp::Ordering::Equal
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Copy for $t<T> { }
+        impl<T:?DynSized> Copy for $t<T> { }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Clone for $t<T> {
+        impl<T:?DynSized> Clone for $t<T> {
             fn clone(&self) -> $t<T> {
                 $t
             }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<T:?Sized> Default for $t<T> {
+        impl<T:?DynSized> Default for $t<T> {
             fn default() -> $t<T> {
                 $t
             }
@@ -544,29 +587,33 @@ macro_rules! impls{
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<T:?Sized>;
+pub struct PhantomData<T:?DynSized>;
 
 impls! { PhantomData }
 
-mod impls {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
-    #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
-}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, T: Sync + ?DynSized> Send for &'a T {}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, T: Send + ?DynSized> Send for &'a mut T {}
 
 /// Compiler-internal trait used to determine whether a type contains
 /// any `UnsafeCell` internally, but not through an indirection.
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
+#[cfg(not(stage0))]
+unsafe trait Freeze: ?DynSized {}
+
+/// docs
+#[lang = "freeze"]
+#[cfg(stage0)]
 unsafe trait Freeze {}
 
 unsafe impl Freeze for .. {}
 
-impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
-unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
-unsafe impl<T: ?Sized> Freeze for *const T {}
-unsafe impl<T: ?Sized> Freeze for *mut T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
-unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+impl<T: ?DynSized> !Freeze for UnsafeCell<T> {}
+unsafe impl<T: ?DynSized> Freeze for PhantomData<T> {}
+unsafe impl<T: ?DynSized> Freeze for *const T {}
+unsafe impl<T: ?DynSized> Freeze for *mut T {}
+unsafe impl<'a, T: ?DynSized> Freeze for &'a T {}
+unsafe impl<'a, T: ?DynSized> Freeze for &'a mut T {}
