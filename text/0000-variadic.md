@@ -172,10 +172,11 @@ Compiling and linking these two together will produce a program that prints:
 [reference-level-explanation]: #reference-level-explanation
 
 LLVM already provides a set of intrinsics, implementing `va_start`, `va_arg`,
-`va_end`, and `va_copy`. The implementation of `VaList::start` will call the
-`va_start` intrinsic. The implementation of `VaList::arg` will call `va_arg`.
-The implementation of `Clone` for `VaList` wil call `va_copy`. The
-implementation of `Drop` for `VaList` wil call `va_end`.
+`va_end`, and `va_copy`. The compiler will insert a call to the `va_start`
+intrinsic at the start of the function to provide the `VaList` argument (if
+used). The implementation of `VaList::arg` will call `va_arg`.  The
+implementation of `Clone` for `VaList` wil call `va_copy`. The implementation
+of `Drop` for `VaList` wil call `va_end`.
 
 This RFC intentionally does not specify the mechanism used to implement the
 `VaArg` trait, as the compiler may need to natively implement `VaList::arg`
