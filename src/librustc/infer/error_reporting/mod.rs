@@ -64,7 +64,7 @@ use std::fmt;
 use hir;
 use hir::map as hir_map;
 use hir::def_id::DefId;
-use middle::region::{self, RegionMaps};
+use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, Region, TyCtxt, TypeFoldable};
 use ty::error::TypeError;
@@ -83,7 +83,7 @@ mod anon_anon_conflict;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
-                                   region_maps: &RegionMaps,
+                                   region_scope_tree: &region::ScopeTree,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
                                    region: ty::Region<'tcx>,
@@ -131,8 +131,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = scope.span(self, region_maps);
-                let tag = match self.hir.find(scope.node_id(self, region_maps)) {
+                let span = scope.span(self, region_scope_tree);
+                let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -153,18 +153,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
                 let scope_decorated_tag = match scope {
-                    region::CodeExtent::Misc(_) => tag,
-                    region::CodeExtent::CallSiteScope(_) => {
+                    region::Scope::Node(_) => tag,
+                    region::Scope::CallSite(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtent::ParameterScope(_) => {
+                    region::Scope::Arguments(_) => {
                         "scope of function body"
                     }
-                    region::CodeExtent::DestructionScope(_) => {
+                    region::Scope::Destruction(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtent::Remainder(r) => {
+                    region::Scope::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]
@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_region_errors(&self,
-                                region_maps: &RegionMaps,
+                                region_scope_tree: &region::ScopeTree,
                                 errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
@@ -281,15 +281,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                   // the error. If all of these fails, we fall back to a rather
                   // general bit of code that displays the error information
                   ConcreteFailure(origin, sub, sup) => {
-                      self.report_concrete_failure(region_maps, origin, sub, sup).emit();
+                      self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
                   }
 
                   GenericBoundFailure(kind, param_ty, sub) => {
-                      self.report_generic_bound_failure(region_maps, kind, param_ty, sub);
+                      self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
                   }
 
                   SubSupConflict(var_origin, sub_origin, sub_r, sup_origin, sup_r) => {
-                        self.report_sub_sup_conflict(region_maps,
+                        self.report_sub_sup_conflict(region_scope_tree,
                                                      var_origin,
                                                      sub_origin,
                                                      sub_r,
@@ -769,7 +769,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_generic_bound_failure(&self,
-                                    region_maps: &RegionMaps,
+                                    region_scope_tree: &region::ScopeTree,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
                                     sub: Region<'tcx>)
@@ -837,7 +837,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.help(&format!("consider adding an explicit lifetime bound for `{}`",
                                   bound_kind));
                 self.tcx.note_and_explain_region(
-                    region_maps,
+                    region_scope_tree,
                     &mut err,
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
@@ -851,7 +851,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_sub_sup_conflict(&self,
-                               region_maps: &RegionMaps,
+                               region_scope_tree: &region::ScopeTree,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
                                sub_region: Region<'tcx>,
@@ -859,14 +859,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
-        self.tcx.note_and_explain_region(region_maps, &mut err,
+        self.tcx.note_and_explain_region(region_scope_tree, &mut err,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...");
 
         self.note_region_origin(&mut err, &sup_origin);
 
-        self.tcx.note_and_explain_region(region_maps, &mut err,
+        self.tcx.note_and_explain_region(region_scope_tree, &mut err,
             "but, the lifetime must be valid for ",
             sub_region,
             "...");

@@ -22,9 +22,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // Handle a number of expressions that don't need a destination at all. This
         // avoids needing a mountain of temporary `()` variables.
         match expr.kind {
-            ExprKind::Scope { extent, value } => {
+            ExprKind::Scope { region_scope, value } => {
                 let value = this.hir.mirror(value);
-                this.in_scope((extent, source_info), block, |this| this.stmt_expr(block, value))
+                this.in_scope((region_scope, source_info), block, |this| {
+                    this.stmt_expr(block, value)
+                })
             }
             ExprKind::Assign { lhs, rhs } => {
                 let lhs = this.hir.mirror(lhs);
@@ -77,29 +79,29 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.unit()
             }
             ExprKind::Continue { label } => {
-                let BreakableScope { continue_block, extent, .. } =
+                let BreakableScope { continue_block, region_scope, .. } =
                     *this.find_breakable_scope(expr_span, label);
                 let continue_block = continue_block.expect(
                     "Attempted to continue in non-continuable breakable block");
-                this.exit_scope(expr_span, (extent, source_info), block, continue_block);
+                this.exit_scope(expr_span, (region_scope, source_info), block, continue_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Break { label, value } => {
-                let (break_block, extent, destination) = {
+                let (break_block, region_scope, destination) = {
                     let BreakableScope {
                         break_block,
-                        extent,
+                        region_scope,
                         ref break_destination,
                         ..
                     } = *this.find_breakable_scope(expr_span, label);
-                    (break_block, extent, break_destination.clone())
+                    (break_block, region_scope, break_destination.clone())
                 };
                 if let Some(value) = value {
                     unpack!(block = this.into(&destination, block, value))
                 } else {
                     this.cfg.push_assign_unit(block, source_info, &destination)
                 }
-                this.exit_scope(expr_span, (extent, source_info), block, break_block);
+                this.exit_scope(expr_span, (region_scope, source_info), block, break_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Return { value } => {
@@ -114,9 +116,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         block
                     }
                 };
-                let extent = this.extent_of_return_scope();
+                let region_scope = this.region_scope_of_return_scope();
                 let return_block = this.return_block();
-                this.exit_scope(expr_span, (extent, source_info), block, return_block);
+                this.exit_scope(expr_span, (region_scope, source_info), block, return_block);
                 this.cfg.start_new_block().unit()
             }
             ExprKind::InlineAsm { asm, outputs, inputs } => {

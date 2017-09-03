@@ -31,21 +31,21 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _0: ();
 //     let _1: D;
 //     let mut _2: ();
-//     let mut _3: [closure@NodeId(18) d:&'14mce D];
-//     let mut _4: &'14mce D;
+//     let mut _3: [closure@NodeId(18) d:&'14s D];
+//     let mut _4: &'14s D;
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
 //         StorageLive(_3);
 //         StorageLive(_4);
-//         _4 = &'14mce _1;
+//         _4 = &'14s _1;
 //         _3 = [closure@NodeId(18)] { d: _4 };
 //         StorageDead(_4);
 //         _2 = const foo(_3) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
 //         StorageDead(_3);
-//         EndRegion('14mce);
+//         EndRegion('14s);
 //         _0 = ();
 //         drop(_1) -> bb4;
 //     }
@@ -53,7 +53,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         resume;
 //     }
 //     bb3: {
-//         EndRegion('14mce);
+//         EndRegion('14s);
 //         drop(_1) -> bb2;
 //     }
 //     bb4: {
@@ -64,13 +64,13 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // END rustc.node4.SimplifyCfg-qualify-consts.after.mir
 
 // START rustc.node18.SimplifyCfg-qualify-consts.after.mir
-// fn main::{{closure}}(_1: [closure@NodeId(18) d:&'14mce D]) -> i32 {
+// fn main::{{closure}}(_1: [closure@NodeId(18) d:&'14s D]) -> i32 {
 //    let mut _0: i32;
 //    let mut _2: i32;
 //
 //    bb0: {
 //        StorageLive(_2);
-//        _2 = ((*(_1.0: &'14mce D)).0: i32);
+//        _2 = ((*(_1.0: &'14s D)).0: i32);
 //        _0 = _2;
 //        StorageDead(_2);
 //        return;

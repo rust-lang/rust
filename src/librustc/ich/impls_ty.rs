@@ -17,6 +17,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use std::hash as std_hash;
 use std::mem;
 use syntax_pos::symbol::InternedString;
+use middle::region;
 use ty;
 
 impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
@@ -65,8 +66,8 @@ for ty::RegionKind {
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
-            ty::ReScope(code_extent) => {
-                code_extent.hash_stable(hcx, hasher);
+            ty::ReScope(scope) => {
+                scope.hash_stable(hcx, hasher);
             }
             ty::ReFree(ref free_region) => {
                 free_region.hash_stable(hcx, hasher);
@@ -450,24 +451,22 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
 });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::middle::region::CodeExtent
+for region::Scope
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        use middle::region::CodeExtent;
-
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            CodeExtent::Misc(node_id) |
-            CodeExtent::DestructionScope(node_id) => {
+            region::Scope::Node(node_id) |
+            region::Scope::Destruction(node_id) => {
                 node_id.hash_stable(hcx, hasher);
             }
-            CodeExtent::CallSiteScope(body_id) |
-            CodeExtent::ParameterScope(body_id) => {
+            region::Scope::CallSite(body_id) |
+            region::Scope::Arguments(body_id) => {
                 body_id.hash_stable(hcx, hasher);
             }
-            CodeExtent::Remainder(block_remainder) => {
+            region::Scope::Remainder(block_remainder) => {
                 block_remainder.hash_stable(hcx, hasher);
             }
         }

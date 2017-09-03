@@ -69,7 +69,7 @@ pub use self::Note::*;
 
 use self::Aliasability::*;
 
-use middle::region::RegionMaps;
+use middle::region;
 use hir::def_id::{DefId, DefIndex};
 use hir::map as hir_map;
 use infer::InferCtxt;
@@ -283,7 +283,7 @@ impl ast_node for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    pub region_maps: &'a RegionMaps,
+    pub region_scope_tree: &'a region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'tcx>,
     infcx: Option<&'a InferCtxt<'a, 'gcx, 'tcx>>,
 }
@@ -391,21 +391,21 @@ impl MutabilityCategory {
 
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               region_maps: &'a RegionMaps,
+               region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>)
                -> MemCategorizationContext<'a, 'tcx, 'tcx> {
-        MemCategorizationContext { tcx, region_maps, tables, infcx: None }
+        MemCategorizationContext { tcx, region_scope_tree, tables, infcx: None }
     }
 }
 
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn with_infer(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                      region_maps: &'a RegionMaps,
+                      region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext {
             tcx: infcx.tcx,
-            region_maps,
+            region_scope_tree,
             tables,
             infcx: Some(infcx),
         }
@@ -862,7 +862,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
     pub fn temporary_scope(&self, id: hir::ItemLocalId) -> ty::Region<'tcx> {
-        let scope = self.region_maps.temporary_scope(id);
+        let scope = self.region_scope_tree.temporary_scope(id);
         self.tcx.mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic

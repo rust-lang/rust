@@ -74,18 +74,18 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // START rustc.node22.SimplifyCfg-qualify-consts.after.mir
 // fn main::{{closure}}(_1: [closure@NodeId(22) d:D]) -> i32 {
 //     let mut _0: i32;
-//     let _2: &'15_0rce D;
+//     let _2: &'15_0rs D;
 //     let mut _3: i32;
 //
 //     bb0: {
 //         StorageLive(_2);
-//         _2 = &'15_0rce (_1.0: D);
+//         _2 = &'15_0rs (_1.0: D);
 //         StorageLive(_3);
 //         _3 = ((*_2).0: i32);
 //         _0 = _3;
 //         StorageDead(_3);
 //         StorageDead(_2);
-//         EndRegion('15_0rce);
+//         EndRegion('15_0rs);
 //         drop(_1) -> bb1;
 //     }
 //     bb1: {

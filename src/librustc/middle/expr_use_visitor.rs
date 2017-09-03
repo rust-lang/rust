@@ -23,7 +23,7 @@ use hir::def::Def;
 use hir::def_id::{DefId};
 use infer::InferCtxt;
 use middle::mem_categorization as mc;
-use middle::region::{CodeExtent, RegionMaps};
+use middle::region;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
@@ -265,12 +265,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
-               region_maps: &'a RegionMaps,
+               region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::new(tcx, region_maps, tables),
+            mc: mc::MemCategorizationContext::new(tcx, region_scope_tree, tables),
             delegate,
             param_env,
         }
@@ -281,12 +281,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn with_infer(delegate: &'a mut (Delegate<'tcx>+'a),
                       infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                       param_env: ty::ParamEnv<'tcx>,
-                      region_maps: &'a RegionMaps,
+                      region_scope_tree: &'a region::ScopeTree,
                       tables: &'a ty::TypeckTables<'tcx>)
                       -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_infer(infcx, region_maps, tables),
+            mc: mc::MemCategorizationContext::with_infer(infcx, region_scope_tree, tables),
             delegate,
             param_env,
         }
@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             let arg_ty = return_if_err!(self.mc.node_ty(arg.pat.hir_id));
 
             let fn_body_scope_r =
-                self.tcx().mk_region(ty::ReScope(CodeExtent::Misc(body.value.hir_id.local_id)));
+                self.tcx().mk_region(ty::ReScope(region::Scope::Node(body.value.hir_id.local_id)));
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
                 arg.pat.span,
@@ -543,7 +543,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             ty::TyError => { }
             _ => {
                 let def_id = self.mc.tables.type_dependent_defs()[call.hir_id].def_id();
-                let call_scope = CodeExtent::Misc(call.hir_id.local_id);
+                let call_scope = region::Scope::Node(call.hir_id.local_id);
                 match OverloadedCallType::from_method_id(self.tcx(), def_id) {
                     FnMutOverloadedCall => {
                         let call_scope_r = self.tcx().mk_region(ty::ReScope(call_scope));
@@ -751,7 +751,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // Converting from a &T to *T (or &mut T to *mut T) is
                 // treated as borrowing it for the enclosing temporary
                 // scope.
-                let r = self.tcx().mk_region(ty::ReScope(CodeExtent::Misc(expr.hir_id.local_id)));
+                let r = self.tcx().mk_region(ty::ReScope(
+                    region::Scope::Node(expr.hir_id.local_id)));
 
                 self.delegate.borrow(expr.id,
                                      expr.span,

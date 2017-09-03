@@ -17,7 +17,7 @@ use rustc_resolve::MakeGlobMap;
 use rustc_trans;
 use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region::{CodeExtent, RegionMaps};
+use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
 use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
@@ -45,7 +45,7 @@ use rustc::hir;
 
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
-    region_maps: &'a mut RegionMaps,
+    region_scope_tree: &'a mut region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -157,15 +157,15 @@ fn test_env<F>(source_string: &str,
                              "test_crate",
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
-            let mut region_maps = RegionMaps::default();
+            let mut region_scope_tree = region::ScopeTree::default();
             body(Env {
                 infcx: &infcx,
-                region_maps: &mut region_maps,
+                region_scope_tree: &mut region_scope_tree,
                 param_env: ty::ParamEnv::empty(Reveal::UserFacing),
             });
             let free_regions = FreeRegionMap::new();
             let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
-            infcx.resolve_regions_and_report_errors(def_id, &region_maps, &free_regions);
+            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &free_regions);
             assert_eq!(tcx.sess.err_count(), expected_err_count);
         });
     });
@@ -176,9 +176,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent) {
-        let me = CodeExtent::Misc(rh.id);
-        self.region_maps.record_code_extent(me, Some(parent));
+    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: region::Scope) {
+        let me = region::Scope::Node(rh.id);
+        self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh, me);
         }
@@ -188,8 +188,8 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
 
-        let dscope = CodeExtent::DestructionScope(hir::ItemLocalId(1));
-        self.region_maps.record_code_extent(dscope, None);
+        let dscope = region::Scope::Destruction(hir::ItemLocalId(1));
+        self.region_scope_tree.record_scope_parent(dscope, None);
         self.create_region_hierarchy(&RH {
             id: hir::ItemLocalId(1),
             sub: &[RH {
@@ -333,7 +333,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
-        let r = ty::ReScope(CodeExtent::Misc(hir::ItemLocalId(id)));
+        let r = ty::ReScope(region::Scope::Node(hir::ItemLocalId(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 

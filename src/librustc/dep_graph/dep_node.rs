@@ -395,7 +395,7 @@ define_dep_nodes!( <'tcx>
     [] WorkProduct(WorkProductId),
 
     // Represents different phases in the compiler.
-    [] RegionMaps(DefId),
+    [] RegionScopeTree(DefId),
     [] Coherence,
     [] CoherenceInherentImplOverlapCheck,
     [] Resolve,

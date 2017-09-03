@@ -21,7 +21,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::{BasicBlock, Location, Mir, Rvalue, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Visitor, Lookup};
@@ -30,11 +30,11 @@ use rustc::ty::{Ty, RegionKind, TyCtxt};
 pub struct CleanEndRegions;
 
 struct GatherBorrowedRegions {
-    seen_regions: FxHashSet<CodeExtent>,
+    seen_regions: FxHashSet<region::Scope>,
 }
 
 struct DeleteTrivialEndRegions<'a> {
-    seen_regions: &'a FxHashSet<CodeExtent>,
+    seen_regions: &'a FxHashSet<region::Scope>,
 }
 
 impl MirPass for CleanEndRegions {
@@ -84,8 +84,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DeleteTrivialEndRegions<'a> {
                        location: Location) {
         let mut delete_it = false;
 
-        if let StatementKind::EndRegion(ref extent) = statement.kind {
-            if !self.seen_regions.contains(extent) {
+        if let StatementKind::EndRegion(ref region_scope) = statement.kind {
+            if !self.seen_regions.contains(region_scope) {
                 delete_it = true;
             }
         }

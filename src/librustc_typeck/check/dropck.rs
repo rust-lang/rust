@@ -13,7 +13,7 @@ use check::regionck::RegionCtxt;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferOk};
-use rustc::middle::region::{self, RegionMaps};
+use rustc::middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, ObligationCause};
@@ -114,9 +114,9 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
             return Err(ErrorReported);
         }
 
-        let region_maps = RegionMaps::default();
+        let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_maps, &free_regions);
+        infcx.resolve_regions_and_report_errors(drop_impl_did, &region_scope_tree, &free_regions);
         Ok(())
     })
 }
@@ -270,14 +270,14 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     ty: ty::Ty<'tcx>,
     span: Span,
-    scope: region::CodeExtent)
+    scope: region::Scope)
     -> Result<(), ErrorReported>
 {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            ty, scope);
 
 
-    let parent_scope = match rcx.region_maps.opt_encl_scope(scope) {
+    let parent_scope = match rcx.region_scope_tree.opt_encl_scope(scope) {
         Some(parent_scope) => parent_scope,
         // If no enclosing scope, then it must be the root scope
         // which cannot be outlived.

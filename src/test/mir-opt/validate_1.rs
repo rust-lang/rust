@@ -37,19 +37,19 @@ fn main() {
 // START rustc.node23.EraseRegions.after.mir
 // fn main() -> () {
 //     bb0: {
-//         Validate(Suspend(ReScope(Misc(ItemLocalId(10)))), [_1: i32]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(10)))), [_1: i32]);
 //         _6 = &ReErased mut _1;
-//         Validate(Acquire, [(*_6): i32/ReScope(Misc(ItemLocalId(10)))]);
-//         Validate(Suspend(ReScope(Misc(ItemLocalId(10)))), [(*_6): i32/ReScope(Misc(ItemLocalId(10)))]);
+//         Validate(Acquire, [(*_6): i32/ReScope(Node(ItemLocalId(10)))]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(10)))), [(*_6): i32/ReScope(Node(ItemLocalId(10)))]);
 //         _5 = &ReErased mut (*_6);
-//         Validate(Acquire, [(*_5): i32/ReScope(Misc(ItemLocalId(10)))]);
-//         Validate(Release, [_2: (), _3: &ReScope(Misc(ItemLocalId(10))) Test, _5: &ReScope(Misc(ItemLocalId(10))) mut i32]);
+//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(10)))]);
+//         Validate(Release, [_2: (), _3: &ReScope(Node(ItemLocalId(10))) Test, _5: &ReScope(Node(ItemLocalId(10))) mut i32]);
 //         _2 = const Test::foo(_3, _5) -> bb1;
 //     }
 //
 //     bb1: {
 //         Validate(Acquire, [_2: ()]);
-//         EndRegion(ReScope(Misc(ItemLocalId(10))));
+//         EndRegion(ReScope(Node(ItemLocalId(10))));
 //         return;
 //     }
 // }

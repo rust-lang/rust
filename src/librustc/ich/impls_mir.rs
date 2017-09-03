@@ -239,8 +239,8 @@ for mir::StatementKind<'gcx> {
             mir::StatementKind::StorageDead(ref lvalue) => {
                 lvalue.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::EndRegion(ref extent) => {
-                extent.hash_stable(hcx, hasher);
+            mir::StatementKind::EndRegion(ref region_scope) => {
+                region_scope.hash_stable(hcx, hasher);
             }
             mir::StatementKind::Validate(ref op, ref lvalues) => {
                 op.hash_stable(hcx, hasher);
@@ -271,7 +271,7 @@ impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
     }
 }
 
-impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(extent) });
+impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(region_scope) });
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::Lvalue<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,

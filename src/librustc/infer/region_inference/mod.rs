@@ -935,14 +935,14 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // reasonably compare free regions and scopes:
                 let fr_scope = match (a, b) {
                     (&ReEarlyBound(ref br), _) | (_, &ReEarlyBound(ref br)) => {
-                        region_rels.region_maps.early_free_extent(self.tcx, br)
+                        region_rels.region_scope_tree.early_free_scope(self.tcx, br)
                     }
                     (&ReFree(ref fr), _) | (_, &ReFree(ref fr)) => {
-                        region_rels.region_maps.free_extent(self.tcx, fr)
+                        region_rels.region_scope_tree.free_scope(self.tcx, fr)
                     }
                     _ => bug!()
                 };
-                let r_id = region_rels.region_maps.nearest_common_ancestor(fr_scope, s_id);
+                let r_id = region_rels.region_scope_tree.nearest_common_ancestor(fr_scope, s_id);
                 if r_id == fr_scope {
                     // if the free region's scope `fr.scope` is bigger than
                     // the scope region `s_id`, then the LUB is the free
@@ -963,7 +963,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // The region corresponding to an outer block is a
                 // subtype of the region corresponding to an inner
                 // block.
-                let lub = region_rels.region_maps.nearest_common_ancestor(a_id, b_id);
+                let lub = region_rels.region_scope_tree.nearest_common_ancestor(a_id, b_id);
                 self.tcx.mk_region(ReScope(lub))
             }
 

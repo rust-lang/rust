@@ -12,7 +12,7 @@
 //! up data structures required by type-checking/translation.
 
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
 use rustc::traits::{self, ObligationCause};
@@ -390,10 +390,10 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Finally, resolve all regions.
-        let region_maps = RegionMaps::default();
+        let region_scope_tree = region::ScopeTree::default();
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
-        infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);
+        infcx.resolve_regions_and_report_errors(impl_did, &region_scope_tree, &free_regions);
 
         CoerceUnsizedInfo {
             custom_kind: kind

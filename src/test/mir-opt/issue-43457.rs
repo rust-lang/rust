@@ -30,14 +30,14 @@ fn main() { }
 //     scope 1 {
 //         let _2: std::cell::RefCell<i32>;
 //     }
-//     let mut _3: std::cell::RefMut<'17dce, i32>;
-//     let mut _4: &'17dce std::cell::RefCell<i32>;
+//     let mut _3: std::cell::RefMut<'17ds, i32>;
+//     let mut _4: &'17ds std::cell::RefCell<i32>;
 //
 //     bb0: {
 //         StorageLive(_2);
 //         _2 = _1;
 //         StorageLive(_4);
-//         _4 = &'17dce _2;
+//         _4 = &'17ds _2;
 //         _3 = const <std::cell::RefCell<T>>::borrow_mut(_4) -> bb1;
 //     }
 //
@@ -47,7 +47,7 @@ fn main() { }
 //
 //     bb2: {
 //         StorageDead(_4);
-//         EndRegion('17dce);
+//         EndRegion('17ds);
 //         _0 = ();
 //         StorageDead(_2);
 //         return;

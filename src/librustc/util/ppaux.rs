@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
-use middle::region::{CodeExtent, BlockRemainder};
+use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
@@ -524,18 +524,18 @@ impl fmt::Display for ty::RegionKind {
             ty::ReSkolemized(_, br) => {
                 write!(f, "{}", br)
             }
-            ty::ReScope(code_extent) if identify_regions() => {
-                match code_extent {
-                    CodeExtent::Misc(id) =>
-                        write!(f, "'{}mce", id.as_usize()),
-                    CodeExtent::CallSiteScope(id) =>
-                        write!(f, "'{}cce", id.as_usize()),
-                    CodeExtent::ParameterScope(id) =>
-                        write!(f, "'{}pce", id.as_usize()),
-                    CodeExtent::DestructionScope(id) =>
-                        write!(f, "'{}dce", id.as_usize()),
-                    CodeExtent::Remainder(BlockRemainder { block, first_statement_index }) =>
-                        write!(f, "'{}_{}rce", block.as_usize(), first_statement_index),
+            ty::ReScope(scope) if identify_regions() => {
+                match scope {
+                    region::Scope::Node(id) =>
+                        write!(f, "'{}s", id.as_usize()),
+                    region::Scope::CallSite(id) =>
+                        write!(f, "'{}cs", id.as_usize()),
+                    region::Scope::Arguments(id) =>
+                        write!(f, "'{}as", id.as_usize()),
+                    region::Scope::Destruction(id) =>
+                        write!(f, "'{}ds", id.as_usize()),
+                    region::Scope::Remainder(BlockRemainder { block, first_statement_index }) =>
+                        write!(f, "'{}_{}rs", block.as_usize(), first_statement_index),
                 }
             }
             ty::ReVar(region_vid) if identify_regions() => {

@@ -10,7 +10,7 @@
 
 use rustc_data_structures::graph;
 use cfg::*;
-use middle::region::CodeExtent;
+use middle::region;
 use ty::{self, TyCtxt};
 use syntax::ptr::P;
 
@@ -579,14 +579,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn add_exiting_edge(&mut self,
                         from_expr: &hir::Expr,
                         from_index: CFGIndex,
-                        target_scope: CodeExtent,
+                        target_scope: region::Scope,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
-        let mut scope = CodeExtent::Misc(from_expr.hir_id.local_id);
-        let region_maps = self.tcx.region_maps(self.owner_def_id);
+        let mut scope = region::Scope::Node(from_expr.hir_id.local_id);
+        let region_scope_tree = self.tcx.region_scope_tree(self.owner_def_id);
         while scope != target_scope {
             data.exiting_scopes.push(scope.item_local_id());
-            scope = region_maps.encl_scope(scope);
+            scope = region_scope_tree.encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);
     }
@@ -606,14 +606,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn find_scope_edge(&self,
                   expr: &hir::Expr,
                   destination: hir::Destination,
-                  scope_cf_kind: ScopeCfKind) -> (CodeExtent, CFGIndex) {
+                  scope_cf_kind: ScopeCfKind) -> (region::Scope, CFGIndex) {
 
         match destination.target_id {
             hir::ScopeTarget::Block(block_expr_id) => {
                 for b in &self.breakable_block_scopes {
                     if b.block_expr_id == self.tcx.hir.node_to_hir_id(block_expr_id).local_id {
                         let scope_id = self.tcx.hir.node_to_hir_id(block_expr_id).local_id;
-                        return (CodeExtent::Misc(scope_id), match scope_cf_kind {
+                        return (region::Scope::Node(scope_id), match scope_cf_kind {
                             ScopeCfKind::Break => b.break_index,
                             ScopeCfKind::Continue => bug!("can't continue to block"),
                         });
@@ -625,7 +625,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 for l in &self.loop_scopes {
                     if l.loop_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
                         let scope_id = self.tcx.hir.node_to_hir_id(loop_id).local_id;
-                        return (CodeExtent::Misc(scope_id), match scope_cf_kind {
+                        return (region::Scope::Node(scope_id), match scope_cf_kind {
                             ScopeCfKind::Break => l.break_index,
                             ScopeCfKind::Continue => l.continue_index,
                         });

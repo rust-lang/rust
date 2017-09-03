@@ -50,12 +50,12 @@ fn main() {
 //         _3 = _2;
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         Validate(Suspend(ReScope(Misc(ItemLocalId(9)))), [(*_3): i32]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(9)))), [(*_3): i32]);
 //         _5 = &ReErased mut (*_3);
-//         Validate(Acquire, [(*_5): i32/ReScope(Misc(ItemLocalId(9)))]);
+//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(9)))]);
 //         _4 = _5 as *mut i32 (Misc);
 //         StorageDead(_5);
-//         EndRegion(ReScope(Misc(ItemLocalId(9))));
+//         EndRegion(ReScope(Node(ItemLocalId(9))));
 //         Validate(Release, [_0: bool, _4: *mut i32]);
 //         _0 = const write_42(_4) -> bb1;
 //     }

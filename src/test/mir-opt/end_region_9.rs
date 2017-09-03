@@ -42,7 +42,7 @@ fn main() {
 //     let mut _0: ();
 //     let mut _1: bool;
 //     let _2: i32;
-//     let mut _4: &'13_0rce i32;
+//     let mut _4: &'13_0rs i32;
 //     let mut _3: ();
 //     let mut _5: !;
 //     let mut _6: ();
@@ -68,14 +68,14 @@ fn main() {
 //        _0 = ();
 //        StorageDead(_7);
 //        StorageDead(_4);
-//        EndRegion('13_0rce);
+//        EndRegion('13_0rs);
 //        StorageDead(_2);
 //        StorageDead(_1);
 //        return;
 //    }
 //
 //    bb3: {
-//        _4 = &'13_0rce _2;
+//        _4 = &'13_0rs _2;
 //        _6 = ();
 //        StorageDead(_7);
 //        _1 = const true;

@@ -143,8 +143,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
         let tcx = self.tcx;
         let param_env = self.param_env;
-        let region_maps = self.tcx.region_maps(item_def_id);
-        euv::ExprUseVisitor::new(self, tcx, param_env, &region_maps, self.tables)
+        let region_scope_tree = self.tcx.region_scope_tree(item_def_id);
+        euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables)
             .consume_body(body);
 
         self.visit_body(body);
