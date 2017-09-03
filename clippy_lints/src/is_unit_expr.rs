@@ -39,20 +39,41 @@ impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Assign(ref _left, ref right) = expr.node {
             if let Some(span) = is_unit_expr(right) {
-                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
+                span_note_and_lint(
+                    cx,
+                    UNIT_EXPR,
+                    expr.span,
+                    "This expression assigns the Unit type ()",
+                    span,
+                    "Consider removing the trailing semicolon",
+                );
             }
         }
         if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
             for ref arg in args {
                 if let Some(span) = is_unit_expr(arg) {
-                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
+                    span_note_and_lint(
+                        cx,
+                        UNIT_EXPR,
+                        expr.span,
+                        "This expression assigns the Unit type ()",
+                        span,
+                        "Consider removing the trailing semicolon",
+                    );
                 }
             }
         }
         if let ExprKind::Call(_, ref args) = expr.node {
             for ref arg in args {
                 if let Some(span) = is_unit_expr(arg) {
-                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
+                    span_note_and_lint(
+                        cx,
+                        UNIT_EXPR,
+                        expr.span,
+                        "This expression assigns the Unit type ()",
+                        span,
+                        "Consider removing the trailing semicolon",
+                    );
                 }
             }
         }
@@ -65,7 +86,14 @@ impl EarlyLintPass for UnitExpr {
             }
             if let Some(ref expr) = local.init {
                 if let Some(span) = is_unit_expr(expr) {
-                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
+                    span_note_and_lint(
+                        cx,
+                        UNIT_EXPR,
+                        expr.span,
+                        "This expression assigns the Unit type ()",
+                        span,
+                        "Consider removing the trailing semicolon",
+                    );
                 }
             }
         }
@@ -84,7 +112,7 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
                 let check_else = is_unit_expr(else_.deref());
                 if let Some(ref expr_else) = check_else {
                     return Some(expr_else.clone());
-                } 
+                }
             }
             if check_then {
                 return Some(expr.span.clone());
@@ -106,17 +134,14 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
 
 fn check_last_stmt_in_block(block: &Block) -> bool {
     let ref final_stmt = &block.stmts[block.stmts.len() - 1];
-    
-    match final_stmt.node{
+
+    match final_stmt.node {
         StmtKind::Expr(_) => return false,
-        StmtKind::Semi(ref expr)=>{
-               match expr.node{
-                ExprKind::Break(_,_) => return false,
-                ExprKind::Ret(_) => return false,
-                _ => return true,
-            }         
+        StmtKind::Semi(ref expr) => match expr.node {
+            ExprKind::Break(_, _) => return false,
+            ExprKind::Ret(_) => return false,
+            _ => return true,
         },
         _ => return true,
     }
-
 }
