@@ -8,6 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(try_trait)]
+
+use std::ops::Try;
+
 fn main() {
+    // error for a `Try` type on a non-`Try` fn
     std::fs::File::open("foo")?;
+
+    // a non-`Try` type on a non-`Try` fn
+    ()?;
+
+    // an unrelated use of `Try`
+    try_trait_generic::<()>();
+}
+
+
+
+fn try_trait_generic<T: Try>() -> T {
+    // and a non-`Try` object on a `Try` fn.
+    ()?;
+
+    loop {}
 }

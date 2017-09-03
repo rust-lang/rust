@@ -12,7 +12,7 @@
 
 #[rustc_on_unimplemented]
 //~^ ERROR E0232
-//~| NOTE attribute requires a value
+//~| NOTE value required here
 //~| NOTE eg `#[rustc_on_unimplemented = "foo"]`
 trait Bar {}
 
