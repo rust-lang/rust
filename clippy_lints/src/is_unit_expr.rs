@@ -49,7 +49,7 @@ impl EarlyLintPass for UnitExpr {
             }
         }
         if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
-            for ref arg in args {
+            for arg in args {
                 if let Some(span) = is_unit_expr(arg) {
                     span_note_and_lint(
                         cx,
@@ -63,7 +63,7 @@ impl EarlyLintPass for UnitExpr {
             }
         }
         if let ExprKind::Call(_, ref args) = expr.node {
-            for ref arg in args {
+            for arg in args {
                 if let Some(span) = is_unit_expr(arg) {
                     span_note_and_lint(
                         cx,
@@ -101,46 +101,45 @@ impl EarlyLintPass for UnitExpr {
 fn is_unit_expr(expr: &Expr) -> Option<Span> {
     match expr.node {
         ExprKind::Block(ref block) => if check_last_stmt_in_block(block) {
-            return Some(block.stmts[block.stmts.len() - 1].span.clone());
+            Some(block.stmts[block.stmts.len() - 1].span)
         } else {
-            return None;
+            None
         },
         ExprKind::If(_, ref then, ref else_) => {
             let check_then = check_last_stmt_in_block(then);
             if let Some(ref else_) = *else_ {
-                let check_else = is_unit_expr(&else_);
+                let check_else = is_unit_expr(else_);
                 if let Some(ref expr_else) = check_else {
-                    return Some(expr_else.clone());
+                    return Some(*expr_else);
                 }
             }
             if check_then {
-                return Some(expr.span.clone());
+                Some(expr.span)
             } else {
-                return None;
+                None
             }
         },
         ExprKind::Match(ref _pattern, ref arms) => {
-            for ref arm in arms {
+            for arm in arms {
                 if let Some(expr) = is_unit_expr(&arm.body) {
                     return Some(expr);
                 }
             }
-            return None;
+            None
         },
-        _ => return None,
+        _ => None,
     }
 }
 
 fn check_last_stmt_in_block(block: &Block) -> bool {
-    let ref final_stmt = &block.stmts[block.stmts.len() - 1];
+    let final_stmt = &block.stmts[block.stmts.len() - 1];
 
     match final_stmt.node {
-        StmtKind::Expr(_) => return false,
+        StmtKind::Expr(_) => false,
         StmtKind::Semi(ref expr) => match expr.node {
-            ExprKind::Break(_, _) => return false,
-            ExprKind::Ret(_) => return false,
-            _ => return true,
+            ExprKind::Break(_, _) | ExprKind::Ret(_) => false,
+            _ => true,
         },
-        _ => return true,
+        _ => true,
     }
 }

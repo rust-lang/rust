@@ -1,19 +1,52 @@
-error: This expression assigns the Unit type ()
-  --> $DIR/is_unit_expr.rs:8:13
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:9:13
    |
-8  |       let x = {
+9  |       let x = {
    |  _____________^
-9  | |         "foo";
-10 | |         "baz";
-11 | |     };
+10 | |         "foo";
+11 | |         "baz";
+12 | |     };
    | |_____^
    |
    = note: `-D unit-expr` implied by `-D warnings`
 note: Consider removing the trailing semicolon
-  --> $DIR/is_unit_expr.rs:10:9
+  --> $DIR/is_unit_expr.rs:11:9
    |
-10 |         "baz";
+11 |         "baz";
    |         ^^^^^^
 
-error: aborting due to previous error
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:23:13
+   |
+23 |       let z = if true{
+   |  _____________^
+24 | |         "foo";
+25 | |     } else{
+26 | |         "bar";
+27 | |     };
+   | |_____^
+   |
+note: Consider removing the trailing semicolon
+  --> $DIR/is_unit_expr.rs:26:9
+   |
+26 |         "bar";
+   |         ^^^^^^
+
+error: This expression evaluates to the Unit type ()
+  --> $DIR/is_unit_expr.rs:39:14
+   |
+39 |       let a3 = match a1 {
+   |  ______________^
+40 | |         Some(x) => {x;},
+41 | |         _ => {0;},
+42 | |     };
+   | |_____^
+   |
+note: Consider removing the trailing semicolon
+  --> $DIR/is_unit_expr.rs:40:21
+   |
+40 |         Some(x) => {x;},
+   |                     ^^
+
+error: aborting due to 3 previous errors
 
