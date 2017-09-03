@@ -61,6 +61,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_sized_raw<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::is_dynsized_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` is `DynSized`", env.value)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::is_freeze_raw<'tcx> {
     fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` is freeze", env.value)

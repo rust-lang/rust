@@ -268,6 +268,7 @@
 #![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
+#![feature(dynsized)]
 #![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
 #![feature(float_from_str_radix)]

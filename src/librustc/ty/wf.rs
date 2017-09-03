@@ -267,6 +267,17 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn require_dynsized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
+        if !subty.has_escaping_regions() {
+            let cause = self.cause(cause);
+            let trait_ref = ty::TraitRef {
+                def_id: self.infcx.tcx.require_lang_item(lang_items::DynSizedTraitLangItem),
+                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
+            };
+            self.out.push(traits::Obligation::new(cause, self.param_env, trait_ref.to_predicate()));
+        }
+    }
+
     /// Push new obligations into `out`. Returns true if it was able
     /// to generate all the predicates needed to validate that `ty0`
     /// is WF. Returns false if `ty0` is an unresolved type variable,
@@ -300,10 +311,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 }
 
                 ty::TyTuple(ref tys, _) => {
-                    if let Some((_last, rest)) = tys.split_last() {
+                    if let Some((last, rest)) = tys.split_last() {
                         for elem in rest {
                             self.require_sized(elem, traits::TupleElem);
                         }
+                        self.require_dynsized(last, traits::FieldDynSized);
                     }
                 }
 

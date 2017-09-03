@@ -230,6 +230,7 @@ language_item_table! {
     F64ImplItem,                     "f64",                     f64_impl;
 
     SizedTraitLangItem,              "sized",                   sized_trait;
+    DynSizedTraitLangItem,           "dynsized",                dynsized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     CloneTraitLangItem,              "clone",                   clone_trait;

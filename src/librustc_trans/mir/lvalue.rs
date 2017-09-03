@@ -239,18 +239,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             return simple();
         }
 
-        // If the type of the last field is [T], str or a foreign type, then we don't need to do
-        // any adjusments
+        // If the type of the last field is [T] or str, then we don't need to do
+        // any adjusments. Otherwise it must be a trait object.
         match field.ty.sty {
-            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
-            _ => ()
-        }
-
-        // There's no metadata available, log the case and just do the GEP.
-        if !self.has_extra() {
-            debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
-                ix, Value(self.llval));
-            return simple();
+            ty::TySlice(..) | ty::TyStr => return simple(),
+            ty::TyDynamic(..) => (),
+            _ => bug!("unexpected DST tail: {:?}", fty.sty),
         }
 
         // We need to get the pointer manually now.
