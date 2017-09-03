@@ -1,0 +1,16 @@
+error: unknown lint: `unit_expr`
+ --> $DIR/is_unit_expr.rs:4:8
+  |
+4 | #[warn(unit_expr)]
+  |        ^^^^^^^^^
+  |
+  = note: `-D unknown-lints` implied by `-D warnings`
+
+error: unknown lint: `no_effect`
+ --> $DIR/is_unit_expr.rs:6:9
+  |
+6 | #[allow(no_effect)]
+  |         ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
