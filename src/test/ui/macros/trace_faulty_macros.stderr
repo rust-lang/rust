@@ -45,4 +45,3 @@ note: trace_macro
    = note: expanding `my_recursive_macro! {  }`
    = note: to `my_recursive_macro ! (  ) ;`
 
-   
