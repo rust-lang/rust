@@ -182,12 +182,18 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             match *qpath {
                 QPath::Resolved(Some(ref ty), ref p) => {
                     check_ty(cx, ty, is_local);
-                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types.iter()) {
+                    for ty in p.segments.iter().flat_map(
+                        |seg| seg.parameters.types.iter(),
+                    )
+                    {
                         check_ty(cx, ty, is_local);
                     }
                 },
                 QPath::Resolved(None, ref p) => {
-                    for ty in p.segments.iter().flat_map(|seg| seg.parameters.types.iter()) {
+                    for ty in p.segments.iter().flat_map(
+                        |seg| seg.parameters.types.iter(),
+                    )
+                    {
                         check_ty(cx, ty, is_local);
                     }
                 },
@@ -523,21 +529,25 @@ declare_lint! {
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
     match typ.sty {
-        ty::TyInt(i) => match i {
-            IntTy::Is => tcx.data_layout.pointer_size.bits(),
-            IntTy::I8 => 8,
-            IntTy::I16 => 16,
-            IntTy::I32 => 32,
-            IntTy::I64 => 64,
-            IntTy::I128 => 128,
+        ty::TyInt(i) => {
+            match i {
+                IntTy::Is => tcx.data_layout.pointer_size.bits(),
+                IntTy::I8 => 8,
+                IntTy::I16 => 16,
+                IntTy::I32 => 32,
+                IntTy::I64 => 64,
+                IntTy::I128 => 128,
+            }
         },
-        ty::TyUint(i) => match i {
-            UintTy::Us => tcx.data_layout.pointer_size.bits(),
-            UintTy::U8 => 8,
-            UintTy::U16 => 16,
-            UintTy::U32 => 32,
-            UintTy::U64 => 64,
-            UintTy::U128 => 128,
+        ty::TyUint(i) => {
+            match i {
+                UintTy::Us => tcx.data_layout.pointer_size.bits(),
+                UintTy::U8 => 8,
+                UintTy::U16 => 16,
+                UintTy::U32 => 32,
+                UintTy::U64 => 64,
+                UintTy::U128 => 128,
+            }
         },
         _ => 0,
     }
@@ -583,14 +593,14 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
 }
 
 fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
-    span_lint_and_sugg(cx,
-                       CAST_LOSSLESS,
-                       expr.span,
-                       &format!("casting {} to {} may become silently lossy if types change",
-                               cast_from,
-                               cast_to),
-                       "try",
-                       format!("{}::from({})", cast_to, &snippet(cx, op.span, "..")));
+    span_lint_and_sugg(
+        cx,
+        CAST_LOSSLESS,
+        expr.span,
+        &format!("casting {} to {} may become silently lossy if types change", cast_from, cast_to),
+        "try",
+        format!("{}::from({})", cast_to, &snippet(cx, op.span, "..")),
+    );
 }
 
 enum ArchSuffix {
@@ -680,8 +690,9 @@ fn check_lossless(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_
     let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
     let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) &&
-       from_nbits < to_nbits && !cast_signed_to_unsigned {
+    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) && from_nbits < to_nbits &&
+        !cast_signed_to_unsigned
+    {
         span_lossless_lint(cx, expr, op, cast_from, cast_to);
     }
 }
@@ -776,7 +787,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             );
                         }
                         if let (&ty::TyFloat(FloatTy::F32), &ty::TyFloat(FloatTy::F64)) =
-                            (&cast_from.sty, &cast_to.sty) {
+                            (&cast_from.sty, &cast_to.sty)
+                        {
                             span_lossless_lint(cx, expr, ex, cast_from, cast_to);
                         }
                     },
@@ -1011,7 +1023,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
 /// **Known problems:** For `usize` the size of the current compile target will
 /// be assumed (e.g. 64 bits on 64 bit systems). This means code that uses such
 /// a comparison to detect target pointer width will trigger this lint. One can
-/// use `mem::sizeof` and compare its value or conditional compilation attributes
+/// use `mem::sizeof` and compare its value or conditional compilation
+/// attributes
 /// like `#[cfg(target_pointer_width = "64")] ..` instead.
 ///
 /// **Example:**
@@ -1209,7 +1222,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 /// will mistakenly imply that it is possible for `x` to be outside the range of
 /// `u8`.
 ///
-/// **Known problems:** https://github.com/rust-lang-nursery/rust-clippy/issues/886
+/// **Known problems:**
+/// https://github.com/rust-lang-nursery/rust-clippy/issues/886
 ///
 /// **Example:**
 /// ```rust
@@ -1290,9 +1304,18 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
             ty::TyInt(int_ty) => {
                 Some(match int_ty {
                     IntTy::I8 => (FullInt::S(i128::from(i8::min_value())), FullInt::S(i128::from(i8::max_value()))),
-                    IntTy::I16 => (FullInt::S(i128::from(i16::min_value())), FullInt::S(i128::from(i16::max_value()))),
-                    IntTy::I32 => (FullInt::S(i128::from(i32::min_value())), FullInt::S(i128::from(i32::max_value()))),
-                    IntTy::I64 => (FullInt::S(i128::from(i64::min_value())), FullInt::S(i128::from(i64::max_value()))),
+                    IntTy::I16 => (
+                        FullInt::S(i128::from(i16::min_value())),
+                        FullInt::S(i128::from(i16::max_value())),
+                    ),
+                    IntTy::I32 => (
+                        FullInt::S(i128::from(i32::min_value())),
+                        FullInt::S(i128::from(i32::max_value())),
+                    ),
+                    IntTy::I64 => (
+                        FullInt::S(i128::from(i64::min_value())),
+                        FullInt::S(i128::from(i64::max_value())),
+                    ),
                     IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
                     IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
                 })
@@ -1300,9 +1323,18 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
             ty::TyUint(uint_ty) => {
                 Some(match uint_ty {
                     UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
-                    UintTy::U16 => (FullInt::U(u128::from(u16::min_value())), FullInt::U(u128::from(u16::max_value()))),
-                    UintTy::U32 => (FullInt::U(u128::from(u32::min_value())), FullInt::U(u128::from(u32::max_value()))),
-                    UintTy::U64 => (FullInt::U(u128::from(u64::min_value())), FullInt::U(u128::from(u64::max_value()))),
+                    UintTy::U16 => (
+                        FullInt::U(u128::from(u16::min_value())),
+                        FullInt::U(u128::from(u16::max_value())),
+                    ),
+                    UintTy::U32 => (
+                        FullInt::U(u128::from(u32::min_value())),
+                        FullInt::U(u128::from(u32::max_value())),
+                    ),
+                    UintTy::U64 => (
+                        FullInt::U(u128::from(u64::min_value())),
+                        FullInt::U(u128::from(u64::max_value())),
+                    ),
                     UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
                     UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
                 })

@@ -42,7 +42,7 @@ impl EarlyLintPass for UnitExpr {
                     cx,
                     UNIT_EXPR,
                     expr.span,
-                        "This expression evaluates to the Unit type ()",
+                    "This expression evaluates to the Unit type ()",
                     span,
                     "Consider removing the trailing semicolon",
                 );
@@ -100,10 +100,12 @@ impl EarlyLintPass for UnitExpr {
 }
 fn is_unit_expr(expr: &Expr) -> Option<Span> {
     match expr.node {
-        ExprKind::Block(ref block) => if check_last_stmt_in_block(block) {
-            Some(block.stmts[block.stmts.len() - 1].span)
-        } else {
-            None
+        ExprKind::Block(ref block) => {
+            if check_last_stmt_in_block(block) {
+                Some(block.stmts[block.stmts.len() - 1].span)
+            } else {
+                None
+            }
         },
         ExprKind::If(_, ref then, ref else_) => {
             let check_then = check_last_stmt_in_block(then);
@@ -113,11 +115,7 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
                     return Some(*expr_else);
                 }
             }
-            if check_then {
-                Some(expr.span)
-            } else {
-                None
-            }
+            if check_then { Some(expr.span) } else { None }
         },
         ExprKind::Match(ref _pattern, ref arms) => {
             for arm in arms {
@@ -135,12 +133,16 @@ fn check_last_stmt_in_block(block: &Block) -> bool {
     let final_stmt = &block.stmts[block.stmts.len() - 1];
 
 
-    //Made a choice here to risk false positives on divergent macro invocations like `panic!()`
+    // Made a choice here to risk false positives on divergent macro invocations
+    // like `panic!()`
     match final_stmt.node {
         StmtKind::Expr(_) => false,
-        StmtKind::Semi(ref expr) => match expr.node {
-            ExprKind::Break(_, _) | ExprKind::Ret(_) => false,
-            _ => true,
+        StmtKind::Semi(ref expr) => {
+            match expr.node {
+                ExprKind::Break(_, _) |
+                ExprKind::Ret(_) => false,
+                _ => true,
+            }
         },
         _ => true,
     }

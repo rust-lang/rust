@@ -8,7 +8,8 @@ use syntax_pos::symbol::keywords::SelfType;
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
 ///
-/// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct name
+/// **Why is this bad?** Unnecessary repetition. Mixed use of `Self` and struct
+/// name
 /// feels inconsistent.
 ///
 /// **Known problems:** None.
@@ -78,11 +79,7 @@ struct UseSelfVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: NodeId) {
-        if self.item_path.def == path.def &&
-           path.segments
-            .last()
-            .expect(SEGMENTS_MSG)
-            .name != SelfType.name() {
+        if self.item_path.def == path.def && path.segments.last().expect(SEGMENTS_MSG).name != SelfType.name() {
             span_lint_and_then(self.cx, USE_SELF, path.span, "unnecessary structure name repetition", |db| {
                 db.span_suggestion(path.span, "use the applicable keyword", "Self".to_owned());
             });

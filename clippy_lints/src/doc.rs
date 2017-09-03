@@ -94,10 +94,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             return (
                 doc.to_owned(),
                 vec![
-                    (
-                        doc.len(),
-                        span.with_lo(span.lo() + BytePos(prefix.len() as u32)),
-                    ),
+                    (doc.len(), span.with_lo(span.lo() + BytePos(prefix.len() as u32))),
                 ],
             );
         }
@@ -112,10 +109,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             debug_assert_eq!(offset as u32 as usize, offset);
             contains_initial_stars |= line.trim_left().starts_with('*');
             // +1 for the newline
-            sizes.push((
-                line.len() + 1,
-                span.with_lo(span.lo() + BytePos(offset as u32)),
-            ));
+            sizes.push((line.len() + 1, span.with_lo(span.lo() + BytePos(offset as u32))));
         }
         if !contains_initial_stars {
             return (doc.to_string(), sizes);

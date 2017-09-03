@@ -8,7 +8,8 @@ use utils::{span_lint_and_then, in_macro, snippet};
 
 /// **What it does:** Checks for useless borrowed references.
 ///
-/// **Why is this bad?** It is mostly useless and make the code look more complex than it
+/// **Why is this bad?** It is mostly useless and make the code look more
+/// complex than it
 /// actually is.
 ///
 /// **Known problems:** It seems that the `&ref` pattern is sometimes useful.
@@ -21,12 +22,14 @@ use utils::{span_lint_and_then, in_macro, snippet};
 ///
 /// fn foo(a: &Animal, b: &Animal) {
 ///     match (a, b) {
-///         (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime mismatch error
+/// (&Animal::Cat(v), k) | (k, &Animal::Cat(v)) => (), // lifetime
+/// mismatch error
 ///         (&Animal::Dog(ref c), &Animal::Dog(_)) => ()
 ///     }
 /// }
 /// ```
-/// There is a lifetime mismatch error for `k` (indeed a and b have distinct lifetime).
+/// There is a lifetime mismatch error for `k` (indeed a and b have distinct
+/// lifetime).
 /// This can be fixed by using the `&ref` pattern.
 /// However, the code can also be fixed by much cleaner ways
 ///
@@ -77,4 +80,3 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
         }}
     }
 }
-

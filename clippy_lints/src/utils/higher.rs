@@ -92,7 +92,9 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                     end: get_field("end", fields),
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE) {
+            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) ||
+                       match_qpath(path, &paths::RANGE_TO_INCLUSIVE)
+            {
                 Some(Range {
                     start: None,
                     end: get_field("end", fields),

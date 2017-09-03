@@ -252,7 +252,7 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
         hir::ExprYield(ref sub) => {
             println!("{}Yield", ind);
             print_expr(cx, sub, indent + 1);
-        }
+        },
         hir::ExprBlock(_) => {
             println!("{}Block", ind);
         },

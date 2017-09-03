@@ -97,19 +97,25 @@ fn get_pat_name(pat: &Pat) -> Option<Name> {
     match pat.node {
         PatKind::Binding(_, _, ref spname, _) => Some(spname.node),
         PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
-        PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
-        _ => None
+        PatKind::Box(ref p) |
+        PatKind::Ref(ref p, _) => get_pat_name(&*p),
+        _ => None,
     }
 }
 
 fn get_path_name(expr: &Expr) -> Option<Name> {
     match expr.node {
-        ExprBox(ref e) | ExprAddrOf(_, ref e) | ExprUnary(UnOp::UnDeref, ref e) => get_path_name(e),
-        ExprBlock(ref b) => if b.stmts.is_empty() {
-            b.expr.as_ref().and_then(|p| get_path_name(p))
-        } else { None },
+        ExprBox(ref e) |
+        ExprAddrOf(_, ref e) |
+        ExprUnary(UnOp::UnDeref, ref e) => get_path_name(e),
+        ExprBlock(ref b) => {
+            if b.stmts.is_empty() {
+                b.expr.as_ref().and_then(|p| get_path_name(p))
+            } else {
+                None
+            }
+        },
         ExprPath(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
-        _ => None
+        _ => None,
     }
 }
-

@@ -390,4 +390,3 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 fn path_eq_name(name: Name, path: &Path) -> bool {
     !path.is_global() && path.segments.len() == 1 && path.segments[0].name.as_str() == name.as_str()
 }
-

@@ -121,11 +121,7 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.id) &&
-        trait_items
-            .iter()
-            .any(|i| is_named_self(cx, i, "len"))
-    {
+    if cx.access_levels.is_exported(visited_trait.id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
         let mut current_and_super_traits = HashSet::new();
         fill_trait_set(visited_trait, &mut current_and_super_traits, cx);
 

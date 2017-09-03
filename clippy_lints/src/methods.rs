@@ -1463,14 +1463,15 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
                     if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
                         let path = &ptr.trait_ref.path;
                         match_path(path, name) &&
-                            path.segments.last().map_or(false, |s| {
-                                if s.parameters.parenthesized {
+                            path.segments.last().map_or(
+                                false,
+                                |s| if s.parameters.parenthesized {
                                     false
                                 } else {
                                     s.parameters.types.len() == 1 &&
                                         (is_self_ty(&s.parameters.types[0]) || is_ty(&*s.parameters.types[0], self_ty))
-                                }
-                            })
+                                },
+                            )
                     } else {
                         false
                     }
