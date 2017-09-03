@@ -43,7 +43,7 @@ mechanism.
 Such a declaration looks like this:
 
 ```rust
-pub unsafe extern "C" fn func(arg: T, arg2: T2, args: ...) {
+pub unsafe extern "C" fn func(arg: T, arg2: T2, mut args: ...) {
     // implementation
 }
 ```
@@ -137,7 +137,7 @@ Sample Rust code exposing a variadic function:
 use std::intrinsics::VaArg;
 
 #[no_mangle]
-pub unsafe extern "C" fn func(fixed: u32, args: ...) {
+pub unsafe extern "C" fn func(fixed: u32, mut args: ...) {
     let x: u8 = args.arg();
     let y: u16 = args.arg();
     let z: u32 = args.arg();
