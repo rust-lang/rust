@@ -219,15 +219,15 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
                     return MaybeInfinite.and(is_infinite(cx, &args[0]));
                 }
             }
-            if method.name == "last" && args.len() == 1 &&
-                get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR).map_or(
-                    false,
-                    |id| {
+            if method.name == "last" && args.len() == 1 {
+                let not_double_ended = get_trait_def_id(cx,
+                                        &paths::DOUBLE_ENDED_ITERATOR)
+                                        .map_or(false, |id| {
                         !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[])
-                    },
-                )
-            {
-                return is_infinite(cx, &args[0]);
+                });
+                if not_double_ended {
+                    return is_infinite(cx, &args[0]); 
+                }
             }
         },
         ExprBinary(op, ref l, ref r) => {
