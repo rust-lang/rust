@@ -95,13 +95,16 @@ impl VaArg for i16;
 impl VaArg for i32;
 impl VaArg for i64;
 impl VaArg for isize;
+
 impl VaArg for u8;
 impl VaArg for u16;
 impl VaArg for u32;
 impl VaArg for u64;
 impl VaArg for usize;
+
 impl VaArg for f32;
 impl VaArg for f64;
+
 impl<T> VaArg for *const T;
 impl<T> VaArg for *mut T;
 ```
@@ -113,24 +116,34 @@ the raw C types corresponding to the Rust integer and float types above:
 impl VaArg for c_char;
 impl VaArg for c_schar;
 impl VaArg for c_uchar;
+
 impl VaArg for c_short;
-impl VaArg for c_int;
-impl VaArg for c_long;
-impl VaArg for c_longlong;
 impl VaArg for c_ushort;
+
+impl VaArg for c_int;
 impl VaArg for c_uint;
+
+impl VaArg for c_long;
 impl VaArg for c_ulong;
+
+impl VaArg for c_longlong;
 impl VaArg for c_ulonglong;
+
 impl VaArg for c_float;
 impl VaArg for c_double;
+
 impl VaArg for int8_t;
 impl VaArg for int16_t;
 impl VaArg for int32_t;
 impl VaArg for int64_t;
+
 impl VaArg for uint8_t;
 impl VaArg for uint16_t;
 impl VaArg for uint32_t;
 impl VaArg for uint64_t;
+
+impl VaArg for size_t;
+impl VaArg for ssize_t;
 ```
 
 Note that extracting an argument from a `VaList` follows the platform-specific
