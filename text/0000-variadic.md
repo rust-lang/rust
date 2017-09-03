@@ -70,7 +70,7 @@ impl<'a> VaList<'a> {
     pub unsafe fn start() -> VaList<'a>;
 
     /// Extract the next argument from the argument list.
-    pub unsafe fn<T: VaArg> arg(&mut self) -> T;
+    pub unsafe fn arg<T: VaArg>(&mut self) -> T;
 }
 
 impl<'a> Clone for VaList<'a>;
