@@ -50,7 +50,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone(), expr_span);
 
-        if !expr_ty.is_never() && temp_lifetime.is_some() {
+        if !expr_ty.is_never() {
             this.cfg.push(block, Statement {
                 source_info,
                 kind: StatementKind::StorageLive(temp.clone())

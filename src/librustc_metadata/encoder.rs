@@ -793,7 +793,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => {
                 EntryKind::AssociatedConst(container,
-                    self.tcx.at(ast_item.span).mir_const_qualif(def_id))
+                    self.tcx.at(ast_item.span).mir_const_qualif(def_id).0)
             }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
@@ -912,7 +912,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
             hir::ItemConst(..) => {
-                EntryKind::Const(tcx.at(item.span).mir_const_qualif(def_id))
+                EntryKind::Const(tcx.at(item.span).mir_const_qualif(def_id).0)
             }
             hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
@@ -1256,7 +1256,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let body = tcx.hir.body_owned_by(id);
 
         Entry {
-            kind: EntryKind::Const(tcx.mir_const_qualif(def_id)),
+            kind: EntryKind::Const(tcx.mir_const_qualif(def_id).0),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),
