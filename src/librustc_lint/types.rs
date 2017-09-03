@@ -543,6 +543,18 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                            `u32` or `libc::wchar_t` should be used")
             }
 
+            ty::TyInt(ast::IntTy::I128) => {
+                FfiUnsafe("found Rust type `i128` in foreign module, but \
+                           128-bit integers don't currently have a known \
+                           stable ABI")
+            }
+
+            ty::TyUint(ast::UintTy::U128) => {
+                FfiUnsafe("found Rust type `u128` in foreign module, but \
+                           128-bit integers don't currently have a known \
+                           stable ABI")
+            }
+
             // Primitive types with a stable representation.
             ty::TyBool | ty::TyInt(..) | ty::TyUint(..) | ty::TyFloat(..) | ty::TyNever => FfiSafe,
 
