@@ -4,18 +4,21 @@ use std::ops::Deref;
 use syntax::ext::quote::rt::Span;
 
 
-/// **What it does:** Checks for 
+/// **What it does:** Checks for
 ///  - () being assigned to a variable
 ///  - () being passed to a function
 ///
-/// **Why is this bad?** It is extremely unlikely that a user intended to assign '()' to valiable. Instead,
-///   Unit is what a block evaluates to when it returns nothing. This is typically caused by a trailing 
-///   unintended semicolon. 
+/// **Why is this bad?** It is extremely unlikely that a user intended to
+/// assign '()' to valiable. Instead,
+/// Unit is what a block evaluates to when it returns nothing. This is
+/// typically caused by a trailing
+///   unintended semicolon.
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
-/// * `let x = {"foo" ;}` when the user almost certainly intended `let x ={"foo"}`
+/// * `let x = {"foo" ;}` when the user almost certainly intended `let x
+/// ={"foo"}`
 
 declare_lint! {
     pub UNIT_EXPR,
@@ -35,81 +38,79 @@ impl LintPass for UnitExpr {
 impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Assign(ref _left, ref right) = expr.node {
-            if let Some(span) = is_unit_expr(right){
-                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+            if let Some(span) = is_unit_expr(right) {
+                cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
             }
         }
         if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
-            for ref arg in args{
-                if let Some(span) = is_unit_expr(arg){
+            for ref arg in args {
+                if let Some(span) = is_unit_expr(arg) {
                     cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
-                }            
+                }
             }
         }
-        if let ExprKind::Call( _, ref args) = expr.node{
-            for ref arg in args{
-                if let Some(span) = is_unit_expr(arg){
-                       cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
-                }            
-            }        
+        if let ExprKind::Call(_, ref args) = expr.node {
+            for ref arg in args {
+                if let Some(span) = is_unit_expr(arg) {
+                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                }
+            }
         }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext, stmt: &Stmt) {
-        if let StmtKind::Local(ref local) = stmt.node{
-            if local.pat.node == PatKind::Wild {return;}
-            if let Some(ref expr) = local.init{
-                if let Some(span) = is_unit_expr(expr){
-                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");  
+        if let StmtKind::Local(ref local) = stmt.node {
+            if local.pat.node == PatKind::Wild {
+                return;
             }
+            if let Some(ref expr) = local.init {
+                if let Some(span) = is_unit_expr(expr) {
+                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                }
+            }
+        }
     }
 }
-}
-}
-fn is_unit_expr(expr: &Expr)->Option<Span>{
-    match expr.node{
-         ExprKind::Block(ref block) => {
-             if check_last_stmt_in_block(block){
-                 return Some(block.stmts[block.stmts.len()-1].span.clone());
-             } else{
-                 return None;
-             }
+fn is_unit_expr(expr: &Expr) -> Option<Span> {
+    match expr.node {
+        ExprKind::Block(ref block) => if check_last_stmt_in_block(block) {
+            return Some(block.stmts[block.stmts.len() - 1].span.clone());
+        } else {
+            return None;
         },
-        ExprKind::If(_, ref then, ref else_)=>{
+        ExprKind::If(_, ref then, ref else_) => {
             let check_then = check_last_stmt_in_block(then);
-            if let Some(ref else_) = *else_{
+            if let Some(ref else_) = *else_ {
                 let check_else = is_unit_expr(else_.deref());
-                if let Some(ref expr_else) = check_else{
+                if let Some(ref expr_else) = check_else {
                     return Some(expr_else.clone());
-                }else{
+                } else {
                     return Some(expr.span.clone());
                 }
-            } 
-            if check_then { 
+            }
+            if check_then {
                 return Some(expr.span.clone());
-
-            } else{
+            } else {
                 return Some(expr.span.clone());
             }
         },
-        ExprKind::Match(ref _pattern, ref arms ) =>{
-            for ref arm in arms{
-                if let Some(expr) = is_unit_expr(&arm.body){
+        ExprKind::Match(ref _pattern, ref arms) => {
+            for ref arm in arms {
+                if let Some(expr) = is_unit_expr(&arm.body) {
                     return Some(expr);
                 }
             }
             return None;
-        }
+        },
         _ => return None,
     }
 }
 
-fn check_last_stmt_in_block(block: &Block)->bool{
-    let ref final_stmt = &block.stmts[block.stmts.len()-1];
-        if let StmtKind::Expr(_) = final_stmt.node{
-                return false;
-            }
-            else{
-              return true; 
-            }
+fn check_last_stmt_in_block(block: &Block) -> bool {
+    let ref final_stmt = &block.stmts[block.stmts.len() - 1];
+    if let StmtKind::Expr(_) = final_stmt.node {
+        return false;
+    } else {
+        return true;
+    }
 }
