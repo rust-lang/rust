@@ -14,12 +14,14 @@ use self::RootUnsafeContext::*;
 
 use ty::{self, TyCtxt};
 use lint;
+use lint::builtin::UNUSED_UNSAFE;
 
-use syntax::ast;
-use syntax_pos::Span;
-use hir::{self, PatKind};
 use hir::def::Def;
 use hir::intravisit::{self, FnKind, Visitor, NestedVisitorMap};
+use hir::{self, PatKind};
+use syntax::ast;
+use syntax_pos::Span;
+use util::nodemap::FxHashSet;
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -47,6 +49,7 @@ struct EffectCheckVisitor<'a, 'tcx: 'a> {
 
     /// Whether we're in an unsafe context.
     unsafe_context: UnsafeContext,
+    used_unsafe: FxHashSet<ast::NodeId>,
 }
 
 impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
@@ -73,7 +76,7 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
             UnsafeBlock(block_id) => {
                 // OK, but record this.
                 debug!("effect: recording unsafe block as used: {}", block_id);
-                self.tcx.used_unsafe.borrow_mut().insert(block_id);
+                self.used_unsafe.insert(block_id);
             }
             UnsafeFn => {}
         }
@@ -159,7 +162,48 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 
         intravisit::walk_block(self, block);
 
-        self.unsafe_context = old_unsafe_context
+        self.unsafe_context = old_unsafe_context;
+
+        // Don't warn about generated blocks, that'll just pollute the output.
+        match block.rules {
+            hir::UnsafeBlock(hir::UserProvided) => {}
+            _ => return,
+        }
+        if self.used_unsafe.contains(&block.id) {
+            return
+        }
+
+        /// Return the NodeId for an enclosing scope that is also `unsafe`
+        fn is_enclosed(tcx: TyCtxt,
+                       used_unsafe: &FxHashSet<ast::NodeId>,
+                       id: ast::NodeId) -> Option<(String, ast::NodeId)> {
+            let parent_id = tcx.hir.get_parent_node(id);
+            if parent_id != id {
+                if used_unsafe.contains(&parent_id) {
+                    Some(("block".to_string(), parent_id))
+                } else if let Some(hir::map::NodeItem(&hir::Item {
+                    node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
+                    ..
+                })) = tcx.hir.find(parent_id) {
+                    Some(("fn".to_string(), parent_id))
+                } else {
+                    is_enclosed(tcx, used_unsafe, parent_id)
+                }
+            } else {
+                None
+            }
+        }
+
+        let mut db = self.tcx.struct_span_lint_node(UNUSED_UNSAFE,
+                                                    block.id,
+                                                    block.span,
+                                                    "unnecessary `unsafe` block");
+        db.span_label(block.span, "unnecessary `unsafe` block");
+        if let Some((kind, id)) = is_enclosed(self.tcx, &self.used_unsafe, block.id) {
+            db.span_note(self.tcx.hir.span(id),
+                         &format!("because it's nested under this `unsafe` {}", kind));
+        }
+        db.emit();
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
@@ -265,6 +309,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         tables: &ty::TypeckTables::empty(None),
         body_id: hir::BodyId { node_id: ast::CRATE_NODE_ID },
         unsafe_context: UnsafeContext::new(SafeContext),
+        used_unsafe: FxHashSet(),
     };
 
     tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());

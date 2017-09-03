@@ -205,60 +205,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 }
 
 declare_lint! {
-    pub UNUSED_UNSAFE,
-    Warn,
-    "unnecessary use of an `unsafe` block"
-}
-
-#[derive(Copy, Clone)]
-pub struct UnusedUnsafe;
-
-impl LintPass for UnusedUnsafe {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_UNSAFE)
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        /// Return the NodeId for an enclosing scope that is also `unsafe`
-        fn is_enclosed(cx: &LateContext, id: ast::NodeId) -> Option<(String, ast::NodeId)> {
-            let parent_id = cx.tcx.hir.get_parent_node(id);
-            if parent_id != id {
-                if cx.tcx.used_unsafe.borrow().contains(&parent_id) {
-                    Some(("block".to_string(), parent_id))
-                } else if let Some(hir::map::NodeItem(&hir::Item {
-                    node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
-                    ..
-                })) = cx.tcx.hir.find(parent_id) {
-                    Some(("fn".to_string(), parent_id))
-                } else {
-                    is_enclosed(cx, parent_id)
-                }
-            } else {
-                None
-            }
-        }
-        if let hir::ExprBlock(ref blk) = e.node {
-            // Don't warn about generated blocks, that'll just pollute the output.
-            if blk.rules == hir::UnsafeBlock(hir::UserProvided) &&
-               !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
-
-                let mut db = cx.struct_span_lint(UNUSED_UNSAFE, blk.span,
-                                                 "unnecessary `unsafe` block");
-
-                db.span_label(blk.span, "unnecessary `unsafe` block");
-                if let Some((kind, id)) = is_enclosed(cx, blk.id) {
-                    db.span_note(cx.tcx.hir.span(id),
-                                 &format!("because it's nested under this `unsafe` {}", kind));
-                }
-                db.emit();
-            }
-        }
-    }
-}
-
-declare_lint! {
     pub PATH_STATEMENTS,
     Warn,
     "path statements with no effect"
