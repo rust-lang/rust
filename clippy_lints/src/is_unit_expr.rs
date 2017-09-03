@@ -106,9 +106,17 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
 
 fn check_last_stmt_in_block(block: &Block) -> bool {
     let ref final_stmt = &block.stmts[block.stmts.len() - 1];
-    if let StmtKind::Expr(_) = final_stmt.node {
-        return false;
-    } else {
-        return true;
+    
+    match final_stmt.node{
+        StmtKind::Expr(_) => return false,
+        StmtKind::Semi(ref expr)=>{
+               match expr.node{
+                ExprKind::Break(_,_) => return false,
+                ExprKind::Ret(_) => return false,
+                _ => return true,
+            }         
+        },
+        _ => return true,
     }
+
 }
