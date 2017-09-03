@@ -54,17 +54,6 @@ such a function as a symbol for C code to call directly, the function may want
 to use `#[no_mangle]` as well; however, Rust code may also pass the function to
 C code expecting a function pointer to a variadic function.
 
-Unsafe Rust code can also define a variadic closure:
-
-```rust
-let closure = |arg, arg2, ...| {
-    // implementation
-};
-```
-
-Rust code may pass a variadic closure to C code expecting a pointer to a
-variadic function.
-
 To access the arguments, Rust provides the following public interfaces in
 `core::intrinsics` (also available via `std::intrinsics`):
 
@@ -285,3 +274,7 @@ closely matching the underlying C interface seems appropriate.
 When implementing this feature, we will need to determine whether the compiler
 can provide an appropriate lifetime that prevents a `VaList` from outliving its
 corresponding variadic function.
+
+Currently, Rust does not allow passing a closure to C code expecting a pointer
+to an `extern "C"` function. If this becomes possible in the future, then
+variadic closures would become useful, and we should add them at that time.
