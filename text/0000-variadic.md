@@ -77,25 +77,25 @@ impl<'a> Clone for VaList<'a>;
 impl<'a> Drop for VaList<'a>;
 
 /// The type of arguments extractable from VaList
-trait VaArg;
+unsafe trait VaArg;
 
-impl VaArg for i8;
-impl VaArg for i16;
-impl VaArg for i32;
-impl VaArg for i64;
-impl VaArg for isize;
+unsafe impl VaArg for i8;
+unsafe impl VaArg for i16;
+unsafe impl VaArg for i32;
+unsafe impl VaArg for i64;
+unsafe impl VaArg for isize;
 
-impl VaArg for u8;
-impl VaArg for u16;
-impl VaArg for u32;
-impl VaArg for u64;
-impl VaArg for usize;
+unsafe impl VaArg for u8;
+unsafe impl VaArg for u16;
+unsafe impl VaArg for u32;
+unsafe impl VaArg for u64;
+unsafe impl VaArg for usize;
 
-impl VaArg for f32;
-impl VaArg for f64;
+unsafe impl VaArg for f32;
+unsafe impl VaArg for f64;
 
-impl<T> VaArg for *const T;
-impl<T> VaArg for *mut T;
+unsafe impl<T> VaArg for *const T;
+unsafe impl<T> VaArg for *mut T;
 ```
 
 All of the corresponding C integer and float types defined in the `libc` crate
