@@ -471,7 +471,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         };
                         (Base::Value(llprojected), llextra)
                     }
-                    mir::ProjectionElem::Index(ref index) => {
+                    mir::ProjectionElem::Index(index) => {
+                        let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
                         let llindex = self.const_operand(index, span)?.llval;
 
                         let iv = if let Some(iv) = common::const_to_opt_u128(llindex, false) {

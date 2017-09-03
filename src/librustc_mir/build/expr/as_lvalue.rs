@@ -61,7 +61,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // region_scope=None so lvalue indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
-                let idx = unpack!(block = this.as_operand(block, None, index));
+                let idx = unpack!(block = this.as_temp(block, None, index));
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone(), expr_span),
@@ -70,12 +70,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len
                                      &lt, Rvalue::BinaryOp(BinOp::Lt,
-                                                           idx.clone(),
+                                                           Operand::Consume(Lvalue::Local(idx)),
                                                            Operand::Consume(len.clone())));
 
                 let msg = AssertMessage::BoundsCheck {
                     len: Operand::Consume(len),
-                    index: idx.clone()
+                    index: Operand::Consume(Lvalue::Local(idx))
                 };
                 let success = this.assert(block, Operand::Consume(lt), true,
                                           msg, expr_span);
@@ -127,7 +127,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(Category::Lvalue) => false,
                     _ => true,
                 });
-                this.as_temp(block, expr.temp_lifetime, expr)
+                let temp = unpack!(block = this.as_temp(block, expr.temp_lifetime, expr));
+                block.and(Lvalue::Local(temp))
             }
         }
     }

@@ -1077,12 +1077,12 @@ pub enum ProjectionElem<'tcx, V, T> {
 }
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 newtype_index!(Field, "field");
 
@@ -1099,7 +1099,7 @@ impl<'tcx> Lvalue<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, index: Operand<'tcx>) -> Lvalue<'tcx> {
+    pub fn index(self, index: Local) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Index(index))
     }
 

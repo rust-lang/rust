@@ -479,9 +479,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
     fn array_shim(&mut self, ty: ty::Ty<'tcx>, len: usize) {
         let tcx = self.tcx;
+        let span = self.span;
         let rcvr = Lvalue::Local(Local::new(1+0)).deref();
 
-        let beg = self.make_lvalue(Mutability::Mut, tcx.types.usize);
+        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let end = self.make_lvalue(Mutability::Not, tcx.types.usize);
         let ret = self.make_lvalue(Mutability::Mut, tcx.mk_array(ty, len));
 
@@ -492,7 +493,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         let inits = vec![
             self.make_statement(
                 StatementKind::Assign(
-                    beg.clone(),
+                    Lvalue::Local(beg),
                     Rvalue::Use(Operand::Constant(self.make_usize(0)))
                 )
             ),
@@ -510,19 +511,19 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         //     BB #3;
         // }
         // BB #4;
-        self.loop_header(beg.clone(), end, BasicBlock::new(2), BasicBlock::new(4), false);
+        self.loop_header(Lvalue::Local(beg), end, BasicBlock::new(2), BasicBlock::new(4), false);
 
         // BB #2
         // `let cloned = Clone::clone(rcvr[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
-        let rcvr_field = rcvr.clone().index(Operand::Consume(beg.clone()));
+        let rcvr_field = rcvr.clone().index(beg);
         let cloned = self.make_clone_call(ty, rcvr_field, BasicBlock::new(3), BasicBlock::new(5));
 
         // BB #3
         // `ret[beg] = cloned;`
         // `beg = beg + 1;`
         // `goto #1`;
-        let ret_field = ret.clone().index(Operand::Consume(beg.clone()));
+        let ret_field = ret.clone().index(beg);
         let statements = vec![
             self.make_statement(
                 StatementKind::Assign(
@@ -532,10 +533,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ),
             self.make_statement(
                 StatementKind::Assign(
-                    beg.clone(),
+                    Lvalue::Local(beg),
                     Rvalue::BinaryOp(
                         BinOp::Add,
-                        Operand::Consume(beg.clone()),
+                        Operand::Consume(Lvalue::Local(beg)),
                         Operand::Constant(self.make_usize(1))
                     )
                 )
@@ -558,10 +559,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `let mut beg = 0;`
         // goto #6;
         let end = beg;
-        let beg = self.make_lvalue(Mutability::Mut, tcx.types.usize);
+        let beg = self.local_decls.push(temp_decl(Mutability::Mut, tcx.types.usize, span));
         let init = self.make_statement(
             StatementKind::Assign(
-                beg.clone(),
+                Lvalue::Local(beg),
                 Rvalue::Use(Operand::Constant(self.make_usize(0)))
             )
         );
@@ -572,12 +573,13 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         //     BB #8;
         // }
         // BB #9;
-        self.loop_header(beg.clone(), end, BasicBlock::new(7), BasicBlock::new(9), true);
+        self.loop_header(Lvalue::Local(beg), Lvalue::Local(end),
+                         BasicBlock::new(7), BasicBlock::new(9), true);
 
         // BB #7 (cleanup)
         // `drop(ret[beg])`;
         self.block(vec![], TerminatorKind::Drop {
-            location: ret.index(Operand::Consume(beg.clone())),
+            location: ret.index(beg),
             target: BasicBlock::new(8),
             unwind: None,
         }, true);
@@ -587,10 +589,10 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `goto #6;`
         let statement = self.make_statement(
             StatementKind::Assign(
-                beg.clone(),
+                Lvalue::Local(beg),
                 Rvalue::BinaryOp(
                     BinOp::Add,
-                    Operand::Consume(beg.clone()),
+                    Operand::Consume(Lvalue::Local(beg)),
                     Operand::Constant(self.make_usize(1))
                 )
             )

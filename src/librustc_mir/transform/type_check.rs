@@ -165,7 +165,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                            base: LvalueTy<'tcx>,
                            pi: &LvalueElem<'tcx>,
                            lvalue: &Lvalue<'tcx>,
-                           location: Location)
+                           _: Location)
                            -> LvalueTy<'tcx> {
         debug!("sanitize_projection: {:?} {:?} {:?}", base, pi, lvalue);
         let tcx = self.tcx();
@@ -181,9 +181,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     })
                 }
             }
-            ProjectionElem::Index(ref i) => {
-                self.visit_operand(i, location);
-                let index_ty = i.ty(self.mir, tcx);
+            ProjectionElem::Index(i) => {
+                let index_ty = Lvalue::Local(i).ty(self.mir, tcx).to_ty(tcx);
                 if index_ty != tcx.types.usize {
                     LvalueTy::Ty {
                         ty: span_mirbug_and_err!(self, i, "index by non-usize {:?}", i)

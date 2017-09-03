@@ -664,8 +664,8 @@ macro_rules! make_mir_visitor {
                     ProjectionElem::Field(_field, ref $($mutability)* ty) => {
                         self.visit_ty(ty, Lookup::Loc(location));
                     }
-                    ProjectionElem::Index(ref $($mutability)* operand) => {
-                        self.visit_operand(operand, location);
+                    ProjectionElem::Index(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::Consume, location);
                     }
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,

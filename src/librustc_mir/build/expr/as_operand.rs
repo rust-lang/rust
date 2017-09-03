@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Category::Rvalue(..) => {
                 let operand =
                     unpack!(block = this.as_temp(block, scope, expr));
-                block.and(Operand::Consume(operand))
+                block.and(Operand::Consume(Lvalue::Local(operand)))
             }
         }
     }

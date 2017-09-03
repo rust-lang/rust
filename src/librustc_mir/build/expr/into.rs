@@ -229,7 +229,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     let topmost_scope = this.topmost_scope();
                     let ptr = unpack!(block = this.as_temp(block, Some(topmost_scope), ptr));
-                    this.into(&ptr.deref(), block, val)
+                    this.into(&Lvalue::Local(ptr).deref(), block, val)
                 } else {
                     let args: Vec<_> =
                         args.into_iter()
