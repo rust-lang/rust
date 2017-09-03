@@ -21,7 +21,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
-#![feature(discriminant_value)]
 #![feature(rustc_private)]
 
 #[macro_use]
