@@ -91,8 +91,8 @@ pub mod functions;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
-pub mod is_unit_expr;
 pub mod infinite_iter;
+pub mod is_unit_expr;
 pub mod items_after_statements;
 pub mod large_enum_variant;
 pub mod len_zero;
@@ -423,6 +423,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
         infinite_iter::INFINITE_ITER,
+        is_unit_expr::UNIT_EXPR,
         large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
@@ -506,7 +507,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         panic::PANIC_PARAMS,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
-        is_unit_expr::UNIT_EXPR,
         print::PRINT_WITH_NEWLINE,
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,

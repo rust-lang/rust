@@ -1,7 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.156
+## Master
+* New lint: [`unit_expr`]
+
+## 0.0.156 - 2017-09-03
 * Update to *rustc 1.22.0-nightly (744dd6c1d 2017-09-02)*
 
 ## 0.0.155
@@ -602,6 +605,7 @@ All notable changes to this project will be documented in this file.
 [`type_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#type_complexity
 [`unicode_not_nfc`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unicode_not_nfc
 [`unit_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_cmp
+[`unit_expr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unit_expr
 [`unnecessary_cast`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_cast
 [`unnecessary_mut_passed`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#unnecessary_operation
