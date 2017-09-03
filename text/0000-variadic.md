@@ -161,6 +161,18 @@ A variadic function may pass the `VaList` to another function. However, it may
 not return the `VaList` or otherwise allow it to outlive that call to the
 variadic function.
 
+A function declared with `extern "C"` may accept a `VaList` parameter,
+corresponding to a `va_list` parameter in the corresponding C function. For
+instance, the `libc` crate could define the `va_list` variants of `printf` as
+follows:
+
+```rust
+pub unsafe extern "C" fn vprintf(format: *const c_char, ap: VaList) -> c_int;
+pub unsafe extern "C" fn vfprintf(stream: *mut FILE, format: *const c_char, ap: VaList) -> c_int;
+pub unsafe extern "C" fn vsprintf(s: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
+pub unsafe extern "C" fn vsnprintf(s: *mut c_char, n: size_t, format: *const c_char, ap: VaList) -> c_int;
+```
+
 Defining a variadic function, or calling any of these new functions, requires a
 feature-gate, `c_variadic`.
 
