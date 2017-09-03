@@ -84,14 +84,12 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
                 let check_else = is_unit_expr(else_.deref());
                 if let Some(ref expr_else) = check_else {
                     return Some(expr_else.clone());
-                } else {
-                    return Some(expr.span.clone());
-                }
+                } 
             }
             if check_then {
                 return Some(expr.span.clone());
             } else {
-                return Some(expr.span.clone());
+                return None;
             }
         },
         ExprKind::Match(ref _pattern, ref arms) => {
