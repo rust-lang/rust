@@ -235,7 +235,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                      location: Location) {
         self.record("Literal", literal);
         self.record(match *literal {
-            Literal::Item { .. } => "Literal::Item",
             Literal::Value { .. } => "Literal::Value",
             Literal::Promoted { .. } => "Literal::Promoted",
         }, literal);

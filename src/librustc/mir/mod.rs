@@ -1479,10 +1479,6 @@ newtype_index!(Promoted, "promoted");
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
-    Item {
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-    },
     Value {
         value: &'tcx ty::Const<'tcx>,
     },
@@ -1502,9 +1498,6 @@ impl<'tcx> Debug for Literal<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::Literal::*;
         match *self {
-            Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, &[])
-            }
             Value { value } => {
                 write!(fmt, "const ")?;
                 fmt_const_val(fmt, &value.val)
@@ -2002,17 +1995,16 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            Literal::Item { def_id, substs } => Literal::Item {
-                def_id,
-                substs: substs.fold_with(folder)
+            Literal::Value { value } => Literal::Value {
+                value: value.fold_with(folder)
             },
-            _ => self.clone()
+            Literal::Promoted { index } => Literal::Promoted { index }
         }
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            Literal::Item { substs, .. } => substs.visit_with(visitor),
-            _ => false
+            Literal::Value { value } => value.visit_with(visitor),
+            Literal::Promoted { .. } => false
         }
     }
 }

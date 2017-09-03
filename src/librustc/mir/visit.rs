@@ -724,11 +724,6 @@ macro_rules! make_mir_visitor {
                              literal: & $($mutability)* Literal<'tcx>,
                              location: Location) {
                 match *literal {
-                    Literal::Item { ref $($mutability)* def_id,
-                                    ref $($mutability)* substs } => {
-                        self.visit_def_id(def_id, location);
-                        self.visit_substs(substs, location);
-                    }
                     Literal::Value { ref $($mutability)* value } => {
                         self.visit_const(value, location);
                     }

@@ -643,9 +643,11 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => ExprKind::Literal {
-            literal: Literal::Item {
-                def_id,
-                substs,
+            literal: Literal::Value {
+                value: cx.tcx.mk_const(ty::Const {
+                    val: ConstVal::Unevaluated(def_id, substs),
+                    ty: cx.tables().node_id_to_type(expr.hir_id)
+                }),
             },
         },
 

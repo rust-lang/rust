@@ -510,16 +510,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
                 match constant.literal.clone() {
-                    mir::Literal::Item { def_id, substs } => {
-                        let substs = self.monomorphize(&substs);
-                        MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
-                    }
                     mir::Literal::Promoted { index } => {
                         let mir = &self.mir.promoted[index];
                         MirConstContext::new(self.ccx, mir, self.substs, IndexVec::new()).trans()
                     }
                     mir::Literal::Value { value } => {
-                        Ok(Const::from_constval(self.ccx, &value.val, ty))
+                        if let ConstVal::Unevaluated(def_id, substs) = value.val {
+                            let substs = self.monomorphize(&substs);
+                            MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
+                        } else {
+                            Ok(Const::from_constval(self.ccx, &value.val, ty))
+                        }
                     }
                 }
             }
@@ -960,16 +961,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_constant({:?})", constant);
         let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
-            mir::Literal::Item { def_id, substs } => {
-                let substs = self.monomorphize(&substs);
-                MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
-            }
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
                 MirConstContext::new(bcx.ccx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
-                Ok(Const::from_constval(bcx.ccx, &value.val, ty))
+                if let ConstVal::Unevaluated(def_id, substs) = value.val {
+                    let substs = self.monomorphize(&substs);
+                    MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
+                } else {
+                    Ok(Const::from_constval(bcx.ccx, &value.val, ty))
+                }
             }
         };
 

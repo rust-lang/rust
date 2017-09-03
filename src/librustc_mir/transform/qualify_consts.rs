@@ -20,6 +20,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
+use rustc::middle::const_val::ConstVal;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
@@ -622,10 +623,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
             Operand::Constant(ref constant) => {
-                if let Literal::Item { def_id, substs: _ } = constant.literal {
+                if let Literal::Value {
+                    value: &ty::Const { val: ConstVal::Unevaluated(def_id, _), ty }
+                } = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(constant.ty);
+                        self.add_type(ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -635,7 +638,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         // Just in case the type is more specific than
                         // the definition, e.g. impl associated const
                         // with type parameters, take it into account.
-                        self.qualif.restrict(constant.ty, self.tcx, self.param_env);
+                        self.qualif.restrict(ty, self.tcx, self.param_env);
                     }
 
                     // Let `const fn` transitively have destructors,

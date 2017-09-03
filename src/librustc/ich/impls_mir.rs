@@ -493,10 +493,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for mir::L
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            mir::Literal::Item { def_id, substs } => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
             mir::Literal::Value { ref value } => {
                 value.hash_stable(hcx, hasher);
             }
