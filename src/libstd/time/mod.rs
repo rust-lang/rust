@@ -509,7 +509,7 @@ mod tests {
                 let dur = dur.duration();
                 assert!(a > b);
                 assert_almost_eq!(b + dur, a);
-                assert_almost_eq!(b - dur, a);
+                assert_almost_eq!(a - dur, b);
             }
         }
 
