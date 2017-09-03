@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::codemap::Spanned;
-use utils::{span_lint_and_sugg, snippet};
 use std::ops::Deref;
+use syntax::ext::quote::rt::Span;
+
 
 /// **What it does:** Checks for 
 ///  - () being assigned to a variable
@@ -35,42 +35,21 @@ impl LintPass for UnitExpr {
 impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Assign(ref _left, ref right) = expr.node {
-            if is_unit_expr(right){
-                span_lint_and_sugg(
-                    cx,
-                    UNIT_EXPR,
-                    right.span,
-                    "trailing semicolons can be tricky",
-                    "remove the last semicolon",
-                    "TODO".to_owned()
-                )
+            if let Some(span) = is_unit_expr(right){
+                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
             }
         }
         if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
             for ref arg in args{
-                if is_unit_expr(arg){
-                    span_lint_and_sugg(
-                        cx,
-                        UNIT_EXPR,
-                        arg.span,
-                        "trailing semicolons can be tricky",
-                        "remove the last semicolon",
-                        "TODO".to_owned()
-                    )
+                if let Some(span) = is_unit_expr(arg){
+                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
                 }            
             }
         }
         if let ExprKind::Call( _, ref args) = expr.node{
             for ref arg in args{
-                if is_unit_expr(arg){
-                    span_lint_and_sugg(
-                        cx,
-                        UNIT_EXPR,
-                        arg.span,
-                        "trailing semicolons can be tricky",
-                        "remove the last semicolon",
-                        "TODO".to_owned()
-                    )
+                if let Some(span) = is_unit_expr(arg){
+                       cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
                 }            
             }        
         }
@@ -80,34 +59,48 @@ impl EarlyLintPass for UnitExpr {
         if let StmtKind::Local(ref local) = stmt.node{
             if local.pat.node == PatKind::Wild {return;}
             if let Some(ref expr) = local.init{
-                if is_unit_expr(expr){
-                    span_lint_and_sugg(
-                        cx,
-                        UNIT_EXPR,
-                        local.span,
-                        "trailing semicolons can be tricky",
-                        "remove the last semicolon",
-                        "TODO".to_owned()
-                    )
-                }
-            }        
+                if let Some(span) = is_unit_expr(expr){
+                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");  
             }
     }
 }
-
-fn is_unit_expr(expr: &Expr)->bool{
+}
+}
+fn is_unit_expr(expr: &Expr)->Option<Span>{
     match expr.node{
          ExprKind::Block(ref block) => {
-             return check_last_stmt_in_block(block);
+             if check_last_stmt_in_block(block){
+                 return Some(block.stmts[block.stmts.len()-1].span.clone());
+             } else{
+                 return None;
+             }
         },
         ExprKind::If(_, ref then, ref else_)=>{
             let check_then = check_last_stmt_in_block(then);
             if let Some(ref else_) = *else_{
-                return check_then && is_unit_expr(else_.deref());
+                let check_else = is_unit_expr(*else_);
+                if let Some(ref expr_else) = check_else{
+                    return Some(expr_else.clone());
+                }else{
+                    return Some(expr.span.clone());
+                }
             } 
-            return check_then;
+            if check_then { 
+                return Some(expr.span.clone());
+
+            } else{
+                return Some(expr.span.clone());
+            }
+        },
+        ExprKind::Match(ref _pattern, ref arms ) =>{
+            for ref arm in arms{
+                if let Some(expr) = is_unit_expr(&arm.body){
+                    return Some(expr);
+                }
+            }
+            return None;
         }
-        _ => return false,
+        _ => return None,
     }
 }
 
@@ -117,6 +110,6 @@ fn check_last_stmt_in_block(block: &Block)->bool{
                 return false;
             }
             else{
-                return true;
+              return true; 
             }
 }
