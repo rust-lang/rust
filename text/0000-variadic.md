@@ -43,16 +43,21 @@ mechanism.
 Such a declaration looks like this:
 
 ```rust
-pub unsafe extern "C" fn func(arg: T, arg2: T2, ...) {
+pub unsafe extern "C" fn func(arg: T, arg2: T2, args: ...) {
     // implementation
 }
 ```
 
-The `...` at the end of the argument list declares the function as variadic.
-The function must use `extern "C"`, and must use `unsafe`. To expose
+The use of `...` as the type of `args` at the end of the argument list declares
+the function as variadic. This must appear as the last argument of the
+function.  The function must use `extern "C"`, and must use `unsafe`. To expose
 such a function as a symbol for C code to call directly, the function may want
 to use `#[no_mangle]` as well; however, Rust code may also pass the function to
 C code expecting a function pointer to a variadic function.
+
+The `args` named in the function declaration has the type
+`core::intrinsics::VaList<'a>`, where the compiler supplies a lifetime `'a`
+that prevents the arguments from outliving the variadic function.
 
 To access the arguments, Rust provides the following public interfaces in
 `core::intrinsics` (also available via `std::intrinsics`):
@@ -63,12 +68,6 @@ To access the arguments, Rust provides the following public interfaces in
 pub struct VaList<'a>;
 
 impl<'a> VaList<'a> {
-    /// Obtain the variable arguments of the current function. Produces a
-    /// compile-time error if called from a non-variadic function. The compiler
-    /// will supply the appropriate lifetime when called, and prevent that
-    /// lifetime from outliving the variadic function.
-    pub unsafe fn start() -> VaList<'a>;
-
     /// Extract the next argument from the argument list.
     pub unsafe fn arg<T: VaArg>(&mut self) -> T;
 }
@@ -111,11 +110,9 @@ the corresponding type will extract an `int` and convert appropriately.
 Like the underlying platform `va_list` structure in C, `VaList` has an opaque,
 platform-specific representation.
 
-A variadic function may call `VaList::start` more than once, and traverse the
-argument list more than once.
-
-A variadic function may pass the `VaList` to another function. However, it may
-not return the `VaList` or otherwise allow it to outlive that call to the
+A variadic function may pass the `VaList` to another function. However, the
+lifetime attached to the `VaList` will prevent the variadic function from
+returning the `VaList` or otherwise allowing it to outlive that call to the
 variadic function.
 
 A function declared with `extern "C"` may accept a `VaList` parameter,
@@ -137,11 +134,10 @@ Sample Rust code exposing a variadic function:
 
 ```rust
 #![feature(c_variadic)]
-use std::intrinsics::{VaArg, VaList};
+use std::intrinsics::VaArg;
 
 #[no_mangle]
-pub unsafe extern "C" fn func(fixed: u32, ...) {
-    let args = VaList::start();
+pub unsafe extern "C" fn func(fixed: u32, args: ...) {
     let x: u8 = args.arg();
     let y: u16 = args.arg();
     let z: u32 = args.arg();
