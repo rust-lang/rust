@@ -2167,6 +2167,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(map_entry_replace)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::Entry;
     ///
@@ -2182,7 +2183,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// assert_eq!(map.get("poneyland"), Some(&16));
     ///
     /// ```
-    #[stable(feature = "rust1", since = "1.20.0")]
+    #[unstable(feature = "map_entry_replace", issue = "44286")]
     pub fn replace(mut self, value: V) -> (K, V) {
         let (old_key, old_value) = self.elem.read_mut();
 
