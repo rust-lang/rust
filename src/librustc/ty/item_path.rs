@@ -281,6 +281,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            ty::TyForeign(did) => self.push_item_path(buffer, did),
+
             ty::TyBool |
             ty::TyChar |
             ty::TyInt(_) |
@@ -344,8 +346,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
                                       .next(),
 
         ty::TyFnDef(def_id, _) |
-        ty::TyClosure(def_id, _) => Some(def_id),
-        ty::TyGenerator(def_id, _, _) => Some(def_id),
+        ty::TyClosure(def_id, _) |
+        ty::TyGenerator(def_id, _, _) |
+        ty::TyForeign(def_id) => Some(def_id),
 
         ty::TyBool |
         ty::TyChar |

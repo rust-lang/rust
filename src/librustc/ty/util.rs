@@ -553,7 +553,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let result = match ty.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-            ty::TyFloat(_) | ty::TyStr | ty::TyNever |
+            ty::TyFloat(_) | ty::TyStr | ty::TyNever | ty::TyForeign(..) |
             ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 // these types never have a destructor
                 Ok(ty::DtorckConstraint::empty())
@@ -714,6 +714,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyAnon(def_id, _) |
             TyFnDef(def_id, _) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
+            TyForeign(def_id) => self.def_id(def_id),
             TyFnPtr(f) => {
                 self.hash(f.unsafety());
                 self.hash(f.abi());
@@ -1108,6 +1109,9 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
         ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
         ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+
+        // Foreign types can never have destructors
+        ty::TyForeign(..) => false,
 
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely

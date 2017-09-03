@@ -85,6 +85,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
         let ty_def_id = match self.tcx.type_of(item_def_id).sty {
             ty::TyAdt(adt, _) => adt.did,
+            ty::TyForeign(did) => did,
             ty::TyDynamic(ref obj, ..) if obj.principal().is_some() =>
                 obj.principal().unwrap().def_id(),
             ty::TyProjection(ref proj) => proj.trait_ref(self.tcx).def_id,
@@ -444,6 +445,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
+            ty::TyForeign(did) => Some(did),
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
@@ -800,7 +802,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
 impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyAdt(&ty::AdtDef { did: def_id, .. }, ..) | ty::TyFnDef(def_id, ..) => {
+            ty::TyAdt(&ty::AdtDef { did: def_id, .. }, ..) |
+            ty::TyFnDef(def_id, ..) |
+            ty::TyForeign(def_id) => {
                 if !self.item_is_accessible(def_id) {
                     let msg = format!("type `{}` is private", ty);
                     self.tcx.sess.span_err(self.span, &msg);
@@ -1329,6 +1333,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
         let ty_def_id = match ty.sty {
             ty::TyAdt(adt, _) => Some(adt.did),
+            ty::TyForeign(did) => Some(did),
             ty::TyDynamic(ref obj, ..) => obj.principal().map(|p| p.def_id()),
             ty::TyProjection(ref proj) => {
                 if self.required_visibility == ty::Visibility::Invisible {
@@ -1349,8 +1354,13 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
         if let Some(def_id) = ty_def_id {
             // Non-local means public (private items can't leave their crate, modulo bugs)
             if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                let item = self.tcx.hir.expect_item(node_id);
-                let vis = ty::Visibility::from_hir(&item.vis, node_id, self.tcx);
+                let vis = match self.tcx.hir.find(node_id) {
+                    Some(hir::map::NodeItem(item)) => &item.vis,
+                    Some(hir::map::NodeForeignItem(item)) => &item.vis,
+                    _ => bug!("expected item of foreign item"),
+                };
+
+                let vis = ty::Visibility::from_hir(vis, node_id, self.tcx);
 
                 if !vis.is_at_least(self.min_visibility, self.tcx) {
                     self.min_visibility = vis;

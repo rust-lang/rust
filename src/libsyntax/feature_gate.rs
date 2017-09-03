@@ -395,6 +395,9 @@ declare_features! (
 
     // allow `..=` in patterns (RFC 1192)
     (active, dotdoteq_in_patterns, "1.22.0", Some(28237)),
+
+    // extern types
+    (active, extern_types, "1.22.0", Some(43467)),
 );
 
 declare_features! (
@@ -1382,13 +1385,23 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
-        let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs, "link_name") {
-            Some(val) => val.as_str().starts_with("llvm."),
-            _ => false
-        };
-        if links_to_llvm {
-            gate_feature_post!(&self, link_llvm_intrinsics, i.span,
-                              "linking to LLVM intrinsics is experimental");
+        match i.node {
+            ast::ForeignItemKind::Fn(..) |
+            ast::ForeignItemKind::Static(..) => {
+                let link_name = attr::first_attr_value_str_by_name(&i.attrs, "link_name");
+                let links_to_llvm = match link_name {
+                    Some(val) => val.as_str().starts_with("llvm."),
+                    _ => false
+                };
+                if links_to_llvm {
+                    gate_feature_post!(&self, link_llvm_intrinsics, i.span,
+                                       "linking to LLVM intrinsics is experimental");
+                }
+            }
+            ast::ForeignItemKind::Ty => {
+                    gate_feature_post!(&self, extern_types, i.span,
+                                       "extern types are experimental");
+            }
         }
 
         visit::walk_foreign_item(self, i)

@@ -147,15 +147,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         //   * Packed struct - There is no alignment padding
         //   * Field is sized - pointer is properly aligned already
         if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
-            bcx.ccx.shared().type_is_sized(fty) {
-                return (bcx.struct_gep(
-                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
-            }
+            bcx.ccx.shared().type_is_sized(fty)
+        {
+            return (bcx.struct_gep(
+                    ptr_val, adt::struct_llfields_index(st, ix)), alignment);
+        }
 
-        // If the type of the last field is [T] or str, then we don't need to do
+        // If the type of the last field is [T], str or a foreign type, then we don't need to do
         // any adjusments
         match fty.sty {
-            ty::TySlice(..) | ty::TyStr => {
+            ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => {
                 return (bcx.struct_gep(
                         ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
@@ -328,7 +329,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let ((llprojected, align), llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => bug!(),
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let llextra = if self.ccx.shared().type_is_sized(projected_ty.to_ty(tcx)) {
+                        let has_metadata = self.ccx.shared()
+                            .type_has_metadata(projected_ty.to_ty(tcx));
+                        let llextra = if !has_metadata {
                             ptr::null_mut()
                         } else {
                             tr_base.llextra
@@ -415,3 +418,4 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         self.monomorphize(&lvalue_ty.to_ty(tcx))
     }
 }
+

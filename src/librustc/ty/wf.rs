@@ -284,7 +284,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::TyError |
                 ty::TyStr |
                 ty::TyNever |
-                ty::TyParam(_) => {
+                ty::TyParam(_) |
+                ty::TyForeign(..) => {
                     // WfScalar, WfParameter, etc
                 }
 

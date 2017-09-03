@@ -365,6 +365,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ForeignItemStatic(..) => {
                 intravisit::walk_foreign_item(self, item);
             }
+            hir::ForeignItemType => {
+                intravisit::walk_foreign_item(self, item);
+            }
         }
     }
 

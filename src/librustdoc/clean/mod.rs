@@ -416,6 +416,8 @@ pub enum ItemEnum {
     ForeignFunctionItem(Function),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
+    /// `type`s from an extern block
+    ForeignTypeItem,
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
     AssociatedConstItem(Type, Option<String>),
@@ -1642,6 +1644,7 @@ pub enum TypeKind {
     Trait,
     Variant,
     Typedef,
+    Foreign,
 }
 
 pub trait GetDefId {
@@ -1995,6 +1998,17 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     path,
                     typarams: None,
                     did,
+                    is_generic: false,
+                }
+            }
+            ty::TyForeign(did) => {
+                inline::record_extern_fqn(cx, did, TypeKind::Foreign);
+                let path = external_path(cx, &cx.tcx.item_name(did),
+                                         None, false, vec![], Substs::empty());
+                ResolvedPath {
+                    path: path,
+                    typarams: None,
+                    did: did,
                     is_generic: false,
                 }
             }
@@ -2809,6 +2823,9 @@ impl Clean<Item> for hir::ForeignItem {
                     mutability: if mutbl {Mutable} else {Immutable},
                     expr: "".to_string(),
                 })
+            }
+            hir::ForeignItemType => {
+                ForeignTypeItem
             }
         };
         Item {

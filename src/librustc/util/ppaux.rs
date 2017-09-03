@@ -17,7 +17,7 @@ use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
-use ty::{TyClosure, TyGenerator, TyProjection, TyAnon};
+use ty::{TyClosure, TyGenerator, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
@@ -788,6 +788,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyAdt(def, substs) => parameterized(f, substs, def.did, &[]),
+            TyForeign(def_id) => parameterized(f, subst::Substs::empty(), def_id, &[]),
             TyDynamic(data, r) => {
                 write!(f, "{}", data)?;
                 let r = r.to_string();

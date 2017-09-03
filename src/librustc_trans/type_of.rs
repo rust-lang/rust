@@ -22,7 +22,7 @@ use syntax::ast;
 pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     match ty.sty {
         ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
-        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if !ccx.shared().type_is_sized(t) => {
+        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if ccx.shared().type_has_metadata(t) => {
             in_memory_type_of(ccx, t).ptr_to()
         }
         ty::TyAdt(def, _) if def.is_box() => {
@@ -62,7 +62,7 @@ pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 /// is too large for it to be placed in SSA value (by our rules).
 /// For the raw type without far pointer indirection, see `in_memory_type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
-    let ty = if !cx.shared().type_is_sized(ty) {
+    let ty = if cx.shared().type_has_metadata(ty) {
         cx.tcx().mk_imm_ptr(ty)
     } else {
         ty
@@ -106,7 +106,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     }
 
     let ptr_ty = |ty: Ty<'tcx>| {
-        if !cx.shared().type_is_sized(ty) {
+        if cx.shared().type_has_metadata(ty) {
             if let ty::TyStr = ty.sty {
                 // This means we get a nicer name in the output (str is always
                 // unsized).
@@ -158,7 +158,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       // fat pointers is of the right type (e.g. for array accesses), even
       // when taking the address of an unsized field in a struct.
       ty::TySlice(ty) => in_memory_type_of(cx, ty),
-      ty::TyStr | ty::TyDynamic(..) => Type::i8(cx),
+      ty::TyStr | ty::TyDynamic(..) | ty::TyForeign(..) => Type::i8(cx),
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(sig) => {

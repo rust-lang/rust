@@ -935,7 +935,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeForeignItem(item) => {
             match item.node {
                 ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics
+                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemType => &no_generics,
             }
         }
 
@@ -1111,7 +1112,8 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let substs = Substs::identity_for_item(tcx, def_id);
                     tcx.mk_fn_def(def_id, substs)
                 }
-                ForeignItemStatic(ref t, _) => icx.to_ty(t)
+                ForeignItemStatic(ref t, _) => icx.to_ty(t),
+                ForeignItemType => tcx.mk_foreign(def_id),
             }
         }
 
@@ -1380,7 +1382,8 @@ fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeForeignItem(item) => {
             match item.node {
                 ForeignItemStatic(..) => &no_generics,
-                ForeignItemFn(_, _, ref generics) => generics
+                ForeignItemFn(_, _, ref generics) => generics,
+                ForeignItemType => &no_generics,
             }
         }
 

@@ -615,6 +615,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
+            ty::TyForeign(..) => FfiSafe,
+
             ty::TyParam(..) |
             ty::TyInfer(..) |
             ty::TyError |
@@ -717,6 +719,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
                         hir::ForeignItemStatic(ref ty, _) => {
                             vis.check_foreign_static(ni.id, ty.span);
                         }
+                        hir::ForeignItemType => ()
                     }
                 }
             }
