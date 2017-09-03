@@ -2,7 +2,7 @@ use rustc::lint::*;
 use syntax::ast::*;
 use std::ops::Deref;
 use syntax::ext::quote::rt::Span;
-
+use utils::span_note_and_lint;
 
 /// **What it does:** Checks for
 ///  - () being assigned to a variable
@@ -39,20 +39,20 @@ impl EarlyLintPass for UnitExpr {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Assign(ref _left, ref right) = expr.node {
             if let Some(span) = is_unit_expr(right) {
-                cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
             }
         }
         if let ExprKind::MethodCall(ref _left, ref args) = expr.node {
             for ref arg in args {
                 if let Some(span) = is_unit_expr(arg) {
-                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
                 }
             }
         }
         if let ExprKind::Call(_, ref args) = expr.node {
             for ref arg in args {
                 if let Some(span) = is_unit_expr(arg) {
-                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
                 }
             }
         }
@@ -65,7 +65,7 @@ impl EarlyLintPass for UnitExpr {
             }
             if let Some(ref expr) = local.init {
                 if let Some(span) = is_unit_expr(expr) {
-                    cx.span_lint(UNIT_EXPR, span, "Consider removing the trailing semicolon");
+                span_note_and_lint(cx, UNIT_EXPR, expr.span,"This expression assigns the Unit type ()",span,"Consider removing the trailing semicolon");
                 }
             }
         }
