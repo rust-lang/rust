@@ -1,6 +1,5 @@
 use rustc::lint::*;
 use syntax::ast::*;
-use std::ops::Deref;
 use syntax::ext::quote::rt::Span;
 use utils::span_note_and_lint;
 
@@ -43,7 +42,7 @@ impl EarlyLintPass for UnitExpr {
                     cx,
                     UNIT_EXPR,
                     expr.span,
-                    "This expression assigns the Unit type ()",
+                        "This expression evaluates to the Unit type ()",
                     span,
                     "Consider removing the trailing semicolon",
                 );
@@ -56,7 +55,7 @@ impl EarlyLintPass for UnitExpr {
                         cx,
                         UNIT_EXPR,
                         expr.span,
-                        "This expression assigns the Unit type ()",
+                        "This expression evaluates to the Unit type ()",
                         span,
                         "Consider removing the trailing semicolon",
                     );
@@ -70,7 +69,7 @@ impl EarlyLintPass for UnitExpr {
                         cx,
                         UNIT_EXPR,
                         expr.span,
-                        "This expression assigns the Unit type ()",
+                        "This expression evaluates to the Unit type ()",
                         span,
                         "Consider removing the trailing semicolon",
                     );
@@ -90,7 +89,7 @@ impl EarlyLintPass for UnitExpr {
                         cx,
                         UNIT_EXPR,
                         expr.span,
-                        "This expression assigns the Unit type ()",
+                        "This expression evaluates to the Unit type ()",
                         span,
                         "Consider removing the trailing semicolon",
                     );
@@ -109,7 +108,7 @@ fn is_unit_expr(expr: &Expr) -> Option<Span> {
         ExprKind::If(_, ref then, ref else_) => {
             let check_then = check_last_stmt_in_block(then);
             if let Some(ref else_) = *else_ {
-                let check_else = is_unit_expr(else_.deref());
+                let check_else = is_unit_expr(&else_);
                 if let Some(ref expr_else) = check_else {
                     return Some(expr_else.clone());
                 }
