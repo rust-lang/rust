@@ -622,7 +622,7 @@ fn check_for_loop_range<'a, 'tcx>(
                     let parent_id = cx.tcx.hir.get_parent(expr.id);
                     let parent_def_id = cx.tcx.hir.local_def_id(parent_id);
                     let region_maps = cx.tcx.region_maps(parent_def_id);
-                    let pat_extent = region_maps.var_scope(pat.id);
+                    let pat_extent = region_maps.var_scope(pat.hir_id.local_id);
                     if region_maps.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
@@ -1064,10 +1064,11 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 Def::Local(..) | Def::Upvar(..) => {
                     let def_id = def.def_id();
                     let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
+                    let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
 
                     let parent_id = self.cx.tcx.hir.get_parent(expr.id);
                     let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
-                    let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(node_id);
+                    let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(hir_id.local_id);
                     self.indexed.insert(seqvar.segments[0].name, Some(extent));
                     return;  // no need to walk further
                 }
