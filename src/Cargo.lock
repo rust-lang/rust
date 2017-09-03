@@ -1328,7 +1328,7 @@ version = "0.1.0"
 
 [[package]]
 name = "rls"
-version = "0.1.0"
+version = "0.122.0"
 dependencies = [
  "cargo 0.23.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1339,15 +1339,14 @@ dependencies = [
  "racer 2.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-analysis 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-data 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rls-rustc 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustfmt-nightly 0.2.2 (git+https://github.com/rust-lang-nursery/rustfmt?branch=yield)",
+ "rustfmt-nightly 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1372,6 +1371,11 @@ dependencies = [
  "serde 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "rls-rustc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rls-span"
@@ -1808,8 +1812,8 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "0.2.2"
-source = "git+https://github.com/rust-lang-nursery/rustfmt?branch=yield#6f56783c8cfd5f06d9b77873a3d4feb56c8d843f"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "diff 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2543,11 +2547,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum regex-syntax 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ad890a5eef7953f55427c50575c680c42841653abd2b028b68cd223d157f62db"
 "checksum rls-analysis 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "d2cb40c0371765897ae428b5706bb17135705ad4f6d1b8b6afbaabcf8c9b5cff"
 "checksum rls-data 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "11d339f1888e33e74d8032de0f83c40b2bdaaaf04a8cfc03b32186c3481fb534"
+"checksum rls-rustc 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5fa757c9d547d460427ceff01875f9cac5f5acd8fc6543946e9b0335ba29d537"
 "checksum rls-span 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5d7c7046dc6a92f2ae02ed302746db4382e75131b9ce20ce967259f6b5867a6a"
 "checksum rls-vfs 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ffd34691a510938bb67fe0444fb363103c73ffb31c121d1e16bc92d8945ea8ff"
 "checksum rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "aee45432acc62f7b9a108cc054142dac51f979e69e71ddce7d6fc7adf29e817e"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-"checksum rustfmt-nightly 0.2.2 (git+https://github.com/rust-lang-nursery/rustfmt?branch=yield)" = "<none>"
+"checksum rustfmt-nightly 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7d6dbb39239e54df780a850721fba87b3fdb2e645b39041742ec111369cec6af"
 "checksum same-file 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d931a44fdaa43b8637009e7632a02adc4f2b2e0733c08caa4cf00e8da4a117a7"
 "checksum scoped-tls 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f417c22df063e9450888a7561788e9bd46d3bb3c1466435b4eccb903807f147d"
 "checksum scopeguard 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "59a076157c1e2dc561d8de585151ee6965d910dd4dcb5dabb7ae3e83981a6c57"

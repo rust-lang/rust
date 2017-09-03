@@ -120,6 +120,7 @@ fn prepare_tool_cargo(
     }
 
     cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+    cargo.env("CFG_VERSION", build.rust_version());
 
     let info = GitInfo::new(&build.config, &dir);
     if let Some(sha) = info.sha() {
