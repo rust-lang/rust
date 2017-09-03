@@ -9,8 +9,10 @@
 // except according to those terms.
 
 // Test that the type of `sum` falls back to `i32` here,
-// and that the for loop desugaring doesn't inferfere with
+// and that the for loop desugaring doesn't interfere with
 // that.
+
+// ignore-test
 
 fn main() {
     let mut sum = 0;
