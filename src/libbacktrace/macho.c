@@ -1,7 +1,7 @@
 /* macho.c -- Get debug data from an Mach-O file for backtraces.
    Copyright (C) 2012-2016 Free Software Foundation, Inc.
    Written by John Colanduoni.
-   
+
    Pending upstream pull request:
    https://github.com/ianlancetaylor/libbacktrace/pull/2
 
@@ -288,7 +288,7 @@ macho_get_commands (struct backtrace_state *state, int descriptor,
 
       archs_total_size = arch_count * sizeof (struct fat_arch);
 
-      if (!backtrace_get_view (state, descriptor, sizeof (fat_header),
+      if (!backtrace_get_view (state, descriptor, sizeof (struct fat_header),
                                archs_total_size, error_callback,
                                data, &fat_archs_view))
         goto end;
@@ -1361,7 +1361,7 @@ backtrace_initialize (struct backtrace_state *state, int descriptor,
       current_vmslide = _dyld_get_image_vmaddr_slide (i);
       current_name = _dyld_get_image_name (i);
 
-      if (current_name == NULL)
+      if (current_name == NULL || (i != 0 && current_vmslide == 0))
         continue;
 
       if (!(current_descriptor =
@@ -1370,16 +1370,15 @@ backtrace_initialize (struct backtrace_state *state, int descriptor,
           continue;
         }
 
-      if (!macho_add (state, error_callback, data, current_descriptor,
+      if (macho_add (state, error_callback, data, current_descriptor,
                       current_name, &macho_fileline_fn, current_vmslide,
                       &current_found_sym, &current_found_dwarf))
         {
-          return 0;
+          found_sym = found_sym || current_found_sym;
+          found_dwarf = found_dwarf || current_found_dwarf;
         }
 
       backtrace_close (current_descriptor, error_callback, data);
-      found_sym = found_sym || current_found_sym;
-      found_dwarf = found_dwarf || current_found_dwarf;
     }
 
   if (!state->threaded)
