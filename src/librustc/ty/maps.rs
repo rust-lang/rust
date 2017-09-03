@@ -31,6 +31,7 @@ use ty::fast_reject::SimplifiedType;
 use util::nodemap::{DefIdSet, NodeSet};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::{RefCell, RefMut, Cell};
@@ -1019,7 +1020,7 @@ define_maps! { <'tcx>
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
-    [] fn mir_const_qualif: MirConstQualif(DefId) -> u8,
+    [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Rc<IdxSetBuf<mir::Local>>),
 
     /// Fetch the MIR for a given def-id up till the point where it is
     /// ready for const evaluation.
