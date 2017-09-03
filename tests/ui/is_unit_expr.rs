@@ -4,42 +4,45 @@
 #[allow(unused_variables)]
 
 fn main() {
-
-    //lint should note removing the semicolon from "baz" 
+    // lint should note removing the semicolon from "baz"
     let x = {
         "foo";
         "baz";
     };
 
 
-    //lint should ignore false positive. 
-    let y = if true{
-        "foo" 
-    } else{
+    // lint should ignore false positive.
+    let y = if true {
+        "foo"
+    } else {
         return;
     };
 
-    //lint should note removing semicolon from "bar"
-    let z = if true{
+    // lint should note removing semicolon from "bar"
+    let z = if true {
         "foo";
-    } else{
+    } else {
         "bar";
     };
 
 
     let a1 = Some(5);
 
-    //lint should ignore false positive
+    // lint should ignore false positive
     let a2 = match a1 {
         Some(x) => x,
-        _ => {return;},
+        _ => {
+            return;
+        },
     };
 
-    //lint should note removing the semicolon after `x;` 
+    // lint should note removing the semicolon after `x;`
     let a3 = match a1 {
-        Some(x) => {x;},
-        _ => {0;},
+        Some(x) => {
+            x;
+        },
+        _ => {
+            0;
+        },
     };
-
-
 }
