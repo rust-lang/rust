@@ -212,25 +212,16 @@ ever allowing the `VaList` structure to outlive it. However, if we can provide
 an appropriate compile-time lifetime check, doing would make it easier to
 correctly write the appropriate unsafe code.
 
-Rather than defining a `VaList::start` function, we could require specifying a
-name along with the `...`:
+Rather than naming the argument in the variadic function signature, we could
+provide a `VaList::start` function to return one. This would also allow calling
+`start` more than once. However, this would complicate the lifetime handling
+required to ensure that the `VaList` does not outlive the call to the variadic
+function.
 
-```rust
-pub unsafe extern "C" fn func(fixed: u32, ...args) {
-    // implementation
-}
-```
-
-This might simplify the provision of an appropriate lifetime, and would avoid
-the need to provide a `VaList::start` function and only allow calling it from
-within a variadic function.
-
-However, such an approach would not expose any means of calling `va_start`
-multiple times in the same variadic function. Note that doing so has a
-different semantic than calling `va_copy`, as calling `va_start` again iterates
-over the arguments from the beginning rather than the current point. Given that
-this mechanism exists for the sole purpose of interoperability with C, more
-closely matching the underlying C interface seems appropriate.
+We could use several alternative syntaxes to declare the argument in the
+signature, including `...args`, or listing the `VaList` or `VaList<'a>` type
+explicitly. The latter, however, would require care to ensure that code could
+not reference or alias the lifetime.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
