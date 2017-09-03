@@ -230,4 +230,3 @@ fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.instances().borrow_mut().insert(instance, lldecl);
 }
-

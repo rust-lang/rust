@@ -305,7 +305,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         match ty.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) |
-            ty::TyStr | ty::TyNever => {
+            ty::TyStr | ty::TyNever | ty::TyForeign(..) => {
                 // leaf type -- noop
             }
 

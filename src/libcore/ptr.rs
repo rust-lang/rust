@@ -485,8 +485,9 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null()
+    pub fn is_null(self) -> bool {
+        // cast to () pointer, as T may not be sized
+        self as *const () == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -517,7 +518,7 @@ impl<T: ?Sized> *const T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -1116,8 +1117,9 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_null(self) -> bool where T: Sized {
-        self == null_mut()
+    pub fn is_null(self) -> bool {
+        // cast to () pointer, as T may not be sized
+        self as *mut () == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -1148,7 +1150,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> {
         if self.is_null() {
             None
         } else {
@@ -1272,7 +1274,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> where T: Sized {
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> {
         if self.is_null() {
             None
         } else {

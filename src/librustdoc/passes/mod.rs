@@ -90,7 +90,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
             clean::ConstantItem(..) | clean::UnionItem(..) |
-            clean::AssociatedConstItem(..) => {
+            clean::AssociatedConstItem(..) | clean::ForeignTypeItem => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;

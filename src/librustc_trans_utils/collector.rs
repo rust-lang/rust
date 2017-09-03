@@ -203,7 +203,7 @@ use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
 
-use common::{def_ty, instance_ty, type_is_sized};
+use common::{def_ty, instance_ty, type_has_metadata};
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
@@ -782,7 +782,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             target_ty: Ty<'tcx>)
                                             -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        if !type_is_sized(tcx, inner_source) {
+        if type_has_metadata(tcx, inner_source) {
             (inner_source, inner_target)
         } else {
             tcx.struct_lockstep_tails(inner_source, inner_target)

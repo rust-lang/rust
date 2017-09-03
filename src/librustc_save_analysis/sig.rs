@@ -808,6 +808,23 @@ impl Sig for ast::ForeignItem {
 
                 Ok(extend_sig(ty_sig, text, defs, vec![]))
             }
+            ast::ForeignItemKind::Ty => {
+                let mut text = "type ".to_owned();
+                let name = self.ident.to_string();
+                let defs = vec![SigElement {
+                    id: id_from_node_id(self.id, scx),
+                    start: offset + text.len(),
+                    end: offset + text.len() + name.len(),
+                }];
+                text.push_str(&name);
+                text.push(';');
+
+                Ok(Signature {
+                    text: text,
+                    defs: defs,
+                    refs: vec![],
+                })
+            }
         }
     }
 }

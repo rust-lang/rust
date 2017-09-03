@@ -414,6 +414,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.assemble_inherent_impl_candidates_for_type(def.did);
             }
+            ty::TyForeign(did) => {
+                self.assemble_inherent_impl_candidates_for_type(did);
+            }
             ty::TyParam(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }

@@ -451,6 +451,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::TyAdt(def, _) => def.did.is_local(),
+                ty::TyForeign(did) => did.is_local(),
 
                 ty::TyDynamic(ref tr, ..) => tr.principal()
                     .map_or(false, |p| p.def_id().is_local()),
