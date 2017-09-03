@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators)]
+#![feature(generators, generator_trait, conservative_impl_trait)]
 
-fn foo(_a: (), _b: &bool) {}
+use std::ops::Generator;
 
-// Some examples that probably *could* be accepted, but which we reject for now.
-
-fn bar() {
-    || {
-        let b = true;
-        foo(yield, &b); //~ ERROR
-    };
+fn bar(baz: String) -> impl Generator<Yield=(), Return=()> {
+    move || {
+        yield drop(&baz);
+    }
 }
 
-fn main() { }
+fn main() {}

@@ -18,7 +18,6 @@ use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
-use std::collections::hash_map::Entry;
 use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
@@ -250,8 +249,9 @@ pub struct ScopeTree {
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
     /// If there are any `yield` nested within a scope, this map
-    /// stores the `Span` of the first one.
-    yield_in_scope: FxHashMap<Scope, Span>,
+    /// stores the `Span` of the last one and the number of expressions
+    /// which came before it in a generator body.
+    yield_in_scope: FxHashMap<Scope, (Span, usize)>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -273,6 +273,9 @@ pub struct Context {
 
 struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+
+    // The number of expressions visited in the current body
+    expr_count: usize,
 
     // Generated scope tree:
     scope_tree: ScopeTree,
@@ -611,8 +614,9 @@ impl<'tcx> ScopeTree {
     }
 
     /// Checks whether the given scope contains a `yield`. If so,
-    /// returns `Some(span)` with the span of a yield we found.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<Span> {
+    /// returns `Some((span, expr_count))` with the span of a yield we found and
+    /// the number of expressions appearing before the `yield` in the body.
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
         self.yield_in_scope.get(&scope).cloned()
     }
 }
@@ -738,6 +742,8 @@ fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt:
 fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr: &'tcx hir::Expr) {
     debug!("resolve_expr(expr.id={:?})", expr.id);
 
+    visitor.expr_count += 1;
+
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
 
@@ -808,14 +814,8 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 // Mark this expr's scope and all parent scopes as containing `yield`.
                 let mut scope = Scope::Node(expr.hir_id.local_id);
                 loop {
-                    match visitor.scope_tree.yield_in_scope.entry(scope) {
-                        // Another `yield` has already been found.
-                        Entry::Occupied(_) => break,
-
-                        Entry::Vacant(entry) => {
-                            entry.insert(expr.span);
-                        }
-                    }
+                    visitor.scope_tree.yield_in_scope.insert(scope,
+                        (expr.span, visitor.expr_count));
 
                     // Keep traversing up while we can.
                     match visitor.scope_tree.parent_map.get(&scope) {
@@ -1120,6 +1120,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
                body_id,
                self.cx.parent);
 
+        let outer_ec = mem::replace(&mut self.expr_count, 0);
         let outer_cx = self.cx;
         let outer_ts = mem::replace(&mut self.terminating_scopes, FxHashSet());
         self.terminating_scopes.insert(body.value.hir_id.local_id);
@@ -1166,6 +1167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         }
 
         // Restore context we had at the start.
+        self.expr_count = outer_ec;
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
     }
@@ -1200,6 +1202,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
+            expr_count: 0,
             cx: Context {
                 root_id: None,
                 parent: None,

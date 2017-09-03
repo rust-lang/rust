@@ -15,7 +15,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Body, Pat, PatKind, Expr};
+use rustc::hir::{self, Pat, PatKind, Expr};
 use rustc::middle::region;
 use rustc::ty::Ty;
 use std::rc::Rc;
@@ -26,14 +26,27 @@ struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
     region_scope_tree: Rc<region::ScopeTree>,
+    expr_count: usize,
 }
 
 impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<region::Scope>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
+        if self.fcx.tcx.sess.verbose() {
+        let span = scope.map_or(DUMMY_SP, |s| s.span(self.fcx.tcx, &self.region_scope_tree));
+        self.fcx.tcx.sess.span_warn(span, &format!("temporary scope for node id {:?}", expr));
+        }
+
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
-            self.region_scope_tree.yield_in_scope(s)
+            self.region_scope_tree.yield_in_scope(s).and_then(|(span, expr_count)| {
+                // Check if the span in the region comes after the expression
+                if expr_count > self.expr_count {
+                    Some(span)
+                } else {
+                    None
+                }
+            })
         });
 
         if let Some(span) = live_across_yield {
@@ -60,6 +73,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
         fcx,
         types: FxHashMap(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+        expr_count: 0,
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -82,13 +96,12 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
    }
 }
 
+// This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
+// librustc/middle/region.rs since `expr_count` is compared against the results
+// there.
 impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
-    }
-
-    fn visit_body(&mut self, _body: &'tcx Body) {
-        // Closures inside are not considered part of the generator interior
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
@@ -102,7 +115,15 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
+        self.expr_count += 1;
+
+        if self.fcx.tcx.sess.verbose() {
+        self.fcx.tcx.sess.span_warn(expr.span, &format!("node id {:?}", expr.id));
+        }
+
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+
+
         let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
         self.record(ty, scope, Some(expr));
 
