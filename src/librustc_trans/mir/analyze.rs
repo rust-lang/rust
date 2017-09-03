@@ -134,60 +134,61 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
                     location: Location) {
         debug!("visit_lvalue(lvalue={:?}, context={:?})", lvalue, context);
 
-        // Allow uses of projections of immediate pair fields.
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            if let mir::Lvalue::Local(_) = proj.base {
-                let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
-
-                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
-                if common::type_is_imm_pair(self.cx.ccx, ty) {
+            // Allow uses of projections of immediate pair fields.
+            if let LvalueContext::Consume = context {
+                if let mir::Lvalue::Local(_) = proj.base {
                     if let mir::ProjectionElem::Field(..) = proj.elem {
-                        if let LvalueContext::Consume = context {
+                        let ty = proj.base.ty(self.cx.mir, self.cx.ccx.tcx());
+
+                        let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+                        if common::type_is_imm_pair(self.cx.ccx, ty) {
                             return;
                         }
                     }
                 }
             }
-        }
 
-        if let mir::Lvalue::Local(index) = *lvalue {
-            match context {
-                LvalueContext::Call => {
-                    self.mark_assigned(index);
-                }
-
-                LvalueContext::StorageLive |
-                LvalueContext::StorageDead |
-                LvalueContext::Validate |
-                LvalueContext::Inspect |
-                LvalueContext::Consume => {}
-
-                LvalueContext::Store |
-                LvalueContext::Borrow { .. } |
-                LvalueContext::Projection(..) => {
-                    self.mark_as_lvalue(index);
-                }
-
-                LvalueContext::Drop => {
-                    let ty = lvalue.ty(self.cx.mir, self.cx.ccx.tcx());
-                    let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
-
-                    // Only need the lvalue if we're actually dropping it.
-                    if self.cx.ccx.shared().type_needs_drop(ty) {
-                        self.mark_as_lvalue(index);
-                    }
-                }
-            }
-        }
-
-        // A deref projection only reads the pointer, never needs the lvalue.
-        if let mir::Lvalue::Projection(ref proj) = *lvalue {
+            // A deref projection only reads the pointer, never needs the lvalue.
             if let mir::ProjectionElem::Deref = proj.elem {
                 return self.visit_lvalue(&proj.base, LvalueContext::Consume, location);
             }
         }
 
         self.super_lvalue(lvalue, context, location);
+    }
+
+    fn visit_local(&mut self,
+                   &index: &mir::Local,
+                   context: LvalueContext<'tcx>,
+                   _: Location) {
+        match context {
+            LvalueContext::Call => {
+                self.mark_assigned(index);
+            }
+
+            LvalueContext::StorageLive |
+            LvalueContext::StorageDead |
+            LvalueContext::Validate |
+            LvalueContext::Inspect |
+            LvalueContext::Consume => {}
+
+            LvalueContext::Store |
+            LvalueContext::Borrow { .. } |
+            LvalueContext::Projection(..) => {
+                self.mark_as_lvalue(index);
+            }
+
+            LvalueContext::Drop => {
+                let ty = mir::Lvalue::Local(index).ty(self.cx.mir, self.cx.ccx.tcx());
+                let ty = self.cx.monomorphize(&ty.to_ty(self.cx.ccx.tcx()));
+
+                // Only need the lvalue if we're actually dropping it.
+                if self.cx.ccx.shared().type_needs_drop(ty) {
+                    self.mark_as_lvalue(index);
+                }
+            }
+        }
     }
 }
 

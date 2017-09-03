@@ -88,7 +88,9 @@ struct RenameLocalVisitor {
 
 impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     fn visit_local(&mut self,
-                        local: &mut Local) {
+                   local: &mut Local,
+                   _: LvalueContext<'tcx>,
+                   _: Location) {
         if *local == self.from {
             *local = self.to;
         }
@@ -98,6 +100,13 @@ impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
 struct DerefArgVisitor;
 
 impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _: LvalueContext<'tcx>,
+                   _: Location) {
+        assert_ne!(*local, self_arg());
+    }
+
     fn visit_lvalue(&mut self,
                     lvalue: &mut Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
@@ -177,6 +186,13 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _: LvalueContext<'tcx>,
+                   _: Location) {
+        assert_eq!(self.remap.get(local), None);
+    }
+
     fn visit_lvalue(&mut self,
                     lvalue: &mut Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,

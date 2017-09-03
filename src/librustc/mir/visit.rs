@@ -256,7 +256,9 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_local(&mut self,
-                                _local: & $($mutability)* Local) {
+                            _local: & $($mutability)* Local,
+                            _context: LvalueContext<'tcx>,
+                            _location: Location) {
             }
 
             fn visit_visibility_scope(&mut self,
@@ -610,7 +612,7 @@ macro_rules! make_mir_visitor {
                             location: Location) {
                 match *lvalue {
                     Lvalue::Local(ref $($mutability)* local) => {
-                        self.visit_local(local);
+                        self.visit_local(local, context, location);
                     }
                     Lvalue::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);

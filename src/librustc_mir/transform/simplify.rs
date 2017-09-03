@@ -352,15 +352,11 @@ struct DeclMarker {
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_lvalue(&mut self, lval: &Lvalue<'tcx>, ctx: LvalueContext<'tcx>, loc: Location) {
-        if ctx == LvalueContext::StorageLive || ctx == LvalueContext::StorageDead {
-            // ignore these altogether, they get removed along with their otherwise unused decls.
-            return;
+    fn visit_local(&mut self, local: &Local, ctx: LvalueContext<'tcx>, _: Location) {
+        // ignore these altogether, they get removed along with their otherwise unused decls.
+        if ctx != LvalueContext::StorageLive && ctx != LvalueContext::StorageDead {
+            self.locals.insert(local.index());
         }
-        if let Lvalue::Local(ref v) = *lval {
-            self.locals.insert(v.index());
-        }
-        self.super_lvalue(lval, ctx, loc);
     }
 }
 
@@ -384,11 +380,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         });
         self.super_basic_block_data(block, data);
     }
-    fn visit_lvalue(&mut self, lval: &mut Lvalue<'tcx>, ctx: LvalueContext<'tcx>, loc: Location) {
-        match *lval {
-            Lvalue::Local(ref mut l) => *l = Local::new(self.map[l.index()]),
-            _ => (),
-        };
-        self.super_lvalue(lval, ctx, loc);
+    fn visit_local(&mut self, l: &mut Local, _: LvalueContext<'tcx>, _: Location) {
+        *l = Local::new(self.map[l.index()]);
     }
 }

@@ -83,52 +83,49 @@ struct TempCollector<'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
-    fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
-                    location: Location) {
-        self.super_lvalue(lvalue, context, location);
-        if let Lvalue::Local(index) = *lvalue {
-            // We're only interested in temporaries
-            if self.mir.local_kind(index) != LocalKind::Temp {
-                return;
-            }
+    fn visit_local(&mut self,
+                   &index: &Local,
+                   context: LvalueContext<'tcx>,
+                   location: Location) {
+        // We're only interested in temporaries
+        if self.mir.local_kind(index) != LocalKind::Temp {
+            return;
+        }
 
-            // Ignore drops, if the temp gets promoted,
-            // then it's constant and thus drop is noop.
-            // Storage live ranges are also irrelevant.
-            if context.is_drop() || context.is_storage_marker() {
-                return;
-            }
+        // Ignore drops, if the temp gets promoted,
+        // then it's constant and thus drop is noop.
+        // Storage live ranges are also irrelevant.
+        if context.is_drop() || context.is_storage_marker() {
+            return;
+        }
 
-            let temp = &mut self.temps[index];
-            if *temp == TempState::Undefined {
-                match context {
-                    LvalueContext::Store |
-                    LvalueContext::Call => {
-                        *temp = TempState::Defined {
-                            location,
-                            uses: 0
-                        };
-                        return;
-                    }
-                    _ => { /* mark as unpromotable below */ }
-                }
-            } else if let TempState::Defined { ref mut uses, .. } = *temp {
-                // We always allow borrows, even mutable ones, as we need
-                // to promote mutable borrows of some ZSTs e.g. `&mut []`.
-                let allowed_use = match context {
-                    LvalueContext::Borrow {..} => true,
-                    _ => context.is_nonmutating_use()
-                };
-                if allowed_use {
-                    *uses += 1;
+        let temp = &mut self.temps[index];
+        if *temp == TempState::Undefined {
+            match context {
+                LvalueContext::Store |
+                LvalueContext::Call => {
+                    *temp = TempState::Defined {
+                        location,
+                        uses: 0
+                    };
                     return;
                 }
-                /* mark as unpromotable below */
+                _ => { /* mark as unpromotable below */ }
             }
-            *temp = TempState::Unpromotable;
+        } else if let TempState::Defined { ref mut uses, .. } = *temp {
+            // We always allow borrows, even mutable ones, as we need
+            // to promote mutable borrows of some ZSTs e.g. `&mut []`.
+            let allowed_use = match context {
+                LvalueContext::Borrow {..} => true,
+                _ => context.is_nonmutating_use()
+            };
+            if allowed_use {
+                *uses += 1;
+                return;
+            }
+            /* mark as unpromotable below */
         }
+        *temp = TempState::Unpromotable;
     }
 
     fn visit_source_info(&mut self, source_info: &SourceInfo) {
@@ -326,16 +323,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
 /// Replaces all temporaries with their promoted counterparts.
 impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
-                    location: Location) {
-        if let Lvalue::Local(ref mut temp) = *lvalue {
-            if self.source.local_kind(*temp) == LocalKind::Temp {
-                *temp = self.promote_temp(*temp);
-            }
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _: LvalueContext<'tcx>,
+                   _: Location) {
+        if self.source.local_kind(*local) == LocalKind::Temp {
+            *local = self.promote_temp(*local);
         }
-        self.super_lvalue(lvalue, context, location);
     }
 }
 
