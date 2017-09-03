@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.156
+* Update to *rustc 1.22.0-nightly (744dd6c1d 2017-09-02)*
+
 ## 0.0.155
 * Update to *rustc 1.21.0-nightly (c11f689d2 2017-08-29)*
 * New lint: [`infinite_iter`], [`maybe_infinite_iter`], [`cast_lossless`]
