@@ -174,9 +174,9 @@ use std::intrinsics::{VaArg, VaList};
 #[no_mangle]
 pub unsafe extern "C" fn func(fixed: u32, ...) {
     let args = VaList::start();
-    let x: u8 = args::arg();
-    let y: u16 = args::arg();
-    let z: u32 = args::arg();
+    let x: u8 = args.arg();
+    let y: u16 = args.arg();
+    let z: u32 = args.arg();
     println!("{} {} {} {}", fixed, x, y, z);
 }
 ```
