@@ -104,34 +104,28 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
     }
 
     // fill the set with current and super traits
-    fn fill_trait_set<'a, 'b: 'a>(traitt: &'b Item, set: &'a mut HashSet<&'b Item>, cx: &'b LateContext) {
+    fn fill_trait_set(traitt: DefId, set: &mut HashSet<DefId>, cx: &LateContext) {
         if set.insert(traitt) {
-            if let ItemTrait(.., ref ty_param_bounds, _) = traitt.node {
-                for ty_param_bound in ty_param_bounds {
-                    if let TraitTyParamBound(ref poly_trait_ref, _) = *ty_param_bound {
-                        let super_trait_node_id = cx.tcx
-                            .hir
-                            .as_local_node_id(poly_trait_ref.trait_ref.path.def.def_id())
-                            .expect("the DefId is local, the NodeId should be available");
-                        let super_trait = cx.tcx.hir.expect_item(super_trait_node_id);
-                        fill_trait_set(super_trait, set, cx);
-                    }
-                }
+            for supertrait in ::rustc::traits::supertrait_def_ids(cx.tcx, traitt) {
+                fill_trait_set(supertrait, set, cx);
             }
         }
     }
 
     if cx.access_levels.is_exported(visited_trait.id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
         let mut current_and_super_traits = HashSet::new();
-        fill_trait_set(visited_trait, &mut current_and_super_traits, cx);
+        let visited_trait_def_id = cx.tcx.hir.local_def_id(visited_trait.id);
+        fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);
 
         let is_empty_method_found = current_and_super_traits
             .iter()
-            .flat_map(|i| match i.node {
-                ItemTrait(.., ref trait_items) => trait_items.iter(),
-                _ => bug!("should only handle traits"),
-            })
-            .any(|i| is_named_self(cx, i, "is_empty"));
+            .flat_map(|&i| cx.tcx.associated_items(i))
+            .any(|i| {
+                i.kind == ty::AssociatedKind::Method &&
+                i.method_has_self_argument &&
+                i.name == "is_empty" &&
+                cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
+            });
 
         if !is_empty_method_found {
             span_lint(

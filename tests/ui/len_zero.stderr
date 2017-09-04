@@ -86,5 +86,13 @@ error: length comparison to zero
 182 |     if b.len() != 0 {
     |        ^^^^^^^^^^^^ help: using `is_empty` is more concise: `!b.is_empty()`
 
-error: aborting due to 11 previous errors
+error: trait `DependsOnFoo` has a `len` method but no (possibly inherited) `is_empty` method
+   --> $DIR/len_zero.rs:189:1
+    |
+189 | / pub trait DependsOnFoo: Foo {
+190 | |     fn len(&mut self) -> usize;
+191 | | }
+    | |_^
+
+error: aborting due to 12 previous errors
 
