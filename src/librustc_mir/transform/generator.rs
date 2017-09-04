@@ -213,12 +213,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
         // Remove StorageLive and StorageDead statements for remapped locals
         data.retain_statements(|s| {
             match s.kind {
-                StatementKind::StorageLive(ref l) | StatementKind::StorageDead(ref l) => {
-                    if let Lvalue::Local(l) = *l {
-                        !self.remap.contains_key(&l)
-                    } else {
-                        true
-                    }
+                StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
+                    !self.remap.contains_key(&l)
                 }
                 _ => true
             }

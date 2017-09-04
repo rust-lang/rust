@@ -1108,7 +1108,7 @@ impl MirPass for QualifyAndPromoteConstants {
             for block in mir.basic_blocks_mut() {
                 block.statements.retain(|statement| {
                     match statement.kind {
-                        StatementKind::StorageDead(Lvalue::Local(index)) => {
+                        StatementKind::StorageDead(index) => {
                             !promoted_temps.contains(&index)
                         }
                         _ => true

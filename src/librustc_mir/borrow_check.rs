@@ -212,11 +212,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
                 // ignored by borrowck
             }
 
-            StatementKind::StorageDead(ref lvalue) => {
+            StatementKind::StorageDead(local) => {
                 // causes non-drop values to be dropped.
                 self.consume_lvalue(ContextKind::StorageDead.new(location),
                                     ConsumeKind::Consume,
-                                    (lvalue, span),
+                                    (&Lvalue::Local(local), span),
                                     flow_state)
             }
         }

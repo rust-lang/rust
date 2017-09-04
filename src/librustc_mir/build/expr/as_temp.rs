@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         if !expr_ty.is_never() {
             this.cfg.push(block, Statement {
                 source_info,
-                kind: StatementKind::StorageLive(Lvalue::Local(temp))
+                kind: StatementKind::StorageLive(temp)
             });
         }
 

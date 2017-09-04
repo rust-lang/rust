@@ -406,8 +406,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         block.statements.retain(|statement| {
             match statement.kind {
                 StatementKind::Assign(Lvalue::Local(index), _) |
-                StatementKind::StorageLive(Lvalue::Local(index)) |
-                StatementKind::StorageDead(Lvalue::Local(index)) => {
+                StatementKind::StorageLive(index) |
+                StatementKind::StorageDead(index) => {
                     !promoted(index)
                 }
                 _ => true

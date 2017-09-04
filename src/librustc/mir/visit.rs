@@ -360,11 +360,11 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
                         self.visit_lvalue(lvalue, LvalueContext::Store, location);
                     }
-                    StatementKind::StorageLive(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageLive, location);
+                    StatementKind::StorageLive(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::StorageLive, location);
                     }
-                    StatementKind::StorageDead(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
+                    StatementKind::StorageDead(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::StorageDead, location);
                     }
                     StatementKind::InlineAsm { ref $($mutability)* outputs,
                                                ref $($mutability)* inputs,

@@ -369,11 +369,8 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         // Remove unnecessary StorageLive and StorageDead annotations.
         data.statements.retain(|stmt| {
             match stmt.kind {
-                StatementKind::StorageLive(ref lval) | StatementKind::StorageDead(ref lval) => {
-                    match *lval {
-                        Lvalue::Local(l) => self.map[l.index()] != !0,
-                        _ => true
-                    }
+                StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
+                    self.map[l.index()] != !0
                 }
                 _ => true
             }

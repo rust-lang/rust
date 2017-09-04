@@ -420,15 +420,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                variant_index);
                 };
             }
-            StatementKind::StorageLive(ref lv) |
-            StatementKind::StorageDead(ref lv) => {
-                match *lv {
-                    Lvalue::Local(_) => {}
-                    _ => {
-                        span_mirbug!(self, stmt, "bad lvalue: expected local");
-                    }
-                }
-            }
+            StatementKind::StorageLive(_) |
+            StatementKind::StorageDead(_) |
             StatementKind::InlineAsm { .. } |
             StatementKind::EndRegion(_) |
             StatementKind::Validate(..) |
