@@ -9,3 +9,9 @@ struct Lorem {
     #[ serde(rename = "Amet") ]
     amet: usize,
 }
+
+// #1943
+pub struct Bzip2 {
+    # [ serde (rename = "level") ]
+     level: i32 ,
+}
