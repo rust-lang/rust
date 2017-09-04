@@ -523,10 +523,6 @@ class RustBuild(object):
         >>> rb.config_toml = 'rustc = "rustc"\\n'
         >>> rb.program_config('rustc')
         'rustc'
-        >>> cargo_path = rb.program_config('cargo')
-        >>> cargo_path.rstrip(".exe") == os.path.join("/tmp/rust",
-        ... "bin", "cargo")
-        True
         >>> rb.config_toml = ''
         >>> cargo_path = rb.program_config('cargo')
         >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
