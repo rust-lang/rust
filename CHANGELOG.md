@@ -1,7 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## Master
+## 0.0.157 - 2017-09-04
+* Update to *rustc 1.22.0-nightly (981ce7d8d 2017-09-03)*
 * New lint: [`unit_expr`]
 
 ## 0.0.156 - 2017-09-03
