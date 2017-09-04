@@ -70,8 +70,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             too_large_for_stack: self.too_large_for_stack,
         };
 
-        let region_maps = &cx.tcx.region_maps(fn_def_id);
-        ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
+        let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
+        ExprUseVisitor::new(&mut v, cx.tcx, cx.param_env, region_scope_tree, cx.tables).consume_body(body);
 
         for node in v.set {
             span_lint(

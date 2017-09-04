@@ -97,8 +97,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             ..
         } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
-            let region_maps = &cx.tcx.region_maps(fn_def_id);
-            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_maps, cx.tables).consume_body(body);
+            let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
+            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, cx.param_env, region_scope_tree, cx.tables).consume_body(body);
             ctx
         };
 

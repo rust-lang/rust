@@ -6,7 +6,7 @@ use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, walk_decl, walk_pat
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
 use rustc_const_eval::ConstContext;
@@ -621,9 +621,9 @@ fn check_for_loop_range<'a, 'tcx>(
                 if let Some(indexed_extent) = indexed_extent {
                     let parent_id = cx.tcx.hir.get_parent(expr.id);
                     let parent_def_id = cx.tcx.hir.local_def_id(parent_id);
-                    let region_maps = cx.tcx.region_maps(parent_def_id);
-                    let pat_extent = region_maps.var_scope(pat.hir_id.local_id);
-                    if region_maps.is_subscope_of(indexed_extent, pat_extent) {
+                    let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
+                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id);
+                    if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
                         return;
                     }
                 }
@@ -1034,7 +1034,7 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// var name to look for as index
     var: DefId,
     /// indexed variables, the extend is `None` for global
-    indexed: HashMap<Name, Option<CodeExtent>>,
+    indexed: HashMap<Name, Option<region::Scope>>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: HashSet<Name>,
@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
 
                     let parent_id = self.cx.tcx.hir.get_parent(expr.id);
                     let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
-                    let extent = self.cx.tcx.region_maps(parent_def_id).var_scope(hir_id.local_id);
+                    let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
                     self.indexed.insert(seqvar.segments[0].name, Some(extent));
                     return;  // no need to walk further
                 }
