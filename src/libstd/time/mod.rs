@@ -393,7 +393,6 @@ impl fmt::Debug for SystemTime {
 ///     Err(_) => panic!("SystemTime before UNIX EPOCH!"),
 /// };
 /// println!("1970-01-01 00:00:00 UTC was {} seconds ago!", now.as_secs());
-
 /// ```
 #[stable(feature = "time2", since = "1.8.0")]
 pub const UNIX_EPOCH: SystemTime = SystemTime(time::UNIX_EPOCH);
