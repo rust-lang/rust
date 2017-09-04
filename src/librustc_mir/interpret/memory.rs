@@ -6,7 +6,7 @@ use std::cell::Cell;
 use rustc::ty::Instance;
 use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 
 use super::{EvalResult, EvalErrorKind, PrimVal, Pointer, EvalContext, DynamicLifetime, Machine,
             RangeMap};
@@ -26,7 +26,7 @@ pub enum AccessKind {
 struct LockInfo {
     /// Stores for which lifetimes (of the original write lock) we got
     /// which suspensions.
-    suspended: HashMap<DynamicLifetime, Vec<CodeExtent>>,
+    suspended: HashMap<DynamicLifetime, Vec<region::Scope>>,
     /// The current state of the lock that's actually effective.
     active: Lock,
 }
@@ -567,7 +567,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         len: u64,
-        region: Option<CodeExtent>,
+        region: Option<region::Scope>,
         kind: AccessKind,
     ) -> EvalResult<'tcx> {
         let frame = self.cur_frame;
@@ -620,8 +620,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         len: u64,
-        lock_region: Option<CodeExtent>,
-        suspend: Option<CodeExtent>,
+        lock_region: Option<region::Scope>,
+        suspend: Option<region::Scope>,
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
@@ -680,8 +680,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         len: u64,
-        lock_region: Option<CodeExtent>,
-        suspended_region: CodeExtent,
+        lock_region: Option<region::Scope>,
+        suspended_region: region::Scope,
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
@@ -741,7 +741,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         Ok(())
     }
 
-    pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<CodeExtent>) {
+    pub(crate) fn locks_lifetime_ended(&mut self, ending_region: Option<region::Scope>) {
         let cur_frame = self.cur_frame;
         trace!(
             "Releasing frame {} locks that expire at {:?}",

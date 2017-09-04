@@ -2,7 +2,7 @@
 name = "rustc_miri"
 version = "0.1.0"
 dependencies = [
- "backtrace 0.3.2 (git+https://github.com/alexcrichton/backtrace-rs)",
+ "backtrace 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -20,10 +20,10 @@ dependencies = [
 
 [[package]]
 name = "backtrace"
-version = "0.3.2"
-source = "git+https://github.com/alexcrichton/backtrace-rs#ac8f8d150ad114b735a020c37762426fc7ad18c4"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace-sys 0.1.12 (git+https://github.com/alexcrichton/backtrace-rs)",
+ "backtrace-sys 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -35,7 +35,7 @@ dependencies = [
 [[package]]
 name = "backtrace-sys"
 version = "0.1.12"
-source = "git+https://github.com/alexcrichton/backtrace-rs#ac8f8d150ad114b735a020c37762426fc7ad18c4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -68,11 +68,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "compiletest_rs"
-version = "0.2.9"
+version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -184,12 +185,11 @@ version = "0.1.0"
 dependencies = [
  "byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiletest_rs 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiletest_rs 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "log_settings 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_miri 0.1.0",
- "tempdir 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -343,13 +343,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [metadata]
 "checksum aho-corasick 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "500909c4f87a9e52355b26626d890833e9e1d53ac566db76c36faa984b889699"
-"checksum backtrace 0.3.2 (git+https://github.com/alexcrichton/backtrace-rs)" = "<none>"
-"checksum backtrace-sys 0.1.12 (git+https://github.com/alexcrichton/backtrace-rs)" = "<none>"
+"checksum backtrace 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "99f2ce94e22b8e664d95c57fff45b98a966c2252b60691d0b7aeeccd88d70983"
+"checksum backtrace-sys 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)" = "afccc5772ba333abccdf60d55200fa3406f8c59dcf54d5f7998c9107d3799c7c"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum byteorder 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ff81738b726f5d099632ceaffe7fb65b90212e8dce59d518729e7e8634032d3d"
 "checksum cargo_metadata 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "be1057b8462184f634c3a208ee35b0f935cfd94b694b26deadccd98732088d7b"
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
-"checksum compiletest_rs 0.2.9 (registry+https://github.com/rust-lang/crates.io-index)" = "3dc4720203de7b490e2808cad3e9090e8850eed4ecd4176b246551a952f4ead7"
+"checksum compiletest_rs 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "2741d378feb7a434dba54228c89a70b4e427fee521de67cdda3750b8a0265f5a"
 "checksum conv 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "78ff10625fd0ac447827aa30ea8b861fead473bb60aeb73af6c1c58caf0d1299"
 "checksum custom_derive 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "ef8ae57c4978a2acd8b869ce6b9ca1dfe817bff704c220209fdef2c0b75a01b9"
 "checksum dbghelp-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "97590ba53bcb8ac28279161ca943a924d1fd4a8fb3fa63302591647c4fc5b850"

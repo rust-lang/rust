@@ -16,7 +16,7 @@ script:
   xargo/build.sh
 - |
   # Test plain miri
-  cargo build --release --features "cargo_miri" &&
+  cargo build --locked --release --features "cargo_miri" &&
   cargo test --release --all &&
   cargo install --features "cargo_miri"
 - |
@@ -31,7 +31,7 @@ script:
 - |
   # test that the rustc_tests binary compiles
   cd rustc_tests &&
-  cargo build --release &&
+  cargo build --locked --release &&
   cd ..
 notifications:
   email:
