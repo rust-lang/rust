@@ -146,3 +146,8 @@ fn attributes_on_statements() {
     #[attr(on(mac))]
     foo!();
 }
+
+// Large derive
+#[derive(Add, Sub, Mul, Div, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, Serialize,
+         Deserialize)]
+pub struct HP(pub u8);
