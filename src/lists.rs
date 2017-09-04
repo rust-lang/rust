@@ -265,7 +265,7 @@ where
     // Now that we know how we will layout, we can decide for sure if there
     // will be a trailing separator.
     let mut trailing_separator = formatting.needs_trailing_separator();
-    let mut result = String::new();
+    let mut result = String::with_capacity(128);
     let cloned_items = items.clone();
     let mut iter = items.into_iter().enumerate().peekable();
     let mut item_max_width: Option<usize> = None;
