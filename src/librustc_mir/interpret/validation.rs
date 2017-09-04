@@ -6,7 +6,7 @@ use rustc::ty::subst::{Substs, Subst};
 use rustc::traits;
 use rustc::infer::InferCtxt;
 use rustc::traits::Reveal;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 
 use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
             Lvalue, LvalueExtra, Machine};
@@ -17,8 +17,8 @@ pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
 enum ValidationMode {
     Acquire,
     /// Recover because the given region ended
-    Recover(CodeExtent),
-    ReleaseUntil(Option<CodeExtent>),
+    Recover(region::Scope),
+    ReleaseUntil(Option<region::Scope>),
 }
 
 impl ValidationMode {
@@ -106,7 +106,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.validate(query, mode)
     }
 
-    pub(crate) fn end_region(&mut self, ce: CodeExtent) -> EvalResult<'tcx> {
+    pub(crate) fn end_region(&mut self, ce: region::Scope) -> EvalResult<'tcx> {
         self.memory.locks_lifetime_ended(Some(ce));
         // Recover suspended lvals
         let lft = DynamicLifetime {
@@ -268,7 +268,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         val: Value,
         pointee_ty: Ty<'tcx>,
-        re: Option<CodeExtent>,
+        re: Option<region::Scope>,
         mutbl: Mutability,
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {

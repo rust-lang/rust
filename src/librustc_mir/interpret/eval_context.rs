@@ -4,7 +4,7 @@ use std::fmt::Write;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
@@ -106,7 +106,7 @@ pub enum StackPopCleanup {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DynamicLifetime {
     pub frame: usize,
-    pub region: Option<CodeExtent>, // "None" indicates "until the function ends"
+    pub region: Option<region::Scope>, // "None" indicates "until the function ends"
 }
 
 #[derive(Copy, Clone, Debug)]
