@@ -15,6 +15,11 @@ pub struct Foo {
     pub i: TypeForPublicField
 }
 
+// #1095
+struct S<T: /* comment */> {
+    t: T,
+}
+
 // #1029
 pub struct Foo {
     #[doc(hidden)]
