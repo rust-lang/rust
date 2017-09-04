@@ -89,34 +89,34 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let mode = match op {
             ValidationOp::Acquire => ValidationMode::Acquire,
             ValidationOp::Release => ValidationMode::ReleaseUntil(None),
-            ValidationOp::Suspend(ce) => {
+            ValidationOp::Suspend(scope) => {
                 if query.mutbl == MutMutable {
                     let lft = DynamicLifetime {
                         frame: self.cur_frame(),
-                        region: Some(ce),
+                        region: Some(scope),
                     };
-                    trace!("Suspending {:?} until {:?}", query, ce);
+                    trace!("Suspending {:?} until {:?}", query, scope);
                     self.suspended.entry(lft).or_insert_with(Vec::new).push(
                         query.clone(),
                     );
                 }
-                ValidationMode::ReleaseUntil(Some(ce))
+                ValidationMode::ReleaseUntil(Some(scope))
             }
         };
         self.validate(query, mode)
     }
 
-    pub(crate) fn end_region(&mut self, ce: region::Scope) -> EvalResult<'tcx> {
-        self.memory.locks_lifetime_ended(Some(ce));
+    pub(crate) fn end_region(&mut self, scope: region::Scope) -> EvalResult<'tcx> {
+        self.memory.locks_lifetime_ended(Some(scope));
         // Recover suspended lvals
         let lft = DynamicLifetime {
             frame: self.cur_frame(),
-            region: Some(ce),
+            region: Some(scope),
         };
         if let Some(queries) = self.suspended.remove(&lft) {
             for query in queries {
                 trace!("Recovering {:?} from suspension", query);
-                self.validate(query, ValidationMode::Recover(ce))?;
+                self.validate(query, ValidationMode::Recover(scope))?;
             }
         }
         Ok(())
@@ -459,7 +459,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 // we record the region of this borrow to the context.
                 if query.re == None {
                     match *region {
-                        ReScope(ce) => query.re = Some(ce),
+                        ReScope(scope) => query.re = Some(scope),
                         // It is possible for us to encounter erased lifetimes here because the lifetimes in
                         // this functions' Subst will be erased.
                         _ => {}
