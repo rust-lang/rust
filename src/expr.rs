@@ -855,11 +855,17 @@ impl Rewrite for ast::Block {
         }
 
         let prefix = try_opt!(block_prefix(context, self, shape));
-        if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, self, shape) {
-            return rw;
+
+        let result = rewrite_block_with_visitor(context, &prefix, self, shape);
+        if let Some(ref result_str) = result {
+            if result_str.lines().count() <= 3 {
+                if let rw @ Some(_) = rewrite_single_line_block(context, &prefix, self, shape) {
+                    return rw;
+                }
+            }
         }
 
-        rewrite_block_with_visitor(context, &prefix, self, shape)
+        result
     }
 }
 
