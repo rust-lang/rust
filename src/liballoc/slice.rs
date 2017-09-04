@@ -671,10 +671,25 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let v = [10, 40, 30, 20, 50];
-    /// let (v1, v2) = v.split_at(2);
-    /// assert_eq!([10, 40], v1);
-    /// assert_eq!([30, 20, 50], v2);
+    /// let v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// {
+    ///    let (left, right) = v.split_at(0);
+    ///    assert!(left == []);
+    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at(2);
+    ///     assert!(left == [1, 2]);
+    ///     assert!(right == [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at(6);
+    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
+    ///     assert!(right == []);
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -695,26 +710,16 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = [1, 2, 3, 4, 5, 6];
-    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
     /// // scoped to restrict the lifetime of the borrows
     /// {
-    ///    let (left, right) = v.split_at_mut(0);
-    ///    assert!(left == []);
-    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
     ///     let (left, right) = v.split_at_mut(2);
-    ///     assert!(left == [1, 2]);
-    ///     assert!(right == [3, 4, 5, 6]);
+    ///     assert!(left == [1, 0]);
+    ///     assert!(right == [3, 0, 5, 6]);
+    ///     left[1] = 2;
+    ///     right[1] = 4;
     /// }
-    ///
-    /// {
-    ///     let (left, right) = v.split_at_mut(6);
-    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
-    ///     assert!(right == []);
-    /// }
+    /// assert!(v == [1, 2, 3, 4, 5, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
