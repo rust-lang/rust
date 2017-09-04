@@ -821,6 +821,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// ```
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
+#[derive(Copy)]
 pub union ManuallyDrop<T>{ value: T }
 
 impl<T> ManuallyDrop<T> {
@@ -896,6 +897,19 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
         unsafe {
             fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
         }
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Clone> Clone for ManuallyDrop<T> {
+    fn clone(&self) -> Self {
+        use ::ops::Deref;
+        ManuallyDrop::new(self.deref().clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        use ::ops::DerefMut;
+        self.deref_mut().clone_from(source);
     }
 }
 
