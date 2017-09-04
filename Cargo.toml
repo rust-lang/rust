@@ -10,18 +10,15 @@ build = "build.rs"
 [[bin]]
 doc = false
 name = "miri"
-test = false
 path = "miri/bin/miri.rs"
 
 [[bin]]
 doc = false
 name = "cargo-miri"
-test = false
 path = "miri/bin/cargo-miri.rs"
 required-features = ["cargo_miri"]
 
 [lib]
-test = false
 path = "miri/lib.rs"
 
 [dependencies]
@@ -36,8 +33,7 @@ rustc_miri = { path = "src/librustc_mir" }
 cargo_miri = ["cargo_metadata"]
 
 [dev-dependencies]
-compiletest_rs = "0.2.6"
-tempdir = "0.3"
+compiletest_rs = { version = "0.2.10", features = ["tmp"] }
 
 [workspace]
 exclude = ["xargo", "cargo-miri-test", "rustc_tests"]
