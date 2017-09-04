@@ -641,7 +641,7 @@ where
             self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
             let post_snippet = post_snippet[..comment_end].trim();
 
-            let post_snippet_trimmed = if post_snippet.starts_with(',') {
+            let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
                 post_snippet[1..].trim_matches(white_space)
             } else if post_snippet.ends_with(',') {
                 post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)

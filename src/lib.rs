@@ -217,6 +217,17 @@ impl Spanned for ast::TyParamBound {
     }
 }
 
+impl Spanned for ast::LifetimeDef {
+    fn span(&self) -> Span {
+        let hi = if self.bounds.is_empty() {
+            self.lifetime.span.hi()
+        } else {
+            self.bounds[self.bounds.len() - 1].span.hi()
+        };
+        mk_sp(self.lifetime.span.lo(), hi)
+    }
+}
+
 impl Spanned for MacroArg {
     fn span(&self) -> Span {
         match *self {
