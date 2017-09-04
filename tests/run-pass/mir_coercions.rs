@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: investigate again once #296 is fixed
+// compile-flags: -Zmir-emit-validate=0
+
 #![feature(coerce_unsized, unsize)]
 
 use std::ops::CoerceUnsized;
