@@ -382,6 +382,18 @@ impl fmt::Debug for SystemTime {
 /// [`SystemTime`] instance to represent another fixed point in time.
 ///
 /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::time::{SystemTime, UNIX_EPOCH};
+///
+/// let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+///     Ok(n) => n,
+///     Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+/// };
+/// println!("1970-01-01 00:00:00 UTC was {} seconds ago!", now.as_secs());
+/// ```
 #[stable(feature = "time2", since = "1.8.0")]
 pub const UNIX_EPOCH: SystemTime = SystemTime(time::UNIX_EPOCH);
 
