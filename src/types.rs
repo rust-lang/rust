@@ -584,11 +584,10 @@ impl Rewrite for ast::TyParam {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
-        let attr_str = match (&*self.attrs).rewrite(context, shape) {
-            Some(ref rw) if !rw.is_empty() => format!("{} ", rw),
-            _ => String::new(),
-        };
-        result.push_str(&attr_str);
+        match self.attrs.rewrite(context, shape) {
+            Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
+            _ => (),
+        }
         result.push_str(&self.ident.to_string());
         if !self.bounds.is_empty() {
             result.push_str(type_bound_colon(context));

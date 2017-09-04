@@ -2313,35 +2313,45 @@ fn rewrite_generics_inner(
 ) -> Option<String> {
     // FIXME: convert bounds to where clauses where they get too big or if
     // there is a where clause at all.
-    let lifetimes: &[_] = &generics.lifetimes;
-    let tys: &[_] = &generics.ty_params;
-    if lifetimes.is_empty() && tys.is_empty() {
+
+    // Wrapper type
+    enum GenericsArg<'a> {
+        Lifetime(&'a ast::LifetimeDef),
+        TyParam(&'a ast::TyParam),
+    }
+    impl<'a> Rewrite for GenericsArg<'a> {
+        fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+            match *self {
+                GenericsArg::Lifetime(ref lifetime) => lifetime.rewrite(context, shape),
+                GenericsArg::TyParam(ref ty) => ty.rewrite(context, shape),
+            }
+        }
+    }
+    impl<'a> Spanned for GenericsArg<'a> {
+        fn span(&self) -> Span {
+            match *self {
+                GenericsArg::Lifetime(ref lifetime) => lifetime.span(),
+                GenericsArg::TyParam(ref ty) => ty.span(),
+            }
+        }
+    }
+
+    if generics.lifetimes.is_empty() && generics.ty_params.is_empty() {
         return Some(String::new());
     }
 
-    // Strings for the generics.
-    let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(context, shape));
-    let ty_strs = tys.iter().map(|ty_param| ty_param.rewrite(context, shape));
-
-    // Extract comments between generics.
-    let lt_spans = lifetimes.iter().map(|l| {
-        let hi = if l.bounds.is_empty() {
-            l.lifetime.span.hi()
-        } else {
-            l.bounds[l.bounds.len() - 1].span.hi()
-        };
-        mk_sp(l.lifetime.span.lo(), hi)
-    });
-    let ty_spans = tys.iter().map(|ty| ty.span());
-
+    let generics_args = generics
+        .lifetimes
+        .iter()
+        .map(|lt| GenericsArg::Lifetime(lt))
+        .chain(generics.ty_params.iter().map(|ty| GenericsArg::TyParam(ty)));
     let items = itemize_list(
         context.codemap,
-        lt_spans.chain(ty_spans).zip(lt_strs.chain(ty_strs)),
+        generics_args,
         ">",
-        |&(sp, _)| sp.lo(),
-        |&(sp, _)| sp.hi(),
-        // FIXME: don't clone
-        |&(_, ref str)| str.clone(),
+        |arg| arg.span().lo(),
+        |arg| arg.span().hi(),
+        |arg| arg.rewrite(context, shape),
         context.codemap.span_after(span, "<"),
         span.hi(),
         false,
