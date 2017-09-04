@@ -340,6 +340,7 @@ pub enum PrintRequest {
     RelocationModels,
     CodeModels,
     TargetSpec,
+    NativeStaticLibs,
 }
 
 pub enum Input {
@@ -1296,7 +1297,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                                print on stdout",
                      "[crate-name|file-names|sysroot|cfg|target-list|\
                        target-cpus|target-features|relocation-models|\
-                       code-models|target-spec-json]"),
+                       code-models|target-spec-json|native-static-deps]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1642,6 +1643,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
+            "native-static-libs" => PrintRequest::NativeStaticLibs,
             "target-spec-json" => {
                 if nightly_options::is_unstable_enabled(matches) {
                     PrintRequest::TargetSpec
