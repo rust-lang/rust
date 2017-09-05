@@ -36,12 +36,14 @@ elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
         echo Cannot run disabled images on travis!
         exit 1
     fi
-    retry docker \
+    # retry messes with the pipe from tar to docker. Not needed on non-travis
+    # Transform changes the context of disabled Dockerfiles to match the enabled ones
+    tar --transform 's#^./disabled/#./#' -C $docker_dir -c . | docker \
       build \
       --rm \
       -t rust-ci \
-      -f "$docker_dir/disabled/$image/Dockerfile" \
-      "$docker_dir"
+      -f "$image/Dockerfile" \
+      -
 else
     echo Invalid image: $image
     exit 1
