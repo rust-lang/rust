@@ -2116,9 +2116,7 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
     /// # fn main() {
     /// use std::collections::BTreeMap;
     ///
-    /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
-    /// let s = "hoho".to_string();
-    ///
+    /// let mut map: BTreeMap<&str, Option<usize>> = BTreeMap::new();
     /// map.entry("poneyland").or_default();
     ///
     /// assert_eq!(map["poneyland"], None);

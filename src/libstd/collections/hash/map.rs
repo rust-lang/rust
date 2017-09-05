@@ -2013,9 +2013,7 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     /// # fn main() {
     /// use std::collections::HashMap;
     ///
-    /// let mut map: HashMap<&str, Option<usize>> = HashMap::new();
-    /// let s = "hoho".to_string();
-    ///
+    /// let mut map: HashMap<&str, Option<u32>> = HashMap::new();
     /// map.entry("poneyland").or_default();
     ///
     /// assert_eq!(map["poneyland"], None);
