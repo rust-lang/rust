@@ -777,7 +777,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadataHashes::new());
     }
 
-    let cstore = &tcx.sess.cstore;
+    let cstore = tcx.cstore_untracked();
     let (metadata, hashes) = cstore.encode_metadata(tcx,
                                                     &link_meta,
                                                     exported_symbols);
