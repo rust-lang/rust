@@ -50,7 +50,7 @@ impl<'tcx> CFG<'tcx> {
                                              block: BasicBlock,
                                              source_info: SourceInfo,
                                              region_scope: region::Scope) {
-        if tcx.sess.opts.debugging_opts.emit_end_regions {
+        if tcx.sess.emit_end_regions() {
             self.push(block, Statement {
                 source_info,
                 kind: StatementKind::EndRegion(region_scope),

@@ -42,7 +42,7 @@ impl MirPass for CleanEndRegions {
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        if !tcx.sess.opts.debugging_opts.emit_end_regions { return; }
+        if !tcx.sess.emit_end_regions() { return; }
 
         let mut gather = GatherBorrowedRegions {
             seen_regions: FxHashSet()
