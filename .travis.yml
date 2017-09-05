@@ -37,7 +37,7 @@ matrix:
     # OSX builders running tests, these run the full test suite.
     #
     # Note that the compiler is compiled to target 10.8 here because the Xcode
-    # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+    # version that we're using, 8.3, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
@@ -47,7 +47,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
@@ -57,7 +57,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode8.3
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
