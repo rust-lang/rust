@@ -25,6 +25,11 @@ extern {
         fn DMR_GetDevice(pHDev: *mut HDEV, searchMode: DeviceSearchMode, pSearchString: *const c_char, devNr: c_uint, wildcard: c_char) -> TDMR_ERROR;
         
     fn quux() -> (); // Post comment
+
+  pub      type
+      Foo;
+
+          type   Bar;
 }
 
 extern "Rust" { static ext:  u32;

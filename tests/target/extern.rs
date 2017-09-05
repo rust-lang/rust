@@ -34,6 +34,10 @@ extern "C" {
     ) -> TDMR_ERROR;
 
     fn quux() -> (); // Post comment
+
+    pub type Foo;
+
+    type Bar;
 }
 
 extern "Rust" {
