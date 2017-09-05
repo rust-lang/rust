@@ -1318,6 +1318,58 @@ let x: i32 = "I am not a number!";
 //      |
 //    type `i32` assigned to variable `x`
 ```
+
+You will get this error too if you want to return a trait (implementor):
+
+```compile_fail,E0308
+trait A {}
+
+struct B;
+
+impl A for B {}
+
+fn foo(b: B) -> A {
+    // error[E0308]: mismatched types
+    b
+}
+```
+
+To fix this, the return type must be generic. Here are two solutions:
+
+1.
+
+```rust
+# use std::boxed::Box;
+# 
+# trait A {}
+#
+# struct B;
+#
+# impl A for B {}
+#
+fn foo(b: B) -> Box<A> {
+    // Since the `Box<T>` input parameter is generic, `Box<A>` can take all `A` trait implementors (in this case `B`).
+    // Successful compilation.
+    Box::new(b)
+}
+```
+
+2.
+
+```rust
+# trait A {}
+#
+# struct B;
+#
+# impl A for B {}
+#
+fn foo<T: A>(b: T) -> T {
+    // The `T` generic type takes all `A` trait implementors (in this case `B`).
+    // `rustc` is happy!
+    b
+}
+```
+
 "##,
 
 E0309: r##"
