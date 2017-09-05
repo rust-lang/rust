@@ -1081,8 +1081,14 @@ impl Step for Rls {
            .arg("--output-dir").arg(&distdir(build))
            .arg("--non-installed-overlay").arg(&overlay)
            .arg(format!("--package-name={}-{}", name, target))
-           .arg("--component-name=rls")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        if build.config.channel == "nightly" {
+            cmd.arg("--component-name=rls");
+        } else {
+            cmd.arg("--component-name=rls-preview");
+        }
+
         build.run(&mut cmd);
         distdir(build).join(format!("{}-{}.tar.gz", name, target))
     }
@@ -1279,9 +1285,12 @@ impl Step for Extended {
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target))
                         .join(format!("rust-std-{}", target)),
                     &exe.join("rust-std"));
-            cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target))
-                        .join("rls"),
-                    &exe.join("rls"));
+            let rls_path = if build.config.channel == "nightly" {
+                work.join(&format!("{}-{}", pkgname(build, "rls"), target)).join("rls")
+            } else {
+                work.join(&format!("{}-{}", pkgname(build, "rls"), target)).join("rls-preview")
+            };
+            cp_r(&rls_path, &exe.join("rls"));
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target))
                         .join(format!("rust-analysis-{}", target)),
                     &exe.join("rust-analysis"));
