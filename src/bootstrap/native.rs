@@ -306,6 +306,7 @@ impl Step for TestHelpers {
            .target(&target)
            .host(&build.build)
            .opt_level(0)
+           .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
            .compile("librust_test_helpers.a");

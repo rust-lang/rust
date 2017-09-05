@@ -46,7 +46,7 @@ pub fn find(build: &mut Build) {
     // and such as well as for being a linker for Rust code.
     for target in build.targets.iter().chain(&build.hosts).cloned().chain(iter::once(build.build)) {
         let mut cfg = gcc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).debug(false)
+        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
            .target(&target).host(&build.build);
 
         let config = build.config.target_config.get(&target);
@@ -68,7 +68,7 @@ pub fn find(build: &mut Build) {
     // For all host triples we need to find a C++ compiler as well
     for host in build.hosts.iter().cloned().chain(iter::once(build.build)) {
         let mut cfg = gcc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).debug(false).cpp(true)
+        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
            .target(&host).host(&build.build);
         let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {

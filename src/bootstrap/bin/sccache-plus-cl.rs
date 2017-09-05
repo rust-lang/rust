@@ -24,6 +24,7 @@ fn main() {
        .target(&target)
        .host(&target)
        .opt_level(0)
+       .warnings(false)
        .debug(false);
     let compiler = cfg.get_compiler();
 

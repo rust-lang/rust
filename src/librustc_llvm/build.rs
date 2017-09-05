@@ -137,6 +137,7 @@ fn main() {
     cmd.arg("--cxxflags");
     let cxxflags = output(&mut cmd);
     let mut cfg = gcc::Build::new();
+    cfg.warnings(false);
     for flag in cxxflags.split_whitespace() {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
