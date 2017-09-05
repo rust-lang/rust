@@ -308,151 +308,157 @@ error: casting f32 to f64 may become silently lossy if types change
 59 |     1.0f32 as f64;
    |     ^^^^^^^^^^^^^ help: try: `f64::from(1.0f32)`
 
-error: casting i32 to u32 may lose the sign of the value
+error: casting u8 to u16 may become silently lossy if types change
   --> $DIR/cast.rs:61:5
    |
-61 |     1i32 as u32;
+61 |     (1u8 + 1u8) as u16;
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
+
+error: casting i32 to u32 may lose the sign of the value
+  --> $DIR/cast.rs:63:5
+   |
+63 |     1i32 as u32;
    |     ^^^^^^^^^^^
 
 error: casting isize to usize may lose the sign of the value
-  --> $DIR/cast.rs:62:5
+  --> $DIR/cast.rs:64:5
    |
-62 |     1isize as usize;
+64 |     1isize as usize;
    |     ^^^^^^^^^^^^^^^
 
 error: casting isize to i8 may truncate the value
-  --> $DIR/cast.rs:65:5
+  --> $DIR/cast.rs:67:5
    |
-65 |     1isize as i8;
+67 |     1isize as i8;
    |     ^^^^^^^^^^^^
 
 error: casting isize to f64 causes a loss of precision on targets with 64-bit wide pointers (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:66:5
+  --> $DIR/cast.rs:68:5
    |
-66 |     1isize as f64;
+68 |     1isize as f64;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to f64 causes a loss of precision on targets with 64-bit wide pointers (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
-  --> $DIR/cast.rs:67:5
+  --> $DIR/cast.rs:69:5
    |
-67 |     1usize as f64;
+69 |     1usize as f64;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to f32 causes a loss of precision (isize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:68:5
+  --> $DIR/cast.rs:70:5
    |
-68 |     1isize as f32;
+70 |     1isize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to f32 causes a loss of precision (usize is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)
-  --> $DIR/cast.rs:69:5
+  --> $DIR/cast.rs:71:5
    |
-69 |     1usize as f32;
+71 |     1usize as f32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:70:5
+  --> $DIR/cast.rs:72:5
    |
-70 |     1isize as i32;
+72 |     1isize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to u32 may lose the sign of the value
-  --> $DIR/cast.rs:71:5
+  --> $DIR/cast.rs:73:5
    |
-71 |     1isize as u32;
+73 |     1isize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting isize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:71:5
+  --> $DIR/cast.rs:73:5
    |
-71 |     1isize as u32;
+73 |     1isize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to u32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:72:5
+  --> $DIR/cast.rs:74:5
    |
-72 |     1usize as u32;
+74 |     1usize as u32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may truncate the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:73:5
+  --> $DIR/cast.rs:75:5
    |
-73 |     1usize as i32;
+75 |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting usize to i32 may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:73:5
+  --> $DIR/cast.rs:75:5
    |
-73 |     1usize as i32;
+75 |     1usize as i32;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:75:5
+  --> $DIR/cast.rs:77:5
    |
-75 |     1i64 as isize;
+77 |     1i64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may lose the sign of the value
-  --> $DIR/cast.rs:76:5
+  --> $DIR/cast.rs:78:5
    |
-76 |     1i64 as usize;
+78 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting i64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:76:5
+  --> $DIR/cast.rs:78:5
    |
-76 |     1i64 as usize;
+78 |     1i64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:77:5
+  --> $DIR/cast.rs:79:5
    |
-77 |     1u64 as isize;
+79 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to isize may wrap around the value on targets with 64-bit wide pointers
-  --> $DIR/cast.rs:77:5
+  --> $DIR/cast.rs:79:5
    |
-77 |     1u64 as isize;
+79 |     1u64 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting u64 to usize may truncate the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:78:5
+  --> $DIR/cast.rs:80:5
    |
-78 |     1u64 as usize;
+80 |     1u64 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting u32 to isize may wrap around the value on targets with 32-bit wide pointers
-  --> $DIR/cast.rs:79:5
+  --> $DIR/cast.rs:81:5
    |
-79 |     1u32 as isize;
+81 |     1u32 as isize;
    |     ^^^^^^^^^^^^^
 
 error: casting i32 to usize may lose the sign of the value
-  --> $DIR/cast.rs:82:5
+  --> $DIR/cast.rs:84:5
    |
-82 |     1i32 as usize;
+84 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`i32` -> `i32`)
-  --> $DIR/cast.rs:84:5
+  --> $DIR/cast.rs:86:5
    |
-84 |     1i32 as i32;
+86 |     1i32 as i32;
    |     ^^^^^^^^^^^
    |
    = note: `-D unnecessary-cast` implied by `-D warnings`
 
 error: casting to the same type is unnecessary (`f32` -> `f32`)
-  --> $DIR/cast.rs:85:5
+  --> $DIR/cast.rs:87:5
    |
-85 |     1f32 as f32;
+87 |     1f32 as f32;
    |     ^^^^^^^^^^^
 
 error: casting to the same type is unnecessary (`bool` -> `bool`)
-  --> $DIR/cast.rs:86:5
+  --> $DIR/cast.rs:88:5
    |
-86 |     false as bool;
+88 |     false as bool;
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 74 previous errors
+error: aborting due to 75 previous errors
 
