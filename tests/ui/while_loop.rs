@@ -183,4 +183,14 @@ fn refutable() {
         while let Some(v) = y.next() { // use a for loop here
         }
     }
+
+    //should not trigger while_let_loop lint because break passes an expression
+    let a = Some(10);
+    let b = loop {
+        if let Some(c) = a {
+            break Some(c);
+        } else {
+            break None;
+        }
+    };
 }
