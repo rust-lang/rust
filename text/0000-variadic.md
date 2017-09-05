@@ -74,7 +74,6 @@ impl<'a> VaList<'a> {
 }
 
 impl<'a> Clone for VaList<'a>;
-impl<'a> Drop for VaList<'a>;
 ```
 
 The type returned from `VaList::arg` must have a type usable in an FFI
@@ -111,6 +110,15 @@ pub unsafe extern "C" fn vfprintf(stream: *mut FILE, format: *const c_char, ap: 
 pub unsafe extern "C" fn vsprintf(s: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
 pub unsafe extern "C" fn vsnprintf(s: *mut c_char, n: size_t, format: *const c_char, ap: VaList) -> c_int;
 ```
+
+Note that, per the C semantics, after passing `VaList` to these functions, the
+caller can no longer use it, hence the use of the `VaList` type to take
+ownership of the object. To continue using the object after a call to these
+functions, pass a clone of it instead.
+
+Conversely, an `unsafe extern "C"` function written in Rust may accept a
+`VaList` parameter, to allow implementing the `v` variants of such functions in
+Rust. Such a function must not specify the lifetime.
 
 Defining a variadic function, or calling any of these new functions, requires a
 feature-gate, `c_variadic`.
@@ -159,8 +167,25 @@ LLVM already provides a set of intrinsics, implementing `va_start`, `va_arg`,
 `va_end`, and `va_copy`. The compiler will insert a call to the `va_start`
 intrinsic at the start of the function to provide the `VaList` argument (if
 used). The implementation of `VaList::arg` will call `va_arg`.  The
-implementation of `Clone` for `VaList` wil call `va_copy`. The implementation
-of `Drop` for `VaList` wil call `va_end`.
+implementation of `Clone` for `VaList` wil call `va_copy`. The compiler will
+ensure that a call to `va_end` occurs exactly once on every `VaList` at an
+appropriate time, similar to drop semantics. (This may occur via an
+implementation of `Drop`, but this must take into account the semantics of
+passing a `VaList` to or from an `extern "C"` function.)
+
+The compiler may need to handle the type `VaList` specially, in order to
+provide the desired drop semantics at FFI boundaries. In particular, some
+platforms pass `va_list` by value, and others pass it by pointer; the standard
+leaves unspecified whether changes made in the called function appear in the
+caller's copy. Rust must match the underlying C semantics, to allow passing
+VaList values between C and Rust. To avoid forcing variadic functions to cope
+with these platform-specific differences, the compiler should ensure that the
+type behaves as if it has `Drop` semantics, and has `va_end` called on the
+original `VaList` as well as any clones of it. For instance, passing a `VaList`
+to a `vprintf` function as declared in this RFC semantically passes ownership
+of that `VaList`, and prevents calling the `arg` function again in the caller,
+but it remains the caller's responsibility to call `va_end`, so the compiler
+needs to insert the appropriate drop glue at the FFI boundary.
 
 Note that on some platforms, these LLVM intrinsics do not fully implement the
 necessary functionality, expecting the invoker of the intrinsic to provide
