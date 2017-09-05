@@ -8,12 +8,12 @@
 
 This RFC seeks to clarify and streamline Rust's story around paths and visibility for modules and crates. That story will look as follows:
 
-- Absolute paths begin with a crate name, where the keyword `crate` refers to the current crate (other forms are deprecated)
-- `extern crate` is deprecated. Usage of external crates is always unambiguous, since it must somewhere involve an absolute path beginning with the crate's name.
-- The `crate` keyword also acts as a visibility modifier, equivalent to today's `pub(crate)`. Consequently, uses of bare `pub` on items that are not actually publicly exported trigger a lint warning suggesting `crate` visibility instead.
+- Absolute should paths begin with a crate name, where the keyword `crate` refers to the current crate (other forms are linted, see below)
+- `extern crate` is no longer necessary, and is linted (see below); dependencies are available at the root unless shadowed.
+- The `crate` keyword also acts as a visibility modifier, equivalent to today's `pub(crate)`. Consequently, uses of bare `pub` on items that are not actually publicly exported are linted, suggesting `crate` visibility instead.
 - A `foo.rs` and `foo/` subdirectory may coexist; `mod.rs` is no longer needed when placing submodules in a subdirectory.
 
-**These changes do not require a new epoch**.
+**These changes do not require a new epoch**. The new features are purely additive. They can ship with **allow-by-default** lints, which can gradually be moved to warn-by-default and deny-by-default over time, as better tooling is developed and more code has actively made the switch.
 
 *This RFC incorporates some text written by @withoutboats and @cramertj, who have both been involved in the long-running discussions on this topic.*
 
@@ -457,30 +457,35 @@ epoch**.
   there is also a `foo/bar.rs`.
   - It is not permitted to have both `foo.rs` and `foo/mod.rs` at the same point
     in the file system.
-  - The use of `mod.rs` continues to be allowed without any deprecation.
+  - The use of `mod.rs` continues to be allowed without any deprecation. It is
+    expected that tooling like Clippy will push for at least style consistency
+    within a project, and perhaps eventually across the ecosystem.
 
 - We introduce `crate` as a new visibility specifier, shorthand for `pub(crate)`
   visibility.
 
-- We introduce a lint against use of bare `pub` for items which are not
-  reachable via some fully-`pub` path. That is, bare `pub` should truly mean
-  *public*, and `crate` should be used for crate-level visibility.
-
 - We introduce `crate` as a new path component which designates the root of the
-  current crate, and deprecate fully qualified paths that do not begin with one
-  of: an external crate name, `crate`, `super`, or `self`.
+  current crate.
 
-- Cargo will provide a new `alias` key for dependencies, so that e.g. users who
-  want to use the `rand` crate but call it `random` instead can now write `random
-  = { version = "0.3", crate = "rand" }`.
+- In a path fully qualified path `::foo`, resolution will first attempt to
+  resolve to a top-level definition of `foo`, and otherwise fall back to
+  available external crates.
 
-- `extern crate foo;` is deprecated. Its semantics is now identical to `use
-  foo;` (assuming that there is no top-level module named `foo`).
-  - There is one exception: `#[macro_use] extern crate foo` at the top-level
-    will not generate a warning. This will ultimately be supplanted by [macros
-    2.0].
-  - Note that macro authors can still emit `extern crate` with an attribute to
-    silence the warning.
+- Cargo will provide a new `crate` key for aliasing dependencies, so that
+  e.g. users who want to use the `rand` crate but call it `random` instead can
+  now write `random = { version = "0.3", crate = "rand" }`.
+
+- We introduce several lints, which all start out allow-by-default but are
+  expected to ratchet up over time:
+
+  - A lint for fully qualified paths that do not begin with one of: an external
+  crate name, `crate`, `super`, or `self`.
+
+  - A lint for use of `extern crate`.
+
+  - A lint against use of bare `pub` for items which are not reachable via some
+  fully-`pub` path. That is, bare `pub` should truly mean *public*, and `crate`
+  should be used for crate-level visibility.
 
 ## Resolving fully-qualified paths
 
@@ -513,19 +518,27 @@ this RFC.
 ## Migration experience
 
 We will provide a high-fidelity `rustfix` tool that makes changes to the a crate
-to silence deprecation warnings. In particular, the tool will introduce
-`crate::` prefixes, and downgrade from `pub` to `crate` where appropriate. It
-must be sound (i.e. keep the meaning of code intact and keep it compiling) but
-may not be complete (i.e. you may still get some deprecation warnings after
-running it).
+such that the lints proposed in this RFC would not fire. In particular, the tool
+will introduce `crate::` prefixes, downgrade from `pub` to `crate` where
+appropriate, and remove `extern crate`. It must be sound (i.e. keep the meaning
+of code intact and keep it compiling) but may not be complete (i.e. you may
+still get some deprecation warnings after running it).
+
+Such a tool should be working at with very high coverage before we consider
+changing any of the lints to warn-by-default.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The most important drawback is the amount of churn involved through
-deprecations: a *lot* of `use` statements are going to need to change. However,
-the fact that this is a deprecation lint makes it easy to perform the change
-incrementally, and `rustfix` should cover the majority of cases.
+The most important drawback is that this RFC pushes toward *ultimately* changing
+most Rust code in existence. There is risk of this reintroducing a sense that
+Rust is unstable, if not handled properly. However, that risk is mitigated by
+several factors:
+
+- The fact that existing forms continue to work indefinitely.
+- The fact that we will provide migration tooling with high coverage.
+- The fact that nudges toward new forms (in the forms of lints) are introduced
+  gradually, and only after strong tooling exists.
 
 Imports from within your crate become more verbose, since they require a leading
 `crate`. However, this downside is considerably mitigated if [nesting in `use`]
@@ -533,12 +546,23 @@ is permitted.
 
 [nesting in `use`]: https://github.com/rust-lang/rfcs/pull/2128
 
+There is some concern that introducing and encouraging the use of `crate` as a
+visibility will, counter to the goals of the RFC, lead to people *increasing*
+the visibility of items rather than decreasing it (and hence increasing
+inter-module coupling). This could happen if, for example, an item needs to be
+exposed to a cousin module, where a Rust user might hesitate to make it `pub`
+but feel that `crate` is sufficiently "safe" (when really a refactoring is
+called for). While this is indeed a possibility, it's offset by some other
+cultural and design factors: Rust's design strongly encourages narrow access
+rights (privacy by default; immutability by default), and this orientation has a
+strong cultural sway within the Rust community.
+
 In previous discussions about deprecating `extern crate`, there were concerns
 about the impact on non-Cargo tooling, and in overall explicitness. This RFC
 fully addresses both concerns by leveraging the new, unambiguous nature of fully
 qualified paths.
 
-Moving renaming of crates externally has implications for procedural macros with
+Moving crate renaming externally has implications for procedural macros with
 dependencies: their clients must include those dependencies without renaming
 them.
 
@@ -556,7 +580,8 @@ There are a few aspects of this proposal that could be colored a bit differently
 without fundamental change.
 
 - Rather than `crate::top_level_module`, we could consider `extern::serde` or
-  something like it. That would come with some significant downsides, though.
+  something like it, which would eliminate the need for any fallback in name
+  resolution. That would come with some significant downsides, though.
   - First, having paths typically start with a crate name, with `crate`
     referring to the current crate, provides a *very simple* and easy to
     understand model for paths---and its one that's pretty commonly used in other languages.
