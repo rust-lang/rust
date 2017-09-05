@@ -1,4 +1,4 @@
-- Feature Name: `implicit_caller_location`
+- Feature Name: `blame_caller`
 - Start Date: 2017-07-31
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -11,18 +11,18 @@
 Enable accurate caller location reporting during panic in `{Option, Result}::{unwrap, expect}` with
 the following changes:
 
-1. Support the `#[implicit_caller_location]` function attribute, which guarantees a function has
-    access to the caller information.
+1. Support the `#[blame_caller]` function attribute, which guarantees a function has access to the
+    caller information.
 2. Add an intrinsic function `caller_location()` (safe wrapper: `Location::caller()`) to retrieve
     the caller's source location.
 
 Example:
 
 ```rust
-#![feature(implicit_caller_location)]
+#![feature(blame_caller)]
 use std::panic::Location;
 
-#[implicit_caller_location]
+#[blame_caller]
 fn unwrap(self) -> T {
     panic!("{}: oh no", Location::caller());
 }
@@ -37,7 +37,7 @@ let m = n.unwrap();
 - [Motivation](#motivation)
 - [Guide-level explanation](#guide-level-explanation)
     - [Let's reimplement `unwrap()`](#lets-reimplement-unwrap)
-    - [Adding caller location implicitly](#adding-caller-location-implicitly)
+    - [Blame the caller](#blame-the-caller)
     - [Location type](#location-type)
     - [Why do we use implicit caller location](#why-do-we-use-implicit-caller-location)
 - [Reference-level explanation](#reference-level-explanation)
@@ -45,7 +45,7 @@ let m = n.unwrap();
     - [Procedural attribute macro](#procedural-attribute-macro)
     - [Redirection (MIR inlining)](#redirection-mir-inlining)
     - [Standard libraries](#standard-libraries)
-    - [Runtime-free backtrace for `?` operator](#runtime-free-backtrace-for--operator)
+    - [“My fault” vs “Your fault”](#my-fault-vs-your-fault)
     - [Location detail control](#location-detail-control)
 - [Drawbacks](#drawbacks)
     - [Code bloat](#code-bloat)
@@ -60,6 +60,7 @@ let m = n.unwrap();
         - [Inline MIR](#inline-mir)
         - [Default function arguments](#default-function-arguments)
         - [Semantic inlining](#semantic-inlining)
+        - [Design-by-contract](#design-by-contract)
     - [Non-viable alternatives](#non-viable-alternatives)
         - [Macros](#macros)
         - [Backtrace](#backtrace)
@@ -198,7 +199,7 @@ println!("args[1] = {}", my_unwrap!(args().nth(1)));
 What if you have already published the `my_unwrap` crate that has thousands of users, and you
 want to maintain API stability? Before Rust 1.XX, the builtin `unwrap()` had the same problem!
 
-## Adding caller location implicitly
+## Blame the caller
 
 The reason the `my_unwrap!` macro works is because it copy-and-pastes the entire content of its macro
 definition every time it is used.
@@ -216,13 +217,13 @@ println!("args[1] = {}", my_unwrap(args().nth(2), file!(), line!(), column!()));
 ```
 
 What if we could instruct the compiler to automatically fill in the file, line, and column?
-Rust 1.YY introduced the `#[implicit_caller_location]` attribute for exactly this reason:
+Rust 1.YY introduced the `#[blame_caller]` attribute for exactly this reason:
 
 ```rust
 // 3.rs
-#![feature(implicit_caller_location)]
+#![feature(blame_caller)]
 use std::env::args;
-#[implicit_caller_location]  // <-- Just add this!
+#[blame_caller]  // <-- Just add this!
 pub fn my_unwrap<T>(input: Option<T>) -> T {
     match input {
         Some(t) => t,
@@ -260,12 +261,12 @@ args[2] = arg2
 args[3] = arg3
 ```
 
-`#[implicit_caller_location]` is an automated version of what you've seen in the last section. The
-attribute copies `my_unwrap` to a new function `my_unwrap_at_source_location` which accepts the
-caller's location as an additional argument. The attribute also instructs the compiler to replace
-`my_unwrap(x)` with `my_unwrap_at_source_location(x, file!(), line!(), column!())` whenever it sees
-it. This allows us to maintain the stability guarantee while allowing the user to get the new
-behavior with just one recompile.
+`#[blame_caller]` is an automated version of what you've seen in the last section. The attribute
+copies `my_unwrap` to a new function `my_unwrap_at_source_location` which accepts the caller's
+location as an additional argument. The attribute also instructs the compiler to replace
+`my_unwrap(x)` with `my_unwrap_at_source_location(x, file!(), line!(), column!())` (sort of)
+whenever it sees it. This allows us to maintain the stability guarantee while allowing the user to
+get the new behavior with just one recompile.
 
 ## Location type
 
@@ -275,7 +276,7 @@ need to get the caller's location as a value. This is supported using the method
 
 ```rust
 use std::panic::Location;
-#[implicit_caller_location]
+#[blame_caller]
 pub fn my_unwrap<T>(input: Option<T>) -> T {
     match input {
         Some(t) => t,
@@ -446,19 +447,20 @@ are included.
 
     </details>
 
-This RFC only advocates adding the `#[implicit_caller_location]` attribute to the `unwrap` and
-`expect` functions. The `index` and `index_mut` functions should also have it if possible, but
-this is currently blocked by a lack of a post-monomorphized MIR pass.
+This RFC only advocates adding the `#[blame_caller]` attribute to the `unwrap` and `expect`
+functions. The `index` and `index_mut` functions should also have it if possible, but this is
+currently postponed as it is not investigated yet how to insert the transformation after
+monomorphization.
 
 ## Procedural attribute macro
 
-The `#[implicit_caller_location]` attribute will modify a function at the AST and MIR levels
-without touching the type-checking (HIR level) or the low-level LLVM passes.
+The `#[blame_caller]` attribute will modify a function at the AST and MIR levels without touching
+the type-checking (HIR level) or the low-level LLVM passes.
 
 It will first wrap the body of the function in a closure, and then call it:
 
 ```rust
-#[implicit_caller_location]
+#[blame_caller]
 fn foo<C>(x: A, y: B, z: C) -> R {
     bar(x, y)
 }
@@ -480,13 +482,13 @@ level as far as I know.)
 
 The function signature of `foo` remains unchanged, so typechecking can proceed normally. The
 attribute will be replaced by `#[rustc_implicit_caller_location]` to let the compiler internals
-continue to treat it specially. `#[inline]` is added so external crates can see through `foo` to find
-`foo::{{closure}}`.
+continue to treat it specially. `#[inline]` is added so external crates can see through `foo` to
+find `foo::{{closure}}`.
 
 The closure `foo::{{closure}}` is a proper function so that the compiler can write calls directly to
 `foo::{{closure}}`, skipping `foo`. Multiple calls to `foo` from different locations can be done via
-calling `foo::{{closure}}` directly, instead of copying the function body every time which would bloat
-the binary size.
+calling `foo::{{closure}}` directly, instead of copying the function body every time which would
+bloat the binary size.
 
 The intrinsic `caller_location()` is a placeholder which will be replaced by the actual caller
 location when one calls `foo::{{closure}}` directly.
@@ -520,12 +522,12 @@ _c = Location { file: file!(), line: line!(), column: column!() };
 goto -> 'bbt;
 ```
 
-If it is called from an `#[implicit_caller_location]`'s closure e.g.
-`foo::{{closure}}`, the intrinsic will be replaced by the closure argument `__location` instead, so
-that the caller location can propagate directly
+If it is called from an `#[rustc_implicit_caller_location]`'s closure e.g. `foo::{{closure}}`, the
+intrinsic will be replaced by the closure argument `__location` instead, so that the caller location
+can propagate directly
 
 ```rust
-// for #[implicit_caller_location] closures,
+// for #[rustc_implicit_caller_location] closures,
 
 _c = call std::intrinsics::caller_location() -> 'bbt;
 
@@ -542,22 +544,23 @@ currently suffers from all disadvantages of the MIR inliner, namely:
 * Locations will not be propagated into diverging functions (`fn() -> !`), since inlining them is
     not supported yet.
 
-* MIR passes are run *before* monomorphization, meaning `#[implicit_caller_location]` currently
-    **cannot** be used on trait items:
+* MIR passes are run *before* monomorphization, meaning `#[blame_caller]` currently **cannot** be
+    used on trait items:
 
 ```rust
 trait Trait {
     fn unwrap(&self);
 }
 impl Trait for u64 {
-    #[implicit_caller_location] //~ ERROR: `#[implicit_caller_location]` is not supported for trait items yet.
+    #[blame_caller] //~ ERROR: `#[blame_caller]` is not supported for trait items yet.
     fn unwrap(&self) {}
 }
 ```
 
 To support trait items, the redirection pass must be run as post-monomorphized MIR pass (which does
-not exist yet), or a custom LLVM inlining pass which can extract the caller's source location. This
-prevents the `Index` trait from having `#[implicit_caller_location]` yet.
+not exist yet), or converted to queries provided after resolve, or a custom LLVM inlining pass which
+can extract the caller's source location. This prevents the `Index` trait from having
+`#[blame_caller]` yet.
 
 We cannot hack the impl resolution method into pre-monomorphization MIR pass because of deeply
 nested functions like
@@ -575,16 +578,16 @@ fn f100<T: Trait>() {
 ```
 
 Currently the redirection pass always runs before the inlining pass. If the redirection pass is run
-after the normal MIR inlining pass, the normal MIR inliner must treat `#[implicit_caller_location]`
-as `#[inline(never)]`.
+after the normal MIR inlining pass, the normal MIR inliner must treat
+`#[rustc_implicit_caller_location]` as `#[inline(never)]`.
 
 The closure `foo::{{closure}}` must never be inlined before the redirection pass.
 
-When `#[implicit_caller_location]` functions are called dynamically, no inlining will occur, and
-thus it cannot take the location of the caller. Currently this will report where the function is
+When `#[rustc_implicit_caller_location]` functions are called dynamically, no inlining will occur,
+and thus it cannot take the location of the caller. Currently this will report where the function is
 declared. Taking the address of such functions must be allowed due to backward compatibility. (If
 a post-monomorphized MIR pass exists, methods via trait objects would be another case of calling
-`#[implicit_caller_location]` functions without caller location.)
+`#[rustc_implicit_caller_location]` functions without caller location.)
 
 ```rust
 let f: fn(Option<u32>) -> u32 = Option::unwrap;
@@ -601,12 +604,12 @@ column of the callsite. This shares the same structure as the existing type `std
 Therefore, the type is promoted to a lang-item, and moved into `core::panicking::Location`. It is
 re-exported from `libstd`.
 
-Thanks to how `#[implicit_caller_location]` is implemented, we could provide a safe wrapper around
-the `caller_location()` intrinsic:
+Thanks to how `#[blame_caller]` is implemented, we could provide a safe wrapper around the
+`caller_location()` intrinsic:
 
 ```rust
 impl<'a> Location<'a> {
-    #[implicit_caller_location]
+    #[blame_caller]
     pub fn caller() -> Location<'static> {
         unsafe {
             ::intrinsics::caller_location()
@@ -616,7 +619,7 @@ impl<'a> Location<'a> {
 ```
 
 The `panic!` macro is modified to use `Location::caller()` (or the intrinsic directly) so it can
-report the caller location inside `#[implicit_caller_location]`.
+report the caller location inside `#[blame_caller]`.
 
 ```rust
 macro_rules! panic {
@@ -632,38 +635,115 @@ Actually this is now more natural for `core::panicking::panic_fmt` to take `Loca
 instead of tuples, so one should consider changing their signature, but this is out-of-scope for
 this RFC.
 
-`panic!` is often used outside of `#[implicit_caller_location]` functions. In those cases, the
+`panic!` is often used outside of `#[blame_caller]` functions. In those cases, the
 `caller_location()` intrinsic will pass unchanged through all MIR passes into trans. As a fallback,
 the intrinsic will expand to `Location { file: file!(), line: line!(), col: column!() }` during
 trans.
 
-## Runtime-free backtrace for `?` operator
+## “My fault” vs “Your fault”
 
-The standard `Try` implementations could participate in specialization so that external crates like
-`error_chain` could provide a specialized impl that prepends the caller location into the callstack
-every time `?` is used.
+In a `#[blame_caller]` function, we expect all panics being attributed to the caller (thus the
+attribute name). However, sometimes the code panics not due to the caller, but the implementation
+itself. It may be important to distinguish between "my fault" (implementation error) and
+"your fault" (caller violating API requirement). As an example,
 
 ```rust
-// libcore:
-impl<T, E> Try for Result<T, E> {
-    type Ok = T;
-    type Error = E;
+use std::collections::HashMap;
+use std::hash::Hash;
 
-    fn into_result(self) -> Self { self }
-    fn from_ok(v: Self::Ok) -> Self { Ok(v) }
-    default fn from_error(e: Self::Error) -> Self { Err(e) }
-//  ^~~~~~~
+fn count_slices<T: Hash + Eq>(array: &[T], window: usize) -> HashMap<&[T], usize> {
+    if !(0 < window && window <= array.len()) {
+        panic!("invalid window size");
+        // ^ triggering this panic is "your fault"
+    }
+    let mut result = HashMap::new();
+    for w in array.windows(window) {
+        if let Some(r) = result.get_mut(w) {
+            *r += 1;
+        } else {
+            panic!("why??");
+            // ^ triggering this panic is "my fault"
+            //   (yes this code is wrong and entry API should be used)
+        }
+    }
+
+    result
+}
+```
+
+One simple solution is to separate the "my fault" panic and "your fault" panic into two, but since
+[declarative macro 1.0 is insta-stable][insta-stable], this RFC would prefer to postpone introducing
+any new public macros until "Macros 2.0" lands, where stability and scoping are better handled.
+
+For comparison, the Swift language does
+[distinguish between the two kinds of panics semantically][swift-panics]. The "your fault" ones are
+called `precondition`, while the "my fault" ones are called `assert`, though they don't deal with
+caller location, and practically they are equivalent to Rust's `assert!` and `debug_assert!`.
+Nevertheless, this also suggests we can still separate existing panicking macros into the "my fault"
+and "your fault" camps accordingly:
+* Definitely "my fault" (use actual location): `debug_assert!` and friends, `unreachable!`,
+    `unimplemented!`
+* Probably "your fault" (propagate caller location): `assert!` and friends, `panic!`
+
+The question is, should calling `unwrap()`, `expect()` and `x[y]` (`index()`) be "my fault" or "your
+fault"? Let's consider existing implementation of `index()` methods:
+```rust
+// Vec::index
+fn index(&self, index: usize) -> &T {
+    &(**self)[index]
 }
 
-// my_crate:
-impl<T> Try for Result<T, my_crate::error::Error> {
-    #[implicit_caller_location]
-    fn from_error(mut e: Self::Error) -> Self {
-        e.call_stack.push(Location::caller());
-        Err(e)
+// BTreeMap::index
+fn index(&self, key: &Q) -> &V {
+    self.get(key).expect("no entry found for key")
+}
+
+// Wtf8::index
+fn index(&self, range: ops::RangeFrom<usize>) -> &Wtf8 {
+    // is_code_point_boundary checks that the index is in [0, .len()]
+    if is_code_point_boundary(self, range.start) {
+        unsafe { slice_unchecked(self, range.start, self.len()) }
+    } else {
+        slice_error_fail(self, range.start, self.len())
     }
 }
 ```
+
+If they all get `#[blame_caller]`, the `x[y]`, `expect()` and `slice_error_fail()` should all report
+"your fault", i.e. caller location should be propagated downstream. It does mean that the current
+default of caller-location-propagation-by-default is more common. This also means "my fault"
+happening during development may become harder to spot. This can be solved using `RUST_BACKTRACE=1`,
+or workaround by splitting into two functions:
+
+```rust
+use std::collections::HashMap;
+use std::hash::Hash;
+
+#[blame_caller]
+fn count_slices<T: Hash + Eq>(array: &[T], window: usize) -> HashMap<&[T], usize> {
+    if !(0 < window && window <= array.len()) {
+        panic!("invalid window size");  // <-- your fault
+    }
+    (|| {
+        let mut result = HashMap::new();
+        for w in array.windows(window) {
+            if let Some(r) = result.get_mut(w) {
+                *r += 1;
+            } else {
+                panic!("why??"); // <-- my fault (caller propagation can't go into closures)
+            }
+        }
+        result
+    })()
+}
+```
+
+Anyway, treating everything as "your fault" will encourage that `#[blame_caller]` functions should
+be short, which goes in line with the ["must have" list](#survey-of-panicking-standard-functions) in
+the RFC. Thus the RFC will remain advocating for propagating caller location implicitly.
+
+[insta-stable]: https://github.com/rust-lang/rust/pull/39229#issuecomment-274348420
+[swift-panics]: https://stackoverflow.com/questions/29673027/difference-between-precondition-and-assert-in-swift
 
 ## Location detail control
 
@@ -717,8 +797,8 @@ One can use `-Z location-detail` to get the old optimization behavior.
 
 ## Narrow solution scope
 
-`#[implicit_caller_location]` is only useful in solving the "get caller location" problem.
-Introducing an entirely new feature just for this problem seems wasteful.
+`#[blame_caller]` is only useful in solving the "get caller location" problem. Introducing an
+entirely new feature just for this problem seems wasteful.
 
 [Default function arguments](#default-function-arguments) is another possible solution for this
 problem but with much wider application.
@@ -729,7 +809,7 @@ Consts, statics and closures are separate MIR items, meaning the following marke
 get caller locations:
 
 ```rust
-#[implicit_caller_location]
+#[blame_caller]
 fn foo() {
     static S: Location = Location::caller(); // will get actual location instead
     let f = || Location::caller();   // will get actual location instead
@@ -740,8 +820,7 @@ fn foo() {
 This is confusing, but if we don't support this, we will need two `panic!` macros which is not a
 better solution.
 
-Clippy could provide a lint against using `Location::caller()` outside of
-`#[implicit_caller_location]`.
+Clippy could provide a lint against using `Location::caller()` outside of `#[blame_caller]`.
 
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
@@ -768,17 +847,17 @@ This RFC tries to abide by the following restrictions:
     location.
 
 Restriction 4 "interface independence" is currently not implemented due to lack of
-post-monomorphized MIR pass, but implementing `#[implicit_caller_location]` as a language feature
-follows this restriction.
+post-monomorphized MIR pass, but implementing `#[blame_caller]` as a language feature follows this
+restriction.
 
 ## Alternatives
 
 ### 🚲 Name of everything 🚲
 
-* Is `#[implicit_caller_location]` an accurate description?
+* Is `#[blame_caller]` an accurate description?
 * Should we move `std::panic::Location` into `core`, or just use a 3-tuple to represent the
     location? Note that the former is advocated in [RFC 2070].
-* Should the caller location propagation be implicit (currently) or explicit?
+* Is `Location::caller()` properly named?
 
 ### Using an ABI instead of an attribute
 
@@ -805,7 +884,7 @@ parameter, making it less competitive than just using an attribute.
 
 We could change the meaning of `file!()`, `line!()` and `column!()` so they are only converted to
 real constants after redirection (a MIR or trans pass) instead of early during macro expansion (an
-AST pass). Inside `#[implicit_caller_location]` functions, these macros behave as this RFC's
+AST pass). Inside `#[blame_caller]` functions, these macros behave as this RFC's
 `caller_location()`. The drawback is using these macro will have different values at compile time
 (e.g. inside `include!(file!())`) vs. runtime.
 
@@ -815,7 +894,7 @@ Introduced as an [alternative to RFC 1669][inline_mir], instead of the `caller_l
 we could provide a full-fledged inline MIR macro `mir!` similar to the inline assembler:
 
 ```rust
-#[implicit_caller_location]
+#[blame_caller]
 fn unwrap(self) -> T {
     let file: &'static str;
     let line: u32;
@@ -839,8 +918,8 @@ fn unwrap(self) -> T {
 
 The problem of `mir!` in this context is trying to kill a fly with a sledgehammer. `mir!` is a very
 generic mechanism which requires stabilizing the MIR syntax and considering the interaction with
-the surrounding code. Besides, `#[implicit_caller_location]` itself still exists and the magic
-constants `$CallerFile` etc are still magic.
+the surrounding code. Besides, `#[blame_caller]` itself still exists and the magic constants
+`$CallerFile` etc are still magical.
 
 ### Default function arguments
 
@@ -889,10 +968,10 @@ this feature itself is going to be large and controversial.
 
 ### Semantic inlining
 
-Treat `#[implicit_caller_location]` as the same as a very forceful `#[inline(always)]`. This
-eliminates the procedural macro pass. This was the approach suggested in the first edition of this
-RFC, since the target functions (`unwrap`, `expect`, `index`) are just a few lines long. However, it
-experienced push-back from the community as:
+Treat `#[blame_caller]` as the same as a very forceful `#[inline(always)]`. This eliminates the
+procedural macro pass. This was the approach suggested in the first edition of this RFC, since the
+target functions (`unwrap`, `expect`, `index`) are just a few lines long. However, it experienced
+push-back from the community as:
 
 1. Inlining causes debugging to be difficult.
 2. It does not work with recursive functions.
@@ -902,6 +981,64 @@ experienced push-back from the community as:
 
 Therefore the RFC is changed to the current form, and the inlining pass is now described as just an
 implementation detail.
+
+### Design-by-contract
+
+This is inspired when investigating the difference in
+["my fault" vs "your fault"](#my-fault-vs-your-fault). We incorporate ideas from [design-by-contract]
+(DbC) by specifying that "your fault" is a kind of contract violation. Preconditions are listed as
+part of the function signature, e.g.
+
+```rust
+// declaration
+extern {
+    #[precondition(fd >= 0, "invalid file descriptor {}", fd)]
+    fn close_fd(fd: c_int);
+}
+
+// declaration + defintion
+#[precondition(option.is_some(), "Trying to unwrap None")]
+fn unwrap<T>(option: Option<T>) -> T {
+    match option {
+        Some(t) => t,
+        None => unsafe { std::mem::unchecked_unreachable() },
+    }
+}
+```
+
+Code that appears in the `#[precondition]` attribute should be copied to caller site, so when the
+precondition is violated, they can get the caller's location.
+
+Specialization should be treated like subtyping, where preconditions can be *weakened*:
+
+```rust
+trait Foo {
+    #[precondition(condition_1)]
+    fn foo();
+}
+
+impl<T: Debug> Foo for T {
+    #[precondition(condition_2a)]
+    #[precondition(condition_2b)]
+    default fn foo() { ... }
+}
+
+impl Foo for u32 {
+    #[precondition(condition_3)]
+    fn foo() { ... }
+}
+
+assert!(condition_3 || (condition_2a && condition_2b) || condition_1);
+// ^ automatically inserted when the following is called...
+<u32 as Foo>::foo();
+```
+
+Before Rust 1.0, there was the [`hoare`] compiler plugin which introduces DbC using the similar
+syntax. However, the conditions are expanded inside the function, so the assertions will not fail
+with the caller's location. A proper solution will be similar to what this RFC proposes.
+
+[design-by-contract]: https://en.wikipedia.org/wiki/Design_by_contract
+[`hoare`]: https://crates.io/crates/hoare
 
 ## Non-viable alternatives
 
@@ -984,7 +1121,9 @@ The same drawback exists if we base the solution on [RFC 2000]  (*const generics
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Redirection pass should run after monomorphization, not before.
+* If we want to support adding `#[blame_caller]` to trait methods, the redirection
+    pass/query/whatever should be placed after monomorphization, not before. Currently the RFC
+    simply prohibit applying `#[blame_caller]` to trait methods as a future-proofing measure.
 
 * Diverging functions should be supported.
 
