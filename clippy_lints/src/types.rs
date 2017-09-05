@@ -580,12 +580,21 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
     );
 }
 
+fn should_strip_parens(op: &Expr, snip: &str) -> bool {
+    if let ExprBinary(_, _, _) = op.node {
+        if snip.starts_with('(') && snip.ends_with(')') {
+            return true;
+        }
+    }
+    false
+}
+
 fn span_lossless_lint(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_to: Ty) {
     // The suggestion is to use a function call, so if the original expression
     // has parens on the outside, they are no longer needed.
     let opt = snippet_opt(cx, op.span);
     let sugg = if let Some(ref snip) = opt {
-        if snip.starts_with('(') && snip.ends_with(')') {
+        if should_strip_parens(op, snip) {
             &snip[1..snip.len()-1]
         } else {
             snip.as_str()
