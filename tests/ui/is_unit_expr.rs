@@ -45,4 +45,29 @@ fn main() {
             0;
         },
     };
+    
+    loop {
+        let a2 = match a1 {
+            Some(x) => x,
+            _ => {
+                break;
+            },
+        };
+        let a2 = match a1 {
+            Some(x) => x,
+            _ => {
+                continue;
+            },
+        };
+    }
+}
+
+pub fn foo() -> i32 {
+    let a2 = match None {
+        Some(x) => x,
+        _ => {
+            return 42;
+        },
+    };
+    55
 }

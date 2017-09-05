@@ -98,6 +98,7 @@ impl EarlyLintPass for UnitExpr {
         }
     }
 }
+
 fn is_unit_expr(expr: &Expr) -> Option<Span> {
     match expr.node {
         ExprKind::Block(ref block) => if check_last_stmt_in_block(block) {
@@ -139,9 +140,13 @@ fn check_last_stmt_in_block(block: &Block) -> bool {
     // like `panic!()`
     match final_stmt.node {
         StmtKind::Expr(_) => false,
-        StmtKind::Semi(ref expr) => match expr.node {
-            ExprKind::Break(_, _) | ExprKind::Ret(_) => false,
-            _ => true,
+        StmtKind::Semi(ref expr) => {
+            match expr.node {
+                ExprKind::Break(_, _) |
+                ExprKind::Continue(_) |
+                ExprKind::Ret(_) => false,
+                _ => true,
+            }
         },
         _ => true,
     }
