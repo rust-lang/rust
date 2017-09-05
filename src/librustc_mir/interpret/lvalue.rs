@@ -3,7 +3,7 @@ use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
-use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign};
+use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign, ValTy};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Lvalue {
@@ -400,7 +400,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         base: Lvalue,
         base_ty: Ty<'tcx>,
-        proj_elem: &mir::ProjectionElem<'tcx, mir::Operand<'tcx>, Ty<'tcx>>,
+        proj_elem: &mir::ProjectionElem<'tcx, mir::Local, Ty<'tcx>>,
     ) -> EvalResult<'tcx, Lvalue> {
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match *proj_elem {
@@ -439,9 +439,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 return self.val_to_lvalue(val, pointee_type);
             }
 
-            Index(ref operand) => {
-                let n_ptr = self.eval_operand(operand)?;
-                let n = self.value_to_primval(n_ptr)?.to_u64()?;
+            Index(local) => {
+                let value = self.frame().get_local(local)?;
+                let ty = self.tcx.types.usize;
+                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
                 return self.lvalue_index(base, base_ty, n);
             }
 

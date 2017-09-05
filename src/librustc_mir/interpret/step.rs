@@ -145,22 +145,15 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
             }
 
-            // Mark locals as dead or alive.
-            StorageLive(ref lvalue) |
-            StorageDead(ref lvalue) => {
-                let (frame, local) =
-                    match self.eval_lvalue(lvalue)? {
-                        Lvalue::Local { frame, local } if self.cur_frame() == frame => (
-                            frame,
-                            local,
-                        ),
-                        _ => return err!(Unimplemented("Storage annotations must refer to locals of the topmost stack frame.".to_owned())), // FIXME maybe this should get its own error type
-                    };
-                let old_val = match stmt.kind {
-                    StorageLive(_) => self.stack[frame].storage_live(local)?,
-                    StorageDead(_) => self.stack[frame].storage_dead(local)?,
-                    _ => bug!("We already checked that we are a storage stmt"),
-                };
+            // Mark locals as alive
+            StorageLive(local) => {
+                let old_val = self.frame_mut().storage_live(local)?;
+                self.deallocate_local(old_val)?;
+            }
+
+            // Mark locals as dead
+            StorageDead(local) => {
+                let old_val = self.frame_mut().storage_dead(local)?;
                 self.deallocate_local(old_val)?;
             }
 
