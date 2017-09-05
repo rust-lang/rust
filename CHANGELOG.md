@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## Upcoming
+* New lint: [`manual_memcpy`]
+
 ## 0.0.157 - 2017-09-04
 * Update to *rustc 1.22.0-nightly (981ce7d8d 2017-09-03)*
 * New lint: [`unit_expr`]
@@ -511,6 +514,7 @@ All notable changes to this project will be documented in this file.
 [`let_unit_value`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#let_unit_value
 [`linkedlist`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#linkedlist
 [`logic_bug`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#logic_bug
+[`manual_memcpy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#manual_memcpy
 [`manual_swap`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#manual_swap
 [`many_single_char_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#many_single_char_names
 [`map_clone`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_clone
