@@ -2692,7 +2692,9 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
                     return Some(ptr::read(&v[i]));
                 } else if self.del > 0 {
                     let del = self.del;
-                    ptr::copy_nonoverlapping(self.vec.as_ptr().offset(i), self.vec.as_mut_ptr().offset(i - del), 1);
+                    let src = self.vec.as_ptr().offset(i);
+                    let dst = self.vec.as_mut_ptr().offset(i - del);
+                    ptr::copy_nonoverlapping(src, dst, 1);
                 }
             }
             None
