@@ -2104,6 +2104,35 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     }
 }
 
+impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
+    #[unstable(feature = "entry_or_default", issue = "44324")]
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_or_default)]
+    /// # fn main() {
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<&str, String> = BTreeMap::new();
+    /// let s = "hoho".to_string();
+    ///
+    /// map.entry("poneyland").or_default();
+    ///
+    /// assert_eq!(map["poneyland"], None);
+    /// # }
+    /// ```
+    pub fn or_default(self) -> &'a mut V {
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(Default::default()),
+        }
+    }
+
+}
+
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.

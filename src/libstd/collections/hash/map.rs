@@ -2001,6 +2001,35 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 }
 
+impl<'a, K, V: Default> Entry<'a, K, V> {
+    #[unstable(feature = "entry_or_default", issue = "44324")]
+    /// Ensures a value is in the entry by inserting the default value if empty,
+    /// and returns a mutable reference to the value in the entry.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(entry_or_default)]
+    /// # fn main() {
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<&str, Option<usize>> = HashMap::new();
+    /// let s = "hoho".to_string();
+    ///
+    /// map.entry("poneyland").or_default();
+    ///
+    /// assert_eq!(map["poneyland"], None);
+    /// # }
+    /// ```
+    pub fn or_default(self) -> &'a mut V {
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(Default::default()),
+        }
+    }
+
+}
+
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
     ///
