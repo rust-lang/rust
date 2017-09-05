@@ -68,39 +68,23 @@ To access the arguments, Rust provides the following public interfaces in
 pub struct VaList<'a>;
 
 impl<'a> VaList<'a> {
-    /// Extract the next argument from the argument list.
-    pub unsafe fn arg<T: VaArg>(&mut self) -> T;
+    /// Extract the next argument from the argument list. T must have a type
+    /// usable in an FFI interface.
+    pub unsafe fn arg<T>(&mut self) -> T;
 }
 
 impl<'a> Clone for VaList<'a>;
 impl<'a> Drop for VaList<'a>;
-
-/// The type of arguments extractable from VaList
-unsafe trait VaArg;
-
-unsafe impl VaArg for i8;
-unsafe impl VaArg for i16;
-unsafe impl VaArg for i32;
-unsafe impl VaArg for i64;
-unsafe impl VaArg for isize;
-
-unsafe impl VaArg for u8;
-unsafe impl VaArg for u16;
-unsafe impl VaArg for u32;
-unsafe impl VaArg for u64;
-unsafe impl VaArg for usize;
-
-unsafe impl VaArg for f32;
-unsafe impl VaArg for f64;
-
-unsafe impl<T> VaArg for *const T;
-unsafe impl<T> VaArg for *mut T;
 ```
 
+The type returned from `VaList::arg` must have a type usable in an FFI
+interface: `i8`, `i16`, `i32`, `i64`, `isize`, `u8`, `u16`, `u32`, `u64`,
+`usize`, `f32`, `f64`, `*const _`, `*mut _`, a `#[repr(C)]` struct or union, or
+a non-value-carrying enum with a `repr`-specified discriminant type.
+
 All of the corresponding C integer and float types defined in the `libc` crate
-consist of aliases for the underlying Rust types, making it unnecessary for
-`libc` to provide additional implementations of the `VaArg` trait. Nothing
-outside of `core` should define any implementation of `VaArg`.
+consist of aliases for the underlying Rust types, so `VaList::arg` can also
+extract those types.
 
 Note that extracting an argument from a `VaList` follows the C rules for
 argument passing and promotion. In particular, C code will promote any argument
@@ -135,7 +119,6 @@ Sample Rust code exposing a variadic function:
 
 ```rust
 #![feature(c_variadic)]
-use std::intrinsics::VaArg;
 
 #[no_mangle]
 pub unsafe extern "C" fn func(fixed: u32, mut args: ...) {
@@ -179,15 +162,15 @@ used). The implementation of `VaList::arg` will call `va_arg`.  The
 implementation of `Clone` for `VaList` wil call `va_copy`. The implementation
 of `Drop` for `VaList` wil call `va_end`.
 
-This RFC intentionally does not specify the mechanism used to implement the
-`VaArg` trait, as the compiler may need to natively implement `VaList::arg`
-with appropriate understanding of platform-specific conventions. Code outside
-of `core`, `std`, and `libc` may not implement this trait for any other type.
-
 Note that on some platforms, these LLVM intrinsics do not fully implement the
 necessary functionality, expecting the invoker of the intrinsic to provide
 additional LLVM IR code. On such platforms, rustc will need to provide the
 appropriate additional code, just as clang does.
+
+This RFC intentionally does not specify or expose the mechanism used to limit
+the use of `VaList::arg` only to specific types. The compiler should provide
+errors similar to those associated with passing types through FFI function
+calls.
 
 # Drawbacks
 [drawbacks]: #drawbacks
