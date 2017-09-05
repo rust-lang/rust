@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
@@ -15,9 +16,28 @@ use syntax::ast;
 use utils::sugg;
 
 use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
-            last_path_segment, match_trait_method, match_type, multispan_sugg, snippet, span_help_and_lint, span_lint,
-            span_lint_and_sugg, span_lint_and_then};
+            last_path_segment, match_trait_method, match_type, multispan_sugg, snippet, snippet_opt,
+            span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
 use utils::paths;
+
+/// **What it does:** Checks for for loops that manually copy items between
+/// slices that could be optimized by having a memcpy.
+///
+/// **Why is this bad?** It is not as fast as a memcpy.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// for i in 0..src.len() {
+///     dst[i + 64] = src[i];
+/// }
+/// ```
+declare_lint! {
+    pub MANUAL_MEMCPY,
+    Warn,
+    "manually copying items between slices"
+}
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
 /// collection just to get the values by index.
@@ -314,6 +334,7 @@ pub struct Pass;
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
+            MANUAL_MEMCPY,
             NEEDLESS_RANGE_LOOP,
             EXPLICIT_ITER_LOOP,
             EXPLICIT_INTO_ITER_LOOP,
@@ -570,6 +591,249 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_arg(cx, pat, arg, expr);
     check_for_loop_explicit_counter(cx, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
+    detect_manual_memcpy(cx, pat, arg, body, expr);
+}
+
+fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: DefId) -> bool {
+    if_let_chain! {[
+        let ExprPath(ref qpath) = expr.node,
+        let QPath::Resolved(None, ref path) = *qpath,
+        path.segments.len() == 1,
+        // our variable!
+        cx.tables.qpath_def(qpath, expr.hir_id).def_id() == var
+    ], {
+        return true;
+    }}
+
+    false
+}
+
+struct Offset {
+    value: String,
+    negate: bool,
+}
+
+impl Offset {
+    fn negative(s: String) -> Self {
+        Self {
+            value: s,
+            negate: true,
+        }
+    }
+
+    fn positive(s: String) -> Self {
+        Self {
+            value: s,
+            negate: false,
+        }
+    }
+}
+
+struct FixedOffsetVar {
+    var_name: String,
+    offset: Offset,
+}
+
+fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty) -> bool {
+    let is_slice = match ty.sty {
+        ty::TyRef(_, ref subty) => is_slice_like(cx, subty.ty),
+        ty::TySlice(..) | ty::TyArray(..) => true,
+        _ => false,
+    };
+
+    is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
+}
+
+fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: DefId) -> Option<FixedOffsetVar> {
+    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: DefId) -> Option<String> {
+        match e.node {
+            ExprLit(ref l) => match l.node {
+                ast::LitKind::Int(x, _ty) => Some(x.to_string()),
+                _ => None,
+            },
+            ExprPath(..) if !same_var(cx, e, var) => Some(snippet_opt(cx, e.span).unwrap_or_else(|| "??".into())),
+            _ => None,
+        }
+    }
+
+    if let ExprIndex(ref seqexpr, ref idx) = expr.node {
+        let ty = cx.tables.expr_ty(seqexpr);
+        if !is_slice_like(cx, ty) {
+            return None;
+        }
+
+        let offset = match idx.node {
+            ExprBinary(op, ref lhs, ref rhs) => match op.node {
+                BinOp_::BiAdd => {
+                    let offset_opt = if same_var(cx, lhs, var) {
+                        extract_offset(cx, rhs, var)
+                    } else if same_var(cx, rhs, var) {
+                        extract_offset(cx, lhs, var)
+                    } else {
+                        None
+                    };
+
+                    offset_opt.map(Offset::positive)
+                },
+                BinOp_::BiSub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
+                _ => None,
+            },
+            ExprPath(..) => if same_var(cx, idx, var) {
+                Some(Offset::positive("0".into()))
+            } else {
+                None
+            },
+            _ => None,
+        };
+
+        offset.map(|o| {
+            FixedOffsetVar {
+                var_name: snippet_opt(cx, seqexpr.span).unwrap_or_else(|| "???".into()),
+                offset: o,
+            }
+        })
+    } else {
+        None
+    }
+}
+
+fn get_indexed_assignments<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    body: &Expr,
+    var: DefId,
+) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
+    fn get_assignment<'a, 'tcx>(
+        cx: &LateContext<'a, 'tcx>,
+        e: &Expr,
+        var: DefId,
+    ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
+        if let Expr_::ExprAssign(ref lhs, ref rhs) = e.node {
+            match (get_fixed_offset_var(cx, lhs, var), get_fixed_offset_var(cx, rhs, var)) {
+                (Some(offset_left), Some(offset_right)) => Some((offset_left, offset_right)),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    if let Expr_::ExprBlock(ref b) = body.node {
+        let Block {
+            ref stmts,
+            ref expr,
+            ..
+        } = **b;
+
+        stmts
+            .iter()
+            .map(|stmt| match stmt.node {
+                Stmt_::StmtDecl(..) => None,
+                Stmt_::StmtExpr(ref e, _node_id) | Stmt_::StmtSemi(ref e, _node_id) => Some(get_assignment(cx, e, var)),
+            })
+            .chain(
+                expr.as_ref()
+                    .into_iter()
+                    .map(|e| Some(get_assignment(cx, &*e, var))),
+            )
+            .filter_map(|op| op)
+            .collect::<Option<Vec<_>>>()
+            .unwrap_or_else(|| vec![])
+    } else {
+        get_assignment(cx, body, var).into_iter().collect()
+    }
+}
+
+/// Check for for loops that sequentially copy items from one slice-like
+/// object to another.
+fn detect_manual_memcpy<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
+    arg: &'tcx Expr,
+    body: &'tcx Expr,
+    expr: &'tcx Expr,
+) {
+    if let Some(higher::Range {
+        start: Some(start),
+        ref end,
+        limits,
+    }) = higher::range(arg)
+    {
+        // the var must be a single name
+        if let PatKind::Binding(_, def_id, _, _) = pat.node {
+            let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
+                match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
+                    ("0", _, "0", _) => "".into(),
+                    ("0", _, x, false) | (x, false, "0", false) => x.into(),
+                    ("0", _, x, true) | (x, false, "0", true) => format!("-{}", x),
+                    (x, false, y, false) => format!("({} + {})", x, y),
+                    (x, false, y, true) => format!("({} - {})", x, y),
+                    (x, true, y, false) => format!("({} - {})", y, x),
+                    (x, true, y, true) => format!("-({} + {})", x, y),
+                }
+            };
+
+            let print_limit = |end: &Option<&Expr>, offset: Offset, var_name: &str| if let Some(end) = *end {
+                if_let_chain! {[
+                    let ExprMethodCall(ref method, _, ref len_args) = end.node,
+                    method.name == "len",
+                    len_args.len() == 1,
+                    let Some(arg) = len_args.get(0),
+                    snippet(cx, arg.span, "??") == var_name,
+                ], {
+                    return if offset.negate {
+                        format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
+                    } else {
+                        "".to_owned()
+                    };
+                }}
+
+                let end_str = match limits {
+                    ast::RangeLimits::Closed => {
+                        let end = sugg::Sugg::hir(cx, end, "<count>");
+                        format!("{}", end + sugg::ONE)
+                    },
+                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
+                };
+
+                print_sum(&Offset::positive(end_str), &offset)
+            } else {
+                "..".into()
+            };
+
+            // The only statements in the for loops can be indexed assignments from
+            // indexed retrievals.
+            let manual_copies = get_indexed_assignments(cx, body, def_id);
+
+            let big_sugg = manual_copies
+                .into_iter()
+                .map(|(dst_var, src_var)| {
+                    let start_str = Offset::positive(snippet_opt(cx, start.span).unwrap_or_else(|| "".into()));
+                    let dst_offset = print_sum(&start_str, &dst_var.offset);
+                    let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
+                    let src_offset = print_sum(&start_str, &src_var.offset);
+                    let src_limit = print_limit(end, src_var.offset, &src_var.var_name);
+                    let dst = if dst_offset == "" && dst_limit == "" {
+                        dst_var.var_name
+                    } else {
+                        format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
+                    };
+
+                    format!("{}.clone_from_slice(&{}[{}..{}])", dst, src_var.var_name, src_offset, src_limit)
+                })
+                .join("\n    ");
+
+            if !big_sugg.is_empty() {
+                span_lint_and_sugg(
+                    cx,
+                    MANUAL_MEMCPY,
+                    expr.span,
+                    "it looks like you're manually copying between slices",
+                    "try replacing the loop by",
+                    big_sugg,
+                );
+            }
+        }
+    }
 }
 
 /// Check for looping over a range and then indexing a sequence with it.
@@ -1024,9 +1288,29 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         if match_var(expr, self.var) {
             self.used = true;
-            return;
+        } else {
+            walk_expr(self, expr);
         }
-        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+}
+
+struct DefIdUsedVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    def_id: DefId,
+    used: bool,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for DefIdUsedVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if same_var(self.cx, expr, self.def_id) {
+            self.used = true;
+        } else {
+            walk_expr(self, expr);
+        }
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
@@ -1054,40 +1338,46 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         if_let_chain! {[
             // an index op
             let ExprIndex(ref seqexpr, ref idx) = expr.node,
-            // directly indexing a variable
-            let ExprPath(ref qpath) = idx.node,
-            let QPath::Resolved(None, ref path) = *qpath,
-            path.segments.len() == 1,
-            // our variable!
-            self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var,
             // the indexed container is referenced by a name
             let ExprPath(ref seqpath) = seqexpr.node,
             let QPath::Resolved(None, ref seqvar) = *seqpath,
             seqvar.segments.len() == 1,
         ], {
-            let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
-            match def {
-                Def::Local(..) | Def::Upvar(..) => {
-                    let def_id = def.def_id();
-                    let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
-                    let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
+            let index_used = same_var(self.cx, idx, self.var) || {
+                let mut used_visitor = DefIdUsedVisitor {
+                    cx: self.cx,
+                    def_id: self.var,
+                    used: false,
+                };
+                walk_expr(&mut used_visitor, idx);
+                used_visitor.used
+            };
 
-                    let parent_id = self.cx.tcx.hir.get_parent(expr.id);
-                    let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
-                    let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
-                    self.indexed.insert(seqvar.segments[0].name, Some(extent));
-                    return;  // no need to walk further
+            if index_used {
+                let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
+                match def {
+                    Def::Local(..) | Def::Upvar(..) => {
+                        let def_id = def.def_id();
+                        let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
+                        let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
+
+                        let parent_id = self.cx.tcx.hir.get_parent(expr.id);
+                        let parent_def_id = self.cx.tcx.hir.local_def_id(parent_id);
+                        let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
+                        self.indexed.insert(seqvar.segments[0].name, Some(extent));
+                        return;  // no need to walk further *on the variable*
+                    }
+                    Def::Static(..) | Def::Const(..) => {
+                        self.indexed.insert(seqvar.segments[0].name, None);
+                        return;  // no need to walk further *on the variable*
+                    }
+                    _ => (),
                 }
-                Def::Static(..) | Def::Const(..) => {
-                    self.indexed.insert(seqvar.segments[0].name, None);
-                    return;  // no need to walk further
-                }
-                _ => (),
             }
         }}
 
         if_let_chain! {[
-            // directly indexing a variable
+            // directly using a variable
             let ExprPath(ref qpath) = expr.node,
             let QPath::Resolved(None, ref path) = *qpath,
             path.segments.len() == 1,

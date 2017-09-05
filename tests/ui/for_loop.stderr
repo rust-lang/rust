@@ -505,57 +505,78 @@ help: use the corresponding method
 409 |     for k in rm.keys() {
     |         ^
 
-error: the loop variable `i` is used to index `src`
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:462:5
+    |
+462 | /     for i in 0..src.len() {
+463 | |         dst[i] = src[i];
+464 | |     }
+    | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
+    |
+    = note: `-D manual-memcpy` implied by `-D warnings`
+
+error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:467:5
     |
 467 | /     for i in 0..src.len() {
 468 | |         dst[i + 10] = src[i];
 469 | |     }
-    | |_____^
-    |
-help: consider using an iterator
-    |
-467 |     for (i, <item>) in src.iter().enumerate() {
-    |         ^^^^^^^^^^^
+    | |_____^ help: try replacing the loop by: `dst[10..(src.len() + 10)].clone_from_slice(&src[..])`
 
-error: the loop variable `i` is used to index `dst`
+error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:472:5
     |
 472 | /     for i in 0..src.len() {
 473 | |         dst[i] = src[i + 10];
 474 | |     }
-    | |_____^
-    |
-help: consider using an iterator
-    |
-472 |     for (i, <item>) in dst.iter().enumerate().take(src.len()) {
-    |         ^^^^^^^^^^^
+    | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[10..])`
 
-error: the loop variable `i` is used to index `dst`
+error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:477:5
     |
 477 | /     for i in 11..src.len() {
 478 | |         dst[i] = src[i - 10];
 479 | |     }
+    | |_____^ help: try replacing the loop by: `dst[11..src.len()].clone_from_slice(&src[(11 - 10)..(src.len() - 10)])`
+
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:482:5
+    |
+482 | /     for i in 0..dst.len() {
+483 | |         dst[i] = src[i];
+484 | |     }
+    | |_____^ help: try replacing the loop by: `dst.clone_from_slice(&src[..dst.len()])`
+
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:495:5
+    |
+495 | /     for i in 10..256 {
+496 | |         dst[i] = src[i - 5];
+497 | |         dst2[i + 500] = src[i]
+498 | |     }
     | |_____^
     |
-help: consider using an iterator
+help: try replacing the loop by
     |
-477 |     for (i, <item>) in dst.iter().enumerate().take(src.len()).skip(11) {
-    |         ^^^^^^^^^^^
+495 |     dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)])
+496 |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256])
+    |
 
-error: the loop variable `i` is used to index `src`
-   --> $DIR/for_loop.rs:512:5
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:507:5
     |
-512 | /     for i in 0..10 {
-513 | |         dst[i + i] = src[i];
-514 | |     }
-    | |_____^
-    |
-help: consider using an iterator
-    |
-512 |     for (i, <item>) in src.iter().enumerate().take(10) {
-    |         ^^^^^^^^^^^
+507 | /     for i in 10..LOOP_OFFSET {
+508 | |         dst[i + LOOP_OFFSET] = src[i - some_var];
+509 | |     }
+    | |_____^ help: try replacing the loop by: `dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].clone_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)])`
 
-error: aborting due to 54 previous errors
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:520:5
+    |
+520 | /     for i in 0..src_vec.len() {
+521 | |         dst_vec[i] = src_vec[i];
+522 | |     }
+    | |_____^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
+
+error: aborting due to 58 previous errors
 
