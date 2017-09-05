@@ -70,7 +70,14 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::TyRef(_, ty::TypeAndMut { mutbl: hir::MutMutable, .. }) = self.cx.tables.expr_ty(e).sty {
+            } else if let ty::TyRef(
+                _,
+                ty::TypeAndMut {
+                    mutbl: hir::MutMutable,
+                    ..
+                },
+            ) = self.cx.tables.expr_ty(e).sty
+            {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -82,13 +89,22 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
-        if let hir::TyRptr(_,
-                           hir::MutTy {
-                               ty: ref pty,
-                               mutbl: hir::MutMutable,
-                           }) = ty.node
+        if let hir::TyRptr(
+            _,
+            hir::MutTy {
+                ty: ref pty,
+                mutbl: hir::MutMutable,
+            },
+        ) = ty.node
         {
-            if let hir::TyRptr(_, hir::MutTy { mutbl: hir::MutMutable, .. }) = pty.node {
+            if let hir::TyRptr(
+                _,
+                hir::MutTy {
+                    mutbl: hir::MutMutable,
+                    ..
+                },
+            ) = pty.node
+            {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -96,7 +112,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
             }
-
         }
 
         intravisit::walk_ty(self, ty);

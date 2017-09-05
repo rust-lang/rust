@@ -3,10 +3,10 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{ExprAddrOf, Expr, MutImmutable, Pat, PatKind, BindingAnnotation};
+use rustc::hir::{BindingAnnotation, Expr, ExprAddrOf, MutImmutable, Pat, PatKind};
 use rustc::ty;
-use rustc::ty::adjustment::{Adjustment, Adjust};
-use utils::{span_lint, in_macro};
+use rustc::ty::adjustment::{Adjust, Adjustment};
+use utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.
@@ -43,16 +43,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
             if let ty::TyRef(..) = cx.tables.expr_ty(inner).sty {
                 for adj3 in cx.tables.expr_adjustments(e).windows(3) {
-                    if let [
-                        Adjustment { kind: Adjust::Deref(_), .. },
-                        Adjustment { kind: Adjust::Deref(_), .. },
-                        Adjustment { kind: Adjust::Borrow(_), .. }
-                    ] = *adj3 {
-                        span_lint(cx,
-                                  NEEDLESS_BORROW,
-                                  e.span,
-                                  "this expression borrows a reference that is immediately dereferenced by the \
-                                   compiler");
+                    if let [Adjustment {
+                        kind: Adjust::Deref(_),
+                        ..
+                    }, Adjustment {
+                        kind: Adjust::Deref(_),
+                        ..
+                    }, Adjustment {
+                        kind: Adjust::Borrow(_),
+                        ..
+                    }] = *adj3
+                    {
+                        span_lint(
+                            cx,
+                            NEEDLESS_BORROW,
+                            e.span,
+                            "this expression borrows a reference that is immediately dereferenced by the \
+                             compiler",
+                        );
                     }
                 }
             }

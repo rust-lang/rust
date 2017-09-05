@@ -91,16 +91,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
 fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
-        item.name == name &&
-            if let AssociatedItemKind::Method { has_self } = item.kind {
-                has_self &&
-                    {
-                        let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                        cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
-                    }
-            } else {
-                false
+        item.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
+            has_self && {
+                let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
+        } else {
+            false
+        }
     }
 
     // fill the set with current and super traits
@@ -121,10 +119,8 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i))
             .any(|i| {
-                i.kind == ty::AssociatedKind::Method &&
-                i.method_has_self_argument &&
-                i.name == "is_empty" &&
-                cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
+                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.name == "is_empty" &&
+                    cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
         if !is_empty_method_found {
@@ -143,16 +139,14 @@ fn check_trait_items(cx: &LateContext, visited_trait: &Item, trait_items: &[Trai
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
-        item.name == name &&
-            if let AssociatedItemKind::Method { has_self } = item.kind {
-                has_self &&
-                    {
-                        let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                        cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
-                    }
-            } else {
-                false
+        item.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
+            has_self && {
+                let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
             }
+        } else {
+            false
+        }
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
@@ -197,7 +191,11 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 }
 
 fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: &Lit, op: &str) {
-    if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
+    if let Spanned {
+        node: LitKind::Int(0, _),
+        ..
+    } = *lit
+    {
         if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_sugg(
                 cx,
@@ -231,25 +229,19 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
         cx.tcx.inherent_impls(id).iter().any(|imp| {
-            cx.tcx.associated_items(*imp).any(
-                |item| is_is_empty(cx, &item),
-            )
+            cx.tcx
+                .associated_items(*imp)
+                .any(|item| is_is_empty(cx, &item))
         })
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::TyDynamic(..) => {
-            cx.tcx
-                .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
-                .any(|item| is_is_empty(cx, &item))
-        },
-        ty::TyProjection(_) => {
-            ty.ty_to_def_id().map_or(
-                false,
-                |id| has_is_empty_impl(cx, id),
-            )
-        },
+        ty::TyDynamic(..) => cx.tcx
+            .associated_items(ty.ty_to_def_id().expect("trait impl not found"))
+            .any(|item| is_is_empty(cx, &item)),
+        ty::TyProjection(_) => ty.ty_to_def_id()
+            .map_or(false, |id| has_is_empty_impl(cx, id)),
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
         ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
         _ => false,

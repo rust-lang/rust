@@ -5,7 +5,7 @@
 extern crate compiletest_rs as compiletest;
 extern crate test;
 
-use std::env::{var, set_var};
+use std::env::{set_var, var};
 use std::path::PathBuf;
 use test::TestPaths;
 

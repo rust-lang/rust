@@ -2,7 +2,7 @@ use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::*;
 use syntax::ast;
-use syntax::codemap::{Span, BytePos};
+use syntax::codemap::{BytePos, Span};
 use syntax_pos::Pos;
 use utils::span_lint;
 
@@ -37,7 +37,9 @@ pub struct Doc {
 
 impl Doc {
     pub fn new(valid_idents: Vec<String>) -> Self {
-        Self { valid_idents: valid_idents }
+        Self {
+            valid_idents: valid_idents,
+        }
     }
 }
 
@@ -196,17 +198,13 @@ fn check_doc<'a, Events: Iterator<Item = (usize, pulldown_cmark::Event<'a>)>>(
 
     for (offset, event) in docs {
         match event {
-            Start(CodeBlock(_)) |
-            Start(Code) => in_code = true,
-            End(CodeBlock(_)) |
-            End(Code) => in_code = false,
-            Start(_tag) | End(_tag) => (), // We don't care about other tags
-            Html(_html) |
-            InlineHtml(_html) => (), // HTML is weird, just ignore it
+            Start(CodeBlock(_)) | Start(Code) => in_code = true,
+            End(CodeBlock(_)) | End(Code) => in_code = false,
+            Start(_tag) | End(_tag) => (),         // We don't care about other tags
+            Html(_html) | InlineHtml(_html) => (), // HTML is weird, just ignore it
             SoftBreak => (),
             HardBreak => (),
-            FootnoteReference(text) |
-            Text(text) => {
+            FootnoteReference(text) | Text(text) => {
                 if !in_code {
                     let index = match spans.binary_search_by(|c| c.0.cmp(&offset)) {
                         Ok(o) => o,

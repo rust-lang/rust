@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty};
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{is_automatically_derived, span_lint_and_then, match_path, is_copy};
+use utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly.
@@ -141,31 +141,31 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
             ty::TyAdt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
-            ty::TyAdt(def, substs) => {
-                for variant in &def.variants {
-                    for field in &variant.fields {
-                        match field.ty(cx.tcx, substs).sty {
-                            ty::TyArray(_, size) if size > 32 => {
-                                return;
-                            },
-                            ty::TyFnPtr(..) => {
-                                return;
-                            },
-                            ty::TyTuple(tys, _) if tys.len() > 12 => {
-                                return;
-                            },
-                            _ => (),
-                        }
+            ty::TyAdt(def, substs) => for variant in &def.variants {
+                for field in &variant.fields {
+                    match field.ty(cx.tcx, substs).sty {
+                        ty::TyArray(_, size) if size > 32 => {
+                            return;
+                        },
+                        ty::TyFnPtr(..) => {
+                            return;
+                        },
+                        ty::TyTuple(tys, _) if tys.len() > 12 => {
+                            return;
+                        },
+                        _ => (),
                     }
                 }
             },
             _ => (),
         }
 
-        span_lint_and_then(cx,
-                           EXPL_IMPL_CLONE_ON_COPY,
-                           item.span,
-                           "you are implementing `Clone` explicitly on a `Copy` type",
-                           |db| { db.span_note(item.span, "consider deriving `Clone` or removing `Copy`"); });
+        span_lint_and_then(
+            cx,
+            EXPL_IMPL_CLONE_ON_COPY,
+            item.span,
+            "you are implementing `Clone` explicitly on a `Copy` type",
+            |db| { db.span_note(item.span, "consider deriving `Clone` or removing `Copy`"); },
+        );
     }
 }

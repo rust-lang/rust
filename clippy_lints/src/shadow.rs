@@ -4,7 +4,7 @@ use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
 use rustc::ty;
 use syntax::codemap::Span;
-use utils::{contains_name, higher, in_external_macro, snippet, span_lint_and_then, iter_input_pats};
+use utils::{contains_name, higher, in_external_macro, iter_input_pats, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for bindings that shadow other bindings already in
 /// scope, while just changing reference level or mutability.
@@ -111,8 +111,7 @@ fn check_block<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, block: &'tcx Block, binding
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(ref decl, _) => check_decl(cx, decl, bindings),
-            StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => check_expr(cx, e, bindings),
+            StmtExpr(ref e, _) | StmtSemi(ref e, _) => check_expr(cx, e, bindings),
         }
     }
     if let Some(ref o) = block.expr {
@@ -185,54 +184,49 @@ fn check_pat<'a, 'tcx>(
                 check_pat(cx, p, init, span, bindings);
             }
         },
-        PatKind::Struct(_, ref pfields, _) => {
-            if let Some(init_struct) = init {
-                if let ExprStruct(_, ref efields, _) = init_struct.node {
-                    for field in pfields {
-                        let name = field.node.name;
-                        let efield = efields.iter().find(|f| f.name.node == name).map(
-                            |f| &*f.expr,
-                        );
-                        check_pat(cx, &field.node.pat, efield, span, bindings);
-                    }
-                } else {
-                    for field in pfields {
-                        check_pat(cx, &field.node.pat, init, span, bindings);
-                    }
+        PatKind::Struct(_, ref pfields, _) => if let Some(init_struct) = init {
+            if let ExprStruct(_, ref efields, _) = init_struct.node {
+                for field in pfields {
+                    let name = field.node.name;
+                    let efield = efields
+                        .iter()
+                        .find(|f| f.name.node == name)
+                        .map(|f| &*f.expr);
+                    check_pat(cx, &field.node.pat, efield, span, bindings);
                 }
             } else {
                 for field in pfields {
-                    check_pat(cx, &field.node.pat, None, span, bindings);
+                    check_pat(cx, &field.node.pat, init, span, bindings);
                 }
             }
+        } else {
+            for field in pfields {
+                check_pat(cx, &field.node.pat, None, span, bindings);
+            }
         },
-        PatKind::Tuple(ref inner, _) => {
-            if let Some(init_tup) = init {
-                if let ExprTup(ref tup) = init_tup.node {
-                    for (i, p) in inner.iter().enumerate() {
-                        check_pat(cx, p, Some(&tup[i]), p.span, bindings);
-                    }
-                } else {
-                    for p in inner {
-                        check_pat(cx, p, init, span, bindings);
-                    }
+        PatKind::Tuple(ref inner, _) => if let Some(init_tup) = init {
+            if let ExprTup(ref tup) = init_tup.node {
+                for (i, p) in inner.iter().enumerate() {
+                    check_pat(cx, p, Some(&tup[i]), p.span, bindings);
                 }
             } else {
                 for p in inner {
-                    check_pat(cx, p, None, span, bindings);
+                    check_pat(cx, p, init, span, bindings);
                 }
             }
+        } else {
+            for p in inner {
+                check_pat(cx, p, None, span, bindings);
+            }
         },
-        PatKind::Box(ref inner) => {
-            if let Some(initp) = init {
-                if let ExprBox(ref inner_init) = initp.node {
-                    check_pat(cx, inner, Some(&**inner_init), span, bindings);
-                } else {
-                    check_pat(cx, inner, init, span, bindings);
-                }
+        PatKind::Box(ref inner) => if let Some(initp) = init {
+            if let ExprBox(ref inner_init) = initp.node {
+                check_pat(cx, inner, Some(&**inner_init), span, bindings);
             } else {
                 check_pat(cx, inner, init, span, bindings);
             }
+        } else {
+            check_pat(cx, inner, init, span, bindings);
         },
         PatKind::Ref(ref inner, _) => check_pat(cx, inner, init, span, bindings),
         // PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
@@ -292,13 +286,14 @@ fn lint_shadow<'a, 'tcx: 'a>(
                 },
             );
         }
-
     } else {
-        span_lint_and_then(cx,
-                           SHADOW_UNRELATED,
-                           span,
-                           &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
-                           |db| { db.span_note(prev_span, "previous binding is here"); });
+        span_lint_and_then(
+            cx,
+            SHADOW_UNRELATED,
+            span,
+            &format!("`{}` shadows a previous declaration", snippet(cx, pattern_span, "_")),
+            |db| { db.span_note(prev_span, "previous binding is here"); },
+        );
     }
 }
 
@@ -307,19 +302,14 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         return;
     }
     match expr.node {
-        ExprUnary(_, ref e) |
-        ExprField(ref e, _) |
-        ExprTupField(ref e, _) |
-        ExprAddrOf(_, ref e) |
-        ExprBox(ref e) => check_expr(cx, e, bindings),
-        ExprBlock(ref block) |
-        ExprLoop(ref block, _, _) => check_block(cx, block, bindings),
+        ExprUnary(_, ref e) | ExprField(ref e, _) | ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e) => {
+            check_expr(cx, e, bindings)
+        },
+        ExprBlock(ref block) | ExprLoop(ref block, _, _) => check_block(cx, block, bindings),
         // ExprCall
         // ExprMethodCall
-        ExprArray(ref v) | ExprTup(ref v) => {
-            for e in v {
-                check_expr(cx, e, bindings)
-            }
+        ExprArray(ref v) | ExprTup(ref v) => for e in v {
+            check_expr(cx, e, bindings)
         },
         ExprIf(ref cond, ref then, ref otherwise) => {
             check_expr(cx, cond, bindings);
@@ -358,12 +348,9 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
             check_ty(cx, fty, bindings);
             check_expr(cx, &cx.tcx.hir.body(body_id).value, bindings);
         },
-        TyPtr(MutTy { ty: ref mty, .. }) |
-        TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
-        TyTup(ref tup) => {
-            for t in tup {
-                check_ty(cx, t, bindings)
-            }
+        TyPtr(MutTy { ty: ref mty, .. }) | TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
+        TyTup(ref tup) => for t in tup {
+            check_ty(cx, t, bindings)
         },
         TyTypeof(body_id) => check_expr(cx, &cx.tcx.hir.body(body_id).value, bindings),
         _ => (),
@@ -372,14 +359,13 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
 
 fn is_self_shadow(name: Name, expr: &Expr) -> bool {
     match expr.node {
-        ExprBox(ref inner) |
-        ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
+        ExprBox(ref inner) | ExprAddrOf(_, ref inner) => is_self_shadow(name, inner),
         ExprBlock(ref block) => {
             block.stmts.is_empty() &&
-                block.expr.as_ref().map_or(
-                    false,
-                    |e| is_self_shadow(name, e),
-                )
+                block
+                    .expr
+                    .as_ref()
+                    .map_or(false, |e| is_self_shadow(name, e))
         },
         ExprUnary(op, ref inner) => (UnDeref == op) && is_self_shadow(name, inner),
         ExprPath(QPath::Resolved(_, ref path)) => path_eq_name(name, path),

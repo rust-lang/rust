@@ -1,7 +1,7 @@
 //! lint on `use`ing all variants of an enum
 
 use rustc::hir::*;
-use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;

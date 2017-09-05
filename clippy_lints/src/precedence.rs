@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{span_lint_and_sugg, snippet};
+use utils::{snippet, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -89,9 +89,7 @@ impl EarlyLintPass for Precedence {
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.node {
                         match lit.node {
-                            LitKind::Int(..) |
-                            LitKind::Float(..) |
-                            LitKind::FloatUnsuffixed(..) => {
+                            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
                                 span_lint_and_sugg(
                                     cx,
                                     PRECEDENCE,

@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use std::f64::consts as f64;
-use syntax::ast::{Lit, LitKind, FloatTy};
+use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;
 use utils::span_lint;
 
@@ -91,7 +91,7 @@ fn check_known_consts(cx: &LateContext, e: &Expr, s: &symbol::Symbol, module: &s
                     e.span,
                     &format!(
                         "approximate value of `{}::consts::{}` found. \
-                                    Consider using it directly",
+                         Consider using it directly",
                         module,
                         &name
                     ),

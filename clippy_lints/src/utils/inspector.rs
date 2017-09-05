@@ -54,12 +54,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match item.vis {
             hir::Visibility::Public => println!("public"),
             hir::Visibility::Crate => println!("visible crate wide"),
-            hir::Visibility::Restricted { ref path, .. } => {
-                println!(
-                    "visible in module `{}`",
-                    print::to_string(print::NO_ANN, |s| s.print_path(path, false))
-                )
-            },
+            hir::Visibility::Restricted { ref path, .. } => println!(
+                "visible in module `{}`",
+                print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+            ),
             hir::Visibility::Inherited => println!("visibility inherited from outer item"),
         }
         if item.defaultness.is_default() {
@@ -125,8 +123,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         match stmt.node {
             hir::StmtDecl(ref decl, _) => print_decl(cx, decl),
-            hir::StmtExpr(ref e, _) |
-            hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
+            hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => print_expr(cx, e, 0),
         }
     }
     // fn check_foreign_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx
@@ -355,12 +352,10 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
     match item.vis {
         hir::Visibility::Public => println!("public"),
         hir::Visibility::Crate => println!("visible crate wide"),
-        hir::Visibility::Restricted { ref path, .. } => {
-            println!(
-                "visible in module `{}`",
-                print::to_string(print::NO_ANN, |s| s.print_path(path, false))
-            )
-        },
+        hir::Visibility::Restricted { ref path, .. } => println!(
+            "visible in module `{}`",
+            print::to_string(print::NO_ANN, |s| s.print_path(path, false))
+        ),
         hir::Visibility::Inherited => println!("visibility inherited from outer item"),
     }
     match item.node {

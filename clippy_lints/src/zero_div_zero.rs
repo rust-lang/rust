@@ -1,4 +1,4 @@
-use consts::{Constant, constant_simple, FloatWidth};
+use consts::{constant_simple, Constant, FloatWidth};
 use rustc::lint::*;
 use rustc::hir::*;
 use utils::span_help_and_lint;

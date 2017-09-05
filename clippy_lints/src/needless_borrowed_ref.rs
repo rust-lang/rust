@@ -3,8 +3,8 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc::hir::{MutImmutable, Pat, PatKind, BindingAnnotation};
-use utils::{span_lint_and_then, in_macro, snippet};
+use rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
+use utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for useless borrowed references.
 ///

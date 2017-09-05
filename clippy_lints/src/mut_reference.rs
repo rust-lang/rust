@@ -36,15 +36,13 @@ impl LintPass for UnnecessaryMutPassed {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         match e.node {
-            ExprCall(ref fn_expr, ref arguments) => {
-                if let ExprPath(ref path) = fn_expr.node {
-                    check_arguments(
-                        cx,
-                        arguments,
-                        cx.tables.expr_ty(fn_expr),
-                        &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
-                    );
-                }
+            ExprCall(ref fn_expr, ref arguments) => if let ExprPath(ref path) = fn_expr.node {
+                check_arguments(
+                    cx,
+                    arguments,
+                    cx.tables.expr_ty(fn_expr),
+                    &print::to_string(print::NO_ANN, |s| s.print_qpath(path, false)),
+                );
             },
             ExprMethodCall(ref path, _, ref arguments) => {
                 let def_id = cx.tables.type_dependent_defs()[e.hir_id].def_id();
@@ -63,16 +61,23 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
-                    ty::TyRef(_, ty::TypeAndMut { mutbl: MutImmutable, .. }) |
-                    ty::TyRawPtr(ty::TypeAndMut { mutbl: MutImmutable, .. }) => {
-                        if let ExprAddrOf(MutMutable, _) = argument.node {
-                            span_lint(
-                                cx,
-                                UNNECESSARY_MUT_PASSED,
-                                argument.span,
-                                &format!("The function/method `{}` doesn't need a mutable reference", name),
-                            );
-                        }
+                    ty::TyRef(
+                        _,
+                        ty::TypeAndMut {
+                            mutbl: MutImmutable,
+                            ..
+                        },
+                    ) |
+                    ty::TyRawPtr(ty::TypeAndMut {
+                        mutbl: MutImmutable,
+                        ..
+                    }) => if let ExprAddrOf(MutMutable, _) = argument.node {
+                        span_lint(
+                            cx,
+                            UNNECESSARY_MUT_PASSED,
+                            argument.span,
+                            &format!("The function/method `{}` doesn't need a mutable reference", name),
+                        );
                     },
                     _ => (),
                 }

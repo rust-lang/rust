@@ -9,9 +9,9 @@ use rustc::middle::mem_categorization as mc;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
-use utils::{in_macro, is_self, is_copy, implements_trait, get_trait_def_id, match_type, snippet, span_lint_and_then,
-            multispan_sugg, paths};
-use std::collections::{HashSet, HashMap};
+use utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
+            snippet, span_lint_and_then};
+use std::collections::{HashMap, HashSet};
 
 /// **What it does:** Checks for functions taking arguments by value, but not
 /// consuming them in its
@@ -62,16 +62,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., attrs) => {
-                for a in attrs {
-                    if_let_chain!{[
-                        a.meta_item_list().is_some(),
-                        let Some(name) = a.name(),
-                        name == "proc_macro_derive",
-                    ], {
-                        return;
-                    }}
-                }
+            FnKind::ItemFn(.., attrs) => for a in attrs {
+                if_let_chain!{[
+                    a.meta_item_list().is_some(),
+                    let Some(name) = a.name(),
+                    name == "proc_macro_derive",
+                ], {
+                    return;
+                }}
             },
             _ => return,
         }
@@ -106,7 +104,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
         for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
-
             // Determines whether `ty` implements `Borrow<U>` (U != ty) specifically.
             // This is needed due to the `Borrow<T> for T` blanket impl.
             let implements_borrow_trait = preds
@@ -118,9 +115,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 })
                 .filter(|tpred| tpred.def_id() == borrow_trait && tpred.self_ty() == ty)
                 .any(|tpred| {
-                    tpred.input_types().nth(1).expect(
-                        "Borrow trait must have an parameter",
-                    ) != ty
+                    tpred
+                        .input_types()
+                        .nth(1)
+                        .expect("Borrow trait must have an parameter") != ty
                 });
 
             if_let_chain! {[
@@ -299,8 +297,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 fn unwrap_downcast_or_interior(mut cmt: mc::cmt) -> mc::cmt {
     loop {
         match cmt.cat.clone() {
-            mc::Categorization::Downcast(c, _) |
-            mc::Categorization::Interior(c, _) => {
+            mc::Categorization::Downcast(c, _) | mc::Categorization::Interior(c, _) => {
                 cmt = c;
             },
             _ => return cmt,

@@ -5,10 +5,10 @@ use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::Def;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::map::Node;
-use rustc::lint::{LintContext, Level, LateContext, Lint};
+use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, TyCtxt, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
@@ -104,18 +104,16 @@ pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
 pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
     let parent_id = cx.tcx.hir.get_parent(id);
     match MirSource::from_node(cx.tcx, parent_id) {
-        MirSource::GeneratorDrop(_) |
-        MirSource::Fn(_) => false,
-        MirSource::Const(_) |
-        MirSource::Static(..) |
-        MirSource::Promoted(..) => true,
+        MirSource::GeneratorDrop(_) | MirSource::Fn(_) => false,
+        MirSource::Const(_) | MirSource::Static(..) | MirSource::Promoted(..) => true,
     }
 }
 
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().map_or(false, |info| {
-        match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
+        match info.callee.format {
+            // don't treat range expressions desugared to structs as "in_macro"
             ExpnFormat::CompilerDesugaring(kind) => kind != CompilerDesugaringKind::DotFill,
             _ => true,
         }
@@ -138,18 +136,18 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
         // no span for the callee = external macro
         info.callee.span.map_or(true, |span| {
             // no snippet = external macro or compiler-builtin expansion
-            cx.sess().codemap().span_to_snippet(span).ok().map_or(
-                true,
-                |code| {
-                    !code.starts_with("macro_rules")
-                },
-            )
+            cx.sess()
+                .codemap()
+                .span_to_snippet(span)
+                .ok()
+                .map_or(true, |code| !code.starts_with("macro_rules"))
         })
     }
 
-    span.ctxt().outer().expn_info().map_or(false, |info| {
-        in_macro_ext(cx, &info)
-    })
+    span.ctxt()
+        .outer()
+        .expn_info()
+        .map_or(false, |info| in_macro_ext(cx, &info))
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.
@@ -183,9 +181,10 @@ pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
     tcx.push_item_path(&mut apb, def_id);
 
     apb.names.len() == path.len() &&
-        apb.names.into_iter().zip(path.iter()).all(
-            |(a, &b)| *a == *b,
-        )
+        apb.names
+            .into_iter()
+            .zip(path.iter())
+            .all(|(a, &b)| *a == *b)
 }
 
 /// Check if type is struct, enum or union type with given def path.
@@ -220,11 +219,9 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
 
 pub fn last_path_segment(path: &QPath) -> &PathSegment {
     match *path {
-        QPath::Resolved(_, ref path) => {
-            path.segments.last().expect(
-                "A path must have at least one segment",
-            )
-        },
+        QPath::Resolved(_, ref path) => path.segments
+            .last()
+            .expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
     }
 }
@@ -246,22 +243,22 @@ pub fn single_segment_path(path: &QPath) -> Option<&PathSegment> {
 pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
     match *path {
         QPath::Resolved(_, ref path) => match_path(path, segments),
-        QPath::TypeRelative(ref ty, ref segment) => {
-            match ty.node {
-                TyPath(ref inner_path) => {
-                    !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)]) &&
-                        segment.name == segments[segments.len() - 1]
-                },
-                _ => false,
-            }
+        QPath::TypeRelative(ref ty, ref segment) => match ty.node {
+            TyPath(ref inner_path) => {
+                !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)]) &&
+                    segment.name == segments[segments.len() - 1]
+            },
+            _ => false,
         },
     }
 }
 
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(
-        |(a, b)| a.name == *b,
-    )
+    path.segments
+        .iter()
+        .rev()
+        .zip(segments.iter().rev())
+        .all(|(a, b)| a.name == *b)
 }
 
 /// Match a `Path` against a slice of segment string literals, e.g.
@@ -271,9 +268,11 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 /// match_qpath(path, &["std", "rt", "begin_unwind"])
 /// ```
 pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
-    path.segments.iter().rev().zip(segments.iter().rev()).all(
-        |(a, b)| a.identifier.name == *b,
-    )
+    path.segments
+        .iter()
+        .rev()
+        .zip(segments.iter().rev())
+        .all(|(a, b)| a.identifier.name == *b)
 }
 
 /// Get the definition associated to a path.
@@ -281,9 +280,9 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     let cstore = &cx.tcx.sess.cstore;
 
     let crates = cstore.crates();
-    let krate = crates.iter().find(
-        |&&krate| cstore.crate_name(krate) == path[0],
-    );
+    let krate = crates
+        .iter()
+        .find(|&&krate| cstore.crate_name(krate) == path[0]);
     if let Some(krate) = krate {
         let krate = DefId {
             krate: *krate,
@@ -336,14 +335,9 @@ pub fn implements_trait<'a, 'tcx>(
     ty_params: &[Ty<'tcx>],
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let obligation = cx.tcx.predicate_for_trait_def(
-        cx.param_env,
-        traits::ObligationCause::dummy(),
-        trait_id,
-        0,
-        ty,
-        ty_params,
-    );
+    let obligation =
+        cx.tcx
+            .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
     cx.tcx.infer_ctxt().enter(|infcx| {
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })
@@ -522,30 +516,27 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     if node_id == parent_id {
         return None;
     }
-    map.find(parent_id).and_then(
-        |node| if let Node::NodeExpr(parent) =
-            node
-        {
+    map.find(parent_id)
+        .and_then(|node| if let Node::NodeExpr(parent) = node {
             Some(parent)
         } else {
             None
-        },
-    )
+        })
 }
 
 pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
     let map = &cx.tcx.hir;
-    let enclosing_node = map.get_enclosing_scope(node).and_then(|enclosing_id| {
-        map.find(enclosing_id)
-    });
+    let enclosing_node = map.get_enclosing_scope(node)
+        .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(block) => Some(block),
-            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, eid), .. }) => {
-                match cx.tcx.hir.body(eid).value.node {
-                    ExprBlock(ref block) => Some(block),
-                    _ => None,
-                }
+            Node::NodeItem(&Item {
+                node: ItemFn(_, _, _, _, _, eid),
+                ..
+            }) => match cx.tcx.hir.body(eid).value.node {
+                ExprBlock(ref block) => Some(block),
+                _ => None,
             },
             _ => None,
         }
@@ -704,9 +695,9 @@ impl LimitStack {
         Self { stack: vec![limit] }
     }
     pub fn limit(&self) -> u64 {
-        *self.stack.last().expect(
-            "there should always be a value in the stack",
-        )
+        *self.stack
+            .last()
+            .expect("there should always be a value in the stack")
     }
     pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
         let stack = &mut self.stack;
@@ -741,9 +732,10 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt().outer().expn_info().map(|ei| {
-            (ei.callee.name(), ei.call_site)
-        });
+        let span_name_span = span.ctxt()
+            .outer()
+            .expn_info()
+            .map(|ei| (ei.callee.name(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
@@ -763,9 +755,10 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt().outer().expn_info().map(|ei| {
-        (ei.callee.name(), ei.call_site)
-    });
+    let span_name_span = span.ctxt()
+        .outer()
+        .expn_info()
+        .map(|ei| (ei.callee.name(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name == name => Some(new_span),
@@ -800,7 +793,11 @@ pub fn camel_case_until(s: &str) -> usize {
             return i;
         }
     }
-    if up { last_i } else { s.len() }
+    if up {
+        last_i
+    } else {
+        s.len()
+    }
 }
 
 /// Return index of the last camel-case component of `s`.
@@ -844,9 +841,9 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Ty<'t
 // <'b> Foo<'b>` but
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        infcx.can_eq(cx.param_env, a, b).is_ok()
-    })
+    cx.tcx
+        .infer_ctxt()
+        .enter(|infcx| infcx.can_eq(cx.param_env, a, b).is_ok())
 }
 
 /// Return whether the given type is an `unsafe` function.
@@ -875,36 +872,28 @@ pub fn is_refutable(cx: &LateContext, pat: &Pat) -> bool {
     }
 
     match pat.node {
-        PatKind::Binding(..) |
-        PatKind::Wild => false,
-        PatKind::Box(ref pat) |
-        PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
-        PatKind::Lit(..) |
-        PatKind::Range(..) => true,
+        PatKind::Binding(..) | PatKind::Wild => false,
+        PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
+        PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
-        PatKind::Struct(ref qpath, ref fields, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
-            }
+        PatKind::Struct(ref qpath, ref fields, _) => if is_enum_variant(cx, qpath, pat.hir_id) {
+            true
+        } else {
+            are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
         },
-        PatKind::TupleStruct(ref qpath, ref pats, _) => {
-            if is_enum_variant(cx, qpath, pat.hir_id) {
-                true
-            } else {
-                are_refutable(cx, pats.iter().map(|pat| &**pat))
-            }
+        PatKind::TupleStruct(ref qpath, ref pats, _) => if is_enum_variant(cx, qpath, pat.hir_id) {
+            true
+        } else {
+            are_refutable(cx, pats.iter().map(|pat| &**pat))
         },
-        PatKind::Slice(ref head, ref middle, ref tail) => {
-            are_refutable(
-                cx,
-                head.iter().chain(middle).chain(tail.iter()).map(
-                    |pat| &**pat,
-                ),
-            )
-        },
+        PatKind::Slice(ref head, ref middle, ref tail) => are_refutable(
+            cx,
+            head.iter()
+                .chain(middle)
+                .chain(tail.iter())
+                .map(|pat| &**pat),
+        ),
     }
 }
 
@@ -1029,9 +1018,9 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Option<u64> {
-    ty.layout(cx.tcx, cx.param_env).ok().map(|layout| {
-        layout.size(cx.tcx).bytes()
-    })
+    ty.layout(cx.tcx, cx.param_env)
+        .ok()
+        .map(|layout| layout.size(cx.tcx).bytes())
 }
 
 /// Returns true if the lint is allowed in the current context

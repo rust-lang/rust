@@ -2,7 +2,7 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
 use rustc::hir::Expr;
 use syntax::ast;
@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!(
                         "Consider using an {} instead of a Mutex here. If you just want the locking \
-                                       behaviour and not the internal type, consider using Mutex<()>.",
+                         behaviour and not the internal type, consider using Mutex<()>.",
                         atomic_name
                     );
                     match mutex_param.sty {

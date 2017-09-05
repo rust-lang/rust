@@ -1,10 +1,10 @@
-use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::*;
 use rustc::hir::intravisit::*;
-use syntax::ast::{LitKind, DUMMY_NODE_ID, NodeId};
-use syntax::codemap::{DUMMY_SP, dummy_spanned, Span};
+use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
+use syntax::codemap::{dummy_spanned, Span, DUMMY_SP};
 use syntax::util::ThinVec;
-use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
+use utils::{in_macro, snippet_opt, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.
@@ -96,26 +96,23 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         if !in_macro(e.span) {
             match e.node {
                 ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
-                ExprBinary(binop, ref lhs, ref rhs) => {
-                    match binop.node {
-                        BiOr => return Ok(Bool::Or(self.extract(BiOr, &[lhs, rhs], Vec::new())?)),
-                        BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
-                        _ => (),
-                    }
+                ExprBinary(binop, ref lhs, ref rhs) => match binop.node {
+                    BiOr => return Ok(Bool::Or(self.extract(BiOr, &[lhs, rhs], Vec::new())?)),
+                    BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
+                    _ => (),
                 },
-                ExprLit(ref lit) => {
-                    match lit.node {
-                        LitKind::Bool(true) => return Ok(Bool::True),
-                        LitKind::Bool(false) => return Ok(Bool::False),
-                        _ => (),
-                    }
+                ExprLit(ref lit) => match lit.node {
+                    LitKind::Bool(true) => return Ok(Bool::True),
+                    LitKind::Bool(false) => return Ok(Bool::False),
+                    _ => (),
                 },
                 _ => (),
             }
         }
         for (n, expr) in self.terminals.iter().enumerate() {
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
-                #[allow(cast_possible_truncation)] return Ok(Bool::Term(n as u8));
+                #[allow(cast_possible_truncation)]
+                return Ok(Bool::Term(n as u8));
             }
             let negated = match e.node {
                 ExprBinary(binop, ref lhs, ref rhs) => {
@@ -141,13 +138,15 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => continue,
             };
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
-                #[allow(cast_possible_truncation)] return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
+                #[allow(cast_possible_truncation)]
+                return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
             }
         }
         let n = self.terminals.len();
         self.terminals.push(e);
         if n < 32 {
-            #[allow(cast_possible_truncation)] Ok(Bool::Term(n as u8))
+            #[allow(cast_possible_truncation)]
+            Ok(Bool::Term(n as u8))
         } else {
             Err("too many literals".to_owned())
         }
@@ -167,40 +166,36 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 s.push_str("false");
                 s
             },
-            Not(ref inner) => {
-                match **inner {
-                    And(_) | Or(_) => {
-                        s.push('!');
-                        recurse(true, cx, inner, terminals, s)
-                    },
-                    Term(n) => {
-                        if let ExprBinary(binop, ref lhs, ref rhs) = terminals[n as usize].node {
-                            let op = match binop.node {
-                                BiEq => " != ",
-                                BiNe => " == ",
-                                BiLt => " >= ",
-                                BiGt => " <= ",
-                                BiLe => " > ",
-                                BiGe => " < ",
-                                _ => {
-                                    s.push('!');
-                                    return recurse(true, cx, inner, terminals, s);
-                                },
-                            };
-                            s.push_str(&snip(lhs));
-                            s.push_str(op);
-                            s.push_str(&snip(rhs));
-                            s
-                        } else {
+            Not(ref inner) => match **inner {
+                And(_) | Or(_) => {
+                    s.push('!');
+                    recurse(true, cx, inner, terminals, s)
+                },
+                Term(n) => if let ExprBinary(binop, ref lhs, ref rhs) = terminals[n as usize].node {
+                    let op = match binop.node {
+                        BiEq => " != ",
+                        BiNe => " == ",
+                        BiLt => " >= ",
+                        BiGt => " <= ",
+                        BiLe => " > ",
+                        BiGe => " < ",
+                        _ => {
                             s.push('!');
-                            recurse(false, cx, inner, terminals, s)
-                        }
-                    },
-                    _ => {
-                        s.push('!');
-                        recurse(false, cx, inner, terminals, s)
-                    },
-                }
+                            return recurse(true, cx, inner, terminals, s);
+                        },
+                    };
+                    s.push_str(&snip(lhs));
+                    s.push_str(op);
+                    s.push_str(&snip(rhs));
+                    s
+                } else {
+                    s.push('!');
+                    recurse(false, cx, inner, terminals, s)
+                },
+                _ => {
+                    s.push('!');
+                    recurse(false, cx, inner, terminals, s)
+                },
             },
             And(ref v) => {
                 if brackets {
@@ -319,7 +314,6 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             cx: self.cx,
         };
         if let Ok(expr) = h2q.run(e) {
-
             if h2q.terminals.len() > 8 {
                 // QMC has exponentially slow behavior as the number of terminals increases
                 // 8 is reasonable, it takes approximately 0.2 seconds.
@@ -360,7 +354,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                                 db.span_help(
                                     h2q.terminals[i].span,
                                     "this expression can be optimized out by applying boolean operations to the \
-                                          outer expression",
+                                     outer expression",
                                 );
                                 db.span_suggestion(
                                     e.span,
@@ -411,12 +405,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
         }
         match e.node {
             ExprBinary(binop, _, _) if binop.node == BiOr || binop.node == BiAnd => self.bool_expr(e),
-            ExprUnary(UnNot, ref inner) => {
-                if self.cx.tables.node_types()[inner.hir_id].is_bool() {
-                    self.bool_expr(e);
-                } else {
-                    walk_expr(self, e);
-                }
+            ExprUnary(UnNot, ref inner) => if self.cx.tables.node_types()[inner.hir_id].is_bool() {
+                self.bool_expr(e);
+            } else {
+                walk_expr(self, e);
             },
             _ => walk_expr(self, e),
         }

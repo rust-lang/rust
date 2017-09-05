@@ -8,39 +8,42 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(conservative_impl_trait)]
-
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 
-extern crate syntax;
-extern crate syntax_pos;
 #[macro_use]
 extern crate rustc;
+extern crate syntax;
+extern crate syntax_pos;
 
 extern crate toml;
 
 // for unicode nfc normalization
+
 extern crate unicode_normalization;
 
 // for semver check in attrs.rs
+
 extern crate semver;
 
 // for regex checking
+
 extern crate regex_syntax;
 
 // for finding minimal boolean expressions
+
 extern crate quine_mc_cluskey;
 
-extern crate rustc_errors;
-extern crate rustc_plugin;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
+extern crate rustc_errors;
+extern crate rustc_plugin;
 
 #[macro_use]
 extern crate matches as matches_macro;
 
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde;
 
 #[macro_use]
 extern crate lazy_static;

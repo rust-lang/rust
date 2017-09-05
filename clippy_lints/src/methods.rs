@@ -8,10 +8,10 @@ use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, match_qpath, match_trait_method,
-            match_type, method_chain_args, return_ty, same_tys, snippet, span_lint, span_lint_and_then,
-            span_lint_and_sugg, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, last_path_segment,
-            single_segment_path, match_def_path, is_self, is_self_ty, iter_input_pats, match_path};
+use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
+            iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
+            match_type, method_chain_args, return_ty, same_tys, single_segment_path, snippet, span_lint,
+            span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::paths;
 use utils::sugg;
 
@@ -618,11 +618,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
 
                 match self_ty.sty {
-                    ty::TyRef(_, ty) if ty.ty.sty == ty::TyStr => {
-                        for &(method, pos) in &PATTERN_METHODS {
-                            if method_call.name == method && args.len() > pos {
-                                lint_single_char_pattern(cx, expr, &args[pos]);
-                            }
+                    ty::TyRef(_, ty) if ty.ty.sty == ty::TyStr => for &(method, pos) in &PATTERN_METHODS {
+                        if method_call.name == method && args.len() > pos {
+                            lint_single_char_pattern(cx, expr, &args[pos]);
                         }
                     },
                     _ => (),
@@ -723,12 +721,11 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id =
-                        if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
-                            default_trait_id
-                        } else {
-                            return false;
-                        };
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
+                        default_trait_id
+                    } else {
+                        return false;
+                    };
 
                     if implements_trait(cx, arg_ty, default_trait_id, &[]) {
                         span_lint_and_sugg(
@@ -771,13 +768,12 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
         }
 
         // (path, fn_has_argument, methods, suffix)
-        let know_types: &[(&[_], _, &[_], _)] =
-            &[
-                (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
-                (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
-                (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
-                (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
-            ];
+        let know_types: &[(&[_], _, &[_], _)] = &[
+            (&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+            (&paths::OPTION, false, &["map_or", "ok_or", "or", "unwrap_or"], "else"),
+            (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
+        ];
 
         let self_ty = cx.tables.expr_ty(self_expr);
 
@@ -835,7 +831,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
                 CLONE_DOUBLE_REF,
                 expr.span,
                 "using `clone` on a double-reference; \
-                                this will copy the reference instead of cloning the inner type",
+                 this will copy the reference instead of cloning the inner type",
                 |db| if let Some(snip) = sugg::Sugg::hir_opt(cx, arg) {
                     db.span_suggestion(expr.span, "try dereferencing it", format!("({}).clone()", snip.deref()));
                 },
@@ -919,7 +915,7 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
             ITER_CLONED_COLLECT,
             expr.span,
             "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                   more readable",
+             more readable",
         );
     }
 }
@@ -1021,12 +1017,10 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
         match ty.sty {
             ty::TySlice(_) => sugg::Sugg::hir_opt(cx, expr),
             ty::TyAdt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => sugg::Sugg::hir_opt(cx, expr),
-            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => {
-                if may_slice(cx, inner) {
-                    sugg::Sugg::hir_opt(cx, expr)
-                } else {
-                    None
-                }
+            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => if may_slice(cx, inner) {
+                sugg::Sugg::hir_opt(cx, expr)
+            } else {
+                None
             },
             _ => None,
         }
@@ -1052,8 +1046,8 @@ fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
             expr.span,
             &format!(
                 "used unwrap() on {} value. If you don't want to handle the {} case gracefully, consider \
-                            using expect() to provide a better panic \
-                            message",
+                 using expect() to provide a better panic \
+                 message",
                 kind,
                 none_value
             ),
@@ -1222,7 +1216,7 @@ fn lint_search_is_some(
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
         let msg = format!(
             "called `is_some()` after searching an `Iterator` with {}. This is more succinctly \
-                           expressed by calling `any()`.",
+             expressed by calling `any()`.",
             search_method
         );
         let search_snippet = snippet(cx, search_args[1].span, "..");
@@ -1459,35 +1453,37 @@ fn is_as_ref_or_mut_trait(ty: &hir::Ty, self_ty: &hir::Ty, generics: &hir::Gener
     single_segment_ty(ty).map_or(false, |seg| {
         generics.ty_params.iter().any(|param| {
             param.name == seg.name &&
-                param.bounds.iter().any(|bound| {
-                    if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
+                param
+                    .bounds
+                    .iter()
+                    .any(|bound| if let hir::TyParamBound::TraitTyParamBound(ref ptr, ..) = *bound {
                         let path = &ptr.trait_ref.path;
                         match_path(path, name) &&
-                            path.segments.last().map_or(
-                                false,
-                                |s| if s.parameters.parenthesized {
+                            path.segments
+                                .last()
+                                .map_or(false, |s| if s.parameters.parenthesized {
                                     false
                                 } else {
                                     s.parameters.types.len() == 1 &&
                                         (is_self_ty(&s.parameters.types[0]) || is_ty(&*s.parameters.types[0], self_ty))
-                                },
-                            )
+                                })
                     } else {
                         false
-                    }
-                })
+                    })
         })
     })
 }
 
 fn is_ty(ty: &hir::Ty, self_ty: &hir::Ty) -> bool {
     match (&ty.node, &self_ty.node) {
-        (&hir::TyPath(hir::QPath::Resolved(_, ref ty_path)),
-         &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path))) => {
-            ty_path.segments.iter().map(|seg| seg.name).eq(
-                self_ty_path.segments.iter().map(|seg| seg.name),
-            )
-        },
+        (
+            &hir::TyPath(hir::QPath::Resolved(_, ref ty_path)),
+            &hir::TyPath(hir::QPath::Resolved(_, ref self_ty_path)),
+        ) => ty_path
+            .segments
+            .iter()
+            .map(|seg| seg.name)
+            .eq(self_ty_path.segments.iter().map(|seg| seg.name)),
         _ => false,
     }
 }

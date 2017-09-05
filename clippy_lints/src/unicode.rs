@@ -3,7 +3,7 @@ use rustc::hir::*;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::Span;
 use unicode_normalization::UnicodeNormalization;
-use utils::{snippet, span_help_and_lint, is_allowed};
+use utils::{is_allowed, snippet, span_help_and_lint};
 
 /// **What it does:** Checks for the Unicode zero-width space in the code.
 ///

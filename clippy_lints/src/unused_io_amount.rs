@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir;
-use utils::{span_lint, match_qpath, match_trait_method, is_try, paths};
+use utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
 
 /// **What it does:** Checks for unused written/read amount.
 ///
@@ -40,8 +40,7 @@ impl LintPass for UnusedIoAmount {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
-            hir::StmtSemi(ref expr, _) |
-            hir::StmtExpr(ref expr, _) => &**expr,
+            hir::StmtSemi(ref expr, _) | hir::StmtExpr(ref expr, _) => &**expr,
             _ => return,
         };
 
@@ -58,13 +57,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
                 }
             },
 
-            hir::ExprMethodCall(ref path, _, ref args) => {
-                match &*path.name.as_str() {
-                    "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
-                        check_method_call(cx, &args[0], expr);
-                    },
-                    _ => (),
-                }
+            hir::ExprMethodCall(ref path, _, ref args) => match &*path.name.as_str() {
+                "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
+                    check_method_call(cx, &args[0], expr);
+                },
+                _ => (),
             },
 
             _ => (),

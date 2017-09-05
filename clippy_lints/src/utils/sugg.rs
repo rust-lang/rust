@@ -33,9 +33,7 @@ pub const ONE: Sugg<'static> = Sugg::NonParen(Cow::Borrowed("1"));
 impl<'a> Display for Sugg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         match *self {
-            Sugg::NonParen(ref s) |
-            Sugg::MaybeParen(ref s) |
-            Sugg::BinOp(_, ref s) => s.fmt(f),
+            Sugg::NonParen(ref s) | Sugg::MaybeParen(ref s) | Sugg::BinOp(_, ref s) => s.fmt(f),
         }
     }
 }
@@ -178,12 +176,10 @@ impl<'a> Sugg<'a> {
         match self {
             Sugg::NonParen(..) => self,
             // (x) and (x).y() both don't need additional parens
-            Sugg::MaybeParen(sugg) => {
-                if sugg.starts_with('(') && sugg.ends_with(')') {
-                    Sugg::MaybeParen(sugg)
-                } else {
-                    Sugg::NonParen(format!("({})", sugg).into())
-                }
+            Sugg::MaybeParen(sugg) => if sugg.starts_with('(') && sugg.ends_with(')') {
+                Sugg::MaybeParen(sugg)
+            } else {
+                Sugg::NonParen(format!("({})", sugg).into())
             },
             Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
         }
@@ -273,8 +269,8 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     fn needs_paren(op: &AssocOp, other: &AssocOp, dir: Associativity) -> bool {
         other.precedence() < op.precedence() ||
             (other.precedence() == op.precedence() &&
-                 ((op != other && associativity(op) != dir) ||
-                      (op == other && associativity(op) != Associativity::Both))) ||
+                ((op != other && associativity(op) != dir) ||
+                    (op == other && associativity(op) != Associativity::Both))) ||
             is_shift(op) && is_arith(other) || is_shift(other) && is_arith(op)
     }
 
@@ -293,12 +289,24 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     let lhs = ParenHelper::new(lhs_paren, lhs);
     let rhs = ParenHelper::new(rhs_paren, rhs);
     let sugg = match op {
-        AssocOp::Add | AssocOp::BitAnd | AssocOp::BitOr | AssocOp::BitXor | AssocOp::Divide | AssocOp::Equal |
-        AssocOp::Greater | AssocOp::GreaterEqual | AssocOp::LAnd | AssocOp::LOr | AssocOp::Less |
-        AssocOp::LessEqual | AssocOp::Modulus | AssocOp::Multiply | AssocOp::NotEqual | AssocOp::ShiftLeft |
-        AssocOp::ShiftRight | AssocOp::Subtract => {
-            format!("{} {} {}", lhs, op.to_ast_binop().expect("Those are AST ops").to_string(), rhs)
-        },
+        AssocOp::Add |
+        AssocOp::BitAnd |
+        AssocOp::BitOr |
+        AssocOp::BitXor |
+        AssocOp::Divide |
+        AssocOp::Equal |
+        AssocOp::Greater |
+        AssocOp::GreaterEqual |
+        AssocOp::LAnd |
+        AssocOp::LOr |
+        AssocOp::Less |
+        AssocOp::LessEqual |
+        AssocOp::Modulus |
+        AssocOp::Multiply |
+        AssocOp::NotEqual |
+        AssocOp::ShiftLeft |
+        AssocOp::ShiftRight |
+        AssocOp::Subtract => format!("{} {} {}", lhs, op.to_ast_binop().expect("Those are AST ops").to_string(), rhs),
         AssocOp::Inplace => format!("in ({}) {}", lhs, rhs),
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
@@ -343,7 +351,16 @@ fn associativity(op: &AssocOp) -> Associativity {
     match *op {
         Inplace | Assign | AssignOp(_) => Associativity::Right,
         Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
-        Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight |
+        Divide |
+        Equal |
+        Greater |
+        GreaterEqual |
+        Less |
+        LessEqual |
+        Modulus |
+        NotEqual |
+        ShiftLeft |
+        ShiftRight |
         Subtract => Associativity::Left,
         DotDot | DotDotDot => Associativity::None,
     }
@@ -393,9 +410,8 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 /// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().codemap().lookup_char_pos(span.lo());
-    if let Some(line) = lo.file.get_line(
-        lo.line - 1, /* line numbers in `Loc` are 1-based */
-    )
+    if let Some(line) = lo.file
+        .get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */)
     {
         if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
             // we can mix char and byte positions here because we only consider `[ \t]`

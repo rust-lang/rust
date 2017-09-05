@@ -1,5 +1,5 @@
 use syntax::ast::*;
-use rustc::lint::{EarlyContext, LintContext, LintArray, LintPass, EarlyLintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 
 /// **What it does:** Checks for unnecessary double parentheses.
 ///
@@ -31,29 +31,22 @@ impl LintPass for DoubleParens {
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         match expr.node {
-            ExprKind::Paren(ref in_paren) => {
-                match in_paren.node {
-                    ExprKind::Paren(_) |
-                    ExprKind::Tup(_) => {
-                        cx.span_lint(DOUBLE_PARENS, expr.span, "Consider removing unnecessary double parentheses");
-                    },
-                    _ => {},
+            ExprKind::Paren(ref in_paren) => match in_paren.node {
+                ExprKind::Paren(_) | ExprKind::Tup(_) => {
+                    cx.span_lint(DOUBLE_PARENS, expr.span, "Consider removing unnecessary double parentheses");
+                },
+                _ => {},
+            },
+            ExprKind::Call(_, ref params) => if params.len() == 1 {
+                let param = &params[0];
+                if let ExprKind::Paren(_) = param.node {
+                    cx.span_lint(DOUBLE_PARENS, param.span, "Consider removing unnecessary double parentheses");
                 }
             },
-            ExprKind::Call(_, ref params) => {
-                if params.len() == 1 {
-                    let param = &params[0];
-                    if let ExprKind::Paren(_) = param.node {
-                        cx.span_lint(DOUBLE_PARENS, param.span, "Consider removing unnecessary double parentheses");
-                    }
-                }
-            },
-            ExprKind::MethodCall(_, ref params) => {
-                if params.len() == 2 {
-                    let param = &params[1];
-                    if let ExprKind::Paren(_) = param.node {
-                        cx.span_lint(DOUBLE_PARENS, param.span, "Consider removing unnecessary double parentheses");
-                    }
+            ExprKind::MethodCall(_, ref params) => if params.len() == 2 {
+                let param = &params[1];
+                if let ExprKind::Paren(_) = param.node {
+                    cx.span_lint(DOUBLE_PARENS, param.span, "Consider removing unnecessary double parentheses");
                 }
             },
             _ => {},

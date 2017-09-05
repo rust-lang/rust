@@ -1,9 +1,9 @@
 use rustc::hir::def_id::DefId;
-use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
-use utils::{get_parent_expr, span_note_and_lint, span_lint};
+use utils::{get_parent_expr, span_lint, span_note_and_lint};
 
 /// **What it does:** Checks for a read and a write to the same variable where
 /// whether the read occurs before or after the write depends on the evaluation
@@ -62,20 +62,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
-            ExprAssign(ref lhs, _) |
-            ExprAssignOp(_, ref lhs, _) => {
-                if let ExprPath(ref qpath) = lhs.node {
-                    if let QPath::Resolved(_, ref path) = *qpath {
-                        if path.segments.len() == 1 {
-                            let var = cx.tables.qpath_def(qpath, lhs.hir_id).def_id();
-                            let mut visitor = ReadVisitor {
-                                cx: cx,
-                                var: var,
-                                write_expr: expr,
-                                last_expr: expr,
-                            };
-                            check_for_unsequenced_reads(&mut visitor);
-                        }
+            ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => if let ExprPath(ref qpath) = lhs.node {
+                if let QPath::Resolved(_, ref path) = *qpath {
+                    if path.segments.len() == 1 {
+                        let var = cx.tables.qpath_def(qpath, lhs.hir_id).def_id();
+                        let mut visitor = ReadVisitor {
+                            cx: cx,
+                            var: var,
+                            write_expr: expr,
+                            last_expr: expr,
+                        };
+                        check_for_unsequenced_reads(&mut visitor);
                     }
                 }
             },
@@ -84,13 +81,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
-            StmtExpr(ref e, _) |
-            StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
-            StmtDecl(ref d, _) => {
-                if let DeclLocal(ref local) = d.node {
-                    if let Local { init: Some(ref e), .. } = **local {
-                        DivergenceVisitor { cx: cx }.visit_expr(e);
-                    }
+            StmtExpr(ref e, _) | StmtSemi(ref e, _) => DivergenceVisitor { cx: cx }.maybe_walk_expr(e),
+            StmtDecl(ref d, _) => if let DeclLocal(ref local) = d.node {
+                if let Local {
+                    init: Some(ref e), ..
+                } = **local
+                {
+                    DivergenceVisitor { cx: cx }.visit_expr(e);
                 }
             },
         }
@@ -230,8 +227,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
         ExprStruct(_, _, _) => {
             walk_expr(vis, expr);
         },
-        ExprBinary(op, _, _) |
-        ExprAssignOp(op, _, _) => {
+        ExprBinary(op, _, _) | ExprAssignOp(op, _, _) => {
             if op.node == BiAnd || op.node == BiOr {
                 // x && y and x || y always evaluate x first, so these are
                 // strictly sequenced.
@@ -265,8 +261,7 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> StopEarly {
     match stmt.node {
-        StmtExpr(ref expr, _) |
-        StmtSemi(ref expr, _) => check_expr(vis, expr),
+        StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => check_expr(vis, expr),
         StmtDecl(ref decl, _) => {
             // If the declaration is of a local variable, check its initializer
             // expression if it has one. Otherwise, keep going.
@@ -274,10 +269,9 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
                 DeclLocal(ref local) => Some(local),
                 _ => None,
             };
-            local.and_then(|local| local.init.as_ref()).map_or(
-                StopEarly::KeepGoing,
-                |expr| check_expr(vis, expr),
-            )
+            local
+                .and_then(|local| local.init.as_ref())
+                .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr))
         },
     }
 }

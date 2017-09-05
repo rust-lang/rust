@@ -57,11 +57,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     }}
                 },
                 // `format!("foo")` expansion contains `match () { () => [], }`
-                ExprMatch(ref matchee, _, _) => {
-                    if let ExprTup(ref tup) = matchee.node {
-                        if tup.is_empty() {
-                            span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
-                        }
+                ExprMatch(ref matchee, _, _) => if let ExprTup(ref tup) = matchee.node {
+                    if tup.is_empty() {
+                        span_lint(cx, USELESS_FORMAT, span, "useless use of `format!`");
                     }
                 },
                 _ => (),

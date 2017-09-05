@@ -6,7 +6,7 @@ use std::collections::hash_map::Entry;
 use syntax::symbol::InternedString;
 use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
-use utils::{get_parent_expr, in_macro, span_lint_and_then, span_note_and_lint, snippet};
+use utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for consecutive `if`s with the same condition.
 ///
@@ -114,7 +114,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
-            if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
+            if let Some(&Expr {
+                node: ExprIf(_, _, Some(ref else_expr)),
+                ..
+            }) = get_parent_expr(cx, expr)
+            {
                 if else_expr.id == expr.id {
                     return;
                 }
@@ -267,12 +271,9 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, Ty<'tcx>>) {
         match pat.node {
-            PatKind::Box(ref pat) |
-            PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
-            PatKind::TupleStruct(_, ref pats, _) => {
-                for pat in pats {
-                    bindings_impl(cx, pat, map);
-                }
+            PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
+            PatKind::TupleStruct(_, ref pats, _) => for pat in pats {
+                bindings_impl(cx, pat, map);
             },
             PatKind::Binding(_, _, ref ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.node.as_str()) {
@@ -282,15 +283,11 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, as_pat, map);
                 }
             },
-            PatKind::Struct(_, ref fields, _) => {
-                for pat in fields {
-                    bindings_impl(cx, &pat.node.pat, map);
-                }
+            PatKind::Struct(_, ref fields, _) => for pat in fields {
+                bindings_impl(cx, &pat.node.pat, map);
             },
-            PatKind::Tuple(ref fields, _) => {
-                for pat in fields {
-                    bindings_impl(cx, pat, map);
-                }
+            PatKind::Tuple(ref fields, _) => for pat in fields {
+                bindings_impl(cx, pat, map);
             },
             PatKind::Slice(ref lhs, ref mid, ref rhs) => {
                 for pat in lhs {
@@ -303,10 +300,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<Interned
                     bindings_impl(cx, pat, map);
                 }
             },
-            PatKind::Lit(..) |
-            PatKind::Range(..) |
-            PatKind::Wild |
-            PatKind::Path(..) => (),
+            PatKind::Lit(..) | PatKind::Range(..) | PatKind::Wild | PatKind::Path(..) => (),
         }
     }
 
@@ -335,11 +329,9 @@ where
 
     for expr in exprs {
         match map.entry(hash(expr)) {
-            Entry::Occupied(o) => {
-                for o in o.get() {
-                    if eq(o, expr) {
-                        return Some((o, expr));
-                    }
+            Entry::Occupied(o) => for o in o.get() {
+                if eq(o, expr) {
+                    return Some((o, expr));
                 }
             },
             Entry::Vacant(v) => {

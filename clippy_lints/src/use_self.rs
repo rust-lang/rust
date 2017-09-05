@@ -1,7 +1,7 @@
-use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_path, NestedVisitorMap};
-use utils::{span_lint_and_then, in_macro};
+use rustc::hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use utils::{in_macro, span_lint_and_then};
 use syntax::ast::NodeId;
 use syntax_pos::symbol::keywords::SelfType;
 

@@ -32,7 +32,7 @@ use syntax::ast;
 use syntax::codemap::{original_sp, DUMMY_SP};
 use std::borrow::Cow;
 
-use utils::{in_macro, span_help_and_lint, snippet_block, snippet, trim_multiline};
+use utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline};
 
 /// **What it does:** The lint checks for `if`-statements appearing in loops
 /// that contain a `continue` statement in either their main blocks or their
@@ -181,13 +181,10 @@ fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
 
 fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
     block.stmts.get(0).map_or(false, |stmt| match stmt.node {
-        ast::StmtKind::Semi(ref e) |
-        ast::StmtKind::Expr(ref e) => {
-            if let ast::ExprKind::Continue(_) = e.node {
-                true
-            } else {
-                false
-            }
+        ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => if let ast::ExprKind::Continue(_) = e.node {
+            true
+        } else {
+            false
         },
         _ => false,
     })
@@ -222,8 +219,7 @@ where
     F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr),
 {
     match stmt.node {
-        ast::StmtKind::Semi(ref e) |
-        ast::StmtKind::Expr(ref e) => {
+        ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => {
             if let ast::ExprKind::If(ref cond, ref if_block, Some(ref else_expr)) = e.node {
                 func(e, cond, if_block, else_expr);
             }
@@ -269,25 +265,20 @@ const DROP_ELSE_BLOCK_MSG: &'static str = "Consider dropping the else clause, an
 
 
 fn emit_warning<'a>(ctx: &EarlyContext, data: &'a LintData, header: &str, typ: LintType) {
-
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
     // expr    is the expression which the lint warning message refers to.
     let (snip, message, expr) = match typ {
-        LintType::ContinueInsideElseBlock => {
-            (
-                suggestion_snippet_for_continue_inside_else(ctx, data, header),
-                MSG_REDUNDANT_ELSE_BLOCK,
-                data.else_expr,
-            )
-        },
-        LintType::ContinueInsideThenBlock => {
-            (
-                suggestion_snippet_for_continue_inside_if(ctx, data, header),
-                MSG_ELSE_BLOCK_NOT_NEEDED,
-                data.if_expr,
-            )
-        },
+        LintType::ContinueInsideElseBlock => (
+            suggestion_snippet_for_continue_inside_else(ctx, data, header),
+            MSG_REDUNDANT_ELSE_BLOCK,
+            data.else_expr,
+        ),
+        LintType::ContinueInsideThenBlock => (
+            suggestion_snippet_for_continue_inside_if(ctx, data, header),
+            MSG_ELSE_BLOCK_NOT_NEEDED,
+            data.if_expr,
+        ),
     };
     span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }

@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
-use utils::{snippet_opt, span_lint_and_then, is_adjusted, iter_input_pats};
+use utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
 
 #[allow(missing_copy_implementations)]
 pub struct EtaPass;
@@ -37,11 +37,8 @@ impl LintPass for EtaPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
-            ExprCall(_, ref args) |
-            ExprMethodCall(_, _, ref args) => {
-                for arg in args {
-                    check_closure(cx, arg)
-                }
+            ExprCall(_, ref args) | ExprMethodCall(_, _, ref args) => for arg in args {
+                check_closure(cx, arg)
             },
             _ => (),
         }

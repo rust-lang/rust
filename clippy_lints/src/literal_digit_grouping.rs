@@ -4,7 +4,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax_pos;
-use utils::{span_help_and_lint, snippet_opt, in_external_macro};
+use utils::{in_external_macro, snippet_opt, span_help_and_lint};
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.
@@ -195,33 +195,27 @@ enum WarningType {
 impl WarningType {
     pub fn display(&self, grouping_hint: &str, cx: &EarlyContext, span: &syntax_pos::Span) {
         match *self {
-            WarningType::UnreadableLiteral => {
-                span_help_and_lint(
-                    cx,
-                    UNREADABLE_LITERAL,
-                    *span,
-                    "long literal lacking separators",
-                    &format!("consider: {}", grouping_hint),
-                )
-            },
-            WarningType::LargeDigitGroups => {
-                span_help_and_lint(
-                    cx,
-                    LARGE_DIGIT_GROUPS,
-                    *span,
-                    "digit groups should be smaller",
-                    &format!("consider: {}", grouping_hint),
-                )
-            },
-            WarningType::InconsistentDigitGrouping => {
-                span_help_and_lint(
-                    cx,
-                    INCONSISTENT_DIGIT_GROUPING,
-                    *span,
-                    "digits grouped inconsistently by underscores",
-                    &format!("consider: {}", grouping_hint),
-                )
-            },
+            WarningType::UnreadableLiteral => span_help_and_lint(
+                cx,
+                UNREADABLE_LITERAL,
+                *span,
+                "long literal lacking separators",
+                &format!("consider: {}", grouping_hint),
+            ),
+            WarningType::LargeDigitGroups => span_help_and_lint(
+                cx,
+                LARGE_DIGIT_GROUPS,
+                *span,
+                "digit groups should be smaller",
+                &format!("consider: {}", grouping_hint),
+            ),
+            WarningType::InconsistentDigitGrouping => span_help_and_lint(
+                cx,
+                INCONSISTENT_DIGIT_GROUPING,
+                *span,
+                "digits grouped inconsistently by underscores",
+                &format!("consider: {}", grouping_hint),
+            ),
         };
     }
 }

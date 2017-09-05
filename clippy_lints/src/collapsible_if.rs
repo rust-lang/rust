@@ -15,7 +15,7 @@
 use rustc::lint::*;
 use syntax::ast;
 
-use utils::{in_macro, snippet_block, span_lint_and_then, span_lint_and_sugg};
+use utils::{in_macro, snippet_block, span_lint_and_sugg, span_lint_and_then};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
@@ -87,12 +87,10 @@ impl EarlyLintPass for CollapsibleIf {
 
 fn check_if(cx: &EarlyContext, expr: &ast::Expr) {
     match expr.node {
-        ast::ExprKind::If(ref check, ref then, ref else_) => {
-            if let Some(ref else_) = *else_ {
-                check_collapsible_maybe_if_let(cx, else_);
-            } else {
-                check_collapsible_no_if_let(cx, expr, check, then);
-            }
+        ast::ExprKind::If(ref check, ref then, ref else_) => if let Some(ref else_) = *else_ {
+            check_collapsible_maybe_if_let(cx, else_);
+        } else {
+            check_collapsible_no_if_let(cx, expr, check, then);
         },
         ast::ExprKind::IfLet(_, _, _, Some(ref else_)) => {
             check_collapsible_maybe_if_let(cx, else_);
@@ -147,8 +145,7 @@ fn expr_block(block: &ast::Block) -> Option<&ast::Expr> {
 
     if let (Some(stmt), None) = (it.next(), it.next()) {
         match stmt.node {
-            ast::StmtKind::Expr(ref expr) |
-            ast::StmtKind::Semi(ref expr) => Some(expr),
+            ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => Some(expr),
             _ => None,
         }
     } else {

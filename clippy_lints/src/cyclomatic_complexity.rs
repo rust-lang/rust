@@ -4,11 +4,11 @@ use rustc::cfg::CFG;
 use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty;
-use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use syntax::ast::{Attribute, NodeId};
 use syntax::codemap::Span;
 
-use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type, is_allowed};
+use utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 
 /// **What it does:** Checks for methods with high cyclomatic complexity.
 ///
@@ -31,7 +31,9 @@ pub struct CyclomaticComplexity {
 
 impl CyclomaticComplexity {
     pub fn new(limit: u64) -> Self {
-        Self { limit: LimitStack::new(limit) }
+        Self {
+            limit: LimitStack::new(limit),
+        }
     }
 }
 
@@ -125,18 +127,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     }
 
     fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.push_attrs(
-            cx.sess(),
-            attrs,
-            "cyclomatic_complexity",
-        );
+        self.limit
+            .push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
     fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit.pop_attrs(
-            cx.sess(),
-            attrs,
-            "cyclomatic_complexity",
-        );
+        self.limit
+            .pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
 }
 
@@ -194,7 +190,7 @@ fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, re
     span_bug!(
         span,
         "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
-               div = {}, shorts = {}, returns = {}. Please file a bug report.",
+         div = {}, shorts = {}, returns = {}. Please file a bug report.",
         cc,
         narms,
         div,
@@ -210,9 +206,9 @@ fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, r
             span,
             &format!(
                 "Clippy encountered a bug calculating cyclomatic complexity \
-                                                    (hide this message with `#[allow(cyclomatic_complexity)]`): \
-                                                    cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
-                                                    Please file a bug report.",
+                 (hide this message with `#[allow(cyclomatic_complexity)]`): \
+                 cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
+                 Please file a bug report.",
                 cc,
                 narms,
                 div,

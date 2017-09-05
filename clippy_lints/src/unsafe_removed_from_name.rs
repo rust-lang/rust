@@ -48,13 +48,11 @@ impl EarlyLintPass for UnsafeNameRemoval {
                         &item.span,
                     );
                 },
-                ViewPath_::ViewPathList(_, ref path_list_items) => {
-                    for path_list_item in path_list_items.iter() {
-                        let plid = path_list_item.node;
-                        if let Some(rename) = plid.rename {
-                            unsafe_to_safe_check(plid.name, rename, cx, &item.span);
-                        };
-                    }
+                ViewPath_::ViewPathList(_, ref path_list_items) => for path_list_item in path_list_items.iter() {
+                    let plid = path_list_item.node;
+                    if let Some(rename) = plid.rename {
+                        unsafe_to_safe_check(plid.name, rename, cx, &item.span);
+                    };
                 },
                 ViewPath_::ViewPathGlob(_) => {},
             }

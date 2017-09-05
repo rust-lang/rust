@@ -3,8 +3,8 @@ use syntax::codemap::Span;
 use syntax::symbol::InternedString;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::visit::{Visitor, walk_block, walk_pat, walk_expr};
-use utils::{span_lint_and_then, in_macro, span_lint};
+use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
+use utils::{in_macro, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for names that are very similar and thus confusing.
 ///
@@ -82,11 +82,9 @@ impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.node {
             PatKind::Ident(_, id, _) => self.check_name(id.span, id.node.name),
-            PatKind::Struct(_, ref fields, _) => {
-                for field in fields {
-                    if !field.node.is_shorthand {
-                        self.visit_pat(&field.node.pat);
-                    }
+            PatKind::Struct(_, ref fields, _) => for field in fields {
+                if !field.node.is_shorthand {
+                    self.visit_pat(&field.node.pat);
                 }
             },
             _ => walk_pat(self, pat),
@@ -104,9 +102,8 @@ fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
 }
 
 fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
-    list.iter().any(|&name| {
-        interned_name.starts_with(name) || interned_name.ends_with(name)
-    })
+    list.iter()
+        .any(|&name| interned_name.starts_with(name) || interned_name.ends_with(name))
 }
 
 impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
@@ -157,21 +154,21 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             } else {
                 let mut interned_chars = interned_name.chars();
                 let mut existing_chars = existing_name.interned.chars();
-                let first_i = interned_chars.next().expect(
-                    "we know we have at least one char",
-                );
-                let first_e = existing_chars.next().expect(
-                    "we know we have at least one char",
-                );
+                let first_i = interned_chars
+                    .next()
+                    .expect("we know we have at least one char");
+                let first_e = existing_chars
+                    .next()
+                    .expect("we know we have at least one char");
                 let eq_or_numeric = |(a, b): (char, char)| a == b || a.is_numeric() && b.is_numeric();
 
                 if eq_or_numeric((first_i, first_e)) {
-                    let last_i = interned_chars.next_back().expect(
-                        "we know we have at least two chars",
-                    );
-                    let last_e = existing_chars.next_back().expect(
-                        "we know we have at least two chars",
-                    );
+                    let last_i = interned_chars
+                        .next_back()
+                        .expect("we know we have at least two chars");
+                    let last_e = existing_chars
+                        .next_back()
+                        .expect("we know we have at least two chars");
                     if eq_or_numeric((last_i, last_e)) {
                         if interned_chars
                             .zip(existing_chars)
@@ -181,12 +178,12 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                             continue;
                         }
                     } else {
-                        let second_last_i = interned_chars.next_back().expect(
-                            "we know we have at least three chars",
-                        );
-                        let second_last_e = existing_chars.next_back().expect(
-                            "we know we have at least three chars",
-                        );
+                        let second_last_i = interned_chars
+                            .next_back()
+                            .expect("we know we have at least three chars");
+                        let second_last_e = existing_chars
+                            .next_back()
+                            .expect("we know we have at least three chars");
                         if !eq_or_numeric((second_last_i, second_last_e)) || second_last_i == '_' ||
                             !interned_chars.zip(existing_chars).all(eq_or_numeric)
                         {
@@ -197,12 +194,12 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                         split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
                     }
                 } else {
-                    let second_i = interned_chars.next().expect(
-                        "we know we have at least two chars",
-                    );
-                    let second_e = existing_chars.next().expect(
-                        "we know we have at least two chars",
-                    );
+                    let second_i = interned_chars
+                        .next()
+                        .expect("we know we have at least two chars");
+                    let second_e = existing_chars
+                        .next()
+                        .expect("we know we have at least two chars");
                     if !eq_or_numeric((second_i, second_e)) || second_i == '_' ||
                         !interned_chars.zip(existing_chars).all(eq_or_numeric)
                     {
@@ -225,7 +222,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
                             span,
                             &format!(
                                 "separate the discriminating character by an \
-                                                                underscore like: `{}_{}`",
+                                 underscore like: `{}_{}`",
                                 &interned_name[..split],
                                 &interned_name[split..]
                             ),

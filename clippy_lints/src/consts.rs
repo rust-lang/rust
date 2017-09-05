@@ -5,8 +5,8 @@ use rustc::hir::def::Def;
 use rustc_const_eval::lookup_const_by_id;
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
-use rustc::ty::{self, TyCtxt, Ty};
-use rustc::ty::subst::{Substs, Subst};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::{Subst, Substs};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
@@ -76,7 +76,7 @@ impl PartialEq for Constant {
             (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l == r,
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
             (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
-            _ => false, //TODO: Are there inter-type equalities?
+            _ => false, // TODO: Are there inter-type equalities?
         }
     }
 }
@@ -110,8 +110,7 @@ impl Hash for Constant {
             Constant::Bool(b) => {
                 b.hash(state);
             },
-            Constant::Vec(ref v) |
-            Constant::Tuple(ref v) => {
+            Constant::Vec(ref v) | Constant::Tuple(ref v) => {
                 v.hash(state);
             },
             Constant::Repeat(ref c, l) => {
@@ -125,12 +124,10 @@ impl Hash for Constant {
 impl PartialOrd for Constant {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
-            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => {
-                if l_sty == r_sty {
-                    Some(ls.cmp(rs))
-                } else {
-                    None
-                }
+            (&Constant::Str(ref ls, ref l_sty), &Constant::Str(ref rs, ref r_sty)) => if l_sty == r_sty {
+                Some(ls.cmp(rs))
+            } else {
+                None
             },
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
             (&Constant::Int(l), &Constant::Int(r)) => Some(l.cmp(&r)),
@@ -147,15 +144,14 @@ impl PartialOrd for Constant {
                 }
             },
             (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
-            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) |
-            (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l.partial_cmp(r),
-            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => {
-                match lv.partial_cmp(rv) {
-                    Some(Equal) => Some(ls.cmp(rs)),
-                    x => x,
-                }
+            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => {
+                l.partial_cmp(r)
             },
-            _ => None, //TODO: Are there any useful inter-type orderings?
+            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => match lv.partial_cmp(rv) {
+                Some(Equal) => Some(ls.cmp(rs)),
+                x => x,
+            },
+            _ => None, // TODO: Are there any useful inter-type orderings?
         }
     }
 }
@@ -177,18 +173,14 @@ pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut
         LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),
         LitKind::ByteStr(ref s) => Constant::Binary(s.clone()),
         LitKind::Char(c) => Constant::Char(c),
-        LitKind::Int(n, hint) => {
-            match (&ty.sty, hint) {
-                (&ty::TyInt(ity), _) |
-                (_, Signed(ity)) => {
-                    Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.int_type))
-                },
-                (&ty::TyUint(uty), _) |
-                (_, Unsigned(uty)) => {
-                    Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.uint_type))
-                },
-                _ => bug!(),
-            }
+        LitKind::Int(n, hint) => match (&ty.sty, hint) {
+            (&ty::TyInt(ity), _) | (_, Signed(ity)) => {
+                Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.int_type))
+            },
+            (&ty::TyUint(uty), _) | (_, Unsigned(uty)) => {
+                Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.uint_type))
+            },
+            _ => bug!(),
         },
         LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
         LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
@@ -262,13 +254,11 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
-            ExprUnary(op, ref operand) => {
-                self.expr(operand).and_then(|o| match op {
-                    UnNot => constant_not(&o),
-                    UnNeg => constant_negate(o),
-                    UnDeref => Some(o),
-                })
-            },
+            ExprUnary(op, ref operand) => self.expr(operand).and_then(|o| match op {
+                UnNot => constant_not(&o),
+                UnNeg => constant_negate(o),
+                UnDeref => Some(o),
+            }),
             ExprBinary(op, ref left, ref right) => self.binop(op, left, right),
             // TODO: add other expressions
             _ => None,
@@ -287,8 +277,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         let def = self.tables.qpath_def(qpath, id);
         match def {
-            Def::Const(def_id) |
-            Def::AssociatedConst(def_id) => {
+            Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                 let substs = self.tables.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
@@ -358,8 +347,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (BiRem, Constant::Int(l), Some(Constant::Int(r))) => (l % r).ok().map(Constant::Int),
             (BiAnd, Constant::Bool(false), _) => Some(Constant::Bool(false)),
             (BiOr, Constant::Bool(true), _) => Some(Constant::Bool(true)),
-            (BiAnd, Constant::Bool(true), Some(r)) |
-            (BiOr, Constant::Bool(false), Some(r)) => Some(r),
+            (BiAnd, Constant::Bool(true), Some(r)) | (BiOr, Constant::Bool(false), Some(r)) => Some(r),
             (BiBitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
             (BiBitXor, Constant::Int(l), Some(Constant::Int(r))) => (l ^ r).ok().map(Constant::Int),
             (BiBitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),

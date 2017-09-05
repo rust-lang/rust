@@ -117,7 +117,7 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
                             eqop_span,
                             &format!(
                                 "this looks like you are trying to use `.. {op}= ..`, but you \
-                                                     really are doing `.. = ({op} ..)`",
+                                 really are doing `.. = ({op} ..)`",
                                 op = op
                             ),
                             eqop_span,
@@ -142,9 +142,9 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
             // the snippet should look like " else \n    " with maybe comments anywhere
             // it’s bad when there is a ‘\n’ after the “else”
             if let Some(else_snippet) = snippet_opt(cx, else_span) {
-                let else_pos = else_snippet.find("else").expect(
-                    "there must be a `else` here",
-                );
+                let else_pos = else_snippet
+                    .find("else")
+                    .expect("there must be a `else` here");
 
                 if else_snippet[else_pos..].contains('\n') {
                     span_note_and_lint(
@@ -154,7 +154,7 @@ fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
                         "this is an `else if` but the formatting might hide it",
                         else_span,
                         "to remove this lint, remove the `else` or remove the new line between `else` \
-                                        and `if`",
+                         and `if`",
                     );
                 }
             }
@@ -205,7 +205,7 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
                     "this looks like an `else if` but the `else` is missing",
                     else_span,
                     "to remove this lint, add the missing `else` or add a new line before the second \
-                                    `if`",
+                     `if`",
                 );
             }
         }
@@ -215,8 +215,9 @@ fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Exp
 /// Match `if` or `if let` expressions and return the `then` and `else` block.
 fn unsugar_if(expr: &ast::Expr) -> Option<(&P<ast::Block>, &Option<P<ast::Expr>>)> {
     match expr.node {
-        ast::ExprKind::If(_, ref then, ref else_) |
-        ast::ExprKind::IfLet(_, _, ref then, ref else_) => Some((then, else_)),
+        ast::ExprKind::If(_, ref then, ref else_) | ast::ExprKind::IfLet(_, _, ref then, ref else_) => {
+            Some((then, else_))
+        },
         _ => None,
     }
 }

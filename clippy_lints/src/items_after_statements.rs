@@ -47,9 +47,10 @@ impl EarlyLintPass for ItemsAfterStatements {
         }
 
         // skip initial items
-        let stmts = item.stmts.iter().map(|stmt| &stmt.node).skip_while(|s| {
-            matches!(**s, StmtKind::Item(..))
-        });
+        let stmts = item.stmts
+            .iter()
+            .map(|stmt| &stmt.node)
+            .skip_while(|s| matches!(**s, StmtKind::Item(..)));
 
         // lint on all further items
         for stmt in stmts {
@@ -66,7 +67,7 @@ impl EarlyLintPass for ItemsAfterStatements {
                     ITEMS_AFTER_STATEMENTS,
                     it.span,
                     "adding items after statements is confusing, since items exist from the \
-                           start of the scope",
+                     start of the scope",
                 );
             }
         }

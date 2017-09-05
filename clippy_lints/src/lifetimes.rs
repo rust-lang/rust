@@ -2,10 +2,10 @@ use reexport::*;
 use rustc::lint::*;
 use rustc::hir::def::Def;
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics, NestedVisitorMap};
-use std::collections::{HashSet, HashMap};
+use rustc::hir::intravisit::{walk_fn_decl, walk_generics, walk_ty, walk_ty_param_bound, NestedVisitorMap, Visitor};
+use std::collections::{HashMap, HashSet};
 use syntax::codemap::Span;
-use utils::{in_external_macro, span_lint, last_path_segment};
+use utils::{in_external_macro, last_path_segment, span_lint};
 use syntax::symbol::keywords;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -171,7 +171,9 @@ fn could_use_elision<'a, 'tcx: 'a>(
     };
 
     if let Some(body_id) = body {
-        let mut checker = BodyLifetimeChecker { lifetimes_used_in_body: false };
+        let mut checker = BodyLifetimeChecker {
+            lifetimes_used_in_body: false,
+        };
         checker.visit_expr(&cx.tcx.hir.body(body_id).value);
         if checker.lifetimes_used_in_body {
             return false;
@@ -192,9 +194,9 @@ fn could_use_elision<'a, 'tcx: 'a>(
         // no output lifetimes, check distinctness of input lifetimes
 
         // only unnamed and static, ok
-        let unnamed_and_static = input_lts.iter().all(|lt| {
-            *lt == RefLt::Unnamed || *lt == RefLt::Static
-        });
+        let unnamed_and_static = input_lts
+            .iter()
+            .all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static);
         if unnamed_and_static {
             return false;
         }
@@ -210,8 +212,8 @@ fn could_use_elision<'a, 'tcx: 'a>(
             match (&input_lts[0], &output_lts[0]) {
                 (&RefLt::Named(n1), &RefLt::Named(n2)) if n1 == n2 => true,
                 (&RefLt::Named(_), &RefLt::Unnamed) => true,
-                _ => false, // already elided, different named lifetimes
-                // or something static going on
+                _ => false, /* already elided, different named lifetimes
+                             * or something static going on */
             }
         } else {
             false
@@ -277,7 +279,11 @@ impl<'v, 't> RefVisitor<'v, 't> {
     }
 
     fn into_vec(self) -> Option<Vec<RefLt>> {
-        if self.abort { None } else { Some(self.lts) }
+        if self.abort {
+            None
+        } else {
+            Some(self.lts)
+        }
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
@@ -285,8 +291,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
         if !last_path_segment.parenthesized && last_path_segment.lifetimes.is_empty() {
             let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
             match self.cx.tables.qpath_def(qpath, hir_id) {
-                Def::TyAlias(def_id) |
-                Def::Struct(def_id) => {
+                Def::TyAlias(def_id) | Def::Struct(def_id) => {
                     let generics = self.cx.tcx.generics_of(def_id);
                     for _ in generics.regions.as_slice() {
                         self.record(&None);
@@ -318,11 +323,9 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             TyPath(ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
             },
-            TyImplTrait(ref param_bounds) => {
-                for bound in param_bounds {
-                    if let RegionTyParamBound(_) = *bound {
-                        self.record(&None);
-                    }
+            TyImplTrait(ref param_bounds) => for bound in param_bounds {
+                if let RegionTyParamBound(_) = *bound {
+                    self.record(&None);
                 }
             },
             TyTraitObject(ref bounds, ref lt) => {
@@ -366,11 +369,9 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                 // and check that all lifetimes are allowed
                 match visitor.into_vec() {
                     None => return false,
-                    Some(lts) => {
-                        for lt in lts {
-                            if !allowed_lts.contains(&lt) {
-                                return true;
-                            }
+                    Some(lts) => for lt in lts {
+                        if !allowed_lts.contains(&lt) {
+                            return true;
                         }
                     },
                 }

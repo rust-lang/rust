@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use utils::{is_integer_literal, paths, snippet, span_lint};
-use utils::{higher, implements_trait, get_trait_def_id};
+use utils::{get_trait_def_id, higher, implements_trait};
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
 /// which never terminates.
@@ -54,7 +54,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
 
             // Range with step_by(0).
             if name == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) {
-                use consts::{Constant, constant};
+                use consts::{constant, Constant};
                 use rustc_const_math::ConstInt::Usize;
                 if let Some((Constant::Int(Usize(us)), _)) = constant(cx, &args[1]) {
                     if us.as_u64(cx.sess().target.uint_type) == 0 {

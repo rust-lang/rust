@@ -2,8 +2,8 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::ty;
 use syntax::ast;
-use utils::{is_adjusted, match_qpath, match_trait_method, match_type, remove_blocks, paths, snippet,
-            span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, iter_input_pats};
+use utils::{is_adjusted, iter_input_pats, match_qpath, match_trait_method, match_type, paths, remove_blocks, snippet,
+            span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
 /// **What it does:** Checks for mapping `clone()` over an iterator.
 ///
@@ -73,21 +73,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             }
                         }}
                     },
-                    ExprPath(ref path) => {
-                        if match_qpath(path, &paths::CLONE) {
-                            let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
-                            span_help_and_lint(
-                                cx,
-                                MAP_CLONE,
-                                expr.span,
-                                &format!(
-                                    "you seem to be using .map() to clone the contents of an \
-                                                         {}, consider using `.cloned()`",
-                                    type_name
-                                ),
-                                &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")),
-                            );
-                        }
+                    ExprPath(ref path) => if match_qpath(path, &paths::CLONE) {
+                        let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
+                        span_help_and_lint(
+                            cx,
+                            MAP_CLONE,
+                            expr.span,
+                            &format!(
+                                "you seem to be using .map() to clone the contents of an \
+                                 {}, consider using `.cloned()`",
+                                type_name
+                            ),
+                            &format!("try\n{}.cloned()", snippet(cx, args[0].span, "..")),
+                        );
                     },
                     _ => (),
                 }

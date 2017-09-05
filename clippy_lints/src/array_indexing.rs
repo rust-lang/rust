@@ -3,7 +3,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
-use rustc_const_math::{ConstUsize, ConstIsize, ConstInt};
+use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
@@ -124,29 +124,27 @@ fn to_const_range(
     };
 
     let end = match *end {
-        Some(Some(ConstVal::Integral(x))) => {
-            if limits == RangeLimits::Closed {
-                match x {
-                    ConstInt::U8(_) => (x + ConstInt::U8(1)),
-                    ConstInt::U16(_) => (x + ConstInt::U16(1)),
-                    ConstInt::U32(_) => (x + ConstInt::U32(1)),
-                    ConstInt::U64(_) => (x + ConstInt::U64(1)),
-                    ConstInt::U128(_) => (x + ConstInt::U128(1)),
-                    ConstInt::Usize(ConstUsize::Us16(_)) => (x + ConstInt::Usize(ConstUsize::Us16(1))),
-                    ConstInt::Usize(ConstUsize::Us32(_)) => (x + ConstInt::Usize(ConstUsize::Us32(1))),
-                    ConstInt::Usize(ConstUsize::Us64(_)) => (x + ConstInt::Usize(ConstUsize::Us64(1))),
-                    ConstInt::I8(_) => (x + ConstInt::I8(1)),
-                    ConstInt::I16(_) => (x + ConstInt::I16(1)),
-                    ConstInt::I32(_) => (x + ConstInt::I32(1)),
-                    ConstInt::I64(_) => (x + ConstInt::I64(1)),
-                    ConstInt::I128(_) => (x + ConstInt::I128(1)),
-                    ConstInt::Isize(ConstIsize::Is16(_)) => (x + ConstInt::Isize(ConstIsize::Is16(1))),
-                    ConstInt::Isize(ConstIsize::Is32(_)) => (x + ConstInt::Isize(ConstIsize::Is32(1))),
-                    ConstInt::Isize(ConstIsize::Is64(_)) => (x + ConstInt::Isize(ConstIsize::Is64(1))),
-                }.expect("such a big array is not realistic")
-            } else {
-                x
-            }
+        Some(Some(ConstVal::Integral(x))) => if limits == RangeLimits::Closed {
+            match x {
+                ConstInt::U8(_) => (x + ConstInt::U8(1)),
+                ConstInt::U16(_) => (x + ConstInt::U16(1)),
+                ConstInt::U32(_) => (x + ConstInt::U32(1)),
+                ConstInt::U64(_) => (x + ConstInt::U64(1)),
+                ConstInt::U128(_) => (x + ConstInt::U128(1)),
+                ConstInt::Usize(ConstUsize::Us16(_)) => (x + ConstInt::Usize(ConstUsize::Us16(1))),
+                ConstInt::Usize(ConstUsize::Us32(_)) => (x + ConstInt::Usize(ConstUsize::Us32(1))),
+                ConstInt::Usize(ConstUsize::Us64(_)) => (x + ConstInt::Usize(ConstUsize::Us64(1))),
+                ConstInt::I8(_) => (x + ConstInt::I8(1)),
+                ConstInt::I16(_) => (x + ConstInt::I16(1)),
+                ConstInt::I32(_) => (x + ConstInt::I32(1)),
+                ConstInt::I64(_) => (x + ConstInt::I64(1)),
+                ConstInt::I128(_) => (x + ConstInt::I128(1)),
+                ConstInt::Isize(ConstIsize::Is16(_)) => (x + ConstInt::Isize(ConstIsize::Is16(1))),
+                ConstInt::Isize(ConstIsize::Is32(_)) => (x + ConstInt::Isize(ConstIsize::Is32(1))),
+                ConstInt::Isize(ConstIsize::Is64(_)) => (x + ConstInt::Isize(ConstIsize::Is64(1))),
+            }.expect("such a big array is not realistic")
+        } else {
+            x
         },
         Some(_) => return None,
         None => array_size,
