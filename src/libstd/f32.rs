@@ -1777,4 +1777,22 @@ mod tests {
         assert_ne!(nan_masked & QNAN_MASK, 0);
         assert!(nan_masked_fl.is_nan());
     }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_greater_than_max() {
+        1.0f32.clamp(3.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_is_nan() {
+        1.0f32.clamp(NAN, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_max_is_nan() {
+        1.0f32.clamp(3.0, NAN);
+    }
 }

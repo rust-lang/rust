@@ -1668,4 +1668,22 @@ mod tests {
         assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
         assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
     }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_greater_than_max() {
+        1.0f64.clamp(3.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_is_nan() {
+        1.0f64.clamp(NAN, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_max_is_nan() {
+        1.0f64.clamp(3.0, NAN);
+    }
 }
