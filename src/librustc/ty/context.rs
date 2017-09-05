@@ -21,6 +21,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
+use middle::cstore::CrateStore;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -805,7 +806,10 @@ pub struct GlobalCtxt<'tcx> {
     global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
 
+    cstore: &'tcx CrateStore,
+
     pub sess: &'tcx Session,
+
 
     pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
 
@@ -903,6 +907,10 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn cstore_untracked(&self) -> &CrateStore {
+        &*self.cstore
+    }
+
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -978,6 +986,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
+                                  cstore: &'tcx CrateStore,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
                                   mir_passes: Rc<Passes>,
@@ -994,16 +1003,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = s.cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
-                .cstore
+            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = cstore
                 .crates_untracked()
                 .iter()
-                .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
+                .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
                 .collect();
 
             let def_path_tables = || {
@@ -1033,6 +1041,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         tls::enter_global(GlobalCtxt {
             sess: s,
+            cstore,
             trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
             global_arenas: arenas,
             global_interners: interners,

@@ -31,7 +31,7 @@ use self::RibKind::*;
 
 use rustc::hir::map::{Definitions, DefCollector};
 use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
-use rustc::middle::cstore::CrateLoader;
+use rustc::middle::cstore::{CrateStore, CrateLoader};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
@@ -1176,6 +1176,7 @@ impl PrimitiveTypeTable {
 /// The main resolver class.
 pub struct Resolver<'a> {
     session: &'a Session,
+    cstore: &'a CrateStore,
 
     pub definitions: Definitions,
 
@@ -1343,7 +1344,7 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
-            _ => self.session.cstore.def_key(id).parent,
+            _ => self.cstore.def_key(id).parent,
         }.map(|index| DefId { index: index, ..id })
     }
 }
@@ -1383,6 +1384,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
+               cstore: &'a CrateStore,
                krate: &Crate,
                crate_name: &str,
                make_glob_map: MakeGlobMap,
@@ -1413,6 +1415,8 @@ impl<'a> Resolver<'a> {
 
         Resolver {
             session,
+
+            cstore,
 
             definitions,
 
