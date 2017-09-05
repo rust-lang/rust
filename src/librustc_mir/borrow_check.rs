@@ -212,11 +212,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> DataflowResultsConsumer<'b, 'gcx>
                 // ignored by borrowck
             }
 
-            StatementKind::StorageDead(ref lvalue) => {
+            StatementKind::StorageDead(local) => {
                 // causes non-drop values to be dropped.
                 self.consume_lvalue(ContextKind::StorageDead.new(location),
                                     ConsumeKind::Consume,
-                                    (lvalue, span),
+                                    (&Lvalue::Local(local), span),
                                     flow_state)
             }
         }
@@ -710,7 +710,7 @@ mod restrictions {
 
     use rustc::hir;
     use rustc::ty::{self, TyCtxt};
-    use rustc::mir::{Lvalue, Mir, Operand, ProjectionElem};
+    use rustc::mir::{Lvalue, Mir, ProjectionElem};
 
     pub(super) struct Restrictions<'c, 'tcx: 'c> {
         mir: &'c Mir<'tcx>,
@@ -809,12 +809,7 @@ mod restrictions {
                         ProjectionElem::Downcast(..) |
                         ProjectionElem::Subslice { .. } |
                         ProjectionElem::ConstantIndex { .. } |
-                        ProjectionElem::Index(Operand::Constant(..)) => {
-                            cursor = &proj.base;
-                            continue 'cursor;
-                        }
-                        ProjectionElem::Index(Operand::Consume(ref index)) => {
-                            self.lvalue_stack.push(index); // FIXME: did old borrowck do this?
+                        ProjectionElem::Index(_) => {
                             cursor = &proj.base;
                             continue 'cursor;
                         }
@@ -1004,7 +999,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                         ("",   format!(""), None), // (dont emit downcast info)
                     ProjectionElem::Field(field, _ty) =>
                         ("",   format!(".{}", field.index()), None),
-                    ProjectionElem::Index(ref index) =>
+                    ProjectionElem::Index(index) =>
                         ("",   format!(""), Some(index)),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
                         ("",   format!("[{} of {}]", offset, min_length), None),
@@ -1021,23 +1016,11 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 self.append_lvalue_to_string(&proj.base, buf);
                 if let Some(index) = index_operand {
                     buf.push_str("[");
-                    self.append_operand_to_string(index, buf);
+                    self.append_lvalue_to_string(&Lvalue::Local(index), buf);
                     buf.push_str("]");
                 } else {
                     buf.push_str(&suffix);
                 }
-
-            }
-        }
-    }
-
-    fn append_operand_to_string(&self, operand: &Operand, buf: &mut String) {
-        match *operand {
-            Operand::Consume(ref lvalue) => {
-                self.append_lvalue_to_string(lvalue, buf);
-            }
-            Operand::Constant(ref constant) => {
-                buf.push_str(&format!("{:?}", constant));
             }
         }
     }

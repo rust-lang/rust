@@ -822,7 +822,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             Lvalue::Local(index) if index.index() > arg_count => {
                 cfg.push(block, Statement {
                     source_info,
-                    kind: StatementKind::StorageDead(drop_data.location.clone())
+                    kind: StatementKind::StorageDead(index)
                 });
             }
             _ => continue

@@ -589,16 +589,6 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         new
     }
 
-    fn update_local(&self, local: Local) -> Option<Local> {
-        let idx = local.index();
-        if idx < (self.args.len() + 1) {
-            return None;
-        }
-        let idx = idx - (self.args.len() + 1);
-        let local = Local::new(idx);
-        self.local_map.get(local).cloned()
-    }
-
     fn arg_index(&self, arg: Local) -> Option<usize> {
         let idx = arg.index();
         if idx > 0 && idx <= self.args.len() {
@@ -610,32 +600,35 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _ctxt: LvalueContext<'tcx>,
+                   _location: Location) {
+        if *local == RETURN_POINTER {
+            match self.destination {
+                Lvalue::Local(l) => *local = l,
+                ref lval => bug!("Return lvalue is {:?}, not local", lval)
+            }
+        }
+        let idx = local.index() - 1;
+        if idx < self.args.len() {
+            match self.args[idx] {
+                Operand::Consume(Lvalue::Local(l)) => *local = l,
+                ref op => bug!("Arg operand `{:?}` is {:?}, not local", idx, op)
+            }
+        }
+        *local = self.local_map[Local::new(idx - self.args.len())];
+    }
+
     fn visit_lvalue(&mut self,
                     lvalue: &mut Lvalue<'tcx>,
                     _ctxt: LvalueContext<'tcx>,
                     _location: Location) {
-        if let Lvalue::Local(ref mut local) = *lvalue {
-            if let Some(l) = self.update_local(*local) {
-                // Temp or Var; update the local reference
-                *local = l;
-                return;
-            }
-        }
-        if let Lvalue::Local(local) = *lvalue {
-            if local == RETURN_POINTER {
-                // Return pointer; update the lvalue itself
-                *lvalue = self.destination.clone();
-            } else if local.index() < (self.args.len() + 1) {
-                // Argument, once again update the the lvalue itself
-                let idx = local.index() - 1;
-                if let Operand::Consume(ref lval) = self.args[idx] {
-                    *lvalue = lval.clone();
-                } else {
-                    bug!("Arg operand `{:?}` is not an Lvalue use.", idx)
-                }
-            }
+        if let Lvalue::Local(RETURN_POINTER) = *lvalue {
+            // Return pointer; update the lvalue itself
+            *lvalue = self.destination.clone();
         } else {
-            self.super_lvalue(lvalue, _ctxt, _location)
+            self.super_lvalue(lvalue, _ctxt, _location);
         }
     }
 

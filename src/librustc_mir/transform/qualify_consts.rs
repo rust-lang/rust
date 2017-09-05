@@ -499,33 +499,40 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
+    fn visit_local(&mut self,
+                   &local: &Local,
+                   _: LvalueContext<'tcx>,
+                   _: Location) {
+        match self.mir.local_kind(local) {
+            LocalKind::ReturnPointer => {
+                self.not_const();
+            }
+            LocalKind::Arg => {
+                self.add(Qualif::FN_ARGUMENT);
+            }
+            LocalKind::Var => {
+                self.add(Qualif::NOT_CONST);
+            }
+            LocalKind::Temp => {
+                if !self.temp_promotion_state[local].is_promotable() {
+                    self.add(Qualif::NOT_PROMOTABLE);
+                }
+
+                if let Some(qualif) = self.temp_qualif[local] {
+                    self.add(qualif);
+                } else {
+                    self.not_const();
+                }
+            }
+        }
+    }
+
     fn visit_lvalue(&mut self,
                     lvalue: &Lvalue<'tcx>,
                     context: LvalueContext<'tcx>,
                     location: Location) {
         match *lvalue {
-            Lvalue::Local(local) => match self.mir.local_kind(local) {
-                LocalKind::ReturnPointer => {
-                    self.not_const();
-                }
-                LocalKind::Arg => {
-                    self.add(Qualif::FN_ARGUMENT);
-                }
-                LocalKind::Var => {
-                    self.add(Qualif::NOT_CONST);
-                }
-                LocalKind::Temp => {
-                    if !self.temp_promotion_state[local].is_promotable() {
-                        self.add(Qualif::NOT_PROMOTABLE);
-                    }
-
-                    if let Some(qualif) = self.temp_qualif[local] {
-                        self.add(qualif);
-                    } else {
-                        self.not_const();
-                    }
-                }
-            },
+            Lvalue::Local(ref local) => self.visit_local(local, context, location),
             Lvalue::Static(ref global) => {
                 self.add(Qualif::STATIC);
 
@@ -1101,7 +1108,7 @@ impl MirPass for QualifyAndPromoteConstants {
             for block in mir.basic_blocks_mut() {
                 block.statements.retain(|statement| {
                     match statement.kind {
-                        StatementKind::StorageDead(Lvalue::Local(index)) => {
+                        StatementKind::StorageDead(index) => {
                             !promoted_temps.contains(&index)
                         }
                         _ => true

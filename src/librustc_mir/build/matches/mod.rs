@@ -194,7 +194,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement {
             source_info,
-            kind: StatementKind::StorageLive(Lvalue::Local(local_id))
+            kind: StatementKind::StorageLive(local_id)
         });
         Lvalue::Local(local_id)
     }

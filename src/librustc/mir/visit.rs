@@ -256,7 +256,9 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_local(&mut self,
-                                _local: & $($mutability)* Local) {
+                            _local: & $($mutability)* Local,
+                            _context: LvalueContext<'tcx>,
+                            _location: Location) {
             }
 
             fn visit_visibility_scope(&mut self,
@@ -358,11 +360,11 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
                         self.visit_lvalue(lvalue, LvalueContext::Store, location);
                     }
-                    StatementKind::StorageLive(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageLive, location);
+                    StatementKind::StorageLive(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::StorageLive, location);
                     }
-                    StatementKind::StorageDead(ref $($mutability)* lvalue) => {
-                        self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
+                    StatementKind::StorageDead(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::StorageDead, location);
                     }
                     StatementKind::InlineAsm { ref $($mutability)* outputs,
                                                ref $($mutability)* inputs,
@@ -610,7 +612,7 @@ macro_rules! make_mir_visitor {
                             location: Location) {
                 match *lvalue {
                     Lvalue::Local(ref $($mutability)* local) => {
-                        self.visit_local(local);
+                        self.visit_local(local, context, location);
                     }
                     Lvalue::Static(ref $($mutability)* static_) => {
                         self.visit_static(static_, context, location);
@@ -662,8 +664,8 @@ macro_rules! make_mir_visitor {
                     ProjectionElem::Field(_field, ref $($mutability)* ty) => {
                         self.visit_ty(ty, Lookup::Loc(location));
                     }
-                    ProjectionElem::Index(ref $($mutability)* operand) => {
-                        self.visit_operand(operand, location);
+                    ProjectionElem::Index(ref $($mutability)* local) => {
+                        self.visit_local(local, LvalueContext::Consume, location);
                     }
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,

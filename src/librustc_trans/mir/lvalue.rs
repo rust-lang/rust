@@ -333,7 +333,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         };
                         (tr_base.trans_field_ptr(bcx, field.index()), llextra)
                     }
-                    mir::ProjectionElem::Index(ref index) => {
+                    mir::ProjectionElem::Index(index) => {
+                        let index = &mir::Operand::Consume(mir::Lvalue::Local(index));
                         let index = self.trans_operand(bcx, index);
                         let llindex = self.prepare_index(bcx, index.immediate());
                         ((tr_base.project_index(bcx, llindex), align), ptr::null_mut())

@@ -565,7 +565,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///    drop(ptr)
     fn drop_loop(&mut self,
                  succ: BasicBlock,
-                 cur: &Lvalue<'tcx>,
+                 cur: Local,
                  length_or_end: &Lvalue<'tcx>,
                  ety: Ty<'tcx>,
                  unwind: Unwind,
@@ -584,20 +584,20 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let one = self.constant_usize(1);
         let (ptr_next, cur_next) = if ptr_based {
-            (Rvalue::Use(use_(cur)),
-             Rvalue::BinaryOp(BinOp::Offset, use_(cur), one))
+            (Rvalue::Use(use_(&Lvalue::Local(cur))),
+             Rvalue::BinaryOp(BinOp::Offset, use_(&Lvalue::Local(cur)), one))
         } else {
             (Rvalue::Ref(
                  tcx.types.re_erased,
                  BorrowKind::Mut,
-                 self.lvalue.clone().index(use_(cur))),
-             Rvalue::BinaryOp(BinOp::Add, use_(cur), one))
+                 self.lvalue.clone().index(cur)),
+             Rvalue::BinaryOp(BinOp::Add, use_(&Lvalue::Local(cur)), one))
         };
 
         let drop_block = BasicBlockData {
             statements: vec![
                 self.assign(ptr, ptr_next),
-                self.assign(cur, cur_next)
+                self.assign(&Lvalue::Local(cur), cur_next)
             ],
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
@@ -611,7 +611,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let loop_block = BasicBlockData {
             statements: vec![
                 self.assign(can_go, Rvalue::BinaryOp(BinOp::Eq,
-                                                     use_(cur),
+                                                     use_(&Lvalue::Local(cur)),
                                                      use_(length_or_end)))
             ],
             is_cleanup: unwind.is_cleanup(),
@@ -678,7 +678,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             tcx.types.usize
         };
 
-        let cur = Lvalue::Local(self.new_temp(iter_ty));
+        let cur = self.new_temp(iter_ty);
         let length = Lvalue::Local(self.new_temp(tcx.types.usize));
         let length_or_end = if ptr_based {
             Lvalue::Local(self.new_temp(iter_ty))
@@ -688,7 +688,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let unwind = self.unwind.map(|unwind| {
             self.drop_loop(unwind,
-                           &cur,
+                           cur,
                            &length_or_end,
                            ety,
                            Unwind::InCleanup,
@@ -698,12 +698,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let succ = self.succ; // FIXME(#6393)
         let loop_block = self.drop_loop(
             succ,
-            &cur,
+            cur,
             &length_or_end,
             ety,
             unwind,
             ptr_based);
 
+        let cur = Lvalue::Local(cur);
         let zero = self.constant_usize(0);
         let mut drop_block_stmts = vec![];
         drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.lvalue.clone())));

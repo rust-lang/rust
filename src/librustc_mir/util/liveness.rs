@@ -60,49 +60,45 @@ struct BlockInfoVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for BlockInfoVisitor {
-    fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
-                    location: Location) {
-        if let Lvalue::Local(local) = *lvalue {
-            match context {
-                LvalueContext::Store |
+    fn visit_local(&mut self,
+                   &local: &Local,
+                   context: LvalueContext<'tcx>,
+                   _: Location) {
+        match context {
+            LvalueContext::Store |
 
-                // We let Call defined the result in both the success and unwind cases.
-                // This may not be right.
-                LvalueContext::Call |
+            // We let Call defined the result in both the success and unwind cases.
+            // This may not be right.
+            LvalueContext::Call |
 
-                // Storage live and storage dead aren't proper defines, but we can ignore
-                // values that come before them.
-                LvalueContext::StorageLive |
-                LvalueContext::StorageDead => {
-                    self.defs.add(&local);
-                }
-                LvalueContext::Projection(..) |
+            // Storage live and storage dead aren't proper defines, but we can ignore
+            // values that come before them.
+            LvalueContext::StorageLive |
+            LvalueContext::StorageDead => {
+                self.defs.add(&local);
+            }
+            LvalueContext::Projection(..) |
 
-                // Borrows only consider their local used at the point of the borrow.
-                // This won't affect the results since we use this analysis for generators
-                // and we only care about the result at suspension points. Borrows cannot
-                // cross suspension points so this behavior is unproblematic.
-                LvalueContext::Borrow { .. } |
+            // Borrows only consider their local used at the point of the borrow.
+            // This won't affect the results since we use this analysis for generators
+            // and we only care about the result at suspension points. Borrows cannot
+            // cross suspension points so this behavior is unproblematic.
+            LvalueContext::Borrow { .. } |
 
-                LvalueContext::Inspect |
-                LvalueContext::Consume |
-                LvalueContext::Validate |
+            LvalueContext::Inspect |
+            LvalueContext::Consume |
+            LvalueContext::Validate |
 
-                // We consider drops to always be uses of locals.
-                // Drop eloboration should be run before this analysis otherwise
-                // the results might be too pessimistic.
-                LvalueContext::Drop => {
-                    // Ignore uses which are already defined in this block
-                    if !self.pre_defs.contains(&local) {
-                        self.uses.add(&local);
-                    }
+            // We consider drops to always be uses of locals.
+            // Drop eloboration should be run before this analysis otherwise
+            // the results might be too pessimistic.
+            LvalueContext::Drop => {
+                // Ignore uses which are already defined in this block
+                if !self.pre_defs.contains(&local) {
+                    self.uses.add(&local);
                 }
             }
         }
-
-        self.super_lvalue(lvalue, context, location)
     }
 }
 

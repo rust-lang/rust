@@ -901,10 +901,10 @@ pub enum StatementKind<'tcx> {
     SetDiscriminant { lvalue: Lvalue<'tcx>, variant_index: usize },
 
     /// Start a live range for the storage of the local.
-    StorageLive(Lvalue<'tcx>),
+    StorageLive(Local),
 
     /// End the current live range for the storage of the local.
-    StorageDead(Lvalue<'tcx>),
+    StorageDead(Local),
 
     /// Execute a piece of inline Assembly.
     InlineAsm {
@@ -1077,12 +1077,12 @@ pub enum ProjectionElem<'tcx, V, T> {
 }
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 newtype_index!(Field, "field");
 
@@ -1099,7 +1099,7 @@ impl<'tcx> Lvalue<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, index: Operand<'tcx>) -> Lvalue<'tcx> {
+    pub fn index(self, index: Local) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Index(index))
     }
 
@@ -1701,8 +1701,8 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                 lvalue: lvalue.fold_with(folder),
                 variant_index,
             },
-            StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
-            StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
+            StorageLive(ref local) => StorageLive(local.fold_with(folder)),
+            StorageDead(ref local) => StorageDead(local.fold_with(folder)),
             InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
                 asm: asm.clone(),
                 outputs: outputs.fold_with(folder),
@@ -1732,9 +1732,9 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
 
         match self.kind {
             Assign(ref lval, ref rval) => { lval.visit_with(visitor) || rval.visit_with(visitor) }
-            SetDiscriminant { ref lvalue, .. } |
-            StorageLive(ref lvalue) |
-            StorageDead(ref lvalue) => lvalue.visit_with(visitor),
+            SetDiscriminant { ref lvalue, .. } => lvalue.visit_with(visitor),
+            StorageLive(ref local) |
+            StorageDead(ref local) => local.visit_with(visitor),
             InlineAsm { ref outputs, ref inputs, .. } =>
                 outputs.visit_with(visitor) || inputs.visit_with(visitor),
 
