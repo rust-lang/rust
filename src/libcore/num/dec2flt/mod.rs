@@ -121,7 +121,6 @@ macro_rules! from_str_float_impl {
             /// * '-3.14'
             /// * '2.5E10', or equivalently, '2.5e10'
             /// * '2.5E-10'
-            /// * '.' (understood as 0)
             /// * '5.'
             /// * '.5', or, equivalently,  '0.5'
             /// * 'inf', '-inf', 'NaN'
