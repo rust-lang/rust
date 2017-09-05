@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
-use utils::{span_lint, span_lint_and_sugg, snippet};
+use utils::{snippet, span_lint, span_lint_and_sugg};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
@@ -82,8 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
             };
             if let ExprBlock(ref then_block) = then_block.node {
                 match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
-                    (RetBool(true), RetBool(true)) |
-                    (Bool(true), Bool(true)) => {
+                    (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
                             cx,
                             NEEDLESS_BOOL,
@@ -91,8 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                             "this if-then-else expression will always return true",
                         );
                     },
-                    (RetBool(false), RetBool(false)) |
-                    (Bool(false), Bool(false)) => {
+                    (RetBool(false), RetBool(false)) | (Bool(false), Bool(false)) => {
                         span_lint(
                             cx,
                             NEEDLESS_BOOL,
@@ -186,16 +184,14 @@ enum Expression {
 fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
-        (&[ref e], None) => {
-            if let StmtSemi(ref e, _) = e.node {
-                if let ExprRet(_) = e.node {
-                    fetch_bool_expr(&**e)
-                } else {
-                    Expression::Other
-                }
+        (&[ref e], None) => if let StmtSemi(ref e, _) = e.node {
+            if let ExprRet(_) = e.node {
+                fetch_bool_expr(&**e)
             } else {
                 Expression::Other
             }
+        } else {
+            Expression::Other
         },
         _ => Expression::Other,
     }
@@ -204,18 +200,14 @@ fn fetch_bool_block(block: &Block) -> Expression {
 fn fetch_bool_expr(expr: &Expr) -> Expression {
     match expr.node {
         ExprBlock(ref block) => fetch_bool_block(block),
-        ExprLit(ref lit_ptr) => {
-            if let LitKind::Bool(value) = lit_ptr.node {
-                Expression::Bool(value)
-            } else {
-                Expression::Other
-            }
+        ExprLit(ref lit_ptr) => if let LitKind::Bool(value) = lit_ptr.node {
+            Expression::Bool(value)
+        } else {
+            Expression::Other
         },
-        ExprRet(Some(ref expr)) => {
-            match fetch_bool_expr(expr) {
-                Expression::Bool(value) => Expression::RetBool(value),
-                _ => Expression::Other,
-            }
+        ExprRet(Some(ref expr)) => match fetch_bool_expr(expr) {
+            Expression::Bool(value) => Expression::RetBool(value),
+            _ => Expression::Other,
         },
         _ => Expression::Other,
     }

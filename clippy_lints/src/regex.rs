@@ -7,9 +7,9 @@ use rustc::ty::subst::Substs;
 use std::collections::HashSet;
 use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
-use syntax::codemap::{Span, BytePos};
+use syntax::codemap::{BytePos, Span};
 use syntax::symbol::InternedString;
-use utils::{is_expn_of, match_def_path, match_type, paths, span_lint, span_help_and_lint};
+use utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
@@ -161,27 +161,19 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
     match *s {
         Expr::Empty | Expr::StartText | Expr::EndText => Some("the regex is unlikely to be useful as it is"),
         Expr::Literal { .. } => Some("consider using `str::contains`"),
-        Expr::Concat(ref exprs) => {
-            match exprs.len() {
-                2 => {
-                    match (&exprs[0], &exprs[1]) {
-                        (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
-                        (&Expr::StartText, &Expr::Literal { .. }) => Some("consider using `str::starts_with`"),
-                        (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
-                        _ => None,
-                    }
-                },
-                3 => {
-                    if let (&Expr::StartText, &Expr::Literal { .. }, &Expr::EndText) =
-                        (&exprs[0], &exprs[1], &exprs[2])
-                    {
-                        Some("consider using `==` on `str`s")
-                    } else {
-                        None
-                    }
-                },
+        Expr::Concat(ref exprs) => match exprs.len() {
+            2 => match (&exprs[0], &exprs[1]) {
+                (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
+                (&Expr::StartText, &Expr::Literal { .. }) => Some("consider using `str::starts_with`"),
+                (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
                 _ => None,
-            }
+            },
+            3 => if let (&Expr::StartText, &Expr::Literal { .. }, &Expr::EndText) = (&exprs[0], &exprs[1], &exprs[2]) {
+                Some("consider using `==` on `str`s")
+            } else {
+                None
+            },
+            _ => None,
         },
         _ => None,
     }
@@ -205,16 +197,14 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
         if let LitKind::Str(ref r, _) = lit.node {
             let r = &r.as_str();
             match builder.parse(r) {
-                Ok(r) => {
-                    if let Some(repl) = is_trivial_regex(&r) {
-                        span_help_and_lint(
-                            cx,
-                            TRIVIAL_REGEX,
-                            expr.span,
-                            "trivial regex",
-                            &format!("consider using {}", repl),
-                        );
-                    }
+                Ok(r) => if let Some(repl) = is_trivial_regex(&r) {
+                    span_help_and_lint(
+                        cx,
+                        TRIVIAL_REGEX,
+                        expr.span,
+                        "trivial regex",
+                        &format!("consider using {}", repl),
+                    );
                 },
                 Err(e) => {
                     span_lint(
@@ -228,16 +218,14 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
         }
     } else if let Some(r) = const_str(cx, expr) {
         match builder.parse(&r) {
-            Ok(r) => {
-                if let Some(repl) = is_trivial_regex(&r) {
-                    span_help_and_lint(
-                        cx,
-                        TRIVIAL_REGEX,
-                        expr.span,
-                        "trivial regex",
-                        &format!("consider using {}", repl),
-                    );
-                }
+            Ok(r) => if let Some(repl) = is_trivial_regex(&r) {
+                span_help_and_lint(
+                    cx,
+                    TRIVIAL_REGEX,
+                    expr.span,
+                    "trivial regex",
+                    &format!("consider using {}", repl),
+                );
             },
             Err(e) => {
                 span_lint(

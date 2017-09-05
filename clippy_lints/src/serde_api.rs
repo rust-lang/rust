@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint, get_trait_def_id, paths};
+use utils::{get_trait_def_id, paths, span_lint};
 
 /// **What it does:** Checks for mis-uses of the serde API.
 ///

@@ -1,16 +1,16 @@
 use reexport::*;
 use rustc::hir;
 use rustc::hir::*;
-use rustc::hir::intravisit::{FnKind, Visitor, walk_ty, NestedVisitorMap};
+use rustc::hir::intravisit::{walk_ty, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use std::cmp::Ordering;
-use syntax::ast::{IntTy, UintTy, FloatTy};
+use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
-use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
-            span_lint_and_sugg, opt_def_id, last_path_segment, type_size, match_path};
+use utils::{comparisons, higher, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
+            opt_def_id, snippet, span_help_and_lint, span_lint, span_lint_and_sugg, type_size};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -114,8 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypePass {
 
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
-            TraitItemKind::Const(ref ty, _) |
-            TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
+            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => check_ty(cx, ty, false),
             TraitItemKind::Method(ref sig, _) => check_fn_decl(cx, &sig.decl),
             _ => (),
         }
@@ -182,20 +181,18 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             match *qpath {
                 QPath::Resolved(Some(ref ty), ref p) => {
                     check_ty(cx, ty, is_local);
-                    for ty in p.segments.iter().flat_map(
-                        |seg| seg.parameters.types.iter(),
-                    )
+                    for ty in p.segments
+                        .iter()
+                        .flat_map(|seg| seg.parameters.types.iter())
                     {
                         check_ty(cx, ty, is_local);
                     }
                 },
-                QPath::Resolved(None, ref p) => {
-                    for ty in p.segments.iter().flat_map(
-                        |seg| seg.parameters.types.iter(),
-                    )
-                    {
-                        check_ty(cx, ty, is_local);
-                    }
+                QPath::Resolved(None, ref p) => for ty in p.segments
+                    .iter()
+                    .flat_map(|seg| seg.parameters.types.iter())
+                {
+                    check_ty(cx, ty, is_local);
                 },
                 QPath::TypeRelative(ref ty, ref seg) => {
                     check_ty(cx, ty, is_local);
@@ -248,13 +245,9 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             }
         },
         // recurse
-        TySlice(ref ty) |
-        TyArray(ref ty, _) |
-        TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
-        TyTup(ref tys) => {
-            for ty in tys {
-                check_ty(cx, ty, is_local);
-            }
+        TySlice(ref ty) | TyArray(ref ty, _) | TyPtr(MutTy { ref ty, .. }) => check_ty(cx, ty, is_local),
+        TyTup(ref tys) => for ty in tys {
+            check_ty(cx, ty, is_local);
         },
         _ => {},
     }
@@ -529,25 +522,21 @@ declare_lint! {
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
     match typ.sty {
-        ty::TyInt(i) => {
-            match i {
-                IntTy::Is => tcx.data_layout.pointer_size.bits(),
-                IntTy::I8 => 8,
-                IntTy::I16 => 16,
-                IntTy::I32 => 32,
-                IntTy::I64 => 64,
-                IntTy::I128 => 128,
-            }
+        ty::TyInt(i) => match i {
+            IntTy::Is => tcx.data_layout.pointer_size.bits(),
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
         },
-        ty::TyUint(i) => {
-            match i {
-                UintTy::Us => tcx.data_layout.pointer_size.bits(),
-                UintTy::U8 => 8,
-                UintTy::U16 => 16,
-                UintTy::U32 => 32,
-                UintTy::U64 => 64,
-                UintTy::U128 => 128,
-            }
+        ty::TyUint(i) => match i {
+            UintTy::Us => tcx.data_layout.pointer_size.bits(),
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
         },
         _ => 0,
     }
@@ -555,8 +544,7 @@ fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
 
 fn is_isize_or_usize(typ: Ty) -> bool {
     match typ.sty {
-        ty::TyInt(IntTy::Is) |
-        ty::TyUint(UintTy::Us) => true,
+        ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) => true,
         _ => false,
     }
 }
@@ -578,7 +566,7 @@ fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: Ty, cast_t
         expr.span,
         &format!(
             "casting {0} to {1} causes a loss of precision {2}({0} is {3} bits wide, but {1}'s mantissa \
-                        is only {4} bits wide)",
+             is only {4} bits wide)",
             cast_from,
             if cast_to_f64 { "f64" } else { "f32" },
             if arch_dependent {
@@ -617,38 +605,32 @@ fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: Ty, c
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
     let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) =
         match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
-            (true, true) | (false, false) => {
-                (
-                    to_nbits < from_nbits,
-                    ArchSuffix::None,
-                    to_nbits == from_nbits && cast_unsigned_to_signed,
-                    ArchSuffix::None,
-                )
-            },
-            (true, false) => {
-                (
-                    to_nbits <= 32,
-                    if to_nbits == 32 {
-                        ArchSuffix::_64
-                    } else {
-                        ArchSuffix::None
-                    },
-                    to_nbits <= 32 && cast_unsigned_to_signed,
-                    ArchSuffix::_32,
-                )
-            },
-            (false, true) => {
-                (
-                    from_nbits == 64,
-                    ArchSuffix::_32,
-                    cast_unsigned_to_signed,
-                    if from_nbits == 64 {
-                        ArchSuffix::_64
-                    } else {
-                        ArchSuffix::_32
-                    },
-                )
-            },
+            (true, true) | (false, false) => (
+                to_nbits < from_nbits,
+                ArchSuffix::None,
+                to_nbits == from_nbits && cast_unsigned_to_signed,
+                ArchSuffix::None,
+            ),
+            (true, false) => (
+                to_nbits <= 32,
+                if to_nbits == 32 {
+                    ArchSuffix::_64
+                } else {
+                    ArchSuffix::None
+                },
+                to_nbits <= 32 && cast_unsigned_to_signed,
+                ArchSuffix::_32,
+            ),
+            (false, true) => (
+                from_nbits == 64,
+                ArchSuffix::_32,
+                cast_unsigned_to_signed,
+                if from_nbits == 64 {
+                    ArchSuffix::_64
+                } else {
+                    ArchSuffix::_32
+                },
+            ),
         };
     if span_truncation {
         span_lint(
@@ -690,8 +672,7 @@ fn check_lossless(cx: &LateContext, expr: &Expr, op: &Expr, cast_from: Ty, cast_
     let cast_signed_to_unsigned = cast_from.is_signed() && !cast_to.is_signed();
     let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
     let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
-    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) && from_nbits < to_nbits &&
-        !cast_signed_to_unsigned
+    if !is_isize_or_usize(cast_from) && !is_isize_or_usize(cast_to) && from_nbits < to_nbits && !cast_signed_to_unsigned
     {
         span_lossless_lint(cx, expr, op, cast_from, cast_to);
     }
@@ -715,19 +696,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             if let ExprLit(ref lit) = ex.node {
-                use syntax::ast::{LitKind, LitIntType};
+                use syntax::ast::{LitIntType, LitKind};
                 match lit.node {
-                    LitKind::Int(_, LitIntType::Unsuffixed) |
-                    LitKind::FloatUnsuffixed(_) => {},
-                    _ => {
-                        if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
-                            span_lint(
-                                cx,
-                                UNNECESSARY_CAST,
-                                expr.span,
-                                &format!("casting to the same type is unnecessary (`{}` -> `{}`)", cast_from, cast_to),
-                            );
-                        }
+                    LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::FloatUnsuffixed(_) => {},
+                    _ => if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
+                        span_lint(
+                            cx,
+                            UNNECESSARY_CAST,
+                            expr.span,
+                            &format!("casting to the same type is unnecessary (`{}` -> `{}`)", cast_from, cast_to),
+                        );
                     },
                 }
             }
@@ -776,8 +754,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         check_lossless(cx, expr, ex, cast_from, cast_to);
                     },
                     (false, false) => {
-                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) =
-                            (&cast_from.sty, &cast_to.sty)
+                        if let (&ty::TyFloat(FloatTy::F64), &ty::TyFloat(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty)
                         {
                             span_lint(
                                 cx,
@@ -786,8 +763,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                 "casting f64 to f32 may truncate the value",
                             );
                         }
-                        if let (&ty::TyFloat(FloatTy::F32), &ty::TyFloat(FloatTy::F64)) =
-                            (&cast_from.sty, &cast_to.sty)
+                        if let (&ty::TyFloat(FloatTy::F32), &ty::TyFloat(FloatTy::F64)) = (&cast_from.sty, &cast_to.sty)
                         {
                             span_lossless_lint(cx, expr, ex, cast_from, cast_to);
                         }
@@ -823,7 +799,9 @@ pub struct TypeComplexityPass {
 
 impl TypeComplexityPass {
     pub fn new(threshold: u64) -> Self {
-        Self { threshold: threshold }
+        Self {
+            threshold: threshold,
+        }
     }
 }
 
@@ -853,8 +831,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         match item.node {
-            ItemStatic(ref ty, _, _) |
-            ItemConst(ref ty, _) => self.check_type(cx, ty),
+            ItemStatic(ref ty, _, _) | ItemConst(ref ty, _) => self.check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -862,8 +839,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         match item.node {
-            TraitItemKind::Const(ref ty, _) |
-            TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
+            TraitItemKind::Const(ref ty, _) | TraitItemKind::Type(_, Some(ref ty)) => self.check_type(cx, ty),
             TraitItemKind::Method(MethodSig { ref decl, .. }, TraitMethod::Required(_)) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
@@ -872,8 +848,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexityPass {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         match item.node {
-            ImplItemKind::Const(ref ty, _) |
-            ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
+            ImplItemKind::Const(ref ty, _) | ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
             _ => (),
         }
@@ -938,9 +913,9 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
             TyBareFn(..) => (50 * self.nest, 1),
 
             TyTraitObject(ref param_bounds, _) => {
-                let has_lifetime_parameters = param_bounds.iter().any(
-                    |bound| !bound.bound_lifetimes.is_empty(),
-                );
+                let has_lifetime_parameters = param_bounds
+                    .iter()
+                    .any(|bound| !bound.bound_lifetimes.is_empty());
                 if has_lifetime_parameters {
                     // complex trait bounds like A<'a, 'b>
                     (50 * self.nest, 1)
@@ -1101,7 +1076,7 @@ fn detect_absurd_comparison<'a>(
         Rel::Le => {
             match (lx, rx) {
                 (Some(l @ ExtremeExpr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
-                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
+                (Some(l @ ExtremeExpr { which: Maximum, .. }), _) => (l, InequalityImpossible), // max <= x
                 (_, Some(r @ ExtremeExpr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
                 (_, Some(r @ ExtremeExpr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
                 _ => return None,
@@ -1187,14 +1162,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
                     let conclusion = match result {
                         AlwaysFalse => "this comparison is always false".to_owned(),
                         AlwaysTrue => "this comparison is always true".to_owned(),
-                        InequalityImpossible => {
-                            format!(
-                                "the case where the two sides are not equal never occurs, consider using {} == {} \
-                                     instead",
-                                snippet(cx, lhs.span, "lhs"),
-                                snippet(cx, rhs.span, "rhs")
-                            )
-                        },
+                        InequalityImpossible => format!(
+                            "the case where the two sides are not equal never occurs, consider using {} == {} \
+                             instead",
+                            snippet(cx, lhs.span, "lhs"),
+                            snippet(cx, rhs.span, "rhs")
+                        ),
                     };
 
                     let help = format!(
@@ -1264,9 +1237,8 @@ impl FullInt {
 
 impl PartialEq for FullInt {
     fn eq(&self, other: &Self) -> bool {
-        self.partial_cmp(other).expect(
-            "partial_cmp only returns Some(_)",
-        ) == Ordering::Equal
+        self.partial_cmp(other)
+            .expect("partial_cmp only returns Some(_)") == Ordering::Equal
     }
 }
 
@@ -1282,9 +1254,8 @@ impl PartialOrd for FullInt {
 }
 impl Ord for FullInt {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).expect(
-            "partial_cmp for FullInt can never return None",
-        )
+        self.partial_cmp(other)
+            .expect("partial_cmp for FullInt can never return None")
     }
 }
 
@@ -1301,44 +1272,40 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
             return None;
         }
         match pre_cast_ty.sty {
-            ty::TyInt(int_ty) => {
-                Some(match int_ty {
-                    IntTy::I8 => (FullInt::S(i128::from(i8::min_value())), FullInt::S(i128::from(i8::max_value()))),
-                    IntTy::I16 => (
-                        FullInt::S(i128::from(i16::min_value())),
-                        FullInt::S(i128::from(i16::max_value())),
-                    ),
-                    IntTy::I32 => (
-                        FullInt::S(i128::from(i32::min_value())),
-                        FullInt::S(i128::from(i32::max_value())),
-                    ),
-                    IntTy::I64 => (
-                        FullInt::S(i128::from(i64::min_value())),
-                        FullInt::S(i128::from(i64::max_value())),
-                    ),
-                    IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
-                    IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
-                })
-            },
-            ty::TyUint(uint_ty) => {
-                Some(match uint_ty {
-                    UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
-                    UintTy::U16 => (
-                        FullInt::U(u128::from(u16::min_value())),
-                        FullInt::U(u128::from(u16::max_value())),
-                    ),
-                    UintTy::U32 => (
-                        FullInt::U(u128::from(u32::min_value())),
-                        FullInt::U(u128::from(u32::max_value())),
-                    ),
-                    UintTy::U64 => (
-                        FullInt::U(u128::from(u64::min_value())),
-                        FullInt::U(u128::from(u64::max_value())),
-                    ),
-                    UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
-                    UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
-                })
-            },
+            ty::TyInt(int_ty) => Some(match int_ty {
+                IntTy::I8 => (FullInt::S(i128::from(i8::min_value())), FullInt::S(i128::from(i8::max_value()))),
+                IntTy::I16 => (
+                    FullInt::S(i128::from(i16::min_value())),
+                    FullInt::S(i128::from(i16::max_value())),
+                ),
+                IntTy::I32 => (
+                    FullInt::S(i128::from(i32::min_value())),
+                    FullInt::S(i128::from(i32::max_value())),
+                ),
+                IntTy::I64 => (
+                    FullInt::S(i128::from(i64::min_value())),
+                    FullInt::S(i128::from(i64::max_value())),
+                ),
+                IntTy::I128 => (FullInt::S(i128::min_value() as i128), FullInt::S(i128::max_value() as i128)),
+                IntTy::Is => (FullInt::S(isize::min_value() as i128), FullInt::S(isize::max_value() as i128)),
+            }),
+            ty::TyUint(uint_ty) => Some(match uint_ty {
+                UintTy::U8 => (FullInt::U(u128::from(u8::min_value())), FullInt::U(u128::from(u8::max_value()))),
+                UintTy::U16 => (
+                    FullInt::U(u128::from(u16::min_value())),
+                    FullInt::U(u128::from(u16::max_value())),
+                ),
+                UintTy::U32 => (
+                    FullInt::U(u128::from(u32::min_value())),
+                    FullInt::U(u128::from(u32::max_value())),
+                ),
+                UintTy::U64 => (
+                    FullInt::U(u128::from(u64::min_value())),
+                    FullInt::U(u128::from(u64::max_value())),
+                ),
+                UintTy::U128 => (FullInt::U(u128::min_value() as u128), FullInt::U(u128::max_value() as u128)),
+                UintTy::Us => (FullInt::U(usize::min_value() as u128), FullInt::U(usize::max_value() as u128)),
+            }),
             _ => None,
         }
     } else {
@@ -1355,15 +1322,13 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr) {
-        Ok(val) => {
-            if let Integral(const_int) = val {
-                match const_int.int_type() {
-                    IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
-                    IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
-                }
-            } else {
-                None
+        Ok(val) => if let Integral(const_int) = val {
+            match const_int.int_type() {
+                IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
+                IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
             }
+        } else {
+            None
         },
         Err(_) => None,
     }
@@ -1402,42 +1367,32 @@ fn upcast_comparison_bounds_err(
                     err_upcast_comparison(cx, span, lhs, rel == Rel::Ne);
                 }
             } else if match rel {
-                       Rel::Lt => {
-                           if invert {
-                               norm_rhs_val < lb
-                           } else {
-                               ub < norm_rhs_val
-                           }
-                       },
-                       Rel::Le => {
-                           if invert {
-                               norm_rhs_val <= lb
-                           } else {
-                               ub <= norm_rhs_val
-                           }
-                       },
-                       Rel::Eq | Rel::Ne => unreachable!(),
-                   }
-            {
+                Rel::Lt => if invert {
+                    norm_rhs_val < lb
+                } else {
+                    ub < norm_rhs_val
+                },
+                Rel::Le => if invert {
+                    norm_rhs_val <= lb
+                } else {
+                    ub <= norm_rhs_val
+                },
+                Rel::Eq | Rel::Ne => unreachable!(),
+            } {
                 err_upcast_comparison(cx, span, lhs, true)
             } else if match rel {
-                       Rel::Lt => {
-                           if invert {
-                               norm_rhs_val >= ub
-                           } else {
-                               lb >= norm_rhs_val
-                           }
-                       },
-                       Rel::Le => {
-                           if invert {
-                               norm_rhs_val > ub
-                           } else {
-                               lb > norm_rhs_val
-                           }
-                       },
-                       Rel::Eq | Rel::Ne => unreachable!(),
-                   }
-            {
+                Rel::Lt => if invert {
+                    norm_rhs_val >= ub
+                } else {
+                    lb >= norm_rhs_val
+                },
+                Rel::Le => if invert {
+                    norm_rhs_val > ub
+                } else {
+                    lb > norm_rhs_val
+                },
+                Rel::Eq | Rel::Ne => unreachable!(),
+            } {
                 err_upcast_comparison(cx, span, lhs, false)
             }
         }
@@ -1447,7 +1402,6 @@ fn upcast_comparison_bounds_err(
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
-
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
             let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
                 val

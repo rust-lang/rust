@@ -72,14 +72,12 @@ fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
                 return;
             }
         },
-        higher::VecArgs::Vec(args) => {
-            if let Some(last) = args.iter().last() {
-                let span = args[0].span.to(last.span);
+        higher::VecArgs::Vec(args) => if let Some(last) = args.iter().last() {
+            let span = args[0].span.to(last.span);
 
-                format!("&[{}]", snippet(cx, span, "..")).into()
-            } else {
-                "&[]".into()
-            }
+            format!("&[{}]", snippet(cx, span, "..")).into()
+        } else {
+            "&[]".into()
         },
     };
 

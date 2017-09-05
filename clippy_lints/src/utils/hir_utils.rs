@@ -46,8 +46,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     false
                 }
             },
-            (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) |
-            (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => self.eq_expr(l, r),
+            (&StmtExpr(ref l, _), &StmtExpr(ref r, _)) | (&StmtSemi(ref l, _), &StmtSemi(ref r, _)) => {
+                self.eq_expr(l, r)
+            },
             _ => false,
         }
     }
@@ -107,11 +108,10 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.node.as_str() == r.node.as_str())
             },
             (&ExprMatch(ref le, ref la, ref ls), &ExprMatch(ref re, ref ra, ref rs)) => {
-                ls == rs && self.eq_expr(le, re) &&
-                    over(la, ra, |l, r| {
-                        self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
-                            over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
-                    })
+                ls == rs && self.eq_expr(le, re) && over(la, ra, |l, r| {
+                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r)) &&
+                        over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
+                })
             },
             (&ExprMethodCall(ref l_path, _, ref l_args), &ExprMethodCall(ref r_path, _, ref r_args)) => {
                 !self.ignore_fn && l_path == r_path && self.eq_exprs(l_args, r_args)
@@ -257,9 +257,8 @@ fn both<X, F>(l: &Option<X>, r: &Option<X>, mut eq_fn: F) -> bool
 where
     F: FnMut(&X, &X) -> bool,
 {
-    l.as_ref().map_or_else(|| r.is_none(), |x| {
-        r.as_ref().map_or(false, |y| eq_fn(x, y))
-    })
+    l.as_ref()
+        .map_or_else(|| r.is_none(), |x| r.as_ref().map_or(false, |y| eq_fn(x, y)))
 }
 
 /// Check if two slices are equal as per `eq_fn`.

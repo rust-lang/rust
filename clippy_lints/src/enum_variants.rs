@@ -204,7 +204,7 @@ fn check_variant(
         &format!("All variants have the same {}fix: `{}`", what, value),
         &format!(
             "remove the {}fixes and use full paths to \
-                                 the variants instead of glob imports",
+             the variants instead of glob imports",
             what
         ),
     );

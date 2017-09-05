@@ -2,7 +2,7 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint_and_then, snippet_opt, type_size};
+use utils::{snippet_opt, span_lint_and_then, type_size};
 use rustc::ty::TypeFoldable;
 
 /// **What it does:** Checks for large size differences between variants on
@@ -34,7 +34,9 @@ pub struct LargeEnumVariant {
 
 impl LargeEnumVariant {
     pub fn new(maximum_size_difference_allowed: u64) -> Self {
-        Self { maximum_size_difference_allowed: maximum_size_difference_allowed }
+        Self {
+            maximum_size_difference_allowed: maximum_size_difference_allowed,
+        }
     }
 }
 
@@ -49,9 +51,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
         let did = cx.tcx.hir.local_def_id(item.id);
         if let ItemEnum(ref def, _) = item.node {
             let ty = cx.tcx.type_of(did);
-            let adt = ty.ty_adt_def().expect(
-                "already checked whether this is an enum",
-            );
+            let adt = ty.ty_adt_def()
+                .expect("already checked whether this is an enum");
 
             let mut smallest_variant: Option<(_, _)> = None;
             let mut largest_variant: Option<(_, _)> = None;
@@ -90,15 +91,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                         |db| {
                             if variant.fields.len() == 1 {
                                 let span = match def.variants[i].node.data {
-                                    VariantData::Struct(ref fields, _) |
-                                    VariantData::Tuple(ref fields, _) => fields[0].ty.span,
+                                    VariantData::Struct(ref fields, _) | VariantData::Tuple(ref fields, _) => {
+                                        fields[0].ty.span
+                                    },
                                     VariantData::Unit(_) => unreachable!(),
                                 };
                                 if let Some(snip) = snippet_opt(cx, span) {
                                     db.span_suggestion(
                                         span,
                                         "consider boxing the large fields to reduce the total size of the \
-                                                    enum",
+                                         enum",
                                         format!("Box<{}>", snip),
                                     );
                                     return;
@@ -112,7 +114,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                     );
                 }
             }
-
         }
     }
 }

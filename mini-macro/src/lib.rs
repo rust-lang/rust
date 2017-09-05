@@ -1,13 +1,12 @@
 #![feature(plugin_registrar, rustc_private)]
 
-extern crate syntax;
-extern crate rustc;
 extern crate rustc_plugin;
+extern crate syntax;
 
 use syntax::codemap::Span;
 use syntax::tokenstream::TokenTree;
-use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
-use syntax::ext::build::AstBuilder;  // trait for expr_usize
+use syntax::ext::base::{ExtCtxt, MacEager, MacResult};
+use syntax::ext::build::AstBuilder; // trait for expr_usize
 use rustc_plugin::Registry;
 
 fn expand_macro(cx: &mut ExtCtxt, sp: Span, _: &[TokenTree]) -> Box<MacResult + 'static> {

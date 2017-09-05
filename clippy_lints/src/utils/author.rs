@@ -5,9 +5,9 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use rustc::hir::{Expr, QPath, Expr_};
-use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
-use syntax::ast::{self, Attribute, NodeId, LitKind, DUMMY_NODE_ID};
+use rustc::hir::{Expr, Expr_, QPath};
+use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use syntax::ast::{self, Attribute, LitKind, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use std::collections::HashMap;
 
@@ -386,15 +386,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Again(ref {}) = {},", destination_pat, current);
                 // FIXME: implement label printing
             },
-            Expr_::ExprRet(ref opt_value) => {
-                if let Some(ref value) = *opt_value {
-                    let value_pat = self.next("value");
-                    println!("Ret(Some(ref {})) = {},", value_pat, current);
-                    self.current = value_pat;
-                    self.visit_expr(value);
-                } else {
-                    println!("Ret(None) = {},", current);
-                }
+            Expr_::ExprRet(ref opt_value) => if let Some(ref value) = *opt_value {
+                let value_pat = self.next("value");
+                println!("Ret(Some(ref {})) = {},", value_pat, current);
+                self.current = value_pat;
+                self.visit_expr(value);
+            } else {
+                println!("Ret(None) = {},", current);
             },
             Expr_::ExprInlineAsm(_, ref _input, ref _output) => {
                 println!("InlineAsm(_, ref input, ref output) = {},", current);
@@ -445,42 +443,36 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
 
 fn has_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
-        attr.check_name("clippy") &&
-            attr.meta_item_list().map_or(false, |list| {
-                list.len() == 1 &&
-                    match list[0].node {
-                        ast::NestedMetaItemKind::MetaItem(ref it) => it.name == "author",
-                        ast::NestedMetaItemKind::Literal(_) => false,
-                    }
-            })
+        attr.check_name("clippy") && attr.meta_item_list().map_or(false, |list| {
+            list.len() == 1 && match list[0].node {
+                ast::NestedMetaItemKind::MetaItem(ref it) => it.name == "author",
+                ast::NestedMetaItemKind::Literal(_) => false,
+            }
+        })
     })
 }
 
 fn print_path(path: &QPath, first: &mut bool) {
     match *path {
-        QPath::Resolved(_, ref path) => {
-            for segment in &path.segments {
+        QPath::Resolved(_, ref path) => for segment in &path.segments {
+            if *first {
+                *first = false;
+            } else {
+                print!(", ");
+            }
+            print!("{:?}", segment.name.as_str());
+        },
+        QPath::TypeRelative(ref ty, ref segment) => match ty.node {
+            hir::Ty_::TyPath(ref inner_path) => {
+                print_path(inner_path, first);
                 if *first {
                     *first = false;
                 } else {
                     print!(", ");
                 }
                 print!("{:?}", segment.name.as_str());
-            }
-        },
-        QPath::TypeRelative(ref ty, ref segment) => {
-            match ty.node {
-                hir::Ty_::TyPath(ref inner_path) => {
-                    print_path(inner_path, first);
-                    if *first {
-                        *first = false;
-                    } else {
-                        print!(", ");
-                    }
-                    print!("{:?}", segment.name.as_str());
-                },
-                ref other => print!("/* unimplemented: {:?}*/", other),
-            }
+            },
+            ref other => print!("/* unimplemented: {:?}*/", other),
         },
     }
 }

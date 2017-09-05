@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{get_trait_def_id, implements_trait, higher, match_qpath, paths, span_lint};
+use utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span_lint};
 
 /// **What it does:** Checks for iteration that is guaranteed to be infinite.
 ///
@@ -66,14 +66,13 @@ enum Finiteness {
     Finite,
 }
 
-use self::Finiteness::{Infinite, MaybeInfinite, Finite};
+use self::Finiteness::{Finite, Infinite, MaybeInfinite};
 
 impl Finiteness {
     fn and(self, b: Self) -> Self {
         match (self, b) {
             (Finite, _) | (_, Finite) => Finite,
-            (MaybeInfinite, _) |
-            (_, MaybeInfinite) => MaybeInfinite,
+            (MaybeInfinite, _) | (_, MaybeInfinite) => MaybeInfinite,
             _ => Infinite,
         }
     }
@@ -81,8 +80,7 @@ impl Finiteness {
     fn or(self, b: Self) -> Self {
         match (self, b) {
             (Infinite, _) | (_, Infinite) => Infinite,
-            (MaybeInfinite, _) |
-            (_, MaybeInfinite) => MaybeInfinite,
+            (MaybeInfinite, _) | (_, MaybeInfinite) => MaybeInfinite,
             _ => Finite,
         }
     }
@@ -90,7 +88,11 @@ impl Finiteness {
 
 impl From<bool> for Finiteness {
     fn from(b: bool) -> Self {
-        if b { Infinite } else { Finite }
+        if b {
+            Infinite
+        } else {
+            Finite
+        }
     }
 }
 
@@ -108,7 +110,7 @@ enum Heuristic {
     All,
 }
 
-use self::Heuristic::{Always, First, Any, All};
+use self::Heuristic::{All, Always, Any, First};
 
 /// a slice of (method name, number of args, heuristic, bounds) tuples
 /// that will be used to determine whether the method in question
@@ -143,11 +145,11 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
             for &(name, len, heuristic, cap) in HEURISTICS.iter() {
                 if method.name == name && args.len() == len {
                     return (match heuristic {
-                                Always => Infinite,
-                                First => is_infinite(cx, &args[0]),
-                                Any => is_infinite(cx, &args[0]).or(is_infinite(cx, &args[1])),
-                                All => is_infinite(cx, &args[0]).and(is_infinite(cx, &args[1])),
-                            }).and(cap);
+                        Always => Infinite,
+                        First => is_infinite(cx, &args[0]),
+                        Any => is_infinite(cx, &args[0]).or(is_infinite(cx, &args[1])),
+                        All => is_infinite(cx, &args[0]).and(is_infinite(cx, &args[1])),
+                    }).and(cap);
                 }
             }
             if method.name == "flat_map" && args.len() == 2 {
@@ -159,20 +161,15 @@ fn is_infinite(cx: &LateContext, expr: &Expr) -> Finiteness {
             Finite
         },
         ExprBlock(ref block) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
-        ExprBox(ref e) |
-        ExprAddrOf(_, ref e) => is_infinite(cx, e),
-        ExprCall(ref path, _) => {
-            if let ExprPath(ref qpath) = path.node {
-                match_qpath(qpath, &paths::REPEAT).into()
-            } else {
-                Finite
-            }
+        ExprBox(ref e) | ExprAddrOf(_, ref e) => is_infinite(cx, e),
+        ExprCall(ref path, _) => if let ExprPath(ref qpath) = path.node {
+            match_qpath(qpath, &paths::REPEAT).into()
+        } else {
+            Finite
         },
-        ExprStruct(..) => {
-            higher::range(expr)
-                .map_or(false, |r| r.end.is_none())
-                .into()
-        },
+        ExprStruct(..) => higher::range(expr)
+            .map_or(false, |r| r.end.is_none())
+            .into(),
         _ => Finite,
     }
 }
@@ -220,23 +217,18 @@ fn complete_infinite_iter(cx: &LateContext, expr: &Expr) -> Finiteness {
                 }
             }
             if method.name == "last" && args.len() == 1 {
-                let not_double_ended = get_trait_def_id(cx,
-                                        &paths::DOUBLE_ENDED_ITERATOR)
-                                        .map_or(false, |id| {
-                        !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[])
-                });
+                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR)
+                    .map_or(false, |id| !implements_trait(cx, cx.tables.expr_ty(&args[0]), id, &[]));
                 if not_double_ended {
-                    return is_infinite(cx, &args[0]); 
+                    return is_infinite(cx, &args[0]);
                 }
             }
         },
-        ExprBinary(op, ref l, ref r) => {
-            if op.node.is_comparison() {
-                return is_infinite(cx, l).and(is_infinite(cx, r)).and(
-                    MaybeInfinite,
-                );
-            }
-        }, //TODO: ExprLoop + Match
+        ExprBinary(op, ref l, ref r) => if op.node.is_comparison() {
+            return is_infinite(cx, l)
+                .and(is_infinite(cx, r))
+                .and(MaybeInfinite);
+        }, // TODO: ExprLoop + Match
         _ => (),
     }
     Finite

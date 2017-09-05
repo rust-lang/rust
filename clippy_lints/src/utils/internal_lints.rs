@@ -1,11 +1,11 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
-use utils::{paths, match_qpath, span_lint};
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use utils::{match_qpath, paths, span_lint};
 use syntax::symbol::InternedString;
-use syntax::ast::{Name, NodeId, ItemKind, Crate as AstCrate};
+use syntax::ast::{Crate as AstCrate, ItemKind, Name, NodeId};
 use syntax::codemap::Span;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -63,14 +63,17 @@ impl LintPass for Clippy {
 
 impl EarlyLintPass for Clippy {
     fn check_crate(&mut self, cx: &EarlyContext, krate: &AstCrate) {
-        if let Some(utils) = krate.module.items.iter().find(
-            |item| item.ident.name == "utils",
-        )
+        if let Some(utils) = krate
+            .module
+            .items
+            .iter()
+            .find(|item| item.ident.name == "utils")
         {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
-                if let Some(paths) = utils_mod.items.iter().find(
-                    |item| item.ident.name == "paths",
-                )
+                if let Some(paths) = utils_mod
+                    .items
+                    .iter()
+                    .find(|item| item.ident.name == "paths")
                 {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
                         let mut last_name: Option<InternedString> = None;
@@ -83,7 +86,7 @@ impl EarlyLintPass for Clippy {
                                         CLIPPY_LINTS_INTERNAL,
                                         item.span,
                                         "this constant should be before the previous constant due to lexical \
-                                               ordering",
+                                         ordering",
                                     );
                                 }
                             }
@@ -157,11 +160,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
 
 
 fn is_lint_ref_type(ty: &Ty) -> bool {
-    if let TyRptr(ref lt,
-                  MutTy {
-                      ty: ref inner,
-                      mutbl: MutImmutable,
-                  }) = ty.node
+    if let TyRptr(
+        ref lt,
+        MutTy {
+            ty: ref inner,
+            mutbl: MutImmutable,
+        },
+    ) = ty.node
     {
         if lt.is_elided() {
             return false;

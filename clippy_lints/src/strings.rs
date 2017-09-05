@@ -2,7 +2,7 @@ use rustc::hir::*;
 use rustc::lint::*;
 use syntax::codemap::Spanned;
 use utils::SpanlessEq;
-use utils::{match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty, get_parent_expr, is_allowed};
+use utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for string appends of the form `x = x + y` (without
 /// `let`!).
@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
                     STRING_ADD_ASSIGN,
                     e.span,
                     "you assigned the result of adding something to this string. Consider using \
-                           `String::push_str()` instead",
+                     `String::push_str()` instead",
                 );
             }
         }
@@ -124,10 +124,10 @@ fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
         ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprBlock(ref block) => {
             block.stmts.is_empty() &&
-                block.expr.as_ref().map_or(
-                    false,
-                    |expr| is_add(cx, expr, target),
-                )
+                block
+                    .expr
+                    .as_ref()
+                    .map_or(false, |expr| is_add(cx, expr, target))
         },
         _ => false,
     }
@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use std::ascii::AsciiExt;
         use syntax::ast::LitKind;
-        use utils::{snippet, in_macro};
+        use utils::{in_macro, snippet};
 
         if let ExprMethodCall(ref path, _, ref args) = e.node {
             if path.name == "as_bytes" {

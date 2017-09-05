@@ -27,7 +27,9 @@ pub struct BlackListedName {
 
 impl BlackListedName {
     pub fn new(blacklist: Vec<String>) -> Self {
-        Self { blacklist: blacklist }
+        Self {
+            blacklist: blacklist,
+        }
     }
 }
 

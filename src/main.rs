@@ -45,13 +45,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         descriptions: &rustc_errors::registry::Registry,
         output: ErrorOutputType,
     ) -> Compilation {
-        self.default.early_callback(
-            matches,
-            sopts,
-            cfg,
-            descriptions,
-            output,
-        )
+        self.default
+            .early_callback(matches, sopts, cfg, descriptions, output)
     }
     fn no_input(
         &mut self,
@@ -62,14 +57,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         ofile: &Option<PathBuf>,
         descriptions: &rustc_errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.default.no_input(
-            matches,
-            sopts,
-            cfg,
-            odir,
-            ofile,
-            descriptions,
-        )
+        self.default
+            .no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
     fn late_callback(
         &mut self,
@@ -79,13 +68,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(
-            matches,
-            sess,
-            input,
-            odir,
-            ofile,
-        )
+        self.default
+            .late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
@@ -101,7 +85,7 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                             .as_ref()
                             .expect(
                                 "at this compilation stage \
-                                                                                          the krate must be parsed",
+                                 the krate must be parsed",
                             )
                             .span,
                     );
@@ -203,13 +187,13 @@ pub fn main() {
             .skip(2)
             .find(|val| val.starts_with("--manifest-path="));
 
-        let mut metadata =
-            if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
-                metadata
-            } else {
-                let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
-                process::exit(101);
-            };
+        let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref))
+        {
+            metadata
+        } else {
+            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
+            process::exit(101);
+        };
 
         let manifest_path = manifest_path_arg.map(|arg| {
             Path::new(&arg["--manifest-path=".len()..])
@@ -359,7 +343,6 @@ fn process<I>(old_args: I) -> Result<(), i32>
 where
     I: Iterator<Item = String>,
 {
-
     let mut args = vec!["rustc".to_owned()];
 
     let mut found_dashes = false;

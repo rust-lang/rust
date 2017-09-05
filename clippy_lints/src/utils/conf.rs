@@ -15,14 +15,13 @@ pub fn file_from_args(
     for arg in args.iter().filter_map(|a| a.meta_item()) {
         if arg.name() == "conf_file" {
             return match arg.node {
-                ast::MetaItemKind::Word |
-                ast::MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
-                ast::MetaItemKind::NameValue(ref value) => {
-                    if let ast::LitKind::Str(ref file, _) = value.node {
-                        Ok(Some(file.to_string().into()))
-                    } else {
-                        Err(("`conf_file` value must be a string", value.span))
-                    }
+                ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {
+                    Err(("`conf_file` must be a named value", arg.span))
+                },
+                ast::MetaItemKind::NameValue(ref value) => if let ast::LitKind::Str(ref file, _) = value.node {
+                    Ok(Some(file.to_string().into()))
+                } else {
+                    Err(("`conf_file` value must be a string", value.span))
                 },
             };
         }
@@ -45,7 +44,7 @@ pub enum Error {
         /// The expected type.
         &'static str,
         /// The type we got instead.
-        &'static str
+        &'static str,
     ),
     /// There is an unknown key is the file.
     UnknownKey(String),
@@ -191,10 +190,8 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
                 Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
                 // Return the error if it's something other than `NotFound`; otherwise we didn't
                 // find the project file yet, and continue searching.
-                Err(e) => {
-                    if e.kind() != io::ErrorKind::NotFound {
-                        return Err(e);
-                    }
+                Err(e) => if e.kind() != io::ErrorKind::NotFound {
+                    return Err(e);
                 },
                 _ => (),
             }

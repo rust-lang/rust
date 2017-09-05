@@ -115,43 +115,42 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 return;
             }
             if decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
-                let self_ty = cx.tcx.type_of(
-                    cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)),
-                );
+                let self_ty = cx.tcx
+                    .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_let_chain!{[
-                    same_tys(cx, self_ty, return_ty(cx, id)),
-                    let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
-                    !implements_trait(cx, self_ty, default_trait_id, &[])
-                ], {
-                    if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
-                        span_lint_and_then(cx,
-                                           NEW_WITHOUT_DEFAULT_DERIVE, span,
-                                           &format!("you should consider deriving a \
-                                                     `Default` implementation for `{}`",
-                                                    self_ty),
-                                           |db| {
-                            db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
-                        });
-                    } else {
-                        span_lint_and_then(cx,
-                                           NEW_WITHOUT_DEFAULT, span,
-                                           &format!("you should consider adding a \
-                                                    `Default` implementation for `{}`",
-                                                    self_ty),
-                                           |db| {
-                        db.suggest_prepend_item(cx,
-                                                  span,
-                                                  "try this",
-                                                  &format!(
+                                    same_tys(cx, self_ty, return_ty(cx, id)),
+                                    let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
+                                    !implements_trait(cx, self_ty, default_trait_id, &[])
+                                ], {
+                                    if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
+                                        span_lint_and_then(cx,
+                                                           NEW_WITHOUT_DEFAULT_DERIVE, span,
+                                                           &format!("you should consider deriving a \
+                                                                     `Default` implementation for `{}`",
+                                                                    self_ty),
+                                                           |db| {
+                                            db.suggest_item_with_attr(cx, sp, "try this", "#[derive(Default)]");
+                                        });
+                                    } else {
+                                        span_lint_and_then(cx,
+                                                           NEW_WITHOUT_DEFAULT, span,
+                                                           &format!("you should consider adding a \
+                                                                    `Default` implementation for `{}`",
+                                                                    self_ty),
+                                                           |db| {
+                                        db.suggest_prepend_item(cx,
+                                                                  span,
+                                                                  "try this",
+                                                                  &format!(
 "impl Default for {} {{
     fn default() -> Self {{
         Self::new()
     }}
 }}",
-                                                           self_ty));
-                        });
-                    }
-                }}
+                                                                           self_ty));
+                                        });
+                                    }
+                                }}
             }
         }
     }

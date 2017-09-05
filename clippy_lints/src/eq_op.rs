@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use utils::{SpanlessEq, span_lint, span_lint_and_then, multispan_sugg, snippet, implements_trait, is_copy};
+use utils::{implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for equal operands to comparison, logical and
 /// bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,
@@ -82,8 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 #[allow(match_same_arms)]
                 match (&left.node, &right.node) {
                     // do not suggest to dereference literals
-                    (&ExprLit(..), _) |
-                    (_, &ExprLit(..)) => {},
+                    (&ExprLit(..), _) | (_, &ExprLit(..)) => {},
                     // &foo == &bar
                     (&ExprAddrOf(_, ref l), &ExprAddrOf(_, ref r)) => {
                         let lty = cx.tables.expr_ty(l);

@@ -3,7 +3,7 @@ use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 
-use utils::{span_note_and_lint, span_lint_and_then, snippet_opt, match_path_ast, in_macro, in_external_macro};
+use utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///
@@ -50,8 +50,7 @@ impl ReturnPass {
     fn check_block_return(&mut self, cx: &EarlyContext, block: &ast::Block) {
         if let Some(stmt) = block.stmts.last() {
             match stmt.node {
-                ast::StmtKind::Expr(ref expr) |
-                ast::StmtKind::Semi(ref expr) => {
+                ast::StmtKind::Expr(ref expr) | ast::StmtKind::Semi(ref expr) => {
                     self.check_final_expr(cx, expr, Some(stmt.span));
                 },
                 _ => (),
@@ -81,10 +80,8 @@ impl ReturnPass {
                 self.check_final_expr(cx, elsexpr, None);
             },
             // a match expr, check all arms
-            ast::ExprKind::Match(_, ref arms) => {
-                for arm in arms {
-                    self.check_final_expr(cx, &arm.body, Some(arm.body.span));
-                }
+            ast::ExprKind::Match(_, ref arms) => for arm in arms {
+                self.check_final_expr(cx, &arm.body, Some(arm.body.span));
             },
             _ => (),
         }
@@ -140,8 +137,7 @@ impl LintPass for ReturnPass {
 impl EarlyLintPass for ReturnPass {
     fn check_fn(&mut self, cx: &EarlyContext, kind: FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) {
         match kind {
-            FnKind::ItemFn(.., block) |
-            FnKind::Method(.., block) => self.check_block_return(cx, block),
+            FnKind::ItemFn(.., block) | FnKind::Method(.., block) => self.check_block_return(cx, block),
             FnKind::Closure(body) => self.check_final_expr(cx, body, Some(body.span)),
         }
     }

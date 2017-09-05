@@ -1,4 +1,4 @@
-use rustc::hir::{Expr, ExprMethodCall, ExprLit};
+use rustc::hir::{Expr, ExprLit, ExprMethodCall};
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
@@ -67,11 +67,18 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
-
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
-                    if let Spanned { node: LitKind::Bool(lit), .. } = **span {
-                        if lit { Argument::True } else { Argument::False }
+                    if let Spanned {
+                        node: LitKind::Bool(lit),
+                        ..
+                    } = **span
+                    {
+                        if lit {
+                            Argument::True
+                        } else {
+                            Argument::False
+                        }
                     } else {
                         return; // The function is called with a literal
                         // which is not a boolean literal. This is theoretically

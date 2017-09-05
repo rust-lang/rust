@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{paths, span_lint_and_then, match_qpath, snippet};
+use utils::{match_qpath, paths, snippet, span_lint_and_then};
 
 /// **What it does:*** Lint for redundant pattern matching over `Result` or
 /// `Option`
@@ -45,11 +45,8 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-
         if let ExprMatch(ref op, ref arms, MatchSource::IfLetDesugar { .. }) = expr.node {
-
             if arms[0].pats.len() == 1 {
-
                 let good_method = match arms[0].pats[0].node {
                     PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 && pats[0].node == PatKind::Wild => {
                         if match_qpath(path, &paths::RESULT_OK) {
@@ -68,16 +65,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     _ => return,
                 };
 
-                span_lint_and_then(cx,
-                                   IF_LET_REDUNDANT_PATTERN_MATCHING,
-                                   arms[0].pats[0].span,
-                                   &format!("redundant pattern matching, consider using `{}`", good_method),
-                                   |db| {
-                    let span = expr.span.with_hi(op.span.hi());
-                    db.span_suggestion(span, "try this", format!("if {}.{}", snippet(cx, op.span, "_"), good_method));
-                });
+                span_lint_and_then(
+                    cx,
+                    IF_LET_REDUNDANT_PATTERN_MATCHING,
+                    arms[0].pats[0].span,
+                    &format!("redundant pattern matching, consider using `{}`", good_method),
+                    |db| {
+                        let span = expr.span.with_hi(op.span.hi());
+                        db.span_suggestion(
+                            span,
+                            "try this",
+                            format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
+                        );
+                    },
+                );
             }
-
         }
     }
 }

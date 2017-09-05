@@ -128,11 +128,13 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     let fn_ty = sig.skip_binder();
 
     for (arg, ty) in decl.inputs.iter().zip(fn_ty.inputs()) {
-        if let ty::TyRef(_,
-                         ty::TypeAndMut {
-                             ty,
-                             mutbl: MutImmutable,
-                         }) = ty.sty
+        if let ty::TyRef(
+            _,
+            ty::TypeAndMut {
+                ty,
+                mutbl: MutImmutable,
+            },
+        ) = ty.sty
         {
             if match_type(cx, ty, &paths::VEC) {
                 span_lint(
@@ -140,7 +142,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
                     PTR_ARG,
                     arg.span,
                     "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                           with non-Vec-based slices. Consider changing the type to `&[...]`",
+                     with non-Vec-based slices. Consider changing the type to `&[...]`",
                 );
             } else if match_type(cx, ty, &paths::STRING) {
                 span_lint(
@@ -148,7 +150,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
                     PTR_ARG,
                     arg.span,
                     "writing `&String` instead of `&str` involves a new object where a slice will do. \
-                           Consider changing the type to `&str`",
+                     Consider changing the type to `&str`",
                 );
             }
         }
@@ -157,10 +159,10 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     if let FunctionRetTy::Return(ref ty) = decl.output {
         if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
-            for (_, ref mutbl, ref argspan) in
-                decl.inputs.iter().filter_map(|ty| get_rptr_lm(ty)).filter(
-                    |&(lt, _, _)| lt.name == out.name,
-                )
+            for (_, ref mutbl, ref argspan) in decl.inputs
+                .iter()
+                .filter_map(|ty| get_rptr_lm(ty))
+                .filter(|&(lt, _, _)| lt.name == out.name)
             {
                 if *mutbl == MutMutable {
                     return;

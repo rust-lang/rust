@@ -4,7 +4,7 @@ use std::char;
 use syntax::ast::*;
 use syntax::codemap::Span;
 use syntax::visit::FnKind;
-use utils::{constants, span_lint, span_help_and_lint, snippet, snippet_opt, span_lint_and_then, in_external_macro};
+use utils::{constants, in_external_macro, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -251,7 +251,7 @@ impl EarlyLintPass for MiscEarly {
                                 UNNEEDED_FIELD_PATTERN,
                                 field.span,
                                 "You matched a field with a wildcard pattern. Consider using `..` \
-                                                instead",
+                                 instead",
                                 &format!("Try with `{} {{ {}, .. }}`", type_name, normal[..].join(", ")),
                             );
                         }
@@ -276,7 +276,7 @@ impl EarlyLintPass for MiscEarly {
                             *correspondence,
                             &format!(
                                 "`{}` already exists, having another argument having almost the same \
-                                            name makes code comprehension and documentation more difficult",
+                                 name makes code comprehension and documentation more difficult",
                                 arg_name[1..].to_owned()
                             ),
                         );;
@@ -293,29 +293,27 @@ impl EarlyLintPass for MiscEarly {
             return;
         }
         match expr.node {
-            ExprKind::Call(ref paren, _) => {
-                if let ExprKind::Paren(ref closure) = paren.node {
-                    if let ExprKind::Closure(_, ref decl, ref block, _) = closure.node {
-                        span_lint_and_then(cx,
-                                           REDUNDANT_CLOSURE_CALL,
-                                           expr.span,
-                                           "Try not to call a closure in the expression where it is declared.",
-                                           |db| if decl.inputs.is_empty() {
-                                               let hint = snippet(cx, block.span, "..").into_owned();
-                                               db.span_suggestion(expr.span, "Try doing something like: ", hint);
-                                           });
-                    }
-                }
-            },
-            ExprKind::Unary(UnOp::Neg, ref inner) => {
-                if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
-                    span_lint(
+            ExprKind::Call(ref paren, _) => if let ExprKind::Paren(ref closure) = paren.node {
+                if let ExprKind::Closure(_, ref decl, ref block, _) = closure.node {
+                    span_lint_and_then(
                         cx,
-                        DOUBLE_NEG,
+                        REDUNDANT_CLOSURE_CALL,
                         expr.span,
-                        "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
+                        "Try not to call a closure in the expression where it is declared.",
+                        |db| if decl.inputs.is_empty() {
+                            let hint = snippet(cx, block.span, "..").into_owned();
+                            db.span_suggestion(expr.span, "Try doing something like: ", hint);
+                        },
                     );
                 }
+            },
+            ExprKind::Unary(UnOp::Neg, ref inner) => if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
+                span_lint(
+                    cx,
+                    DOUBLE_NEG,
+                    expr.span,
+                    "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
+                );
             },
             ExprKind::Lit(ref lit) => self.check_lit(cx, lit),
             _ => (),

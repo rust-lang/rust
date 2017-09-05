@@ -133,7 +133,6 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 self.set.remove(&lid);
             }
         }
-
     }
     fn borrow(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, loan_cause: LoanCause) {
         if let Categorization::Local(lid) = cmt.cat {

@@ -2,7 +2,7 @@ use consts::{constant_simple, Constant};
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::codemap::Span;
-use utils::{span_lint, snippet, in_macro};
+use utils::{in_macro, snippet, span_lint};
 use syntax::attr::IntType::{SignedInt, UnsignedInt};
 
 /// **What it does:** Checks for identity operations, e.g. `x + 0`.
@@ -63,16 +63,13 @@ fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, e) {
         if match m {
             0 => v.to_u128_unchecked() == 0,
-            -1 => {
-                match v.int_type() {
-                    SignedInt(_) => (v.to_u128_unchecked() as i128 == -1),
-                    UnsignedInt(_) => false,
-                }
+            -1 => match v.int_type() {
+                SignedInt(_) => (v.to_u128_unchecked() as i128 == -1),
+                UnsignedInt(_) => false,
             },
             1 => v.to_u128_unchecked() == 1,
             _ => unreachable!(),
-        }
-        {
+        } {
             span_lint(
                 cx,
                 IDENTITY_OP,

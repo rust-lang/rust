@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{is_direct_expn_of, is_expn_of, implements_trait, span_lint};
+use utils::{implements_trait, is_direct_expn_of, is_expn_of, span_lint};
 
 /// **What it does:** Checks for `assert!(x == y)` or `assert!(x != y)` which
 /// can be better written

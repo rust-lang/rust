@@ -1,8 +1,8 @@
 use rustc::hir::*;
-use rustc::hir::map::Node::{NodeItem, NodeImplItem};
+use rustc::hir::map::Node::{NodeImplItem, NodeItem};
 use rustc::lint::*;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, resolve_node, span_lint, match_path};
+use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint};
 use format::get_argument_fmtstr_parts;
 
 /// **What it does:** This lint warns when you using `print!()` with a format

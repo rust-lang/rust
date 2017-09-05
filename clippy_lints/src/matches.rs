@@ -11,8 +11,8 @@ use syntax::ast::LitKind;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, span_lint_and_sugg, in_external_macro,
-            expr_block, walk_ptrs_ty, is_expn_of, remove_blocks, is_allowed};
+use utils::{expr_block, in_external_macro, is_allowed, is_expn_of, match_type, remove_blocks, snippet,
+            span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -219,7 +219,7 @@ fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm],
         lint,
         expr.span,
         "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
-                        let`",
+         let`",
         "try this",
         format!(
             "if let {} = {} {}{}",
@@ -290,21 +290,17 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
                     if let Some((true_expr, false_expr)) = exprs {
                         let sugg = match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
-                            (false, false) => {
-                                Some(format!(
-                                    "if {} {} else {}",
-                                    snippet(cx, ex.span, "b"),
-                                    expr_block(cx, true_expr, None, ".."),
-                                    expr_block(cx, false_expr, None, "..")
-                                ))
-                            },
-                            (false, true) => {
-                                Some(format!(
-                                    "if {} {}",
-                                    snippet(cx, ex.span, "b"),
-                                    expr_block(cx, true_expr, None, "..")
-                                ))
-                            },
+                            (false, false) => Some(format!(
+                                "if {} {} else {}",
+                                snippet(cx, ex.span, "b"),
+                                expr_block(cx, true_expr, None, ".."),
+                                expr_block(cx, false_expr, None, "..")
+                            )),
+                            (false, true) => Some(format!(
+                                "if {} {}",
+                                snippet(cx, ex.span, "b"),
+                                expr_block(cx, true_expr, None, "..")
+                            )),
                             (true, false) => {
                                 let test = Sugg::hir(cx, ex, "..");
                                 Some(format!("if {} {}", !test, expr_block(cx, false_expr, None, "..")))
@@ -317,7 +313,6 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
                         }
                     }
                 }
-
             },
         );
     }
@@ -384,15 +379,17 @@ fn is_panic_block(block: &Block) -> bool {
 fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: MatchSource, expr: &Expr) {
     if has_only_ref_pats(arms) {
         if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
-            span_lint_and_then(cx,
-                               MATCH_REF_PATS,
-                               expr.span,
-                               "you don't need to add `&` to both the expression and the patterns",
-                               |db| {
-                let inner = Sugg::hir(cx, inner, "..");
-                let template = match_template(expr.span, source, &inner);
-                db.span_suggestion(expr.span, "try", template);
-            });
+            span_lint_and_then(
+                cx,
+                MATCH_REF_PATS,
+                expr.span,
+                "you don't need to add `&` to both the expression and the patterns",
+                |db| {
+                    let inner = Sugg::hir(cx, inner, "..");
+                    let template = match_template(expr.span, source, &inner);
+                    db.span_suggestion(expr.span, "try", template);
+                },
+            );
         } else {
             span_lint_and_then(
                 cx,
@@ -471,24 +468,18 @@ fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
     ranges
         .iter()
         .filter_map(|range| match range.node {
-            (ConstVal::Integral(start), Bound::Included(ConstVal::Integral(end))) => {
-                Some(SpannedRange {
-                    span: range.span,
-                    node: (start, Bound::Included(end)),
-                })
-            },
-            (ConstVal::Integral(start), Bound::Excluded(ConstVal::Integral(end))) => {
-                Some(SpannedRange {
-                    span: range.span,
-                    node: (start, Bound::Excluded(end)),
-                })
-            },
-            (ConstVal::Integral(start), Bound::Unbounded) => {
-                Some(SpannedRange {
-                    span: range.span,
-                    node: (start, Bound::Unbounded),
-                })
-            },
+            (ConstVal::Integral(start), Bound::Included(ConstVal::Integral(end))) => Some(SpannedRange {
+                span: range.span,
+                node: (start, Bound::Included(end)),
+            }),
+            (ConstVal::Integral(start), Bound::Excluded(ConstVal::Integral(end))) => Some(SpannedRange {
+                span: range.span,
+                node: (start, Bound::Excluded(end)),
+            }),
+            (ConstVal::Integral(start), Bound::Unbounded) => Some(SpannedRange {
+                span: range.span,
+                node: (start, Bound::Unbounded),
+            }),
             _ => None,
         })
         .collect()
@@ -507,9 +498,9 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
         .flat_map(|a| &a.pats)
         .map(|p| {
             match p.node {
-                PatKind::Ref(..) => Some(true),  // &-patterns
+                PatKind::Ref(..) => Some(true), // &-patterns
                 PatKind::Wild => Some(false),   // an "anything" wildcard is also fine
-                _ => None,                    // any other pattern is not fine
+                _ => None,                      // any other pattern is not fine
             }
         })
         .collect::<Option<Vec<bool>>>();
@@ -540,8 +531,7 @@ where
     impl<'a, T: Copy> Kind<'a, T> {
         fn range(&self) -> &'a SpannedRange<T> {
             match *self {
-                Kind::Start(_, r) |
-                Kind::End(_, r) => r,
+                Kind::Start(_, r) | Kind::End(_, r) => r,
             }
         }
 
@@ -562,22 +552,16 @@ where
     impl<'a, T: Copy + Ord> Ord for Kind<'a, T> {
         fn cmp(&self, other: &Self) -> Ordering {
             match (self.value(), other.value()) {
-                (Bound::Included(a), Bound::Included(b)) |
-                (Bound::Excluded(a), Bound::Excluded(b)) => a.cmp(&b),
+                (Bound::Included(a), Bound::Included(b)) | (Bound::Excluded(a), Bound::Excluded(b)) => a.cmp(&b),
                 // Range patterns cannot be unbounded (yet)
-                (Bound::Unbounded, _) |
-                (_, Bound::Unbounded) => unimplemented!(),
-                (Bound::Included(a), Bound::Excluded(b)) => {
-                    match a.cmp(&b) {
-                        Ordering::Equal => Ordering::Greater,
-                        other => other,
-                    }
+                (Bound::Unbounded, _) | (_, Bound::Unbounded) => unimplemented!(),
+                (Bound::Included(a), Bound::Excluded(b)) => match a.cmp(&b) {
+                    Ordering::Equal => Ordering::Greater,
+                    other => other,
                 },
-                (Bound::Excluded(a), Bound::Included(b)) => {
-                    match a.cmp(&b) {
-                        Ordering::Equal => Ordering::Less,
-                        other => other,
-                    }
+                (Bound::Excluded(a), Bound::Included(b)) => match a.cmp(&b) {
+                    Ordering::Equal => Ordering::Less,
+                    other => other,
                 },
             }
         }
@@ -594,10 +578,8 @@ where
 
     for (a, b) in values.iter().zip(values.iter().skip(1)) {
         match (a, b) {
-            (&Kind::Start(_, ra), &Kind::End(_, rb)) => {
-                if ra.node != rb.node {
-                    return Some((ra, rb));
-                }
+            (&Kind::Start(_, ra), &Kind::End(_, rb)) => if ra.node != rb.node {
+                return Some((ra, rb));
             },
             (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
             _ => return Some((a.range(), b.range())),
