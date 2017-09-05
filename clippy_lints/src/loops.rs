@@ -20,7 +20,7 @@ use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
 use utils::paths;
 
-/// **What it does:** Checks for for loops that manually copy items between
+/// **What it does:** Checks for for-loops that manually copy items between
 /// slices that could be optimized by having a memcpy.
 ///
 /// **Why is this bad?** It is not as fast as a memcpy.
