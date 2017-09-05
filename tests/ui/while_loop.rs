@@ -184,7 +184,7 @@ fn refutable() {
         }
     }
 
-    //should not trigger while_let_loop lint because break passes an expression
+    // should not trigger while_let_loop lint because break passes an expression
     let a = Some(10);
     let b = loop {
         if let Some(c) = a {
