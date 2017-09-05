@@ -9,9 +9,8 @@ fn test() {
     // comment
     // comment2
 
-    // FIXME(1275)
     code(); // leave this comment alone!
-    // ok?
+            // ok?
 
     // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a
     // diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam
@@ -33,7 +32,7 @@ fn test() {
     //                           .unwrap());
 
     funk(); // dontchangeme
-    // or me
+            // or me
 
     // #1388
     const EXCEPTION_PATHS: &'static [&'static str] = &[

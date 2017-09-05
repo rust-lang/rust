@@ -72,11 +72,7 @@ impl<'a> FmtVisitor<'a> {
             ast::StmtKind::Item(ref item) => {
                 self.visit_item(item);
             }
-            ast::StmtKind::Local(..) => {
-                let rewrite = stmt.rewrite(&self.get_context(), self.shape());
-                self.push_rewrite(stmt.span(), rewrite);
-            }
-            ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
+            ast::StmtKind::Local(..) | ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(), self.shape());
                 self.push_rewrite(stmt.span(), rewrite)
             }
