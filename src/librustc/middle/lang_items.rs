@@ -25,6 +25,7 @@ use hir::map as hir_map;
 use session::Session;
 use hir::def_id::DefId;
 use ty;
+use middle::cstore::CrateStore;
 use middle::weak_lang_items;
 use util::nodemap::FxHashMap;
 
@@ -115,11 +116,9 @@ impl LanguageItems {
 
 struct LanguageItemCollector<'a, 'tcx: 'a> {
     items: LanguageItems,
-
     hir_map: &'a hir_map::Map<'tcx>,
-
     session: &'a Session,
-
+    cstore: &'a CrateStore,
     item_refs: FxHashMap<&'static str, usize>,
 }
 
@@ -149,7 +148,9 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
-    pub fn new(session: &'a Session, hir_map: &'a hir_map::Map<'tcx>)
+    pub fn new(session: &'a Session,
+               cstore: &'a CrateStore,
+               hir_map: &'a hir_map::Map<'tcx>)
                -> LanguageItemCollector<'a, 'tcx> {
         let mut item_refs = FxHashMap();
 
@@ -157,6 +158,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
         LanguageItemCollector {
             session,
+            cstore,
             hir_map,
             items: LanguageItems::new(),
             item_refs,
@@ -168,7 +170,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                let cstore = &self.session.cstore;
+                let cstore = self.cstore;
                 let name = LanguageItems::item_name(item_index);
                 let mut err = match self.hir_map.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
@@ -205,10 +207,8 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 
     pub fn collect_external_language_items(&mut self) {
-        let cstore = &self.session.cstore;
-
-        for cnum in cstore.crates() {
-            for (index, item_index) in cstore.lang_items(cnum) {
+        for cnum in self.cstore.crates() {
+            for (index, item_index) in self.cstore.lang_items(cnum) {
                 let def_id = DefId { krate: cnum, index: index };
                 self.collect_item(item_index, def_id);
             }
@@ -234,13 +234,14 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 pub fn collect_language_items(session: &Session,
+                              cstore: &CrateStore,
                               map: &hir_map::Map)
                               -> LanguageItems {
     let krate: &hir::Crate = map.krate();
-    let mut collector = LanguageItemCollector::new(session, map);
+    let mut collector = LanguageItemCollector::new(session, cstore, map);
     collector.collect(krate);
     let LanguageItemCollector { mut items, .. } = collector;
-    weak_lang_items::check_crate(krate, session, &mut items);
+    weak_lang_items::check_crate(krate, session, cstore, &mut items);
     items
 }
 

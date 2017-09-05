@@ -38,7 +38,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
     pub fn new(cx: &'a ::core::DocContext<'b, 'tcx>) -> LibEmbargoVisitor<'a, 'b, 'tcx> {
         LibEmbargoVisitor {
             cx,
-            cstore: &*cx.sess().cstore,
+            cstore: cx.tcx.cstore(),
             access_levels: cx.access_levels.borrow_mut(),
             prev_level: Some(AccessLevel::Public),
             visited_mods: FxHashSet()

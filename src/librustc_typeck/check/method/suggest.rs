@@ -552,14 +552,14 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
                     if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in tcx.sess.cstore.item_children(def_id, tcx.sess) {
+                    for child in tcx.cstore().item_children(def_id, tcx.sess) {
                         handle_external_def(tcx, traits, external_mods, child.def)
                     }
                 }
                 _ => {}
             }
         }
-        for cnum in tcx.sess.cstore.crates() {
+        for cnum in tcx.cstore().crates() {
             let def_id = DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,

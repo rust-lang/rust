@@ -21,6 +21,7 @@ use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
 use rustc::dep_graph::DepGraph;
+use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
@@ -198,6 +199,7 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
+                                               cstore: &'tcx CrateStore,
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
@@ -226,6 +228,7 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                                 cstore,
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
@@ -875,6 +878,7 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                                cstore: &'tcx CrateStore,
                                                 hir_map: &hir_map::Map<'tcx>,
                                                 analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
@@ -891,6 +895,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     if ppm.needs_analysis() {
         print_with_analysis(sess,
+                            cstore,
                             hir_map,
                             analysis,
                             resolutions,
@@ -929,6 +934,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmHir(s), None) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
+                                           cstore,
                                            hir_map,
                                            analysis,
                                            resolutions,
@@ -952,6 +958,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmHir(s), Some(uii)) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
+                                           cstore,
                                            hir_map,
                                            analysis,
                                            resolutions,
@@ -993,6 +1000,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                       cstore: &'a CrateStore,
                                        hir_map: &hir_map::Map<'tcx>,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
@@ -1013,6 +1021,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     let mut out = Vec::new();
 
     abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                     cstore,
                                                      hir_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
