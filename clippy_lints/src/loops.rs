@@ -392,7 +392,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         MatchSource::Normal | MatchSource::IfLetDesugar { .. } => {
                             if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
                                 arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
-                                is_break_expr(&arms[1].body)
+                                is_simple_break_expr(&arms[1].body)
                             {
                                 if in_external_macro(cx, expr.span) {
                                     return;
@@ -1500,13 +1500,16 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
     }
 }
 
-/// Return true if expr contains a single break expr (maybe within a block).
-fn is_break_expr(expr: &Expr) -> bool {
+/// Return true if expr contains a single break expr without destination label and
+/// passed expression. The expression may be within a block.
+fn is_simple_break_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprBreak(dest, _) if dest.ident.is_none() => true,
-        ExprBlock(ref b) => match extract_first_expr(b) {
-            Some(subexpr) => is_break_expr(subexpr),
-            None => false,
+        ExprBreak(dest, ref passed_expr) if dest.ident.is_none() && passed_expr.is_none() => true,
+        ExprBlock(ref b) => {
+            match extract_first_expr(b) {
+                Some(subexpr) => is_simple_break_expr(subexpr),
+                None => false,
+            }
         },
         _ => false,
     }
