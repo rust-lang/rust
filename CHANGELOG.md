@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## Upcoming
 * New lint: [`manual_memcpy`]
+* [`cast_lossless`] no longer has redundant parentheses in its suggestions
 
 ## 0.0.157 - 2017-09-04
 * Update to *rustc 1.22.0-nightly (981ce7d8d 2017-09-03)*
