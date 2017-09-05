@@ -20,21 +20,5 @@ This feature was introduced in PR [#44026] to ensure that compiler-internal and
 implementation-specific types and traits were not included in the standard library's documentation.
 Such types would introduce broken links into the documentation.
 
-```rust
-#![feature(doc_masked)]
-
-// Since std is automatically imported, we need to import it into a separate name to apply the
-// attribute. This is used as a simple demonstration, but any extern crate statement will suffice.
-#[doc(masked)]
-extern crate std as realstd;
-
-/// A sample marker trait that exists on floating-point numbers, even though this page won't list
-/// them!
-pub trait MyMarker { }
-
-impl MyMarker for f32 { }
-impl MyMarker for f64 { }
-```
-
 [#44026]: https://github.com/rust-lang/rust/pull/44026
 [#44027]: https://github.com/rust-lang/rust/pull/44027
