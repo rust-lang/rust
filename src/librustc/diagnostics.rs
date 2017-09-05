@@ -1136,6 +1136,67 @@ fn main() {
 
 Rust only looks at the signature of the called function, as such it must
 already specify all requirements that will be used for every type parameter.
+
+Here's another erroneous code example:
+
+```compile_fail,E0277
+trait A {}
+
+struct B;
+
+impl A for B {}
+
+// Let's assume that you would like to return a trait like below:
+fn foo(b: B) -> A {
+    b // error[E0277]: the trait bound `A + 'static: std::marker::Sized` is not satisfied
+}
+```
+
+Here are two solutions to fix this issue:
+
+1. `Box` your returned value
+
+```rust
+# use std::boxed::Box;
+# use std::borrow::Borrow;
+# use std::fmt::Debug;
+#
+# trait A: Debug {}
+#
+# #[derive(Debug)]
+# struct B;
+#
+# impl A for B {}
+#
+fn foo(b: B) -> Box<A> {
+    Box::new(b) // The `Sized` trait bound has been removed.
+}
+
+// Once this value was returned, it can be used as follow:
+// `A` trait must implement `Debug`, of course.
+let boxed_object: Box<A> = foo(B);
+println!("{:?}", boxed_object); // prints B
+```
+
+2. Add a generic data type
+
+```rust
+# use std::fmt::Debug;
+#
+# trait A: Debug {}
+#
+# #[derive(Debug)]
+# struct B;
+#
+# impl A for B {}
+#
+fn foo<T: A>(b: T) -> T {
+    b // returns all `A` trait implementors.
+}
+
+let generic_object = foo(B); // inferred type
+println!("{:?}", generic_object); // prints B
+```
 "##,
 
 E0281: r##"
