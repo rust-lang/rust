@@ -102,10 +102,11 @@ consist of aliases for the underlying Rust types, making it unnecessary for
 `libc` to provide additional implementations of the `VaArg` trait. Nothing
 outside of `core` should define any implementation of `VaArg`.
 
-Note that extracting an argument from a `VaList` follows the platform-specific
-rules for argument passing and promotion. In particular, many platforms promote
-any argument smaller than a C `int` to an `int`. On such platforms, extracting
-the corresponding type will extract an `int` and convert appropriately.
+Note that extracting an argument from a `VaList` follows the C rules for
+argument passing and promotion. In particular, C code will promote any argument
+smaller than a C `int` to an `int`, and promote `float` to `double`. Thus,
+Rust's argument extractions for the corresponding types will extract an `int`
+or `double` as appropriate, and convert appropriately.
 
 Like the underlying platform `va_list` structure in C, `VaList` has an opaque,
 platform-specific representation.
