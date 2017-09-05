@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use Shape;
+use {Indent, Shape};
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
 use syntax::codemap::{BytePos, Pos, Span};
@@ -169,11 +169,12 @@ impl<'a> FmtVisitor<'a> {
                         self.config.comment_width(),
                         self.config.max_width() - self.block_indent.width(),
                     );
+                    let comment_indent = Indent::from_width(self.config, self.buffer.cur_offset());
 
                     self.buffer.push_str(&rewrite_comment(
                         subslice,
                         false,
-                        Shape::legacy(comment_width, self.block_indent),
+                        Shape::legacy(comment_width, comment_indent),
                         self.config,
                     ).unwrap());
 

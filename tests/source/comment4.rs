@@ -5,7 +5,6 @@ fn test() {
 // comment
         // comment2
 
-    // FIXME(1275)
     code(); /* leave this comment alone!
              * ok? */
 
