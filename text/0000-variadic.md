@@ -105,10 +105,12 @@ instance, the `libc` crate could define the `va_list` variants of `printf` as
 follows:
 
 ```rust
-pub unsafe extern "C" fn vprintf(format: *const c_char, ap: VaList) -> c_int;
-pub unsafe extern "C" fn vfprintf(stream: *mut FILE, format: *const c_char, ap: VaList) -> c_int;
-pub unsafe extern "C" fn vsprintf(s: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
-pub unsafe extern "C" fn vsnprintf(s: *mut c_char, n: size_t, format: *const c_char, ap: VaList) -> c_int;
+extern "C" {
+    pub unsafe fn vprintf(format: *const c_char, ap: VaList) -> c_int;
+    pub unsafe fn vfprintf(stream: *mut FILE, format: *const c_char, ap: VaList) -> c_int;
+    pub unsafe fn vsprintf(s: *mut c_char, format: *const c_char, ap: VaList) -> c_int;
+    pub unsafe fn vsnprintf(s: *mut c_char, n: size_t, format: *const c_char, ap: VaList) -> c_int;
+}
 ```
 
 Note that, per the C semantics, after passing `VaList` to these functions, the
