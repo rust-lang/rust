@@ -77,7 +77,7 @@ fn main() {
 fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
     let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace", ".libs")?;
 
-    let compiler = gcc::Config::new().get_compiler();
+    let compiler = gcc::Build::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), target).unwrap();
     let mut cflags = compiler.args().iter().map(|s| s.to_str().unwrap())
