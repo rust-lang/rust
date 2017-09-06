@@ -1651,6 +1651,16 @@ impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
+            Primitive(p) => ::html::render::cache().primitive_locations.get(&p).cloned(),
+            BorrowedRef { type_: box Generic(..), .. } =>
+                Primitive(PrimitiveType::Reference).def_id(),
+            BorrowedRef { ref type_, .. } => type_.def_id(),
+            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
+            Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
+            Array(..) => Primitive(PrimitiveType::Array).def_id(),
+            RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(),
+            QPath { ref self_type, .. } => self_type.def_id(),
             _ => None,
         }
     }

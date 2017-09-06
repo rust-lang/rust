@@ -2416,12 +2416,12 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)?;
 
     let cache = cache();
-    write!(w, "
+    let impl_header = "
         <h2 id='implementors' class='small-section-header'>
           Implementors<a href='#implementors' class='anchor'></a>
         </h2>
         <ul class='item-list' id='implementors-list'>
-    ")?;
+    ";
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -2443,7 +2443,38 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             }
         }
 
-        for implementor in implementors {
+        let (local, foreign) = implementors.iter()
+            .partition::<Vec<_>, _>(|i| i.impl_.for_.def_id()
+                                         .map_or(true, |d| cache.paths.contains_key(&d)));
+
+        if !foreign.is_empty() {
+            write!(w, "
+                <h2 id='foreign-impls' class='section-header'>
+                  Implementations on Foreign Types<a href='#foreign-impls' class='anchor'></a>
+                </h2>
+            ")?;
+
+            for implementor in foreign {
+                // need to get from a clean::Impl to a clean::Item so i can use render_impl
+                if let Some(t_did) = implementor.impl_.for_.def_id() {
+                    if let Some(impl_item) = cache.impls.get(&t_did).and_then(|i| i.iter()
+                        .find(|i| i.impl_item.def_id == implementor.def_id))
+                    {
+                        let i = &impl_item.impl_item;
+                        let impl_ = Impl { impl_item: i.clone() };
+                        let assoc_link = AssocItemLink::GotoSource(
+                            i.def_id, &implementor.impl_.provided_trait_methods
+                        );
+                        render_impl(w, cx, &impl_, assoc_link,
+                                    RenderMode::Normal, i.stable_since(), false)?;
+                    }
+                }
+            }
+        }
+
+        write!(w, "{}", impl_header)?;
+
+        for implementor in local {
             write!(w, "<li><code>")?;
             // If there's already another implementor that has the same abbridged name, use the
             // full path, for example in `std::iter::ExactSizeIterator`
@@ -2465,6 +2496,10 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             }
             writeln!(w, "</code></li>")?;
         }
+    } else {
+        // even without any implementations to write in, we still want the heading and list, so the
+        // implementors javascript file pulled in below has somewhere to write the impls into
+        write!(w, "{}", impl_header)?;
     }
     write!(w, "</ul>")?;
     write!(w, r#"<script type="text/javascript" async
@@ -3069,7 +3104,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         };
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
-                        containing_item.stable_since())?;
+                        containing_item.stable_since(), true)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -3094,7 +3129,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             let did = i.trait_did().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
             render_impl(w, cx, i, assoc_link,
-                        RenderMode::Normal, containing_item.stable_since())?;
+                        RenderMode::Normal, containing_item.stable_since(), true)?;
         }
     }
     Ok(())
@@ -3124,7 +3159,8 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
 }
 
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
-               render_mode: RenderMode, outer_version: Option<&str>) -> fmt::Result {
+               render_mode: RenderMode, outer_version: Option<&str>,
+               show_def_docs: bool) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = derive_id(match i.inner_impl().trait_ {
             Some(ref t) => format!("impl-{}", Escape(&format!("{:#}", t))),
@@ -3153,7 +3189,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     fn doc_impl_item(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
                      link: AssocItemLink, render_mode: RenderMode,
                      is_default_item: bool, outer_version: Option<&str>,
-                     trait_: Option<&clean::Trait>) -> fmt::Result {
+                     trait_: Option<&clean::Trait>, show_def_docs: bool) -> fmt::Result {
         let item_type = item.type_();
         let name = item.name.as_ref().unwrap();
 
@@ -3248,7 +3284,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         document_stability(w, cx, it)?;
                         if item.doc_value().is_some() {
                             document_full(w, item, cx, &prefix)?;
-                        } else {
+                        } else if show_def_docs {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
                             document_short(w, it, link, cx, &prefix)?;
@@ -3256,11 +3292,15 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     }
                 } else {
                     document_stability(w, cx, item)?;
-                    document_full(w, item, cx, &prefix)?;
+                    if show_def_docs {
+                        document_full(w, item, cx, &prefix)?;
+                    }
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link, cx, &prefix)?;
+                if show_def_docs {
+                    document_short(w, item, link, cx, &prefix)?;
+                }
             }
         }
         Ok(())
@@ -3269,10 +3309,14 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     let traits = &cache().traits;
     let trait_ = i.trait_did().and_then(|did| traits.get(&did));
 
+    if !show_def_docs {
+        write!(w, "<span class='docblock autohide'>")?;
+    }
+
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.inner_impl().items {
         doc_impl_item(w, cx, trait_item, link, render_mode,
-                      false, outer_version, trait_)?;
+                      false, outer_version, trait_, show_def_docs)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -3280,7 +3324,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                             t: &clean::Trait,
                             i: &clean::Impl,
                             render_mode: RenderMode,
-                            outer_version: Option<&str>) -> fmt::Result {
+                            outer_version: Option<&str>,
+                            show_def_docs: bool) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
             if i.items.iter().find(|m| m.name == n).is_some() {
@@ -3290,7 +3335,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
             doc_impl_item(w, cx, trait_item, assoc_link, render_mode, true,
-                          outer_version, None)?;
+                          outer_version, None, show_def_docs)?;
         }
         Ok(())
     }
@@ -3298,9 +3343,15 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // If we've implemented a trait, then also emit documentation for all
     // default items which weren't overridden in the implementation block.
     if let Some(t) = trait_ {
-        render_default_items(w, cx, t, &i.inner_impl(), render_mode, outer_version)?;
+        render_default_items(w, cx, t, &i.inner_impl(),
+                             render_mode, outer_version, show_def_docs)?;
     }
     write!(w, "</div>")?;
+
+    if !show_def_docs {
+        write!(w, "</span>")?;
+    }
+
     Ok(())
 }
 
@@ -3483,6 +3534,17 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
     }
 
     sidebar.push_str(&sidebar_assoc_items(it));
+
+    let c = cache();
+
+    if let Some(implementors) = c.implementors.get(&it.def_id) {
+        if implementors.iter().any(|i| i.impl_.for_.def_id()
+                                   .map_or(false, |d| !c.paths.contains_key(&d)))
+        {
+            sidebar.push_str("<li><a href=\"#foreign-impls\">\
+                             Implementations on Foreign Types</a></li>");
+        }
+    }
 
     sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
 
