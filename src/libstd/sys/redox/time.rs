@@ -12,6 +12,7 @@ use cmp::Ordering;
 use fmt;
 use sys::{cvt, syscall};
 use time::Duration;
+use convert::TryInto;
 
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
@@ -40,8 +41,12 @@ impl Timespec {
     }
 
     fn add_duration(&self, other: &Duration) -> Timespec {
-        let secs = (self.t.tv_sec as i64).checked_add(other.as_secs() as i64);
-        let mut secs = secs.expect("overflow when adding duration to time");
+        let mut secs = other
+            .as_secs()
+            .try_into() // <- target type would be `i64`
+            .ok()
+            .and_then(|secs| self.t.tv_sec.checked_add(secs))
+            .expect("overflow when adding duration to time");
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
@@ -53,16 +58,19 @@ impl Timespec {
         }
         Timespec {
             t: syscall::TimeSpec {
-                tv_sec: secs as i64,
+                tv_sec: secs,
                 tv_nsec: nsec as i32,
             },
         }
     }
 
     fn sub_duration(&self, other: &Duration) -> Timespec {
-        let secs = (self.t.tv_sec as i64).checked_sub(other.as_secs() as i64);
-        let mut secs = secs.expect("overflow when subtracting duration \
-                                    from time");
+        let mut secs = other
+            .as_secs()
+            .try_into() // <- target type would be `i64`
+            .ok()
+            .and_then(|secs| self.t.tv_sec.checked_sub(secs))
+            .expect("overflow when subtracting duration from time");
 
         // Similar to above, nanos can't overflow.
         let mut nsec = self.t.tv_nsec as i32 - other.subsec_nanos() as i32;
@@ -73,7 +81,7 @@ impl Timespec {
         }
         Timespec {
             t: syscall::TimeSpec {
-                tv_sec: secs as i64,
+                tv_sec: secs,
                 tv_nsec: nsec as i32,
             },
         }
