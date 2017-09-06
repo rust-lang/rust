@@ -20,33 +20,19 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> =
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
     std::thread::__OsLocalKeyInner::new();
 
-fn __getit() -> &'static std::option::Option<Foo> {
+fn __get() -> &'static std::cell::UnsafeCell<std::thread::__LocalKeyValue<Foo>> {
     __KEY.get() //~ ERROR  invocation of unsafe method requires unsafe
 }
 
-fn __get_state() -> std::thread::LocalKeyState {
-    __KEY.get_state() //~ ERROR  invocation of unsafe method requires unsafe
-}
-
-fn __pre_init() {
-    __KEY.pre_init() //~ ERROR  invocation of unsafe method requires unsafe
-}
-
-fn __post_init(val: Foo) {
-    __KEY.post_init(val) //~ ERROR  invocation of unsafe method requires unsafe
-}
-
-fn __rollback_init() {
-    __KEY.rollback_init() //~ ERROR  invocation of unsafe method requires unsafe
+fn __register_dtor() {
+    #[cfg(target_thread_local)]
+    __KEY.register_dtor() //~ ERROR  invocation of unsafe method requires unsafe
 }
 
 static FOO: std::thread::LocalKey<Foo> =
-    std::thread::LocalKey::new(__getit, //~ ERROR call to unsafe function requires unsafe
-                               __get_state,
-                               __pre_init,
-                               Default::default,
-                               __post_init,
-                               __rollback_init);
+    std::thread::LocalKey::new(__get, //~ ERROR call to unsafe function requires unsafe
+                               __register_dtor,
+                               Default::default);
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));

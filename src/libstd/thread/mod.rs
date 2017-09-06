@@ -197,6 +197,8 @@ pub use self::local::{LocalKey, LocalKeyState, AccessError};
 // where available, but both are needed.
 
 #[unstable(feature = "libstd_thread_internals", issue = "0")]
+#[doc(hidden)] pub use self::local::LocalKeyValue as __LocalKeyValue;
+#[unstable(feature = "libstd_thread_internals", issue = "0")]
 #[cfg(target_thread_local)]
 #[doc(hidden)] pub use self::local::fast::Key as __FastLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "0")]

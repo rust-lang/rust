@@ -13,6 +13,7 @@
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
 use fmt;
+use cell::UnsafeCell;
 
 /// A thread local storage key which owns its contents.
 ///
@@ -103,26 +104,11 @@ pub struct LocalKey<T: 'static> {
 
     // Get a reference to the value. get can be called at any time during the
     // value's life cycle (Uninitialized, Initializing, Valid, and Destroyed).
-    // If it returns Some, then the key value is in the Valid state. Otherwise,
-    // if is in one of the other three states (use the get_state callback to
-    // check which one).
-    get: unsafe fn() -> &'static Option<T>,
-    // Query the value's current state.
-    get_state: unsafe fn() -> LocalKeyState,
-    // Begin initialization, moving the value into the Initializing state, and
-    // performing any platform-specific initialization.
-    //
-    // After pre_init has been called, it must be safe to call rollback_init
-    // and then pre_init an arbitrary number of times - if init panics, we
-    // call rollback_init to move back to the Uninitialized state, and we
-    // may try to initialize again in a future call to with or try_with.
-    pre_init: unsafe fn(),
-    // Finalize initialization, using the provided value as the initial value
-    // for this key. Move the value into the Initialized state.
-    post_init: unsafe fn(T),
-    // Roll back a failed initialization (caused by init panicking). Move the
-    // value back into the Uninitialized state.
-    rollback_init: unsafe fn(),
+    get: unsafe fn() -> &'static UnsafeCell<LocalKeyValue<T>>,
+
+    // Register a destructor for the value. register_dtor should be called
+    // after the key has been transitioned into the Valid state.
+    register_dtor: unsafe fn(),
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -181,8 +167,8 @@ macro_rules! thread_local {
 #[allow_internal_unstable]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
-        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
+    (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        {
             #[thread_local]
             #[cfg(target_thread_local)]
             static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
@@ -192,28 +178,44 @@ macro_rules! __thread_local_inner {
             static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                 $crate::thread::__OsLocalKeyInner::new();
 
-            unsafe fn __getit() -> &'static $crate::option::Option<$t> { __KEY.get() }
+            unsafe fn __get() -> &'static $crate::cell::UnsafeCell<$crate::thread::
+                __LocalKeyValue<$t>> { __KEY.get() }
 
-            unsafe fn __get_state() -> $crate::thread::LocalKeyState { __KEY.get_state() }
+            // Only the fast implementation needs a destructor explicitly
+            // registered - the OS implementation's destructor is registered
+            // automatically by std::sys_common::thread_local::StaticKey.
+            #[cfg(target_thread_local)]
+            unsafe fn __register_dtor() { __KEY.register_dtor() }
+            #[cfg(not(target_thread_local))]
+            unsafe fn __register_dtor() {}
 
-            unsafe fn __pre_init() { __KEY.pre_init() }
-
+            #[inline]
             fn __init() -> $t { $init }
 
-            unsafe fn __post_init(val: $t) { __KEY.post_init(val) }
+            unsafe { $crate::thread::LocalKey::new(__get, __register_dtor, __init) }
+        }
+    };
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        #[cfg(stage0)]
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
 
-            unsafe fn __rollback_init() { __KEY.rollback_init() }
-
-            unsafe {
-                $crate::thread::LocalKey::new(__getit,
-                                              __get_state,
-                                              __pre_init,
-                                              __init,
-                                              __post_init,
-                                              __rollback_init)
-            }
-        };
+        #[cfg(not(stage0))]
+        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
     }
+}
+
+#[unstable(feature = "thread_local_state",
+           reason = "state querying was recently added",
+           issue = "27716")]
+#[doc(hidden)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub enum LocalKeyValue<T> {
+    Uninitialized,
+    Initializing,
+    Valid(T),
+    Destroyed,
 }
 
 /// Indicator of the state of a thread local storage key.
@@ -244,6 +246,11 @@ pub enum LocalKeyState {
     ///
     /// Keys in the `Initializing` state will trigger a panic when accessed via
     /// [`with`].
+    ///
+    /// Note to allocator implementors: On some platforms, initializing a TLS
+    /// key causes allocation to happen _before_ the key is moved into the
+    /// `Initializing` state. Thus, it is not necessarily safe for a global
+    /// allocator to use this TLS mechanism.
     ///
     /// [`try_with`]: ../../std/thread/struct.LocalKey.html#method.try_with
     /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
@@ -332,20 +339,12 @@ impl<T: 'static> LocalKey<T> {
     #[unstable(feature = "thread_local_internals",
                reason = "recently added to create a key",
                issue = "0")]
-   pub const unsafe fn new(get: unsafe fn() -> &'static Option<T>,
-                    get_state: unsafe fn() -> LocalKeyState,
-                    pre_init: unsafe fn(),
-                    init: fn() -> T,
-                    post_init: unsafe fn(T),
-                    rollback_init: unsafe fn())
-                    -> LocalKey<T> {
+   pub const unsafe fn new(get: unsafe fn() -> &'static UnsafeCell<LocalKeyValue<T>>,
+                           register_dtor: unsafe fn(), init: fn() -> T) -> LocalKey<T> {
        LocalKey {
-           get,
-           get_state,
-           pre_init,
            init,
-           post_init,
-           rollback_init,
+           get,
+           register_dtor,
        }
    }
 
@@ -366,38 +365,49 @@ impl<T: 'static> LocalKey<T> {
                                  or during or after it is destroyed")
     }
 
-    unsafe fn init(&self) {
-        struct RollbackOnPanic {
+    unsafe fn init(&self, slot: &UnsafeCell<LocalKeyValue<T>>) {
+        struct RollbackOnPanic<'a, T: 'a> {
             panicking: bool,
-            rollback: unsafe fn(),
+            slot: &'a UnsafeCell<LocalKeyValue<T>>,
         }
 
-        impl Drop for RollbackOnPanic {
+        impl<'a, T: 'a> Drop for RollbackOnPanic<'a, T> {
             fn drop(&mut self) {
                 if self.panicking {
-                    unsafe { (self.rollback)() }
+                    unsafe { *self.slot.get() = LocalKeyValue::Uninitialized }
                 }
             }
         }
 
         let mut reset = RollbackOnPanic {
             panicking: true,
-            rollback: self.rollback_init,
+            slot,
         };
 
-        // Transition into Valid, perform any pre-init work (e.g., registering
-        // destructors). If self.init panics, the Drop method of RollbackOnPanic
-        // will call self.rollback, rolling back the state to Uninitialized.
-        //
-        // Note that once self.pre_init has been called once, it must be safe to call
-        // self.rollback_init and then self.pre_init an arbitrary number of times - if
-        // self.init panics, a future call to with or try_with will again try to
-        // initialize the value, causing this routine to be run.
-        (self.pre_init)();
+        // Transition into Initializing in preparation for calling self.init.
+        *slot.get() = LocalKeyValue::Initializing;
+        // Call the initializer; if this panics, the Drop method of RollbackOnPanic
+        // will roll back to LocalKeyValue::Uninitialized.
         let val = (self.init)();
         reset.panicking = false;
-        // Transition into Valid, set the value to val.
-        (self.post_init)(val);
+        // If we get here, self.init didn't panic, so move into state Valid and
+        // register the destructor.
+        *slot.get() = LocalKeyValue::Valid(val);
+        // NOTE(joshlf): Calling self.register_dtor here (after transitioning
+        // into Initializing and then into Valid) guarantees that, for the fast
+        // implementation, no allocation happens until after a key has transitioned
+        // into Initializing. This allows a global allocator to make use of this
+        // TLS implementation and still be able to detect a recusive call to alloc.
+        //
+        // Unfortunately, no such guarantee exists on platforms that cannot use
+        // the fast implementation - std::sys_common::thread_local::StaticKey's
+        // get and set methods both allocate under the hood, and the only way to
+        // get or modify thread-local data is to use those methods. Thus, we cannot
+        // guarantee that TLS is always safe to use in the implementation of global
+        // allocators. If somebody in the future figures out a way to postpone
+        // allocation until after the transition to Initializing, that would be
+        // great.
+        (self.register_dtor)();
     }
 
     /// Query the current state of this key.
@@ -429,7 +439,14 @@ impl<T: 'static> LocalKey<T> {
                reason = "state querying was recently added",
                issue = "27716")]
     pub fn state(&'static self) -> LocalKeyState {
-        unsafe { (self.get_state)() }
+        unsafe {
+            match &*(self.get)().get() {
+                &LocalKeyValue::Uninitialized => LocalKeyState::Uninitialized,
+                &LocalKeyValue::Initializing => LocalKeyState::Initializing,
+                &LocalKeyValue::Valid(_) => LocalKeyState::Valid,
+                &LocalKeyValue::Destroyed => LocalKeyState::Destroyed,
+            }
+        }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -449,19 +466,23 @@ impl<T: 'static> LocalKey<T> {
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
                       where F: FnOnce(&T) -> R {
         unsafe {
-            if let &Some(ref inner) = (self.get)() {
+            let slot = (self.get)();
+            if let &LocalKeyValue::Valid(ref inner) = &*slot.get() {
+                // Do this in a separate if branch (rather than just part of the
+                // match statement in the else block) to increase the performance
+                // of the fast path.
                 Ok(f(inner))
             } else {
-                match self.state() {
-                    LocalKeyState::Uninitialized => {
-                        self.init();
+                match *slot.get() {
+                    LocalKeyValue::Uninitialized => {
+                        self.init(slot);
                         // Now that the value is initialized, we're guaranteed
                         // not to enter this else block in the recursive call.
                         self.try_with(f)
                     }
-                    LocalKeyState::Initializing => Err(AccessError { init: true }),
-                    LocalKeyState::Destroyed => Err(AccessError { init: false }),
-                    LocalKeyState::Valid => unreachable!(),
+                    LocalKeyValue::Initializing => Err(AccessError { init: true }),
+                    LocalKeyValue::Destroyed => Err(AccessError { init: false }),
+                    LocalKeyValue::Valid(_) => unreachable!(),
                 }
             }
         }
@@ -474,18 +495,15 @@ pub mod fast {
     use cell::{Cell, UnsafeCell};
     use fmt;
     use mem;
-    use ptr;
     use sys::fast_thread_local::register_dtor;
-    use thread::LocalKeyState;
+    use thread::__LocalKeyValue;
 
     pub struct Key<T> {
-        inner: UnsafeCell<Option<T>>,
-        state: UnsafeCell<LocalKeyState>,
+        inner: UnsafeCell<__LocalKeyValue<T>>,
 
-        // Keep track of whether the destructor has been registered (this is
-        // not the same thing as not being in the Uninitialized state - we
-        // can transition back into that state in rollback_init). Remember
-        // that this variable is thread-local, not global.
+        // Keep track of whether the destructor has been registered (it's
+        // registered by LocalKey::init after the initializer successfully
+        // returns). Remember that this variable is thread-local, not global.
         dtor_registered: Cell<bool>,
     }
 
@@ -498,42 +516,16 @@ pub mod fast {
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
             Key {
-                inner: UnsafeCell::new(None),
-                state: UnsafeCell::new(LocalKeyState::Uninitialized),
+                inner: UnsafeCell::new(__LocalKeyValue::Uninitialized),
                 dtor_registered: Cell::new(false),
             }
         }
 
-        pub unsafe fn get(&self) -> &'static Option<T> {
-            &*self.inner.get()
+        pub unsafe fn get(&self) -> &'static UnsafeCell<__LocalKeyValue<T>> {
+            &*(&self.inner as *const _)
         }
 
-        pub unsafe fn get_state(&self) -> LocalKeyState {
-            *self.state.get()
-        }
-
-        pub unsafe fn pre_init(&self) {
-            // It's critical that we set the state to Initializing before
-            // registering destructors - if registering destructors causes
-            // allocation, and the global allocator uses TLS, then the
-            // allocator needs to be able to detect that the TLS is in
-            // the Initializing state and perform appropriate fallback
-            // logic rather than recursing infinitely.
-            *self.state.get() = LocalKeyState::Initializing;
-            self.register_dtor();
-        }
-
-        pub unsafe fn post_init(&self, val: T) {
-            *self.inner.get() = Some(val);
-            *self.state.get() = LocalKeyState::Valid;
-        }
-
-        pub unsafe fn rollback_init(&self) {
-            *self.inner.get() = None;
-            *self.state.get() = LocalKeyState::Uninitialized;
-        }
-
-        unsafe fn register_dtor(&self) {
+        pub unsafe fn register_dtor(&self) {
             if !mem::needs_drop::<T>() || self.dtor_registered.get() {
                 return
             }
@@ -546,12 +538,10 @@ pub mod fast {
 
     unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
-        let tmp = ptr::read((*ptr).inner.get());
-        // Set inner to None and set the state to Destroyed before we drop tmp
-        // so that a recursive call to get (called from the destructor) will
+        // Set inner to Destroyed before we drop tmp so that a
+        // recursive call to get (called from the destructor) will
         // be able to detect that the value is already being dropped.
-        ptr::write((*ptr).inner.get(), None);
-        *(*ptr).state.get() = LocalKeyState::Destroyed;
+        let tmp = mem::replace(&mut *(*ptr).inner.get(), __LocalKeyValue::Destroyed);
         drop(tmp);
     }
 }
@@ -560,21 +550,17 @@ pub mod fast {
 pub mod os {
     use cell::UnsafeCell;
     use fmt;
+    use ptr;
     use sys_common::thread_local::StaticKey as OsStaticKey;
-    use thread::LocalKeyState;
+    use thread::__LocalKeyValue;
 
     pub struct Key<T> {
         // OS-TLS key that we'll use to key off.
         os: OsStaticKey,
-        // The state of this key. os is only guaranteed to point to an
-        // allocated Value<T> if this state is Valid.
-        state: UnsafeCell<LocalKeyState>,
-        // Store a value here in addition to in the OsStaticKey itself so
-        // that if the OsStaticKey hasn't yet been allocated, we still have
-        // an Option that we can return a reference to. Unlike the real
-        // value, this value will always be None (because when the real
-        // value is initialized, we just use it directly).
-        dummy_value: UnsafeCell<Option<T>>,
+
+        // Dummy value that can be used once the Value<T> has already been
+        // deallocated. Its value is always Destroyed.
+        dummy_destroyed: UnsafeCell<__LocalKeyValue<T>>,
     }
 
     impl<T> fmt::Debug for Key<T> {
@@ -587,67 +573,56 @@ pub mod os {
 
     struct Value<T: 'static> {
         key: &'static Key<T>,
-        value: UnsafeCell<Option<T>>,
+        value: UnsafeCell<__LocalKeyValue<T>>,
     }
 
     impl<T: 'static> Key<T> {
         pub const fn new() -> Key<T> {
             Key {
                 os: OsStaticKey::new(Some(destroy_value::<T>)),
-                state: UnsafeCell::new(LocalKeyState::Uninitialized),
-                dummy_value: UnsafeCell::new(None),
+                dummy_destroyed: UnsafeCell::new(__LocalKeyValue::Destroyed),
             }
         }
 
-        pub unsafe fn get(&self) -> &'static Option<T> {
-            match *self.state.get() {
-                LocalKeyState::Valid => {
-                    // Since the state is Valid, we know that os points to
-                    // an allocated Value<T>.
-                    let ptr = self.os.get() as *mut Value<T>;
-                    debug_assert!(!ptr.is_null());
-                    &*(*ptr).value.get()
+        pub unsafe fn get(&'static self) -> &'static UnsafeCell<__LocalKeyValue<T>> {
+            let ptr = self.os.get() as *mut Value<T>;
+            if !ptr.is_null() {
+                if ptr as usize == 1 {
+                    // The destructor was already called (and set self.os to 1).
+                    return &self.dummy_destroyed;
                 }
-                _ => {
-                    // The dummy_value is guaranteed to always be None. This
-                    // allows us to avoid allocating if the state isn't Valid.
-                    // This is critical because it means that an allocator can
-                    // call try_with and detect that the key is in state
-                    // Initializing without recursing infinitely.
-                    &*self.dummy_value.get()
-                }
+                return &(*ptr).value;
             }
-        }
-
-        pub unsafe fn get_state(&self) -> LocalKeyState {
-            *self.state.get()
-        }
-
-        pub unsafe fn pre_init(&self) {
-            *self.state.get() = LocalKeyState::Initializing;
-        }
-
-        pub unsafe fn rollback_init(&self) {
-            *self.state.get() = LocalKeyState::Uninitialized;
-        }
-
-        pub unsafe fn post_init(&self, val: T) {
+            // If the lookup returned null, we haven't initialized our own
+            // local copy, so do that now.
             let ptr: Box<Value<T>> = box Value {
-                                             key: &*(self as *const _),
-                                             value: UnsafeCell::new(Some(val)),
-                                         };
+                key: &*(self as *const _),
+                value: UnsafeCell::new(__LocalKeyValue::Uninitialized),
+            };
             let ptr = Box::into_raw(ptr);
             self.os.set(ptr as *mut u8);
-            *self.state.get() = LocalKeyState::Valid;
+            &(*ptr).value
         }
     }
 
     unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+        // The OS TLS ensures that this key contains a NULL value when this
+        // destructor starts to run. We set it back to a sentinel value of 1 to
+        // ensure that any future calls to `get` for this thread will return
+        // `None`.
+        //
+        // Note that to prevent an infinite loop we reset it back to null right
+        // before we return from the destructor ourselves.
+        //
+        // FIXME: Setting this back to null means that, after this destructor
+        // returns, future accesses of this key will think that the state is
+        // Uninitialized (rather than Destroyed). We should figure out a way
+        // to fix this.
         let ptr = Box::from_raw(ptr as *mut Value<T>);
-        // Set the state to Destroyed before we drop ptr so that any recursive
-        // calls to get can detect that the destructor is already being called.
-        *ptr.key.state.get() = LocalKeyState::Destroyed;
+        let key = ptr.key;
+        key.os.set(1 as *mut u8);
         drop(ptr);
+        key.os.set(ptr::null_mut());
     }
 }
 
