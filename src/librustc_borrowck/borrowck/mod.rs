@@ -664,27 +664,27 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }, " (into closure)"),
         };
 
+        let extra_move_label = if need_note {
+            format!(" because it has type `{}`, which does not implement the `Copy` trait",
+                    moved_lp.ty)
+        } else {
+            String::new()
+        };
         // Annotate the use and the move in the span. Watch out for
         // the case where the use and the move are the same. This
         // means the use is in a loop.
         err = if use_span == move_span {
             err.span_label(
                 use_span,
-                format!("value moved{} here in previous iteration of loop",
-                         move_note));
+                format!("value moved{} here in previous iteration of loop{}",
+                         move_note,
+                         extra_move_label));
             err
         } else {
             err.span_label(use_span, format!("value {} here after move", verb_participle))
-               .span_label(move_span, format!("value moved{} here", move_note));
+               .span_label(move_span, format!("value moved{} here{}", move_note, extra_move_label));
             err
         };
-
-        if need_note {
-            err.note(&format!("move occurs because `{}` has type `{}`, \
-                               which does not implement the `Copy` trait",
-                              self.loan_path_to_string(moved_lp),
-                              moved_lp.ty));
-        }
 
         // Note: we used to suggest adding a `ref binding` or calling
         // `clone` but those suggestions have been removed because
@@ -1365,7 +1365,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             LpDowncast(ref lp_base, variant_def_id) => {
                 out.push('(');
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
-                out.push(':');
+                out.push_str(DOWNCAST_PRINTED_OPERATOR);
                 out.push_str(&self.tcx.item_path_str(variant_def_id));
                 out.push(')');
             }
