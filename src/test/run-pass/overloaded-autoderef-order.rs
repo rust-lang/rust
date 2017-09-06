@@ -75,7 +75,6 @@ pub fn main() {
     assert_eq!(Rc::new(nested).x, true);
 
     let nested_priv = priv_test::DerefWrapperHideX::new(true, DerefWrapper {x: 0, y: 1});
-    // FIXME(eddyb) #12808 should skip private fields.
-    // assert_eq!(nested_priv.x, 0);
+    assert_eq!(nested_priv.x, 0);
     assert_eq!((*nested_priv).x, 0);
 }

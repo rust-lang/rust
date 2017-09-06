@@ -365,6 +365,9 @@ impl Step for Rustc {
         // tiny morsel of metadata is used by rust-packaging
         let version = build.rust_version();
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        if let Some(sha) = build.rust_sha() {
+            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+        }
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include. The first argument to this script is where to put these DLLs
@@ -844,6 +847,9 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
+        if let Some(sha) = build.rust_sha() {
+            write_file(&plain_dst_src.join("git-commit-hash"), sha.as_bytes());
+        }
 
         // If we're building from git sources, we need to vendor a complete distribution.
         if build.rust_info.is_git() {
@@ -1157,6 +1163,9 @@ impl Step for Extended {
         install(&build.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = build.rust_version();
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        if let Some(sha) = build.rust_sha() {
+            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+        }
         install(&etc.join("README.md"), &overlay, 0o644);
 
         // When rust-std package split from rustc, we needed to ensure that during
@@ -1164,7 +1173,10 @@ impl Step for Extended {
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
         let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
-                                analysis_installer, docs_installer, std_installer];
+                                analysis_installer, std_installer];
+        if build.config.docs {
+            tarballs.push(docs_installer);
+        }
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
         }

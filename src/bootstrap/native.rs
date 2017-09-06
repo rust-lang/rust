@@ -367,7 +367,7 @@ impl Step for Openssl {
             if !ok {
                 panic!("failed to download openssl source")
             }
-            let mut shasum = if target.contains("apple") {
+            let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
                 let mut cmd = Command::new("shasum");
                 cmd.arg("-a").arg("256");
                 cmd
@@ -387,7 +387,7 @@ impl Step for Openssl {
         let dst = build.openssl_install_dir(target).unwrap();
         drop(fs::remove_dir_all(&obj));
         drop(fs::remove_dir_all(&dst));
-        build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
+        build.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
 
         let mut configure = Command::new(obj.join("Configure"));
         configure.arg(format!("--prefix={}", dst.display()));
@@ -417,6 +417,7 @@ impl Step for Openssl {
             "powerpc64-unknown-linux-gnu" => "linux-ppc64",
             "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
             "s390x-unknown-linux-gnu" => "linux64-s390x",
+            "sparc64-unknown-netbsd" => "BSD-sparc64",
             "x86_64-apple-darwin" => "darwin64-x86_64-cc",
             "x86_64-linux-android" => "linux-x86_64",
             "x86_64-unknown-freebsd" => "BSD-x86_64",
@@ -435,6 +436,15 @@ impl Step for Openssl {
         if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
             configure.arg("-mandroid");
             configure.arg("-fomit-frame-pointer");
+        }
+        if target == "sparc64-unknown-netbsd" {
+            // Need -m64 to get assembly generated correctly for sparc64.
+            configure.arg("-m64");
+            if build.build.contains("netbsd") {
+                // Disable sparc64 asm on NetBSD builders, it uses
+                // m4(1)'s -B flag, which NetBSD m4 does not support.
+                configure.arg("no-asm");
+            }
         }
         // Make PIE binaries
         // Non-PIE linker support was removed in Lollipop

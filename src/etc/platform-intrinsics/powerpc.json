@@ -156,6 +156,69 @@
             "llvm": "vupkh{1.kind}{1.data_type_short}",
             "ret": "s(16-32)",
             "args": ["0N"]
+        },
+        {
+            "intrinsic": "madds",
+            "width": [128],
+            "llvm": "vmhaddshs",
+            "ret": "s16",
+            "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "msumu{1.data_type_short}m",
+            "width": [128],
+            "llvm": "vmsumu{1.data_type_short}m",
+            "ret": "u32",
+            "args": ["u(8-16)", "1", "u32"]
+        },
+        {
+            "intrinsic": "msummbm",
+            "width": [128],
+            "llvm": "vmsummbm",
+            "ret": "s32",
+            "args": ["s8", "u8", "s32"]
+        },
+        {
+            "intrinsic": "msumshm",
+            "width": [128],
+            "llvm": "vmsumshm",
+            "ret": "s32",
+            "args": ["s16", "s16", "s32"]
+        },
+        {
+            "intrinsic": "msum{0.kind}hs",
+            "width": [128],
+            "llvm": "vmsum{0.kind}hs",
+            "ret": "i32",
+            "args": ["0N", "0N", "0"]
+        },
+        {
+            "intrinsic": "sum2s",
+            "width": [128],
+            "llvm": "vsum2sws",
+            "ret": "s32",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "sum4{0.kind}bs",
+            "width": [128],
+            "llvm": "vsum4{0.kind}bs",
+            "ret": "i32",
+            "args": ["0NN", "0"]
+        },
+        {
+            "intrinsic": "sum4shs",
+            "width": [128],
+            "llvm": "vsum4shs",
+            "ret": "s32",
+            "args": ["0N", "0"]
+        },
+        {
+            "intrinsic": "sums",
+            "width": [128],
+            "llvm": "vsumsws",
+            "ret": "s32",
+            "args": ["0", "0"]
         }
     ]
 }
