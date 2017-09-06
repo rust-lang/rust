@@ -616,8 +616,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 Operand::Consume(Lvalue::Local(l)) => *local = l,
                 ref op => bug!("Arg operand `{:?}` is {:?}, not local", idx, op)
             }
+        } else {
+            *local = self.local_map[Local::new(idx - self.args.len())];
         }
-        *local = self.local_map[Local::new(idx - self.args.len())];
     }
 
     fn visit_lvalue(&mut self,
