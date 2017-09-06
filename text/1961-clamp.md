@@ -1,7 +1,7 @@
 - Feature Name: clamp functions
 - Start Date: 2017-03-26
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1961/
+- Rust Issue: https://github.com/rust-lang/rust/issues/44095
 
 # Summary
 [summary]: #summary
