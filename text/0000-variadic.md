@@ -76,10 +76,10 @@ impl<'a> VaList<'a> {
 impl<'a> Clone for VaList<'a>;
 ```
 
-The type returned from `VaList::arg` must have a type usable in an FFI
-interface: `i8`, `i16`, `i32`, `i64`, `isize`, `u8`, `u16`, `u32`, `u64`,
-`usize`, `f32`, `f64`, `*const _`, `*mut _`, a `#[repr(C)]` struct or union, or
-a non-value-carrying enum with a `repr`-specified discriminant type.
+The type returned from `VaList::arg` must have a type usable in an `extern "C"`
+FFI interface; the compiler allows all the same types returned from
+`VaList::arg` that it allows in the function signature of an `extern "C"`
+function.
 
 All of the corresponding C integer and float types defined in the `libc` crate
 consist of aliases for the underlying Rust types, so `VaList::arg` can also
