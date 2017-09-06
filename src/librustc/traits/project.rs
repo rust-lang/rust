@@ -488,6 +488,13 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 ty.obligations = vec![];
             }
 
+            push_paranoid_cache_value_obligation(infcx,
+                                                 param_env,
+                                                 projection_ty,
+                                                 cause,
+                                                 depth,
+                                                 &mut ty);
+
             return Some(ty);
         }
         Err(ProjectionCacheEntry::Error) => {
@@ -610,6 +617,33 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
     obligations.shrink_to_fit();
 
     NormalizedTy { value: result.value, obligations }
+}
+
+/// Whenever we give back a cache result for a projection like `<T as
+/// Trait>::Item ==> X`, we *always* include the obligation to prove
+/// that `T: Trait` (we may also include some other obligations). This
+/// may or may not be necessary -- in principle, all the obligations
+/// that must be proven to show that `T: Trait` were also returned
+/// when the cache was first populated.  But there is a vague concern
+/// that perhaps someone would not have proven those, but also not
+/// have used a snapshot, in which case the cache could remain
+/// populated even though `T: Trait` has not been shown. Returning
+/// this "paranoid" obligation ensures that, no matter what has come
+/// before, if you prove the subobligations, we at least know that `T:
+/// Trait` is implemented.
+fn push_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                                                        param_env: ty::ParamEnv<'tcx>,
+                                                        projection_ty: ty::ProjectionTy<'tcx>,
+                                                        cause: ObligationCause<'tcx>,
+                                                        depth: usize,
+                                                        result: &mut NormalizedTy<'tcx>)
+{
+    let trait_ref = projection_ty.trait_ref(infcx.tcx).to_poly_trait_ref();
+    let trait_obligation = Obligation { cause,
+                                        recursion_depth: depth,
+                                        param_env,
+                                        predicate: trait_ref.to_predicate() };
+    result.obligations.push(trait_obligation);
 }
 
 /// If we are projecting `<T as Trait>::Item`, but `T: Trait` does not
