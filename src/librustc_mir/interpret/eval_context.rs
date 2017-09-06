@@ -467,8 +467,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             for block in mir.basic_blocks() {
                 for stmt in block.statements.iter() {
                     match stmt.kind {
-                        StorageLive(mir::Lvalue::Local(local)) |
-                        StorageDead(mir::Lvalue::Local(local)) => {
+                        StorageLive(local) |
+                        StorageDead(local) => {
                             set.insert(local);
                         }
                         _ => {}

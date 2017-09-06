@@ -7,7 +7,7 @@ before_script:
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
-- cargo install xargo
+- cargo install --git https://github.com/japaric/xargo.git
 - export RUST_SYSROOT=$HOME/rust
 script:
 - set -e
