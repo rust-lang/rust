@@ -367,17 +367,8 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
             ast::ItemKind::ExternCrate(_) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
-                let new_str = self.snippet(item.span);
-                if contains_comment(&new_str) {
-                    self.buffer.push_str(&new_str)
-                } else {
-                    let no_whitespace =
-                        &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
-                    self.buffer
-                        .push_str(&Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"));
-                }
-                self.last_pos = source!(self, item.span).hi();
+                let rw = rewrite_extern_crate(&self.get_context(), item);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Struct(ref def, ref generics) => {
                 let rewrite = {
@@ -1044,5 +1035,17 @@ fn get_derive_args(context: &RewriteContext, attr: &ast::Attribute) -> Option<Ve
             )
         }
         _ => None,
+    })
+}
+
+// Rewrite `extern crate foo;` WITHOUT attributes.
+pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
+    assert!(is_extern_crate(item));
+    let new_str = context.snippet(item.span);
+    Some(if contains_comment(&new_str) {
+        new_str
+    } else {
+        let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
+        String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
     })
 }
