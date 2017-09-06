@@ -345,25 +345,16 @@ impl<'a> FmtVisitor<'a> {
         match item.node {
             ast::ItemKind::Use(ref vp) => self.format_import(&item, vp),
             ast::ItemKind::Impl(..) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo());
-                if let Some(impl_str) =
-                    format_impl(&self.get_context(), item, self.block_indent, where_span_end)
-                {
-                    self.buffer.push_str(&impl_str);
-                    self.last_pos = source!(self, item.span).hi();
-                }
+                let rw = format_impl(&self.get_context(), item, self.block_indent, where_span_end);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Trait(..) => {
-                self.format_missing_with_indent(item.span.lo());
-                if let Some(trait_str) = format_trait(&self.get_context(), item, self.block_indent)
-                {
-                    self.buffer.push_str(&trait_str);
-                    self.last_pos = source!(self, item.span).hi();
-                }
+                let rw = format_trait(&self.get_context(), item, self.block_indent);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::ExternCrate(_) => {
                 let rw = rewrite_extern_crate(&self.get_context(), item);
@@ -371,17 +362,15 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Struct(ref def, ref generics) => {
                 let rewrite = {
-                    let indent = self.block_indent;
-                    let context = self.get_context();
                     ::items::format_struct(
-                        &context,
+                        &self.get_context(),
                         "struct ",
                         item.ident,
                         &item.vis,
                         def,
                         Some(generics),
                         item.span,
-                        indent,
+                        self.block_indent,
                         None,
                     ).map(|s| match *def {
                         ast::VariantData::Tuple(..) => s + ";",
