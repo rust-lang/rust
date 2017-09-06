@@ -3789,9 +3789,9 @@ impl<'a> Parser<'a> {
         is_defaultness
     }
 
-    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
+    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility, lo: Span)
                      -> PResult<'a, Option<P<Item>>> {
-        let lo = self.span;
+        let token_lo = self.span;
         let (ident, def) = match self.token {
             token::Ident(ident) if ident.name == keywords::Macro.name() => {
                 self.bump();
@@ -3811,7 +3811,7 @@ impl<'a> Parser<'a> {
                     };
                     TokenStream::concat(vec![
                         args.into(),
-                        TokenTree::Token(lo.to(self.prev_span), token::FatArrow).into(),
+                        TokenTree::Token(token_lo.to(self.prev_span), token::FatArrow).into(),
                         body.into(),
                     ])
                 } else {
@@ -3861,7 +3861,7 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
                 span: lo.to(self.prev_span),
             }
-        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited)? {
+        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited, lo)? {
             Stmt {
                 id: ast::DUMMY_NODE_ID,
                 node: StmtKind::Item(macro_def),
@@ -6011,7 +6011,7 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility)? {
+        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility, lo)? {
             return Ok(Some(macro_def));
         }
 
