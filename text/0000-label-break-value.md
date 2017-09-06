@@ -88,7 +88,7 @@ except that unlabelled `break`s or `continue`s which would bind to the implicit 
 
 This is perhaps not a conceptually simpler thing, but it has the advantage that all of the wrinkles are already well understood as a result of the work that went into RFC 1624. If *EXPR* contains explicit `break` statements as well as the implicit one, the compiler must be able to infer a single concrete type from the expressions in all of these `break` statements, including the whole of *EXPR*; this concrete type will be the type of the expression that the labelled block represents.
 
-Because the target of the `break` is ambiguous, code like the following is currently forbidden and will produce an error at compile time:
+Because the target of the `break` is ambiguous, code like the following will produce an error at compile time:
 ```rust
 loop {
     'labelled_block: {
@@ -98,7 +98,7 @@ loop {
     }
 }
 ```
-If the intended target of the `break` is the surrounding loop, it may not be clear to the user how to express that. In these circumstances, the error message should explicitly suggest labelling the loop so that the `break` can target it.
+If the intended target of the `break` is the surrounding loop, it may not be clear to the user how to express that. Where there is a surrounding loop, the error message should explicitly suggest labelling the loop so that the `break` can target it.
 ```rust
 'loop_label: loop {
     'labelled_block: {
@@ -132,7 +132,7 @@ We have three options for handling an unlabelled `break` or `continue` inside a 
  - bind `break` to the labelled block, compile error on `continue`
  - bind `break` and `continue` through the labelled block to a containing `loop`/`while`/`for`
 
-This RFC chooses the first option since it's the most conservative, in that it would be possible to switch to a different behaviour later without breaking working programs. The second is the simplest, but makes a large difference between labelled and unlabelled blocks, and means that a label might be used even when it's never referred to. The third is consistent with unlabelled blocks and with Java, but seems like a rich potential source of confusion.
+This RFC chooses the first option since it's the most conservative, in that it would be possible to switch to a different behaviour later without breaking working programs. The second is the simplest, but makes a large difference between labelled and unlabelled blocks, and means that a program might label a block without ever explicitly referring to that label just for this change in behavior. The third is consistent with unlabelled blocks and with Java, but seems like a rich potential source of confusion.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
