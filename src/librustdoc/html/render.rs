@@ -1752,9 +1752,13 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
     // We only emit warnings if the user has opted-in to Pulldown rendering.
     let output = if render_type == RenderType::Pulldown {
+        // Save the state of USED_ID_MAP so it only gets updated once even
+        // though we're rendering twice.
+        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+        let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
+        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
         let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
         let differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
         let differences = differences.into_iter()
@@ -1775,7 +1779,7 @@ fn render_markdown(w: &mut fmt::Formatter,
 
         pulldown_output
     } else {
-        hoedown_output
+        format!("{}", Markdown(md_text, RenderType::Hoedown))
     };
 
     write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
