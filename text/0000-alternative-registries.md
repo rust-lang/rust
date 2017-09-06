@@ -7,123 +7,178 @@
 [summary]: #summary
 
 This RFC proposes the addition of the support for alternative crates.io servers to be used
-alongside the public crates.io server. This would allow users to publish crates to their
-own private instance of crates.io, while still able to use the public instance of crates.io.
+alongside the public crates.io server. This would allow users to publish crates to their own
+private instance of crates.io, while still able to use the public instance of crates.io.
 
 # Motivation
 [motivation]: #motivation
 
 Cargo currently has support for getting crates from a public server, which works well for open
-source projects using Rust, however is problematic for closed source code. A workaround for
-this is to use Git repositories to specify the packages, but that means that the helpful
-versioning and discoverability that Cargo and crates.io provides is lost. We would like to
-change this such that it is possible to have a local crates.io server which crates can be
-pushed to, while still making use of the public crates.io server.
+source projects using Rust, however is problematic for closed source code. A workaround for this is
+to use Git repositories to specify the packages, but that means that the helpful versioning and
+discoverability that Cargo and crates.io provides is lost. We would like to change this such that
+it is possible to have a local crates.io server which crates can be pushed to, while still making
+use of the public crates.io server.
 
 We would also like to support the use of crates.io mirrors. These differ from alternative
-registries in that a mirror completely replicates the functionality and content of
-crates.io. A mirror would be useful if we ever need a fallback for when crates.io
-goes down, or in areas of the world where crates.io is blocked.
+registries in that a mirror completely replicates the functionality and content of crates.io. A
+mirror would be useful if we ever need a fallback for when crates.io goes down, or in areas of the
+world where crates.io is blocked.
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
 ## Registry definition specification
+[registry-definition-specification]: #registry-definition-specification
 
 We need a way to define what registries are valid for Cargo to pull from and publish to. For this
-purpose, we propose that users would be able to define multiple registries in the global
-`~/.cargo/config` file. This would allow the user to specify what registry they want to publish
-to without binding registries directly with projects.
+purpose, we propose that users would be able to define multiple registries in a [`.cargo/config`
+file](http://doc.crates.io/config.html). This allows the user to specify the locations of
+registries in one place, in a parent directory of all projects, rather than needing to configure
+the registry location within each project's `Cargo.toml`. Once a registry has been configured with
+a name, each `Cargo.toml` can use the registry name to refer to that registry.
 
-config doesn't have to be global - goes up reference tree from project to project, goes to first
-one finds
+Another benefit of using `.cargo/config` is that these files are not typically checked in to the
+projects' source control. The registries might have credentials associated with them, which should
+not be checked in. Separating the URLs and the use of the URLs in this way encourages good security
+practices of not checking in credentials.
 
-token moved to cargo credentials so different file permissions
-registry file index location exists, keep
-need to add name
-
-[registry.new-registry]
-index or host
-[registry.other-registry]
-
-in cargo toml could say registry = new-registry, and would know to look in config for registry host/index
-
-
-TODO what do users specify in the config for the registry? name, where does the token come from?
-TODO how do individual crates specify what registry to use?
-
-Explain the proposal as if it was already included in the language and you were teaching it to another Rust programmer. That generally means:
-
-- Introducing new named concepts.
-- Explaining the feature largely in terms of examples.
-- Explaining how Rust programmers should *think* about the feature, and how it should impact the way they use Rust. It should explain the impact as concretely as possible.
-- If applicable, provide sample error messages, deprecation warnings, or migration guidance.
-- If applicable, describe the differences between teaching this to existing Rust programmers and new Rust programmers.
-
-For implementation-oriented RFCs (e.g. for compiler internals), this section should focus on how compiler contributors should think about the change, and give examples of its concrete impact. For policy RFCs, this section should provide an example-driven introduction to the policy, and explain its impact in concrete terms.
-
-----
-
-A crate that describes where it publishes to would add
-the `registry` key to the `package` section of Cargo.toml:
+In order to tell Cargo about a registry other than crates.io, you can specify and name it in a
+`.cargo/config` as follows:
 
 ```toml
-[package]
-name = "serde"
-registry = "http://example.com/"
+[registry.$choose-a-name]
+index = "https://username:password@my-intranet:8080/index"
 ```
 
-A crate using a dependency from a different registry would add
-the `registry` key to the `dependencies` section of Cargo.toml:
+Instead of `$choose-a-name`, place the name you'd like to use to refer to this registry in your
+`Cargo.toml` files. The `index` key should contain the location of the registry index for this
+registry; the registry format is specified in the [Registry Index Format Specification
+section][registry-index-format-specification].
+
+### CI
+
+Because this system discourages checking in the registry configuration, the registry configuration
+won't be immediately available to continuous integration systems like TravisCI. However, Cargo
+currently supports configuring any key in `.cargo/config` using environment variables instead:
+
+> Cargo can also be configured through environment variables in addition to the TOML syntax above.
+> For each configuration key above of the form `foo.bar` the environment variable `CARGO_FOO_BAR`
+> can also be used to define the value. For example the build.jobs key can also be defined by
+> `CARGO_BUILD_JOBS`.
+
+To configure TravisCI to use an alternate registry named `my-registry` for example, you can use
+[Travis' encrypted environment variables feature](https://docs.travis-ci.com/user/environment-variables/#Defining-encrypted-variables-in-.travis.yml) to set:
+
+`CARGO_REGISTRY_MY_REGISTRY_INDEX=https://username:password@my-intranet:8080/index`
+
+## Using a dependency from another registry
+
+*Note: this syntax will initially be implemented as an [unstable cargo
+feature](https://github.com/rust-lang/cargo/pull/4433) available in nightly cargo only and
+stabilized as it becomes ready.*
+
+Once you've configured a registry (with a name, for example, `my-registry`) in `.cargo/config`, you
+can specify that a dependency comes from an alternate registry by using the `registry` key:
 
 ```toml
-[dependencies.serde]
-registry = "http://example.com/"
+[dependencies]
+secret-crate = { version = "1.0", registry = "my-registry" }
 ```
 
-Without further configuration, the value of the key for `registry`
-will be used as the URL for the registry. Optionally, a user can
-configure settings for a registry in the `.cargo` configuration files:
+## Publishing to another registry; preventing unwanted publishes
+
+In order to specify that a crate should only be published to a particular set of registries,
+specify in the `[package]` section the allowed registries using the `publish-registries` key and
+specifying the list of registries that are allowed with `cargo publish`.
 
 ```
-[registries."http://example.com/"]
-url = "https://example.org/api"
-username = "anna"
-token = "secret"
+publish-registries = ["my-registry"]
 ```
 
-This allows for user-wide settings like usernames and tokens. A user
-may even use a `registry` key like `my-registry` if they wanted
-increased indirection.
+If you run `cargo publish` without specifying an `--index` argument pointing to an allowed
+registry, the command will fail. This prevents accidental publishes of private crates to crates.io,
+for example.
 
+## Running a minimal registry
+
+The most minimal form of a registry that Cargo can use will consist of:
+
+- A registry in the format specified in the [Registry index format specification
+  section][registry-index-format-specification], which contains a pointer to:
+- A location containing the `.crate` files for the crates in the registry.
+
+## Running a fully-featured registry
+
+This RFC does not attempt to standardize or specify any of crates.io's APIs, but it should be
+possible to take crates.io's codebase and run it along with a registry index in order to provide
+crates.io's functionality as an alternate registry.
+
+## Crates.io
+
+Because crates.io's purpose is to be a reliable host for open source crates, crates that have
+dependencies from registries other than crates.io will be rejected at publish time. Crates.io
+cannot make availability guarantees about alternate registries, so much like git dependencies
+today, publishing with dependencies from other registries won't be allowed.
+
+In crates.io's codebase, we will add a configuration option that specifies a list of approved
+alternate registry locations that dependencies may use. For private registries run using
+crates.io's code, this will likely include the private registry itself plus crates.io, so that
+private crates are allowed to depend on open source crates. Any crates with dependencies from
+registries not specified in this configuration option will be rejected at publish time.
 
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
+## Related issues
+
+In order to make working with multiple registries more convenient, we would also like to support:
+
+- [Being able to specify the API host rather than the index
+  location](https://github.com/rust-lang/cargo/issues/4208), so that, for example, you could
+  specify `https://crates.io` rather than `https://github.com/rust-lang/crates.io-index`. We do not
+  want to *require* specifying the API host, since some registries will choose not to have an API
+  host at all and only supply an index and a location for crate files. This would require the API
+  to have a way to tell Cargo where the associated registry index is located.
+- [Being able to save multiple tokens in
+  `.cargo/credentials`](https://github.com/rust-lang/cargo/issues/3365), one per registry, so that
+  people publishing to multiple registries don't need to log in over and over or specify tokens on
+  every publish.
+- Being able to specify `--registry registry-name` for all Cargo commands that currently take
+  `--index`
+- Being able to use a dependency under a different name. Alternate registries that are not mirrors
+  should be allowed to have crates with the same name as crates in any other registry, including
+  crates.io. In order to allow a crate to depend on both, say, the `http` crate from crates.io and
+  the `http` crate from a private registry, at least one will need to be renamed when listed as a
+  dependency in `Cargo.toml`. [RFC
+  2126](https://github.com/aturon/rfcs/blob/path-clarity/text/0000-path-clarity.md#basic-changes)
+  proposes this change as follows:
+
+  > Cargo will provide a new crate key for aliasing dependencies, so that e.g. users who want to
+  > use the `rand` crate but call it `random` instead can now write `random = { version = "0.3",
+  > crate = "rand" }`.
+
 ## Registry index format specification
+[registry-index-format-specification]: #registry-index-format-specification
 
-Cargo needs to be able to get a registry index containing metadata for all
-crates and their dependencies available from an alternate registry in order to
-perform offline version resolution. The registry index for crates.io is
-available at
-[https://github.com/rust-lang/crates.io-index](https://github.com/rust-lang/crat
-es.io-index), and this section aims to specify the format of this registry
-index so that other registries can provide their own registry index that Cargo
-will understand.
+Cargo needs to be able to get a registry index containing metadata for all crates and their
+dependencies available from an alternate registry in order to perform offline version resolution.
+The registry index for crates.io is available at
+[https://github.com/rust-lang/crates.io-index](https://github.com/rust-lang/crates.io-index), and
+this section aims to specify the format of this registry index so that other registries can provide
+their own registry index that Cargo will understand.
 
-This is version 1 of the registry index format specification. There may be
-other versions of the specification someday. Along with a new specification
-version will be a plan for supporting registries using the older specification
-and a migration plan for registries to upgrade the specification version their
-index is using.
+This is version 1 of the registry index format specification. There may be other versions of the
+specification someday. Along with a new specification version will be a plan for supporting
+registries using the older specification and a migration plan for registries to upgrade the
+specification version their index is using.
 
 A valid registry index meets the following criteria:
 
-- The registry index is stored in a git repository so that Cargo can
-  efficiently fetch incremental updates to the index.
-- There will be a file at
-  the top level named `config.json`. This file will be a valid JSON object with
-  the following keys:
+- The registry index is stored in a git repository so that Cargo can efficiently fetch incremental
+  updates to the index.
+- There will be a file at the top level named `config.json`. This file will be a valid JSON object
+  with the following keys:
 
   ```json
   {
@@ -133,20 +188,18 @@ A valid registry index meets the following criteria:
   }
   ```
 
-  The `dl` key is required specifies where Cargo can download the tarballs
-  containing the source files of the crates listed in the registry.
+  The `dl` key is required specifies where Cargo can download the tarballs containing the source
+  files of the crates listed in the registry.
 
-  The `api` key is optional and specifies where Cargo can find the API server
-  that provides the same API functionality that crates.io does today, such as
-  publishing and searching. Without the `api` key, these features will not be
-  available. This RFC is not attempting to standardize crates.io's API in any
-  way, although that could be a future enhancement.
+  The `api` key is optional and specifies where Cargo can find the API server that provides the
+  same API functionality that crates.io does today, such as publishing and searching. Without the
+  `api` key, these features will not be available. This RFC is not attempting to standardize
+  crates.io's API in any way, although that could be a future enhancement.
 
-  The `allowed-registries` key is optional and specifies the other registries
-  that crates in this index are allowed to have dependencies on. The default
-  will be nothing, which will mean only crates that depend on other crates in
-  the current registry are allowed. This is currently the case for crates.io
-  and will remain the case for crates.io going forward. Alternate registries
+  The `allowed-registries` key is optional and specifies the other registries that crates in this
+  index are allowed to have dependencies on. The default will be nothing, which will mean only
+  crates that depend on other crates in the current registry are allowed. This is currently the
+  case for crates.io and will remain the case for crates.io going forward. Alternate registries
   will probably want to add crates.io to this list.
 
 - There will be a number of directories in the git repository.
@@ -159,12 +212,11 @@ A valid registry index meets the following criteria:
     of their name. For example, a file for a crate named `sample` would be
     found in `sa/mp/`.
 
-- For each crate in the registry, there will be a file with the name of that
-  crate in the directory structure as specified above. The file will contain
-  metadata about each version of the crate, with one version per line. Each
-  line will be valid JSON with, minimally, the keys as shown. More keys may be
-  added, but Cargo may ignore them. The contents of one line are pretty-printed
-  here for readability.
+- For each crate in the registry, there will be a file with the name of that crate in the directory
+  structure as specified above. The file will contain metadata about each version of the crate,
+  with one version per line. Each line will be valid JSON with, minimally, the keys as shown. More
+  keys may be added, but Cargo may ignore them. The contents of one line are pretty-printed here
+  for readability.
 
   ```json
   {
@@ -207,43 +259,57 @@ A valid registry index meets the following criteria:
     - `features`: a list of the features available from this crate
     - `yanked`: whether or not this version has been yanked
 
-  Within the `deps` list, each dependency should be listed as an item in the `deps` array with the following keys:
+  Within the `deps` list, each dependency should be listed as an item in the `deps` array with the
+  following keys:
 
     - `name`: the name of the dependency
     - `req`: the semver version requirement string on this dependency
-    - `registry`: **New to this RFC: the registry from which this crate is
-      available**
+    - `registry`: **New to this RFC: the registry from which this crate is available**
     - `features`: a list of the features available from this crate
     - `optional`: whether this dependency is optional or not
-    - `default_features`: whether the parent crate uses the default features of
-      this dependency or not
+    - `default_features`: whether the parent uses the default features of this dependency or not
     - `target`: on which target this dependency is needed
-    - `kind`: can be `normal`, `build`, or `dev` to be a regular dependency, a
-      build-time dependency, or a development dependency
+    - `kind`: can be `normal`, `build`, or `dev` to be a regular dependency, a build-time
+      dependency, or a development dependency
 
-If a dependency's registry is not specified, Cargo will assume the dependency can be located in the current registry. By specifying the registry of a dependency in the index, cargo will have the information it needs to fetch crate files from the registry indices involved without needing to involve an API server.
+If a dependency's registry is not specified, Cargo will assume the dependency can be located in the
+current registry. By specifying the registry of a dependency in the index, cargo will have the
+information it needs to fetch crate files from the registry indices involved without needing to
+involve an API server.
 
-Currently, the knowledge of how to create a file in this format is spread
-between Cargo and crates.io. This RFC proposes the addition of a Cargo command
-that would generate this file locally for the current crate so that it can be
-added to the git repository using a mechanism other than a server running
-crates.io's codebase.
+## New command: `cargo generate-index-metadata`
+
+Currently, the knowledge of how to create a file in the registry index format is spread between
+Cargo and crates.io. This RFC proposes the addition of a Cargo command that would generate this
+file locally for the current crate so that it can be added to the git repository using a mechanism
+other than a server running crates.io's codebase.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Why should we *not* do this?
+Supporting alternative registries, and having multiple public registries, could fracture the
+ecosystem. However, we feel that supporting private registries, and the Rust adoption that could
+enable, outweighs the potential downsides of having multiple public registries.
 
 # Rationale and Alternatives
 [alternatives]: #alternatives
 
-- Why is this design the best in the space of possible designs?
-- What other designs have been considered and what is the rationale for not choosing them?
-- What is the impact of not doing this?
+A [previous RFC](https://github.com/rust-lang/rfcs/pull/2006) proposed having the registry
+information completely defined within `Cargo.toml` rather than using `.cargo/config`. This requires
+repeating the same information multiple times for multiple projects, and encourages checking in
+credentials that might be needed to access the registries. That RFC also didn't specify the format
+for the registry index, which needs to be shared among all registries.
+
+An alternative design could be to support specifying the registry URL in either `.cargo/config` or
+`Cargo.toml`. This has the downsides of creating more choices for the user and potentially
+encouraging poor practices such as checking credentials into a project's source control. The
+implementation of this feature would also be more complex. The upside would be supporting
+configuration in ways that would be more convenient in various situations.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- What parts of the design do you expect to resolve through the RFC process before this gets merged?
-- What parts of the design do you expect to resolve through the implementation of this feature before stabilization?
-- What related issues do you consider out of scope for this RFC that could be addressed in the future independently of the solution that comes out of this RFC?
+- Are the names of everything what we want?
+  - `cargo generate-index-metadata`?
+  - `registry = my-registry`?
+  - `publish-registries = []`?
