@@ -25,6 +25,7 @@ use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
+use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
@@ -36,6 +37,7 @@ pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
     pub self_desc: Option<String>,
+    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -335,6 +337,10 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                     Err(cname) => {
                         err.note(&format!("conflicting implementation in crate `{}`", cname));
                     }
+                }
+
+                for cause in &overlap.intercrate_ambiguity_causes {
+                    cause.add_intercrate_ambiguity_hint(&mut err);
                 }
 
                 err.emit();
