@@ -27,16 +27,16 @@ fn nested_lifetime(arg: &&'inner Foo) -> &'inner Bar
 fn outer_lifetime(arg: &'outer &Foo) -> &'outer Bar
 ```
 
-It also proposes linting against leaving off lifetime parameters in structs
-(like `Ref` or `Iter`), instead nudging people to use explicit lifetimes in this
-case (but leveraging the other improvements to make it ergonomic to do so).
+Lint against leaving off lifetime parameters in structs (like `Ref` or `Iter`),
+instead nudging people to use explicit lifetimes in this case (but leveraging
+the other improvements to make it ergonomic to do so).
 
 The changes, in summary, are:
 
 - A signature is taken to bind any lifetimes it mentions that are not already bound.
-- A style lint checks that lifetimes bound in `impl` headers are capitalized, to
-  avoid confusion with lifetimes bound within functions. (There are some
-  additional, less important lints proposed as well.)
+- A style lint checks that lifetimes bound in `impl` headers are multiple
+  characters long, to reduce potential confusion with lifetimes bound within
+  functions. (There are some additional, less important lints proposed as well.)
 - You can write `'_` to explicitly elide a lifetime, and it is deprecated to
   entirely leave off lifetime arguments for non-`&` types
 
@@ -252,18 +252,18 @@ might not otherwise be clear.
 ## `impl` blocks and lifetimes
 
 When writing an `impl` block for a structure that takes a lifetime parameter,
-you can give that parameter a name, which by convention is capitalized (to
-clearly distinguish it from lifetimes introduced at the `fn` level):
+you can give that parameter a name, which you should strive to make
+*meaningful*:
 
 ```rust
-impl<T> VecIter<'Vec, T> { ... }
+impl<T> VecIter<'vec, T> { ... }
 ```
 
 This name can then be referred to in the body:
 
 ```rust
-impl<T> VecIter<'Vec, T> {
-    fn foo(&self) -> &'Vec T { ... }
+impl<T> VecIter<'vec, T> {
+    fn foo(&self) -> &'vec T { ... }
     fn bar(&self, arg: &'a Bar) -> &'a Bar { ... }
 }
 ```
@@ -297,13 +297,16 @@ impl<'a, 'b> SomeTrait<'a> for SomeType<'a, 'b> { ... }
 tomorrow you would write:
 
 ```rust
-impl Iterator for MyIter<'A> { ... }
-impl SomeTrait<'A> for SomeType<'A, 'B> { ... }
+impl Iterator for MyIter<'iter> { ... }
+impl SomeTrait<'tcx, 'gcx> for SomeType<'tcx, 'gcx> { ... }
 ```
 
+If any lifetime names are explicitly bound, they all must be.
+
 This change goes hand-in-hand with a convention that lifetimes introduced in
-`impl` headers (and perhaps someday, modules) are capitalized; this convention
-will be enforced through the existing naming style lints.
+`impl` headers (and perhaps someday, modules) should be multiple characters,
+i.e. "meaningful" names, to reduce the chance of collision with typical `'a`
+usage in functions.
 
 ## Lifetimes in `fn` signatures
 
@@ -343,6 +346,8 @@ fn take_fn_simple(f: fn(&Foo) -> &Bar)
 fn take_fn(x: &'a u32, y: for<'b> fn(&'a u32, &'b u32, &'b u32))
 ```
 
+If any lifetime names are explicitly bound, they all must be.
+
 For higher-ranked types (including cases like `Fn` syntax), elision works as it
 does today. However, **it is an error to mention a lifetime in a higher-ranked
 type that hasn't been explicitly bound** (either at the outer `fn` definition,
@@ -378,12 +383,12 @@ fn iter(&self) -> Iter<'_, T>
 
 ## Additional lints
 
-Beyond the change to the style lint for capitalizing `impl` header lifetimes,
-two more lints are provided:
+Beyond the change to the style lint for `impl` header lifetimes, two more lints
+are provided:
 
-- One deny-by-default lint against `fn` definitions in which a lifetime occurs
-  exactly once. Such lifetimes can always be replaced by `'_` (or for `&`,
-  elided altogether), and giving an explicit name is confusing at best, and
+- One deny-by-default lint against `fn` definitions in which an unbound lifetime
+  occurs exactly once. Such lifetimes can always be replaced by `'_` (or for
+  `&`, elided altogether), and giving an explicit name is confusing at best, and
   indicates a typo at worst.
 
 - An expansion of Clippy's lints so that they warn when a signature contains
@@ -401,6 +406,14 @@ The fact that lifetime parameters are not bound in an out-of-band way is
 somewhat unusual and might be confusing---but then, so are lifetime parameters!
 Putting the bindings out of band buys us very little, as argued in the next
 section.
+
+It's possible that the inconsistency with type parameters, which must always be
+bound explicitly, will be confusing. In particular, lifetime parameters for
+`struct` definitions appear side-by-side with parameter lists, but elsewhere are
+bound differently. However, users are virtually certain to encounter type
+generics prior to explicit lifetime generics, and if they try to follow the same
+style -- by binding lifetime parameters explicitly -- that will work just fine
+(but may be linted in Clippy as unnecessary).
 
 Requiring a `'_` rather than being able to leave off lifetimes altogether may be
 a slight decrease in ergonomics in some cases. In particular, `SomeType<'_>` is
