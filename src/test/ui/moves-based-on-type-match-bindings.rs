@@ -21,11 +21,11 @@ fn f10() {
 
     let y = match x {
         Foo {f} => {}
+        //~^ NOTE value moved here because it has type `std::string::String`, which does not
     };
 
     touch(&x); //~ ERROR use of partially moved value: `x`
-    //~^ value used here after move
-    //~| move occurs because `x.f` has type `std::string::String`
+    //~^ NOTE value used here after move
 }
 
 fn main() {}
