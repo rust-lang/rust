@@ -93,9 +93,18 @@ impl serialize::UseSpecializedDecodable for CrateNum {
 ///
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
 /// don't have to care about these ranges.
-#[derive(Clone, Debug, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
+#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
            RustcDecodable, Hash, Copy)]
 pub struct DefIndex(u32);
+
+impl fmt::Debug for DefIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "DefIndex({}:{})",
+               self.address_space().index(),
+               self.as_array_index())
+    }
+}
 
 impl DefIndex {
     #[inline]
