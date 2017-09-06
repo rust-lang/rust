@@ -1080,6 +1080,32 @@ impl f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
+    /// Returns max if self is greater than max, and min if self is less than min.
+    /// Otherwise this returns self.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp)]
+    /// use std::f32::NAN;
+    /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
+    /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
+    /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
+    /// assert!((NAN).clamp(-2.0f32, 1.0f32).is_nan());
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if min > max, min is NaN, or max is NaN.
+    #[unstable(feature = "clamp", issue = "44095")]
+    #[inline]
+    pub fn clamp(self, min: f32, max: f32) -> f32 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min { x = min; }
+        if x > max { x = max; }
+        x
+    }
+
     /// Raw transmutation to `u32`.
     ///
     /// Converts the `f32` into its raw memory representation,
@@ -1750,5 +1776,23 @@ mod tests {
         // Ensure that we have a quiet NaN
         assert_ne!(nan_masked & QNAN_MASK, 0);
         assert!(nan_masked_fl.is_nan());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_greater_than_max() {
+        1.0f32.clamp(3.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_is_nan() {
+        1.0f32.clamp(NAN, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_max_is_nan() {
+        1.0f32.clamp(3.0, NAN);
     }
 }
