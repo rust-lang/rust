@@ -588,14 +588,10 @@ pub fn run(mut krate: clean::Crate,
 
     let markdown_warnings = scx.markdown_warnings.borrow();
     if !markdown_warnings.is_empty() {
-        println!("WARNING: documentation for this crate may be rendered \
-                  differently using the new Pulldown renderer.");
-        println!("    See https://github.com/rust-lang/rust/issues/44229 for details.");
+        let mut intro_msg = false;
         for &(ref span, ref text, ref diffs) in &*markdown_warnings {
-            println!("WARNING: rendering difference in `{}`", concise_str(text));
-            println!("   --> {}:{}:{}", span.filename, span.loline, span.locol);
             for d in diffs {
-                render_difference(d);
+                render_difference(d, &mut intro_msg, span, text);
             }
         }
     }
@@ -648,43 +644,67 @@ fn concise_compared_strs(s1: &str, s2: &str) -> (String, String) {
     (format!("...{}", concise_str(s1)), format!("...{}", concise_str(s2)))
 }
 
-fn render_difference(diff: &html_diff::Difference) {
+
+fn print_message(msg: &str, intro_msg: &mut bool, span: &Span, text: &str) {
+    if !*intro_msg {
+        println!("WARNING: documentation for this crate may be rendered \
+                  differently using the new Pulldown renderer.");
+        println!("    See https://github.com/rust-lang/rust/issues/44229 for details.");
+        *intro_msg = true;
+    }
+    println!("WARNING: rendering difference in `{}`", concise_str(text));
+    println!("   --> {}:{}:{}", span.filename, span.loline, span.locol);
+    println!("{}", msg);
+}
+
+fn render_difference(diff: &html_diff::Difference, intro_msg: &mut bool, span: &Span, text: &str) {
     match *diff {
         html_diff::Difference::NodeType { ref elem, ref opposite_elem } => {
-            println!("    {} Types differ: expected: `{}`, found: `{}`",
-                     elem.path, elem.element_name, opposite_elem.element_name);
+            print_message(&format!("    {} Types differ: expected: `{}`, found: `{}`",
+                                   elem.path, elem.element_name, opposite_elem.element_name),
+                          intro_msg, span, text);
         }
         html_diff::Difference::NodeName { ref elem, ref opposite_elem } => {
-            println!("    {} Tags differ: expected: `{}`, found: `{}`",
-                     elem.path, elem.element_name, opposite_elem.element_name);
+            print_message(&format!("    {} Tags differ: expected: `{}`, found: `{}`",
+                                   elem.path, elem.element_name, opposite_elem.element_name),
+                          intro_msg, span, text);
         }
         html_diff::Difference::NodeAttributes { ref elem,
-                                     ref elem_attributes,
-                                     ref opposite_elem_attributes,
-                                     .. } => {
-            println!("    {} Attributes differ in `{}`: expected: `{:?}`, found: `{:?}`",
-                     elem.path, elem.element_name, elem_attributes, opposite_elem_attributes);
+                                                ref elem_attributes,
+                                                ref opposite_elem_attributes,
+                                                .. } => {
+            print_message(&format!("    {} Attributes differ in `{}`: expected: `{:?}`, \
+                                    found: `{:?}`",
+                                   elem.path, elem.element_name, elem_attributes,
+                                   opposite_elem_attributes),
+                          intro_msg, span, text);
         }
         html_diff::Difference::NodeText { ref elem, ref elem_text, ref opposite_elem_text, .. } => {
             if elem_text.split("\n")
                         .zip(opposite_elem_text.split("\n"))
                         .any(|(a, b)| a.trim() != b.trim()) {
                 let (s1, s2) = concise_compared_strs(elem_text, opposite_elem_text);
-                println!("    {} Text differs:\n        expected: `{}`\n        found:    `{}`",
-                         elem.path, s1, s2);
+                print_message(&format!("    {} Text differs:\n        expected: `{}`\n        \
+                                        found:    `{}`",
+                                       elem.path, s1, s2),
+                              intro_msg, span, text);
             }
         }
         html_diff::Difference::NotPresent { ref elem, ref opposite_elem } => {
             if let Some(ref elem) = *elem {
-                println!("    {} One element is missing: expected: `{}`",
-                         elem.path, elem.element_name);
+                print_message(&format!("    {} One element is missing: expected: `{}`",
+                                       elem.path, elem.element_name),
+                              intro_msg, span, text);
             } else if let Some(ref elem) = *opposite_elem {
                 if elem.element_name.is_empty() {
-                    println!("    {} Unexpected element: `{}`",
-                             elem.path, concise_str(&elem.element_content));
+                    print_message(&format!("    {} One element is missing: expected: `{}`",
+                                           elem.path, concise_str(&elem.element_content)),
+                                  intro_msg, span, text);
                 } else {
-                    println!("    {} Unexpected element `{}`: found: `{}`",
-                             elem.path, elem.element_name, concise_str(&elem.element_content));
+                    print_message(&format!("    {} Unexpected element `{}`: found: `{}`",
+                                           elem.path, elem.element_name,
+                                           concise_str(&elem.element_content)),
+                                  intro_msg, span, text);
                 }
             }
         }
