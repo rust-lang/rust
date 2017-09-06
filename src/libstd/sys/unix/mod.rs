@@ -47,6 +47,10 @@ pub mod memchr;
 pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
+#[cfg(target_os = "l4re")]
+mod l4re;
+#[cfg(target_os = "l4re")]
+pub use self::l4re::net;
 pub mod os;
 pub mod os_str;
 pub mod path;

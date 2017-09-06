@@ -466,7 +466,6 @@ pub mod error;
 pub mod ffi;
 pub mod fs;
 pub mod io;
-#[cfg(not(target_os = "l4re"))]
 pub mod net;
 pub mod num;
 pub mod os;
