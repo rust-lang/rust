@@ -1173,7 +1173,10 @@ impl Step for Extended {
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
         let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
-                                analysis_installer, docs_installer, std_installer];
+                                analysis_installer, std_installer];
+        if build.config.docs {
+            tarballs.push(docs_installer);
+        }
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
         }
