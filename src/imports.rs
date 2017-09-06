@@ -8,20 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cmp::{self, Ordering};
+use std::cmp::Ordering;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, Span};
 
-use Shape;
+use {Shape, Spanned};
 use codemap::SpanUtils;
+use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::{rewrite_path, PathContext};
-use utils;
-use visitor::FmtVisitor;
+use utils::{format_visibility, mk_sp};
+use visitor::{rewrite_extern_crate, FmtVisitor};
 
 fn path_of(a: &ast::ViewPath_) -> &ast::Path {
     match *a {
@@ -185,95 +186,115 @@ impl Rewrite for ast::ViewPath {
     }
 }
 
+// Rewrite `use foo;` WITHOUT attributes.
+fn rewrite_import(
+    context: &RewriteContext,
+    vis: &ast::Visibility,
+    vp: &ast::ViewPath,
+    attrs: &[ast::Attribute],
+    shape: Shape,
+) -> Option<String> {
+    let vis = format_visibility(vis);
+    // 4 = `use `, 1 = `;`
+    let rw = shape
+        .offset_left(vis.len() + 4)
+        .and_then(|shape| shape.sub_width(1))
+        .and_then(|shape| match vp.node {
+            // If we have an empty path list with no attributes, we erase it
+            ast::ViewPath_::ViewPathList(_, ref path_list)
+                if path_list.is_empty() && attrs.is_empty() =>
+            {
+                Some("".into())
+            }
+            _ => vp.rewrite(context, shape),
+        });
+    match rw {
+        Some(ref s) if !s.is_empty() => Some(format!("{}use {};", vis, s)),
+        _ => rw,
+    }
+}
+
+fn rewrite_imports(
+    context: &RewriteContext,
+    use_items: &[ptr::P<ast::Item>],
+    shape: Shape,
+    span: Span,
+) -> Option<String> {
+    let items = itemize_list(
+        context.codemap,
+        use_items.iter(),
+        "",
+        |item| item.span().lo(),
+        |item| item.span().hi(),
+        |item| {
+            let attrs_str = try_opt!(item.attrs.rewrite(context, shape));
+
+            let missed_span = if item.attrs.is_empty() {
+                mk_sp(item.span.lo(), item.span.lo())
+            } else {
+                mk_sp(item.attrs.last().unwrap().span.hi(), item.span.lo())
+            };
+
+            let item_str = match item.node {
+                ast::ItemKind::Use(ref vp) => {
+                    try_opt!(rewrite_import(context, &item.vis, vp, &item.attrs, shape))
+                }
+                ast::ItemKind::ExternCrate(..) => try_opt!(rewrite_extern_crate(context, item)),
+                _ => return None,
+            };
+
+            combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                &item_str,
+                missed_span,
+                shape,
+                false,
+            )
+        },
+        span.lo(),
+        span.hi(),
+        false,
+    );
+    let mut item_pair_vec: Vec<_> = items.zip(use_items.iter()).collect();
+    item_pair_vec.sort_by(|a, b| compare_use_items(context, a.1, b.1).unwrap());
+    let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
+
+    let fmt = ListFormatting {
+        tactic: DefinitiveListTactic::Vertical,
+        separator: "",
+        trailing_separator: SeparatorTactic::Never,
+        separator_place: SeparatorPlace::Back,
+        shape: shape,
+        ends_with_newline: true,
+        preserve_newline: false,
+        config: context.config,
+    };
+
+    write_list(&item_vec, &fmt)
+}
+
 impl<'a> FmtVisitor<'a> {
     pub fn format_imports(&mut self, use_items: &[ptr::P<ast::Item>]) {
-        // Find the location immediately before the first use item in the run. This must not lie
-        // before the current `self.last_pos`
-        let pos_before_first_use_item = use_items
-            .first()
-            .map(|p_i| {
-                cmp::max(
-                    self.last_pos,
-                    p_i.attrs
-                        .iter()
-                        .map(|attr| attr.span.lo())
-                        .min()
-                        .unwrap_or(p_i.span.lo()),
-                )
-            })
-            .unwrap_or(self.last_pos);
-        // Construct a list of pairs, each containing a `use` item and the start of span before
-        // that `use` item.
-        let mut last_pos_of_prev_use_item = pos_before_first_use_item;
-        let mut ordered_use_items = use_items
-            .iter()
-            .map(|p_i| {
-                let new_item = (&*p_i, last_pos_of_prev_use_item);
-                last_pos_of_prev_use_item = p_i.span.hi();
-                new_item
-            })
-            .collect::<Vec<_>>();
-        let pos_after_last_use_item = last_pos_of_prev_use_item;
-        // Order the imports by view-path & other import path properties
-        ordered_use_items.sort_by(|a, b| {
-            compare_use_items(&self.get_context(), a.0, b.0).unwrap()
-        });
-        // First, output the span before the first import
-        let prev_span_str = self.snippet(utils::mk_sp(self.last_pos, pos_before_first_use_item));
-        // Look for purely trailing space at the start of the prefix snippet before a linefeed, or
-        // a prefix that's entirely horizontal whitespace.
-        let prefix_span_start = match prev_span_str.find('\n') {
-            Some(offset) if prev_span_str[..offset].trim().is_empty() => {
-                self.last_pos + BytePos(offset as u32)
-            }
-            None if prev_span_str.trim().is_empty() => pos_before_first_use_item,
-            _ => self.last_pos,
-        };
-        // Look for indent (the line part preceding the use is all whitespace) and excise that
-        // from the prefix
-        let span_end = match prev_span_str.rfind('\n') {
-            Some(offset) if prev_span_str[offset..].trim().is_empty() => {
-                self.last_pos + BytePos(offset as u32)
-            }
-            _ => pos_before_first_use_item,
-        };
-
-        self.last_pos = prefix_span_start;
-        self.format_missing(span_end);
-        for ordered in ordered_use_items {
-            // Fake out the formatter by setting `self.last_pos` to the appropriate location before
-            // each item before visiting it.
-            self.last_pos = ordered.1;
-            self.visit_item(ordered.0);
+        if use_items.is_empty() {
+            return;
         }
-        self.last_pos = pos_after_last_use_item;
+
+        let lo = use_items.first().unwrap().span().lo();
+        let hi = use_items.last().unwrap().span().hi();
+        let span = mk_sp(lo, hi);
+        let rw = rewrite_imports(&self.get_context(), use_items, self.shape(), span);
+        self.push_rewrite(span, rw);
     }
 
-    pub fn format_import(
-        &mut self,
-        vis: &ast::Visibility,
-        vp: &ast::ViewPath,
-        span: Span,
-        attrs: &[ast::Attribute],
-    ) {
-        let vis = utils::format_visibility(vis);
-        // 4 = `use `, 1 = `;`
-        let rw = self.shape()
-            .offset_left(vis.len() + 4)
-            .and_then(|shape| shape.sub_width(1))
-            .and_then(|shape| match vp.node {
-                // If we have an empty path list with no attributes, we erase it
-                ast::ViewPath_::ViewPathList(_, ref path_list)
-                    if path_list.is_empty() && attrs.is_empty() =>
-                {
-                    Some("".into())
-                }
-                _ => vp.rewrite(&self.get_context(), shape),
-            });
+    pub fn format_import(&mut self, item: &ast::Item, vp: &ast::ViewPath) {
+        let span = item.span;
+        let shape = self.shape();
+        let rw = rewrite_import(&self.get_context(), &item.vis, vp, &item.attrs, shape);
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
-                let prev_span = utils::mk_sp(self.last_pos, source!(self, span).lo());
+                let prev_span = mk_sp(self.last_pos, source!(self, span).lo());
                 let span_end = match self.snippet(prev_span).rfind('\n') {
                     Some(offset) => self.last_pos + BytePos(offset as u32),
                     None => source!(self, span).lo(),
@@ -282,7 +303,6 @@ impl<'a> FmtVisitor<'a> {
                 self.last_pos = source!(self, span).hi();
             }
             Some(ref s) => {
-                let s = format!("{}use {};", vis, s);
                 self.format_missing_with_indent(source!(self, span).lo());
                 self.buffer.push_str(&s);
                 self.last_pos = source!(self, span).hi();
