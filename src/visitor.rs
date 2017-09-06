@@ -22,8 +22,9 @@ use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, C
               FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
-            rewrite_static, rewrite_type_alias};
+use items::{format_impl, format_struct, format_struct_struct, format_trait,
+            rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
+            rewrite_type_alias};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -361,22 +362,20 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Struct(ref def, ref generics) => {
-                let rewrite = {
-                    ::items::format_struct(
-                        &self.get_context(),
-                        "struct ",
-                        item.ident,
-                        &item.vis,
-                        def,
-                        Some(generics),
-                        item.span,
-                        self.block_indent,
-                        None,
-                    ).map(|s| match *def {
-                        ast::VariantData::Tuple(..) => s + ";",
-                        _ => s,
-                    })
-                };
+                let rewrite = format_struct(
+                    &self.get_context(),
+                    "struct ",
+                    item.ident,
+                    &item.vis,
+                    def,
+                    Some(generics),
+                    item.span,
+                    self.block_indent,
+                    None,
+                ).map(|s| match *def {
+                    ast::VariantData::Tuple(..) => s + ";",
+                    _ => s,
+                });
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
@@ -457,7 +456,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Union(ref def, ref generics) => {
-                let rewrite = ::items::format_struct_struct(
+                let rewrite = format_struct_struct(
                     &self.get_context(),
                     "union ",
                     item.ident,
