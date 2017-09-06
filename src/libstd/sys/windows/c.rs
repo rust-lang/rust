@@ -32,6 +32,7 @@ pub type DWORD = c_ulong;
 pub type HANDLE = LPVOID;
 pub type HINSTANCE = HANDLE;
 pub type HMODULE = HINSTANCE;
+pub type HRESULT = LONG;
 pub type BOOL = c_int;
 pub type BYTE = u8;
 pub type BOOLEAN = BYTE;
@@ -196,6 +197,8 @@ pub const ERROR_ENVVAR_NOT_FOUND: DWORD = 203;
 pub const ERROR_OPERATION_ABORTED: DWORD = 995;
 pub const ERROR_IO_PENDING: DWORD = 997;
 pub const ERROR_TIMEOUT: DWORD = 0x5B4;
+
+pub const E_NOTIMPL: HRESULT = 0x80004001u32 as HRESULT;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
 
@@ -1163,8 +1166,8 @@ extern "system" {
                   timeout: *const timeval) -> c_int;
 }
 
-// Functions that aren't available on Windows XP, but we still use them and just
-// provide some form of a fallback implementation.
+// Functions that aren't available on every version of Windows that we support,
+// but we still use them and just provide some form of a fallback implementation.
 compat_fn! {
     kernel32:
 
@@ -1181,6 +1184,10 @@ compat_fn! {
     }
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
+    }
+    pub fn SetThreadDescription(hThread: HANDLE,
+                                lpThreadDescription: LPCWSTR) -> HRESULT {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); E_NOTIMPL
     }
     pub fn SetFileInformationByHandle(_hFile: HANDLE,
                     _FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
