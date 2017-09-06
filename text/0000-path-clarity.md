@@ -8,7 +8,7 @@
 
 This RFC seeks to clarify and streamline Rust's story around paths and visibility for modules and crates. That story will look as follows:
 
-- Absolute should paths begin with a crate name, where the keyword `crate` refers to the current crate (other forms are linted, see below)
+- Absolute paths should begin with a crate name, where the keyword `crate` refers to the current crate (other forms are linted, see below)
 - `extern crate` is no longer necessary, and is linted (see below); dependencies are available at the root unless shadowed.
 - The `crate` keyword also acts as a visibility modifier, equivalent to today's `pub(crate)`. Consequently, uses of bare `pub` on items that are not actually publicly exported are linted, suggesting `crate` visibility instead.
 - A `foo.rs` and `foo/` subdirectory may coexist; `mod.rs` is no longer needed when placing submodules in a subdirectory.
