@@ -1839,6 +1839,7 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
                 None,
                 None,
                 None,
+                None,
             )
         }
         _ => String::new(),
@@ -3678,7 +3679,7 @@ impl<'a> fmt::Display for Source<'a> {
             write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
         }
         write!(fmt, "</pre>")?;
-        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None, None))?;
+        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None, None, None))?;
         Ok(())
     }
 }
@@ -3687,6 +3688,7 @@ fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     w.write_str(&highlight::render_with_highlighting(&t.source,
                                                      Some("macro"),
+                                                     None,
                                                      None,
                                                      None))?;
     document(w, cx, it)

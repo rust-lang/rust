@@ -203,3 +203,11 @@ a.test-arrow:hover{
 :target > code {
 	background: #FDFFD3;
 }
+
+pre.compile_fail {
+	box-shadow: -6px 0 5px -3px #f00;
+}
+
+pre.ignore {
+	box-shadow: -6px 0 5px -3px #ff9200;
+}

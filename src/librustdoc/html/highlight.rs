@@ -22,6 +22,7 @@
 
 use html::escape::Escape;
 
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
@@ -34,12 +35,18 @@ use syntax_pos::Span;
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
-                                extension: Option<&str>) -> String {
+                                extension: Option<&str>,
+                                extras: Option<HashMap<String, String>>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
+    if let Some((tooltip, class)) = tooltip {
+        write!(out, "<div class='information'><div class='tooltip {}'>⚠<span \
+                     class='tooltiptext'>{}</span></div></div>",
+               class, tooltip).unwrap();
+    }
     write_header(class, id, &mut out).unwrap();
 
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
@@ -389,11 +396,17 @@ impl Class {
 
 fn write_header(class: Option<&str>,
                 id: Option<&str>,
-                out: &mut Write)
+                out: &mut Write,
+                extras: Option<HashMap<String, String>>)
                 -> io::Result<()> {
     write!(out, "<pre ")?;
     if let Some(id) = id {
         write!(out, "id='{}' ", id)?;
+    }
+    if let Some(extras) = extras {
+        for (key, value) in &extras {
+            write!(out, "{}=\"{}\" ", key, value)?;
+        }
     }
     write!(out, "class=\"rust {}\">\n", class.unwrap_or(""))
 }
