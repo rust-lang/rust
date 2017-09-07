@@ -10,7 +10,7 @@ rand = { version = "0.3.15", optional = true }
 
 [build-dependencies.gcc]
 optional = true
-version = "0.3.36"
+version = "0.3.53"
 
 [features]
 c = ["gcc"]

@@ -4008,7 +4008,9 @@ mod c {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
 
-        let cfg = &mut gcc::Config::new();
+        let cfg = &mut gcc::Build::new();
+
+        cfg.warnings(false);
 
         if target_env == "msvc" {
             // Don't pull in extra libraries on MSVC
