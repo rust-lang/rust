@@ -1288,7 +1288,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     }
 
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {
-        let crates = self.tcx.sess.cstore.crates();
+        let crates = self.tcx.crates();
 
         let mut deps = crates
             .iter()

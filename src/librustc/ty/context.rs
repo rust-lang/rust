@@ -994,14 +994,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = s.cstore.crates().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let max_cnum = s.cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
             let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
                 .cstore
-                .crates()
+                .crates_untracked()
                 .iter()
                 .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
                 .collect();
@@ -1120,6 +1120,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.dep_graph.with_ignore(|| {
             self.stability_index(LOCAL_CRATE)
         })
+    }
+
+    pub fn crates(self) -> Rc<Vec<CrateNum>> {
+        self.all_crate_nums(LOCAL_CRATE)
     }
 }
 

@@ -574,6 +574,7 @@ define_dep_nodes!( <'tcx>
     [] MaybeUnusedTraitImport(HirId),
     [] MaybeUnusedExternCrates,
     [] StabilityIndex,
+    [] AllCrateNums,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

@@ -236,7 +236,7 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
 
     cx.populated_all_crate_impls.set(true);
 
-    for cnum in tcx.sess.cstore.crates() {
+    for &cnum in tcx.crates().iter() {
         for did in tcx.all_trait_implementations(cnum).iter() {
             build_impl(cx, *did, &mut impls);
         }

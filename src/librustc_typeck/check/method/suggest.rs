@@ -559,7 +559,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
                 _ => {}
             }
         }
-        for cnum in tcx.sess.cstore.crates() {
+        for &cnum in tcx.crates().iter() {
             let def_id = DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,

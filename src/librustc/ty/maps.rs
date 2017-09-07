@@ -754,6 +754,12 @@ impl<'tcx> QueryDescription for queries::stability_index<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::all_crate_nums<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching all foreign CrateNum instances")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1376,6 +1382,7 @@ define_maps! { <'tcx>
         -> Rc<Vec<(HirId, Span)>>,
 
     [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
+    [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1484,4 +1491,8 @@ fn maybe_unused_extern_crates_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::StabilityIndex
+}
+
+fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::AllCrateNums
 }

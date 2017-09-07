@@ -1524,7 +1524,7 @@ impl CrateInfo {
             used_crate_source: FxHashMap(),
         };
 
-        for cnum in tcx.sess.cstore.crates() {
+        for &cnum in tcx.crates().iter() {
             info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));

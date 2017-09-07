@@ -110,7 +110,7 @@ impl ExportedSymbols {
         let mut exports = FxHashMap();
         exports.insert(LOCAL_CRATE, local_crate);
 
-        for cnum in tcx.sess.cstore.crates() {
+        for &cnum in tcx.crates().iter() {
             debug_assert!(cnum != LOCAL_CRATE);
 
             // If this crate is a plugin and/or a custom derive crate, then

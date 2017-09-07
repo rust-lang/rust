@@ -109,7 +109,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::new();
 
-        for n in self.tcx.sess.cstore.crates() {
+        for &n in self.tcx.crates().iter() {
             let span = match *self.tcx.extern_crate(n.as_def_id()) {
                 Some(ref c) => c.span,
                 None => {

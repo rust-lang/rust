@@ -255,7 +255,7 @@ pub trait CrateStore {
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
-    fn crates(&self) -> Vec<CrateNum>;
+    fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
@@ -334,9 +334,7 @@ impl CrateStore for DummyCrateStore {
     }
     fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
-    // This is basically a 1-based range of ints, which is a little
-    // silly - I may fix that.
-    fn crates(&self) -> Vec<CrateNum> { vec![] }
+    fn crates_untracked(&self) -> Vec<CrateNum> { vec![] }
 
     // utility functions
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
@@ -370,8 +368,9 @@ pub trait CrateLoader {
 // positions.
 pub fn used_crates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
-    let mut libs = tcx.sess.cstore.crates()
-        .into_iter()
+    let mut libs = tcx.crates()
+        .iter()
+        .cloned()
         .filter_map(|cnum| {
             if tcx.dep_kind(cnum).macros_only() {
                 return None

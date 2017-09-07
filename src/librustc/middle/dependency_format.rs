@@ -132,7 +132,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(v) = attempt_static(tcx) {
                 return v;
             }
-            for cnum in sess.cstore.crates() {
+            for &cnum in tcx.crates().iter() {
                 if tcx.dep_kind(cnum).macros_only() { continue }
                 let src = tcx.used_crate_source(cnum);
                 if src.rlib.is_some() { continue }
@@ -165,7 +165,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a
     // dependency to be relied upon twice is for both cases to rely on a dylib.
-    for cnum in sess.cstore.crates() {
+    for &cnum in tcx.crates().iter() {
         if tcx.dep_kind(cnum).macros_only() { continue }
         let name = tcx.crate_name(cnum);
         let src = tcx.used_crate_source(cnum);
@@ -181,7 +181,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // Collect what we've got so far in the return vector.
-    let last_crate = sess.cstore.crates().len();
+    let last_crate = tcx.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
         match formats.get(&CrateNum::new(cnum)) {
             Some(&RequireDynamic) => Linkage::Dynamic,
@@ -195,7 +195,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // If the crate hasn't been included yet and it's not actually required
     // (e.g. it's an allocator) then we skip it here as well.
-    for cnum in sess.cstore.crates() {
+    for &cnum in tcx.crates().iter() {
         let src = tcx.used_crate_source(cnum);
         if src.dylib.is_none() &&
            !formats.contains_key(&cnum) &&
@@ -281,7 +281,7 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
 
     // All crates are available in an rlib format, so we're just going to link
     // everything in explicitly so long as it's actually required.
-    let last_crate = sess.cstore.crates().len();
+    let last_crate = tcx.crates().len();
     let mut ret = (1..last_crate+1).map(|cnum| {
         if tcx.dep_kind(CrateNum::new(cnum)) == DepKind::Explicit {
             Linkage::Static

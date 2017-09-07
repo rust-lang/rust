@@ -208,7 +208,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
     let mut collector = LanguageItemCollector::new(tcx);
-    for cnum in tcx.sess.cstore.crates() {
+    for &cnum in tcx.crates().iter() {
         for &(index, item_index) in tcx.defined_lang_items(cnum).iter() {
             let def_id = DefId { krate: cnum, index: index };
             collector.collect_item(item_index, def_id);

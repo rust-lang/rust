@@ -281,6 +281,11 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             tcx.sess.cstore.extern_mod_stmt_cnum_untracked(id)
         },
 
+        all_crate_nums: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(tcx.sess.cstore.crates_untracked())
+        },
+
         // Returns a map from a sufficiently visible external item (i.e. an
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
@@ -292,7 +297,7 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
 
-            for cnum in tcx.sess.cstore.crates() {
+            for &cnum in tcx.crates().iter() {
                 // Ignore crates without a corresponding local `extern crate` item.
                 if tcx.missing_extern_crate_item(cnum) {
                     continue
@@ -481,7 +486,7 @@ impl CrateStore for cstore::CStore {
         })
     }
 
-    fn crates(&self) -> Vec<CrateNum>
+    fn crates_untracked(&self) -> Vec<CrateNum>
     {
         let mut result = vec![];
         self.iter_crate_data(|cnum, _| result.push(cnum));
