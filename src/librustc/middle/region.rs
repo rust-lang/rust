@@ -252,6 +252,11 @@ pub struct ScopeTree {
     /// stores the `Span` of the last one and the number of expressions
     /// which came before it in a generator body.
     yield_in_scope: FxHashMap<Scope, (Span, usize)>,
+
+    /// The number of visit_expr calls done in the body.
+    /// Used to sanity check visit_expr call count when
+    /// calculating geneartor interiors.
+    body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -618,6 +623,13 @@ impl<'tcx> ScopeTree {
     /// the number of expressions appearing before the `yield` in the body.
     pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
         self.yield_in_scope.get(&scope).cloned()
+    }
+
+    /// Gives the number of expressions visited in a body.
+    /// Used to sanity check visit_expr call count when
+    /// calculating geneartor interiors.
+    pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
+        self.body_expr_count.get(&body_id).map(|r| *r)
     }
 }
 
@@ -1164,6 +1176,10 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
             // and all the associated destruction scope rules apply.
             self.cx.var_parent = None;
             resolve_local(self, None, Some(&body.value));
+        }
+
+        if body.is_generator {
+            self.scope_tree.body_expr_count.insert(body_id, self.expr_count);
         }
 
         // Restore context we had at the start.
