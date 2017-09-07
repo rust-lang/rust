@@ -1,3 +1,5 @@
+// compile-flags: -Zmir-emit-validate=0
+
 fn one_line_ref() -> i16 {
     *&1
 }
