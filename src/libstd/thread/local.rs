@@ -159,8 +159,9 @@ macro_rules! thread_local {
 #[allow_internal_unstable]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
-        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
+    (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        {
+            #[inline]
             fn __init() -> $t { $init }
 
             unsafe fn __getit() -> $crate::option::Option<
@@ -182,7 +183,16 @@ macro_rules! __thread_local_inner {
             unsafe {
                 $crate::thread::LocalKey::new(__getit, __init)
             }
-        };
+        }
+    };
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        #[cfg(stage0)]
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
+
+        #[cfg(not(stage0))]
+        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
     }
 }
 
