@@ -1,4 +1,5 @@
 # rust-semverver
+
 [![Build Status](https://travis-ci.org/ibabushkin/rust-semverver.svg?branch=master)](https://travis-ci.org/ibabushkin/rust-semverver)
 
 This repository is hosting a proof-of-concept implementation of an automatic tool checking
@@ -11,6 +12,7 @@ Details on the work done during GSoC 2017 can be found
 [here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/gsoc.md).
 
 ## Background
+
 The approach taken is to compile both versions of the crate to `rlib`s and to link them as
 dependencies of a third, empty, dummy crate. Then, a custom compiler driver is run on the
 said dummy and all necessary analysis is performed in that context, where type information
@@ -20,8 +22,22 @@ More information on the inner workings of the tool can be found
 [here](https://github.com/ibabushkin/rust-semverver/blob/master/doc/impl_notes.md).
 
 ## Installation
+
 The tool is implemented as a cargo plugin. As of now, it can be obtained from this git
-repository and compiled from source, provided you have a recent Rust nightly installed:
+repository and compiled from source.
+
+If you are already using Rust nightly and have successfully installed tools like
+`cargo add` and `cargo clippy`, just do:
+
+```sh
+$ cargo install --git https://github.com/ibabushkin/rust-semverver
+```
+
+<details>
+
+<summary>
+  Manual installation and more details
+</summary>
 
 ```sh
 # using rustup is recommended
@@ -44,7 +60,14 @@ PATH=/path/to/repo/target/debug:$PATH cargo semver <args>
 If you have built using `cargo build --release` instead, change the path to point to the
 `release` subdirectory of the `target` directory.
 
+</details>
+
 ## Usage
+
+By default, running `cargo semver` in directory with a Cargo project will try to compare
+the local version the one last published on crates.io, and display warning or errors for
+all breaking changes found.
+
 Invoking `cargo semver -h` gives you the latest help message, which outlines how to use
 the cargo plugin:
 
@@ -70,6 +93,7 @@ This means that you can compare any two crates' specified versions, as long as t
 available on crates.io or present on your filesystem.
 
 ## Functionality
+
 The guideline used to implement semver compatibility is the [API evolution
 RFC](https://github.com/rust-lang/rfcs/blob/master/text/1105-api-evolution.md), which
 applies the principles of semantic versioning to the Rust language's semantics. According
