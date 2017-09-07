@@ -606,14 +606,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_POINTER {
             match self.destination {
-                Lvalue::Local(l) => *local = l,
+                Lvalue::Local(l) => {
+                    *local = l;
+                    return;
+                },
                 ref lval => bug!("Return lvalue is {:?}, not local", lval)
             }
         }
         let idx = local.index() - 1;
         if idx < self.args.len() {
             match self.args[idx] {
-                Operand::Consume(Lvalue::Local(l)) => *local = l,
+                Operand::Consume(Lvalue::Local(l)) => {
+                    *local = l;
+                    return;
+                },
                 ref op => bug!("Arg operand `{:?}` is {:?}, not local", idx, op)
             }
         }
