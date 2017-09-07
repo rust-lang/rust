@@ -215,7 +215,7 @@ pub fn run_core(search_paths: SearchPaths,
         debug!("crate: {:?}", tcx.hir.krate());
 
         let krate = {
-            let mut v = RustdocVisitor::new(&ctxt);
+            let mut v = RustdocVisitor::new(&*cstore, &ctxt);
             v.visit(tcx.hir.krate());
             v.clean(&ctxt)
         };

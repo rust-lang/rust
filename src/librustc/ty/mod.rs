@@ -2170,43 +2170,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
-        if id.is_local() {
-            self.hir.def_key(id)
-        } else {
-            self.cstore_untracked().def_key(id)
-        }
-    }
-
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
-    /// `DefId` is really just an interned def-path).
-    ///
-    /// Note that if `id` is not local to this crate, the result will
-    ///  be a non-local `DefPath`.
-    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
-        if id.is_local() {
-            self.hir.def_path(id)
-        } else {
-            self.cstore_untracked().def_path(id)
-        }
-    }
-
-    #[inline]
-    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
-        if def_id.is_local() {
-            self.hir.definitions().def_path_hash(def_id.index)
-        } else {
-            self.cstore_untracked().def_path_hash(def_id)
-        }
-    }
-
     pub fn item_name(self, id: DefId) -> InternedString {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id).as_str()
         } else if id.index == CRATE_DEF_INDEX {
             self.original_crate_name(id.krate).as_str()
         } else {
-            let def_key = self.cstore_untracked().def_key(id);
+            let def_key = self.def_key(id);
             // The name of a StructCtor is that of its struct parent.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {

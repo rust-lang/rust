@@ -274,7 +274,7 @@ pub fn compile_input(sess: &Session,
                                 phase5_result);
         phase5_result?;
 
-        phase_6_link_output(sess, cstore, &trans, &outputs);
+        phase_6_link_output(sess, &trans, &outputs);
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
@@ -1153,12 +1153,10 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 /// This should produce either a finished executable or library.
 #[cfg(feature="llvm")]
 pub fn phase_6_link_output(sess: &Session,
-                           cstore: &CrateStore,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), "linking", || {
         ::rustc_trans::back::link::link_binary(sess,
-                                               cstore,
                                                trans,
                                                outputs,
                                                &trans.crate_name.as_str())

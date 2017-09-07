@@ -60,7 +60,7 @@ macro_rules! provide {
 
                 $tcx.dep_graph.read(dep_node);
 
-                let $cdata = $tcx.cstore_untracked().crate_data_as_rc_any($def_id.krate);
+                let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore crated ata is not a CrateMetadata");
                 $compute
@@ -275,15 +275,6 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             assert_eq!(cnum, LOCAL_CRATE);
             Rc::new(link_args::collect(tcx))
         },
-        extern_mod_stmt_cnum: |tcx, id| {
-            let id = tcx.hir.as_local_node_id(id).unwrap();
-            tcx.cstore_untracked().extern_mod_stmt_cnum_untracked(id)
-        },
-
-        all_crate_nums: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Rc::new(tcx.cstore_untracked().crates_untracked())
-        },
 
         // Returns a map from a sufficiently visible external item (i.e. an
         // external item that is visible from at least one local module) to a
@@ -340,11 +331,6 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             }
 
             Rc::new(visible_parent_map)
-        },
-
-        postorder_cnums: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Rc::new(tcx.cstore_untracked().postorder_cnums_untracked())
         },
 
         ..*providers
