@@ -65,7 +65,7 @@ To access the arguments, Rust provides the following public interfaces in
 ```rust
 /// The argument list of a C-compatible variadic function, corresponding to the
 /// underlying C `va_list`. Opaque.
-pub struct VaList<'a>;
+pub extern type VaList<'a>;
 
 impl<'a> VaList<'a> {
     /// Extract the next argument from the argument list. T must have a type
@@ -75,6 +75,9 @@ impl<'a> VaList<'a> {
 
 impl<'a> Clone for VaList<'a>;
 ```
+
+`VaList` may become a language item (`#[lang="VaList"]`) to attach the
+appropriate compiler handling.
 
 The type returned from `VaList::arg` must have a type usable in an `extern "C"`
 FFI interface; the compiler allows all the same types returned from
