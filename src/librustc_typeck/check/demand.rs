@@ -207,7 +207,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  expected: Ty<'tcx>)
                  -> Option<String> {
         match (&expected.sty, &checked_ty.sty) {
-            (&ty::TyRef(_, _), &ty::TyRef(_, _)) => None,
+            (&ty::TyRef(_, exp), &ty::TyRef(_, check)) => match (&exp.ty.sty, &check.ty.sty) {
+                (&ty::TyStr, &ty::TyArray(arr, _)) |
+                (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
+                    if let hir::ExprLit(_) = expr.node {
+                        let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                            return Some(format!("try `{}`", &src[1..]));
+                        }
+                    }
+                    None
+                },
+                (&ty::TyArray(arr, _), &ty::TyStr) |
+                (&ty::TySlice(arr), &ty::TyStr) if arr == self.tcx.types.u8 => {
+                    if let hir::ExprLit(_) = expr.node {
+                        let sp = self.sess().codemap().call_span_if_macro(expr.span);
+                        if let Ok(src) = self.tcx.sess.codemap().span_to_snippet(sp) {
+                            return Some(format!("try `b{}`", src));
+                        }
+                    }
+                    None
+                }
+                _ => None,
+            },
             (&ty::TyRef(_, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
