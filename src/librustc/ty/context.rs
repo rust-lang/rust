@@ -21,7 +21,8 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
-use middle::cstore::CrateStore;
+use middle::cstore::{CrateStore, LinkMeta, EncodedMetadataHashes};
+use middle::cstore::EncodedMetadata;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -51,6 +52,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 
 use arena::{TypedArena, DroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
+use std::any::Any;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
@@ -907,10 +909,6 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn cstore_untracked(&self) -> &CrateStore {
-        &*self.cstore
-    }
-
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -1133,6 +1131,54 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn crates(self) -> Rc<Vec<CrateNum>> {
         self.all_crate_nums(LOCAL_CRATE)
+    }
+
+    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
+        if id.is_local() {
+            self.hir.def_key(id)
+        } else {
+            self.cstore.def_key(id)
+        }
+    }
+
+    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// `DefId` is really just an interned def-path).
+    ///
+    /// Note that if `id` is not local to this crate, the result will
+    ///  be a non-local `DefPath`.
+    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
+        if id.is_local() {
+            self.hir.def_path(id)
+        } else {
+            self.cstore.def_path(id)
+        }
+    }
+
+    #[inline]
+    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
+        if def_id.is_local() {
+            self.hir.definitions().def_path_hash(def_id.index)
+        } else {
+            self.cstore.def_path_hash(def_id)
+        }
+    }
+
+    pub fn metadata_encoding_version(self) -> Vec<u8> {
+        self.cstore.metadata_encoding_version().to_vec()
+    }
+
+    // Note that this is *untracked* and should only be used within the query
+    // system if the result is otherwise tracked through queries
+    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Rc<Any> {
+        self.cstore.crate_data_as_rc_any(cnum)
+    }
+}
+
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn encode_metadata(self, link_meta: &LinkMeta, reachable: &NodeSet)
+        -> (EncodedMetadata, EncodedMetadataHashes)
+    {
+        self.cstore.encode_metadata(self, link_meta, reachable)
     }
 }
 
@@ -2068,5 +2114,17 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(id.krate, LOCAL_CRATE);
         let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_deprecation_entry(id)
+    };
+    providers.extern_mod_stmt_cnum = |tcx, id| {
+        let id = tcx.hir.definitions().find_node_for_hir_id(id);
+        tcx.cstore.extern_mod_stmt_cnum_untracked(id)
+    };
+    providers.all_crate_nums = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.cstore.crates_untracked())
+    };
+    providers.postorder_cnums = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.cstore.postorder_cnums_untracked())
     };
 }
