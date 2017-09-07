@@ -1101,10 +1101,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
-        // Right now we insert a `with_ignore` node in the dep graph here to
-        // ignore the fact that `get_lang_items` below depends on the entire
-        // crate.  For now this'll prevent false positives of recompiling too
-        // much when anything changes.
+        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
+        // graph here to ignore the fact that `get_lang_items` below depends on
+        // the entire crate.  For now this'll prevent false positives of
+        // recompiling too much when anything changes.
         //
         // Once red/green incremental compilation lands we should be able to
         // remove this because while the crate changes often the lint level map
@@ -1115,6 +1115,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn stability(self) -> Rc<stability::Index<'tcx>> {
+        // FIXME(#42293) we should actually track this, but fails too many tests
+        // today.
         self.dep_graph.with_ignore(|| {
             self.stability_index(LOCAL_CRATE)
         })

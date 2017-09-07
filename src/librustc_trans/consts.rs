@@ -211,12 +211,17 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         g
     };
 
-    if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
-        // For foreign (native) libs we know the exact storage type to use.
-        unsafe {
-            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+
+    // FIXME(#42293) we should actually track this, but fails too many tests
+    // today.
+    ccx.tcx().dep_graph.with_ignore(|| {
+        if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
+            // For foreign (native) libs we know the exact storage type to use.
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            }
         }
-    }
+    });
     ccx.instances().borrow_mut().insert(instance, g);
     ccx.statics().borrow_mut().insert(g, def_id);
     g
