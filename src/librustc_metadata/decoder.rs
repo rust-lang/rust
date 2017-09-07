@@ -13,9 +13,7 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
-use rustc::dep_graph::{DepGraph, DepNode, DepKind};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
-use rustc::hir::map::definitions::GlobalMetaDataKind;
 use rustc::hir;
 
 use rustc::middle::cstore::LinkagePreference;
@@ -402,7 +400,6 @@ impl<'a, 'tcx> MetadataBlob {
         write!(out, "=External Dependencies=\n")?;
         let root = self.get_root();
         for (i, dep) in root.crate_deps
-                            .get_untracked()
                             .decode(self)
                             .enumerate() {
             write!(out, "{} {}-{}\n", i + 1, dep.name, dep.hash)?;
@@ -646,11 +643,9 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(&self, dep_graph: &DepGraph) -> Vec<(DefIndex, usize)> {
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::LangItems);
+    pub fn get_lang_items(&self) -> Vec<(DefIndex, usize)> {
         self.root
             .lang_items
-            .get(dep_graph, dep_node)
             .decode(self)
             .collect()
     }
@@ -869,17 +864,12 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self,
-                          node_id: DefIndex,
-                          dep_graph: &DepGraph) -> Rc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self, node_id: DefIndex) -> Rc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
             return Rc::new([]);
         }
-
-        let dep_node = self.def_path_hash(node_id).to_dep_node(DepKind::MetaData);
-        dep_graph.read(dep_node);
 
         if let Some(&Some(ref val)) =
             self.attribute_cache.borrow()[node_as].get(node_index) {
@@ -947,7 +937,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_implementations_for_trait(&self,
                                          filter: Option<DefId>,
-                                         dep_graph: &DepGraph,
                                          result: &mut Vec<DefId>) {
         // Do a reverse lookup beforehand to avoid touching the crate_num
         // hash map in the loop below.
@@ -958,16 +947,13 @@ impl<'a, 'tcx> CrateMetadata {
             None => None,
         };
 
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::Impls);
-
         if let Some(filter) = filter {
             if let Some(impls) = self.trait_impls
-                                     .get(dep_graph, dep_node)
                                      .get(&filter) {
                 result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
         } else {
-            for impls in self.trait_impls.get(dep_graph, dep_node).values() {
+            for impls in self.trait_impls.values() {
                 result.extend(impls.decode(self).map(|idx| self.local_def_id(idx)));
             }
         }
@@ -983,25 +969,13 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
 
-    pub fn get_native_libraries(&self,
-                                dep_graph: &DepGraph)
-                                -> Vec<NativeLibrary> {
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::NativeLibraries);
-        self.root
-            .native_libraries
-            .get(dep_graph, dep_node)
-            .decode(self)
-            .collect()
+    pub fn get_native_libraries(&self) -> Vec<NativeLibrary> {
+        self.root.native_libraries.decode(self).collect()
     }
 
-    pub fn get_dylib_dependency_formats(&self,
-                                        dep_graph: &DepGraph)
-                                        -> Vec<(CrateNum, LinkagePreference)> {
-        let dep_node =
-            self.metadata_dep_node(GlobalMetaDataKind::DylibDependencyFormats);
+    pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
         self.root
             .dylib_dependency_formats
-            .get(dep_graph, dep_node)
             .decode(self)
             .enumerate()
             .flat_map(|(i, link)| {
@@ -1011,11 +985,9 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    pub fn get_missing_lang_items(&self, dep_graph: &DepGraph) -> Vec<lang_items::LangItem> {
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::LangItemsMissing);
+    pub fn get_missing_lang_items(&self) -> Vec<lang_items::LangItem> {
         self.root
             .lang_items_missing
-            .get(dep_graph, dep_node)
             .decode(self)
             .collect()
     }
@@ -1030,10 +1002,8 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self, dep_graph: &DepGraph) -> Vec<DefId> {
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
+    pub fn get_exported_symbols(&self) -> Vec<DefId> {
         self.exported_symbols
-            .get(dep_graph, dep_node)
             .iter()
             .map(|&index| self.local_def_id(index))
             .collect()
@@ -1065,11 +1035,8 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn is_dllimport_foreign_item(&self, id: DefIndex, dep_graph: &DepGraph) -> bool {
-        let dep_node = self.metadata_dep_node(GlobalMetaDataKind::NativeLibraries);
-        self.dllimport_foreign_items
-            .get(dep_graph, dep_node)
-            .contains(&id)
+    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
+        self.dllimport_foreign_items.contains(&id)
     }
 
     pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {
@@ -1220,11 +1187,5 @@ impl<'a, 'tcx> CrateMetadata {
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
         *self.codemap_import_info.borrow_mut() = imported_filemaps;
         self.codemap_import_info.borrow()
-    }
-
-    pub fn metadata_dep_node(&self, kind: GlobalMetaDataKind) -> DepNode {
-        let def_index = kind.def_index(&self.def_path_table);
-        let def_path_hash = self.def_path_table.def_path_hash(def_index);
-        def_path_hash.to_dep_node(DepKind::MetaData)
     }
 }

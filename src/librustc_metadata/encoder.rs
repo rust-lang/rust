@@ -248,7 +248,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
-                                -> Tracked<R> {
+                                -> R {
         let mut entry_builder = IsolatedEncoder::new(self);
         let ret = op(&mut entry_builder, data);
         let (fingerprint, this) = entry_builder.finish();
@@ -260,7 +260,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
         }
 
-        Tracked::new(ret)
+        ret
     }
 
     fn encode_info_for_items(&mut self) -> Index {
@@ -408,9 +408,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
-            panic_strategy: Tracked::new(tcx.sess.panic_strategy()),
-            has_global_allocator: Tracked::new(has_global_allocator),
-            has_default_lib_allocator: Tracked::new(has_default_lib_allocator),
+            panic_strategy: tcx.sess.panic_strategy(),
+            has_global_allocator: has_global_allocator,
+            has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()

@@ -59,7 +59,7 @@ fn basic_sess(sysroot: PathBuf) -> (Session, Rc<CStore>) {
 
     let descriptions = Registry::new(&rustc::DIAGNOSTICS);
     let dep_graph = DepGraph::new(opts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, Box::new(rustc_trans::LlvmMetadataLoader)));
+    let cstore = Rc::new(CStore::new(Box::new(rustc_trans::LlvmMetadataLoader)));
     let sess = build_session(opts, &dep_graph, None, descriptions, cstore.clone());
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
