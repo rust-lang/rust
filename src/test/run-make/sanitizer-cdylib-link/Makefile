@@ -9,13 +9,13 @@ LOG := $(TMPDIR)/log.txt
 
 ifeq ($(TARGET),x86_64-unknown-linux-gnu)
 ASAN_SUPPORT=$(SANITIZER_SUPPORT)
-EXTRA_RUSTFLAG=
+EXTRA_RUSTFLAG=-C relocation-model=dynamic-no-pic
 endif
 
 all:
 ifeq ($(ASAN_SUPPORT),1)
-	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) library.rs
-	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) -llibrary program.rs
+	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) $(EXTRA_RUSTFLAG) library.rs
+	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) $(EXTRA_RUSTFLAG) -llibrary program.rs
 	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | tee $(LOG)
 	grep -q stack-buffer-overflow $(LOG)
 endif

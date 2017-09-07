@@ -10,7 +10,7 @@ EXTRA_RUSTFLAG=-C rpath
 else
 ifeq ($(TARGET),x86_64-unknown-linux-gnu)
 ASAN_SUPPORT=$(SANITIZER_SUPPORT)
-EXTRA_RUSTFLAG=
+EXTRA_RUSTFLAG=-C relocation-model=dynamic-no-pic
 endif
 endif
 
