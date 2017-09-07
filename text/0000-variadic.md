@@ -76,9 +76,6 @@ impl<'a> VaList<'a> {
 impl<'a> Clone for VaList<'a>;
 ```
 
-`VaList` may become a language item (`#[lang="VaList"]`) to attach the
-appropriate compiler handling.
-
 The type returned from `VaList::arg` must have a type usable in an `extern "C"`
 FFI interface; the compiler allows all the same types returned from
 `VaList::arg` that it allows in the function signature of an `extern "C"`
@@ -177,6 +174,9 @@ ensure that a call to `va_end` occurs exactly once on every `VaList` at an
 appropriate time, similar to drop semantics. (This may occur via an
 implementation of `Drop`, but this must take into account the semantics of
 passing a `VaList` to or from an `extern "C"` function.)
+
+`VaList` may become a language item (`#[lang="VaList"]`) to attach the
+appropriate compiler handling.
 
 The compiler may need to handle the type `VaList` specially, in order to
 provide the desired drop semantics at FFI boundaries. In particular, some
