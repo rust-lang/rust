@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                                        target: Ty<'tcx>) -> Option<TypeError<'tcx2>> {
         use rustc::infer::InferOk;
         use rustc::middle::free_region::FreeRegionMap;
-        use rustc::middle::region::RegionMaps;
+        use rustc::middle::region::ScopeTree;
         use rustc::ty::Lift;
 
         let error =
@@ -191,12 +191,12 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
                 .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
 
         if let Err(err) = error {
-            let region_maps = RegionMaps::new();
+            let scope_tree = ScopeTree::default();
             let mut free_regions = FreeRegionMap::new();
 
             free_regions.relate_free_regions_from_predicates(target_param_env.caller_bounds);
             self.infcx.resolve_regions_and_report_errors(target_def_id,
-                                                         &region_maps,
+                                                         &scope_tree,
                                                          &free_regions);
 
             let err =
