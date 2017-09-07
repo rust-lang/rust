@@ -14,11 +14,11 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use context::SharedCrateContext;
 
 use back::archive;
+use back::command::Command;
 use back::symbol_export::ExportedSymbols;
 use rustc::middle::dependency_format::Linkage;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
