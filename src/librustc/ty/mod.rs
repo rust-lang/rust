@@ -2575,6 +2575,10 @@ pub struct SymbolName {
     pub name: InternedString
 }
 
+impl_stable_hash_for!(struct self::SymbolName {
+    name
+});
+
 impl Deref for SymbolName {
     type Target = str;
 

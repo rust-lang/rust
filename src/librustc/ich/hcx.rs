@@ -26,8 +26,8 @@ use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
+                                           StableHasher, StableHasherResult};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -196,6 +196,12 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'lcx> StableHashingContextProvider for ty::TyCtxt<'a, 'gcx, 'lcx> {
+    type ContextType = StableHashingContext<'a, 'gcx, 'lcx>;
+    fn create_stable_hashing_context(&self) -> Self::ContextType {
+        StableHashingContext::new(*self)
+    }
+}
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::NodeId {
     fn hash_stable<W: StableHasherResult>(&self,

@@ -58,6 +58,13 @@ impl<'a, A> DepGraphSafe for &'a A
 {
 }
 
+/// Mut ref to dep-graph-safe stuff should still be dep-graph-safe.
+impl<'a, A> DepGraphSafe for &'a mut A
+    where A: DepGraphSafe,
+{
+}
+
+
 /// No data here! :)
 impl DepGraphSafe for () {
 }

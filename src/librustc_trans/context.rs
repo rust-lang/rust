@@ -14,6 +14,7 @@ use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::ich::StableHashingContext;
 use rustc::traits;
 use debuginfo;
 use callee;
@@ -25,6 +26,8 @@ use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::middle::trans::Stats;
+use rustc_data_structures::stable_hasher::StableHashingContextProvider;
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
@@ -132,6 +135,17 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
+}
+
+impl<'a, 'tcx> DepGraphSafe for SharedCrateContext<'a, 'tcx> {
+}
+
+impl<'a, 'tcx> StableHashingContextProvider for SharedCrateContext<'a, 'tcx> {
+    type ContextType = StableHashingContext<'a, 'tcx, 'tcx>;
+
+    fn create_stable_hashing_context(&self) -> Self::ContextType {
+        StableHashingContext::new(self.tcx)
+    }
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
