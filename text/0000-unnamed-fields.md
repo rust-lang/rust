@@ -119,6 +119,9 @@ accesses to any of them require unsafe code; however, `b` and `c` do not
 overlap with each other. Code can borrow `u.b` and `u.c` simultaneously, but
 cannot borrow any other fields at the same time.
 
+Structs can also contain unnamed structs, and unions can contain unnamed
+unions.
+
 Unnamed fields can contain other unnamed fields. For example:
 
 ```rust
@@ -446,14 +449,6 @@ more controversial. And such a proposal would have a much more expansive impact
 on the language as a whole, by introducing a new construct that works anywhere
 a type can appear. Thus, this proposal provides the minimum change necessary to
 enable bindings to these types of C interfaces.
-
-This proposal only permits an unnamed `struct` to appear within a `union` and
-vice versa. An unnamed `union` within a `union` doesn't seem to have any useful
-value. An unnamed `struct` within a `struct` works in C11, and does affect
-alignment, but does not seem particularly useful without the ability to
-reference the unnamed field. Nonetheless, extending this feature to allow
-unnamed `struct` and `union` fields to appear within either a `struct` or
-`union` would not introduce much additional complexity.
 
 C structures can still include other constructs that Rust does not currently
 represent, including bitfields, and variable-length arrays at the end of a
