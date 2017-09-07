@@ -65,8 +65,8 @@ If you have built using `cargo build --release` instead, change the path to poin
 ## Usage
 
 By default, running `cargo semver` in directory with a Cargo project will try to compare
-the local version the one last published on crates.io, and display warning or errors for
-all breaking changes found.
+the local version the one last published on crates.io, and display warnings or errors for
+all changes found.
 
 Invoking `cargo semver -h` gives you the latest help message, which outlines how to use
 the cargo plugin:
