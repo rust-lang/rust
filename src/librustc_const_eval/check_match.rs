@@ -192,7 +192,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let module = self.tcx.hir.get_module_parent(scrut.id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
-                    pat_ty.is_uninhabited_from(module, self.tcx)
+                    self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     self.conservative_is_uninhabited(pat_ty)
                 };

@@ -10,7 +10,7 @@
 
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty::context::TyCtxt;
-use ty::{AdtDef, VariantDef, FieldDef, TyS};
+use ty::{AdtDef, VariantDef, FieldDef, Ty, TyS};
 use ty::{DefId, Substs};
 use ty::{AdtKind, Visibility};
 use ty::TypeVariants::*;
@@ -62,13 +62,81 @@ mod def_id_forest;
 // This code should only compile in modules where the uninhabitedness of Foo is
 // visible.
 
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Checks whether a type is visibly uninhabited from a particular module.
+    /// # Example
+    /// ```rust
+    /// enum Void {}
+    /// mod a {
+    ///     pub mod b {
+    ///         pub struct SecretlyUninhabited {
+    ///             _priv: !,
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// mod c {
+    ///     pub struct AlsoSecretlyUninhabited {
+    ///         _priv: Void,
+    ///     }
+    ///     mod d {
+    ///     }
+    /// }
+    ///
+    /// struct Foo {
+    ///     x: a::b::SecretlyUninhabited,
+    ///     y: c::AlsoSecretlyUninhabited,
+    /// }
+    /// ```
+    /// In this code, the type `Foo` will only be visibly uninhabited inside the
+    /// modules b, c and d. This effects pattern-matching on `Foo` or types that
+    /// contain `Foo`.
+    ///
+    /// # Example
+    /// ```rust
+    /// let foo_result: Result<T, Foo> = ... ;
+    /// let Ok(t) = foo_result;
+    /// ```
+    /// This code should only compile in modules where the uninhabitedness of Foo is
+    /// visible.
+    pub fn is_ty_uninhabited_from(self, module: DefId, ty: Ty<'tcx>) -> bool {
+        let forest = ty.uninhabited_from(&mut FxHashMap(), self);
+
+        // To check whether this type is uninhabited at all (not just from the
+        // given node) you could check whether the forest is empty.
+        // ```
+        // forest.is_empty()
+        // ```
+        forest.contains(self, module)
+    }
+
+    pub fn is_enum_variant_uninhabited_from(self,
+                                            module: DefId,
+                                            variant: &'tcx VariantDef,
+                                            substs: &'tcx Substs<'tcx>)
+                                            -> bool
+    {
+        let adt_kind = AdtKind::Enum;
+        variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind).contains(self, module)
+    }
+
+    pub fn is_variant_uninhabited_from_all_modules(self,
+                                                   variant: &'tcx VariantDef,
+                                                   substs: &'tcx Substs<'tcx>,
+                                                   adt_kind: AdtKind)
+                                                   -> bool
+    {
+        !variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind).is_empty()
+    }
+}
+
 impl<'a, 'gcx, 'tcx> AdtDef {
     /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
-    pub fn uninhabited_from(
-                &self,
-                visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
-                tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                substs: &'tcx Substs<'tcx>) -> DefIdForest
+    fn uninhabited_from(
+        &self,
+        visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        substs: &'tcx Substs<'tcx>) -> DefIdForest
     {
         DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
             v.uninhabited_from(visited, tcx, substs, self.adt_kind())
@@ -78,12 +146,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
 impl<'a, 'gcx, 'tcx> VariantDef {
     /// Calculate the forest of DefIds from which this variant is visibly uninhabited.
-    pub fn uninhabited_from(
-                &self,
-                visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
-                tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                substs: &'tcx Substs<'tcx>,
-                adt_kind: AdtKind) -> DefIdForest
+    fn uninhabited_from(
+        &self,
+        visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        substs: &'tcx Substs<'tcx>,
+        adt_kind: AdtKind) -> DefIdForest
     {
         match adt_kind {
             AdtKind::Union => {
@@ -107,12 +175,12 @@ impl<'a, 'gcx, 'tcx> VariantDef {
 
 impl<'a, 'gcx, 'tcx> FieldDef {
     /// Calculate the forest of DefIds from which this field is visibly uninhabited.
-    pub fn uninhabited_from(
-                &self,
-                visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
-                tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                substs: &'tcx Substs<'tcx>,
-                is_enum: bool) -> DefIdForest
+    fn uninhabited_from(
+        &self,
+        visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        substs: &'tcx Substs<'tcx>,
+        is_enum: bool) -> DefIdForest
     {
         let mut data_uninhabitedness = move || {
             self.ty(tcx, substs).uninhabited_from(visited, tcx)
@@ -138,10 +206,10 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Calculate the forest of DefIds from which this type is visibly uninhabited.
-    pub fn uninhabited_from(
-                &self,
-                visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
-                tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
+    fn uninhabited_from(
+        &self,
+        visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
     {
         match tcx.lift_to_global(&self) {
             Some(global_ty) => {
