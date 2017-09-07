@@ -9,11 +9,10 @@
 // except according to those terms.
 
 #![feature(const_fn, drop_types_in_const)]
-#![feature(cfg_target_thread_local, thread_local_internals)]
+#![feature(cfg_target_thread_local, thread_local_internals, thread_local_state)]
 
 type Foo = std::cell::RefCell<String>;
 
-#[cfg(target_thread_local)]
 static __KEY: std::thread::__FastLocalKeyInner<Foo> =
     std::thread::__FastLocalKeyInner::new();
 
@@ -21,16 +20,19 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> =
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
     std::thread::__OsLocalKeyInner::new();
 
-fn __getit() -> std::option::Option<
-    &'static std::cell::UnsafeCell<
-        std::option::Option<Foo>>>
-{
+fn __get() -> &'static std::cell::UnsafeCell<std::thread::__LocalKeyValue<Foo>> {
     __KEY.get() //~ ERROR  invocation of unsafe method requires unsafe
 }
 
+fn __register_dtor() {
+    #[cfg(target_thread_local)]
+    __KEY.register_dtor() //~ ERROR  invocation of unsafe method requires unsafe
+}
+
 static FOO: std::thread::LocalKey<Foo> =
-    std::thread::LocalKey::new(__getit, Default::default);
-//~^ ERROR call to unsafe function requires unsafe
+    std::thread::LocalKey::new(__get, //~ ERROR call to unsafe function requires unsafe
+                               __register_dtor,
+                               Default::default);
 
 fn main() {
     FOO.with(|foo| println!("{}", foo.borrow()));

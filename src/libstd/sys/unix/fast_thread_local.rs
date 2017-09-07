@@ -59,19 +59,3 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
 // a more direct implementation.
 #[cfg(target_os = "fuchsia")]
 pub use sys_common::thread_local::register_dtor_fallback as register_dtor;
-
-pub fn requires_move_before_drop() -> bool {
-    // The macOS implementation of TLS apparently had an odd aspect to it
-    // where the pointer we have may be overwritten while this destructor
-    // is running. Specifically if a TLS destructor re-accesses TLS it may
-    // trigger a re-initialization of all TLS variables, paving over at
-    // least some destroyed ones with initial values.
-    //
-    // This means that if we drop a TLS value in place on macOS that we could
-    // revert the value to its original state halfway through the
-    // destructor, which would be bad!
-    //
-    // Hence, we use `ptr::read` on macOS (to move to a "safe" location)
-    // instead of drop_in_place.
-    cfg!(target_os = "macos")
-}

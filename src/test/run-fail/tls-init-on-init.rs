@@ -10,40 +10,26 @@
 
 // ignore-emscripten no threads support
 
+// Can't include entire panic message because it'd exceed tidy's 100-character line length limit.
+// error-pattern:cannot access a TLS value while it is being initialized or during or after
+
 #![feature(thread_local_state)]
 
 use std::thread::{self, LocalKeyState};
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
-struct Foo { cnt: usize }
+struct Foo;
 
 thread_local!(static FOO: Foo = Foo::init());
 
-static CNT: AtomicUsize = ATOMIC_USIZE_INIT;
-
 impl Foo {
     fn init() -> Foo {
-        let cnt = CNT.fetch_add(1, Ordering::SeqCst);
-        if FOO.state() == LocalKeyState::Uninitialized {
-            FOO.with(|_| {});
-        }
-        Foo { cnt: cnt }
-    }
-}
-
-impl Drop for Foo {
-    fn drop(&mut self) {
-        if self.cnt == 1 {
-            assert_eq!(FOO.state(), LocalKeyState::Destroyed);
-        } else {
-            assert_eq!(self.cnt, 0);
-            assert_eq!(FOO.state(), LocalKeyState::Valid);
-        }
+        FOO.with(|_| {});
+        Foo
     }
 }
 
 fn main() {
     thread::spawn(|| {
-        Foo::init();
+        FOO.with(|_| {});
     }).join().unwrap();
 }

@@ -15,7 +15,7 @@
 // a custom non-`Sync` type to fake the same error.
 #[cfg(not(target_thread_local))]
 struct Key<T> {
-    _data: std::cell::UnsafeCell<Option<T>>,
+    _data: std::cell::UnsafeCell<std::thread::__LocalKeyValue>,
     _flag: std::cell::Cell<bool>,
 }
 
@@ -33,7 +33,7 @@ impl<T> Key<T> {
 use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
-//~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>: std::marker::Sync` is not satisfied
+//~^ ERROR `std::cell::UnsafeCell<std::thread::LocalKeyValue<()>>: std::marker::Sync` is not
 //~| ERROR `std::cell::Cell<bool>: std::marker::Sync` is not satisfied
 
 fn main() {}

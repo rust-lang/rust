@@ -676,6 +676,7 @@ fn print_to<T>(args: fmt::Arguments,
                label: &str) where T: Write {
     let result = match local_s.state() {
         LocalKeyState::Uninitialized |
+        LocalKeyState::Initializing |
         LocalKeyState::Destroyed => global_s().write_fmt(args),
         LocalKeyState::Valid => {
             local_s.with(|s| {
