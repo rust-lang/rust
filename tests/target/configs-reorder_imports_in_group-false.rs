@@ -5,7 +5,6 @@
 use dolor;
 /// This comment should stay with `use ipsum;`
 use ipsum;
-
 use lorem;
 use sit;
 use std::io;

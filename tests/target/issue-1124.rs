@@ -12,10 +12,6 @@ mod a {
 }
 
 use a;
-
-
-
 use x;
-
 use y;
 use z;

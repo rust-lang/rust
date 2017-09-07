@@ -22,8 +22,9 @@ use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, C
               FindUncommented};
 use comment::rewrite_comment;
 use config::{BraceStyle, Config};
-use items::{format_impl, format_trait, rewrite_associated_impl_type, rewrite_associated_type,
-            rewrite_static, rewrite_type_alias};
+use items::{format_impl, format_struct, format_struct_struct, format_trait,
+            rewrite_associated_impl_type, rewrite_associated_type, rewrite_static,
+            rewrite_type_alias};
 use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, SeparatorPlace,
             SeparatorTactic};
 use macros::{rewrite_macro, MacroPosition};
@@ -296,7 +297,8 @@ impl<'a> FmtVisitor<'a> {
         // complex in the module case. It is complex because the module could be
         // in a separate file and there might be attributes in both files, but
         // the AST lumps them all together.
-        let mut attrs = item.attrs.clone();
+        let filterd_attrs;
+        let mut attrs = &item.attrs;
         match item.node {
             ast::ItemKind::Mod(ref m) => {
                 let outer_file = self.codemap.lookup_char_pos(item.span.lo()).file;
@@ -314,7 +316,7 @@ impl<'a> FmtVisitor<'a> {
                 } else {
                     // Module is not inline and should not be skipped. We want
                     // to process only the attributes in the current file.
-                    let filterd_attrs = item.attrs
+                    filterd_attrs = item.attrs
                         .iter()
                         .filter_map(|a| {
                             let attr_file = self.codemap.lookup_char_pos(a.span.lo()).file;
@@ -328,7 +330,7 @@ impl<'a> FmtVisitor<'a> {
                     // Assert because if we should skip it should be caught by
                     // the above case.
                     assert!(!self.visit_attrs(&filterd_attrs, ast::AttrStyle::Outer));
-                    attrs = filterd_attrs;
+                    attrs = &filterd_attrs;
                 }
             }
             _ => if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {
@@ -338,62 +340,38 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match item.node {
-            ast::ItemKind::Use(ref vp) => {
-                self.format_import(&item.vis, vp, item.span, &item.attrs);
-            }
+            ast::ItemKind::Use(ref vp) => self.format_import(&item, vp),
             ast::ItemKind::Impl(..) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
                     .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo());
-                if let Some(impl_str) =
-                    format_impl(&self.get_context(), item, self.block_indent, where_span_end)
-                {
-                    self.buffer.push_str(&impl_str);
-                    self.last_pos = source!(self, item.span).hi();
-                }
+                let rw = format_impl(&self.get_context(), item, self.block_indent, where_span_end);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Trait(..) => {
-                self.format_missing_with_indent(item.span.lo());
-                if let Some(trait_str) = format_trait(&self.get_context(), item, self.block_indent)
-                {
-                    self.buffer.push_str(&trait_str);
-                    self.last_pos = source!(self, item.span).hi();
-                }
+                let rw = format_trait(&self.get_context(), item, self.block_indent);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::ExternCrate(_) => {
-                self.format_missing_with_indent(source!(self, item.span).lo());
-                let new_str = self.snippet(item.span);
-                if contains_comment(&new_str) {
-                    self.buffer.push_str(&new_str)
-                } else {
-                    let no_whitespace =
-                        &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
-                    self.buffer
-                        .push_str(&Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"));
-                }
-                self.last_pos = source!(self, item.span).hi();
+                let rw = rewrite_extern_crate(&self.get_context(), item);
+                self.push_rewrite(item.span, rw);
             }
             ast::ItemKind::Struct(ref def, ref generics) => {
-                let rewrite = {
-                    let indent = self.block_indent;
-                    let context = self.get_context();
-                    ::items::format_struct(
-                        &context,
-                        "struct ",
-                        item.ident,
-                        &item.vis,
-                        def,
-                        Some(generics),
-                        item.span,
-                        indent,
-                        None,
-                    ).map(|s| match *def {
-                        ast::VariantData::Tuple(..) => s + ";",
-                        _ => s,
-                    })
-                };
+                let rewrite = format_struct(
+                    &self.get_context(),
+                    "struct ",
+                    item.ident,
+                    &item.vis,
+                    def,
+                    Some(generics),
+                    item.span,
+                    self.block_indent,
+                    None,
+                ).map(|s| match *def {
+                    ast::VariantData::Tuple(..) => s + ";",
+                    _ => s,
+                });
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
@@ -474,7 +452,7 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(item.span, rewrite);
             }
             ast::ItemKind::Union(ref def, ref generics) => {
-                let rewrite = ::items::format_struct_struct(
+                let rewrite = format_struct_struct(
                     &self.get_context(),
                     "union ",
                     item.ident,
@@ -1040,5 +1018,17 @@ fn get_derive_args(context: &RewriteContext, attr: &ast::Attribute) -> Option<Ve
             )
         }
         _ => None,
+    })
+}
+
+// Rewrite `extern crate foo;` WITHOUT attributes.
+pub fn rewrite_extern_crate(context: &RewriteContext, item: &ast::Item) -> Option<String> {
+    assert!(is_extern_crate(item));
+    let new_str = context.snippet(item.span);
+    Some(if contains_comment(&new_str) {
+        new_str
+    } else {
+        let no_whitespace = &new_str.split_whitespace().collect::<Vec<&str>>().join(" ");
+        String::from(&*Regex::new(r"\s;").unwrap().replace(no_whitespace, ";"))
     })
 }
