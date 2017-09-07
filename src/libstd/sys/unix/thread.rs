@@ -53,10 +53,6 @@ impl Thread {
 
         let stack_size = cmp::max(stack, min_stack_size(&attr));
 
-        // L4Re only supports a maximum of 1Mb per default.
-        #[cfg(target_os = "l4re")]
-        let stack_size = cmp::min(stack_size, 1024 * 1024);
-
         match pthread_attr_setstacksize(&mut attr,
                                         stack_size) {
             0 => {}
