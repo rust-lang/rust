@@ -200,7 +200,7 @@ install!((self, builder, _config),
         builder.ensure(dist::Src);
         install_src(builder, self.stage);
     }, ONLY_BUILD;
-    Rustc, "src/librustc", _config.extended, only_hosts: true, {
+    Rustc, "src/librustc", true, only_hosts: true, {
         builder.ensure(dist::Rustc {
             compiler: builder.compiler(self.stage, self.target),
         });

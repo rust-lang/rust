@@ -12,6 +12,7 @@ extern crate rustc_trans_utils;
 
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::linker::Linker;
+use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
@@ -38,11 +39,12 @@ use std::ascii;
 use std::char;
 use std::env;
 use std::ffi::OsString;
-use std::fs;
-use std::io::{self, Read, Write};
+use std::fmt;
+use std::fs::{self, File};
+use std::io::{self, Read, Write, BufWriter};
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Output, Stdio};
 use std::str;
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
@@ -125,8 +127,13 @@ pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>)
     let tool = windows_registry::find_tool(target, "link.exe");
 
     if let Some(tool) = tool {
+        let mut cmd = Command::new(tool.path());
+        cmd.args(tool.args());
+        for &(ref k, ref v) in tool.env() {
+            cmd.env(k, v);
+        }
         let envs = tool.env().to_vec();
-        (tool.to_command(), envs)
+        (cmd, envs)
     } else {
         debug!("Failed to locate linker.");
         (Command::new("link.exe"), vec![])
@@ -797,7 +804,9 @@ fn link_natively(sess: &Session,
     let mut i = 0;
     loop {
         i += 1;
-        prog = time(sess.time_passes(), "running linker", || cmd.output());
+        prog = time(sess.time_passes(), "running linker", || {
+            exec_linker(sess, &mut cmd, tmpdir)
+        });
         if !retry_on_segfault || i > 3 {
             break
         }
@@ -871,6 +880,98 @@ fn link_natively(sess: &Session,
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
             Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
+        }
+    }
+}
+
+fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
+    -> io::Result<Output>
+{
+    // When attempting to spawn the linker we run a risk of blowing out the
+    // size limits for spawning a new process with respect to the arguments
+    // we pass on the command line.
+    //
+    // Here we attempt to handle errors from the OS saying "your list of
+    // arguments is too big" by reinvoking the linker again with an `@`-file
+    // that contains all the arguments. The theory is that this is then
+    // accepted on all linkers and the linker will read all its options out of
+    // there instead of looking at the command line.
+    match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
+        Ok(child) => return child.wait_with_output(),
+        Err(ref e) if command_line_too_big(e) => {}
+        Err(e) => return Err(e)
+    }
+
+    let file = tmpdir.join("linker-arguments");
+    let mut cmd2 = Command::new(cmd.get_program());
+    cmd2.arg(format!("@{}", file.display()));
+    for &(ref k, ref v) in cmd.get_env() {
+        cmd2.env(k, v);
+    }
+    let mut f = BufWriter::new(File::create(&file)?);
+    for arg in cmd.get_args() {
+        writeln!(f, "{}", Escape {
+            arg: arg.to_str().unwrap(),
+            is_like_msvc: sess.target.target.options.is_like_msvc,
+        })?;
+    }
+    f.into_inner()?;
+    return cmd2.output();
+
+    #[cfg(unix)]
+    fn command_line_too_big(err: &io::Error) -> bool {
+        err.raw_os_error() == Some(::libc::E2BIG)
+    }
+
+    #[cfg(windows)]
+    fn command_line_too_big(err: &io::Error) -> bool {
+        const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
+        err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
+    }
+
+    struct Escape<'a> {
+        arg: &'a str,
+        is_like_msvc: bool,
+    }
+
+    impl<'a> fmt::Display for Escape<'a> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            if self.is_like_msvc {
+                // This is "documented" at
+                // https://msdn.microsoft.com/en-us/library/4xdcbak7.aspx
+                //
+                // Unfortunately there's not a great specification of the
+                // syntax I could find online (at least) but some local
+                // testing showed that this seemed sufficient-ish to catch
+                // at least a few edge cases.
+                write!(f, "\"")?;
+                for c in self.arg.chars() {
+                    match c {
+                        '"' => write!(f, "\\{}", c)?,
+                        c => write!(f, "{}", c)?,
+                    }
+                }
+                write!(f, "\"")?;
+            } else {
+                // This is documented at https://linux.die.net/man/1/ld, namely:
+                //
+                // > Options in file are separated by whitespace. A whitespace
+                // > character may be included in an option by surrounding the
+                // > entire option in either single or double quotes. Any
+                // > character (including a backslash) may be included by
+                // > prefixing the character to be included with a backslash.
+                //
+                // We put an argument on each line, so all we need to do is
+                // ensure the line is interpreted as one whole argument.
+                for c in self.arg.chars() {
+                    match c {
+                        '\\' |
+                        ' ' => write!(f, "\\{}", c)?,
+                        c => write!(f, "{}", c)?,
+                    }
+                }
+            }
+            Ok(())
         }
     }
 }

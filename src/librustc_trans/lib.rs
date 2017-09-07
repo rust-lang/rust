@@ -68,6 +68,7 @@ pub use llvm_util::{init, target_features, print_version, print_passes, print, e
 
 pub mod back {
     mod archive;
+    mod command;
     pub(crate) mod linker;
     pub mod link;
     mod lto;

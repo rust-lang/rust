@@ -919,6 +919,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
+    emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
+        "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck_mir: bool = (false, parse_bool, [UNTRACKED],
         "implicitly treat functions as if they have `#[rustc_mir_borrowck]` attribute"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],

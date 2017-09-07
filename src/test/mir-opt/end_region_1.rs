@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions
+// compile-flags: -Z identify_regions -Z emit-end-regions
 // ignore-tidy-linelength
 
 // This is just about the simplest program that exhibits an EndRegion.

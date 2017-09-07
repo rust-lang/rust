@@ -289,7 +289,7 @@ impl Step for TestHelpers {
         let _folder = build.fold_output(|| "build_test_helpers");
         println!("Building test helpers");
         t!(fs::create_dir_all(&dst));
-        let mut cfg = gcc::Config::new();
+        let mut cfg = gcc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform gcc of these compilers. Note, though, that
@@ -306,6 +306,7 @@ impl Step for TestHelpers {
            .target(&target)
            .host(&build.build)
            .opt_level(0)
+           .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
            .compile("librust_test_helpers.a");
@@ -416,6 +417,7 @@ impl Step for Openssl {
             "powerpc64-unknown-linux-gnu" => "linux-ppc64",
             "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
             "s390x-unknown-linux-gnu" => "linux64-s390x",
+            "sparc64-unknown-netbsd" => "BSD-sparc64",
             "x86_64-apple-darwin" => "darwin64-x86_64-cc",
             "x86_64-linux-android" => "linux-x86_64",
             "x86_64-unknown-freebsd" => "BSD-x86_64",
@@ -434,6 +436,15 @@ impl Step for Openssl {
         if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
             configure.arg("-mandroid");
             configure.arg("-fomit-frame-pointer");
+        }
+        if target == "sparc64-unknown-netbsd" {
+            // Need -m64 to get assembly generated correctly for sparc64.
+            configure.arg("-m64");
+            if build.build.contains("netbsd") {
+                // Disable sparc64 asm on NetBSD builders, it uses
+                // m4(1)'s -B flag, which NetBSD m4 does not support.
+                configure.arg("no-asm");
+            }
         }
         // Make PIE binaries
         // Non-PIE linker support was removed in Lollipop

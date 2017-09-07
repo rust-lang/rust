@@ -41,7 +41,6 @@ fn main() {
     // Check which subcomamnd the user ran...
     let res = match matches.subcommand() {
         ("build", Some(sub_matches)) => build(sub_matches),
-        ("test", Some(sub_matches)) => test(sub_matches),
         (_, _) => unreachable!(),
     };
 
@@ -61,14 +60,6 @@ fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
     };
 
     try!(book.build());
-
-    Ok(())
-}
-
-fn test(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let mut book = build_mdbook_struct(args);
-
-    try!(book.test());
 
     Ok(())
 }

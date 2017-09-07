@@ -89,7 +89,7 @@ should go to.
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region;
-use rustc::ty::Ty;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use syntax_pos::{Span};
@@ -359,7 +359,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                           self.arg_count,
                                           false));
 
-        self.cfg.push_end_region(block, region_scope.1, scope.region_scope);
+        self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
         block.unit()
     }
 
@@ -414,7 +414,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               false));
 
             // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(block, region_scope.1, scope.region_scope);
+            self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
         }
         }
         let scope = &self.scopes[len - scope_count];
@@ -463,7 +463,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               true));
 
             // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(block, src_info, scope.region_scope);
+            self.cfg.push_end_region(self.hir.tcx(), block, src_info, scope.region_scope);
         }
 
         self.cfg.terminate(block, src_info, TerminatorKind::GeneratorDrop);
@@ -694,7 +694,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         for scope in scopes.iter_mut() {
-            target = build_diverge_scope(cfg, scope.region_scope_span,
+            target = build_diverge_scope(self.hir.tcx(), cfg, scope.region_scope_span,
                                          scope, target, generator_drop);
         }
         Some(target)
@@ -831,7 +831,8 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
+fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                       cfg: &mut CFG<'tcx>,
                                        span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock,
@@ -893,7 +894,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
     // becomes trivial goto after pass that removes all EndRegions.)
     {
         let block = cfg.start_new_cleanup_block();
-        cfg.push_end_region(block, source_info(span), scope.region_scope);
+        cfg.push_end_region(tcx, block, source_info(span), scope.region_scope);
         cfg.terminate(block, source_info(span), TerminatorKind::Goto { target: target });
         target = block
     }
