@@ -1,5 +1,7 @@
 -include ../tools.mk
 
+LOG := $(TMPDIR)/log.txt
+
 # This test builds a shared object, then an executable that links it as a native
 # rust library (constrast to an rlib). The shared library and executable both
 # are compiled with address sanitizer, and we assert that a fault in the cdylib
@@ -14,6 +16,6 @@ all:
 ifeq ($(ASAN_SUPPORT),1)
 	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) library.rs
 	$(RUSTC) -g -Z sanitizer=address --crate-type bin --target $(TARGET) -llibrary program.rs
-	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | grep -q stack-buffer-overflow
+	LD_LIBRARY_PATH=$(TMPDIR) $(TMPDIR)/program 2>&1 | tee $(LOG)
+	grep -q stack-buffer-overflow $(LOG)
 endif
-
