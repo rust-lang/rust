@@ -351,6 +351,7 @@ impl Ipv4Addr {
     ///
     /// let addr = Ipv4Addr::localhost();
     /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
+    /// ```
     pub fn localhost() -> Ipv4Addr {
         Ipv4Addr::new(127, 0, 0, 1)
     }
@@ -364,6 +365,7 @@ impl Ipv4Addr {
     ///
     /// let addr = Ipv4Addr::unspecified();
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
+    /// ```
     pub fn unspecified() -> Ipv4Addr {
         Ipv4Addr::new(0, 0, 0, 0)
     }
@@ -823,6 +825,7 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::localhost();
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
+    /// ```
     pub fn localhost() -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
     }
@@ -836,6 +839,7 @@ impl Ipv6Addr {
     ///
     /// let addr = Ipv6Addr::unspecified();
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
+    /// ```
     pub fn unspecified() -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)
     }
@@ -1748,7 +1752,7 @@ mod tests {
         assert_eq!(Ipv6Addr::unspecified(), Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
         assert!(Ipv6Addr::unspecified().is_unspecified());
     }
-        
+
     #[test]
     fn ipv4_from_octets() {
         assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
