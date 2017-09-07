@@ -219,7 +219,6 @@ impl AssocOp {
 pub const PREC_RESET: i8 = -100;
 pub const PREC_CLOSURE: i8 = -40;
 pub const PREC_JUMP: i8 = -30;
-pub const PREC_BLOCK: i8 = -20;
 pub const PREC_RANGE: i8 = -10;
 // The range 2 ... 14 is reserved for AssocOp binary operator precedences.
 pub const PREC_PREFIX: i8 = 50;
@@ -235,16 +234,6 @@ pub fn expr_precedence(expr: &ast::Expr) -> i8 {
         ExprKind::Continue(..) |
         ExprKind::Ret(..) |
         ExprKind::Yield(..) => PREC_JUMP,
-
-        ExprKind::If(..) |
-        ExprKind::IfLet(..) |
-        ExprKind::While(..) |
-        ExprKind::WhileLet(..) |
-        ExprKind::ForLoop(..) |
-        ExprKind::Loop(..) |
-        ExprKind::Match(..) |
-        ExprKind::Block(..) |
-        ExprKind::Catch(..) => PREC_BLOCK,
 
         // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to parse,
         // instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence ensures that
@@ -284,6 +273,15 @@ pub fn expr_precedence(expr: &ast::Expr) -> i8 {
         ExprKind::Lit(..) |
         ExprKind::Path(..) |
         ExprKind::Paren(..) |
+        ExprKind::If(..) |
+        ExprKind::IfLet(..) |
+        ExprKind::While(..) |
+        ExprKind::WhileLet(..) |
+        ExprKind::ForLoop(..) |
+        ExprKind::Loop(..) |
+        ExprKind::Match(..) |
+        ExprKind::Block(..) |
+        ExprKind::Catch(..) |
         ExprKind::Struct(..) => PREC_PAREN,
     }
 }

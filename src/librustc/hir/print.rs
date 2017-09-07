@@ -2292,12 +2292,6 @@ fn expr_precedence(expr: &hir::Expr) -> i8 {
         hir::ExprRet(..) |
         hir::ExprYield(..) => PREC_JUMP,
 
-        hir::ExprIf(..) |
-        hir::ExprWhile(..) |
-        hir::ExprLoop(..) |
-        hir::ExprMatch(..) |
-        hir::ExprBlock(..) => PREC_BLOCK,
-
         // Binop-like expr kinds, handled by `AssocOp`.
         hir::ExprBinary(op, _, _) => bin_op_to_assoc_op(op.node).precedence() as i8,
 
@@ -2326,6 +2320,11 @@ fn expr_precedence(expr: &hir::Expr) -> i8 {
         hir::ExprTup(..) |
         hir::ExprLit(..) |
         hir::ExprPath(..) |
+        hir::ExprIf(..) |
+        hir::ExprWhile(..) |
+        hir::ExprLoop(..) |
+        hir::ExprMatch(..) |
+        hir::ExprBlock(..) |
         hir::ExprStruct(..) => PREC_PAREN,
     }
 }
