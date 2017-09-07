@@ -420,6 +420,8 @@ WF(T: Bar)
 WF(T: Foo)
 ```
 
+**Remark**: Reverse rules include implicit `Sized` bounds on type declarations. However, they do not include (explicit) `?Sized` bounds since those are not *real* trait bounds, but only a way to disable the implicit `Sized` bound.
+
 ## Input types
 We define the notion of input types of a type. Basically, input types refer to all types that are accessible from referencing to a specific type. For example, a function will assume that the input types of its arguments are well-formed, hence in the body of that function we'll be able to derive implied bounds thanks to the reverse rules described earlier.
 
