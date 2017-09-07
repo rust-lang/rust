@@ -970,6 +970,32 @@ impl f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
+    /// Returns max if self is greater than max, and min if self is less than min.
+    /// Otherwise this returns self.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(clamp)]
+    /// use std::f64::NAN;
+    /// assert!((-3.0f64).clamp(-2.0f64, 1.0f64) == -2.0f64);
+    /// assert!((0.0f64).clamp(-2.0f64, 1.0f64) == 0.0f64);
+    /// assert!((2.0f64).clamp(-2.0f64, 1.0f64) == 1.0f64);
+    /// assert!((NAN).clamp(-2.0f64, 1.0f64).is_nan());
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if min > max, min is NaN, or max is NaN.
+    #[unstable(feature = "clamp", issue = "44095")]
+    #[inline]
+    pub fn clamp(self, min: f64, max: f64) -> f64 {
+        assert!(min <= max);
+        let mut x = self;
+        if x < min { x = min; }
+        if x > max { x = max; }
+        x
+    }
+
     // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
     // because of their non-standard behavior (e.g. log(-n) returns -Inf instead
     // of expected NaN).
@@ -1641,5 +1667,23 @@ mod tests {
         assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
         assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
         assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_greater_than_max() {
+        1.0f64.clamp(3.0, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_min_is_nan() {
+        1.0f64.clamp(NAN, 1.0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_clamp_max_is_nan() {
+        1.0f64.clamp(3.0, NAN);
     }
 }
