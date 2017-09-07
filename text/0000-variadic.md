@@ -65,7 +65,7 @@ To access the arguments, Rust provides the following public interfaces in
 ```rust
 /// The argument list of a C-compatible variadic function, corresponding to the
 /// underlying C `va_list`. Opaque.
-pub extern type VaList<'a>;
+pub struct VaList<'a> { /* fields omitted */ }
 
 impl<'a> VaList<'a> {
     /// Extract the next argument from the argument list. T must have a type
