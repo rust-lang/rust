@@ -624,13 +624,24 @@ fn prune_cache_value_obligations<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 
 /// that `T: Trait` (we may also include some other obligations). This
 /// may or may not be necessary -- in principle, all the obligations
 /// that must be proven to show that `T: Trait` were also returned
-/// when the cache was first populated.  But there is a vague concern
-/// that perhaps someone would not have proven those, but also not
-/// have used a snapshot, in which case the cache could remain
-/// populated even though `T: Trait` has not been shown. Returning
-/// this "paranoid" obligation ensures that, no matter what has come
-/// before, if you prove the subobligations, we at least know that `T:
-/// Trait` is implemented.
+/// when the cache was first populated. But there are some vague concerns,
+/// and so we take the precatuionary measure of including `T: Trait` in
+/// the result:
+///
+/// Concern #1. The current setup is fragile. Perhaps someone could
+/// have failed to prove the concerns from when the cache was
+/// populated, but also not have used a snapshot, in which case the
+/// cache could remain populated even though `T: Trait` has not been
+/// shown. In this case, the "other code" is at fault -- when you
+/// project something, you are supposed to either have a snapshot or
+/// else prove all the resulting obligations -- but it's still easy to
+/// get wrong.
+///
+/// Concern #2. Even within the snapshot, if those original
+/// obligations are not yet proven, then we are able to do projections
+/// that may yet turn out to be wrong.  This *may* lead to some sort
+/// of trouble, though we don't have a concrete example of how that
+/// can occur yet.  But it seems risky at best.
 fn push_paranoid_cache_value_obligation<'a, 'gcx, 'tcx>(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                                                         param_env: ty::ParamEnv<'tcx>,
                                                         projection_ty: ty::ProjectionTy<'tcx>,
