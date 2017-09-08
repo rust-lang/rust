@@ -100,14 +100,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// This code should only compile in modules where the uninhabitedness of Foo is
     /// visible.
     pub fn is_ty_uninhabited_from(self, module: DefId, ty: Ty<'tcx>) -> bool {
-        let forest = ty.uninhabited_from(&mut FxHashMap(), self);
-
         // To check whether this type is uninhabited at all (not just from the
         // given node) you could check whether the forest is empty.
         // ```
         // forest.is_empty()
         // ```
-        forest.contains(self, module)
+        self.ty_inhabitedness_forest(ty).contains(self, module)
+    }
+
+    fn ty_inhabitedness_forest(self, ty: Ty<'tcx>) -> DefIdForest {
+        ty.uninhabited_from(&mut FxHashMap(), self)
     }
 
     pub fn is_enum_variant_uninhabited_from(self,
@@ -116,17 +118,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                             substs: &'tcx Substs<'tcx>)
                                             -> bool
     {
-        let adt_kind = AdtKind::Enum;
-        variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind).contains(self, module)
+        self.variant_inhabitedness_forest(variant, substs).contains(self, module)
     }
 
     pub fn is_variant_uninhabited_from_all_modules(self,
                                                    variant: &'tcx VariantDef,
-                                                   substs: &'tcx Substs<'tcx>,
-                                                   adt_kind: AdtKind)
+                                                   substs: &'tcx Substs<'tcx>)
                                                    -> bool
     {
-        !variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind).is_empty()
+        !self.variant_inhabitedness_forest(variant, substs).is_empty()
+    }
+
+    fn variant_inhabitedness_forest(self, variant: &'tcx VariantDef, substs: &'tcx Substs<'tcx>)
+                                    -> DefIdForest {
+        // Determine the ADT kind:
+        let adt_def_id = self.adt_def_id_of_variant(variant);
+        let adt_kind = self.adt_def(adt_def_id).adt_kind();
+
+        // Compute inhabitedness forest:
+        variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind)
     }
 }
 
@@ -210,31 +220,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         &self,
         visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
         tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
-    {
-        match tcx.lift_to_global(&self) {
-            Some(global_ty) => {
-                {
-                    let cache = tcx.inhabitedness_cache.borrow();
-                    if let Some(forest) = cache.get(&global_ty) {
-                        return forest.clone();
-                    }
-                }
-                let forest = global_ty.uninhabited_from_inner(visited, tcx);
-                let mut cache = tcx.inhabitedness_cache.borrow_mut();
-                cache.insert(global_ty, forest.clone());
-                forest
-            },
-            None => {
-                let forest = self.uninhabited_from_inner(visited, tcx);
-                forest
-            },
-        }
-    }
-
-    fn uninhabited_from_inner(
-                &self,
-                visited: &mut FxHashMap<DefId, FxHashSet<&'tcx Substs<'tcx>>>,
-                tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
     {
         match self.sty {
             TyAdt(def, substs) => {

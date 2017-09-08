@@ -18,6 +18,7 @@ pub use self::fold::TypeFoldable;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use hir::map::DefPathData;
 use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
@@ -2229,6 +2230,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.adt_def(did).struct_variant()
             }
             _ => bug!("expect_variant_def used with unexpected def {:?}", def)
+        }
+    }
+
+    /// Given a `VariantDef`, returns the def-id of the `AdtDef` of which it is a part.
+    pub fn adt_def_id_of_variant(self, variant_def: &'tcx VariantDef) -> DefId {
+        let def_key = self.def_key(variant_def.did);
+        match def_key.disambiguated_data.data {
+            // for enum variants and tuple structs, the def-id of the ADT itself
+            // is the *parent* of the variant
+            DefPathData::EnumVariant(..) | DefPathData::StructCtor =>
+                DefId { krate: variant_def.did.krate, index: def_key.parent.unwrap() },
+
+            // otherwise, for structs and unions, they share a def-id
+            _ => variant_def.did,
         }
     }
 

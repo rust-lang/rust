@@ -101,10 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if self.hir.tcx().sess.features.borrow().never_type {
                     let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
                         i == variant_index || {
-                            let adt_kind = adt_def.adt_kind();
-                            self.hir.tcx().is_variant_uninhabited_from_all_modules(v,
-                                                                                   substs,
-                                                                                   adt_kind)
+                            self.hir.tcx().is_variant_uninhabited_from_all_modules(v, substs)
                         }
                     });
                     if irrefutable {

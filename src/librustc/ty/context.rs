@@ -43,7 +43,6 @@ use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
-use ty::inhabitedness::DefIdForest;
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
@@ -896,8 +895,6 @@ pub struct GlobalCtxt<'tcx> {
     // FIXME dep tracking -- should be harmless enough
     pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
-    pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
-
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
@@ -1179,7 +1176,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             mir_passes,
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
-            inhabitedness_cache: RefCell::new(FxHashMap()),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
