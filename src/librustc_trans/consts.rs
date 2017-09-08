@@ -26,6 +26,7 @@ use rustc::ty;
 
 use rustc::hir;
 
+use std::cmp;
 use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
@@ -42,6 +43,25 @@ pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
     }
 }
 
+fn set_global_alignment(ccx: &CrateContext,
+                        gv: ValueRef,
+                        mut align: machine::llalign) {
+    // The target may require greater alignment for globals than the type does.
+    // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
+    // which can force it to be smaller.  Rust doesn't support this yet.
+    if let Some(min) = ccx.sess().target.target.options.min_global_align {
+        match ty::layout::Align::from_bits(min, min) {
+            Ok(min) => align = cmp::max(align, min.abi() as machine::llalign),
+            Err(err) => {
+                ccx.sess().err(&format!("invalid minimum global alignment: {}", err));
+            }
+        }
+    }
+    unsafe {
+        llvm::LLVMSetAlignment(gv, align);
+    }
+}
+
 pub fn addr_of_mut(ccx: &CrateContext,
                    cv: ValueRef,
                    align: machine::llalign,
@@ -53,7 +73,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
             bug!("symbol `{}` is already defined", name);
         });
         llvm::LLVMSetInitializer(gv, cv);
-        llvm::LLVMSetAlignment(gv, align);
+        set_global_alignment(ccx, gv, align);
         llvm::LLVMRustSetLinkage(gv, llvm::Linkage::InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
@@ -276,7 +296,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ccx.statics_to_rauw().borrow_mut().push((g, new_g));
             new_g
         };
-        llvm::LLVMSetAlignment(g, ccx.align_of(ty));
+        set_global_alignment(ccx, g, ccx.align_of(ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
