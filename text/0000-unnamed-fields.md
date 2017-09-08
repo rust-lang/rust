@@ -81,7 +81,7 @@ using the `union` keyword:
 ```rust
 struct S {
     a: u32,
-    union {
+    _: union {
         b: u32,
         c: f32,
     },
@@ -89,11 +89,13 @@ struct S {
 }
 ```
 
-Given a struct `s` of this type, code can access `s.a`, `s.d`, and either `s.b`
-or `s.c`. Accesses to `a` and `d` can occur in safe code; accesses to `b` and
-`c` require unsafe code, and `b` and `c` overlap, requiring care to access only
-the field whose contents make sense at the time. As with any `union`, code
-cannot borrow `s.b` and `s.c` simultaneously.
+The underscore `_` indicates the absence of a field name; the fields within the
+unnamed union will appear directly with the containing structure. Given a
+struct `s` of this type, code can access `s.a`, `s.d`, and either `s.b` or
+`s.c`. Accesses to `a` and `d` can occur in safe code; accesses to `b` and `c`
+require unsafe code, and `b` and `c` overlap, requiring care to access only the
+field whose contents make sense at the time. As with any `union`, code cannot
+borrow `s.b` and `s.c` simultaneously.
 
 Conversely, sometimes when defining a `union`, you may want to group multiple
 fields together and make them available simultaneously, with non-overlapping
@@ -105,7 +107,7 @@ inline within the `union`, using the `struct` keyword:
 ```rust
 union U {
     a: u32,
-    struct {
+    _: struct {
         b: u16,
         c: f16,
     },
@@ -127,9 +129,9 @@ Unnamed fields can contain other unnamed fields. For example:
 ```rust
 struct S {
     a: u32,
-    union {
+    _: union {
         b: u32,
-        struct {
+        _: struct {
             c: u16,
             d: f16,
         },
@@ -180,9 +182,9 @@ with each other. The following definition:
 ```rust
 struct S {
     a: u32,
-    union {
+    _: union {
         b: u32,
-        struct {
+        _: struct {
             c: u16,
             d: f16,
         },
@@ -218,9 +220,9 @@ Given the following declaration:
 ```rust
 struct S {
     a: u32,
-    union {
+    _: union {
         b: u32,
-        struct {
+        _: struct {
             c: u16,
             d: f16,
         },
@@ -271,7 +273,7 @@ instance, the following definition will produce an error:
 ```rust
 struct S {
     a: u32,
-    union {
+    _: union {
         a: u32,
         b: f32,
     },
@@ -285,14 +287,16 @@ The error will identify the duplicate `a` fields as the sources of the error.
 
 ## Parsing
 
-Within a struct's fields, in place of a field name and value, allow
-`struct { fields }` or `union { fields }`, where `fields` allows
+Within a struct or union's fields, in place of a field name and value, allow
+`_: struct { fields }` or `_: union { fields }`, where `fields` allows
 everything allowed within a `struct` or `union` declaration, respectively.
 
-Note that the keyword `struct` cannot appear as a field name, making it
-entirely unambiguous. The contextual keyword `union` could theoretically appear
-as a field name, but an open brace cannot appear immediately after a field
-name, allowing disambiguation via a single token of context (`union {`).
+The name `_` cannot currently appear as a field name, so this will not
+introduce any compatibility issues with existing code. The keyword `struct`
+cannot appear as a field type, making it entirely unambiguous. The contextual
+keyword `union` could theoretically appear as a type name, but an open brace
+cannot appear immediately after a field type, allowing disambiguation via a
+single token of context (`union {`).
 
 ## Layout and Alignment
 
@@ -357,11 +361,19 @@ extract and define types for the unnamed fields, but that macro would have to
 give a name to those unnamed fields, and accesses would have to include the
 intermediate name.
 
-## Unnamed fields using `_` with named types
+## Leaving out the `_: ` in unnamed fields
 
-Rather than allowing the inline definition of the contents of unnamed `struct`
-or `union` fields, we could allow declaring an unnamed field with a named type.
-For instance:
+Rather than declaring unnamed fields with an `_`, as in `_: union { fields }`
+and `_: struct { fields }`, we could omit the field name entirely, and write
+`union { fields }` and `struct { fields }` directly. This would more closely
+match the C syntax. However, this does not provide as natural an extension to
+support references to named structures.
+
+## Unnamed fields with named types
+
+In addition to allowing the inline definition of the contents of unnamed
+`struct` or `union` fields, we could also allow declaring an unnamed field with
+a named type.  For instance:
 
 ```rust
 union U { x: i64, y: f64 }
@@ -369,20 +381,17 @@ struct S { _: U, z: usize }
 ```
 
 Given these declarations, `S` would contain fields `x`, `y`, and `z`, with `x`
-and `y` overlapping. Rust currently does not allow `_` as a field name, so
-introducing this alternative syntax would not create any compatibility issue.
-This alternative syntax has the advantage of declaring the type layouts
-explicitly, simplifying the language definition. It also allows reusing the
-type definitions for fields within multiple structures, such as a common
-header. While C11 does not directly support inlining of separately defined
-structures, compilers do support it as an extension.
+and `y` overlapping.
 
-This syntax would have the disadvantage of allowing the structure and union
-declarations to appear arbitrarily far apart from each other, potentially even
-in separate modules. It would also require careful implementation of rustdoc
-support, to show the resulting structure layout. Finally, it would require the
-introduction of names for the intermediate structures, such as in binding
-generators.
+This syntax makes it possible to give a name to the intermediate type, while
+still leaving the field unnamed. While C11 does not directly support inlining
+of separately defined structures, compilers do support it as an extension. This
+syntax would allow for the common definition of sets of fields inlined into
+several structures, such as a common header.
+
+This syntax would also support an obvious translation of inline-declared
+structures with names, by moving the declaration out-of-line; a macro could
+perform such a translation.
 
 ## Field aliases
 
