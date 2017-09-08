@@ -50,10 +50,11 @@ pub unsafe extern "C" fn func(arg: T, arg2: T2, mut args: ...) {
 
 The use of `...` as the type of `args` at the end of the argument list declares
 the function as variadic. This must appear as the last argument of the
-function.  The function must use `extern "C"`, and must use `unsafe`. To expose
-such a function as a symbol for C code to call directly, the function may want
-to use `#[no_mangle]` as well; however, Rust code may also pass the function to
-C code expecting a function pointer to a variadic function.
+function, and the function must have at least one argument before it. The
+function must use `extern "C"`, and must use `unsafe`. To expose such a
+function as a symbol for C code to call directly, the function may want to use
+`#[no_mangle]` as well; however, Rust code may also pass the function to C code
+expecting a function pointer to a variadic function.
 
 The `args` named in the function declaration has the type
 `core::intrinsics::VaList<'a>`, where the compiler supplies a lifetime `'a`
