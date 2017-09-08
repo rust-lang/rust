@@ -822,23 +822,6 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 // record_superlifetime(new_cx, expr.callee_id);
             }
 
-            hir::ExprYield(..) => {
-                // Mark this expr's scope and all parent scopes as containing `yield`.
-                let mut scope = Scope::Node(expr.hir_id.local_id);
-                loop {
-                    visitor.scope_tree.yield_in_scope.insert(scope,
-                        (expr.span, visitor.expr_count));
-
-                    // Keep traversing up while we can.
-                    match visitor.scope_tree.parent_map.get(&scope) {
-                        // Don't cross from closure bodies to their parent.
-                        Some(&Scope::CallSite(_)) => break,
-                        Some(&superscope) => scope = superscope,
-                        None => break
-                    }
-                }
-            }
-
             _ => {}
         }
     }
@@ -852,6 +835,23 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
         }
 
         _ => intravisit::walk_expr(visitor, expr)
+    }
+
+    if let hir::ExprYield(..) = expr.node {
+        // Mark this expr's scope and all parent scopes as containing `yield`.
+        let mut scope = Scope::Node(expr.hir_id.local_id);
+        loop {
+            visitor.scope_tree.yield_in_scope.insert(scope,
+                (expr.span, visitor.expr_count));
+
+            // Keep traversing up while we can.
+            match visitor.scope_tree.parent_map.get(&scope) {
+                // Don't cross from closure bodies to their parent.
+                Some(&Scope::CallSite(_)) => break,
+                Some(&superscope) => scope = superscope,
+                None => break
+            }
+        }
     }
 
     visitor.cx = prev_cx;

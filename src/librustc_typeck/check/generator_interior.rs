@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
             self.region_scope_tree.yield_in_scope(s).and_then(|(span, expr_count)| {
                 // Check if the span in the region comes after the expression
-                if expr_count > self.expr_count {
+                if expr.is_none() || expr_count >= self.expr_count {
                     Some(span)
                 } else {
                     None
