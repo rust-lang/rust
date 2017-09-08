@@ -637,12 +637,13 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-/// Represents the #[stable], #[unstable] and #[rustc_deprecated] attributes.
+/// Represents the #[stable], #[unstable], #[rustc_{deprecated,const_unstable}] attributes.
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
     pub rustc_depr: Option<RustcDeprecation>,
+    pub rustc_const_unstable: Option<RustcConstUnstable>,
 }
 
 /// The available stability levels.
@@ -657,6 +658,11 @@ pub enum StabilityLevel {
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
+}
+
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
+pub struct RustcConstUnstable {
+    pub feature: Symbol,
 }
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
@@ -678,9 +684,15 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
 {
     let mut stab: Option<Stability> = None;
     let mut rustc_depr: Option<RustcDeprecation> = None;
+    let mut rustc_const_unstable: Option<RustcConstUnstable> = None;
 
     'outer: for attr in attrs_iter {
-        if attr.path != "rustc_deprecated" && attr.path != "unstable" && attr.path != "stable" {
+        if ![
+            "rustc_deprecated",
+            "rustc_const_unstable",
+            "unstable",
+            "stable",
+        ].iter().any(|&s| attr.path == s) {
             continue // not a stability level
         }
 
@@ -703,21 +715,18 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
             };
 
-            match &*meta.name.as_str() {
-                "rustc_deprecated" => {
-                    if rustc_depr.is_some() {
-                        span_err!(diagnostic, item_sp, E0540,
-                                  "multiple rustc_deprecated attributes");
-                        break
-                    }
-
-                    let mut since = None;
-                    let mut reason = None;
+            macro_rules! get_meta {
+                ($($name:ident),+) => {
+                    $(
+                        let mut $name = None;
+                    )+
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
                             match &*mi.name().as_str() {
-                                "since" => if !get(mi, &mut since) { continue 'outer },
-                                "reason" => if !get(mi, &mut reason) { continue 'outer },
+                                $(
+                                    stringify!($name)
+                                        => if !get(mi, &mut $name) { continue 'outer },
+                                )+
                                 _ => {
                                     handle_errors(diagnostic, mi.span,
                                                   AttrError::UnknownMetaItem(mi.name()));
@@ -729,6 +738,18 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             continue 'outer
                         }
                     }
+                }
+            }
+
+            match &*meta.name.as_str() {
+                "rustc_deprecated" => {
+                    if rustc_depr.is_some() {
+                        span_err!(diagnostic, item_sp, E0540,
+                                  "multiple rustc_deprecated attributes");
+                        continue 'outer
+                    }
+
+                    get_meta!(since, reason);
 
                     match (since, reason) {
                         (Some(since), Some(reason)) => {
@@ -745,6 +766,23 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                             span_err!(diagnostic, attr.span(), E0543, "missing 'reason'");
                             continue
                         }
+                    }
+                }
+                "rustc_const_unstable" => {
+                    if rustc_const_unstable.is_some() {
+                        span_err!(diagnostic, item_sp, E0553,
+                                  "multiple rustc_const_unstable attributes");
+                        continue 'outer
+                    }
+
+                    get_meta!(feature);
+                    if let Some(feature) = feature {
+                        rustc_const_unstable = Some(RustcConstUnstable {
+                            feature
+                        });
+                    } else {
+                        span_err!(diagnostic, attr.span(), E0629, "missing 'feature'");
+                        continue
                     }
                 }
                 "unstable" => {
@@ -791,6 +829,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 },
                                 feature,
                                 rustc_depr: None,
+                                rustc_const_unstable: None,
                             })
                         }
                         (None, _, _) => {
@@ -836,6 +875,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                                 },
                                 feature,
                                 rustc_depr: None,
+                                rustc_const_unstable: None,
                             })
                         }
                         (None, _) => {
@@ -863,6 +903,17 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
         } else {
             span_err!(diagnostic, item_sp, E0549,
                       "rustc_deprecated attribute must be paired with \
+                       either stable or unstable attribute");
+        }
+    }
+
+    // Merge the const-unstable info into the stability info
+    if let Some(rustc_const_unstable) = rustc_const_unstable {
+        if let Some(ref mut stab) = stab {
+            stab.rustc_const_unstable = Some(rustc_const_unstable);
+        } else {
+            span_err!(diagnostic, item_sp, E0630,
+                      "rustc_const_unstable attribute must be paired with \
                        either stable or unstable attribute");
         }
     }

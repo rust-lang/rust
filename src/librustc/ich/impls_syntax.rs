@@ -81,7 +81,12 @@ impl_stable_hash_for!(enum ::syntax::abi::Abi {
 });
 
 impl_stable_hash_for!(struct ::syntax::attr::Deprecation { since, note });
-impl_stable_hash_for!(struct ::syntax::attr::Stability { level, feature, rustc_depr });
+impl_stable_hash_for!(struct ::syntax::attr::Stability {
+    level,
+    feature,
+    rustc_depr,
+    rustc_const_unstable
+});
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 for ::syntax::attr::StabilityLevel {
@@ -102,6 +107,7 @@ for ::syntax::attr::StabilityLevel {
 }
 
 impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason });
+impl_stable_hash_for!(struct ::syntax::attr::RustcConstUnstable { feature });
 
 
 impl_stable_hash_for!(enum ::syntax::attr::IntType {

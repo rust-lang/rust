@@ -137,6 +137,7 @@ declare_features! (
 
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None),
+    (active, rustc_const_unstable, "1.0.0", None),
     (active, advanced_slice_patterns, "1.0.0", Some(23121)),
     (active, box_syntax, "1.0.0", Some(27779)),
     (active, placement_in_syntax, "1.0.0", Some(27779)),
@@ -622,6 +623,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                              "the `#[rustc_on_unimplemented]` attribute \
                                               is an experimental feature",
                                              cfg_fn!(on_unimplemented))),
+    ("rustc_const_unstable", Normal, Gated(Stability::Unstable,
+                                             "rustc_const_unstable",
+                                             "the `#[rustc_const_unstable]` attribute \
+                                              is an internal feature",
+                                             cfg_fn!(rustc_const_unstable))),
     ("global_allocator", Normal, Gated(Stability::Unstable,
                                        "global_allocator",
                                        "the `#[global_allocator]` attribute is \

@@ -30,6 +30,7 @@ use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::{LvalueContext, Visitor};
 use rustc::middle::lang_items;
 use syntax::abi::Abi;
+use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -713,14 +714,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             self.visit_operand(func, location);
 
             let fn_ty = func.ty(self.mir, self.tcx);
-            let (mut is_shuffle, mut is_const_fn) = (false, false);
+            let (mut is_shuffle, mut is_const_fn) = (false, None);
             if let ty::TyFnDef(def_id, _) = fn_ty.sty {
                 match self.tcx.fn_sig(def_id).abi() {
                     Abi::RustIntrinsic |
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id)[..] {
-                            "size_of" | "min_align_of" => is_const_fn = true,
+                            "size_of" | "min_align_of" => is_const_fn = Some(def_id),
 
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
@@ -730,7 +731,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
                     }
                     _ => {
-                        is_const_fn = self.tcx.is_const_fn(def_id);
+                        if self.tcx.is_const_fn(def_id) {
+                            is_const_fn = Some(def_id);
+                        }
                     }
                 }
             }
@@ -751,25 +754,38 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             // Const fn calls.
-            if is_const_fn {
-                // We are in a const or static initializer,
-                if self.mode != Mode::Fn &&
+            if let Some(def_id) = is_const_fn {
+                // find corresponding rustc_const_unstable feature
+                if let Some(&attr::Stability {
+                    rustc_const_unstable: Some(attr::RustcConstUnstable {
+                        feature: ref feature_name
+                    }),
+                .. }) = self.tcx.lookup_stability(def_id) {
 
-                    // feature-gate is not enabled,
-                    !self.tcx.sess.features.borrow().const_fn &&
+                    // We are in a const or static initializer,
+                    if self.mode != Mode::Fn &&
 
-                    // this doesn't come from a crate with the feature-gate enabled,
-                    self.def_id.is_local() &&
+                        // feature-gate is not enabled,
+                        !self.tcx.sess.features.borrow()
+                            .declared_lib_features
+                            .iter()
+                            .any(|&(ref sym, _)| sym == feature_name) &&
 
-                    // this doesn't come from a macro that has #[allow_internal_unstable]
-                    !self.span.allows_unstable()
-                {
-                    let mut err = self.tcx.sess.struct_span_err(self.span,
-                        "const fns are an unstable feature");
-                    help!(&mut err,
-                          "in Nightly builds, add `#![feature(const_fn)]` \
-                           to the crate attributes to enable");
-                    err.emit();
+                        // this doesn't come from a crate with the feature-gate enabled,
+                        self.def_id.is_local() &&
+
+                        // this doesn't come from a macro that has #[allow_internal_unstable]
+                        !self.span.allows_unstable()
+                    {
+                        let mut err = self.tcx.sess.struct_span_err(self.span,
+                            &format!("`{}` is not yet stable as a const fn",
+                                     self.tcx.item_path_str(def_id)));
+                        help!(&mut err,
+                              "in Nightly builds, add `#![feature({})]` \
+                               to the crate attributes to enable",
+                              feature_name);
+                        err.emit();
+                    }
                 }
             } else {
                 self.qualif = Qualif::NOT_CONST;
