@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits, core)]
+#![feature(dynsized, optin_builtin_traits)]
 #![crate_type = "rlib"]
 
-pub trait DefaultedTrait { }
+use std::marker::DynSized;
+
+pub trait DefaultedTrait: ?DynSized { }
 impl DefaultedTrait for .. { }
 
 pub struct Something<T> { t: T }

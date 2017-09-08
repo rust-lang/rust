@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(dynsized, optin_builtin_traits)]
 
-trait MyTrait {}
+use std::marker::DynSized;
+
+trait MyTrait: ?DynSized {}
 
 impl MyTrait for .. {}
 
-unsafe trait MyUnsafeTrait {}
+unsafe trait MyUnsafeTrait: ?DynSized {}
 
 unsafe impl MyUnsafeTrait for .. {}
 

@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(dynsized, optin_builtin_traits)]
 
-trait NotSame {}
+use std::marker::DynSized;
+
+trait NotSame: ?DynSized {}
 impl NotSame for .. {}
 impl<A> !NotSame for (A, A) {}
 
