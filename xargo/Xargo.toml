@@ -1,2 +1,2 @@
 [dependencies]
-std = {features = ["panic_unwind", "jemalloc"]}
+std = {features = ["panic_unwind", "jemalloc", "backtrace"]}
