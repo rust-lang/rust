@@ -353,11 +353,12 @@ single token of context (`union {`).
 
 ## Layout and Alignment
 
-The layout and alignment of a `struct` or `union` containing unnamed
-fields should look the same as if each unnamed field has a separately declared
-type and a named field of that type, rather than as if the fields appeared
-directly within the containing `struct` or `union`. In some cases, this may
-result in different alignment.
+The layout and alignment of a `struct` or `union` containing unnamed fields
+must match the C ABI for the equivalent structure. In particular, it should
+have the same layout that it would if each unnamed field had a separately
+declared type and a named field of that type, rather than as if the fields
+appeared directly within the containing `struct` or `union`. This may, in
+particular, affect alignment.
 
 ## Simultaneous Borrows
 
