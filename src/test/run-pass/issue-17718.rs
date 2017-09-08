@@ -12,7 +12,7 @@
 
 
 #![feature(core)]
-#![feature(const_fn)]
+#![feature(const_atomic_usize_new)]
 
 extern crate issue_17718_aux as other;
 

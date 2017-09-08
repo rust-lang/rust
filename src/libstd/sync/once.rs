@@ -156,6 +156,7 @@ struct Finish {
 impl Once {
     /// Creates a new `Once` value.
     #[stable(feature = "once_new", since = "1.2.0")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_once_new"))]
     pub const fn new() -> Once {
         Once {
             state: AtomicUsize::new(INCOMPLETE),

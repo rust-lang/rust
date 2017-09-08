@@ -22,7 +22,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
-#![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(i128_type)]
 #![cfg_attr(windows, feature(libc))]
@@ -35,6 +34,9 @@
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
 #![feature(test)]
+
+#![cfg_attr(stage0, feature(const_fn))]
+#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
 
 #![recursion_limit="256"]
 

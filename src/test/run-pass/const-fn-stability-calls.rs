@@ -16,8 +16,8 @@ extern crate const_fn_lib;
 
 use const_fn_lib::foo;
 
-static FOO: usize = foo(); //~ ERROR const fns are an unstable feature
-const BAR: usize = foo(); //~ ERROR const fns are an unstable feature
+static FOO: usize = foo();
+const BAR: usize = foo();
 
 macro_rules! constant {
     ($n:ident: $t:ty = $v:expr) => {
@@ -26,9 +26,9 @@ macro_rules! constant {
 }
 
 constant! {
-    BAZ: usize = foo() //~ ERROR const fns are an unstable feature
+    BAZ: usize = foo()
 }
 
 fn main() {
-//    let x: [usize; foo()] = [];
+    let x: [usize; foo()] = [42; foo()];
 }

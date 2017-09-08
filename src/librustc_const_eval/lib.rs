@@ -23,8 +23,10 @@
 #![feature(slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(i128_type)]
+
+#![cfg_attr(stage0, feature(const_fn))]
+#![cfg_attr(not(stage0), feature(const_min_value))]
 
 extern crate arena;
 #[macro_use] extern crate syntax;

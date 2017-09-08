@@ -384,7 +384,7 @@ static B: &'static AtomicUsize = &A; // ok!
 You can also have this error while using a cell type:
 
 ```compile_fail,E0492
-#![feature(const_fn)]
+#![feature(const_cell_new)]
 
 use std::cell::Cell;
 
@@ -412,7 +412,7 @@ However, if you still wish to use these types, you can achieve this by an unsafe
 wrapper:
 
 ```
-#![feature(const_fn)]
+#![feature(const_cell_new)]
 
 use std::cell::Cell;
 use std::marker::Sync;

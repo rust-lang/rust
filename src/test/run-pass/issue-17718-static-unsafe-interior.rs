@@ -11,8 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![feature(core)]
-#![feature(const_fn)]
-
+#![feature(const_unsafe_cell_new)]
 
 use std::marker;
 use std::cell::UnsafeCell;
