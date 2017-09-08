@@ -94,8 +94,9 @@ unnamed union will appear directly with the containing structure. Given a
 struct `s` of this type, code can access `s.a`, `s.d`, and either `s.b` or
 `s.c`. Accesses to `a` and `d` can occur in safe code; accesses to `b` and `c`
 require unsafe code, and `b` and `c` overlap, requiring care to access only the
-field whose contents make sense at the time. As with any `union`, code cannot
-borrow `s.b` and `s.c` simultaneously.
+field whose contents make sense at the time. As with any `union`, borrows of
+any `union` field borrow the entire union, so code cannot borrow `s.b` and
+`s.c` simultaneously if any of the borrows uses `&mut`.
 
 Conversely, sometimes when defining a `union`, you may want to group multiple
 fields together and make them available simultaneously, with non-overlapping
