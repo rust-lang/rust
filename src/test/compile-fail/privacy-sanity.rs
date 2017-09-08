@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(dynsized, optin_builtin_traits)]
 
-trait MarkerTr {}
+use std::marker::DynSized;
+
+trait MarkerTr: ?DynSized {}
 pub trait Tr {
     fn f();
     const C: u8;
@@ -39,7 +41,7 @@ pub extern "C" { //~ ERROR unnecessary visibility qualifier
 }
 
 const MAIN: u8 = {
-    trait MarkerTr {}
+    trait MarkerTr: ?DynSized {}
     pub trait Tr {
         fn f();
         const C: u8;
@@ -71,7 +73,7 @@ const MAIN: u8 = {
 };
 
 fn main() {
-    trait MarkerTr {}
+    trait MarkerTr: ?DynSized {}
     pub trait Tr {
         fn f();
         const C: u8;
