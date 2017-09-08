@@ -171,6 +171,39 @@ struct S {
 }
 ```
 
+## Unnamed fields with named types
+
+An unnamed field may also use a named `struct` or `union` type. For instance:
+
+```rust
+union U {
+    x: i64,
+    y: f64,
+}
+
+struct S {
+    _: U,
+    z: usize,
+}
+```
+
+Given these declarations, `S` would contain fields `x`, `y`, and `z`, with `x`
+and `y` overlapping. Such a declaration behaves in every way like the
+equivalent declaration with an unnamed type declared within `S`, except that
+this version of the declaration also defines a named union type `U`.
+
+This syntax makes it possible to give a name to the intermediate type, while
+still leaving the field unnamed. While C11 does not directly support inlining
+of separately defined structures, compilers do support it as an extension, and
+this addition allows the translation of such code.
+
+This syntax allows for the common definition of sets of fields inlined into
+several structures, such as a common header.
+
+This syntax would also support an obvious translation of inline-declared
+structures with names, by moving the declaration out-of-line; a macro could
+easily perform such a translation.
+
 ## Mental model
 
 In the memory layout of a structure, the alternating uses of `struct { ... }`
@@ -344,6 +377,10 @@ Within a struct or union's fields, in place of a field name and value, allow
 `_: struct { fields }` or `_: union { fields }`, where `fields` allows
 everything allowed within a `struct` or `union` declaration, respectively.
 
+Additionally, allow `_` as the name of a field whose type refers to a `struct`
+or `union`. All of the fields of that `struct` or `union` must be visible to
+the current module.
+
 The name `_` cannot currently appear as a field name, so this will not
 introduce any compatibility issues with existing code. The keyword `struct`
 cannot appear as a field type, making it entirely unambiguous. The contextual
@@ -422,30 +459,6 @@ and `_: struct { fields }`, we could omit the field name entirely, and write
 `union { fields }` and `struct { fields }` directly. This would more closely
 match the C syntax. However, this does not provide as natural an extension to
 support references to named structures.
-
-## Unnamed fields with named types
-
-In addition to allowing the inline definition of the contents of unnamed
-`struct` or `union` fields, we could also allow declaring an unnamed field with
-a named type.  For instance:
-
-```rust
-union U { x: i64, y: f64 }
-struct S { _: U, z: usize }
-```
-
-Given these declarations, `S` would contain fields `x`, `y`, and `z`, with `x`
-and `y` overlapping.
-
-This syntax makes it possible to give a name to the intermediate type, while
-still leaving the field unnamed. While C11 does not directly support inlining
-of separately defined structures, compilers do support it as an extension. This
-syntax would allow for the common definition of sets of fields inlined into
-several structures, such as a common header.
-
-This syntax would also support an obvious translation of inline-declared
-structures with names, by moving the declaration out-of-line; a macro could
-perform such a translation.
 
 ## Field aliases
 
