@@ -314,9 +314,9 @@ fields in the `union`.
 ## Visibility
 
 Each field within an unnamed `struct` or `union` may have an attached
-visibility (`pub` or `pub(crate)`). An unnamed field itself does not have its
-own visibility; all of its fields appear directly within the containing
-structure, and their own visibilities apply.
+visibility. An unnamed field itself does not have its own visibility; all of
+its fields appear directly within the containing structure, and their own
+visibilities apply.
 
 ## Documentation
 
