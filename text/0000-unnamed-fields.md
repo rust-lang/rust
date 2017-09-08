@@ -342,16 +342,42 @@ This feature exists to support the layout of native platform data structures.
 Structures using the default `repr(Rust)` layout cannot use this feature, and
 the compiler should produce an error when attempting to do so.
 
-When using this mechanism to define a C interface, remember to use the
-`repr(C)` attribute to match C's data structure layout. Any representation
-attribute applied to the top-level structure also applies to every unnamed
-field within that declaration. Such a structure defined with `repr(C)` will use
-a representation identical to the same structure with all unnamed fields
-transformed to equivalent named fields of a struct or union type with the same
-fields.
+When using this mechanism to define a C interface, always use the `repr(C)`
+attribute to match C's data structure layout. For convenience, `repr(C)`
+applied to the top-level structure will automatically apply to every unnamed
+struct within that declaration, since unnamed fields only permit `repr(C)`.
+This only applies to `repr(C)`, not to any other attribute.
 
-Similarly, applying `repr(packed)` to the top-level data structure will also
-apply it to all the contained structures.
+Such a structure defined with `repr(C)` will use a representation identical to
+the same structure with all unnamed fields transformed to equivalent named
+fields of a struct or union type with the same fields.
+
+However, applying `repr(packed)` (or any other attribute) to the top-level data
+structure does not automatically apply it to all the contained structures. To
+apply `repr(packed)` to an unnamed field, place the attribute before the field
+declaration:
+
+```rust
+#[repr(C)]
+union S {
+    a: u32,
+    #[repr(packed)]
+    _: struct {
+        b: u8,
+        c: u16,
+    },
+    _: struct {
+        d: u8,
+        e: f16,
+    },
+}
+```
+
+In this declaration, the first unnamed struct uses `repr(packed)`, while the
+second does not.
+
+Unnamed fields with named types use the representation attributes attached to
+the named type. The named type must use `repr(C)`.
 
 ## Derive
 
