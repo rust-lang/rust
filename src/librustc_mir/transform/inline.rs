@@ -88,15 +88,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                     if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                        let should_inline = match self.tcx.opt_associated_item(callee_def_id) {
-                            Some(item) => match item.container {
-                               ty::AssociatedItemContainer::ImplContainer(_) => true,
-                               ty::AssociatedItemContainer::TraitContainer(_) => false,
-                            },
-                            None => true
-                        };
-
-                        if should_inline {
+                        if self.tcx.trait_of_item(callee_def_id).is_none() {
                             callsites.push_back(CallSite {
                                 callee: callee_def_id,
                                 substs,
