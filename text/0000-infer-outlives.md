@@ -542,6 +542,22 @@ get an error -- this is because, in that context, we will try to normalize
 the associated type reference, but we will fail in doing so because we do not
 have any where-clause stating that `T: 'a` (which the impl requires).
 
+### Example 5: Multiple regions
+
+Sometimes the outlives relationship can be inferred between multiple
+regions, not only type parameters. Consider the following:
+
+```rust
+struct Foo<'a,'b,T> {
+    x: &'a &'b T
+}
+```
+
+Here the WF rules for the type `&'a &'b T` require that both:
+
+- `'b: 'a` holds, because of the outer reference; and,
+- `T: 'b` holds, because of the inner reference.
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
