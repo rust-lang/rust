@@ -191,7 +191,15 @@ original `VaList` as well as any clones of it. For instance, passing a `VaList`
 to a `vprintf` function as declared in this RFC semantically passes ownership
 of that `VaList`, and prevents calling the `arg` function again in the caller,
 but it remains the caller's responsibility to call `va_end`, so the compiler
-needs to insert the appropriate drop glue at the FFI boundary.
+needs to insert the appropriate drop glue at the FFI boundary. Conversely,
+functions accepting a `VaList` argument must not drop it themselves, since the
+caller will drop it instead.
+
+The C standard requires that the call to `va_end` for a `va_list` occur in the
+same function as the matching `va_start` or `va_copy` for that `va_list`. Some
+C implementations do not enforce this requirement, allowing for functions that
+call `va_end` on a passed-in `va_list` that they did not create. This RFC does
+not define a means of implementing or calling non-standard functions like these.
 
 Note that on some platforms, these LLVM intrinsics do not fully implement the
 necessary functionality, expecting the invoker of the intrinsic to provide
