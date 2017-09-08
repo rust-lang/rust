@@ -37,6 +37,8 @@
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
+#[macro_use]
+extern crate bitflags;
 extern crate flate2;
 extern crate libc;
 extern crate owning_ref;
@@ -48,9 +50,6 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
-#[macro_use]
-#[no_link]
-extern crate rustc_bitflags;
 extern crate rustc_demangle;
 extern crate jobserver;
 extern crate num_cpus;

@@ -24,15 +24,14 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(collection_placement)]
 #![feature(nonzero)]
 
+#[macro_use]
+extern crate bitflags;
 #[macro_use] extern crate log;
 extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-#[macro_use]
-#[no_link]
-extern crate rustc_bitflags;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;

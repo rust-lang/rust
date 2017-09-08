@@ -19,7 +19,6 @@ use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use ty::subst::Kind;
 
-use std::fmt;
 use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
@@ -574,12 +573,6 @@ impl<T> Binder<T> {
         where F: FnOnce(T) -> U
     {
         ty::Binder(f(self.0))
-    }
-}
-
-impl fmt::Debug for TypeFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:x}", self.bits)
     }
 }
 

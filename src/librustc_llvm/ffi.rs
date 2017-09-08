@@ -454,26 +454,26 @@ pub mod debuginfo {
     // These values **must** match with LLVMRustDIFlags!!
     bitflags! {
         #[repr(C)]
-        #[derive(Debug, Default)]
-        flags DIFlags: ::libc::uint32_t {
-            const FlagZero                = 0,
-            const FlagPrivate             = 1,
-            const FlagProtected           = 2,
-            const FlagPublic              = 3,
-            const FlagFwdDecl             = (1 << 2),
-            const FlagAppleBlock          = (1 << 3),
-            const FlagBlockByrefStruct    = (1 << 4),
-            const FlagVirtual             = (1 << 5),
-            const FlagArtificial          = (1 << 6),
-            const FlagExplicit            = (1 << 7),
-            const FlagPrototyped          = (1 << 8),
-            const FlagObjcClassComplete   = (1 << 9),
-            const FlagObjectPointer       = (1 << 10),
-            const FlagVector              = (1 << 11),
-            const FlagStaticMember        = (1 << 12),
-            const FlagLValueReference     = (1 << 13),
-            const FlagRValueReference     = (1 << 14),
-            const FlagMainSubprogram      = (1 << 21),
+        #[derive(Default)]
+        pub struct DIFlags: ::libc::uint32_t {
+            const FlagZero                = 0;
+            const FlagPrivate             = 1;
+            const FlagProtected           = 2;
+            const FlagPublic              = 3;
+            const FlagFwdDecl             = (1 << 2);
+            const FlagAppleBlock          = (1 << 3);
+            const FlagBlockByrefStruct    = (1 << 4);
+            const FlagVirtual             = (1 << 5);
+            const FlagArtificial          = (1 << 6);
+            const FlagExplicit            = (1 << 7);
+            const FlagPrototyped          = (1 << 8);
+            const FlagObjcClassComplete   = (1 << 9);
+            const FlagObjectPointer       = (1 << 10);
+            const FlagVector              = (1 << 11);
+            const FlagStaticMember        = (1 << 12);
+            const FlagLValueReference     = (1 << 13);
+            const FlagRValueReference     = (1 << 14);
+            const FlagMainSubprogram      = (1 << 21);
         }
     }
 }

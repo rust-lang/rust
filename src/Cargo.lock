@@ -131,6 +131,11 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "bitflags"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "bootstrap"
 version = "0.0.0"
 dependencies = [
@@ -1418,6 +1423,7 @@ name = "rustc"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
@@ -1425,7 +1431,6 @@ dependencies = [
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_back 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -1466,7 +1471,8 @@ dependencies = [
 name = "rustc_apfloat"
 version = "0.0.0"
 dependencies = [
- "rustc_bitflags 0.0.0",
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_cratesio_shim 0.0.0",
 ]
 
 [[package]]
@@ -1488,10 +1494,6 @@ dependencies = [
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
-
-[[package]]
-name = "rustc_bitflags"
-version = "0.0.0"
 
 [[package]]
 name = "rustc_borrowck"
@@ -1528,6 +1530,13 @@ dependencies = [
  "rustc_apfloat 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_cratesio_shim"
+version = "0.0.0"
+dependencies = [
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1610,9 +1619,10 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "build_helper 0.1.0",
  "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_bitflags 0.0.0",
+ "rustc_cratesio_shim 0.0.0",
 ]
 
 [[package]]
@@ -1648,10 +1658,10 @@ dependencies = [
 name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
@@ -1740,6 +1750,7 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1750,7 +1761,6 @@ dependencies = [
  "rustc-demangle 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
  "rustc_back 0.0.0",
- "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -2073,8 +2083,9 @@ dependencies = [
 name = "syntax"
 version = "0.0.0"
 dependencies = [
- "bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "serialize 0.0.0",
@@ -2451,6 +2462,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "aad18937a628ec6abcd26d1489012cc0e18c21798210f491af69ded9b881106d"
 "checksum bitflags 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1370e9fc2a6ae53aea8b7a5110edbd08836ed87c88736dfabccade1c2b44bff4"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
+"checksum bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f5cde24d1b2e2216a726368b2363a273739c91f4e3eb4e0dd12d672d396ad989"
 "checksum bufstream 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f2f382711e76b9de6c744cc00d0497baba02fb00a787f088c879f01d09468e32"
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
 "checksum clap 2.26.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2267a8fdd4dce6956ba6649e130f62fb279026e5e84b92aa939ac8f85ce3f9f0"
