@@ -24,6 +24,7 @@ fn main() {
        .file("../rt/hoedown/src/html_smartypants.c")
        .file("../rt/hoedown/src/stack.c")
        .file("../rt/hoedown/src/version.c")
+       .warnings(false)
        .include(src_dir)
        .compile("libhoedown.a");
 }

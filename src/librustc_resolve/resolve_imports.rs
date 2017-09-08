@@ -892,8 +892,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         if reexports.len() > 0 {
             if let Some(def_id) = module.def_id() {
-                let node_id = self.definitions.as_local_node_id(def_id).unwrap();
-                self.export_map.insert(node_id, reexports);
+                self.export_map.insert(def_id, reexports);
             }
         }
     }

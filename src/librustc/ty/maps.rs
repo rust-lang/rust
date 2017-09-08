@@ -12,7 +12,7 @@ use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use hir::def::{Def, Export};
-use hir::{self, TraitCandidate, HirId};
+use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
 use middle::const_val;
@@ -39,7 +39,7 @@ use util::common::{profq_msg, ProfileQueriesMsg};
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::cell::{RefCell, RefMut, Cell};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -87,7 +87,7 @@ impl Key for CrateNum {
     }
 }
 
-impl Key for HirId {
+impl Key for DefIndex {
     fn map_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -556,15 +556,9 @@ impl<'tcx> QueryDescription for queries::specializes<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::in_scope_traits<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("fetching the traits in scope at a particular ast node")
-    }
-}
-
-impl<'tcx> QueryDescription for queries::module_exports<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("fetching the exported items for a module")
+impl<'tcx> QueryDescription for queries::in_scope_traits_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+        format!("traits in scope at a block")
     }
 }
 
@@ -652,21 +646,21 @@ impl<'tcx> QueryDescription for queries::link_args<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::named_region<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("fetching info about a named region")
+impl<'tcx> QueryDescription for queries::named_region_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+        format!("looking up a named region")
     }
 }
 
-impl<'tcx> QueryDescription for queries::is_late_bound<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("testing whether a lifetime is late bound")
+impl<'tcx> QueryDescription for queries::is_late_bound_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+        format!("testing if a region is late boudn")
     }
 }
 
-impl<'tcx> QueryDescription for queries::object_lifetime_defaults<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("fetching a list of ObjectLifetimeDefault for a lifetime")
+impl<'tcx> QueryDescription for queries::object_lifetime_defaults_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
+        format!("looking up lifetime defaults for a region")
     }
 }
 
@@ -679,12 +673,6 @@ impl<'tcx> QueryDescription for queries::dep_kind<'tcx> {
 impl<'tcx> QueryDescription for queries::crate_name<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("fetching what a crate is named")
-    }
-}
-
-impl<'tcx> QueryDescription for queries::extern_mod_stmt_cnum<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("looking up the CrateNum for an `extern mod` statement")
     }
 }
 
@@ -727,18 +715,6 @@ impl<'tcx> QueryDescription for queries::used_crate_source<'tcx> {
 impl<'tcx> QueryDescription for queries::postorder_cnums<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("generating a postorder list of CrateNums")
-    }
-}
-
-impl<'tcx> QueryDescription for queries::freevars<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("looking up free variables for a node")
-    }
-}
-
-impl<'tcx> QueryDescription for queries::maybe_unused_trait_import<'tcx> {
-    fn describe(_tcx: TyCtxt, _: HirId) -> String {
-        format!("testing if a trait import is unused")
     }
 }
 
@@ -1331,8 +1307,9 @@ define_maps! { <'tcx>
     [] fn extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
 
     [] fn specializes: specializes_node((DefId, DefId)) -> bool,
-    [] fn in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
-    [] fn module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
+    [] fn in_scope_traits_map: InScopeTraits(DefIndex)
+        -> Option<Rc<FxHashMap<ItemLocalId, Rc<Vec<TraitCandidate>>>>>,
+    [] fn module_exports: ModuleExports(DefId) -> Option<Rc<Vec<Export>>>,
     [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
@@ -1355,16 +1332,18 @@ define_maps! { <'tcx>
         -> Option<NativeLibraryKind>,
     [] fn link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
 
-    [] fn named_region: NamedRegion(HirId) -> Option<Region>,
-    [] fn is_late_bound: IsLateBound(HirId) -> bool,
-    [] fn object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
-        -> Option<Rc<Vec<ObjectLifetimeDefault>>>,
+    [] fn named_region_map: NamedRegion(DefIndex) ->
+        Option<Rc<FxHashMap<ItemLocalId, Region>>>,
+    [] fn is_late_bound_map: IsLateBound(DefIndex) ->
+        Option<Rc<FxHashSet<ItemLocalId>>>,
+    [] fn object_lifetime_defaults_map: ObjectLifetimeDefaults(DefIndex)
+        -> Option<Rc<FxHashMap<ItemLocalId, Rc<Vec<ObjectLifetimeDefault>>>>>,
 
     [] fn visibility: Visibility(DefId) -> ty::Visibility,
     [] fn dep_kind: DepKind(CrateNum) -> DepKind,
     [] fn crate_name: CrateName(CrateNum) -> Symbol,
     [] fn item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
-    [] fn extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
+    [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
     [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
@@ -1376,10 +1355,10 @@ define_maps! { <'tcx>
     [] fn used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
     [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
-    [] fn freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
-    [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(HirId) -> bool,
+    [] fn freevars: Freevars(DefId) -> Option<Rc<Vec<hir::Freevar>>>,
+    [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(DefId) -> bool,
     [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
-        -> Rc<Vec<(HirId, Span)>>,
+        -> Rc<Vec<(DefId, Span)>>,
 
     [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,

@@ -2344,8 +2344,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {
-        let hir_id = self.hir.node_to_hir_id(fid);
-        match self.freevars(hir_id) {
+        let def_id = self.hir.local_def_id(fid);
+        match self.freevars(def_id) {
             None => f(&[]),
             Some(d) => f(&d),
         }

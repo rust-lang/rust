@@ -1443,7 +1443,7 @@ impl<'a> Resolver<'a> {
             def_map: NodeMap(),
             freevars: NodeMap(),
             freevars_seen: NodeMap(),
-            export_map: NodeMap(),
+            export_map: FxHashMap(),
             trait_map: NodeMap(),
             module_map,
             block_map: NodeMap(),

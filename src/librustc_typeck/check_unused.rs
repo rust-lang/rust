@@ -26,8 +26,8 @@ struct CheckVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> CheckVisitor<'a, 'tcx> {
     fn check_import(&self, id: ast::NodeId, span: Span) {
-        let hir_id = self.tcx.hir.node_to_hir_id(id);
-        if !self.tcx.maybe_unused_trait_import(hir_id) {
+        let def_id = self.tcx.hir.local_def_id(id);
+        if !self.tcx.maybe_unused_trait_import(def_id) {
             return;
         }
 
@@ -75,8 +75,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = CheckVisitor { tcx, used_trait_imports };
     tcx.hir.krate().visit_all_item_likes(&mut visitor);
 
-    for &(hir_id, span) in tcx.maybe_unused_extern_crates(LOCAL_CRATE).iter() {
-        let cnum = tcx.extern_mod_stmt_cnum(hir_id).unwrap();
+    for &(def_id, span) in tcx.maybe_unused_extern_crates(LOCAL_CRATE).iter() {
+        let cnum = tcx.extern_mod_stmt_cnum(def_id).unwrap();
         if tcx.is_compiler_builtins(cnum) {
             continue
         }
@@ -86,6 +86,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         if tcx.has_global_allocator(cnum) {
             continue
         }
+        assert_eq!(def_id.krate, LOCAL_CRATE);
+        let hir_id = tcx.hir.definitions().def_index_to_hir_id(def_id.index);
         let id = tcx.hir.definitions().find_node_for_hir_id(hir_id);
         let lint = lint::builtin::UNUSED_EXTERN_CRATES;
         let msg = "unused extern crate";

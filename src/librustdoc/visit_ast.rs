@@ -199,8 +199,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        let hir_id = self.cx.tcx.hir.node_to_hir_id(id);
-        if let Some(exports) = self.cx.tcx.module_exports(hir_id) {
+        let def_id = self.cx.tcx.hir.local_def_id(id);
+        if let Some(exports) = self.cx.tcx.module_exports(def_id) {
             for export in exports.iter() {
                 if let Def::Macro(def_id, ..) = export.def {
                     if def_id.krate == LOCAL_CRATE || self.reexported_macros.contains(&def_id) {
@@ -372,9 +372,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && item.vis != hir::Public => {}
             hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(ref p) => {
-                let hir_id = self.cx.tcx.hir.node_to_hir_id(item.id);
+                let def_id = self.cx.tcx.hir.local_def_id(item.id);
                 om.extern_crates.push(ExternCrate {
-                    cnum: self.cx.tcx.extern_mod_stmt_cnum(hir_id)
+                    cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
                     name,
                     path: p.map(|x|x.to_string()),
