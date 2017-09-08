@@ -209,9 +209,9 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         .map_err(|e| format!("could not spawn rustc: {}", e))?;
 
     if let Some(ref mut stdin) = child.stdin {
-        stdin.write_fmt(format_args!("#[allow(unused_extern_crate)] \
+        stdin.write_fmt(format_args!("#[allow(unused_extern_crates)] \
                                      extern crate new; \
-                                     #[allow(unused_extern_crate)] \
+                                     #[allow(unused_extern_crates)] \
                                      extern crate old;"))?;
     } else {
         return Err("could not pipe to rustc (wtf?)".into());
