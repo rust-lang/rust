@@ -9,6 +9,9 @@
 Change doc.rust-lang.org to redirect to the latest release instead of an alias
 of stable.
 
+Introduce a banner that contains a dropdown allowing users to switch between versions,
+noting when a release is not the most current release.
+
 # Motivation
 [motivation]: #motivation
 
@@ -60,10 +63,15 @@ allow us to update the URL structure of our documentation more freely.
 # Detailed design
 [design]: #detailed-design
 
+https://doc.rust-lang.org/ will be updated to have a heading
+with a drop-down that allows you to select between different versions of the docs. It
+will also display a message when looking at older documentation.
+
 https://doc.rust-lang.org/ should issue a redirect to https://doc.rust-lang.org/RELEASE,
 where RELEASE is the latest stable release, like `1.14.0`.
 
-Part of the release process will be updating this redirect.
+The exact details will be worked out before this is 'stabilized' on doc.rust-lang.org;
+only the general approach is presented in this RFC.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
