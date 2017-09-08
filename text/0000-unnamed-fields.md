@@ -79,6 +79,7 @@ define an unnamed grouping of overlapping fields inline within the `struct`,
 using the `union` keyword:
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
@@ -106,6 +107,7 @@ mechanism, you can also define an unnamed grouping of non-overlapping fields
 inline within the `union`, using the `struct` keyword:
 
 ```rust
+#[repr(C)]
 union U {
     a: u32,
     _: struct {
@@ -128,6 +130,7 @@ unions.
 Unnamed fields can contain other unnamed fields. For example:
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
@@ -150,6 +153,7 @@ following three structures:
 
 ```rust
 // variant 1
+#[repr(C)]
 struct S {
     a: u32,
     b: u32,
@@ -157,6 +161,7 @@ struct S {
 }
 
 // variant 2
+#[repr(C)]
 struct S {
     a: u32,
     c: u16,
@@ -165,6 +170,7 @@ struct S {
 }
 
 // variant 3
+#[repr(C)]
 struct S {
     a: u32,
     e: f32,
@@ -177,11 +183,13 @@ struct S {
 An unnamed field may also use a named `struct` or `union` type. For instance:
 
 ```rust
+#[repr(C)]
 union U {
     x: i64,
     y: f64,
 }
 
+#[repr(C)]
 struct S {
     _: U,
     z: usize,
@@ -214,6 +222,7 @@ vertically, in sequence, and `union` lays out fields horizontally, overlapping
 with each other. The following definition:
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
@@ -252,6 +261,7 @@ order.
 Given the following declaration:
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
@@ -279,6 +289,7 @@ the fields appeared at the top level. For instance, the following code matches
 a discriminant and extracts the corresponding field.
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
@@ -358,6 +369,7 @@ You cannot use this feature to define multiple fields with the same name. For
 instance, the following definition will produce an error:
 
 ```rust
+#[repr(C)]
 struct S {
     a: u32,
     _: union {
