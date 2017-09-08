@@ -171,7 +171,6 @@ mod btree;
 pub mod borrow;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;
@@ -204,8 +203,7 @@ trait SpecExtend<I: IntoIterator> {
     fn spec_extend(&mut self, iter: I);
 }
 
-#[rustc_deprecated(reason = "moved to core::ops", since = "1.19.0")]
-#[allow(deprecated)]
+#[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
 pub use core::ops::Bound;
 
 pub use oom::oom;

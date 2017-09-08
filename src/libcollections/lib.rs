@@ -33,8 +33,13 @@
 //! See [`std::collections`](../std/collections/index.html) for a detailed
 //! discussion of collections in Rust.
 
+extern crate core;
+
 #[macro_reexport(vec, format)]
 extern crate alloc;
+
+#[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
+pub use core::ops::range;
 
 pub use alloc::Bound;
 
@@ -42,8 +47,6 @@ pub use alloc::binary_heap;
 pub use alloc::borrow;
 pub use alloc::fmt;
 pub use alloc::linked_list;
-#[allow(deprecated)]
-pub use alloc::range;
 pub use alloc::slice;
 pub use alloc::str;
 pub use alloc::string;
