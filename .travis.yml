@@ -127,9 +127,9 @@ matrix:
 env:
   global:
     - SCCACHE_BUCKET=rust-lang-ci-sccache
-    - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
+    - AWS_ACCESS_KEY_ID=AKIAJF6INZZRJHKQ3KZA
     # AWS_SECRET_ACCESS_KEY=...
-    - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
+    - secure: "iz4GukJUJ9XVTivaTLMXS/5hab7d7C4aQi60Ef+0sw3DnOmntZ+/1SFFC++owccV8h0Ccw21cmmt0IGFHdlhROwq85AgLl3bXMnN/c9MISbaQvCZqRd2qnDxcYf/MF7+s1hqE7f6IxXebSbNI0hEDYHeyPY4g6wTF+yRWsD1qtc6JNLlOV979wxoCeqHL0gwKhH/5RI9lcmM7yohxSTQDS4XcAWDZFsrynocF8eialig5KAu4lqFCJIMTFpZsSLCUvosMVAolvmaiokEsRWwrhTmd/t/8hbm3OmnueNKbKuNpSHN9vDjO0vrLXFz6T4UOIPQSGr88rSHLUeKmpgbHfSfE5DiEGAoQ5aMhgnX1xo83TuvgyGHP3ifwgzXmsis3+HMluGd+6ek4rzHdxNevYbibl6jpHAeldu3borfiYQr9EHCrahMBSa22Z9YTarYStk5uo3kwalTkwMevFP3MlOLB0Q9s0LMLAJIZJ8pLh+2gzmwt2FRCR8S7fgR+9+44PKmtftA4AE3meey/gl1bes5KPPUhomeheVRVplx8PhU6boaAOCCar07s1d17AqEtouHgC3jd5TxMAQFq/MSUbkfOlefwVuDsfZvaOk0LnZbjZuwAN6ba2y8bK3AwhUfOftEAp/9f3RZjz3hjb1QKoZyQVin/XRte2UzgPjLRew="
 
 before_install:
   # If we are building a pull request, do the build if $ALLOW_PR == 1
@@ -262,9 +262,9 @@ deploy:
     upload_dir: rustc-builds
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJN7ZQ3AGSFJQSDFQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "VDTtsQfBrgMgQ4mwrZqVPlHqnJYnnCJpyaHMwJuuZCzD1nBamw78Sv7zk2PnoTb8aMsvgaRzYeskmaWTXsAnw9saizTKUs2AdAHaTgfPgGCL7040uymc9Zb8fCVaKWw/aBDfgOuLwCfttifOYnGc5IzdagtIb3nIvbvvd8kFVMxOSpQCJJP9k8AvAzvlTMfH1Ol5YwUdeHiw7ABZuzlfF3kJyHSLKu9Tmvlx0LepUKSyvnGM3va3OPiIXuERiXP4ltRpZmujNHMFt3o/sqr2aAYUGHWGJwqOHh/co6eNgNheVllhF2hS+S56O3F9mGSTJejBJzESRhTYGkQvLRgRzpuwVjjGyCleUXXt5MhCclagM7+1lkNmafDuSbYrJJyLwg/izglxwtbxCMF/U85egEsP5zjVVrCSGLhQYO4K3X12MyE+COR5TLNgMd8lWl2/wGoF1TWCqO6pG/BrfWuBPCYnBQ2pfAS/UbQhFB/c4+WzIl37jVtKFTgLWIcOW6iDuaRePS4r5gXBI7jCPp7CkrFPPzhmrxnV55v+kVu3ts9GEC8jJWK7bmReZ5OShneqzXtWVGVhtArwpYx5E/VJtA9izakkSIXo88LVJr/l1ALAJCqngILC2ccgDJ7HAE/8qxcya6lkqlEowCQaHBv8+YiNKckCnBgx7MVK4ky4/f0="
     on:
       branch: auto
       condition: $DEPLOY = 1
@@ -276,9 +276,9 @@ deploy:
     upload_dir: rustc-builds-try
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJN7ZQ3AGSFJQSDFQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "VDTtsQfBrgMgQ4mwrZqVPlHqnJYnnCJpyaHMwJuuZCzD1nBamw78Sv7zk2PnoTb8aMsvgaRzYeskmaWTXsAnw9saizTKUs2AdAHaTgfPgGCL7040uymc9Zb8fCVaKWw/aBDfgOuLwCfttifOYnGc5IzdagtIb3nIvbvvd8kFVMxOSpQCJJP9k8AvAzvlTMfH1Ol5YwUdeHiw7ABZuzlfF3kJyHSLKu9Tmvlx0LepUKSyvnGM3va3OPiIXuERiXP4ltRpZmujNHMFt3o/sqr2aAYUGHWGJwqOHh/co6eNgNheVllhF2hS+S56O3F9mGSTJejBJzESRhTYGkQvLRgRzpuwVjjGyCleUXXt5MhCclagM7+1lkNmafDuSbYrJJyLwg/izglxwtbxCMF/U85egEsP5zjVVrCSGLhQYO4K3X12MyE+COR5TLNgMd8lWl2/wGoF1TWCqO6pG/BrfWuBPCYnBQ2pfAS/UbQhFB/c4+WzIl37jVtKFTgLWIcOW6iDuaRePS4r5gXBI7jCPp7CkrFPPzhmrxnV55v+kVu3ts9GEC8jJWK7bmReZ5OShneqzXtWVGVhtArwpYx5E/VJtA9izakkSIXo88LVJr/l1ALAJCqngILC2ccgDJ7HAE/8qxcya6lkqlEowCQaHBv8+YiNKckCnBgx7MVK4ky4/f0="
     on:
       branch: try
       condition: $DEPLOY = 1 && $ALLOW_TRY = 1
@@ -292,9 +292,9 @@ deploy:
     upload_dir: rustc-builds-alt
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJN7ZQ3AGSFJQSDFQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "VDTtsQfBrgMgQ4mwrZqVPlHqnJYnnCJpyaHMwJuuZCzD1nBamw78Sv7zk2PnoTb8aMsvgaRzYeskmaWTXsAnw9saizTKUs2AdAHaTgfPgGCL7040uymc9Zb8fCVaKWw/aBDfgOuLwCfttifOYnGc5IzdagtIb3nIvbvvd8kFVMxOSpQCJJP9k8AvAzvlTMfH1Ol5YwUdeHiw7ABZuzlfF3kJyHSLKu9Tmvlx0LepUKSyvnGM3va3OPiIXuERiXP4ltRpZmujNHMFt3o/sqr2aAYUGHWGJwqOHh/co6eNgNheVllhF2hS+S56O3F9mGSTJejBJzESRhTYGkQvLRgRzpuwVjjGyCleUXXt5MhCclagM7+1lkNmafDuSbYrJJyLwg/izglxwtbxCMF/U85egEsP5zjVVrCSGLhQYO4K3X12MyE+COR5TLNgMd8lWl2/wGoF1TWCqO6pG/BrfWuBPCYnBQ2pfAS/UbQhFB/c4+WzIl37jVtKFTgLWIcOW6iDuaRePS4r5gXBI7jCPp7CkrFPPzhmrxnV55v+kVu3ts9GEC8jJWK7bmReZ5OShneqzXtWVGVhtArwpYx5E/VJtA9izakkSIXo88LVJr/l1ALAJCqngILC2ccgDJ7HAE/8qxcya6lkqlEowCQaHBv8+YiNKckCnBgx7MVK4ky4/f0="
     on:
       branch: auto
       condition: $DEPLOY_ALT = 1

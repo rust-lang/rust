@@ -1554,9 +1554,12 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.sess.features.borrow().i128_type {
+        if !tcx.sess.features.borrow().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
-                             "i128_type", sp, GateIssue::Language, "128-bit type is unstable");
+                             "repr128",
+                             sp,
+                             GateIssue::Language,
+                             "repr with 128-bit type is unstable");
         }
     }
 

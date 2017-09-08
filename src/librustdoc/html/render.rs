@@ -660,9 +660,13 @@ fn render_difference(diff: &html_diff::Difference) {
                      elem.path, elem.element_name, elem_attributes, opposite_elem_attributes);
         }
         html_diff::Difference::NodeText { ref elem, ref elem_text, ref opposite_elem_text, .. } => {
-            let (s1, s2) = concise_compared_strs(elem_text, opposite_elem_text);
-            println!("    {} Text differs:\n        expected: `{}`\n        found:    `{}`",
-                     elem.path, s1, s2);
+            if elem_text.split("\n")
+                        .zip(opposite_elem_text.split("\n"))
+                        .any(|(a, b)| a.trim() != b.trim()) {
+                let (s1, s2) = concise_compared_strs(elem_text, opposite_elem_text);
+                println!("    {} Text differs:\n        expected: `{}`\n        found:    `{}`",
+                         elem.path, s1, s2);
+            }
         }
         html_diff::Difference::NotPresent { ref elem, ref opposite_elem } => {
             if let Some(ref elem) = *elem {
