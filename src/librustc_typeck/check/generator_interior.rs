@@ -33,11 +33,6 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
     fn record(&mut self, ty: Ty<'tcx>, scope: Option<region::Scope>, expr: Option<&'tcx Expr>) {
         use syntax_pos::DUMMY_SP;
 
-        if self.fcx.tcx.sess.verbose() {
-        let span = scope.map_or(DUMMY_SP, |s| s.span(self.fcx.tcx, &self.region_scope_tree));
-        self.fcx.tcx.sess.span_warn(span, &format!("temporary scope for node id {:?}", expr));
-        }
-
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
             self.region_scope_tree.yield_in_scope(s).and_then(|(span, expr_count)| {
                 // Check if the span in the region comes after the expression
@@ -120,10 +115,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         self.expr_count += 1;
-
-        if self.fcx.tcx.sess.verbose() {
-        self.fcx.tcx.sess.span_warn(expr.span, &format!("node id {:?}", expr.id));
-        }
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
