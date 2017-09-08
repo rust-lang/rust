@@ -49,18 +49,6 @@ error: this boolean expression can be simplified
 18 |     let _ = false || a;
    |             ^^^^^^^^^^ help: try: `a`
 
-error: this boolean expression contains a logic bug
-  --> $DIR/booleans.rs:20:13
-   |
-20 |     let _ = cfg!(you_shall_not_not_pass) && a;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: it would look like the following: `false`
-   |
-help: this expression can be optimized out by applying boolean operations to the outer expression
-  --> $DIR/booleans.rs:20:45
-   |
-20 |     let _ = cfg!(you_shall_not_not_pass) && a;
-   |                                             ^
-
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:23:13
    |
@@ -142,5 +130,5 @@ help: try
 39 |     let _ = !(a == b && c == d);
    |             ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
