@@ -249,7 +249,6 @@
 #![feature(cfg_target_vendor)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
-#![feature(clamp)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]
