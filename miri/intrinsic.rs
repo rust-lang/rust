@@ -32,7 +32,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
     ) -> EvalResult<'tcx> {
         let substs = instance.substs;
 
-        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = &self.tcx.item_name(instance.def_id())[..];
         match intrinsic_name {
             "align_offset" => {
                 // FIXME: return a real value in case the target allocation has an

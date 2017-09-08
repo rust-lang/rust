@@ -131,7 +131,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
         );
     } else if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        let start_wrapper = tcx.lang_items.start_fn().and_then(|start_fn| {
+        let start_wrapper = tcx.lang_items().start_fn().and_then(|start_fn| {
             if tcx.is_mir_available(start_fn) {
                 Some(start_fn)
             } else {

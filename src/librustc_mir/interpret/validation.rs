@@ -543,7 +543,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Ok(())
             }
             TyAdt(adt, subst) => {
-                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() &&
+                if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
                     query.mutbl == MutImmutable
                 {
                     // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
