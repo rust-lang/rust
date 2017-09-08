@@ -6,16 +6,16 @@
 # Summary
 [summary]: #summary
 
-Allow unnamed fields of `union` and `struct` type, contained within structs and
-unions, respectively; the fields they contain appear directly within the
-containing structure, with the use of `union` and `struct` determining which
-fields have non-overlapping storage (making them usable at the same time).
-This allows grouping and laying out fields in arbitrary ways, to match C data
-structures used in FFI. The C11 standard allows this, and C compilers have
-allowed it for decades as an extension. This proposal allows Rust to represent
-such types using the same names as the C structures, without interposing
-artificial field names that will confuse users of well-established interfaces
-from existing platforms.
+Allow unnamed fields of `struct` and `union` type, contained within an outer
+struct or union; the fields they contain appear directly within the containing
+structure, with the use of `union` and `struct` determining which fields have
+non-overlapping storage (making them usable at the same time).  This allows
+grouping and laying out fields in arbitrary ways, to match C data structures
+used in FFI. The C11 standard allows this, and C compilers have allowed it for
+decades as an extension. This proposal allows Rust to represent such types
+using the same names as the C structures, without interposing artificial field
+names that will confuse users of well-established interfaces from existing
+platforms.
 
 # Motivation
 [motivation]: #motivation
@@ -286,10 +286,8 @@ The error will identify the duplicate `a` fields as the sources of the error.
 ## Parsing
 
 Within a struct's fields, in place of a field name and value, allow
-`union { fields }`, where `fields` allows everything allowed within a `union`
-declaration. Conversely, within a union's fields, in place of a field name
-and value, allow `struct { fields }`, where `fields` allows everything allowed
-within a `struct` declaration.
+`struct { fields }` or `union { fields }`, where `fields` allows
+everything allowed within a `struct` or `union` declaration, respectively.
 
 Note that the keyword `struct` cannot appear as a field name, making it
 entirely unambiguous. The contextual keyword `union` could theoretically appear
