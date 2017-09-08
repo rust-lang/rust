@@ -238,6 +238,59 @@ All of the following will instantiate a value of type `S`:
 - `S { a: 1, c: 2, d: 3.0, f: 4.0 }`
 - `S { a: 1, e: 2.0, f: 3.0 }`
 
+## Pattern matching
+
+Code can pattern match on a structure containing unnamed fields as though all
+the fields appeared at the top level. For instance, the following code matches
+a discriminant and extracts the corresponding field.
+
+```rust
+struct S {
+    a: u32,
+    _: union {
+        b: u32,
+        _: struct {
+            c: u16,
+            d: f16,
+        },
+        e: f32,
+    },
+    f: u64,
+}
+
+unsafe fn func(s: S) {
+    match s {
+        S { a: 0, b, f } => println!("b: {}, f: {}", b, f),
+        S { a: 1, c, d, f } => println!("c: {}, d: {}, f: {}", c, d, f),
+        S { a: 2, e, f } => println!("e: {}, f: {}", e, f),
+        S { a, f, .. } => println!("a: {} (unknown), f: {}", a, f),
+    }
+}
+```
+
+If a match goes through one or more `union` fields (named or unnamed), it
+requires unsafe code; a match that goes through only `struct` fields can occur
+in safe code.
+
+Checks for exhaustiveness work identically to matches on structures with named
+fields. For instance, if the above match omitted the last case, it would
+receive a warning for a non-exhaustive match.
+
+A pattern must include a `..` if it does not match all fields, other than union
+fields for which it matches another branch of the union. Failing to do so will
+produce error E0027 (pattern does not mention field). For example:
+
+- Omitting the `f` from any of the first three cases would require adding `..`
+- Omitting `b` from the first case, or `e` from the third case, would require
+  adding `..`
+- Omitting *either* `c` or `d` from the second case would require adding `..`
+
+Effectively, the pattern acts as if it groups all matches of the fields within
+an unnamed struct or union into a sub-pattern that matches those fields out of
+the unnamed struct or union, and then produces errors accordingly if a
+sub-pattern matching an unnamed struct doesn't mention all fields of that struct,
+or if a pattern doesn't mention *any* fields in an unnamed union.
+
 ## Representation
 
 This feature exists to support the layout of native platform data structures.
