@@ -31,6 +31,10 @@ use mem;
 /// within a thread, and values that implement [`Drop`] get destructed when a
 /// thread exits. Some caveats apply, which are explained below.
 ///
+/// A `LocalKey`'s initializer cannot recursively depend on itself, and using
+/// a `LocalKey` in this way will cause the initializer to infinitely recurse
+/// on the first call to `with`.
+///
 /// # Examples
 ///
 /// ```
