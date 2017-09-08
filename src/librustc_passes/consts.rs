@@ -53,6 +53,23 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
 
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    for &body_id in &tcx.hir.krate().body_ids {
+        let visitor = &mut CheckCrateVisitor {
+            tcx,
+            tables: &ty::TypeckTables::empty(None),
+            in_fn: false,
+            in_static: false,
+            promotable: false,
+            mut_rvalue_borrows: NodeSet(),
+            param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+            identity_substs: Substs::empty(),
+        };
+        visitor.visit_nested_body(body_id);
+    }
+    tcx.sess.abort_if_errors();
+}
+
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     in_fn: bool,
@@ -511,20 +528,6 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
             }
         }
     }
-}
-
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
-        tcx,
-        tables: &ty::TypeckTables::empty(None),
-        in_fn: false,
-        in_static: false,
-        promotable: false,
-        mut_rvalue_borrows: NodeSet(),
-        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
-        identity_substs: Substs::empty(),
-    }.as_deep_visitor());
-    tcx.sess.abort_if_errors();
 }
 
 impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
