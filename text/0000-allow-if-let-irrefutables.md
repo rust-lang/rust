@@ -7,12 +7,12 @@
 [summary]: #summary
 
 Currently when using an if let statement and an irrefutable pattern (read always match) is used the compiler complains with an `E0162: irrefutable if-let pattern`.
-The current state breaks macros who want to accept patterns generically and this RFC proposes changing this error to an error-by-default which is allowed to be disabled by such macros.
+The current state breaks macros who want to accept patterns generically and this RFC proposes changing this error to an error-by-default lint which is allowed to be disabled by such macros.
 
 # Motivation
 [motivation]: #motivation
 
-The use cases for this is in the creation of macros where patterns are allowed because to support the `_` patterns the code has to be rewritten to be both much larger and include an \[#allow\] statement.
+The use cases for this is in the creation of macros where patterns are allowed because to support the `_` patterns the code has to be rewritten to be both much larger and include an \[#allow\] statement for a lint that does not seem to be related to the problem.
 The expected outcome is for irrefutable patterns to be compiled to a tautology and have the if block accept it as if it was `if true { }`.
 To support this, currently you must do something roughly the following, which seems to counteract the benefit of having if-let and while-let in the spec.
 
@@ -23,13 +23,13 @@ match $val {
     _ => ()
 }
 ```
+The following cannot be used, so the previous must be. An `#[allow(irrefutable_let_pattern)]` is used so that the error-by-default lint does not appear to the user.
 
 ```rust
 if let $p = $val {
     $b
 }
 ```
-Cannot be used, so the original match must be. The `allow` is forced so that the warning does not appear to the user of it since `_` won't be matched if `$p` is irrefutable.
 
 # Detailed design
 [design]: #detailed-design
