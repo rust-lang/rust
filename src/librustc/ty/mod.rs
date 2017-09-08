@@ -2180,7 +2180,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             self.hir.def_key(id)
         } else {
-            self.sess.cstore.def_key(id)
+            self.cstore().def_key(id)
         }
     }
 
@@ -2193,7 +2193,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if id.is_local() {
             self.hir.def_path(id)
         } else {
-            self.sess.cstore.def_path(id)
+            self.cstore().def_path(id)
         }
     }
 
@@ -2202,7 +2202,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if def_id.is_local() {
             self.hir.definitions().def_path_hash(def_id.index)
         } else {
-            self.sess.cstore.def_path_hash(def_id)
+            self.cstore().def_path_hash(def_id)
         }
     }
 
@@ -2210,9 +2210,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id)
         } else if id.index == CRATE_DEF_INDEX {
-            self.sess.cstore.original_crate_name(id.krate)
+            self.cstore().original_crate_name(id.krate)
         } else {
-            let def_key = self.sess.cstore.def_key(id);
+            let def_key = self.cstore().def_key(id);
             // The name of a StructCtor is that of its struct parent.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
@@ -2315,7 +2315,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let node_id = self.hir.as_local_node_id(impl_did).unwrap();
             Ok(self.hir.span(node_id))
         } else {
-            Err(self.sess.cstore.crate_name(impl_did.krate))
+            Err(self.cstore().crate_name(impl_did.krate))
         }
     }
 

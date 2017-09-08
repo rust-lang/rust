@@ -13,7 +13,7 @@ use back::link::{self, get_linker, remove};
 use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
-use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
+use rustc::middle::cstore::{CrateStore, LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
@@ -666,6 +666,7 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
 }
 
 pub fn start_async_translation(sess: &Session,
+                               cstore: &CrateStore,
                                crate_output: &OutputFilenames,
                                time_graph: Option<TimeGraph>,
                                crate_name: Symbol,
@@ -774,6 +775,7 @@ pub fn start_async_translation(sess: &Session,
     let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
+                                                  cstore,
                                                   shared_emitter,
                                                   trans_worker_send,
                                                   coordinator_send.clone(),
@@ -1101,6 +1103,7 @@ enum MainThreadWorkerState {
 }
 
 fn start_executing_work(sess: &Session,
+                        cstore: &CrateStore,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
                         coordinator_send: Sender<Message>,
@@ -1125,8 +1128,8 @@ fn start_executing_work(sess: &Session,
     }).expect("failed to spawn helper thread");
 
     let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(sess, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, cnum) {
+    drop(link::each_linked_rlib(sess, cstore, &mut |cnum, path| {
+        if link::ignored_for_lto(cstore, cnum) {
             return
         }
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));

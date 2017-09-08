@@ -774,7 +774,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadataHashes::new());
     }
 
-    let cstore = &tcx.sess.cstore;
+    let cstore = tcx.cstore();
     let (metadata, hashes) = cstore.encode_metadata(tcx,
                                                     &link_meta,
                                                     exported_symbols);
@@ -904,7 +904,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(..) => {
                 let def_id = tcx.hir.local_def_id(id);
-                tcx.sess.cstore.is_statically_included_foreign_item(def_id)
+                tcx.cstore().is_statically_included_foreign_item(def_id)
             }
 
             // Only consider nodes that actually have exported symbols.
@@ -978,6 +978,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
         let ongoing_translation = write::start_async_translation(
             tcx.sess,
+            tcx.cstore(),
             output_filenames,
             time_graph.clone(),
             tcx.crate_name(LOCAL_CRATE),
@@ -1030,6 +1031,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let ongoing_translation = write::start_async_translation(
         tcx.sess,
+        tcx.cstore(),
         output_filenames,
         time_graph.clone(),
         tcx.crate_name(LOCAL_CRATE),

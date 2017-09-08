@@ -131,7 +131,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         }
 
         let mut externs = Vec::new();
-        for cnum in cx.sess().cstore.crates() {
+        for cnum in cx.tcx.cstore().crates() {
             externs.push((cnum, cnum.clean(cx)));
             // Analyze doc-reachability for extern items
             LibEmbargoVisitor::new(cx).visit_lib(cnum);
@@ -244,7 +244,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
+            cx.tcx.cstore().item_children(root, cx.tcx.sess).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 

@@ -110,13 +110,13 @@ impl ExportedSymbols {
         let mut exports = FxHashMap();
         exports.insert(LOCAL_CRATE, local_crate);
 
-        for cnum in tcx.sess.cstore.crates() {
+        for cnum in tcx.cstore().crates() {
             debug_assert!(cnum != LOCAL_CRATE);
 
             // If this crate is a plugin and/or a custom derive crate, then
             // we're not even going to link those in so we skip those crates.
-            if tcx.sess.cstore.plugin_registrar_fn(cnum).is_some() ||
-               tcx.sess.cstore.derive_registrar_fn(cnum).is_some() {
+            if tcx.cstore().plugin_registrar_fn(cnum).is_some() ||
+               tcx.cstore().derive_registrar_fn(cnum).is_some() {
                 continue;
             }
 
@@ -129,11 +129,10 @@ impl ExportedSymbols {
             // level instead.
             let special_runtime_crate =
                 tcx.is_panic_runtime(cnum.as_def_id()) ||
-                tcx.sess.cstore.is_compiler_builtins(cnum);
+                tcx.cstore().is_compiler_builtins(cnum);
 
             let crate_exports = tcx
-                .sess
-                .cstore
+                .cstore()
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {

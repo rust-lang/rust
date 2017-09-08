@@ -253,7 +253,7 @@ impl<'a> Resolver<'a> {
                 self.crate_loader.process_item(item, &self.definitions);
 
                 // n.b. we don't need to look at the path option here, because cstore already did
-                let crate_id = self.session.cstore.extern_mod_stmt_cnum(item.id).unwrap();
+                let crate_id = self.cstore.extern_mod_stmt_cnum(item.id).unwrap();
                 let module =
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(module);
@@ -449,7 +449,7 @@ impl<'a> Resolver<'a> {
         let ident = child.ident;
         let def = child.def;
         let def_id = def.def_id();
-        let vis = self.session.cstore.visibility(def_id);
+        let vis = self.cstore.visibility(def_id);
         let span = child.span;
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
@@ -471,7 +471,7 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =
-                        self.session.cstore.def_key(def_id).parent
+                        self.cstore.def_key(def_id).parent
                             .map(|index| DefId { krate: def_id.krate, index: index }) {
                     self.struct_constructors.insert(struct_def_id, (def, vis));
                 }
@@ -485,12 +485,12 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
-                for child in self.session.cstore.item_children(def_id, self.session) {
+                for child in self.cstore.item_children(def_id, self.session) {
                     let ns = if let Def::AssociatedTy(..) = child.def { TypeNS } else { ValueNS };
                     self.define(module, child.ident, ns,
                                 (child.def, ty::Visibility::Public, DUMMY_SP, expansion));
 
-                    if self.session.cstore.associated_item_cloned(child.def.def_id())
+                    if self.cstore.associated_item_cloned(child.def.def_id())
                            .method_has_self_argument {
                         self.has_self.insert(child.def.def_id());
                     }
@@ -501,7 +501,7 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
 
                 // Record field names for error reporting.
-                let field_names = self.session.cstore.struct_field_names(def_id);
+                let field_names = self.cstore.struct_field_names(def_id);
                 self.insert_field_names(def_id, field_names);
             }
             Def::Macro(..) => {
@@ -516,15 +516,15 @@ impl<'a> Resolver<'a> {
             return self.module_map[&def_id]
         }
 
-        let macros_only = self.session.cstore.dep_kind(def_id.krate).macros_only();
+        let macros_only = self.cstore.dep_kind(def_id.krate).macros_only();
         if let Some(&module) = self.extern_module_map.get(&(def_id, macros_only)) {
             return module;
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.session.cstore.crate_name(def_id.krate), None)
+            (self.cstore.crate_name(def_id.krate), None)
         } else {
-            let def_key = self.session.cstore.def_key(def_id);
+            let def_key = self.cstore.def_key(def_id);
             (def_key.disambiguated_data.data.get_opt_name().unwrap(),
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
@@ -558,7 +558,7 @@ impl<'a> Resolver<'a> {
             return ext.clone();
         }
 
-        let macro_def = match self.session.cstore.load_macro(def_id, &self.session) {
+        let macro_def = match self.cstore.load_macro(def_id, &self.session) {
             LoadedMacro::MacroDef(macro_def) => macro_def,
             LoadedMacro::ProcMacro(ext) => return ext,
         };
@@ -574,7 +574,7 @@ impl<'a> Resolver<'a> {
     /// is built, building it if it is not.
     pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
-        for child in self.session.cstore.item_children(module.def_id().unwrap(), self.session) {
+        for child in self.cstore.item_children(module.def_id().unwrap(), self.session) {
             self.build_reduced_graph_for_external_crate_def(module, child);
         }
         module.populated.set(true)
@@ -605,7 +605,7 @@ impl<'a> Resolver<'a> {
             span_err!(self.session, item.span, E0468,
                       "an `extern crate` loading macros must be at the crate root");
         } else if !self.use_extern_macros && !used &&
-                  self.session.cstore.dep_kind(module.def_id().unwrap().krate).macros_only() {
+                  self.cstore.dep_kind(module.def_id().unwrap().krate).macros_only() {
             let msg = "proc macro crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
             self.session.span_warn(item.span, msg);
@@ -648,7 +648,7 @@ impl<'a> Resolver<'a> {
             }
         }
         for (name, span) in legacy_imports.reexports {
-            self.session.cstore.export_macros(module.def_id().unwrap().krate);
+            self.cstore.export_macros(module.def_id().unwrap().krate);
             let ident = Ident::with_empty_ctxt(name);
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
             if let Ok(binding) = result {

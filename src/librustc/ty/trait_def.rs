@@ -146,7 +146,7 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // crates, so we don't bother querying the cstore.
         Vec::new()
     } else {
-        tcx.sess.cstore.implementations_of_trait(Some(trait_id))
+        tcx.cstore().implementations_of_trait(Some(trait_id))
     };
 
     let mut blanket_impls = Vec::new();

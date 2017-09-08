@@ -207,8 +207,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
 
-                    let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
-                    let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
+                    let imported_from = self.cx.tcx.cstore().original_crate_name(def_id.krate);
+                    let def = match self.cx.tcx.cstore().load_macro(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
                         // FIXME(jseyfried): document proc macro reexports
                         LoadedMacro::ProcMacro(..) => continue,
@@ -371,7 +371,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && item.vis != hir::Public => {}
             hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(ref p) => {
-                let cstore = &self.cx.sess().cstore;
+                let cstore = &self.cx.tcx.cstore();
                 om.extern_crates.push(ExternCrate {
                     cnum: cstore.extern_mod_stmt_cnum(item.id)
                                 .unwrap_or(LOCAL_CRATE),

@@ -1283,12 +1283,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     }
 
     fn encode_native_libraries(&mut self, _: ()) -> LazySeq<NativeLibrary> {
-        let used_libraries = self.tcx.sess.cstore.used_libraries();
+        let used_libraries = self.tcx.cstore().used_libraries();
         self.lazy_seq(used_libraries)
     }
 
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {
-        let cstore = &*self.tcx.sess.cstore;
+        let tcx = self.tcx;
+        let cstore = tcx.cstore();
         let crates = cstore.crates();
 
         let mut deps = crates

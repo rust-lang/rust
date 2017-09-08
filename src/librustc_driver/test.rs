@@ -111,8 +111,7 @@ fn test_env<F>(source_string: &str,
                                        &dep_graph,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())),
-                                       cstore.clone());
+                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
@@ -140,10 +139,11 @@ fn test_env<F>(source_string: &str,
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
+    let lang_items = lang_items::collect_language_items(&sess, &*cstore, &hir_map);
+    let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
     let index = stability::Index::new(&sess);
     TyCtxt::create_and_enter(&sess,
+                             &*cstore,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              Rc::new(Passes::new()),
