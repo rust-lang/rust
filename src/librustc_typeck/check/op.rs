@@ -362,7 +362,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn lookup_op_method(&self, lhs_ty: Ty<'tcx>, other_tys: &[Ty<'tcx>], op: Op)
                         -> Result<MethodCallee<'tcx>, ()>
     {
-        let lang = &self.tcx.lang_items;
+        let lang = self.tcx.lang_items();
 
         let span = match op {
             Op::Binary(op, _) => op.span,

@@ -327,7 +327,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };
-            match &tcx.item_name(def_id).as_str()[..] {
+            match &tcx.item_name(def_id)[..] {
                 "size_of" => {
                     let size = layout_of(substs.type_at(0))?.size(tcx);
                     return Ok(Integral(Usize(ConstUsize::new(size.bytes(),
@@ -354,7 +354,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             }
           } else {
             if tcx.is_const_fn(def_id) {
-                tcx.sess.cstore.item_body(tcx, def_id)
+                tcx.extern_const_body(def_id)
             } else {
                 signal!(e, TypeckError)
             }
@@ -774,7 +774,7 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
-        tcx.sess.cstore.item_body(tcx, def_id)
+        tcx.extern_const_body(def_id)
     };
     ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
 }

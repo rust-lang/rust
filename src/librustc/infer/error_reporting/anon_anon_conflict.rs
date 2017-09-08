@@ -209,18 +209,19 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
         match arg.node {
             hir::TyRptr(ref lifetime, _) => {
-                match self.infcx.tcx.named_region_map.defs.get(&lifetime.id) {
+                let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
+                match self.infcx.tcx.named_region(hir_id) {
                     // the lifetime of the TyRptr
-                    Some(&rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
+                    Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
                         if debruijn_index.depth == 1 && anon_index == br_index {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
                     }
-                    Some(&rl::Region::Static) |
-                    Some(&rl::Region::EarlyBound(_, _)) |
-                    Some(&rl::Region::LateBound(_, _)) |
-                    Some(&rl::Region::Free(_, _)) |
+                    Some(rl::Region::Static) |
+                    Some(rl::Region::EarlyBound(_, _)) |
+                    Some(rl::Region::LateBound(_, _)) |
+                    Some(rl::Region::Free(_, _)) |
                     None => {
                         debug!("no arg found");
                     }
@@ -272,17 +273,18 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
             _ => return,
         };
 
-        match self.infcx.tcx.named_region_map.defs.get(&lifetime.id) {
+        let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
+        match self.infcx.tcx.named_region(hir_id) {
             // the lifetime of the TyPath!
-            Some(&rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
+            Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
                 if debruijn_index.depth == 1 && anon_index == br_index {
                     self.found_it = true;
                 }
             }
-            Some(&rl::Region::Static) |
-            Some(&rl::Region::EarlyBound(_, _)) |
-            Some(&rl::Region::LateBound(_, _)) |
-            Some(&rl::Region::Free(_, _)) |
+            Some(rl::Region::Static) |
+            Some(rl::Region::EarlyBound(_, _)) |
+            Some(rl::Region::LateBound(_, _)) |
+            Some(rl::Region::Free(_, _)) |
             None => {
                 debug!("no arg found");
             }

@@ -14,13 +14,13 @@
 use schema::{self, Tracked};
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefIndex, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex, DefId};
 use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap, DefIdMap};
+use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{RefCell, Cell};
 use std::rc::Rc;
@@ -95,11 +95,6 @@ pub struct CStore {
     metas: RefCell<FxHashMap<CrateNum, Rc<CrateMetadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    used_libraries: RefCell<Vec<NativeLibrary>>,
-    used_link_args: RefCell<Vec<String>>,
-    statically_included_foreign_items: RefCell<FxHashSet<DefIndex>>,
-    pub dllimport_foreign_items: RefCell<FxHashSet<DefIndex>>,
-    pub visible_parent_map: RefCell<DefIdMap<DefId>>,
     pub metadata_loader: Box<MetadataLoader>,
 }
 
@@ -109,11 +104,6 @@ impl CStore {
             dep_graph: dep_graph.clone(),
             metas: RefCell::new(FxHashMap()),
             extern_mod_crate_map: RefCell::new(FxHashMap()),
-            used_libraries: RefCell::new(Vec::new()),
-            used_link_args: RefCell::new(Vec::new()),
-            statically_included_foreign_items: RefCell::new(FxHashSet()),
-            dllimport_foreign_items: RefCell::new(FxHashSet()),
-            visible_parent_map: RefCell::new(FxHashMap()),
             metadata_loader,
         }
     }
@@ -124,10 +114,6 @@ impl CStore {
 
     pub fn get_crate_data(&self, cnum: CrateNum) -> Rc<CrateMetadata> {
         self.metas.borrow().get(&cnum).unwrap().clone()
-    }
-
-    pub fn get_crate_hash(&self, cnum: CrateNum) -> Svh {
-        self.get_crate_data(cnum).hash()
     }
 
     pub fn set_crate_data(&self, cnum: CrateNum, data: Rc<CrateMetadata>) {
@@ -164,84 +150,16 @@ impl CStore {
         ordering.push(krate);
     }
 
-    // This method is used when generating the command line to pass through to
-    // system linker. The linker expects undefined symbols on the left of the
-    // command line to be defined in libraries on the right, not the other way
-    // around. For more info, see some comments in the add_used_library function
-    // below.
-    //
-    // In order to get this left-to-right dependency ordering, we perform a
-    // topological sort of all crates putting the leaves at the right-most
-    // positions.
-    pub fn do_get_used_crates(&self,
-                              prefer: LinkagePreference)
-                              -> Vec<(CrateNum, LibSource)> {
+    pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         for (&num, _) in self.metas.borrow().iter() {
             self.push_dependencies_in_postorder(&mut ordering, num);
         }
-        info!("topological ordering: {:?}", ordering);
-        ordering.reverse();
-        let mut libs = self.metas
-            .borrow()
-            .iter()
-            .filter_map(|(&cnum, data)| {
-                if data.dep_kind.get().macros_only() { return None; }
-                let path = match prefer {
-                    LinkagePreference::RequireDynamic => data.source.dylib.clone().map(|p| p.0),
-                    LinkagePreference::RequireStatic => data.source.rlib.clone().map(|p| p.0),
-                };
-                let path = match path {
-                    Some(p) => LibSource::Some(p),
-                    None => {
-                        if data.source.rmeta.is_some() {
-                            LibSource::MetadataOnly
-                        } else {
-                            LibSource::None
-                        }
-                    }
-                };
-                Some((cnum, path))
-            })
-            .collect::<Vec<_>>();
-        libs.sort_by(|&(a, _), &(b, _)| {
-            let a = ordering.iter().position(|x| *x == a);
-            let b = ordering.iter().position(|x| *x == b);
-            a.cmp(&b)
-        });
-        libs
-    }
-
-    pub fn add_used_library(&self, lib: NativeLibrary) {
-        assert!(!lib.name.as_str().is_empty());
-        self.used_libraries.borrow_mut().push(lib);
-    }
-
-    pub fn get_used_libraries(&self) -> &RefCell<Vec<NativeLibrary>> {
-        &self.used_libraries
-    }
-
-    pub fn add_used_link_args(&self, args: &str) {
-        for s in args.split(' ').filter(|s| !s.is_empty()) {
-            self.used_link_args.borrow_mut().push(s.to_string());
-        }
-    }
-
-    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<Vec<String>> {
-        &self.used_link_args
+        return ordering
     }
 
     pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
-    }
-
-    pub fn add_statically_included_foreign_item(&self, id: DefIndex) {
-        self.statically_included_foreign_items.borrow_mut().insert(id);
-    }
-
-    pub fn do_is_statically_included_foreign_item(&self, def_id: DefId) -> bool {
-        assert!(def_id.krate == LOCAL_CRATE);
-        self.statically_included_foreign_items.borrow().contains(&def_id.index)
     }
 
     pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {

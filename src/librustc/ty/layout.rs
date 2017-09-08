@@ -1344,7 +1344,7 @@ impl<'a, 'tcx> Layout {
                     } else {
                         let st = Struct::new(dl, &fields, &def.repr,
                           kind, ty)?;
-                        let non_zero = Some(def.did) == tcx.lang_items.non_zero();
+                        let non_zero = Some(def.did) == tcx.lang_items().non_zero();
                         Univariant { variant: st, non_zero: non_zero }
                     };
                     return success(layout);
@@ -2043,7 +2043,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                     if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
                         return Ok(SizeSkeleton::Pointer {
                             non_zero: non_zero ||
-                                Some(def.did) == tcx.lang_items.non_zero(),
+                                Some(def.did) == tcx.lang_items().non_zero(),
                             tail,
                         });
                     } else {

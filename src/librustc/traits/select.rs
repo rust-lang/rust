@@ -1315,7 +1315,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // and applicable impls. There is a certain set of precedence rules here.
 
         let def_id = obligation.predicate.def_id();
-        if self.tcx().lang_items.copy_trait() == Some(def_id) {
+        let lang_items = self.tcx().lang_items();
+        if lang_items.copy_trait() == Some(def_id) {
             debug!("obligation self ty is {:?}",
                    obligation.predicate.0.self_ty());
 
@@ -1326,16 +1327,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // For other types, we'll use the builtin rules.
             let copy_conditions = self.copy_conditions(obligation);
             self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
-        } else if self.tcx().lang_items.sized_trait() == Some(def_id) {
+        } else if lang_items.sized_trait() == Some(def_id) {
             // Sized is never implementable by end-users, it is
             // always automatically computed.
             let sized_conditions = self.sized_conditions(obligation);
             self.assemble_builtin_bound_candidates(sized_conditions,
                                                    &mut candidates)?;
-         } else if self.tcx().lang_items.unsize_trait() == Some(def_id) {
+         } else if lang_items.unsize_trait() == Some(def_id) {
              self.assemble_candidates_for_unsizing(obligation, &mut candidates);
          } else {
-             if self.tcx().lang_items.clone_trait() == Some(def_id) {
+             if lang_items.clone_trait() == Some(def_id) {
                  // Same builtin conditions as `Copy`, i.e. every type which has builtin support
                  // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
                  // types have builtin support for `Clone`.
@@ -1533,7 +1534,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                    candidates: &mut SelectionCandidateSet<'tcx>)
                                    -> Result<(),SelectionError<'tcx>>
     {
-        if self.tcx().lang_items.gen_trait() != Some(obligation.predicate.def_id()) {
+        if self.tcx().lang_items().gen_trait() != Some(obligation.predicate.def_id()) {
             return Ok(());
         }
 
@@ -1570,7 +1571,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                    candidates: &mut SelectionCandidateSet<'tcx>)
                                    -> Result<(),SelectionError<'tcx>>
     {
-        let kind = match self.tcx().lang_items.fn_trait_kind(obligation.predicate.0.def_id()) {
+        let kind = match self.tcx().lang_items().fn_trait_kind(obligation.predicate.0.def_id()) {
             Some(k) => k,
             None => { return Ok(()); }
         };
@@ -1612,7 +1613,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       -> Result<(),SelectionError<'tcx>>
     {
         // We provide impl of all fn traits for fn pointers.
-        if self.tcx().lang_items.fn_trait_kind(obligation.predicate.def_id()).is_none() {
+        if self.tcx().lang_items().fn_trait_kind(obligation.predicate.def_id()).is_none() {
             return Ok(());
         }
 
@@ -2346,16 +2347,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("confirm_builtin_candidate({:?}, {:?})",
                obligation, has_nested);
 
+        let lang_items = self.tcx().lang_items();
         let obligations = if has_nested {
             let trait_def = obligation.predicate.def_id();
             let conditions = match trait_def {
-                _ if Some(trait_def) == self.tcx().lang_items.sized_trait() => {
+                _ if Some(trait_def) == lang_items.sized_trait() => {
                     self.sized_conditions(obligation)
                 }
-                _ if Some(trait_def) == self.tcx().lang_items.copy_trait() => {
+                _ if Some(trait_def) == lang_items.copy_trait() => {
                     self.copy_conditions(obligation)
                 }
-                _ if Some(trait_def) == self.tcx().lang_items.clone_trait() => {
+                _ if Some(trait_def) == lang_items.clone_trait() => {
                     self.copy_conditions(obligation)
                 }
                 _ => bug!("unexpected builtin trait {:?}", trait_def)
@@ -2658,7 +2660,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("confirm_closure_candidate({:?})", obligation);
 
-        let kind = match self.tcx().lang_items.fn_trait_kind(obligation.predicate.0.def_id()) {
+        let kind = match self.tcx().lang_items().fn_trait_kind(obligation.predicate.0.def_id()) {
             Some(k) => k,
             None => bug!("closure candidate for non-fn trait {:?}", obligation)
         };

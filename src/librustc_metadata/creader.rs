@@ -12,6 +12,7 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
+use native_libs::relevant_lib;
 use schema::{CrateRoot, Tracked};
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
@@ -23,10 +24,9 @@ use rustc::session::config::{Sanitizer, self};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
-use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
+use rustc::middle::cstore::{validate_crate_name, ExternCrate};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
-use rustc::middle::cstore::NativeLibrary;
 use rustc::hir::map::Definitions;
 
 use std::cell::{RefCell, Cell};
@@ -36,10 +36,8 @@ use std::rc::Rc;
 use std::{cmp, fs};
 
 use syntax::ast;
-use syntax::abi::Abi;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
-use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::Symbol;
 use syntax::visit;
 use syntax_pos::{Span, DUMMY_SP};
@@ -79,56 +77,6 @@ struct ExternCrateInfo {
     name: Symbol,
     id: ast::NodeId,
     dep_kind: DepKind,
-}
-
-fn register_native_lib(sess: &Session,
-                       cstore: &CStore,
-                       span: Option<Span>,
-                       lib: NativeLibrary) {
-    if lib.name.as_str().is_empty() {
-        match span {
-            Some(span) => {
-                struct_span_err!(sess, span, E0454,
-                                 "#[link(name = \"\")] given with empty name")
-                    .span_label(span, "empty name given")
-                    .emit();
-            }
-            None => {
-                sess.err("empty library name given via `-l`");
-            }
-        }
-        return
-    }
-    let is_osx = sess.target.target.options.is_like_osx;
-    if lib.kind == cstore::NativeFramework && !is_osx {
-        let msg = "native frameworks are only available on macOS targets";
-        match span {
-            Some(span) => span_err!(sess, span, E0455, "{}", msg),
-            None => sess.err(msg),
-        }
-    }
-    if lib.cfg.is_some() && !sess.features.borrow().link_cfg {
-        feature_gate::emit_feature_err(&sess.parse_sess,
-                                       "link_cfg",
-                                       span.unwrap(),
-                                       GateIssue::Language,
-                                       "is feature gated");
-    }
-    if lib.kind == cstore::NativeStaticNobundle && !sess.features.borrow().static_nobundle {
-        feature_gate::emit_feature_err(&sess.parse_sess,
-                                       "static_nobundle",
-                                       span.unwrap(),
-                                       GateIssue::Language,
-                                       "kind=\"static-nobundle\" is feature gated");
-    }
-    cstore.add_used_library(lib);
-}
-
-fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
-    match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
-        None => true,
-    }
 }
 
 // Extra info about a crate loaded for plugins or exported macros.
@@ -218,7 +166,7 @@ impl<'a> CrateLoader<'a> {
             // We're also sure to compare *paths*, not actual byte slices. The
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
-            let source = self.cstore.used_crate_source(cnum);
+            let source = &self.cstore.get_crate_data(cnum).source;
             if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
                 let found = locs.iter().any(|l| {
                     let l = fs::canonicalize(l).ok();
@@ -721,33 +669,6 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn get_foreign_items_of_kind(&self, kind: cstore::NativeLibraryKind) -> Vec<DefIndex> {
-        let mut items = vec![];
-        let libs = self.cstore.get_used_libraries();
-        for lib in libs.borrow().iter() {
-            if relevant_lib(self.sess, lib) && lib.kind == kind {
-                items.extend(&lib.foreign_items);
-            }
-        }
-        items
-    }
-
-    fn register_statically_included_foreign_items(&mut self) {
-        for id in self.get_foreign_items_of_kind(cstore::NativeStatic) {
-            self.cstore.add_statically_included_foreign_item(id);
-        }
-        for id in self.get_foreign_items_of_kind(cstore::NativeStaticNobundle) {
-            self.cstore.add_statically_included_foreign_item(id);
-        }
-    }
-
-    fn register_dllimport_foreign_items(&mut self) {
-        let mut dllimports = self.cstore.dllimport_foreign_items.borrow_mut();
-        for id in self.get_foreign_items_of_kind(cstore::NativeUnknown) {
-            dllimports.insert(id);
-        }
-    }
-
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
@@ -1152,84 +1073,6 @@ impl<'a> CrateLoader<'a> {
     }
 }
 
-impl<'a> CrateLoader<'a> {
-    pub fn preprocess(&mut self, krate: &ast::Crate) {
-        for attr in &krate.attrs {
-            if attr.path == "link_args" {
-                if let Some(linkarg) = attr.value_str() {
-                    self.cstore.add_used_link_args(&linkarg.as_str());
-                }
-            }
-        }
-    }
-
-    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod,
-                           definitions: &Definitions) {
-        if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
-            return;
-        }
-
-        // First, add all of the custom #[link_args] attributes
-        for m in i.attrs.iter().filter(|a| a.check_name("link_args")) {
-            if let Some(linkarg) = m.value_str() {
-                self.cstore.add_used_link_args(&linkarg.as_str());
-            }
-        }
-
-        // Next, process all of the #[link(..)]-style arguments
-        for m in i.attrs.iter().filter(|a| a.check_name("link")) {
-            let items = match m.meta_item_list() {
-                Some(item) => item,
-                None => continue,
-            };
-            let kind = items.iter().find(|k| {
-                k.check_name("kind")
-            }).and_then(|a| a.value_str()).map(Symbol::as_str);
-            let kind = match kind.as_ref().map(|s| &s[..]) {
-                Some("static") => cstore::NativeStatic,
-                Some("static-nobundle") => cstore::NativeStaticNobundle,
-                Some("dylib") => cstore::NativeUnknown,
-                Some("framework") => cstore::NativeFramework,
-                Some(k) => {
-                    struct_span_err!(self.sess, m.span, E0458,
-                              "unknown kind: `{}`", k)
-                        .span_label(m.span, "unknown kind").emit();
-                    cstore::NativeUnknown
-                }
-                None => cstore::NativeUnknown
-            };
-            let n = items.iter().find(|n| {
-                n.check_name("name")
-            }).and_then(|a| a.value_str());
-            let n = match n {
-                Some(n) => n,
-                None => {
-                    struct_span_err!(self.sess, m.span, E0459,
-                                     "#[link(...)] specified without `name = \"foo\"`")
-                        .span_label(m.span, "missing `name` argument").emit();
-                    Symbol::intern("foo")
-                }
-            };
-            let cfg = items.iter().find(|k| {
-                k.check_name("cfg")
-            }).and_then(|a| a.meta_item_list());
-            let cfg = cfg.map(|list| {
-                list[0].meta_item().unwrap().clone()
-            });
-            let foreign_items = fm.items.iter()
-                .map(|it| definitions.opt_def_index(it.id).unwrap())
-                .collect();
-            let lib = NativeLibrary {
-                name: n,
-                kind,
-                cfg,
-                foreign_items,
-            };
-            register_native_lib(self.sess, self.cstore, Some(m.span), lib);
-        }
-    }
-}
-
 impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     fn postprocess(&mut self, krate: &ast::Crate) {
         // inject the sanitizer runtime before the allocator runtime because all
@@ -1242,72 +1085,10 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         if log_enabled!(log::LogLevel::Info) {
             dump_crates(&self.cstore);
         }
-
-        // Process libs passed on the command line
-        // First, check for errors
-        let mut renames = FxHashSet();
-        for &(ref name, ref new_name, _) in &self.sess.opts.libs {
-            if let &Some(ref new_name) = new_name {
-                if new_name.is_empty() {
-                    self.sess.err(
-                        &format!("an empty renaming target was specified for library `{}`",name));
-                } else if !self.cstore.get_used_libraries().borrow().iter()
-                                                           .any(|lib| lib.name == name as &str) {
-                    self.sess.err(&format!("renaming of the library `{}` was specified, \
-                                            however this crate contains no #[link(...)] \
-                                            attributes referencing this library.", name));
-                } else if renames.contains(name) {
-                    self.sess.err(&format!("multiple renamings were specified for library `{}` .",
-                                            name));
-                } else {
-                    renames.insert(name);
-                }
-            }
-        }
-        // Update kind and, optionally, the name of all native libaries
-        // (there may be more than one) with the specified name.
-        for &(ref name, ref new_name, kind) in &self.sess.opts.libs {
-            let mut found = false;
-            for lib in self.cstore.get_used_libraries().borrow_mut().iter_mut() {
-                if lib.name == name as &str {
-                    let mut changed = false;
-                    if let Some(k) = kind {
-                        lib.kind = k;
-                        changed = true;
-                    }
-                    if let &Some(ref new_name) = new_name {
-                        lib.name = Symbol::intern(new_name);
-                        changed = true;
-                    }
-                    if !changed {
-                        self.sess.warn(&format!("redundant linker flag specified for library `{}`",
-                                                name));
-                    }
-
-                    found = true;
-                }
-            }
-            if !found {
-                // Add if not found
-                let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
-                let lib = NativeLibrary {
-                    name: Symbol::intern(new_name.unwrap_or(name)),
-                    kind: if let Some(k) = kind { k } else { cstore::NativeUnknown },
-                    cfg: None,
-                    foreign_items: Vec::new(),
-                };
-                register_native_lib(self.sess, self.cstore, None, lib);
-            }
-        }
-        self.register_statically_included_foreign_items();
-        self.register_dllimport_foreign_items();
     }
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ForeignMod(ref fm) => {
-                self.process_foreign_mod(item, fm, definitions)
-            },
             ast::ItemKind::ExternCrate(_) => {
                 let info = self.extract_crate_info(item).unwrap();
                 let (cnum, ..) = self.resolve_crate(

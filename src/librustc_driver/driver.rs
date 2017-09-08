@@ -694,7 +694,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // this back at some point.
     let _ignore = sess.dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
-    crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
                                      &krate,
@@ -914,12 +913,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let time_passes = sess.time_passes();
 
-    let lang_items = time(time_passes, "language item collection", || {
-        sess.track_errors(|| {
-            middle::lang_items::collect_language_items(&sess, &hir_map)
-        })
-    })?;
-
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
                                 || middle::resolve_lifetime::krate(sess, &hir_map))?;
@@ -940,8 +933,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     time(time_passes,
               "static item recursion checking",
               || static_recursion::check_crate(sess, &hir_map))?;
-
-    let index = stability::Index::new(&sess);
 
     let mut local_providers = ty::maps::Providers::default();
     borrowck::provide(&mut local_providers);
@@ -1029,8 +1020,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
-                             lang_items,
-                             index,
                              name,
                              |tcx| {
         let incremental_hashes_map =
@@ -1041,10 +1030,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
-
-        time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx)
-        });
 
         time(time_passes,
              "stability checking",

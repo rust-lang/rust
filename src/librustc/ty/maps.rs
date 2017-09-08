@@ -10,14 +10,19 @@
 
 use dep_graph::{DepConstructor, DepNode, DepNodeIndex};
 use errors::{Diagnostic, DiagnosticBuilder};
-use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, HirId};
+use hir::svh::Svh;
 use lint;
 use middle::const_val;
-use middle::cstore::{ExternCrate, LinkagePreference};
+use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
+use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use middle::privacy::AccessLevels;
 use middle::region;
+use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
+use middle::stability::{self, DeprecationEntry};
+use middle::lang_items::{LanguageItems, LangItem};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -28,10 +33,11 @@ use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
-use util::nodemap::{DefIdSet, NodeSet};
+use util::nodemap::{DefIdSet, NodeSet, DefIdMap};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
+use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::{RefCell, RefMut, Cell};
@@ -428,13 +434,13 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
 }
 
 
-impl<'tcx> QueryDescription for queries::stability<'tcx> {
+impl<'tcx> QueryDescription for queries::lookup_stability<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("stability")
     }
 }
 
-impl<'tcx> QueryDescription for queries::deprecation<'tcx> {
+impl<'tcx> QueryDescription for queries::lookup_deprecation_entry<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("deprecation")
     }
@@ -509,31 +515,25 @@ impl<'tcx> QueryDescription for queries::is_const_fn<'tcx> {
 }
 
 impl<'tcx> QueryDescription for queries::dylib_dependency_formats<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "dylib dependency formats of crate".to_string()
     }
 }
 
-impl<'tcx> QueryDescription for queries::is_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
-        "checking if the crate is_allocator".to_string()
-    }
-}
-
 impl<'tcx> QueryDescription for queries::is_panic_runtime<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate is_panic_runtime".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::is_compiler_builtins<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate is_compiler_builtins".to_string()
     }
 }
 
 impl<'tcx> QueryDescription for queries::has_global_allocator<'tcx> {
-    fn describe(_: TyCtxt, _: DefId) -> String {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
         "checking if the crate has_global_allocator".to_string()
     }
 }
@@ -565,6 +565,198 @@ impl<'tcx> QueryDescription for queries::in_scope_traits<'tcx> {
 impl<'tcx> QueryDescription for queries::module_exports<'tcx> {
     fn describe(_tcx: TyCtxt, _: HirId) -> String {
         format!("fetching the exported items for a module")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_no_builtins<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("test whether a crate has #![no_builtins]")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::panic_strategy<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate's configured panic strategy")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_profiler_runtime<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate is #![profiler_runtime]")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_sanitizer_runtime<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("query a crate is #![sanitizer_runtime]")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::exported_symbols<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the exported symbols of a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::native_libraries<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the native libraries of a linked crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::plugin_registrar_fn<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the plugin registrar for a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::derive_registrar_fn<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the derive registrar for a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::crate_disambiguator<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the disambiguator a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::crate_hash<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the hash a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::original_crate_name<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the original name a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::implementations_of_trait<'tcx> {
+    fn describe(_tcx: TyCtxt, _: (CrateNum, DefId)) -> String {
+        format!("looking up implementations of a trait in a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::all_trait_implementations<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up all (?) trait implementations")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::link_args<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up link arguments for a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::named_region<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching info about a named region")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::is_late_bound<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("testing whether a lifetime is late bound")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::object_lifetime_defaults<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("fetching a list of ObjectLifetimeDefault for a lifetime")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::dep_kind<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching what a dependency looks like")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::crate_name<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching what a crate is named")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::extern_mod_stmt_cnum<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("looking up the CrateNum for an `extern mod` statement")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::get_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lang items map")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::defined_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the lang items defined in a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::missing_lang_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the missing lang items in a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::visible_parent_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the visible parent map")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::missing_extern_crate_item<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("seeing if we're missing an `extern crate` item for this crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::used_crate_source<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking at the source for a crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::postorder_cnums<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("generating a postorder list of CrateNums")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::freevars<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("looking up free variables for a node")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::maybe_unused_trait_import<'tcx> {
+    fn describe(_tcx: TyCtxt, _: HirId) -> String {
+        format!("testing if a trait import is unused")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::maybe_unused_extern_crates<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up all possibly unused extern crates")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::stability_index<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("calculating the stability index for the local crate")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::all_crate_nums<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching all foreign CrateNum instances")
     }
 }
 
@@ -1092,8 +1284,8 @@ define_maps! { <'tcx>
 
     [] fn describe_def: DescribeDef(DefId) -> Option<Def>,
     [] fn def_span: DefSpan(DefId) -> Span,
-    [] fn stability: Stability(DefId) -> Option<attr::Stability>,
-    [] fn deprecation: Deprecation(DefId) -> Option<attr::Deprecation>,
+    [] fn lookup_stability: LookupStability(DefId) -> Option<&'tcx attr::Stability>,
+    [] fn lookup_deprecation_entry: LookupDeprecationEntry(DefId) -> Option<DeprecationEntry>,
     [] fn item_attrs: ItemAttrs(DefId) -> Rc<[ast::Attribute]>,
     [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
@@ -1125,21 +1317,72 @@ define_maps! { <'tcx>
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx Layout, LayoutError<'tcx>>,
 
-    [] fn dylib_dependency_formats: DylibDepFormats(DefId)
+    [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
                                     -> Rc<Vec<(CrateNum, LinkagePreference)>>,
 
-    [] fn is_allocator: IsAllocator(DefId) -> bool,
-    [] fn is_panic_runtime: IsPanicRuntime(DefId) -> bool,
-    [] fn is_compiler_builtins: IsCompilerBuiltins(DefId) -> bool,
-    [] fn has_global_allocator: HasGlobalAllocator(DefId) -> bool,
+    [] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
+    [] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
+    [] fn has_global_allocator: HasGlobalAllocator(CrateNum) -> bool,
+    [] fn is_sanitizer_runtime: IsSanitizerRuntime(CrateNum) -> bool,
+    [] fn is_profiler_runtime: IsProfilerRuntime(CrateNum) -> bool,
+    [] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
+    [] fn is_no_builtins: IsNoBuiltins(CrateNum) -> bool,
 
     [] fn extern_crate: ExternCrate(DefId) -> Rc<Option<ExternCrate>>,
-
-    [] fn lint_levels: lint_levels(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] fn specializes: specializes_node((DefId, DefId)) -> bool,
     [] fn in_scope_traits: InScopeTraits(HirId) -> Option<Rc<Vec<TraitCandidate>>>,
     [] fn module_exports: ModuleExports(HirId) -> Option<Rc<Vec<Export>>>,
+    [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
+
+    [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
+    [] fn exported_symbols: ExportedSymbols(CrateNum) -> Rc<Vec<DefId>>,
+    [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
+    [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
+    [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
+    [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> Symbol,
+    [] fn crate_hash: CrateHash(CrateNum) -> Svh,
+    [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+
+    [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
+        -> Rc<Vec<DefId>>,
+    [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
+        -> Rc<Vec<DefId>>,
+
+    [] fn is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
+    [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
+    [] fn native_library_kind: NativeLibraryKind(DefId)
+        -> Option<NativeLibraryKind>,
+    [] fn link_args: link_args_node(CrateNum) -> Rc<Vec<String>>,
+
+    [] fn named_region: NamedRegion(HirId) -> Option<Region>,
+    [] fn is_late_bound: IsLateBound(HirId) -> bool,
+    [] fn object_lifetime_defaults: ObjectLifetimeDefaults(HirId)
+        -> Option<Rc<Vec<ObjectLifetimeDefault>>>,
+
+    [] fn visibility: Visibility(DefId) -> ty::Visibility,
+    [] fn dep_kind: DepKind(CrateNum) -> DepKind,
+    [] fn crate_name: CrateName(CrateNum) -> Symbol,
+    [] fn item_children: ItemChildren(DefId) -> Rc<Vec<Export>>,
+    [] fn extern_mod_stmt_cnum: ExternModStmtCnum(HirId) -> Option<CrateNum>,
+
+    [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
+    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
+    [] fn missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
+    [] fn extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
+    [] fn visible_parent_map: visible_parent_map_node(CrateNum)
+        -> Rc<DefIdMap<DefId>>,
+    [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
+    [] fn used_crate_source: UsedCrateSource(CrateNum) -> Rc<CrateSource>,
+    [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Rc<Vec<CrateNum>>,
+
+    [] fn freevars: Freevars(HirId) -> Option<Rc<Vec<hir::Freevar>>>,
+    [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(HirId) -> bool,
+    [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
+        -> Rc<Vec<(HirId, Span)>>,
+
+    [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
+    [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1212,10 +1455,44 @@ fn layout_dep_node<'tcx>(_: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'
     DepConstructor::Layout
 }
 
-fn lint_levels<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+fn lint_levels_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::LintLevels
 }
 
 fn specializes_node<'tcx>((a, b): (DefId, DefId)) -> DepConstructor<'tcx> {
     DepConstructor::Specializes { impl1: a, impl2: b }
+}
+
+fn implementations_of_trait_node<'tcx>((krate, trait_id): (CrateNum, DefId))
+    -> DepConstructor<'tcx>
+{
+    DepConstructor::ImplementationsOfTrait { krate, trait_id }
+}
+
+fn link_args_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::LinkArgs
+}
+
+fn get_lang_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::GetLangItems
+}
+
+fn visible_parent_map_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::VisibleParentMap
+}
+
+fn postorder_cnums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::PostorderCnums
+}
+
+fn maybe_unused_extern_crates_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::MaybeUnusedExternCrates
+}
+
+fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::StabilityIndex
+}
+
+fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::AllCrateNums
 }

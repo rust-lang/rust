@@ -357,7 +357,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // for imported and non-imported crates
                 if exp_path == found_path
                 || exp_abs_path == found_abs_path {
-                    let crate_name = self.tcx.sess.cstore.crate_name(did1.krate);
+                    let crate_name = self.tcx.crate_name(did1.krate);
                     err.span_note(sp, &format!("Perhaps two different versions \
                                                 of crate `{}` are being used?",
                                                crate_name));

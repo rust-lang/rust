@@ -66,6 +66,12 @@ pub use back::symbol_names::provide;
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
+use std::rc::Rc;
+
+use rustc::hir::def_id::CrateNum;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+
 pub mod back {
     mod archive;
     mod command;
@@ -217,7 +223,24 @@ pub struct CrateTranslation {
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
-    linker_info: back::linker::LinkerInfo
+    linker_info: back::linker::LinkerInfo,
+    crate_info: CrateInfo,
+}
+
+// Misc info we load from metadata to persist beyond the tcx
+pub struct CrateInfo {
+    panic_runtime: Option<CrateNum>,
+    compiler_builtins: Option<CrateNum>,
+    profiler_runtime: Option<CrateNum>,
+    sanitizer_runtime: Option<CrateNum>,
+    is_no_builtins: FxHashSet<CrateNum>,
+    native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    crate_name: FxHashMap<CrateNum, String>,
+    used_libraries: Rc<Vec<NativeLibrary>>,
+    link_args: Rc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Rc<CrateSource>>,
+    used_crates_static: Vec<(CrateNum, LibSource)>,
+    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

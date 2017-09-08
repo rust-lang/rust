@@ -812,7 +812,8 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
             if self.has_late_bound_regions.is_some() { return }
 
-            match self.tcx.named_region_map.defs.get(&lt.id).cloned() {
+            let hir_id = self.tcx.hir.node_to_hir_id(lt.id);
+            match self.tcx.named_region(hir_id) {
                 Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
                 Some(rl::Region::LateBound(debruijn, _)) |
                 Some(rl::Region::LateBoundAnon(debruijn, _))
@@ -830,7 +831,8 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx, binder_depth: 1, has_late_bound_regions: None
         };
         for lifetime in &generics.lifetimes {
-            if tcx.named_region_map.late_bound.contains(&lifetime.lifetime.id) {
+            let hir_id = tcx.hir.node_to_hir_id(lifetime.lifetime.id);
+            if tcx.is_late_bound(hir_id) {
                 return Some(lifetime.lifetime.span);
             }
         }
@@ -987,8 +989,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }).collect::<Vec<_>>();
 
-    let object_lifetime_defaults =
-        tcx.named_region_map.object_lifetime_defaults.get(&node_id);
+    let hir_id = tcx.hir.node_to_hir_id(node_id);
+    let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id);
 
     // Now create the real type parameters.
     let type_start = own_start + regions.len() as u32;
@@ -1014,7 +1016,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             def_id: tcx.hir.local_def_id(p.id),
             has_default: p.default.is_some(),
             object_lifetime_default:
-                object_lifetime_defaults.map_or(rl::Set1::Empty, |o| o[i]),
+                object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
             pure_wrt_drop: p.pure_wrt_drop,
         }
     });
@@ -1307,7 +1309,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         }
     }
 
-    let kind_id = tcx.lang_items.require(SizedTraitLangItem);
+    let kind_id = tcx.lang_items().require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
@@ -1343,7 +1345,10 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     ast_generics
         .lifetimes
         .iter()
-        .filter(move |l| !tcx.named_region_map.late_bound.contains(&l.lifetime.id))
+        .filter(move |l| {
+            let hir_id = tcx.hir.node_to_hir_id(l.lifetime.id);
+            !tcx.is_late_bound(hir_id)
+        })
 }
 
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

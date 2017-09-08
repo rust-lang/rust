@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::symbol::Symbol;
+use syntax::symbol::InternedString;
 
 use std::cell::Cell;
 
@@ -128,9 +129,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_push_visible_item_path<T>(self, buffer: &mut T, external_def_id: DefId) -> bool
         where T: ItemPathBuffer
     {
-        let visible_parent_map = self.sess.cstore.visible_parent_map(self.sess);
+        let visible_parent_map = self.visible_parent_map(LOCAL_CRATE);
 
-        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<ast::Name>::new());
+        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<InternedString>::new());
         loop {
             // If `cur_def` is a direct or injected extern crate, push the path to the crate
             // followed by the path to the item within the crate and return.
@@ -138,12 +139,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 match *self.extern_crate(cur_def) {
                     Some(ref extern_crate) if extern_crate.direct => {
                         self.push_item_path(buffer, extern_crate.def_id);
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
+                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
                         return true;
                     }
                     None => {
                         buffer.push(&self.crate_name(cur_def.krate).as_str());
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
+                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
                         return true;
                     }
                     _ => {},
@@ -152,7 +153,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             cur_path.push(self.sess.cstore.def_key(cur_def)
                               .disambiguated_data.data.get_opt_name().unwrap_or_else(||
-                Symbol::intern("<unnamed>")));
+                Symbol::intern("<unnamed>").as_str()));
             match visible_parent_map.get(&cur_def) {
                 Some(&def) => cur_def = def,
                 None => return false,

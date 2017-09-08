@@ -23,7 +23,7 @@ use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::resolve_lifetime;
+use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::Mir;
 use mir::transform::Passes;
@@ -33,7 +33,6 @@ use traits;
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region};
-use hir::FreevarMap;
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -822,7 +821,7 @@ pub struct GlobalCtxt<'tcx> {
     /// Export map produced by name resolution.
     export_map: FxHashMap<HirId, Rc<Vec<Export>>>,
 
-    pub named_region_map: resolve_lifetime::NamedRegionMap,
+    named_region_map: NamedRegionMap,
 
     pub hir: hir_map::Map<'tcx>,
 
@@ -837,11 +836,11 @@ pub struct GlobalCtxt<'tcx> {
     // Records the free variables refrenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    pub freevars: RefCell<FreevarMap>,
+    freevars: FxHashMap<HirId, Rc<Vec<hir::Freevar>>>,
 
-    pub maybe_unused_trait_imports: NodeSet,
+    maybe_unused_trait_imports: FxHashSet<HirId>,
 
-    pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
+    maybe_unused_extern_crates: Vec<(HirId, Span)>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -851,15 +850,10 @@ pub struct GlobalCtxt<'tcx> {
 
     pub inhabitedness_cache: RefCell<FxHashMap<Ty<'tcx>, DefIdForest>>,
 
-    pub lang_items: middle::lang_items::LanguageItems,
-
     /// Set of nodes which mark locals as mutable which end up getting used at
     /// some point. Local variable definitions not in this set can be warned
     /// about.
     pub used_mut_nodes: RefCell<NodeSet>,
-
-    /// Maps any item's def-id to its stability index.
-    pub stability: RefCell<stability::Index<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -909,30 +903,6 @@ impl<'tcx> GlobalCtxt<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn crate_name(self, cnum: CrateNum) -> Symbol {
-        if cnum == LOCAL_CRATE {
-            self.crate_name
-        } else {
-            self.sess.cstore.crate_name(cnum)
-        }
-    }
-
-    pub fn original_crate_name(self, cnum: CrateNum) -> Symbol {
-        if cnum == LOCAL_CRATE {
-            self.crate_name.clone()
-        } else {
-            self.sess.cstore.original_crate_name(cnum)
-        }
-    }
-
-    pub fn crate_disambiguator(self, cnum: CrateNum) -> Symbol {
-        if cnum == LOCAL_CRATE {
-            self.sess.local_crate_disambiguator()
-        } else {
-            self.sess.cstore.crate_disambiguator(cnum)
-        }
-    }
-
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -1016,8 +986,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
-                                  lang_items: middle::lang_items::LanguageItems,
-                                  stability: stability::Index<'tcx>,
                                   crate_name: &str,
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
@@ -1026,14 +994,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = s.cstore.crates().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let max_cnum = s.cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
             let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
                 .cstore
-                .crates()
+                .crates_untracked()
                 .iter()
                 .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
                 .collect();
@@ -1070,26 +1038,50 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
-            named_region_map,
+            named_region_map: NamedRegionMap {
+                defs:
+                    named_region_map.defs
+                        .into_iter()
+                        .map(|(k, v)| (hir.node_to_hir_id(k), v))
+                        .collect(),
+                late_bound:
+                    named_region_map.late_bound
+                        .into_iter()
+                        .map(|k| hir.node_to_hir_id(k))
+                        .collect(),
+                object_lifetime_defaults:
+                    named_region_map.object_lifetime_defaults
+                        .into_iter()
+                        .map(|(k, v)| (hir.node_to_hir_id(k), Rc::new(v)))
+                        .collect(),
+            },
             trait_map: resolutions.trait_map.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
                 (hir.node_to_hir_id(k), Rc::new(v))
             }).collect(),
+            freevars: resolutions.freevars.into_iter().map(|(k, v)| {
+                (hir.node_to_hir_id(k), Rc::new(v))
+            }).collect(),
+            maybe_unused_trait_imports:
+                resolutions.maybe_unused_trait_imports
+                    .into_iter()
+                    .map(|id| hir.node_to_hir_id(id))
+                    .collect(),
+            maybe_unused_extern_crates:
+                resolutions.maybe_unused_extern_crates
+                    .into_iter()
+                    .map(|(id, sp)| (hir.node_to_hir_id(id), sp))
+                    .collect(),
             hir,
             def_path_hash_to_def_id,
             maps: maps::Maps::new(providers),
             mir_passes,
-            freevars: RefCell::new(resolutions.freevars),
-            maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
-            maybe_unused_extern_crates: resolutions.maybe_unused_extern_crates,
             rcache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
-            lang_items,
             used_mut_nodes: RefCell::new(NodeSet()),
-            stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
             rvalue_promotable_to_static: RefCell::new(NodeMap()),
@@ -1106,6 +1098,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
         let cname = self.crate_name(LOCAL_CRATE).as_str();
         self.sess.consider_optimizing(&cname, msg)
+    }
+
+    pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
+        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
+        // graph here to ignore the fact that `get_lang_items` below depends on
+        // the entire crate.  For now this'll prevent false positives of
+        // recompiling too much when anything changes.
+        //
+        // Once red/green incremental compilation lands we should be able to
+        // remove this because while the crate changes often the lint level map
+        // will change rarely.
+        self.dep_graph.with_ignore(|| {
+            self.get_lang_items(LOCAL_CRATE)
+        })
+    }
+
+    pub fn stability(self) -> Rc<stability::Index<'tcx>> {
+        // FIXME(#42293) we should actually track this, but fails too many tests
+        // today.
+        self.dep_graph.with_ignore(|| {
+            self.stability_index(LOCAL_CRATE)
+        })
+    }
+
+    pub fn crates(self) -> Rc<Vec<CrateNum>> {
+        self.all_crate_nums(LOCAL_CRATE)
     }
 }
 
@@ -1994,19 +2012,52 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     }
 }
 
-fn in_scope_traits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
-    -> Option<Rc<Vec<TraitCandidate>>>
-{
-    tcx.gcx.trait_map.get(&id).cloned()
-}
-
-fn module_exports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: HirId)
-    -> Option<Rc<Vec<Export>>>
-{
-    tcx.gcx.export_map.get(&id).cloned()
+struct NamedRegionMap {
+    defs: FxHashMap<HirId, resolve_lifetime::Region>,
+    late_bound: FxHashSet<HirId>,
+    object_lifetime_defaults: FxHashMap<HirId, Rc<Vec<ObjectLifetimeDefault>>>,
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
-    providers.in_scope_traits = in_scope_traits;
-    providers.module_exports = module_exports;
+    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // therefore no actual inputs, they're just reading tables calculated in
+    // resolve! Does this work? Unsure! That's what the issue is about
+    providers.in_scope_traits = |tcx, id| tcx.gcx.trait_map.get(&id).cloned();
+    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
+    providers.named_region = |tcx, id| tcx.gcx.named_region_map.defs.get(&id).cloned();
+    providers.is_late_bound = |tcx, id| tcx.gcx.named_region_map.late_bound.contains(&id);
+    providers.object_lifetime_defaults = |tcx, id| {
+        tcx.gcx.named_region_map.object_lifetime_defaults.get(&id).cloned()
+    };
+    providers.crate_name = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        tcx.crate_name
+    };
+    providers.get_lang_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        Rc::new(middle::lang_items::collect(tcx))
+    };
+    providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
+    providers.maybe_unused_trait_import = |tcx, id| {
+        tcx.maybe_unused_trait_imports.contains(&id)
+    };
+    providers.maybe_unused_extern_crates = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.maybe_unused_extern_crates.clone())
+    };
+
+    providers.stability_index = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(stability::Index::new(tcx))
+    };
+    providers.lookup_stability = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        tcx.stability().local_stability(id)
+    };
+    providers.lookup_deprecation_entry = |tcx, id| {
+        assert_eq!(id.krate, LOCAL_CRATE);
+        let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
+        tcx.stability().local_deprecation_entry(id)
+    };
 }

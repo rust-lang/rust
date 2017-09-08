@@ -23,16 +23,15 @@
 //! probably get a better home if someone can find one.
 
 use hir::def;
-use hir::def_id::{CrateNum, DefId, DefIndex};
+use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DefPathTable};
 use hir::svh::Svh;
 use ich;
-use middle::lang_items;
 use ty::{self, TyCtxt};
 use session::Session;
 use session::search_paths::PathKind;
-use util::nodemap::{NodeSet, DefIdMap};
+use util::nodemap::NodeSet;
 
 use std::any::Any;
 use std::path::{Path, PathBuf};
@@ -43,8 +42,6 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
-use hir;
-use rustc_back::PanicStrategy;
 
 pub use self::NativeLibraryKind::*;
 
@@ -223,75 +220,44 @@ pub trait MetadataLoader {
 
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
+///
+/// Note that this trait should probably not be expanding today. All new
+/// functionality should be driven through queries instead!
+///
+/// If you find a method on this trait named `{name}_untracked` it signifies
+/// that it's *not* tracked for dependency information throughout compilation
+/// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
+/// during resolve)
 pub trait CrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
 
     // access to the metadata loader
     fn metadata_loader(&self) -> &MetadataLoader;
 
-    // item info
-    fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
-
-    // trait info
-    fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
-
-    // impl info
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness;
-
-    // trait/impl-item info
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem;
-
-    // flags
-    fn is_dllimport_foreign_item(&self, def: DefId) -> bool;
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool;
-
-    // crate metadata
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind;
-    fn export_macros(&self, cnum: CrateNum);
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>;
-    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>;
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool;
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool;
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool;
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy;
-    /// The name of the crate as it is referred to in source code of the current
-    /// crate.
-    fn crate_name(&self, cnum: CrateNum) -> Symbol;
-    /// The name of the crate as it is stored in the crate's metadata.
-    fn original_crate_name(&self, cnum: CrateNum) -> Symbol;
-    fn crate_hash(&self, cnum: CrateNum) -> Svh;
-    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol;
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>;
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>;
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>;
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool;
-
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>;
-    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
-    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
-    // misc. metadata
-    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> &'tcx hir::Body;
+    // "queries" used in resolve that aren't tracked for incremental compilation
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
+    fn export_macros_untracked(&self, cnum: CrateNum);
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind;
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>;
+    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export>;
+    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro;
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics;
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem;
+    fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
-    fn crates(&self) -> Vec<CrateNum>;
-    fn used_libraries(&self) -> Vec<NativeLibrary>;
-    fn used_link_args(&self) -> Vec<String>;
+    fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
-    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
@@ -336,57 +302,18 @@ impl CrateStore for DummyCrateStore {
     fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
         { bug!("crate_data_as_rc_any") }
     // item info
-    fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self, session: &Session)
-        -> ::std::cell::Ref<'a, DefIdMap<DefId>>
-    {
-        bug!("visible_parent_map")
-    }
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics
         { bug!("item_generics_cloned") }
 
-    // trait info
-    fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
-
-    // impl info
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness { bug!("impl_defaultness") }
-
     // trait/impl-item info
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
         { bug!("associated_item_cloned") }
 
-    // flags
-    fn is_dllimport_foreign_item(&self, id: DefId) -> bool { false }
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool { false }
-
     // crate metadata
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
-        { bug!("lang_items") }
-    fn missing_lang_items(&self, cnum: CrateNum) -> Vec<lang_items::LangItem>
-        { bug!("missing_lang_items") }
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
-    fn export_macros(&self, cnum: CrateNum) { bug!("export_macros") }
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool { bug!("is_compiler_builtins") }
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool { bug!("is_profiler_runtime") }
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool { bug!("is_sanitizer_runtime") }
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
-        bug!("panic_strategy")
-    }
-    fn crate_name(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
-    fn original_crate_name(&self, cnum: CrateNum) -> Symbol {
-        bug!("original_crate_name")
-    }
-    fn crate_hash(&self, cnum: CrateNum) -> Svh { bug!("crate_hash") }
-    fn crate_disambiguator(&self, cnum: CrateNum)
-                           -> Symbol { bug!("crate_disambiguator") }
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-        { bug!("plugin_registrar_fn") }
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-        { bug!("derive_registrar_fn") }
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
-        { bug!("native_libraries") }
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId> { bug!("exported_symbols") }
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool { bug!("is_no_builtins") }
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind { bug!("is_explicitly_linked") }
+    fn export_macros_untracked(&self, cnum: CrateNum) { bug!("export_macros") }
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol { bug!("crate_name") }
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey { bug!("def_key") }
@@ -399,29 +326,18 @@ impl CrateStore for DummyCrateStore {
     fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
         bug!("def_path_table")
     }
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name> { bug!("struct_field_names") }
-    fn item_children(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
+        bug!("struct_field_names")
+    }
+    fn item_children_untracked(&self, did: DefId, sess: &Session) -> Vec<def::Export> {
         bug!("item_children")
     }
-    fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
+    fn load_macro_untracked(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
-    // misc. metadata
-    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                           -> &'tcx hir::Body {
-        bug!("item_body")
-    }
-
-    // This is basically a 1-based range of ints, which is a little
-    // silly - I may fix that.
-    fn crates(&self) -> Vec<CrateNum> { vec![] }
-    fn used_libraries(&self) -> Vec<NativeLibrary> { vec![] }
-    fn used_link_args(&self) -> Vec<String> { vec![] }
+    fn crates_untracked(&self) -> Vec<CrateNum> { vec![] }
 
     // utility functions
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
-        { vec![] }
-    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
@@ -430,6 +346,7 @@ impl CrateStore for DummyCrateStore {
         bug!("encode_metadata")
     }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
+    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
 
     // access to the metadata loader
     fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
@@ -438,4 +355,48 @@ impl CrateStore for DummyCrateStore {
 pub trait CrateLoader {
     fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
     fn postprocess(&mut self, krate: &ast::Crate);
+}
+
+// This method is used when generating the command line to pass through to
+// system linker. The linker expects undefined symbols on the left of the
+// command line to be defined in libraries on the right, not the other way
+// around. For more info, see some comments in the add_used_library function
+// below.
+//
+// In order to get this left-to-right dependency ordering, we perform a
+// topological sort of all crates putting the leaves at the right-most
+// positions.
+pub fn used_crates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
+    let mut libs = tcx.crates()
+        .iter()
+        .cloned()
+        .filter_map(|cnum| {
+            if tcx.dep_kind(cnum).macros_only() {
+                return None
+            }
+            let source = tcx.used_crate_source(cnum);
+            let path = match prefer {
+                LinkagePreference::RequireDynamic => source.dylib.clone().map(|p| p.0),
+                LinkagePreference::RequireStatic => source.rlib.clone().map(|p| p.0),
+            };
+            let path = match path {
+                Some(p) => LibSource::Some(p),
+                None => {
+                    if source.rmeta.is_some() {
+                        LibSource::MetadataOnly
+                    } else {
+                        LibSource::None
+                    }
+                }
+            };
+            Some((cnum, path))
+        })
+        .collect::<Vec<_>>();
+    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
+    Rc::make_mut(&mut ordering).reverse();
+    libs.sort_by_key(|&(a, _)| {
+        ordering.iter().position(|x| *x == a)
+    });
+    libs
 }

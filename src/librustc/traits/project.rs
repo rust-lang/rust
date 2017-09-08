@@ -1155,7 +1155,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.lang_items.gen_trait().unwrap();
+    let gen_def_id = tcx.lang_items().gen_trait().unwrap();
 
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, yield_ty, return_ty)) =
@@ -1252,7 +1252,7 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
            fn_sig);
 
     // the `Output` associated type is declared on `FnOnce`
-    let fn_once_def_id = tcx.lang_items.fn_once_trait().unwrap();
+    let fn_once_def_id = tcx.lang_items().fn_once_trait().unwrap();
 
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, ret_type)) =

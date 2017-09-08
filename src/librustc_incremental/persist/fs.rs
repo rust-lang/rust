@@ -632,7 +632,7 @@ pub fn find_metadata_hashes_for(tcx: TyCtxt, cnum: CrateNum) -> Option<PathBuf> 
         }
     };
 
-    let target_svh = tcx.sess.cstore.crate_hash(cnum);
+    let target_svh = tcx.crate_hash(cnum);
     let target_svh = base_n::encode(target_svh.as_u64(), INT_ENCODE_BASE);
 
     let sub_dir = find_metadata_hashes_iter(&target_svh, dir_entries.filter_map(|e| {

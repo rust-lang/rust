@@ -47,7 +47,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
             let trait_ = tcx.trait_of_item(def_id).unwrap();
-            let adjustment = match tcx.lang_items.fn_trait_kind(trait_) {
+            let adjustment = match tcx.lang_items().fn_trait_kind(trait_) {
                 Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
                 Some(ty::ClosureKind::FnMut) |
                 Some(ty::ClosureKind::Fn) => Adjustment::Deref,
@@ -82,7 +82,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             )
         }
         ty::InstanceDef::ClosureOnceShim { call_once } => {
-            let fn_mut = tcx.lang_items.fn_mut_trait().unwrap();
+            let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
             let call_mut = tcx.global_tcx()
                 .associated_items(fn_mut)
                 .find(|it| it.kind == ty::AssociatedKind::Method)
@@ -100,7 +100,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             build_drop_shim(tcx, def_id, ty)
         }
         ty::InstanceDef::CloneShim(def_id, ty) => {
-            let name = tcx.item_name(def_id).as_str();
+            let name = tcx.item_name(def_id);
             if name == "clone" {
                 build_clone_shim(tcx, def_id, ty)
             } else if name == "clone_from" {

@@ -778,7 +778,7 @@ impl<'a> Resolver<'a> {
             _ => return,
         };
 
-        let crate_name = self.session.cstore.crate_name(krate);
+        let crate_name = self.session.cstore.crate_name_untracked(krate);
 
         self.session.struct_span_err(use_span, warn_msg)
             .help(&format!("instead, import the procedural macro like any other item: \

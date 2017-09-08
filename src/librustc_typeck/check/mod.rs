@@ -2296,13 +2296,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
         let (tr, name) = match (op, is_mut) {
             (LvalueOp::Deref, false) =>
-                (self.tcx.lang_items.deref_trait(), "deref"),
+                (self.tcx.lang_items().deref_trait(), "deref"),
             (LvalueOp::Deref, true) =>
-                (self.tcx.lang_items.deref_mut_trait(), "deref_mut"),
+                (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
             (LvalueOp::Index, false) =>
-                (self.tcx.lang_items.index_trait(), "index"),
+                (self.tcx.lang_items().index_trait(), "index"),
             (LvalueOp::Index, true) =>
-                (self.tcx.lang_items.index_mut_trait(), "index_mut"),
+                (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
         (tr, Symbol::intern(name))
     }

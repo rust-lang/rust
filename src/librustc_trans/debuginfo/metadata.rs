@@ -1612,7 +1612,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn get_enum_discriminant_name(cx: &CrateContext,
                                   def_id: DefId)
                                   -> InternedString {
-        cx.tcx().item_name(def_id).as_str()
+        cx.tcx().item_name(def_id)
     }
 }
 

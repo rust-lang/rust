@@ -365,7 +365,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     if let Some((ref dest, target)) = *destination {
                         let result = if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
-                            match &tcx.item_name(def_id).as_str()[..] {
+                            match &tcx.item_name(def_id)[..] {
                                 "size_of" => {
                                     let llval = C_uint(self.ccx,
                                         self.ccx.size_of(substs.type_at(0)));
@@ -610,7 +610,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         match operand.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 // Get the def_id for FnOnce::call_once
-                                let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+                                let fn_once = tcx.lang_items().fn_once_trait().unwrap();
                                 let call_once = tcx
                                     .global_tcx().associated_items(fn_once)
                                     .find(|it| it.kind == ty::AssociatedKind::Method)

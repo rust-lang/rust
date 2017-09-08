@@ -41,7 +41,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
-use rustc::middle::cstore::LinkMeta;
+use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
@@ -75,6 +75,7 @@ use type_::Type;
 use type_of;
 use value::Value;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet};
+use CrateInfo;
 
 use libc::c_uint;
 use std::ffi::{CStr, CString};
@@ -904,7 +905,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(..) => {
                 let def_id = tcx.hir.local_def_id(id);
-                tcx.sess.cstore.is_statically_included_foreign_item(def_id)
+                tcx.is_statically_included_foreign_item(def_id)
             }
 
             // Only consider nodes that actually have exported symbols.
@@ -970,6 +971,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         None
     };
+    let crate_info = CrateInfo::new(tcx);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -987,6 +989,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             no_builtins,
             None,
             linker_info,
+            crate_info,
             false);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
@@ -1039,6 +1042,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         no_builtins,
         windows_subsystem,
         linker_info,
+        crate_info,
         no_integrated_as);
 
     // Translate an allocator shim, if any
@@ -1501,4 +1505,47 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     (translation_items, codegen_units)
+}
+
+impl CrateInfo {
+    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CrateInfo {
+        let mut info = CrateInfo {
+            panic_runtime: None,
+            compiler_builtins: None,
+            profiler_runtime: None,
+            sanitizer_runtime: None,
+            is_no_builtins: FxHashSet(),
+            native_libraries: FxHashMap(),
+            used_libraries: tcx.native_libraries(LOCAL_CRATE),
+            link_args: tcx.link_args(LOCAL_CRATE),
+            crate_name: FxHashMap(),
+            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
+            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crate_source: FxHashMap(),
+        };
+
+        for &cnum in tcx.crates().iter() {
+            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
+            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
+            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
+            if tcx.is_panic_runtime(cnum) {
+                info.panic_runtime = Some(cnum);
+            }
+            if tcx.is_compiler_builtins(cnum) {
+                info.compiler_builtins = Some(cnum);
+            }
+            if tcx.is_profiler_runtime(cnum) {
+                info.profiler_runtime = Some(cnum);
+            }
+            if tcx.is_sanitizer_runtime(cnum) {
+                info.sanitizer_runtime = Some(cnum);
+            }
+            if tcx.is_no_builtins(cnum) {
+                info.is_no_builtins.insert(cnum);
+            }
+        }
+
+
+        return info
+    }
 }

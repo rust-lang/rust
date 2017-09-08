@@ -575,7 +575,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     value: ConstVal::Function(def_id, _), ..
                 }, ..
             }) => {
-                Some(def_id) == self.tcx().lang_items.box_free_fn()
+                Some(def_id) == self.tcx().lang_items().box_free_fn()
             }
             _ => false,
         }

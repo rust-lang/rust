@@ -844,7 +844,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 let def = binding.def();
                 if def != Def::Err {
                     if !def.def_id().is_local() {
-                        self.session.cstore.export_macros(def.def_id().krate);
+                        self.session.cstore.export_macros_untracked(def.def_id().krate);
                     }
                     if let Def::Macro(..) = def {
                         if let Some(&span) = exported_macro_names.get(&ident.modern()) {

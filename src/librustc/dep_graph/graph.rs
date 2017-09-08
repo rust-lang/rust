@@ -235,10 +235,13 @@ impl DepGraph {
                                           debug_str_gen: F)
         where F: FnOnce() -> String
     {
-        let mut dep_node_debug = self.data.as_ref().unwrap().dep_node_debug.borrow_mut();
+        let dep_node_debug = &self.data.as_ref().unwrap().dep_node_debug;
 
-        dep_node_debug.entry(dep_node)
-                      .or_insert_with(debug_str_gen);
+        if dep_node_debug.borrow().contains_key(&dep_node) {
+            return
+        }
+        let debug_str = debug_str_gen();
+        dep_node_debug.borrow_mut().insert(dep_node, debug_str);
     }
 
     pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {

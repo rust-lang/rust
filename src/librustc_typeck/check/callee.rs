@@ -28,7 +28,7 @@ use rustc::hir;
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called)
 pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefId) {
-    if tcx.lang_items.drop_trait() == Some(trait_id) {
+    if tcx.lang_items().drop_trait() == Some(trait_id) {
         struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
             .span_label(span, "explicit destructor calls not allowed")
             .emit();
@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in
-            &[(self.tcx.lang_items.fn_trait(), Symbol::intern("call"), true),
-              (self.tcx.lang_items.fn_mut_trait(), Symbol::intern("call_mut"), true),
-              (self.tcx.lang_items.fn_once_trait(), Symbol::intern("call_once"), false)] {
+            &[(self.tcx.lang_items().fn_trait(), Symbol::intern("call"), true),
+              (self.tcx.lang_items().fn_mut_trait(), Symbol::intern("call_mut"), true),
+              (self.tcx.lang_items().fn_once_trait(), Symbol::intern("call_once"), false)] {
             let trait_def_id = match opt_trait_def_id {
                 Some(def_id) => def_id,
                 None => continue,
