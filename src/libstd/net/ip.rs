@@ -347,6 +347,7 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::localhost();
@@ -361,6 +362,7 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ip)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::unspecified();
@@ -821,6 +823,7 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ip)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::localhost();
@@ -835,6 +838,7 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ip)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::unspecified();
