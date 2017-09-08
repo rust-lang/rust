@@ -1089,7 +1089,6 @@ impl f32 {
     /// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
     /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
     /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
-    /// assert!((NAN).clamp(-2.0f32, 1.0f32) == NAN);
     /// ```
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
