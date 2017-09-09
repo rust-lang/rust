@@ -367,7 +367,7 @@ impl Step for Openssl {
             if !ok {
                 panic!("failed to download openssl source")
             }
-            let mut shasum = if target.contains("apple") {
+            let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
                 let mut cmd = Command::new("shasum");
                 cmd.arg("-a").arg("256");
                 cmd
@@ -387,7 +387,7 @@ impl Step for Openssl {
         let dst = build.openssl_install_dir(target).unwrap();
         drop(fs::remove_dir_all(&obj));
         drop(fs::remove_dir_all(&dst));
-        build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
+        build.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
 
         let mut configure = Command::new("perl");
         configure.arg(obj.join("Configure"));
