@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:overflow when
+// error-pattern:overflow
 
 use std::time::{Instant, Duration};
 
