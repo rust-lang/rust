@@ -45,6 +45,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
             return Ok(());
         }
+        debug_assert!(self.memory.cur_frame == self.cur_frame());
 
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
@@ -93,7 +94,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if query.mutbl == MutMutable {
                     let lft = DynamicLifetime {
                         frame: self.cur_frame(),
-                        region: Some(scope),
+                        region: Some(scope), // Notably, we only ever suspend things for given regions.
+                        // Suspending for the entire function does not make any sense.
                     };
                     trace!("Suspending {:?} until {:?}", query, scope);
                     self.suspended.entry(lft).or_insert_with(Vec::new).push(
@@ -106,17 +108,30 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.validate(query, mode)
     }
 
-    pub(crate) fn end_region(&mut self, scope: region::Scope) -> EvalResult<'tcx> {
-        self.memory.locks_lifetime_ended(Some(scope));
-        // Recover suspended lvals
-        let lft = DynamicLifetime {
-            frame: self.cur_frame(),
-            region: Some(scope),
-        };
-        if let Some(queries) = self.suspended.remove(&lft) {
-            for query in queries {
-                trace!("Recovering {:?} from suspension", query);
-                self.validate(query, ValidationMode::Recover(scope))?;
+    /// Release locks and executes suspensions of the given region (or the entire fn, in case of None).
+    pub(crate) fn end_region(&mut self, scope: Option<region::Scope>) -> EvalResult<'tcx> {
+        debug_assert!(self.memory.cur_frame == self.cur_frame());
+        self.memory.locks_lifetime_ended(scope);
+        match scope {
+            Some(scope) => {
+                // Recover suspended lvals
+                let lft = DynamicLifetime {
+                    frame: self.cur_frame(),
+                    region: Some(scope),
+                };
+                if let Some(queries) = self.suspended.remove(&lft) {
+                    for query in queries {
+                        trace!("Recovering {:?} from suspension", query);
+                        self.validate(query, ValidationMode::Recover(scope))?;
+                    }
+                }
+            }
+            None => {
+                // Clean suspension table of current frame
+                let cur_frame = self.cur_frame();
+                self.suspended.retain(|lft, _| {
+                    lft.frame != cur_frame // keep only what is in the other (lower) frames
+                });
             }
         }
         Ok(())

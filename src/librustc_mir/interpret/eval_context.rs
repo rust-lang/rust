@@ -508,8 +508,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             stmt: 0,
         });
 
-        let cur_frame = self.cur_frame();
-        self.memory.set_cur_frame(cur_frame);
+        self.memory.cur_frame = self.cur_frame();
 
         if self.stack.len() > self.stack_limit {
             err!(StackFrameLimitReached)
@@ -520,14 +519,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
-        self.memory.locks_lifetime_ended(None);
+        self.end_region(None)?;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
         if !self.stack.is_empty() {
-            // TODO: IS this the correct time to start considering these accesses as originating from the returned-to stack frame?
-            let cur_frame = self.cur_frame();
-            self.memory.set_cur_frame(cur_frame);
+            // TODO: Is this the correct time to start considering these accesses as originating from the returned-to stack frame?
+            self.memory.cur_frame = self.cur_frame();
         }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
