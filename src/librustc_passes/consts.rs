@@ -56,6 +56,7 @@ use std::cmp::Ordering;
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     in_fn: bool,
+    in_static: bool,
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParamEnv<'tcx>,
@@ -128,10 +129,16 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer_param_env = self.param_env;
         let outer_identity_substs = self.identity_substs;
 
-        self.in_fn = match MirSource::from_node(self.tcx, item_id) {
-            MirSource::Fn(_) => true,
-            _ => false
+        self.in_fn = false;
+        self.in_static = false;
+
+        match MirSource::from_node(self.tcx, item_id) {
+            MirSource::Fn(_) => self.in_fn = true,
+            MirSource::Static(_, _) => self.in_static = true,
+            _ => {}
         };
+
+
         self.tables = self.tcx.typeck_tables_of(item_def_id);
         self.param_env = self.tcx.param_env(item_def_id);
         self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
@@ -333,20 +340,28 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 // with the exception of "#[thread_loca]" statics.
                 // The latter may not outlive the current function
                 Def::Static(did, _) => {
-                    let mut thread_local = false;
 
-                    for attr in &v.tcx.get_attrs(did)[..] {
-                        if attr.check_name("thread_local") {
-                            debug!("Static(id={:?}) is unpromotable \
-                                   due to a #[thread_local] attribute", did);
-                            v.promotable = false;
-                            thread_local = true;
-                            break;
+                    if v.in_static {
+                        let mut thread_local = false;
+
+                        for attr in &v.tcx.get_attrs(did)[..] {
+                            if attr.check_name("thread_local") {
+                                debug!("Reference to Static(id={:?}) is unpromotable \
+                                       due to a #[thread_local] attribute", did);
+                                v.promotable = false;
+                                thread_local = true;
+                                break;
+                            }
                         }
-                    }
 
-                    if !thread_local {
-                        debug!("Allowing promotion of reference to Static(id={:?})", did);
+                        if !thread_local {
+                            debug!("Allowing promotion of reference to Static(id={:?})", did);
+                        }
+                    } else {
+                        debug!("Reference to Static(id={:?}) is unpromotable as it is not \
+                               referenced from a static", did);
+                        v.promotable = false;
+
                     }
                 }
 
@@ -502,6 +517,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         tcx,
         tables: &ty::TypeckTables::empty(None),
         in_fn: false,
+        in_static: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),
