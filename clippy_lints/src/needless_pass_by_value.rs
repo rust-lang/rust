@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         // Allows these to be passed by value.
-        let fn_trait = need!(cx.tcx.lang_items.fn_trait());
+        let fn_trait = need!(cx.tcx.lang_items().fn_trait());
         let asref_trait = need!(get_trait_def_id(cx, &paths::ASREF_TRAIT));
         let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
 

@@ -40,7 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if_let_chain! {[
             let ItemImpl(_, _, _, _, Some(ref trait_ref), _, ref impl_items) = item.node,
             !is_automatically_derived(&*item.attrs),
-            let Some(eq_trait) = cx.tcx.lang_items.eq_trait(),
+            let Some(eq_trait) = cx.tcx.lang_items().eq_trait(),
             trait_ref.path.def.def_id() == eq_trait
         ], {
             for impl_item in impl_items {

@@ -15,6 +15,7 @@ use std::borrow::Cow;
 use std::env;
 use std::mem;
 use std::str::FromStr;
+use std::rc::Rc;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::codemap::{CompilerDesugaringKind, ExpnFormat, ExpnInfo, Span, DUMMY_SP};
@@ -277,18 +278,17 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 
 /// Get the definition associated to a path.
 pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
-    let cstore = &cx.tcx.sess.cstore;
 
-    let crates = cstore.crates();
+    let crates = cx.tcx.crates();
     let krate = crates
         .iter()
-        .find(|&&krate| cstore.crate_name(krate) == path[0]);
+        .find(|&&krate| cx.tcx.crate_name(krate) == path[0]);
     if let Some(krate) = krate {
         let krate = DefId {
             krate: *krate,
             index: CRATE_DEF_INDEX,
         };
-        let mut items = cstore.item_children(krate, cx.tcx.sess);
+        let mut items = cx.tcx.item_children(krate);
         let mut path_it = path.iter().skip(1).peekable();
 
         loop {
@@ -297,13 +297,13 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
                 None => return None,
             };
 
-            for item in &mem::replace(&mut items, vec![]) {
+            for item in mem::replace(&mut items, Rc::new(vec![])).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return Some(item.def);
                     }
 
-                    items = cstore.item_children(item.def.def_id(), cx.tcx.sess);
+                    items = cx.tcx.item_children(item.def.def_id());
                     break;
                 }
             }

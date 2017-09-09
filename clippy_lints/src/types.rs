@@ -151,7 +151,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
             let hir_id = cx.tcx.hir.node_to_hir_id(ast_ty.id);
             let def = cx.tables.qpath_def(qpath, hir_id);
             if let Some(def_id) = opt_def_id(def) {
-                if Some(def_id) == cx.tcx.lang_items.owned_box() {
+                if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
                         !last.parameters.parenthesized,
@@ -209,7 +209,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                     let def = cx.tables.qpath_def(qpath, hir_id);
                     if_let_chain! {[
                         let Some(def_id) = opt_def_id(def),
-                        Some(def_id) == cx.tcx.lang_items.owned_box(),
+                        Some(def_id) == cx.tcx.lang_items().owned_box(),
                         let QPath::Resolved(None, ref path) = *qpath,
                         let [ref bx] = *path.segments,
                         !bx.parameters.parenthesized,
