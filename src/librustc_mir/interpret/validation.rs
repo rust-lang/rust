@@ -56,17 +56,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-                    std::mem::uninitialized::|\
-                    std::mem::forget::|\
+                    (std|alloc::heap::__core)::mem::uninitialized::|\
+                    (std|alloc::heap::__core)::mem::forget::|\
                     <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
-                    <std::mem::ManuallyDrop<T>><.*>::new$|\
-                    <std::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
-                    std::ptr::read::|\
+                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T>><.*>::new$|\
+                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
+                    (std|alloc::heap::__core)::ptr::read::|\
                     \
                     <std::sync::Arc<T>><.*>::inner$|\
                     <std::sync::Arc<T>><.*>::drop_slow$|\
                     (std::heap|alloc::allocator)::Layout::for_value::|\
-                    std::mem::(size|align)_of_val::\
+                    (std|alloc::heap::__core)::mem::(size|align)_of_val::\
                 )").unwrap();
             }
             // Now test
