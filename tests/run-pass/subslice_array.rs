@@ -1,6 +1,3 @@
-// FIXME: investigate again once #296 is fixed
-// compile-flags: -Zmir-emit-validate=0
-
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
 

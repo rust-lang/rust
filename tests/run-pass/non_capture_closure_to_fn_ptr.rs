@@ -1,6 +1,3 @@
-// FIXME: investigate again once #296 is fixed
-// compile-flags: -Zmir-emit-validate=0
-
 // allow(const_err) to work around a bug in warnings
 #[allow(const_err)]
 static FOO: fn() = || { assert_ne!(42, 43) };
