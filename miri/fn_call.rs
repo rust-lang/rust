@@ -96,11 +96,11 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
         dest_ty: Ty<'tcx>,
         dest_block: mir::BasicBlock,
     ) -> EvalResult<'tcx> {
-        let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
-        let link_name = attr::first_attr_value_str_by_name(&attrs, "link_name")
-            .unwrap_or(name)
-            .as_str();
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+            Some(name) => name.as_str(),
+            None => self.tcx.item_name(def_id),
+        };
 
         match &link_name[..] {
             "malloc" => {
@@ -477,28 +477,26 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
     /// Get an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        let cstore = &self.tcx.sess.cstore;
-
-        let crates = cstore.crates();
-        crates
+        self.tcx
+            .crates()
             .iter()
-            .find(|&&krate| cstore.crate_name(krate) == path[0])
+            .find(|&&krate| self.tcx.original_crate_name(krate) == path[0])
             .and_then(|krate| {
                 let krate = DefId {
                     krate: *krate,
                     index: CRATE_DEF_INDEX,
                 };
-                let mut items = cstore.item_children(krate, self.tcx.sess);
+                let mut items = self.tcx.item_children(krate);
                 let mut path_it = path.iter().skip(1).peekable();
 
                 while let Some(segment) = path_it.next() {
-                    for item in &mem::replace(&mut items, vec![]) {
+                    for item in mem::replace(&mut items, Default::default()).iter() {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
                                 return Some(ty::Instance::mono(self.tcx, item.def.def_id()));
                             }
 
-                            items = cstore.item_children(item.def.def_id(), self.tcx.sess);
+                            items = self.tcx.item_children(item.def.def_id());
                             break;
                         }
                     }

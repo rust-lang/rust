@@ -45,6 +45,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
             return Ok(());
         }
+        debug_assert!(self.memory.cur_frame == self.cur_frame());
 
         // HACK: Determine if this method is whitelisted and hence we do not perform any validation.
         // We currently insta-UB on anything passing around uninitialized memory, so we have to whitelist
@@ -55,17 +56,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-                    std::mem::uninitialized::|\
-                    std::mem::forget::|\
+                    (std|alloc::heap::__core)::mem::uninitialized::|\
+                    (std|alloc::heap::__core)::mem::forget::|\
                     <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
-                    <std::mem::ManuallyDrop<T>><.*>::new$|\
-                    <std::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
-                    std::ptr::read::|\
+                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T>><.*>::new$|\
+                    <(std|alloc::heap::__core)::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
+                    (std|alloc::heap::__core)::ptr::read::|\
                     \
                     <std::sync::Arc<T>><.*>::inner$|\
                     <std::sync::Arc<T>><.*>::drop_slow$|\
                     (std::heap|alloc::allocator)::Layout::for_value::|\
-                    std::mem::(size|align)_of_val::\
+                    (std|alloc::heap::__core)::mem::(size|align)_of_val::\
                 )").unwrap();
             }
             // Now test
@@ -93,7 +94,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if query.mutbl == MutMutable {
                     let lft = DynamicLifetime {
                         frame: self.cur_frame(),
-                        region: Some(scope),
+                        region: Some(scope), // Notably, we only ever suspend things for given regions.
+                        // Suspending for the entire function does not make any sense.
                     };
                     trace!("Suspending {:?} until {:?}", query, scope);
                     self.suspended.entry(lft).or_insert_with(Vec::new).push(
@@ -106,17 +108,30 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.validate(query, mode)
     }
 
-    pub(crate) fn end_region(&mut self, scope: region::Scope) -> EvalResult<'tcx> {
-        self.memory.locks_lifetime_ended(Some(scope));
-        // Recover suspended lvals
-        let lft = DynamicLifetime {
-            frame: self.cur_frame(),
-            region: Some(scope),
-        };
-        if let Some(queries) = self.suspended.remove(&lft) {
-            for query in queries {
-                trace!("Recovering {:?} from suspension", query);
-                self.validate(query, ValidationMode::Recover(scope))?;
+    /// Release locks and executes suspensions of the given region (or the entire fn, in case of None).
+    pub(crate) fn end_region(&mut self, scope: Option<region::Scope>) -> EvalResult<'tcx> {
+        debug_assert!(self.memory.cur_frame == self.cur_frame());
+        self.memory.locks_lifetime_ended(scope);
+        match scope {
+            Some(scope) => {
+                // Recover suspended lvals
+                let lft = DynamicLifetime {
+                    frame: self.cur_frame(),
+                    region: Some(scope),
+                };
+                if let Some(queries) = self.suspended.remove(&lft) {
+                    for query in queries {
+                        trace!("Recovering {:?} from suspension", query);
+                        self.validate(query, ValidationMode::Recover(scope))?;
+                    }
+                }
+            }
+            None => {
+                // Clean suspension table of current frame
+                let cur_frame = self.cur_frame();
+                self.suspended.retain(|lft, _| {
+                    lft.frame != cur_frame // keep only what is in the other (lower) frames
+                });
             }
         }
         Ok(())
@@ -543,7 +558,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Ok(())
             }
             TyAdt(adt, subst) => {
-                if Some(adt.did) == self.tcx.lang_items.unsafe_cell_type() &&
+                if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
                     query.mutbl == MutImmutable
                 {
                     // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.

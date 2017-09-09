@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Zmir-emit-validate=0
-
 #![feature(unsized_tuple_coercion)]
 use std::mem;
 

@@ -7,7 +7,6 @@ use alloc::allocator::*;
 
 // error-pattern: tried to deallocate dangling pointer
 
-use alloc::heap::*;
 fn main() {
     unsafe {
         let x = Heap.alloc(Layout::from_size_align_unchecked(1, 1)).unwrap();

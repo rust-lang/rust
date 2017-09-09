@@ -508,8 +508,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             stmt: 0,
         });
 
-        let cur_frame = self.cur_frame();
-        self.memory.set_cur_frame(cur_frame);
+        self.memory.cur_frame = self.cur_frame();
 
         if self.stack.len() > self.stack_limit {
             err!(StackFrameLimitReached)
@@ -520,14 +519,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub(super) fn pop_stack_frame(&mut self) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation -= 1;
-        self.memory.locks_lifetime_ended(None);
+        self.end_region(None)?;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
         if !self.stack.is_empty() {
-            // TODO: IS this the correct time to start considering these accesses as originating from the returned-to stack frame?
-            let cur_frame = self.cur_frame();
-            self.memory.set_cur_frame(cur_frame);
+            // TODO: Is this the correct time to start considering these accesses as originating from the returned-to stack frame?
+            self.memory.cur_frame = self.cur_frame();
         }
         match frame.return_to_block {
             StackPopCleanup::MarkStatic(mutable) => {
@@ -2267,7 +2265,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     substs: ty::ClosureSubsts<'tcx>,
 ) -> ty::Instance<'tcx> {
     debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
-    let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+    let fn_once = tcx.lang_items().fn_once_trait().unwrap();
     let call_once = tcx.associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)
         .unwrap()
@@ -2346,7 +2344,7 @@ pub fn resolve<'a, 'tcx>(
                 ty::InstanceDef::Intrinsic(def_id)
             }
             _ => {
-                if Some(def_id) == tcx.lang_items.drop_in_place_fn() {
+                if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
                     let ty = substs.type_at(0);
                     if needs_drop_glue(tcx, ty) {
                         debug!(" => nontrivial drop glue");
@@ -2440,7 +2438,7 @@ fn resolve_associated_item<'a, 'tcx>(
             }
         }
         ::rustc::traits::VtableClosure(closure_data) => {
-            let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
             resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
@@ -2461,7 +2459,7 @@ fn resolve_associated_item<'a, 'tcx>(
                 substs: rcvr_substs,
             }
         }
-        ::rustc::traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items.clone_trait() => {
+        ::rustc::traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
             ty::Instance {
                 def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
                 substs: rcvr_substs

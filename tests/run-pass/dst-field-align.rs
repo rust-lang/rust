@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: Broken by #296
-// compile-flags: -Zmir-emit-validate=0
-
 #![allow(dead_code)]
 
 struct Foo<T: ?Sized> {

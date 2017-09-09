@@ -36,6 +36,9 @@ script:
 notifications:
   email:
     on_success: never
+branches:
+  only:
+  - master
 env:
   global:
   - RUST_TEST_NOCAPTURE=1

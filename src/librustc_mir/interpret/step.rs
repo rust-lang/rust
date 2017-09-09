@@ -164,7 +164,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
             }
             EndRegion(ce) => {
-                self.end_region(ce)?;
+                self.end_region(Some(ce))?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the

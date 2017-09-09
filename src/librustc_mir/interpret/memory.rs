@@ -268,7 +268,7 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     writes_are_aligned: Cell<bool>,
 
     /// The current stack frame.  Used to check accesses against locks.
-    cur_frame: usize,
+    pub(super) cur_frame: usize,
 }
 
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
@@ -529,10 +529,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             });
         }
         Ok(())
-    }
-
-    pub(crate) fn set_cur_frame(&mut self, cur_frame: usize) {
-        self.cur_frame = cur_frame;
     }
 }
 
