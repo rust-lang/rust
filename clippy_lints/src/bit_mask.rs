@@ -307,7 +307,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
                         cx.tcx.mir_const_qualif(def_id);
                         cx.tcx.hir.body(cx.tcx.hir.body_owned_by(id))
                     } else {
-                        cx.tcx.sess.cstore.item_body(cx.tcx, def_id)
+                        cx.tcx.extern_const_body(def_id)
                     };
                     fetch_int_literal(cx, &body.value)
                 })

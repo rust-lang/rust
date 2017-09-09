@@ -1302,7 +1302,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: Ty<'a>) -> Option<Ty<'a>> {
 
 /// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
-    match cx.tcx.lang_items.debug_trait() {
+    match cx.tcx.lang_items().debug_trait() {
         Some(debug) => implements_trait(cx, ty, debug, &[]),
         None => false,
     }

@@ -497,7 +497,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr) {
     };
 
     let other_ty = cx.tables.expr_ty_adjusted(other);
-    let partial_eq_trait_id = match cx.tcx.lang_items.eq_trait() {
+    let partial_eq_trait_id = match cx.tcx.lang_items().eq_trait() {
         Some(id) => id,
         None => return,
     };

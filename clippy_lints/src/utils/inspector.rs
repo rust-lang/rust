@@ -360,12 +360,12 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
     }
     match item.node {
         hir::ItemExternCrate(ref _renamed_from) => {
-            if let Some(crate_id) = cx.tcx.sess.cstore.extern_mod_stmt_cnum(item.id) {
-                let source = cx.tcx.sess.cstore.used_crate_source(crate_id);
-                if let Some(src) = source.dylib {
+            if let Some(crate_id) = cx.tcx.extern_mod_stmt_cnum(cx.tcx.hir.node_to_hir_id(item.id)) {
+                let source = cx.tcx.used_crate_source(crate_id);
+                if let Some(ref src) = source.dylib {
                     println!("extern crate dylib source: {:?}", src.0);
                 }
-                if let Some(src) = source.rlib {
+                if let Some(ref src) = source.rlib {
                     println!("extern crate rlib source: {:?}", src.0);
                 }
             } else {

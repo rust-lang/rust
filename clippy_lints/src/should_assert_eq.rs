@@ -40,7 +40,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
             let ExprUnary(UnOp::UnNot, ref cond) = cond.node,
             let ExprBinary(ref binop, ref expr1, ref expr2) = cond.node,
             is_direct_expn_of(e.span, "assert").is_some(),
-            let Some(debug_trait) = cx.tcx.lang_items.debug_trait(),
+            let Some(debug_trait) = cx.tcx.lang_items().debug_trait(),
         ], {
             let debug = is_expn_of(e.span, "debug_assert").map_or("", |_| "debug_");
             let sugg = match binop.node {
