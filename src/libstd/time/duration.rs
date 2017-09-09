@@ -116,6 +116,7 @@ impl Duration {
         let secs = millis / MILLIS_PER_SEC;
         let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
         Duration { secs: secs, nanos: nanos }
+    }
 
     /// Creates a new `Duration` from the specified number of microseconds.
     ///
