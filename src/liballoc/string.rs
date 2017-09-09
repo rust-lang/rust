@@ -749,7 +749,22 @@ impl String {
         self
     }
 
-    /// Extracts a string slice containing the entire string.
+    /// Converts a `String` into a mutable string slice.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::ascii::AsciiExt;
+    ///
+    /// let mut s = String::from("foobar");
+    /// let s_mut_str = s.as_mut_str();
+    ///
+    /// s_mut_str.make_ascii_uppercase();
+    ///
+    /// assert_eq!("FOOBAR", s_mut_str);
+    /// ```
     #[inline]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     pub fn as_mut_str(&mut self) -> &mut str {
