@@ -11,14 +11,14 @@ Make the `assert!` macro generic to all expressions, and extend the readability 
 # Motivation
 [motivation]: #motivation
 
-While clippy warns about `assert!` usage that should be replaced by `assert_eq!`, it's quite annoying to migrating around.
+While clippy warns about `assert!` usage that should be replaced by `assert_eq!`, it's quite annoying to migrate around.
 
 Unit test frameworks like [Catch](https://github.com/philsquared/Catch) for C++ does cool message printing already by using macros.
 
 # Detailed design
 [design]: #detailed-design
 
-We're going to parse AST and break up them by operators (excluding `.` (dot, member access operator)). Function calls and bracket surrounded blocks are considered as one block and don't get split further.
+We're going to parse AST and break up them by operators (excluding `.` (dot, member access operator)). Function calls and bracket surrounded blocks are considered as one block and don't get expanded. The exact expanding rules should be determined when implemented, but an example is provided for reference.
 
 On assertion failure, the expression itself is stringified, and another line with intermediate values are printed out. The values should be printed with `Debug`, and a plain text fallback if the following conditions fail:
 - the type doesn't implement `Debug`.
@@ -26,7 +26,11 @@ On assertion failure, the expression itself is stringified, and another line wit
 
 To make sure that there's no side effects involved (e.g. running `next()` twice on `Iterator`), each value should be stored as temporaries and dumped on assertion failure.
 
+The new assert messages are likely to generate longer code, and it may be simplified for release builds (if benchmarks confirm the slowdown).
+
 ## Examples
+
+These examples are purely for reference. The implementor is free to change the rules.
 
 ```rust
 let a = 1;
@@ -120,12 +124,14 @@ With expansion: (a) == (b)'
 [alternatives]: #alternatives
 
 - Defining via `macro_rules!` was considered, but the recursive macro can often reach the recursion limit.
+- Negating the operator (`!=` to `==`) was considered, but this isn't suitable for all cases as not all types are total ordering.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
+These questions should be settled during the implementation process.
+
 ## Error messages
-- Should we use the negated version of operators (e.g. `!=` for eq) to explain the failure?
 - Should we dump the AST as a formatted one?
 - How are we going to handle multi-line expressions?
 
