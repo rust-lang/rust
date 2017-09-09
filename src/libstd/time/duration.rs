@@ -129,6 +129,7 @@ impl Duration {
     /// assert_eq!(1, duration.as_secs());
     /// assert_eq!(2000, duration.subsec_nanos());
     /// ```
+    #[unstable(feature = "", issue = "")]
     #[inline]
     pub fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
