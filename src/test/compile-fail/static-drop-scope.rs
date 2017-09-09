@@ -16,11 +16,18 @@ impl Drop for WithDtor {
     fn drop(&mut self) {}
 }
 
-static FOO: Option<&'static WithDtor> = Some(&WithDtor);
+static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
 //~^ ERROR statics are not allowed to have destructors
 //~| ERROR borrowed value does not live long enoug
 
-static BAR: i32 = (WithDtor, 0).1;
+const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
+//~^ ERROR constants are not allowed to have destructors
+//~| ERROR borrowed value does not live long enoug
+
+static EARLY_DROP_S: i32 = (WithDtor, 0).1;
 //~^ ERROR statics are not allowed to have destructors
+
+const EARLY_DROP_C: i32 = (WithDtor, 0).1;
+//~^ ERROR constants are not allowed to have destructors
 
 fn main () {}

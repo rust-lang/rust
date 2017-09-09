@@ -204,7 +204,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
     /// Check for NEEDS_DROP (from an ADT or const fn call) and
     /// error, unless we're in a function, or the feature-gate
-    /// for globals with destructors is enabled.
+    /// for constant with destructors is enabled.
     fn deny_drop(&self) {
         self.deny_drop_with_feature_gate_override(true);
     }
@@ -214,9 +214,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        // Static and const fn's allow destructors, but they're feature-gated.
-        let msg = if allow_gate && self.mode != Mode::Const {
-            // Feature-gate for globals with destructors is enabled.
+        // Constants allow destructors, but they're feature-gated.
+        let msg = if allow_gate {
+            // Feature-gate for constant with destructors is enabled.
             if self.tcx.sess.features.borrow().drop_types_in_const {
                 return;
             }
@@ -236,11 +236,13 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         let mut err =
             struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
 
-        if allow_gate && self.mode != Mode::Const {
+        if allow_gate {
             help!(&mut err,
                   "in Nightly builds, add `#![feature(drop_types_in_const)]` \
                    to the crate attributes to enable");
         } else {
+            // FIXME(eddyb) this looks up `self.mir.return_ty`.
+            // We probably want the actual return type here, if at all.
             self.find_drop_implementation_method_span()
                 .map(|span| err.span_label(span, "destructor defined here"));
 
