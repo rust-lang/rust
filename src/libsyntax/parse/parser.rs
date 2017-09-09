@@ -4699,7 +4699,7 @@ impl<'a> Parser<'a> {
                     SeqSep::trailing_allowed(token::Comma),
                     |p| p.parse_fn_block_arg()
                 );
-                self.bump();
+                self.expect(&token::BinOp(token::Or))?;
                 args
             }
         };

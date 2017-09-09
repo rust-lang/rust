@@ -545,7 +545,7 @@ impl fmt::Debug for CStr {
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl<'a> Default for &'a CStr {
     fn default() -> &'a CStr {
-        static SLICE: &'static [c_char] = &[0];
+        const SLICE: &'static [c_char] = &[0];
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
     }
 }

@@ -383,16 +383,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         };
                         let msg_str = Symbol::intern(str).as_str();
                         let msg_str = C_str_slice(bcx.ccx, msg_str);
-                        let msg_file_line = C_struct(bcx.ccx,
-                                                     &[msg_str, filename, line],
+                        let msg_file_line_col = C_struct(bcx.ccx,
+                                                     &[msg_str, filename, line, col],
                                                      false);
-                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line));
-                        let msg_file_line = consts::addr_of(bcx.ccx,
-                                                            msg_file_line,
-                                                            align,
-                                                            "panic_loc");
+                        let align = llalign_of_min(bcx.ccx, common::val_ty(msg_file_line_col));
+                        let msg_file_line_col = consts::addr_of(bcx.ccx,
+                                                                msg_file_line_col,
+                                                                align,
+                                                                "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line],
+                         vec![msg_file_line_col],
                          None)
                     }
                 };
