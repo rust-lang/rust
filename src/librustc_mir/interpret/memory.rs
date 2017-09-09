@@ -268,7 +268,7 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     writes_are_aligned: Cell<bool>,
 
     /// The current stack frame.  Used to check accesses against locks.
-    pub cur_frame: usize,
+    pub(super) cur_frame: usize,
 }
 
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
