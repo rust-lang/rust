@@ -225,16 +225,10 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     url, test_escaped, channel
                 ))
             });
-            let title = if ignore {
-                let mut tmp = HashMap::new();
-                tmp.insert("title".to_owned(),
-                           "Be careful when using this code, it's not being tested!".to_owned());
-                Some(tmp)
+            let tooltip = if ignore {
+                Some(("Be careful when using this code, it's not being tested!", "ignore"))
             } else if compile_fail {
-                let mut tmp = HashMap::new();
-                tmp.insert("title".to_owned(),
-                           "This code doesn't compile so be extra careful!".to_owned());
-                Some(tmp)
+                Some(("This code doesn't compile so be extra careful!", "compile_fail"))
             } else {
                 None
             };
@@ -246,7 +240,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                                       else { "" })),
                         None,
                         playground_button.as_ref().map(String::as_str),
-                        title));
+                        tooltip));
             Some(Event::Html(s.into()))
         })
     }
@@ -642,18 +636,10 @@ pub fn render(w: &mut fmt::Formatter,
                         url, test_escaped, channel
                     ))
                 });
-                let title = if ignore {
-                    let mut tmp = HashMap::new();
-                    tmp.insert("title".to_owned(),
-                               "Be careful when using this code, it's not being \
-                                tested!".to_owned());
-                    Some(tmp)
+                let tooltip = if ignore {
+                    Some(("Be careful when using this code, it's not being tested!", "ignore"))
                 } else if compile_fail {
-                    let mut tmp = HashMap::new();
-                    tmp.insert("title".to_owned(),
-                               "This code doesn't compile so be extra \
-                                careful!".to_owned());
-                    Some(tmp)
+                    Some(("This code doesn't compile so be extra careful!", "compile_fail"))
                 } else {
                     None
                 };
@@ -665,7 +651,7 @@ pub fn render(w: &mut fmt::Formatter,
                                              else { "" })),
                                None,
                                playground_button.as_ref().map(String::as_str),
-                               title));
+                               tooltip));
                 hoedown_buffer_put(ob, s.as_ptr(), s.len());
             })
         }

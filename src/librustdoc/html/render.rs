@@ -3679,7 +3679,8 @@ impl<'a> fmt::Display for Source<'a> {
             write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
         }
         write!(fmt, "</pre>")?;
-        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None, None, None))?;
+        write!(fmt, "{}",
+               highlight::render_with_highlighting(s, None, None, None, None))?;
         Ok(())
     }
 }

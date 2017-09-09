@@ -205,9 +205,33 @@ a.test-arrow:hover{
 }
 
 pre.compile_fail {
-	box-shadow: -6px 0 5px -3px #f00;
+	border-left: 2px solid rgba(255,0,0,.4);
+}
+
+pre.compile_fail:hover, .information:hover + pre.compile_fail {
+	border-left: 2px solid #f00;
 }
 
 pre.ignore {
-	box-shadow: -6px 0 5px -3px #ff9200;
+	border-left: 2px solid rgba(255,142,0,.4);
+}
+
+pre.ignore:hover, .information:hover + pre.ignore {
+	border-left: 2px solid #ff9200;
+}
+
+.tooltip.compile_fail {
+	color: rgba(255,0,0,.3);
+}
+
+.information > .compile_fail:hover {
+	color: #f00;
+}
+
+.tooltip.ignore {
+	color: rgba(255,142,0,.3);
+}
+
+.information > .ignore:hover {
+	color: rgba(255,142,0,1);
 }
