@@ -362,16 +362,25 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let mut v = String::from("🗻∈🌏");
+    /// use std::ascii::AsciiExt;
     ///
-    /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
-    ///
-    /// // indices not on UTF-8 sequence boundaries
-    /// assert!(v.get_mut(1..).is_none());
-    /// assert!(v.get_mut(..8).is_none());
-    ///
+    /// let mut v = String::from("hello");
+    /// // correct length
+    /// assert!(v.get_mut(0..5).is_some());
     /// // out of bounds
     /// assert!(v.get_mut(..42).is_none());
+    /// assert_eq!(Some("he"), v.get_mut(0..2).map(|v| &*v));
+    ///
+    /// assert_eq!("hello", v);
+    /// {
+    ///     let s = v.get_mut(0..2);
+    ///     let s = s.map(|s| {
+    ///         s.make_ascii_uppercase();
+    ///         &*s
+    ///     });
+    ///     assert_eq!(Some("HE"), s);
+    /// }
+    /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
