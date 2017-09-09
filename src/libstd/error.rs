@@ -53,6 +53,7 @@
 
 use alloc::allocator;
 use any::TypeId;
+use borrow::Cow;
 use cell;
 use char;
 use fmt::{self, Debug, Display};
@@ -213,6 +214,20 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
 #[stable(feature = "string_box_error", since = "1.6.0")]
 impl<'a> From<&'a str> for Box<Error> {
     fn from(err: &'a str) -> Box<Error> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+impl<'a, 'b> From<Cow<'b, str>> for Box<Error + Send + Sync + 'a> {
+    fn from(err: Cow<'b, str>) -> Box<Error + Send + Sync + 'a> {
+        From::from(String::from(err))
+    }
+}
+
+#[stable(feature = "cow_box_error", since = "1.22.0")]
+impl<'a> From<Cow<'a, str>> for Box<Error> {
+    fn from(err: Cow<'a, str>) -> Box<Error> {
         From::from(String::from(err))
     }
 }
