@@ -133,10 +133,7 @@ impl Duration {
     pub fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
         let nanos = ((micros % MICROS_PER_SEC) as u32) * NANOS_PER_MICRO;
-        Duration {
-            secs: secs,
-            nanos: nanos,
-        }
+        Duration { secs: secs, nanos: nanos }
     }
 
     /// Returns the number of _whole_ seconds contained by this `Duration`.
