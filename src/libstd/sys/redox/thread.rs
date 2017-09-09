@@ -16,6 +16,8 @@ use sys_common::thread::start_thread;
 use sys::{cvt, syscall};
 use time::Duration;
 
+pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+
 pub struct Thread {
     id: usize,
 }

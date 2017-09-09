@@ -19,6 +19,8 @@ use sys::handle::Handle;
 use sys_common::thread::*;
 use time::Duration;
 
+pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+
 pub struct Thread {
     handle: Handle
 }

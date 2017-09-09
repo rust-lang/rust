@@ -20,6 +20,11 @@ use time::Duration;
 
 use sys_common::thread::*;
 
+#[cfg(not(target_os = "l4re"))]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+#[cfg(target_os = "l4re")]
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
+
 pub struct Thread {
     id: libc::pthread_t,
 }

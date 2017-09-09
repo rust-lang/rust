@@ -104,11 +104,11 @@ pub mod net {
     impl AsInner<libc::c_int> for Socket {
         fn as_inner(&self) -> &libc::c_int { self.0.as_inner() }
     }
-    
+
     impl FromInner<libc::c_int> for Socket {
         fn from_inner(fd: libc::c_int) -> Socket { Socket(FileDesc::new(fd)) }
     }
-    
+
     impl IntoInner<libc::c_int> for Socket {
         fn into_inner(self) -> libc::c_int { self.0.into_raw() }
     }
