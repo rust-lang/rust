@@ -40,6 +40,7 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
+use dep_graph::DepGraph;
 use hir;
 use hir::map::{Definitions, DefKey};
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
@@ -122,13 +123,14 @@ pub trait Resolver {
 
 pub fn lower_crate(sess: &Session,
                    cstore: &CrateStore,
+                   dep_graph: &DepGraph,
                    krate: &Crate,
                    resolver: &mut Resolver)
                    -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
-    let _ignore = sess.dep_graph.in_ignore();
+    let _ignore = dep_graph.in_ignore();
 
     LoweringContext {
         crate_root: std_inject::injected_crate_name(krate),

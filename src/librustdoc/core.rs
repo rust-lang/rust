@@ -11,7 +11,6 @@
 use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
 use rustc_driver::pretty::ReplaceBodyWithLoop;
-use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
@@ -144,11 +143,9 @@ pub fn run_core(search_paths: SearchPaths,
                                                                false,
                                                                Some(codemap.clone()));
 
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, cpath, diagnostic_handler, codemap
+        sessopts, cpath, diagnostic_handler, codemap,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));

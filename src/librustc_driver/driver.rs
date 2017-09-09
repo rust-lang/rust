@@ -10,6 +10,7 @@
 
 #![cfg_attr(not(feature="llvm"), allow(dead_code))]
 
+use rustc::dep_graph::DepGraph;
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
 use rustc::ich::Fingerprint;
@@ -115,7 +116,7 @@ pub fn compile_input(sess: &Session,
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, trans): (OutputFilenames, OngoingCrateTranslation) = {
+    let (outputs, trans, dep_graph): (OutputFilenames, OngoingCrateTranslation, DepGraph) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -144,7 +145,13 @@ pub fn compile_input(sess: &Session,
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
-                sess, &cstore, krate, registry, &crate_name, addl_plugins, control.make_glob_map,
+                sess,
+                &cstore,
+                krate,
+                registry,
+                &crate_name,
+                addl_plugins,
+                control.make_glob_map,
                 |expanded_crate| {
                     let mut state = CompileState::state_after_expand(
                         input, sess, outdir, output, &cstore, expanded_crate, &crate_name,
@@ -251,7 +258,7 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            Ok((outputs, trans))
+            Ok((outputs, trans, tcx.dep_graph.clone()))
         })??
     };
 
@@ -266,7 +273,7 @@ pub fn compile_input(sess: &Session,
             sess.code_stats.borrow().print_type_sizes();
         }
 
-        let (phase5_result, trans) = phase_5_run_llvm_passes(sess, trans);
+        let (phase5_result, trans) = phase_5_run_llvm_passes(sess, &dep_graph, trans);
 
         controller_entry_point!(after_llvm,
                                 sess,
@@ -624,7 +631,15 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     *sess.features.borrow_mut() = features;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    *sess.crate_disambiguator.borrow_mut() = Symbol::intern(&compute_crate_disambiguator(sess));
+
+    let disambiguator = Symbol::intern(&compute_crate_disambiguator(sess));
+    *sess.crate_disambiguator.borrow_mut() = Some(disambiguator);
+    rustc_incremental::prepare_session_directory(
+        sess,
+        &crate_name,
+        &disambiguator.as_str(),
+    );
+    let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
@@ -694,7 +709,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let _ignore = sess.dep_graph.in_ignore();
+    let _ignore = dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
@@ -847,13 +862,13 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
-        let hir_crate = lower_crate(sess, cstore, &krate, &mut resolver);
+        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, &mut resolver);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
         }
 
-        hir_map::Forest::new(hir_crate, &sess.dep_graph)
+        hir_map::Forest::new(hir_crate, &dep_graph)
     });
 
     time(time_passes,
@@ -1134,9 +1149,10 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// as a side effect.
 #[cfg(feature="llvm")]
 pub fn phase_5_run_llvm_passes(sess: &Session,
+                               dep_graph: &DepGraph,
                                trans: write::OngoingCrateTranslation)
                                -> (CompileResult, trans::CrateTranslation) {
-    let trans = trans.join(sess);
+    let trans = trans.join(sess, dep_graph);
 
     if sess.opts.debugging_opts.incremental_info {
         write::dump_incremental_data(&trans);
@@ -1144,7 +1160,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
     time(sess.time_passes(),
          "serialize work products",
-         move || rustc_incremental::save_work_products(sess));
+         move || rustc_incremental::save_work_products(sess, dep_graph));
 
     (sess.compile_status(), trans)
 }

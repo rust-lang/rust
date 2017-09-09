@@ -13,6 +13,7 @@ use back::link::{self, get_linker, remove};
 use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
+use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
@@ -807,6 +808,7 @@ pub fn start_async_translation(sess: &Session,
 }
 
 fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
+                                              dep_graph: &DepGraph,
                                               compiled_modules: &CompiledModules,
                                               crate_output: &OutputFilenames) {
     if sess.opts.incremental.is_none() {
@@ -826,7 +828,11 @@ fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
             files.push((OutputType::Bitcode, path));
         }
 
-        save_trans_partition(sess, &module.name, module.symbol_name_hash, &files);
+        save_trans_partition(sess,
+                             dep_graph,
+                             &module.name,
+                             module.symbol_name_hash,
+                             &files);
     }
 }
 
@@ -1822,7 +1828,7 @@ pub struct OngoingCrateTranslation {
 }
 
 impl OngoingCrateTranslation {
-    pub fn join(self, sess: &Session) -> CrateTranslation {
+    pub fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
             Ok(compiled_modules) => compiled_modules,
@@ -1838,6 +1844,7 @@ impl OngoingCrateTranslation {
         }
 
         copy_module_artifacts_into_incr_comp_cache(sess,
+                                                   dep_graph,
                                                    &compiled_modules,
                                                    &self.output_filenames);
         produce_final_output_artifacts(sess,

@@ -64,7 +64,6 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
@@ -294,13 +293,12 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let dep_graph = DepGraph::new(sopts.build_dep_graph());
     let cstore = Rc::new(CStore::new(box ::MetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
-        sopts, &dep_graph, input_file_path, descriptions, codemap, emitter_dest,
+        sopts, input_file_path, descriptions, codemap, emitter_dest,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -318,7 +316,13 @@ pub fn run_compiler<'a>(args: &[String],
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess, &cstore, &input, &odir, &ofile, Some(plugins), &control),
+    (driver::compile_input(&sess,
+                           &cstore,
+                           &input,
+                           &odir,
+                           &ofile,
+                           Some(plugins),
+                           &control),
      Some(sess))
 }
 
@@ -580,9 +584,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     describe_lints(&ls, false);
                     return None;
                 }
-                let dep_graph = DepGraph::new(sopts.build_dep_graph());
                 let mut sess = build_session(sopts.clone(),
-                    &dep_graph,
                     None,
                     descriptions.clone());
                 rustc_trans::init(&sess);
