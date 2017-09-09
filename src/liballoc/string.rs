@@ -743,6 +743,16 @@ impl String {
     }
 
     /// Extracts a string slice containing the entire string.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = String::from("foo");
+    ///
+    /// assert_eq!("foo", s.as_str());
+    /// ```
     #[inline]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     pub fn as_str(&self) -> &str {
