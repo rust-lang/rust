@@ -327,7 +327,28 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
-                Def::Fn(..) | Def::Method(..) => {}
+                Def::Fn(..) | Def::Method(..) =>  {}
+
+                // References to a static are inherently promotable,
+                // with the exception of "#[thread_loca]" statics.
+                // The latter may not outlive the current function
+                Def::Static(did, _) => {
+                    let mut thread_local = false;
+
+                    for attr in &v.tcx.get_attrs(did)[..] {
+                        if attr.check_name("thread_local") {
+                            debug!("Static(id={:?}) is unpromotable \
+                                   due to a #[thread_local] attribute", did);
+                            v.promotable = false;
+                            thread_local = true;
+                            break;
+                        }
+                    }
+
+                    if !thread_local {
+                        debug!("Allowing promotion of reference to Static(id={:?})", did);
+                    }
+                }
 
                 Def::Const(did) |
                 Def::AssociatedConst(did) => {
