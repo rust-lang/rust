@@ -33,9 +33,7 @@ macro_rules! dump_and_die {
     ($($pos:expr),*) => ({
         // FIXME(#18285): we cannot include the current position because
         // the macro span takes over the last frame's file/line.
-        if cfg!(any(target_os = "macos",
-                    target_os = "ios",
-                    target_os = "android",
+        if cfg!(any(target_os = "android",
                     all(target_os = "linux", target_arch = "arm"),
                     target_os = "freebsd",
                     target_os = "dragonfly",

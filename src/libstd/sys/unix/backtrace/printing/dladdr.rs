@@ -31,14 +31,6 @@ pub fn resolve_symname<F>(frame: Frame,
     }
 }
 
-pub fn foreach_symbol_fileline<F>(_symbol_addr: Frame,
-                                  _f: F,
-                                  _: &BacktraceContext) -> io::Result<bool>
-    where F: FnMut(&[u8], libc::c_int) -> io::Result<()>
-{
-    Ok(false)
-}
-
 #[repr(C)]
 struct Dl_info {
     dli_fname: *const libc::c_char,
