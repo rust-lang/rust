@@ -2,6 +2,7 @@
 //! about.
 
 pub const ANY_TRAIT: [&'static str; 3] = ["std", "any", "Any"];
+pub const ARC: [&'static str; 3] = ["alloc", "arc", "Arc"];
 pub const ASMUT_TRAIT: [&'static str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&'static str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&'static str; 3] = ["std", "panicking", "begin_panic"];
@@ -58,6 +59,7 @@ pub const RANGE_TO: [&'static str; 3] = ["core", "ops", "RangeTo"];
 pub const RANGE_TO_INCLUSIVE: [&'static str; 3] = ["core", "ops", "RangeToInclusive"];
 pub const RANGE_TO_INCLUSIVE_STD: [&'static str; 3] = ["std", "ops", "RangeToInclusive"];
 pub const RANGE_TO_STD: [&'static str; 3] = ["std", "ops", "RangeTo"];
+pub const RC: [&'static str; 3] = ["alloc", "rc", "Rc"];
 pub const REGEX: [&'static str; 3] = ["regex", "re_unicode", "Regex"];
 pub const REGEX_BUILDER_NEW: [&'static str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
 pub const REGEX_BYTES: [&'static str; 3] = ["regex", "re_bytes", "Regex"];
@@ -81,3 +83,5 @@ pub const TRY_INTO_RESULT: [&'static str; 4] = ["std", "ops", "Try", "into_resul
 pub const VEC: [&'static str; 3] = ["alloc", "vec", "Vec"];
 pub const VEC_DEQUE: [&'static str; 3] = ["alloc", "vec_deque", "VecDeque"];
 pub const VEC_FROM_ELEM: [&'static str; 3] = ["alloc", "vec", "from_elem"];
+pub const WEAK_ARC: [&'static str; 3] = ["alloc", "arc", "Weak"];
+pub const WEAK_RC: [&'static str; 3] = ["alloc", "rc", "Weak"];

@@ -11,6 +11,8 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::ops::Mul;
 use std::iter::FromIterator;
+use std::rc::{self, Rc};
+use std::sync::{self, Arc};
 
 struct T;
 
@@ -454,6 +456,28 @@ fn clone_on_copy() {
     vec![1].clone(); // ok, not a Copy type
     Some(vec![1]).clone(); // ok, not a Copy type
     (&42).clone();
+}
+
+fn clone_on_ref_ptr() {
+    let rc = Rc::new(true);
+    let arc = Arc::new(true);
+
+    let rcweak = Rc::downgrade(&rc);
+    let arc_weak = Arc::downgrade(&arc);
+
+    rc.clone();
+    Rc::clone(&rc);
+
+    arc.clone();
+    Arc::clone(&arc);
+
+    rcweak.clone();
+    rc::Weak::clone(&rcweak);
+
+    arc_weak.clone();
+    sync::Weak::clone(&arc_weak);
+
+
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
