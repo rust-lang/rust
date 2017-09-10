@@ -651,14 +651,14 @@ pub struct Struct {
 }
 
 /// Info required to optimize struct layout.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum StructKind {
     /// A tuple, closure, or univariant which cannot be coerced to unsized.
     AlwaysSizedUnivariant,
     /// A univariant, the last field of which may be coerced to unsized.
     MaybeUnsizedUnivariant,
     /// A univariant, but part of an enum.
-    EnumVariant,
+    EnumVariant(Integer),
 }
 
 impl<'a, 'tcx> Struct {
@@ -692,30 +692,27 @@ impl<'a, 'tcx> Struct {
         // Neither do  1-member and 2-member structs.
         // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
-        let can_optimize = (fields.len() > 2 || StructKind::EnumVariant == kind)
-            && (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
-
-        let (optimize, sort_ascending) = match kind {
-            StructKind::AlwaysSizedUnivariant => (can_optimize, false),
-            StructKind::MaybeUnsizedUnivariant => (can_optimize, false),
-            StructKind::EnumVariant => {
-                assert!(fields.len() >= 1, "Enum variants must have discriminants.");
-                (can_optimize && fields[0].size(dl).bytes() == 1, true)
+        let (mut optimize, sort_ascending) = match kind {
+            StructKind::AlwaysSizedUnivariant |
+            StructKind::MaybeUnsizedUnivariant => (fields.len() > 2, false),
+            StructKind::EnumVariant(discr) => {
+                (discr.size().bytes() == 1, true)
             }
         };
+
+        optimize &= (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
 
         ret.offsets = vec![Size::from_bytes(0); fields.len()];
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         if optimize {
-            let start = if let StructKind::EnumVariant = kind { 1 } else { 0 };
             let end = if let StructKind::MaybeUnsizedUnivariant = kind {
                 fields.len() - 1
             } else {
                 fields.len()
             };
-            if end > start {
-                let optimizing  = &mut inverse_memory_index[start..end];
+            if end > 0 {
+                let optimizing  = &mut inverse_memory_index[..end];
                 if sort_ascending {
                     optimizing.sort_by_key(|&x| fields[x as usize].align(dl).abi());
                 } else {
@@ -734,12 +731,16 @@ impl<'a, 'tcx> Struct {
         // field 5 with offset 0 puts 0 in offsets[5].
         // At the bottom of this function, we use inverse_memory_index to produce memory_index.
 
-        if let StructKind::EnumVariant = kind {
-            assert_eq!(inverse_memory_index[0], 0,
-              "Enum variant discriminants must have the lowest offset.");
-        }
-
         let mut offset = Size::from_bytes(0);
+
+        if let StructKind::EnumVariant(discr) = kind {
+            offset = discr.size();
+            if !ret.packed {
+                let align = discr.align(dl);
+                ret.align = ret.align.max(align);
+                ret.primitive_align = ret.primitive_align.max(align);
+            }
+        }
 
         for i in inverse_memory_index.iter() {
             let field = fields[*i as usize];
@@ -1112,8 +1113,9 @@ pub enum Layout {
         variants: Union,
     },
 
-    /// General-case enums: for each case there is a struct, and they
-    /// all start with a field for the discriminant.
+    /// General-case enums: for each case there is a struct, and they all have
+    /// all space reserved for the discriminant, and their first field starts
+    /// at a non-0 offset, after where the discriminant would go.
     General {
         discr: Integer,
         variants: Vec<Struct>,
@@ -1495,21 +1497,17 @@ impl<'a, 'tcx> Layout {
                 // We're interested in the smallest alignment, so start large.
                 let mut start_align = Align::from_bytes(256, 256).unwrap();
 
-                // Create the set of structs that represent each variant
-                // Use the minimum integer type we figured out above
-                let discr = Scalar { value: Int(min_ity), non_zero: false };
+                // Create the set of structs that represent each variant.
                 let mut variants = variants.into_iter().map(|fields| {
-                    let mut fields = fields.into_iter().map(|field| {
+                    let fields = fields.into_iter().map(|field| {
                         field.layout(tcx, param_env)
                     }).collect::<Result<Vec<_>, _>>()?;
-                    fields.insert(0, &discr);
                     let st = Struct::new(dl,
                         &fields,
-                        &def.repr, StructKind::EnumVariant, ty)?;
+                        &def.repr, StructKind::EnumVariant(min_ity), ty)?;
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
-                    // It is important to skip the first field.
-                    for i in st.field_index_by_increasing_offset().skip(1) {
+                    for i in st.field_index_by_increasing_offset() {
                         let field = fields[i];
                         let field_align = field.align(dl);
                         if field.size(dl).bytes() != 0 || field_align.abi() != 1 {
@@ -1569,9 +1567,8 @@ impl<'a, 'tcx> Layout {
                     let new_ity_size = Int(ity).size(dl);
                     for variant in &mut variants {
                         for i in variant.offsets.iter_mut() {
-                            // The first field is the discrimminant, at offset 0.
-                            // These aren't in order, and we need to skip it.
-                            if *i <= old_ity_size && *i > Size::from_bytes(0) {
+                            if *i <= old_ity_size {
+                                assert_eq!(*i, old_ity_size);
                                 *i = new_ity_size;
                             }
                         }
@@ -1759,7 +1756,7 @@ impl<'a, 'tcx> Layout {
 
             General { ref variants, .. } => {
                 let v = variant_index.expect("variant index required");
-                variants[v].offsets[i + 1]
+                variants[v].offsets[i]
             }
 
             StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
@@ -1857,21 +1854,12 @@ impl<'a, 'tcx> Layout {
             }
         };
 
-        enum Fields<'a> {
-            WithDiscrim(&'a Struct),
-            NoDiscrim(&'a Struct),
-        }
-
         let build_variant_info = |n: Option<ast::Name>,
                                   flds: &[(ast::Name, Ty<'tcx>)],
-                                  layout: Fields| {
-            let (s, field_offsets) = match layout {
-                Fields::WithDiscrim(s) => (s, &s.offsets[1..]),
-                Fields::NoDiscrim(s) => (s, &s.offsets[0..]),
-            };
+                                  s: &Struct| {
             let field_info: Vec<_> =
                 flds.iter()
-                    .zip(field_offsets.iter())
+                    .zip(&s.offsets)
                     .map(|(&field_name_ty, offset)| build_field_info(field_name_ty, offset))
                     .collect();
 
@@ -1904,7 +1892,7 @@ impl<'a, 'tcx> Layout {
                        None,
                        vec![build_variant_info(Some(variant_def.name),
                                                &fields,
-                                               Fields::NoDiscrim(variant_layout))]);
+                                               variant_layout)]);
             }
             Layout::RawNullablePointer { nndiscr, value } => {
                 debug!("print-type-size t: `{:?}` adt raw nullable nndiscr {} is {:?}",
@@ -1931,7 +1919,7 @@ impl<'a, 'tcx> Layout {
                            None,
                            vec![build_variant_info(Some(variant_def.name),
                                                    &fields,
-                                                   Fields::NoDiscrim(variant_layout))]);
+                                                   variant_layout)]);
                 } else {
                     // (This case arises for *empty* enums; so give it
                     // zero variants.)
@@ -1953,7 +1941,7 @@ impl<'a, 'tcx> Layout {
                                                        .collect();
                                         build_variant_info(Some(variant_def.name),
                                                            &fields,
-                                                           Fields::WithDiscrim(variant_layout))
+                                                           variant_layout)
                                     })
                                     .collect();
                 record(adt_kind.into(), Some(discr.size()), variant_infos);
