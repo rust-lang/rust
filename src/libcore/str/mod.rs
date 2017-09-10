@@ -319,7 +319,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// assert_eq!("Hello, Rust!", outstr);
 /// ```
 /// 
-/// # Incorrect bytes:
+/// Incorrect bytes:
 ///
 /// ```
 /// use std::str;
