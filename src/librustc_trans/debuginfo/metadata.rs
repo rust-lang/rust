@@ -1283,7 +1283,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let null_variant_index = (1 - nndiscr) as usize;
                 let null_variant_name = adt.variants[null_variant_index].name;
                 let discrfield_source = discrfield_source.iter()
-                                           .skip(1)
                                            .map(|x| x.to_string())
                                            .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",

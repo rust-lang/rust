@@ -332,7 +332,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     // Double index to account for padding (FieldPath already uses `Struct::memory_index`)
     fn gepi_struct_llfields_path(self, bcx: &Builder, discrfield: &layout::FieldPath) -> ValueRef {
-        let path = iter::once(C_u32(bcx.ccx, 0)).chain(discrfield[1..].iter().map(|&i| {
+        let path = iter::once(C_u32(bcx.ccx, 0)).chain(discrfield.iter().map(|&i| {
             let i = adt::memory_index_to_gep(i as u64);
             assert_eq!(i as u32 as u64, i);
             C_u32(bcx.ccx, i as u32)

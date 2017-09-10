@@ -1145,7 +1145,6 @@ pub enum Layout {
     StructWrappedNullablePointer {
         nndiscr: u64,
         nonnull: Struct,
-        /// N.B. There is a 0 at the start, for LLVM GEP through a pointer.
         discrfield: FieldPath,
         /// Like discrfield, but in source order. For debuginfo.
         discrfield_source: FieldPath
@@ -1472,9 +1471,7 @@ impl<'a, 'tcx> Layout {
                         let mut i = *path.last().unwrap();
                         i = st.memory_index[i as usize];
                         *path.last_mut().unwrap() = i;
-                        path.push(0); // For GEP through a pointer.
                         path.reverse();
-                        path_source.push(0);
                         path_source.reverse();
 
                         return success(StructWrappedNullablePointer {
