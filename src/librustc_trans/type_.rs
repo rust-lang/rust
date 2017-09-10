@@ -287,4 +287,14 @@ impl Type {
             I128 => Type::i128(cx),
         }
     }
+
+    pub fn from_primitive(cx: &CrateContext, p: layout::Primitive) -> Type {
+        use rustc::ty::layout::Primitive::*;
+        match p {
+            Int(i) => Type::from_integer(cx, i),
+            F32 => Type::f32(cx),
+            F64 => Type::f64(cx),
+            Pointer => Type::i8p(cx),
+        }
+    }
 }

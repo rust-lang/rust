@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, Layout, LayoutTyper};
+use rustc::ty::layout::{self, Align, Layout, LayoutTyper, Size};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -25,7 +25,6 @@ use type_::Type;
 use value::Value;
 use glue;
 
-use std::iter;
 use std::ptr;
 use std::ops;
 
@@ -330,14 +329,26 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    // Double index to account for padding (FieldPath already uses `Struct::memory_index`)
-    fn gepi_struct_llfields_path(self, bcx: &Builder, discrfield: &layout::FieldPath) -> ValueRef {
-        let path = iter::once(C_u32(bcx.ccx, 0)).chain(discrfield.iter().map(|&i| {
-            let i = adt::memory_index_to_gep(i as u64);
-            assert_eq!(i as u32 as u64, i);
-            C_u32(bcx.ccx, i as u32)
-        })).collect::<Vec<_>>();
-        bcx.inbounds_gep(self.llval, &path)
+    // Return a pointer to the discriminant, given its type and offset.
+    fn gepi_discr_at_offset(self, bcx: &Builder,
+                            discr: ty::layout::Primitive,
+                            offset: Size)
+                            -> (ValueRef, Alignment) {
+        let size = discr.size(bcx.ccx);
+        let ptr_ty = Type::from_primitive(bcx.ccx, discr).ptr_to();
+
+        // If the discriminant is not on a multiple of the primitive's size,
+        // we need to go through i8*. Also assume the worst alignment.
+        if offset.bytes() % size.bytes() != 0 {
+            let byte_ptr = bcx.pointercast(self.llval, Type::i8p(bcx.ccx));
+            let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(bcx.ccx, offset.bytes())]);
+            let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
+            return (bcx.pointercast(byte_ptr, ptr_ty), byte_align);
+        }
+
+        let discr_ptr = bcx.pointercast(self.llval, ptr_ty);
+        (bcx.inbounds_gep(discr_ptr, &[C_usize(bcx.ccx, offset.bytes() / size.bytes())]),
+         self.alignment)
     }
 
     /// Helper for cases where the discriminant is simply loaded.
@@ -378,16 +389,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 self.load_discr(bcx, discr, ptr.llval, 0, variants.len() as u64 - 1)
             }
             layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
-            layout::RawNullablePointer { nndiscr, .. } => {
+            layout::RawNullablePointer { nndiscr, discr } |
+            layout::StructWrappedNullablePointer { nndiscr, discr, .. } => {
+                let discr_offset = match *l {
+                    layout::StructWrappedNullablePointer { discr_offset, .. } => discr_offset,
+                    _ => Size::from_bytes(0),
+                };
+                let (lldiscrptr, alignment) = self.gepi_discr_at_offset(bcx, discr, discr_offset);
+                let lldiscr = bcx.load(lldiscrptr, alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                let discr = bcx.load(self.llval, self.alignment.non_abi());
-                bcx.icmp(cmp, discr, C_null(val_ty(discr)))
-            }
-            layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                let llptrptr = self.gepi_struct_llfields_path(bcx, discrfield);
-                let llptr = bcx.load(llptrptr, self.alignment.non_abi());
-                let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
+                bcx.icmp(cmp, lldiscr, C_null(Type::from_primitive(bcx.ccx, discr)))
             },
             _ => bug!("{} is not an enum", l.ty)
         };
@@ -418,27 +429,30 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             | layout::Vector { .. } => {
                 assert_eq!(to, 0);
             }
-            layout::RawNullablePointer { nndiscr, .. } => {
+            layout::RawNullablePointer { nndiscr, discr, .. } |
+            layout::StructWrappedNullablePointer { nndiscr, discr, .. } => {
                 if to != nndiscr {
-                    let llptrty = val_ty(self.llval).element_type();
-                    bcx.store(C_null(llptrty), self.llval, self.alignment.non_abi());
-                }
-            }
-            layout::StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
-                if to != nndiscr {
-                    if target_sets_discr_via_memset(bcx) {
+                    let (use_memset, discr_offset) = match *l {
+                        layout::StructWrappedNullablePointer { discr_offset, .. } => {
+                            (target_sets_discr_via_memset(bcx), discr_offset)
+                        }
+                        _ => (false, Size::from_bytes(0)),
+                    };
+                    if use_memset {
                         // Issue #34427: As workaround for LLVM bug on
                         // ARM, use memset of 0 on whole struct rather
                         // than storing null to single target field.
                         let llptr = bcx.pointercast(self.llval, Type::i8(bcx.ccx).ptr_to());
                         let fill_byte = C_u8(bcx.ccx, 0);
-                        let size = C_usize(bcx.ccx, nonnull.stride().bytes());
-                        let align = C_u32(bcx.ccx, nonnull.align.abi() as u32);
+                        let (size, align) = l.size_and_align(bcx.ccx);
+                        let size = C_usize(bcx.ccx, size.bytes());
+                        let align = C_u32(bcx.ccx, align.abi() as u32);
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
                     } else {
-                        let llptrptr = self.gepi_struct_llfields_path(bcx, discrfield);
-                        let llptrty = val_ty(llptrptr).element_type();
-                        bcx.store(C_null(llptrty), llptrptr, self.alignment.non_abi());
+                        let (lldiscrptr, alignment) =
+                            self.gepi_discr_at_offset(bcx, discr, discr_offset);
+                        bcx.store(C_null(Type::from_primitive(bcx.ccx, discr)),
+                            lldiscrptr, alignment.non_abi());
                     }
                 }
             }
