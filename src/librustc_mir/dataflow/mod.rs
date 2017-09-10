@@ -24,6 +24,7 @@ use std::mem;
 use std::path::PathBuf;
 use std::usize;
 
+pub use self::impls::{MaybeStorageLive};
 pub use self::impls::{MaybeInitializedLvals, MaybeUninitializedLvals};
 pub use self::impls::{DefinitelyInitializedLvals};
 pub use self::impls::borrows::{Borrows, BorrowData, BorrowIndex};
@@ -349,6 +350,29 @@ pub trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     fn apply_local_effect(&mut self,
                           loc: Location,
                           flow_state: &mut Self::FlowState);
+}
+
+pub fn state_for_location<T: BitDenotation>(loc: Location,
+                                            analysis: &T,
+                                            result: &DataflowResults<T>)
+    -> IdxSetBuf<T::Idx> {
+    let mut entry = result.sets().on_entry_set_for(loc.block.index()).to_owned();
+
+    {
+        let mut sets = BlockSets {
+            on_entry: &mut entry.clone(),
+            kill_set: &mut entry.clone(),
+            gen_set: &mut entry,
+        };
+
+        for stmt in 0..loc.statement_index {
+            let mut stmt_loc = loc;
+            stmt_loc.statement_index = stmt;
+            analysis.statement_effect(&mut sets, stmt_loc);
+        }
+    }
+
+    entry
 }
 
 pub struct DataflowAnalysis<'a, 'tcx: 'a, O> where O: BitDenotation

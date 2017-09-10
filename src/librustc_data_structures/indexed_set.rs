@@ -15,7 +15,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut, Range};
 use std::slice;
 use bitslice::{BitSlice, Word};
-use bitslice::{bitwise, Union, Subtract};
+use bitslice::{bitwise, Union, Subtract, Intersect};
 use indexed_vec::Idx;
 
 /// Represents a set (or packed family of sets), of some element type
@@ -162,6 +162,10 @@ impl<T: Idx> IdxSet<T> {
 
     pub fn subtract(&mut self, other: &IdxSet<T>) -> bool {
         bitwise(self.words_mut(), other.words(), &Subtract)
+    }
+
+    pub fn intersect(&mut self, other: &IdxSet<T>) -> bool {
+        bitwise(self.words_mut(), other.words(), &Intersect)
     }
 
     pub fn iter(&self) -> Iter<T> {
