@@ -900,7 +900,6 @@ impl Step for CrateLibrustc {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     compiler: Compiler,
@@ -1076,6 +1075,74 @@ impl Step for Crate {
                       format!("{} run",
                               builder.tool_exe(Tool::RemoteTestClient).display()));
         }
+        try_run(build, &mut cargo);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Rustdoc {
+    host: Interned<String>,
+    test_kind: TestKind,
+}
+
+impl Step for Rustdoc {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/librustdoc").path("src/tools/rustdoc")
+    }
+
+    fn make_run(run: RunConfig) {
+        let builder = run.builder;
+
+        let test_kind = if builder.kind == Kind::Test {
+            TestKind::Test
+        } else if builder.kind == Kind::Bench {
+            TestKind::Bench
+        } else {
+            panic!("unexpected builder.kind in crate: {:?}", builder.kind);
+        };
+
+        builder.ensure(Rustdoc {
+            host: run.host,
+            test_kind,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let test_kind = self.test_kind;
+
+        let compiler = builder.compiler(builder.top_stage, self.host);
+        let target = compiler.host;
+
+        builder.ensure(RemoteCopyLibs { compiler, target });
+
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, test_kind.subcommand());
+        compile::rustc_cargo(build, &compiler, target, &mut cargo);
+        let _folder = build.fold_output(|| {
+            format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
+        });
+        println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
+                &compiler.host, target);
+
+        if test_kind.subcommand() == "test" && !build.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
+        cargo.arg("-p").arg("rustdoc:0.0.0");
+
+        cargo.arg("--");
+        cargo.args(&build.config.cmd.test_args());
+
+        if build.config.quiet_tests {
+            cargo.arg("--quiet");
+        }
+
+        let _time = util::timeit();
+
         try_run(build, &mut cargo);
     }
 }
