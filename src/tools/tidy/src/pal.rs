@@ -76,6 +76,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
 
     // std testing crates, ok for now at least
     "src/libcore/tests",
+    "src/liballoc/tests/lib.rs",
 
     // non-std crates
     "src/test",
