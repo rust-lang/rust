@@ -51,7 +51,7 @@ use syntax::ast;
 use syntax::ast::*;
 
 use rustc::mir::*;
-use rustc::transform::{MirPass, MirSource};
+use rustc::mir::transform::{MirPass, MirSource};
 
 // AFTER
 use syntax::{
@@ -67,7 +67,16 @@ use syntax::{
 use syntax::ast::{self, *};
 
 // both `*` and nested braces
-use rustc::mir::{*, transform::{MirPass, MirSource}}; 
+use rustc::mir::{*, transform::{MirPass, MirSource}};
+
+// the prefix can be empty
+use {
+    syntax::ast::*;
+    rustc::mir::*;
+};
+
+// `pub` imports can use this syntax as well
+pub use self::Visibility::{self, Public, Inherited};
 ```
 
 A `use` item with merged prefixes behaves identically to several `use` items
@@ -114,6 +123,16 @@ use ::a::b::d as e;
 use ::a::f::*;
 use ::a::g::h as i;
 use ::a::*;
+```
+
+Various corner cases are resolved naturally through desugaring
+```rust
+use an::{*, *}; // Use an owl!
+
+=>
+
+use an::*;
+use an::*; // Legal, but reported as unused by `unused_imports` lint.
 ```
 
 # Relationships with other proposal
