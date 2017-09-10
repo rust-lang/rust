@@ -1433,7 +1433,7 @@ outlives another using a `where` clause:
 fn make_child<'tree, 'human>(
   x: &'human i32,
   y: &'tree i32
-) -> &'tree i32
+) -> &'human i32
 where
   'tree: 'human
 {
