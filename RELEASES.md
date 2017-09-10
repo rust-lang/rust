@@ -1,3 +1,61 @@
+Version 1.21.0 (2017-10-12)
+==========================
+
+Language
+--------
+- [Relaxed path syntax. You can now add type parameters to values][43540]
+  Example: `struct Foo<T>(T); let bar = Foo::<u8>(0);`.
+
+Compiler
+--------
+- [Upgraded jemalloc to 4.5.0][43911]
+- [Enabled unwinding panics on Redox][43917]
+
+Libraries
+---------
+- [Generate builtin impls for `Clone` for `[T: N]` where `N` is between 0
+  and 32][43690]
+- [`Stdin`, `Stdout`, and `Stderr` now implement `AsRawFd`.][43459]
+- [`Rc` and `Arc` now implement `From<&[T]> where T: Clone`, `From<str>`,
+  `From<String>`, `From<Box<T>> where T: ?Sized`, and `From<Vec<T>>`.][42565]
+
+Stabilized APIs
+---------------
+
+Cargo
+-----
+- [You can now call `cargo install` with multiple package names][cargo/4216]
+- [Cargo commands inside a virtual workspace will now implicitly
+  pass `--all`][cargo/4335]
+
+Misc
+----
+- [Cargo docs are moving][43916]
+  to [doc.rust-lang.org/cargo](//doc.rust-lang.org/cargo)
+- [The rustdoc book is now available][43863]
+  at [doc.rust-lang.org/rustdoc](//doc.rust-lang.org/rustdoc)
+
+Compatibility Notes
+-------------------
+- [Remove the trait selection impl in method::probe][43880] This may cause
+  breakage in subtyping corner cases.
+- [make JSON error's byte position start at top of file.][42973] Was previously
+  relative to the `CodeMap` which required unstable code.
+
+[42565]: https://github.com/rust-lang/rust/pull/42565
+[42973]: https://github.com/rust-lang/rust/pull/42973
+[43459]: https://github.com/rust-lang/rust/pull/43459
+[43540]: https://github.com/rust-lang/rust/pull/43540
+[43690]: https://github.com/rust-lang/rust/pull/43690
+[43863]: https://github.com/rust-lang/rust/pull/43863
+[43880]: https://github.com/rust-lang/rust/pull/43880
+[43911]: https://github.com/rust-lang/rust/pull/43911
+[43916]: https://github.com/rust-lang/rust/pull/43916
+[43917]: https://github.com/rust-lang/rust/pull/43917
+[cargo/4216]: https://github.com/rust-lang/cargo/pull/4216
+[cargo/4335]: https://github.com/rust-lang/cargo/pull/4335
+
+
 Version 1.20.0 (2017-08-31)
 ===========================
 
@@ -110,7 +168,7 @@ Compatibility Notes
 - [Functions with `'static` in their return types will now not be as usable as
   if they were using lifetime parameters instead.][42417]
 - [The reimplementation of `{f32, f64}::is_sign_{negative, positive}` now
-  takes the sign of NaN into account where previously didn't.][42430] 
+  takes the sign of NaN into account where previously didn't.][42430]
 
 [42033]: https://github.com/rust-lang/rust/pull/42033
 [42155]: https://github.com/rust-lang/rust/pull/42155
