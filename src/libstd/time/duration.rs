@@ -13,7 +13,7 @@ use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
-const NANOS_PER_MICROS: u32 = 1_000;
+const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
 
@@ -130,7 +130,7 @@ impl Duration {
     /// assert_eq!(1, duration.as_secs());
     /// assert_eq!(2000, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "", issue = "")]
+    #[unstable(feature = "", issue = "44400")]
     #[inline]
     pub fn from_micros(micros: u64) -> Duration {
         let secs = micros / MICROS_PER_SEC;
