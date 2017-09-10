@@ -297,6 +297,34 @@ impl str {
     /// [`str::from_utf8_mut`] function.
     ///
     /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut s = String::from("Hello");
+    /// let bytes = unsafe { s.as_bytes_mut() };
+    ///
+    /// assert_eq!(b"Hello", bytes);
+    /// ```
+    ///
+    /// Mutability:
+    ///
+    /// ```
+    /// let mut s = String::from("🗻∈🌏");
+    ///
+    /// unsafe {
+    ///     let bytes = s.as_bytes_mut();
+    ///
+    ///     bytes[0] = 0xF0;
+    ///     bytes[1] = 0x9F;
+    ///     bytes[2] = 0x8D;
+    ///     bytes[3] = 0x94;
+    /// }
+    ///
+    /// assert_eq!("🍔∈🌏", s);
+    /// ```
     #[stable(feature = "str_mut_extras", since = "1.20.0")]
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
@@ -362,16 +390,25 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let mut v = String::from("🗻∈🌏");
+    /// use std::ascii::AsciiExt;
     ///
-    /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
-    ///
-    /// // indices not on UTF-8 sequence boundaries
-    /// assert!(v.get_mut(1..).is_none());
-    /// assert!(v.get_mut(..8).is_none());
-    ///
+    /// let mut v = String::from("hello");
+    /// // correct length
+    /// assert!(v.get_mut(0..5).is_some());
     /// // out of bounds
     /// assert!(v.get_mut(..42).is_none());
+    /// assert_eq!(Some("he"), v.get_mut(0..2).map(|v| &*v));
+    ///
+    /// assert_eq!("hello", v);
+    /// {
+    ///     let s = v.get_mut(0..2);
+    ///     let s = s.map(|s| {
+    ///         s.make_ascii_uppercase();
+    ///         &*s
+    ///     });
+    ///     assert_eq!(Some("HE"), s);
+    /// }
+    /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     #[inline]
