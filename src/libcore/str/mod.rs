@@ -331,7 +331,6 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// ```
 /// See the docs for [`Utf8Error`][error] for more details on the kinds of
 /// errors that can be returned.
-///
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
