@@ -295,7 +295,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
         match *self.layout {
             // The primitives for this algorithm.
             Layout::Scalar { value, .. } |
-            Layout::RawNullablePointer { value, .. } => {
+            Layout::RawNullablePointer { discr: value, .. } => {
                 let kind = match value {
                     layout::Int(_) |
                     layout::Pointer => RegKind::Integer,

@@ -841,35 +841,47 @@ impl<'a, 'tcx> Struct {
         })
     }
 
-    /// Find the path leading to a non-zero leaf field, starting from
+    /// Find the offset of a non-zero leaf field, starting from
     /// the given type and recursing through aggregates.
-    /// The tuple is `(path, source_path)`,
-    /// where `path` is in memory order and `source_path` in source order.
+    /// The tuple is `(offset, primitive, source_path)`.
     // FIXME(eddyb) track value ranges and traverse already optimized enums.
     fn non_zero_field_in_type(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               param_env: ty::ParamEnv<'tcx>,
                               ty: Ty<'tcx>)
-                              -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'tcx>> {
-        match (ty.layout(tcx, param_env)?, &ty.sty) {
-            (&Scalar { non_zero: true, .. }, _) |
-            (&CEnum { non_zero: true, .. }, _) => Ok(Some((vec![], vec![]))),
+                              -> Result<Option<(Size, Primitive, FieldPath)>, LayoutError<'tcx>> {
+        let layout = ty.layout(tcx, param_env)?;
+        match (layout, &ty.sty) {
+            (&Scalar { non_zero: true, value, .. }, _) => {
+                Ok(Some((Size::from_bytes(0), value, vec![])))
+            }
+            (&CEnum { non_zero: true, discr, .. }, _) => {
+                Ok(Some((Size::from_bytes(0), Int(discr), vec![])))
+            }
+
             (&FatPointer { non_zero: true, .. }, _) => {
-                Ok(Some((vec![FAT_PTR_ADDR as u32], vec![FAT_PTR_ADDR as u32])))
+                Ok(Some((layout.field_offset(tcx, FAT_PTR_ADDR, None),
+                         Pointer,
+                         vec![FAT_PTR_ADDR as u32])))
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
             (&Univariant { non_zero: true, .. }, &ty::TyAdt(def, substs)) => {
                 let fields = &def.struct_variant().fields;
                 assert_eq!(fields.len(), 1);
-                match *fields[0].ty(tcx, substs).layout(tcx, param_env)? {
+                let field = fields[0].ty(tcx, substs).layout(tcx, param_env)?;
+                match *field {
                     // FIXME(eddyb) also allow floating-point types here.
-                    Scalar { value: Int(_), non_zero: false } |
-                    Scalar { value: Pointer, non_zero: false } => {
-                        Ok(Some((vec![0], vec![0])))
+                    Scalar { value: value @ Int(_), non_zero: false } |
+                    Scalar { value: value @ Pointer, non_zero: false } => {
+                        Ok(Some((layout.field_offset(tcx, 0, None),
+                                 value,
+                                 vec![0])))
                     }
                     FatPointer { non_zero: false, .. } => {
-                        let tmp = vec![FAT_PTR_ADDR as u32, 0];
-                        Ok(Some((tmp.clone(), tmp)))
+                        Ok(Some((layout.field_offset(tcx, 0, None) +
+                                 field.field_offset(tcx, FAT_PTR_ADDR, None),
+                                 Pointer,
+                                 vec![FAT_PTR_ADDR as u32, 0])))
                     }
                     _ => Ok(None)
                 }
@@ -878,31 +890,31 @@ impl<'a, 'tcx> Struct {
             // Perhaps one of the fields of this struct is non-zero
             // let's recurse and find out
             (&Univariant { ref variant, .. }, &ty::TyAdt(def, substs)) if def.is_struct() => {
-                Struct::non_zero_field_paths(
+                Struct::non_zero_field(
                     tcx,
                     param_env,
                     def.struct_variant().fields.iter().map(|field| {
                         field.ty(tcx, substs)
                     }),
-                    Some(&variant.memory_index[..]))
+                    &variant.offsets)
             }
 
             // Perhaps one of the upvars of this closure is non-zero
             (&Univariant { ref variant, .. }, &ty::TyClosure(def, substs)) => {
                 let upvar_tys = substs.upvar_tys(def, tcx);
-                Struct::non_zero_field_paths(
+                Struct::non_zero_field(
                     tcx,
                     param_env,
                     upvar_tys,
-                    Some(&variant.memory_index[..]))
+                    &variant.offsets)
             }
             // Can we use one of the fields in this tuple?
             (&Univariant { ref variant, .. }, &ty::TyTuple(tys, _)) => {
-                Struct::non_zero_field_paths(
+                Struct::non_zero_field(
                     tcx,
                     param_env,
                     tys.iter().cloned(),
-                    Some(&variant.memory_index[..]))
+                    &variant.offsets)
             }
 
             // Is this a fixed-size array of something non-zero
@@ -915,11 +927,11 @@ impl<'a, 'tcx> Struct {
                     }
                 }
                 if count.val.to_const_int().unwrap().to_u64().unwrap() != 0 {
-                    Struct::non_zero_field_paths(
+                    Struct::non_zero_field(
                         tcx,
                         param_env,
                         Some(ety).into_iter(),
-                        None)
+                        &[Size::from_bytes(0)])
                 } else {
                     Ok(None)
                 }
@@ -938,27 +950,20 @@ impl<'a, 'tcx> Struct {
         }
     }
 
-    /// Find the path leading to a non-zero leaf field, starting from
+    /// Find the offset of a non-zero leaf field, starting from
     /// the given set of fields and recursing through aggregates.
-    /// Returns Some((path, source_path)) on success.
-    /// `path` is translated to memory order. `source_path` is not.
-    fn non_zero_field_paths<I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               param_env: ty::ParamEnv<'tcx>,
-                               fields: I,
-                               permutation: Option<&[u32]>)
-                               -> Result<Option<(FieldPath, FieldPath)>, LayoutError<'tcx>>
+    /// Returns Some((offset, primitive, source_path)) on success.
+    fn non_zero_field<I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         param_env: ty::ParamEnv<'tcx>,
+                         fields: I,
+                         offsets: &[Size])
+                         -> Result<Option<(Size, Primitive, FieldPath)>, LayoutError<'tcx>>
     where I: Iterator<Item=Ty<'tcx>> {
         for (i, ty) in fields.enumerate() {
             let r = Struct::non_zero_field_in_type(tcx, param_env, ty)?;
-            if let Some((mut path, mut source_path)) = r {
+            if let Some((offset, primitive, mut source_path)) = r {
                 source_path.push(i as u32);
-                let index = if let Some(p) = permutation {
-                    p[i] as usize
-                } else {
-                    i
-                };
-                path.push(index as u32);
-                return Ok(Some((path, source_path)));
+                return Ok(Some((offsets[i] + offset, primitive, source_path)));
             }
         }
         Ok(None)
@@ -1135,18 +1140,19 @@ pub enum Layout {
     /// identity function.
     RawNullablePointer {
         nndiscr: u64,
-        value: Primitive
+        discr: Primitive
     },
 
     /// Two cases distinguished by a nullable pointer: the case with discriminant
-    /// `nndiscr` is represented by the struct `nonnull`, where the `discrfield`th
-    /// field is known to be nonnull due to its type; if that field is null, then
+    /// `nndiscr` is represented by the struct `nonnull`, where the field at the
+    /// `discr_offset` offset is known to be nonnull due to its type; if that field is null, then
     /// it represents the other case, which is known to be zero sized.
     StructWrappedNullablePointer {
         nndiscr: u64,
         nonnull: Struct,
-        discrfield: FieldPath,
-        /// Like discrfield, but in source order. For debuginfo.
+        discr: Primitive,
+        discr_offset: Size,
+        /// Like discr_offset, but the source field path. For debuginfo.
         discrfield_source: FieldPath
     }
 }
@@ -1440,44 +1446,36 @@ impl<'a, 'tcx> Layout {
                         if !Struct::would_be_zero_sized(dl, other_fields)? {
                             continue;
                         }
-                        let paths = Struct::non_zero_field_paths(tcx,
-                                                                 param_env,
-                                                                 variants[discr].iter().cloned(),
-                                                                 None)?;
-                        let (mut path, mut path_source) = if let Some(p) = paths { p }
-                          else { continue };
-
-                        // FIXME(eddyb) should take advantage of a newtype.
-                        if path == &[0] && variants[discr].len() == 1 {
-                            let value = match *variants[discr][0].layout(tcx, param_env)? {
-                                Scalar { value, .. } => value,
-                                CEnum { discr, .. } => Int(discr),
-                                _ => bug!("Layout::compute: `{}`'s non-zero \
-                                           `{}` field not scalar?!",
-                                           ty, variants[discr][0])
-                            };
-                            return success(RawNullablePointer {
-                                nndiscr: discr as u64,
-                                value,
-                            });
-                        }
 
                         let st = Struct::new(dl,
                             &variants[discr].iter().map(|ty| ty.layout(tcx, param_env))
                               .collect::<Result<Vec<_>, _>>()?,
                             &def.repr, StructKind::AlwaysSizedUnivariant, ty)?;
 
-                        // We have to fix the last element of path here.
-                        let mut i = *path.last().unwrap();
-                        i = st.memory_index[i as usize];
-                        *path.last_mut().unwrap() = i;
-                        path.reverse();
+                        let field = Struct::non_zero_field(tcx,
+                                                           param_env,
+                                                           variants[discr].iter().cloned(),
+                                                           &st.offsets)?;
+                        let (offset, primitive, mut path_source) = if let Some(f) = field { f }
+                          else { continue };
+
+                        // FIXME(eddyb) should take advantage of a newtype.
+                        if offset.bytes() == 0 && primitive.size(dl) == st.stride() &&
+                           variants[discr].len() == 1 {
+                            return success(RawNullablePointer {
+                                nndiscr: discr as u64,
+                                discr: primitive,
+                            });
+                        }
+
+                        // We have to fix the source path here.
                         path_source.reverse();
 
                         return success(StructWrappedNullablePointer {
                             nndiscr: discr as u64,
                             nonnull: st,
-                            discrfield: path,
+                            discr: primitive,
+                            discr_offset: offset,
                             discrfield_source: path_source
                         });
                     }
@@ -1621,7 +1619,7 @@ impl<'a, 'tcx> Layout {
         let dl = cx.data_layout();
 
         match *self {
-            Scalar { value, .. } | RawNullablePointer { value, .. } => {
+            Scalar { value, .. } | RawNullablePointer { discr: value, .. } => {
                 value.size(dl)
             }
 
@@ -1664,7 +1662,7 @@ impl<'a, 'tcx> Layout {
         let dl = cx.data_layout();
 
         match *self {
-            Scalar { value, .. } | RawNullablePointer { value, .. } => {
+            Scalar { value, .. } | RawNullablePointer { discr: value, .. } => {
                 value.align(dl)
             }
 
@@ -1876,7 +1874,8 @@ impl<'a, 'tcx> Layout {
         match *layout {
             Layout::StructWrappedNullablePointer { nonnull: ref variant_layout,
                                                    nndiscr,
-                                                   discrfield: _,
+                                                   discr: _,
+                                                   discr_offset: _,
                                                    discrfield_source: _ } => {
                 debug!("print-type-size t: `{:?}` adt struct-wrapped nullable nndiscr {} is {:?}",
                        ty, nndiscr, variant_layout);
@@ -1891,12 +1890,12 @@ impl<'a, 'tcx> Layout {
                                                &fields,
                                                variant_layout)]);
             }
-            Layout::RawNullablePointer { nndiscr, value } => {
+            Layout::RawNullablePointer { nndiscr, discr } => {
                 debug!("print-type-size t: `{:?}` adt raw nullable nndiscr {} is {:?}",
-                       ty, nndiscr, value);
+                       ty, nndiscr, discr);
                 let variant_def = &adt_def.variants[nndiscr as usize];
                 record(adt_kind.into(), None,
-                       vec![build_primitive_info(variant_def.name, &value)]);
+                       vec![build_primitive_info(variant_def.name, &discr)]);
             }
             Layout::Univariant { variant: ref variant_layout, non_zero: _ } => {
                 let variant_names = || {
@@ -2410,19 +2409,21 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
                 align.hash_stable(hcx, hasher);
                 primitive_align.hash_stable(hcx, hasher);
             }
-            RawNullablePointer { nndiscr, ref value } => {
+            RawNullablePointer { nndiscr, ref discr } => {
                 nndiscr.hash_stable(hcx, hasher);
-                value.hash_stable(hcx, hasher);
+                discr.hash_stable(hcx, hasher);
             }
             StructWrappedNullablePointer {
                 nndiscr,
                 ref nonnull,
-                ref discrfield,
+                ref discr,
+                discr_offset,
                 ref discrfield_source
             } => {
                 nndiscr.hash_stable(hcx, hasher);
                 nonnull.hash_stable(hcx, hasher);
-                discrfield.hash_stable(hcx, hasher);
+                discr.hash_stable(hcx, hasher);
+                discr_offset.hash_stable(hcx, hasher);
                 discrfield_source.hash_stable(hcx, hasher);
             }
         }

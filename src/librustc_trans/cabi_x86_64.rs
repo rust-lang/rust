@@ -66,7 +66,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
 
         match *layout {
             Layout::Scalar { value, .. } |
-            Layout::RawNullablePointer { value, .. } => {
+            Layout::RawNullablePointer { discr: value, .. } => {
                 let reg = match value {
                     layout::Int(_) |
                     layout::Pointer => Class::Int,
