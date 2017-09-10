@@ -323,7 +323,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 ///
 /// ```
 /// use std::str;
-/// 
+///
 /// // Some invalid bytes in a mutable vector
 /// let mut invalid = vec![128, 223];
 ///
