@@ -260,11 +260,9 @@ for key in known_args:
             set(keyval[0], value)
         continue
 
-    # Ensure each option is only passed once
+    # Take the last value of multiple passed values as the source of truth
     arr = known_args[key]
-    if len(arr) > 1:
-        err("Option '{}' provided more than once".format(key))
-    option, value = arr[0]
+    option, value = arr[len(arr) - 1]
 
     # If we have a clear avenue to set our value in rustbuild, do so
     if option.rustbuild is not None:

@@ -1255,9 +1255,17 @@ impl Step for Distcheck {
         build.run(Command::new("./configure")
                          .args(&build.config.configure_args)
                          .arg("--enable-vendor")
+                         .arg("--enable-locked-deps")
+                         .arg("--enable-extended")
                          .current_dir(&dir));
         build.run(Command::new(build_helper::make(&build.build))
                          .arg("check")
+                         // Set a dummy value for `CARGO_HOME` to ensure that we
+                         // generate an error due to `--frozen` if Cargo
+                         // attempts to fill in this directory (it shouldn't
+                         // need to, we should have all vendored dependencies
+                         // available to us)
+                         .env("CARGO_HOME", dir.join("cargo-home"))
                          .current_dir(&dir));
 
         // Now make sure that rust-src has all of libstd's dependencies
