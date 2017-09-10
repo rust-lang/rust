@@ -29,7 +29,6 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
-use std::u32;
 
 pub struct ElaborateDrops;
 

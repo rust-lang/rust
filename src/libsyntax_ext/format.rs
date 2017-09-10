@@ -19,7 +19,7 @@ use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::tokenstream;
 
@@ -501,32 +501,6 @@ impl<'a, 'b> Context<'a, 'b> {
         }
     }
 
-    fn static_array(ecx: &mut ExtCtxt,
-                    name: &str,
-                    piece_ty: P<ast::Ty>,
-                    pieces: Vec<P<ast::Expr>>)
-                    -> P<ast::Expr> {
-        let sp = piece_ty.span;
-        let ty = ecx.ty_rptr(sp,
-                             ecx.ty(sp, ast::TyKind::Slice(piece_ty)),
-                             Some(ecx.lifetime(sp, keywords::StaticLifetime.ident())),
-                             ast::Mutability::Immutable);
-        let slice = ecx.expr_vec_slice(sp, pieces);
-        // static instead of const to speed up codegen by not requiring this to be inlined
-        let st = ast::ItemKind::Static(ty, ast::Mutability::Immutable, slice);
-
-        let name = ecx.ident_of(name);
-        let item = ecx.item(sp, name, vec![], st);
-        let stmt = ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            node: ast::StmtKind::Item(item),
-            span: sp,
-        };
-
-        // Wrap the declaration in a block so that it forms a single expression.
-        ecx.expr_block(ecx.block(sp, vec![stmt, ecx.stmt_expr(ecx.expr_ident(sp, name))]))
-    }
-
     /// Actually builds the expression which the format_args! block will be
     /// expanded to
     fn into_expr(self) -> P<ast::Expr> {
@@ -537,12 +511,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.ident());
-        let piece_ty = self.ecx.ty_rptr(self.fmtsp,
-                                        self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
-                                        Some(static_lifetime),
-                                        ast::Mutability::Immutable);
-        let pieces = Context::static_array(self.ecx, "__STATIC_FMTSTR", piece_ty, self.str_pieces);
+        let pieces = self.ecx.expr_vec_slice(self.fmtsp, self.str_pieces);
 
         // Before consuming the expressions, we have to remember spans for
         // count arguments as they are now generated separate from other
@@ -623,9 +592,7 @@ impl<'a, 'b> Context<'a, 'b> {
         } else {
             // Build up the static array which will store our precompiled
             // nonstandard placeholders, if there are any.
-            let piece_ty = self.ecx
-                .ty_path(self.ecx.path_global(self.macsp, Context::rtpath(self.ecx, "Argument")));
-            let fmt = Context::static_array(self.ecx, "__STATIC_FMTARGS", piece_ty, self.pieces);
+            let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
 
             ("new_v1_formatted", vec![pieces, args_slice, fmt])
         };
