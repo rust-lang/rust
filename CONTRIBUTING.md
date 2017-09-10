@@ -400,6 +400,9 @@ labels to triage issues:
 
 * Magenta, **B**-prefixed labels identify bugs which are **blockers**.
 
+* Dark blue, **beta-** labels track changes which need to be backported into
+  the beta branches.
+
 * Green, **E**-prefixed labels explain the level of **experience** necessary
   to fix the issue.
 
@@ -407,17 +410,14 @@ labels to triage issues:
   [I-nominated][inom] label indicates that an issue has been nominated for
   prioritizing at the next triage meeting.
 
+* The purple **metabug** label marks lists of bugs collected by other
+  categories.
+
 * Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
   are only assigned during triage meetings, and replace the [I-nominated][inom]
   label.
 
 * Blue, **T**-prefixed bugs denote which **team** the issue belongs to.
-
-* Dark blue, **beta-** labels track changes which need to be backported into
-  the beta branches.
-
-* The purple **metabug** label marks lists of bugs collected by other
-  categories.
 
 If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 
