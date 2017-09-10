@@ -233,21 +233,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
-        let parent_def = self.parent_def;
-
         match pat.node {
             PatKind::Mac(..) => return self.visit_macro_invoc(pat.id, false),
-            PatKind::Ident(_, id, _) => {
-                let def = self.create_def(pat.id,
-                                          DefPathData::Binding(id.node.name.as_str()),
-                                          REGULAR_SPACE);
-                self.parent_def = Some(def);
-            }
-            _ => {}
+            _ => visit::walk_pat(self, pat),
         }
-
-        visit::walk_pat(self, pat);
-        self.parent_def = parent_def;
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {

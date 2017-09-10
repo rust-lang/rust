@@ -41,8 +41,7 @@
 //! in the HIR, especially for multiple identifiers.
 
 use hir;
-use hir::map::{Definitions, DefKey, REGULAR_SPACE};
-use hir::map::definitions::DefPathData;
+use hir::map::{Definitions, DefKey};
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
 use lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
@@ -1738,29 +1737,28 @@ impl<'a> LoweringContext<'a> {
             node: match p.node {
                 PatKind::Wild => hir::PatKind::Wild,
                 PatKind::Ident(ref binding_mode, pth1, ref sub) => {
-                    self.with_parent_def(p.id, |this| {
-                        match this.resolver.get_resolution(p.id).map(|d| d.base_def()) {
-                            // `None` can occur in body-less function signatures
-                            def @ None | def @ Some(Def::Local(_)) => {
-                                let def_id = def.map(|d| d.def_id()).unwrap_or_else(|| {
-                                    this.resolver.definitions().local_def_id(p.id)
-                                });
-                                hir::PatKind::Binding(this.lower_binding_mode(binding_mode),
-                                                      def_id,
-                                                      respan(pth1.span, pth1.node.name),
-                                                      sub.as_ref().map(|x| this.lower_pat(x)))
-                            }
-                            Some(def) => {
-                                hir::PatKind::Path(hir::QPath::Resolved(None, P(hir::Path {
-                                    span: pth1.span,
-                                    def,
-                                    segments: hir_vec![
-                                        hir::PathSegment::from_name(pth1.node.name)
-                                    ],
-                                })))
-                            }
+                    match self.resolver.get_resolution(p.id).map(|d| d.base_def()) {
+                        // `None` can occur in body-less function signatures
+                        def @ None | def @ Some(Def::Local(_)) => {
+                            let canonical_id = match def {
+                                Some(Def::Local(id)) => id,
+                                _ => p.id
+                            };
+                            hir::PatKind::Binding(self.lower_binding_mode(binding_mode),
+                                                  canonical_id,
+                                                  respan(pth1.span, pth1.node.name),
+                                                  sub.as_ref().map(|x| self.lower_pat(x)))
                         }
-                    })
+                        Some(def) => {
+                            hir::PatKind::Path(hir::QPath::Resolved(None, P(hir::Path {
+                                span: pth1.span,
+                                def,
+                                segments: hir_vec![
+                                    hir::PathSegment::from_name(pth1.node.name)
+                                ],
+                            })))
+                        }
+                    }
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
                 PatKind::TupleStruct(ref path, ref pats, ddpos) => {
@@ -2715,14 +2713,9 @@ impl<'a> LoweringContext<'a> {
                                         id: Name,
                                         binding: NodeId,
                                         attrs: ThinVec<Attribute>) -> hir::Expr {
-        let def = {
-            let defs = self.resolver.definitions();
-            Def::Local(defs.local_def_id(binding))
-        };
-
         let expr_path = hir::ExprPath(hir::QPath::Resolved(None, P(hir::Path {
             span,
-            def,
+            def: Def::Local(binding),
             segments: hir_vec![hir::PathSegment::from_name(id)],
         })));
 
@@ -2860,23 +2853,12 @@ impl<'a> LoweringContext<'a> {
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingAnnotation)
                               -> P<hir::Pat> {
         let LoweredNodeId { node_id, hir_id } = self.next_id();
-        let parent_def = self.parent_def.unwrap();
-        let def_id = {
-            let defs = self.resolver.definitions();
-            let def_path_data = DefPathData::Binding(name.as_str());
-            let def_index = defs.create_def_with_parent(parent_def,
-                                                        node_id,
-                                                        def_path_data,
-                                                        REGULAR_SPACE,
-                                                        Mark::root());
-            DefId::local(def_index)
-        };
 
         P(hir::Pat {
             id: node_id,
             hir_id,
             node: hir::PatKind::Binding(bm,
-                                        def_id,
+                                        node_id,
                                         Spanned {
                                             span,
                                             node: name,

@@ -43,10 +43,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
+                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                let var_name = self.tcx.hir.name(var_node_id);
                 err.span_note(span,
-                              &format!("...so that closure can access `{}`",
-                                       self.tcx
-                                           .local_var_name_str_def_index(upvar_id.var_id)));
+                              &format!("...so that closure can access `{}`", var_name));
             }
             infer::InfStackClosure(span) => {
                 err.span_note(span, "...so that closure does not outlive its stack frame");
@@ -63,7 +63,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.span_note(span,
                               &format!("...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
-                                       self.tcx.local_var_name_str(id)));
+                                       self.tcx.hir.name(id)));
             }
             infer::IndexSlice(span) => {
                 err.span_note(span, "...so that slice is not indexed outside the lifetime");
@@ -176,13 +176,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
+                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                let var_name = self.tcx.hir.name(var_node_id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0313,
                                                "lifetime of borrowed pointer outlives lifetime \
                                                 of captured variable `{}`...",
-                                               self.tcx
-                                                   .local_var_name_str_def_index(upvar_id.var_id));
+                                               var_name);
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                                                  "...the borrowed pointer is valid for ",
                                                  sub,
@@ -190,8 +191,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.note_and_explain_region(
                     region_scope_tree,
                     &mut err,
-                    &format!("...but `{}` is only valid for ",
-                        self.tcx.local_var_name_str_def_index(upvar_id.var_id)),
+                    &format!("...but `{}` is only valid for ", var_name),
                     sup,
                     "");
                 err
@@ -234,7 +234,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                E0474,
                                                "captured variable `{}` does not outlive the \
                                                 enclosing closure",
-                                               self.tcx.local_var_name_str(id));
+                                               self.tcx.hir.name(id));
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                     "captured variable is valid for ", sup, "");
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,

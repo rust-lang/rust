@@ -447,7 +447,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     None
                 }
                 LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                    let local_id = self.tcx().hir.def_index_to_node_id(var_id);
+                    let local_id = self.tcx().hir.hir_to_node_id(var_id);
                     self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
                     None
                 }

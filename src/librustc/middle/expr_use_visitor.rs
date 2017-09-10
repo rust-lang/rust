@@ -828,7 +828,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         let ExprUseVisitor { ref mc, ref mut delegate, param_env } = *self;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |cmt_pat, pat| {
-            if let PatKind::Binding(_, def_id, ..) = pat.node {
+            if let PatKind::Binding(_, canonical_id, ..) = pat.node {
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}", cmt_pat, pat, match_mode);
                 let bm = *mc.tables.pat_binding_modes().get(pat.hir_id)
                                                      .expect("missing binding mode");
@@ -838,7 +838,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
-                let def = Def::Local(def_id);
+                let def = Def::Local(canonical_id);
                 if let Ok(binding_cmt) = mc.cat_def(pat.id, pat.span, pat_ty, def) {
                     delegate.mutate(pat.id, pat.span, binding_cmt, MutateMode::Init);
                 }
@@ -895,17 +895,16 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let var_def_id = freevar.def.def_id();
-                debug_assert!(var_def_id.is_local());
+                let var_hir_id = self.tcx().hir.node_to_hir_id(freevar.var_id());
                 let closure_def_id = self.tcx().hir.local_def_id(closure_expr.id);
                 let upvar_id = ty::UpvarId {
-                    var_id: var_def_id.index,
+                    var_id: var_hir_id,
                     closure_expr_id: closure_def_id.index
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
                                                                    fn_decl_span,
-                                                                   freevar.def));
+                                                                   freevar));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
                         let mode = copy_or_move(&self.mc,
@@ -930,14 +929,13 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn cat_captured_var(&mut self,
                         closure_id: ast::NodeId,
                         closure_span: Span,
-                        upvar_def: Def)
+                        upvar: &hir::Freevar)
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_node_id = self.tcx().hir.as_local_node_id(upvar_def.def_id()).unwrap();
-        let var_hir_id = self.tcx().hir.node_to_hir_id(var_node_id);
+        let var_hir_id = self.tcx().hir.node_to_hir_id(upvar.var_id());
         let var_ty = self.mc.node_ty(var_hir_id)?;
-        self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
+        self.mc.cat_def(closure_id, closure_span, var_ty, upvar.def)
     }
 }
 

@@ -623,8 +623,10 @@ pub enum PatKind {
     Wild,
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
-    /// The `DefId` is for the definition of the variable being bound.
-    Binding(BindingAnnotation, DefId, Spanned<Name>, Option<P<Pat>>),
+    /// The `NodeId` is the canonical ID for the variable being bound,
+    /// e.g. in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
+    /// which is the pattern ID of the first `x`.
+    Binding(BindingAnnotation, NodeId, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -1841,6 +1843,15 @@ pub struct Freevar {
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
+}
+
+impl Freevar {
+    pub fn var_id(&self) -> NodeId {
+        match self.def {
+            Def::Local(id) | Def::Upvar(id, ..) => id,
+            _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
+        }
+    }
 }
 
 pub type FreevarMap = NodeMap<Vec<Freevar>>;

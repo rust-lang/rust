@@ -429,8 +429,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.id, |freevars| {
             for fv in freevars {
-                if let Def::Local(def_id) = fv.def {
-                    let rv = ir.tcx.hir.as_local_node_id(def_id).unwrap();
+                if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     call_caps.push(CaptureInfo {ln: fv_ln,
                                                 var_nid: rv});
@@ -1238,8 +1237,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, id: NodeId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match path.def {
-          Def::Local(def_id) => {
-            let nid = self.ir.tcx.hir.as_local_node_id(def_id).unwrap();
+          Def::Local(nid) => {
             self.access_var(id, nid, succ, acc, path.span)
           }
           _ => succ
@@ -1414,12 +1412,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
-                if let Def::Local(def_id) = path.def {
+                if let Def::Local(nid) = path.def {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
-                    let nid = self.ir.tcx.hir.as_local_node_id(def_id).unwrap();
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
                     self.warn_about_dead_assign(expr.span, expr.id, ln, var);

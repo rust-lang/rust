@@ -212,7 +212,6 @@ impl DefKey {
             DefPathData::TypeParam(name) |
             DefPathData::LifetimeDef(name) |
             DefPathData::EnumVariant(name) |
-            DefPathData::Binding(name) |
             DefPathData::Field(name) |
             DefPathData::GlobalMetaData(name) => {
                 name.hash(&mut hasher);
@@ -372,8 +371,6 @@ pub enum DefPathData {
     StructCtor,
     /// Initializer for a const
     Initializer,
-    /// Pattern binding
-    Binding(InternedString),
     /// An `impl Trait` type node.
     ImplTrait,
     /// A `typeof` type node.
@@ -613,7 +610,6 @@ impl DefPathData {
             TypeParam(name) |
             LifetimeDef(name) |
             EnumVariant(name) |
-            Binding(name) |
             Field(name) |
             GlobalMetaData(name) => Some(name),
 
@@ -638,7 +634,6 @@ impl DefPathData {
             TypeParam(name) |
             LifetimeDef(name) |
             EnumVariant(name) |
-            Binding(name) |
             Field(name) |
             GlobalMetaData(name) => {
                 return name

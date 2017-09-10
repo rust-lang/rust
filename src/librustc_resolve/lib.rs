@@ -2291,7 +2291,7 @@ impl<'a> Resolver<'a> {
         // must not add it if it's in the bindings map
         // because that breaks the assumptions later
         // passes make about or-patterns.)
-        let mut def = Def::Local(self.definitions.local_def_id(pat_id));
+        let mut def = Def::Local(pat_id);
         match bindings.get(&ident.node).cloned() {
             Some(id) if id == outer_pat_id => {
                 // `Variant(a, a)`, error
@@ -2946,7 +2946,7 @@ impl<'a> Resolver<'a> {
             Def::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", def)
             }
-            Def::Local(def_id) => {
+            Def::Local(node_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | ModuleRibKind(..) | MacroDefinition(..) |
@@ -2955,20 +2955,19 @@ impl<'a> Resolver<'a> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            let node_id = self.definitions.as_local_node_id(def_id).unwrap();
 
                             let seen = self.freevars_seen
                                            .entry(function_id)
                                            .or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = Def::Upvar(def_id, index, function_id);
+                                def = Def::Upvar(node_id, index, function_id);
                                 continue;
                             }
                             let vec = self.freevars
                                           .entry(function_id)
                                           .or_insert_with(|| vec![]);
                             let depth = vec.len();
-                            def = Def::Upvar(def_id, depth, function_id);
+                            def = Def::Upvar(node_id, depth, function_id);
 
                             if record_used {
                                 vec.push(Freevar {
@@ -3043,7 +3042,7 @@ impl<'a> Resolver<'a> {
         }
 
         // Fields are generally expected in the same contexts as locals.
-        if filter_fn(Def::Local(DefId::local(CRATE_DEF_INDEX))) {
+        if filter_fn(Def::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.def_map.get(&node_id) {
