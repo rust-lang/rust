@@ -403,8 +403,14 @@ labels to triage issues:
 * Dark blue, **beta-** labels track changes which need to be backported into
   the beta branches.
 
+* Light purple, **C**-prefixed labels represent the **category** of an issue.
+
 * Green, **E**-prefixed labels explain the level of **experience** necessary
   to fix the issue.
+
+* The dark blue **final-comment-period** label marks bugs that are using the
+  RFC signoff functionality of [rfcbot][rfcbot] and are currenty in the final
+  comment period.
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
   [I-nominated][inom] label indicates that an issue has been nominated for
@@ -413,9 +419,25 @@ labels to triage issues:
 * The purple **metabug** label marks lists of bugs collected by other
   categories.
 
+* Purple gray, **O**-prefixed labels are the **operating system** or platform
+  that this issue is specific to.
+
 * Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
   are only assigned during triage meetings, and replace the [I-nominated][inom]
   label.
+
+* The gray **proposed-final-comment-period** label marks bugs that are using
+  the RFC signoff functionality of [rfcbot][rfcbot] and are currently awaiting
+  signoff of all team members in order to enter the final comment period.
+
+* Pink, **regression**-prefixed labels track regressions from stable to the
+  release channels.
+
+* The light orange **relnotes** label marks issues that should be documented in
+  the release notes of the next release.
+
+* Gray, **S**-prefixed labels are used for tracking the **status** of pull
+  requests.
 
 * Blue, **T**-prefixed bugs denote which **team** the issue belongs to.
 
@@ -424,6 +446,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
+[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
 
 ## Out-of-tree Contributions
 
