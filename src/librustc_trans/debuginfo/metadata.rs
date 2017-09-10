@@ -1311,7 +1311,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 // Creates MemberDescriptions for the fields of a single enum variant.
 struct VariantMemberDescriptionFactory<'tcx> {
     // Cloned from the layout::Struct describing the variant.
-    offsets: &'tcx [layout::Size],
+    offsets: Vec<layout::Size>,
     args: Vec<(String, Ty<'tcx>)>,
     discriminant_type_metadata: Option<DIType>,
     span: Span,
@@ -1407,8 +1407,12 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // If this is not a univariant enum, there is also the discriminant field.
+    let mut offsets = struct_def.offsets.clone();
     match discriminant_info {
-        RegularDiscriminant(_) => arg_names.insert(0, "RUST$ENUM$DISR".to_string()),
+        RegularDiscriminant(_) => {
+            arg_names.insert(0, "RUST$ENUM$DISR".to_string());
+            offsets.insert(0, Size::from_bytes(0));
+        }
         _ => { /* do nothing */ }
     };
 
@@ -1420,7 +1424,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
-            offsets: &struct_def.offsets[..],
+            offsets,
             args,
             discriminant_type_metadata: match discriminant_info {
                 RegularDiscriminant(discriminant_type_metadata) => {

@@ -90,8 +90,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (l.for_variant(nndiscr as usize), nonnull),
                 _ => unreachable!()
             };
-            llty.set_struct_body(&struct_llfields(cx, variant_layout, variant, None),
-                                 variant.packed)
+            llty.set_struct_body(&struct_llfields(cx, variant_layout, variant), variant.packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
     }
@@ -116,7 +115,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             match name {
                 None => {
                     Type::struct_(cx, &struct_llfields(cx, l.for_variant(nndiscr as usize),
-                                                       nonnull, None),
+                                                       nonnull),
                                   nonnull.packed)
                 }
                 Some(name) => {
@@ -127,7 +126,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::Univariant { ref variant, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, l, &variant, None),
+                    Type::struct_(cx, &struct_llfields(cx, l, &variant),
                                   variant.packed)
                 }
                 Some(name) => {
@@ -209,23 +208,16 @@ pub fn memory_index_to_gep(index: u64) -> u64 {
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  layout: TyLayout<'tcx>,
-                                 variant: &layout::Struct,
-                                 discr: Option<Ty<'tcx>>) -> Vec<Type> {
-    let field_count = (discr.is_some() as usize) + layout.field_count();
+                                 variant: &layout::Struct) -> Vec<Type> {
+    let field_count = layout.field_count();
     debug!("struct_llfields: variant: {:?}", variant);
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
-    let field_iter = variant.field_index_by_increasing_offset().map(|i| {
-        let ty = if i == 0 && discr.is_some() {
-            cx.layout_of(discr.unwrap())
-        } else {
-            layout.field(cx, i - discr.is_some() as usize)
-        };
-        (i, ty, variant.offsets[i as usize])
-    });
-    for (index, field, target_offset) in field_iter {
+    for i in variant.field_index_by_increasing_offset() {
+        let field = layout.field(cx, i);
+        let target_offset = variant.offsets[i as usize];
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
-            index, field, offset, target_offset);
+            i, field, offset, target_offset);
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
         result.push(Type::array(&Type::i8(cx), padding.bytes()));

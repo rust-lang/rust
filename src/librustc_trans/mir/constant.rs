@@ -1051,11 +1051,8 @@ fn trans_const_adt<'a, 'tcx>(
         layout::General { discr: d, ref variants, .. } => {
             let variant = &variants[variant_index];
             let lldiscr = C_int(Type::from_integer(ccx, d), variant_index as i64);
-            let mut vals_with_discr = vec![
-                Const::new(lldiscr, d.to_ty(ccx.tcx(), false))
-            ];
-            vals_with_discr.extend_from_slice(vals);
-            build_const_struct(ccx, l, &variant, &vals_with_discr)
+            build_const_struct(ccx, l, &variant, vals,
+                Some(Const::new(lldiscr, d.to_ty(ccx.tcx(), false))))
         }
         layout::UntaggedUnion { ref variants, .. }=> {
             assert_eq!(variant_index, 0);
@@ -1068,7 +1065,7 @@ fn trans_const_adt<'a, 'tcx>(
         }
         layout::Univariant { ref variant, .. } => {
             assert_eq!(variant_index, 0);
-            build_const_struct(ccx, l, &variant, vals)
+            build_const_struct(ccx, l, &variant, vals, None)
         }
         layout::Vector { .. } => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
@@ -1083,7 +1080,7 @@ fn trans_const_adt<'a, 'tcx>(
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
-                build_const_struct(ccx, l, &nonnull, vals)
+                build_const_struct(ccx, l, &nonnull, vals, None)
             } else {
                 // Always use null even if it's not the `discrfield`th
                 // field; see #8506.
@@ -1105,14 +1102,20 @@ fn trans_const_adt<'a, 'tcx>(
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 layout: layout::TyLayout<'tcx>,
                                 st: &layout::Struct,
-                                vals: &[Const<'tcx>])
+                                vals: &[Const<'tcx>],
+                                discr: Option<Const<'tcx>>)
                                 -> Const<'tcx> {
     assert_eq!(vals.len(), st.offsets.len());
 
     // offset of current value
     let mut offset = Size::from_bytes(0);
     let mut cfields = Vec::new();
-    cfields.reserve(st.offsets.len()*2);
+    cfields.reserve(discr.is_some() as usize + 1 + st.offsets.len() * 2);
+
+    if let Some(discr) = discr {
+        cfields.push(discr.llval);
+        offset = ccx.size_of(discr.ty);
+    }
 
     let parts = st.field_index_by_increasing_offset().map(|i| {
         (vals[i], st.offsets[i])

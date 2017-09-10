@@ -236,14 +236,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             _ => {}
         }
 
-        // Adjust the index to account for enum discriminants in variants.
-        let mut ix = ix;
-        if let layout::General { .. } = *l {
-            if l.variant_index.is_some() {
-                ix += 1;
-            }
-        }
-
         let simple = || {
             LvalueRef {
                 llval: bcx.struct_gep(self.llval, l.llvm_field_index(ix)),
@@ -474,11 +466,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
             // If this is an enum, cast to the appropriate variant struct type.
             let layout = bcx.ccx.layout_of(ty).for_variant(variant_index);
-            if let layout::General { discr, ref variants, .. } = *layout {
+            if let layout::General { ref variants, .. } = *layout {
                 let st = &variants[variant_index];
                 let variant_ty = Type::struct_(bcx.ccx,
-                    &adt::struct_llfields(bcx.ccx, layout, st,
-                        Some(discr.to_ty(bcx.tcx(), false))), st.packed);
+                    &adt::struct_llfields(bcx.ccx, layout, st), st.packed);
                 downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
             }
 
