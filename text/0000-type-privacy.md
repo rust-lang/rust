@@ -151,7 +151,7 @@ mod m {
 let x = m::leak();
 ```
 
-The rule behind private-in-public rules is very simple, if some type has
+The logic behind private-in-public rules is very simple, if some type has
 visibility `vis_type` then it cannot be used in interfaces of items with
 visibilities `vis_interface` where `vis_interface > vis_type`.  
 In particular, this code is illegal
@@ -197,7 +197,7 @@ Meet reachability-based private-in-public *lints*!
 
 Effective visibility of an item is how far it's actually reexported or leaked
 through other means, like return types.  
-Effective visibility can never be larger than nominal visibility (e.g. what
+Effective visibility can never be larger than nominal visibility (i.e. what
 `pub` annotation says), but it can be smaller.
 
 For example, in the `outer`/`inner` example nominal visibility of `f` is `pub`,
@@ -256,8 +256,8 @@ Provisional name for the lint - `private_bounds`.
 Consider this code
 ```rust
 mod m {
-    // `S` has public nominal visibility,
-    // but its effective visibility is `pub(in m)`
+    // `S` has public nominal and effective visibility,
+    // but it can't be *named* outside of `m::super`.
     pub struct S;
 }
 
@@ -271,7 +271,7 @@ The "Voldemort type" (or, more often, "Voldemort trait") pattern has legitimate
 uses, but often it's just an oversight and `S` is supposed to be reexported and
 nameable from outer modules.  
 The lint is supposed to report items for which effective visibility is larger
-than area in which they can be named.  
+than the area in which they can be named.  
 This lint is new and doesn't replace private-in-public errors, but it provides
 checking that many people *expected* from private-in-public.  
 The lint should be allow-by-default or it can be placed into Clippy as an
@@ -415,9 +415,9 @@ let x = Pub::C;
 let x: <Pub<_> as Trait>::A;
 ```
 In principle, this restriction can be considered a part of the primary type
-privacy rule - "can't name a private type" - if all `_`s (types to infer) are
-replaced by their inferred types before checking, so `Pub` and `Pub<_>` in the
-examples above become `Pub<Priv>`.
+privacy rule - "can't name a private type" - if all `_`s (types to infer, 
+explicit or implicit) are replaced by their inferred types before checking, so
+`Pub` and `Pub<_>` in the examples above become `Pub<Priv>`.
 
 ### Lints
 
@@ -446,13 +446,13 @@ This lint is warn-by-default.
 
 Lint `private_bounds` is reported when a type or trait with visibility `x` is
 used in secondary interface of an item with effective visibility `y` and
-`x < y`.
+`x < y`.  
 This lint is warn-by-default.
 
 Lint `unnameable_types` is reported when effective visibility of a type is
 larger than module in which it can be named, either directly, or through
 reexports, or through trivial type aliases (`type X = Y;`, no generics on both
-sides).
+sides).  
 This lint is allow-by-default.
 
 Compatibility lint `private_in_public` is never reported and removed.
