@@ -645,6 +645,15 @@ pub fn multispan_sugg(db: &mut DiagnosticBuilder, help_msg: String, sugg: Vec<(S
     db.suggestions.push(sugg);
 }
 
+/// Return the base type for HIR references and pointers.
+pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
+    match ty.node {
+        TyPtr(ref mut_ty) |
+        TyRptr(_, ref mut_ty) => walk_ptrs_hir_ty(&mut_ty.ty),
+        _ => ty
+    }
+}
+
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty) -> Ty {
     match ty.sty {
