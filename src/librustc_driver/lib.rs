@@ -27,6 +27,8 @@
 
 #[cfg(not(feature="llvm"))]
 extern crate ar;
+#[cfg(not(feature="llvm"))]
+extern crate flate2;
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
@@ -202,7 +204,8 @@ mod no_llvm_metadata_loader {
                             _target: &Target,
                             _filename: &Path)
                             -> Result<ErasedBoxRef<[u8]>, String> {
-            panic!("Dylib metadata loading not supported without LLVM")
+            // FIXME: Support reading dylibs from llvm enabled rustc
+            self.get_rlib_metadata(_target, _filename)
         }
     }
 }

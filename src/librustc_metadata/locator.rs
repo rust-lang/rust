@@ -457,14 +457,6 @@ impl<'a> Context<'a> {
         //
         // The goal of this step is to look at as little metadata as possible.
         self.filesearch.search(|path, kind| {
-            let mut path = path.to_owned();
-            if cfg!(not(feature="llvm")) {
-                // This is a hack to make crates both defined as dylib
-                // and rlib to be findable without LLVM
-                path.set_extension("rlib");
-            }
-            let path = &path;
-
             let file = match path.file_name().and_then(|s| s.to_str()) {
                 None => return FileDoesntMatch,
                 Some(file) => file,
@@ -753,15 +745,7 @@ impl<'a> Context<'a> {
         let mut rmetas = FxHashMap();
         let mut dylibs = FxHashMap();
         {
-            let locs = locs.map(|l| PathBuf::from(l))
-                .map(|mut l| {
-                    if cfg!(not(feature="llvm")) {
-                        // This is a hack to make crates both defined as dylib
-                        // and rlib to be findable without LLVM
-                        l.set_extension("rlib");
-                    }
-                    l
-                }).filter(|loc| {
+            let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                       self.crate_name,

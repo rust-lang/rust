@@ -69,7 +69,7 @@ use derive_registrar;
 
 use profile;
 
-pub fn compile_input(sess: &mut Session,
+pub fn compile_input(sess: &Session,
                      cstore: &CStore,
                      input: &Input,
                      outdir: &Option<PathBuf>,
@@ -100,31 +100,20 @@ pub fn compile_input(sess: &mut Session,
             sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
         }
 
-        for cty in sess.opts.crate_types.iter_mut() {
+        for cty in sess.opts.crate_types.iter() {
             match *cty {
-                CrateType::CrateTypeRlib | CrateType::CrateTypeExecutable => {},
-                CrateType::CrateTypeDylib | CrateType::CrateTypeCdylib |
-                CrateType::CrateTypeStaticlib => {
+                CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
+                CrateType::CrateTypeExecutable => {},
+                _ => {
                     sess.parse_sess.span_diagnostic.warn(
-                        &format!("LLVM unsupported, so non rlib output type {} \
-                                  will be treated like rlib lib", cty)
+                        &format!("LLVM unsupported, so output type {} is not supported", cty)
                     );
-                    *cty = CrateType::CrateTypeRlib;
                 },
-                CrateType::CrateTypeProcMacro => {
-                    sess.parse_sess.span_diagnostic.err(
-                        "No LLVM support, so cant compile proc macros"
-                    );
-                }
             }
         }
 
         sess.abort_if_errors();
     }
-
-    // Make sure nobody changes sess after crate types
-    // have optionally been adjusted for no llvm builds
-    let sess = &*sess;
 
     if sess.profile_queries() {
         profile::begin();
@@ -283,7 +272,8 @@ pub fn compile_input(sess: &mut Session,
     if cfg!(not(feature="llvm")) {
         let (_, _) = (outputs, trans);
 
-        if sess.opts.crate_types.contains(&CrateType::CrateTypeRlib) {
+        if sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
+            || sess.opts.crate_types.contains(&CrateType::CrateTypeDylib) {
             return Ok(())
         }
         sess.fatal("LLVM is not supported by this rustc");
