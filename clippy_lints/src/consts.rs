@@ -171,7 +171,7 @@ pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut
     match *lit {
         LitKind::Str(ref is, style) => Constant::Str(is.to_string(), style),
         LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),
-        LitKind::ByteStr(ref s) => Constant::Binary(s.clone()),
+        LitKind::ByteStr(ref s) => Constant::Binary(Rc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, hint) => match (&ty.sty, hint) {
             (&ty::TyInt(ity), _) | (_, Signed(ity)) => {

@@ -310,6 +310,24 @@ declare_lint! {
     "using `clone` on a `Copy` type"
 }
 
+/// **What it does:** Checks for usage of `.clone()` on a ref-counted pointer,
+/// (Rc, Arc, rc::Weak, or sync::Weak), and suggests calling Clone on
+/// the corresponding trait instead.
+///
+/// **Why is this bad?**: Calling '.clone()' on an Rc, Arc, or Weak
+/// can obscure the fact that only the pointer is being cloned, not the underlying
+/// data.
+///
+/// **Example:**
+/// ```rust
+/// x.clone()
+/// ```
+declare_lint! {
+    pub CLONE_ON_REF_PTR,
+    Warn,
+    "using 'clone' on a ref-counted pointer"
+}
+
 /// **What it does:** Checks for usage of `.clone()` on an `&&T`.
 ///
 /// **Why is this bad?** Cloning an `&&T` copies the inner `&T`, instead of
@@ -539,6 +557,7 @@ impl LintPass for Pass {
             OR_FUN_CALL,
             CHARS_NEXT_CMP,
             CLONE_ON_COPY,
+            CLONE_ON_REF_PTR,
             CLONE_DOUBLE_REF,
             NEW_RET_NO_SELF,
             SINGLE_CHAR_PATTERN,
@@ -615,6 +634,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && method_call.name == "clone" {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
+                    lint_clone_on_ref_ptr(cx, expr, &args[0]);
                 }
 
                 match self_ty.sty {
@@ -852,6 +872,34 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
         });
     }
 }
+
+fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
+    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(arg));
+
+    let caller_type = if match_type(cx, obj_ty, &paths::RC) {
+        "Rc"
+    } else if match_type(cx, obj_ty, &paths::ARC) {
+        "Arc"
+    } else if match_type(cx, obj_ty, &paths::WEAK_RC) || match_type(cx, obj_ty, &paths::WEAK_ARC) {
+        "Weak"
+    } else {
+        return;
+    };
+
+    span_lint_and_sugg(
+        cx,
+        CLONE_ON_REF_PTR,
+        expr.span,
+        "using '.clone()' on a ref-counted pointer",
+        "try this",
+        format!("{}::clone(&{})",
+            caller_type,
+            snippet(cx, arg.span, "_")
+        )
+    );
+
+}
+
 
 fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
