@@ -32,8 +32,6 @@ use std::mem;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
                                            StableHasherResult};
 
-use rustc::dep_graph::{DepGraph, DepNode};
-
 pub fn rustc_version() -> String {
     format!("rustc {}",
             option_env!("CFG_VERSION").unwrap_or("unknown version"))
@@ -188,75 +186,27 @@ pub enum LazyState {
     Previous(usize),
 }
 
-/// A `Tracked<T>` wraps a value so that one can only access it when specifying
-/// the `DepNode` for that value. This makes it harder to forget registering
-/// reads.
-#[derive(RustcEncodable, RustcDecodable)]
-pub struct Tracked<T> {
-    state: T,
-}
-
-impl<T> Tracked<T> {
-    pub fn new(state: T) -> Tracked<T> {
-        Tracked {
-            state,
-        }
-    }
-
-    pub fn get(&self, dep_graph: &DepGraph, dep_node: DepNode) -> &T {
-        dep_graph.read(dep_node);
-        &self.state
-    }
-
-    pub fn get_untracked(&self) -> &T {
-        &self.state
-    }
-
-    pub fn map<F, R>(&self, f: F) -> Tracked<R>
-        where F: FnOnce(&T) -> R
-    {
-        Tracked {
-            state: f(&self.state),
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx, T> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Tracked<T>
-    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let Tracked {
-            ref state
-        } = *self;
-
-        state.hash_stable(hcx, hasher);
-    }
-}
-
-
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
     pub name: Symbol,
     pub triple: String,
     pub hash: hir::svh::Svh,
     pub disambiguator: Symbol,
-    pub panic_strategy: Tracked<PanicStrategy>,
-    pub has_global_allocator: Tracked<bool>,
-    pub has_default_lib_allocator: Tracked<bool>,
+    pub panic_strategy: PanicStrategy,
+    pub has_global_allocator: bool,
+    pub has_default_lib_allocator: bool,
     pub plugin_registrar_fn: Option<DefIndex>,
     pub macro_derive_registrar: Option<DefIndex>,
 
-    pub crate_deps: Tracked<LazySeq<CrateDep>>,
-    pub dylib_dependency_formats: Tracked<LazySeq<Option<LinkagePreference>>>,
-    pub lang_items: Tracked<LazySeq<(DefIndex, usize)>>,
-    pub lang_items_missing: Tracked<LazySeq<lang_items::LangItem>>,
-    pub native_libraries: Tracked<LazySeq<NativeLibrary>>,
+    pub crate_deps: LazySeq<CrateDep>,
+    pub dylib_dependency_formats: LazySeq<Option<LinkagePreference>>,
+    pub lang_items: LazySeq<(DefIndex, usize)>,
+    pub lang_items_missing: LazySeq<lang_items::LangItem>,
+    pub native_libraries: LazySeq<NativeLibrary>,
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
-    pub impls: Tracked<LazySeq<TraitImpls>>,
-    pub exported_symbols: Tracked<LazySeq<DefIndex>>,
+    pub impls: LazySeq<TraitImpls>,
+    pub exported_symbols: LazySeq<DefIndex>,
     pub index: LazySeq<index::Index>,
 }
 

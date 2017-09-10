@@ -13,7 +13,7 @@
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use native_libs::relevant_lib;
-use schema::{CrateRoot, Tracked};
+use schema::CrateRoot;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
@@ -261,16 +261,13 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode(&metadata)
         });
 
-        let exported_symbols = crate_root.exported_symbols
-                                         .map(|x| x.decode(&metadata).collect());
+        let exported_symbols = crate_root.exported_symbols.decode(&metadata).collect();
 
         let trait_impls = crate_root
             .impls
-            .map(|impls| {
-                impls.decode(&metadata)
-                     .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-                     .collect()
-            });
+            .decode(&metadata)
+            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
+            .collect();
 
         let mut cmeta = cstore::CrateMetadata {
             name,
@@ -295,23 +292,17 @@ impl<'a> CrateLoader<'a> {
             },
             // Initialize this with an empty set. The field is populated below
             // after we were able to deserialize its contents.
-            dllimport_foreign_items: Tracked::new(FxHashSet()),
+            dllimport_foreign_items: FxHashSet(),
         };
 
-        let dllimports: Tracked<FxHashSet<_>> = cmeta
+        let dllimports: FxHashSet<_> = cmeta
             .root
             .native_libraries
-            .map(|native_libraries| {
-                let native_libraries: Vec<_> = native_libraries.decode(&cmeta)
-                                                               .collect();
-                native_libraries
-                    .iter()
-                    .filter(|lib| relevant_lib(self.sess, lib) &&
-                                  lib.kind == cstore::NativeLibraryKind::NativeUnknown)
-                    .flat_map(|lib| lib.foreign_items.iter())
-                    .map(|id| *id)
-                    .collect()
-            });
+            .decode(&cmeta)
+            .filter(|lib| relevant_lib(self.sess, lib) &&
+                          lib.kind == cstore::NativeLibraryKind::NativeUnknown)
+            .flat_map(|lib| lib.foreign_items.into_iter())
+            .collect();
 
         cmeta.dllimport_foreign_items = dllimports;
 
@@ -469,7 +460,6 @@ impl<'a> CrateLoader<'a> {
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
         ::std::iter::once(krate).chain(crate_root.crate_deps
-                                                 .get_untracked()
                                                  .decode(metadata)
                                                  .map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
@@ -692,16 +682,14 @@ impl<'a> CrateLoader<'a> {
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
                                                           "needs_panic_runtime");
 
-        let dep_graph = &self.sess.dep_graph;
-
         self.cstore.iter_crate_data(|cnum, data| {
             needs_panic_runtime = needs_panic_runtime ||
-                                  data.needs_panic_runtime(dep_graph);
-            if data.is_panic_runtime(dep_graph) {
+                                  data.needs_panic_runtime();
+            if data.is_panic_runtime() {
                 // Inject a dependency from all #![needs_panic_runtime] to this
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
-                                          &|data| data.needs_panic_runtime(dep_graph));
+                                          &|data| data.needs_panic_runtime());
                 runtime_found = runtime_found || data.dep_kind.get() == DepKind::Explicit;
             }
         });
@@ -737,11 +725,11 @@ impl<'a> CrateLoader<'a> {
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
-        if !data.is_panic_runtime(dep_graph) {
+        if !data.is_panic_runtime() {
             self.sess.err(&format!("the crate `{}` is not a panic runtime",
                                    name));
         }
-        if data.panic_strategy(dep_graph) != desired_strategy {
+        if data.panic_strategy() != desired_strategy {
             self.sess.err(&format!("the crate `{}` does not have the panic \
                                     strategy `{}`",
                                    name, desired_strategy.desc()));
@@ -749,7 +737,7 @@ impl<'a> CrateLoader<'a> {
 
         self.sess.injected_panic_runtime.set(Some(cnum));
         self.inject_dependency_if(cnum, "a panic runtime",
-                                  &|data| data.needs_panic_runtime(dep_graph));
+                                  &|data| data.needs_panic_runtime());
     }
 
     fn inject_sanitizer_runtime(&mut self) {
@@ -844,7 +832,7 @@ impl<'a> CrateLoader<'a> {
                                        PathKind::Crate, dep_kind);
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-                if !data.is_sanitizer_runtime(&self.sess.dep_graph) {
+                if !data.is_sanitizer_runtime() {
                     self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
                                            name));
                 }
@@ -865,7 +853,7 @@ impl<'a> CrateLoader<'a> {
                                    PathKind::Crate, dep_kind);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-            if !data.is_profiler_runtime(&self.sess.dep_graph) {
+            if !data.is_profiler_runtime() {
                 self.sess.err(&format!("the crate `profiler_builtins` is not \
                                         a profiler runtime"));
             }
@@ -883,9 +871,8 @@ impl<'a> CrateLoader<'a> {
         // written down in liballoc.
         let mut needs_allocator = attr::contains_name(&krate.attrs,
                                                       "needs_allocator");
-        let dep_graph = &self.sess.dep_graph;
         self.cstore.iter_crate_data(|_, data| {
-            needs_allocator = needs_allocator || data.needs_allocator(dep_graph);
+            needs_allocator = needs_allocator || data.needs_allocator();
         });
         if !needs_allocator {
             return
@@ -917,14 +904,13 @@ impl<'a> CrateLoader<'a> {
         // First up we check for global allocators. Look at the crate graph here
         // and see what's a global allocator, including if we ourselves are a
         // global allocator.
-        let dep_graph = &self.sess.dep_graph;
         let mut global_allocator = if has_global_allocator {
             Some(None)
         } else {
             None
         };
         self.cstore.iter_crate_data(|_, data| {
-            if !data.has_global_allocator(dep_graph) {
+            if !data.has_global_allocator() {
                 return
             }
             match global_allocator {
@@ -983,12 +969,6 @@ impl<'a> CrateLoader<'a> {
                                        DUMMY_SP,
                                        PathKind::Crate, dep_kind);
                 self.sess.injected_allocator.set(Some(cnum));
-            //     self.cstore.iter_crate_data(|_, data| {
-            //         if !data.needs_allocator(dep_graph) {
-            //             return
-            //         }
-            //         data.cnum_map.borrow_mut().push(cnum);
-            //     });
             }
 
             // We're not actually going to inject an allocator, we're going to
@@ -1001,7 +981,7 @@ impl<'a> CrateLoader<'a> {
                     attr::contains_name(&krate.attrs, "default_lib_allocator");
                 self.cstore.iter_crate_data(|_, data| {
                     if !found_lib_allocator {
-                        if data.has_default_lib_allocator(dep_graph) {
+                        if data.has_default_lib_allocator() {
                             found_lib_allocator = true;
                         }
                     }

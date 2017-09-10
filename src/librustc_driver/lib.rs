@@ -294,7 +294,7 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
@@ -574,7 +574,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
+                let cstore = Rc::new(CStore::new(box ::MetadataLoader));
                 let mut sess = build_session(sopts.clone(),
                     &dep_graph,
                     None,
