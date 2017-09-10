@@ -71,7 +71,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(..) => {
                 let def_id = tcx.hir.local_def_id(id);
-                tcx.sess.cstore.is_statically_included_foreign_item(def_id)
+                tcx.is_statically_included_foreign_item(def_id)
             }
 
             // Only consider nodes that actually have exported symbols.

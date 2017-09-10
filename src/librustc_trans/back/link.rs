@@ -18,8 +18,7 @@ use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, Pri
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc::ich::Fingerprint;
-use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, NativeLibraryKind};
+use rustc::middle::cstore::{NativeLibrary, LibSource, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
