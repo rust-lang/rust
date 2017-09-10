@@ -62,6 +62,7 @@ struct ToolBuild {
     compiler: Compiler,
     target: Interned<String>,
     tool: &'static str,
+    path: &'static str,
     mode: Mode,
 }
 
@@ -81,6 +82,7 @@ impl Step for ToolBuild {
         let compiler = self.compiler;
         let target = self.target;
         let tool = self.tool;
+        let path = self.path;
 
         match self.mode {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
@@ -92,7 +94,7 @@ impl Step for ToolBuild {
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, target, tool);
+        let mut cargo = prepare_tool_cargo(builder, compiler, target, path);
         build.run(&mut cargo);
         build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
     }
@@ -102,11 +104,11 @@ fn prepare_tool_cargo(
     builder: &Builder,
     compiler: Compiler,
     target: Interned<String>,
-    tool: &'static str,
+    path: &'static str,
 ) -> Command {
     let build = builder.build;
     let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
-    let dir = build.src.join("src/tools").join(tool);
+    let dir = build.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across
@@ -184,6 +186,7 @@ macro_rules! tool {
                     target: self.target,
                     tool: $tool_name,
                     mode: $mode,
+                    path: $path,
                 })
             }
         }
@@ -201,7 +204,7 @@ tool!(
     Compiletest, "src/tools/compiletest", "compiletest", Mode::Libtest;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::Libstd;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::Libstd;
-    RustInstaller, "src/tools/rust-installer", "rust-installer", Mode::Libstd;
+    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::Libstd;
 );
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -230,6 +233,7 @@ impl Step for RemoteTestServer {
             target: self.target,
             tool: "remote-test-server",
             mode: Mode::Libstd,
+            path: "src/tools/remote-test-server",
         })
     }
 }
@@ -276,7 +280,10 @@ impl Step for Rustdoc {
         let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
         println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
 
-        let mut cargo = prepare_tool_cargo(builder, build_compiler, target, "rustdoc");
+        let mut cargo = prepare_tool_cargo(builder,
+                                           build_compiler,
+                                           target,
+                                           "src/tools/rustdoc");
         build.run(&mut cargo);
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
@@ -337,6 +344,7 @@ impl Step for Cargo {
             target: self.target,
             tool: "cargo",
             mode: Mode::Librustc,
+            path: "src/tools/cargo",
         })
     }
 }
@@ -375,6 +383,7 @@ impl Step for Clippy {
             target: self.target,
             tool: "clippy",
             mode: Mode::Librustc,
+            path: "src/tools/clippy",
         })
     }
 }
@@ -417,6 +426,7 @@ impl Step for Rls {
             target: self.target,
             tool: "rls",
             mode: Mode::Librustc,
+            path: "src/tools/rls",
         })
     }
 }
