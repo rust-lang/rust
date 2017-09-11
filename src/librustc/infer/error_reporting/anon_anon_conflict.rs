@@ -192,7 +192,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             hir_map: &self.tcx.hir,
             bound_region: *br,
             found_type: None,
-            depth: 0,
+            depth: 1,
         };
         nested_visitor.visit_ty(arg);
         nested_visitor.found_type
@@ -233,6 +233,14 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
         };
 
         match arg.node {
+
+            hir::TyBareFn(ref fndecl) => {
+                self.depth += 1;
+                intravisit::walk_ty(self, arg);
+                self.depth -= 1;
+                return;
+            }
+
             hir::TyRptr(ref lifetime, _) => {
                 match self.infcx.tcx.named_region_map.defs.get(&lifetime.id) {
                     // the lifetime of the TyRptr
@@ -266,38 +274,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                 }
             }
 
-            hir::TyBareFn(ref fndecl) => {
-                fndecl.lifetimes.iter().map(|lf| {
-                                            debug!("arg we are handling is...{:?}",arg);
-                    match self.infcx.tcx.named_region_map.defs.get(&lf.lifetime.id) {
-                        Some(&rl::Region::LateBoundAnon(debuijn_index, anon_index)) => {
-                            debug!("debuijn_index.depth ={:?} self.depth = {:?} anon_index ={:?} br_index={:?}",
-                            debuijn_index.depth, self.depth, anon_index, br_index);
-                        if debuijn_index.depth == self.depth && anon_index == br_index {
-                            debug!("arg is {:?}",Some(arg));
-                            self.found_type = Some(arg);
-                            return; // we can stop visiting now
-                        }
-                    }
-                    Some(&rl::Region::Static) |
-                    Some(&rl::Region::EarlyBound(_, _)) |
-                    Some(&rl::Region::LateBound(_, _)) |
-                    Some(&rl::Region::Free(_, _)) |
-                    None => {
-                        debug!("no arg found");
-                    }
-                }       
-            
-            }).next();}
-            
             _ => {}
         }
         // walk the embedded contents: e.g., if we are visiting `Vec<&Foo>`,
         // go on to visit `&Foo`
-        self.depth += 1;
-        debug!("depth is {:?}",self.depth);
+        debug!("depth is {:?}", self.depth);
         intravisit::walk_ty(self, arg);
-        self.depth += 1;
+
     }
 }
 
@@ -324,7 +307,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
             ty::BrAnon(index) => index,
             _ => return,
         };
-
 
         match self.infcx.tcx.named_region_map.defs.get(&lifetime.id) {
             // the lifetime of the TyPath!
