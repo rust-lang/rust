@@ -1783,7 +1783,7 @@ impl str {
     }
 
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
-    /// 
+    ///
     /// # Examples
     ///
     /// Basic usage:
