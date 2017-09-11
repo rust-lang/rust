@@ -1,7 +1,7 @@
 - Feature Name: panic_implementation
 - Start Date: 2017-07-19
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2070
+- Rust Issue: https://github.com/rust-lang/rust/issues/44489
 
 # Summary
 [summary]: #summary
