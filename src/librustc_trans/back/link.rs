@@ -185,7 +185,11 @@ pub fn link_binary(sess: &Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let mut out_files = link_binary_output(sess, trans, crate_type, outputs, crate_name);
+        let mut out_files = link_binary_output(sess,
+                                               trans,
+                                               crate_type,
+                                               outputs,
+                                               crate_name);
         out_filenames.append(&mut out_files);
     }
 
@@ -346,8 +350,8 @@ fn link_binary_output(sess: &Session,
                                tmpdir.path());
             }
             _ => {
-                link_natively(sess, crate_type, &objects, &out_filename, trans,
-                              outputs, tmpdir.path());
+                link_natively(sess, crate_type, &objects, &out_filename,
+                              trans, outputs, tmpdir.path());
             }
         }
         out_filenames.push(out_filename);

@@ -148,7 +148,7 @@ pub fn run_core(search_paths: SearchPaths,
     let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, cpath, diagnostic_handler, codemap, cstore.clone()
+        sessopts, &dep_graph, cpath, diagnostic_handler, codemap
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -181,6 +181,7 @@ pub fn run_core(search_paths: SearchPaths,
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                                                     &*cstore,
                                                      hir_map,
                                                      analysis,
                                                      resolutions,
@@ -214,7 +215,7 @@ pub fn run_core(search_paths: SearchPaths,
         debug!("crate: {:?}", tcx.hir.krate());
 
         let krate = {
-            let mut v = RustdocVisitor::new(&ctxt);
+            let mut v = RustdocVisitor::new(&*cstore, &ctxt);
             v.visit(tcx.hir.krate());
             v.clean(&ctxt)
         };

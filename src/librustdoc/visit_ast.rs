@@ -21,7 +21,7 @@ use syntax_pos::Span;
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::{LoadedMacro, CrateStore};
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FxHashSet;
 
@@ -40,6 +40,7 @@ use doctree::*;
 // framework from syntax?
 
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
+    cstore: &'tcx CrateStore,
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
@@ -51,7 +52,8 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
+    pub fn new(cstore: &'tcx CrateStore,
+               cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
@@ -63,6 +65,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             inlining: false,
             inside_public_path: true,
             reexported_macros: FxHashSet(),
+            cstore,
         }
     }
 
@@ -208,8 +211,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     }
 
                     let imported_from = self.cx.tcx.original_crate_name(def_id.krate);
-                    let cstore = &self.cx.sess().cstore;
-                    let def = match cstore.load_macro_untracked(def_id, self.cx.sess()) {
+                    let def = match self.cstore.load_macro_untracked(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
                         // FIXME(jseyfried): document proc macro reexports
                         LoadedMacro::ProcMacro(..) => continue,
