@@ -1783,6 +1783,17 @@ impl str {
     }
 
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
+    /// 
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = "this is a string";
+    /// let boxed_str = s.to_owned().into_boxed_str();
+    /// let boxed_bytes = boxed_str.into_boxed_bytes();
+    /// assert_eq!(*boxed_bytes, *s.as_bytes());
+    /// ```
     #[stable(feature = "str_box_extras", since = "1.20.0")]
     pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
         self.into()
