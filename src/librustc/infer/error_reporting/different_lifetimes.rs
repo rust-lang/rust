@@ -110,7 +110,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 };
                 (ty_sup.span, ty_sub.span, main_label_1, span_label_1)
             }
-            
+
             (Some(ret_span), _) => {
                 (ty_sub.span,
                  ret_span,
