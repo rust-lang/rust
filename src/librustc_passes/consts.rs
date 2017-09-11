@@ -336,9 +336,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
                 Def::VariantCtor(..) | Def::StructCtor(..) |
                 Def::Fn(..) | Def::Method(..) =>  {}
 
-                // References to a static are inherently promotable,
-                // with the exception of "#[thread_loca]" statics.
-                // The latter may not outlive the current function
+                // References to a static that are themselves within a static
+                // are inherently promotable with the exception
+                //  of "#[thread_loca]" statics, which may not
+                // outlive the current function
                 Def::Static(did, _) => {
 
                     if v.in_static {
