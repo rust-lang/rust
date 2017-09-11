@@ -824,12 +824,14 @@ impl<K, V> RawTable<K, V> {
     }
 
     /// The hashtable's capacity, similar to a vector's.
+    #[inline]
     pub fn capacity(&self) -> usize {
         self.capacity_mask.wrapping_add(1)
     }
 
     /// The number of elements ever `put` in the hashtable, minus the number
     /// of elements ever `take`n.
+    #[inline]
     pub fn size(&self) -> usize {
         self.size
     }
