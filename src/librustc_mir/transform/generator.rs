@@ -244,6 +244,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
 
         if let Some((state_idx, resume, v, drop)) = ret_val {
             let source_info = data.terminator().source_info;
+            // We must assign the value first in case it gets declared dead below
+            data.statements.push(Statement {
+                source_info,
+                kind: StatementKind::Assign(Lvalue::Local(RETURN_POINTER),
+                    self.make_state(state_idx, v)),
+            });
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len() as u32;
 
@@ -272,11 +278,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                  1 // state for returned
             };
             data.statements.push(self.set_state(state, source_info));
-            data.statements.push(Statement {
-                source_info,
-                kind: StatementKind::Assign(Lvalue::Local(RETURN_POINTER),
-                    self.make_state(state_idx, v)),
-            });
             data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
         }
 
