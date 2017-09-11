@@ -1,8 +1,6 @@
 language: shell
 sudo: required
 dist: trusty
-# FIXME(#44398) shouldn't need to be here
-group: deprecated-2017Q3
 services:
   - docker
 
