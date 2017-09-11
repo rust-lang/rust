@@ -132,7 +132,6 @@ struct SuspensionPoint {
     resume: BasicBlock,
     drop: Option<BasicBlock>,
     storage_liveness: liveness::LocalSet,
-    storage_live: Option<BasicBlock>,
 }
 
 struct TransformVisitor<'a, 'tcx: 'a> {
@@ -145,8 +144,6 @@ struct TransformVisitor<'a, 'tcx: 'a> {
 
     // Mapping from Local to (type of local, generator struct index)
     remap: HashMap<Local, (Ty<'tcx>, usize)>,
-
-    mir_local_count: usize,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     storage_liveness: HashMap<BasicBlock, liveness::LocalSet>,
@@ -253,24 +250,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
             let state = if let Some(resume) = resume { // Yield
                 let state = 3 + self.suspension_points.len() as u32;
 
-                let liveness = self.storage_liveness.get(&block).unwrap();
-
-                for i in 0..(self.mir_local_count) {
-                    let l = Local::new(i);
-                    if liveness.contains(&l) && !self.remap.contains_key(&l) {
-                        data.statements.push(Statement {
-                            source_info,
-                            kind: StatementKind::StorageDead(l),
-                        });
-                    }
-                }
-
                 self.suspension_points.push(SuspensionPoint {
                     state,
                     resume,
                     drop,
-                    storage_liveness: liveness.clone(),
-                    storage_live: None,
+                    storage_liveness: self.storage_liveness.get(&block).unwrap().clone(),
                 });
 
                 state
@@ -363,8 +347,8 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ignored.visit_mir(mir);
 
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
-    let result = liveness::liveness_of_locals(mir);
-    liveness::dump_mir(tcx, "generator_liveness", source, mir, &result);
+    let liveness = liveness::liveness_of_locals(mir);
+    liveness::dump_mir(tcx, "generator_liveness", source, mir, &liveness);
 
     let mut storage_liveness_map = HashMap::new();
 
@@ -375,20 +359,22 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 statement_index: data.statements.len(),
             };
 
-            let mut storage_liveness = state_for_location(loc, &analysis, &storage_live);
+            let storage_liveness = state_for_location(loc, &analysis, &storage_live);
 
             storage_liveness_map.insert(block, storage_liveness.clone());
 
+            let mut live_locals = storage_liveness;
+
             // Mark locals without storage statements as always live
-            storage_liveness.union(&ignored.0);
+            live_locals.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across suspension points
             // and their storage is live
-            storage_liveness.intersect(&result.outs[block]);
+            live_locals.intersect(&liveness.outs[block]);
 
             // Add the locals life at this suspension point to the set of locals which live across
             // any suspension points
-            set.union(&storage_liveness);
+            set.union(&live_locals);
         }
     }
 
@@ -549,24 +535,11 @@ fn create_generator_drop_shim<'a, 'tcx>(
 
     let source_info = source_info(&mir);
 
-    let mut cases: Vec<_> = transform.suspension_points.iter().filter_map(|point| {
-        point.drop.map(|drop| {
-            // Make the point's storage live block goto the drop block
-            let block = point.storage_live.unwrap();
-            let term = Terminator {
-                source_info,
-                kind: TerminatorKind::Goto {
-                    target: drop,
-                },
-            };
-            mir.basic_blocks_mut()[block].terminator = Some(term);
-            (point.state, block)
-        })
-    }).collect();
+    let mut cases = create_cases(&mut mir, transform, |point| point.drop);
 
     cases.insert(0, (0, drop_clean));
 
-    // The returned state 1 and the  poisoned state 2 falls through to
+    // The returned state (1) and the poisoned state (2) falls through to
     // the default case which is just to return
 
     insert_switch(tcx, &mut mir, cases, &transform);
@@ -677,18 +650,7 @@ fn create_generator_resume_function<'a, 'tcx>(
         }
     }
 
-    let mut cases: Vec<_> = transform.suspension_points.iter().map(|point| {
-        // Make the point's storage live block goto the resume block
-        let block = point.storage_live.unwrap();
-        let term = Terminator {
-            source_info: source_info(mir),
-            kind: TerminatorKind::Goto {
-                target: point.resume,
-            },
-        };
-        mir.basic_blocks_mut()[block].terminator = Some(term);
-        (point.state, block)
-    }).collect();
+    let mut cases = create_cases(mir, &transform, |point| Some(point.resume));
 
     // Jump to the entry point on the 0 state
     cases.insert(0, (0, BasicBlock::new(0)));
@@ -738,6 +700,46 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     });
 
     drop_clean
+}
+
+fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
+                          transform: &TransformVisitor<'a, 'tcx>,
+                          target: F) -> Vec<(u32, BasicBlock)>
+    where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
+    let source_info = source_info(mir);
+
+    transform.suspension_points.iter().filter_map(|point| {
+        // Find the target for this suspension point, if applicable
+        target(point).map(|target| {
+            let block = BasicBlock::new(mir.basic_blocks().len());
+            let mut statements = Vec::new();
+
+            // Create StorageLive instructions for locals with live storage
+            for i in 0..(mir.local_decls.len()) {
+                let l = Local::new(i);
+                if point.storage_liveness.contains(&l) && !transform.remap.contains_key(&l) {
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(l),
+                    });
+                }
+            }
+
+            // Then jump to the real target
+            mir.basic_blocks_mut().push(BasicBlockData {
+                statements,
+                terminator: Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Goto {
+                        target,
+                    },
+                }),
+                is_cleanup: false,
+            });
+
+            (point.state, block)
+        })
+    }).collect()
 }
 
 impl MirPass for StateTransform {
@@ -792,7 +794,6 @@ impl MirPass for StateTransform {
             state_substs,
             remap,
             storage_liveness,
-            mir_local_count: mir.local_decls.len(),
             suspension_points: Vec::new(),
             new_ret_local,
             state_field,
@@ -819,30 +820,6 @@ impl MirPass for StateTransform {
         elaborate_generator_drops(tcx, def_id, mir);
 
         dump_mir(tcx, None, "generator_post-transform", &0, source, mir);
-
-        // Create StorageLive instruction blocks for suspension points
-        for point in &mut transform.suspension_points {
-            point.storage_live = Some(BasicBlock::new(mir.basic_blocks().len()));
-            let source_info = source_info(mir);
-            let mut statements = Vec::new();
-            for i in 0..(transform.mir_local_count) {
-                let l = Local::new(i);
-                if point.storage_liveness.contains(&l) && !transform.remap.contains_key(&l) {
-                    statements.push(Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(l),
-                    });
-                }
-            }
-            mir.basic_blocks_mut().push(BasicBlockData {
-                statements,
-                terminator: Some(Terminator {
-                    source_info,
-                    kind: TerminatorKind::Unreachable,
-                }),
-                is_cleanup: false,
-            });
-        }
 
         // Create a copy of our MIR and use it to create the drop shim for the generator
         let drop_shim = create_generator_drop_shim(tcx,
