@@ -1013,6 +1013,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(a.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn len(&self) -> usize {
         self.table.size()
     }
