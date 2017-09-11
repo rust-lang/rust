@@ -1,5 +1,5 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: `infer_outlives`
+- Start Date: 2017-08-02
 - RFC PR: https://github.com/rust-lang/rfcs/pull/2093
 - Rust Issue: https://github.com/rust-lang/rust/issues/44493
 
@@ -8,7 +8,7 @@
 
 Remove the need for explicit `T: 'x` annotations on structs. We will
 infer their presence based on the fields of the struct. In short, if
-the struct contains a reference (directly or indirectly) to `T` with
+the struct contains a reference, directly or indirectly, to `T` with
 lifetime `'x`, then we will infer that `T: 'x` is a requirement:
 
 ```rust
@@ -24,7 +24,7 @@ lifetime defaults, and simply for backwards compatibility.
 # Motivation
 [motivation]: #motivation
 
-Today, when you writes generic struct definitions that contain
+Today, when you write generic struct definitions that contain
 references, those structs require where-clauses of the form `T:
 'a`:
 
@@ -73,7 +73,7 @@ fixed-point inference similar to [variance inference].
 
 [variance inference]: https://github.com/rust-lang/rfcs/blob/master/text/0738-variance.md
 
-There is one other (relatively obscure) place where explicit lifetime
+There is one other, relatively obscure, place where explicit lifetime
 annotations are used today: trait object lifetime defaults
 ([RFC 599][]). The interaction there is discussed in the Guide-Level
 Explanation below.
@@ -97,7 +97,7 @@ has no references at all. (The "outlives" rules were later tweaked by
 In practice, this means that in Rust, when you define a struct that
 contains references to a generic type, or references to other
 references, you need to add various where clauses for that struct type
-to be considered valid. For example, consider this (currently invalid)
+to be considered valid. For example, consider the following (currently invalid)
 struct `SharedRef`:
 
 ```rust
@@ -123,7 +123,7 @@ struct SharedRef<'a, T>
 In principle, similar where clauses would be required on generic
 functions or impl to ensure that their parameters or inputs are
 well-formed.  However, as you may have noticed, this is not the
-case. For example, this function is valid as written:
+case. For example, the following function is valid as written:
 
 ```rust
 fn foo<'a, T>(x: &'a T) {
@@ -190,7 +190,7 @@ impl<'a, T> MakeRef<'a> for Vec<T>
 In this case, the impl has two inputs -- the lifetime `'a` and the
 type `Vec<T>` (note that `'a` and `T` are the impl parameters; the
 inputs come from the parameters of the trait that is being
-implemented). Neither of these inputs requires that `T: 'a`, so when
+implemented). Neither of these inputs requires that `T: 'a`. So, when
 we try to specify the value of the associated type as `&'a T`, we
 still require a where clause to infer that `T: 'a` must hold.
 
@@ -247,7 +247,7 @@ The type `Ref<'x, Debug>` defaults to `Ref<'x, Debug + 'x>` and not
 `Ref<'x, Debug + 'static>`. Effectively the `where T: 'a` declaration
 acts as a kind of signal that `Ref` acts as a "reference to `T`".
 
-This RFC does not change these defaulting rules: in particular, these
+This RFC does not change these defaulting rules. In particular, these
 defaults are applied **before** where-clause inference takes place,
 and hence are not affected by the results. Trait object defaulting
 therefore requires an explicit `where T: 'a` declaration on the
@@ -336,7 +336,7 @@ annotation is still potentially a breaking change (even if it would be
 inferred), due to the trait object rules; but also, adding or removing
 a field of type `&'a T` could affect the results of inference, and
 hence may be a breaking change. As an example, consider a struct like
-this:
+the following:
 
 ```rust
 struct Iter<'a, T> {
@@ -407,7 +407,7 @@ This set must meet the constraints derived by the following algorithm.
 
 First, if the struct contains a where-clause `C` matching the above
 forms, then we add the constraint that `C in A[S]`. So, for example,
-in this struct:
+in the following struct:
 
 ```rust
 struct Foo<'a, T> where T: 'a { .. }
@@ -428,7 +428,7 @@ the outlines of the algorithm:
   not necessarily a type parameter; for example, `&'a &'b i32` would
   lead to the outlives requirement that `'b: 'a`).
 - A reference to a struct like `Foo<'a, T>` may also require outlives
-  requirements; this is determined by checking the (current) value of
+  requirements. This is determined by checking the (current) value of
   `A[Foo]`, after substituting its parameters.
 - For an associated type reference like `<T as BarTrait<'a>>::Type`, we do
   not attempt normalization, but rather just check that `T` is well-formed.
@@ -483,7 +483,7 @@ Here, the requirement will be that `<T as Iterator>::Item: 'a`.
 ### Example 3: Explicit where-clauses
 
 In some cases, we may have constraints that arise from explicit where-clauses
-and not from field types, as in this example:
+and not from field types, as in the following example:
 
 ```rust
 struct Foo<'b, U> {

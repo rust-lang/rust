@@ -1,5 +1,5 @@
-- Feature Name: `implied-bounds`
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: `implied_bounds`
+- Start Date: 2017-07-28
 - RFC PR: https://github.com/rust-lang/rfcs/pull/2089
 - Rust Issue: https://github.com/rust-lang/rust/issues/44491
 

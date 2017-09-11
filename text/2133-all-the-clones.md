@@ -1,4 +1,4 @@
-- Feature Name: all_the_clones
+- Feature Name: `all_the_clones`
 - Start Date: 2017-08-28
 - RFC PR: https://github.com/rust-lang/rfcs/pull/2133
 - Rust Issue: https://github.com/rust-lang/rust/issues/44496
