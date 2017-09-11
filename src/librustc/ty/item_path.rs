@@ -151,7 +151,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            cur_path.push(self.sess.cstore.def_key(cur_def)
+            cur_path.push(self.def_key(cur_def)
                               .disambiguated_data.data.get_opt_name().unwrap_or_else(||
                 Symbol::intern("<unnamed>").as_str()));
             match visible_parent_map.get(&cur_def) {
