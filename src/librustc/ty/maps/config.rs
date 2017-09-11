@@ -29,7 +29,12 @@ pub(super) trait QueryDescription: QueryConfig {
 
 impl<M: QueryConfig<Key=DefId>> QueryDescription for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
-        format!("processing `{}`", tcx.item_path_str(def_id))
+        if !tcx.sess.verbose() {
+            format!("processing `{}`", tcx.item_path_str(def_id))
+        } else {
+            let name = unsafe { ::std::intrinsics::type_name::<M>() };
+            format!("processing `{}` applied to `{:?}`", name, def_id)
+        }
     }
 }
 
@@ -211,6 +216,13 @@ impl<'tcx> QueryDescription for queries::const_is_rvalue_promotable_to_static<'t
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("const checking if rvalue is promotable to static `{}`",
             tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::rvalue_promotable_map<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("checking which parts of `{}` are promotable to static",
+                tcx.item_path_str(def_id))
     }
 }
 

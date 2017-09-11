@@ -56,7 +56,8 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
         };
 
         let lazy_body = self.lazy(body);
-        let tables = self.tcx.body_tables(body_id);
+        let body_owner_def_id = self.tcx.hir.body_owner_def_id(body_id);
+        let tables = self.tcx.typeck_tables_of(body_owner_def_id);
         let lazy_tables = self.lazy(tables);
 
         let mut visitor = NestedBodyCollector {
@@ -67,7 +68,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
         let lazy_nested_bodies = self.lazy_seq_ref_from_slice(&visitor.bodies_found);
 
         let rvalue_promotable_to_static =
-            self.tcx.rvalue_promotable_to_static.borrow()[&body.value.id];
+            self.tcx.const_is_rvalue_promotable_to_static(body_owner_def_id);
 
         self.lazy(&Ast {
             body: lazy_body,

@@ -206,7 +206,13 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans,
         param_env,
     };
-    euv::ExprUseVisitor::new(&mut clcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
+    let rvalue_promotable_map = bccx.tcx.rvalue_promotable_map(def_id);
+    euv::ExprUseVisitor::new(&mut clcx,
+                             bccx.tcx,
+                             param_env,
+                             &bccx.region_scope_tree,
+                             bccx.tables,
+                             Some(rvalue_promotable_map))
         .consume_body(body);
 }
 

@@ -526,7 +526,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
     let mut checker = MutationChecker {
         cx,
     };
-    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables)
+    ExprUseVisitor::new(&mut checker, cx.tcx, cx.param_env, cx.region_scope_tree, cx.tables, None)
         .walk_expr(guard);
 }
 

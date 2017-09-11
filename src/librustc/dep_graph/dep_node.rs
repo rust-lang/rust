@@ -553,6 +553,7 @@ define_dep_nodes!( <'tcx>
     [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
+    [] RvaluePromotableMap(DefId),
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsExportedSymbol(DefId),
