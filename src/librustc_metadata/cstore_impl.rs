@@ -276,7 +276,7 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             Rc::new(link_args::collect(tcx))
         },
         extern_mod_stmt_cnum: |tcx, id| {
-            let id = tcx.hir.definitions().find_node_for_hir_id(id);
+            let id = tcx.hir.as_local_node_id(id).unwrap();
             tcx.sess.cstore.extern_mod_stmt_cnum_untracked(id)
         },
 

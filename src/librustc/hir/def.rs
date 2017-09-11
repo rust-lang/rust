@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use util::nodemap::NodeMap;
+use util::nodemap::{NodeMap, DefIdMap};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax_pos::Span;
@@ -115,7 +115,7 @@ pub type DefMap = NodeMap<PathResolution>;
 
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
-pub type ExportMap = NodeMap<Vec<Export>>;
+pub type ExportMap = DefIdMap<Vec<Export>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Export {

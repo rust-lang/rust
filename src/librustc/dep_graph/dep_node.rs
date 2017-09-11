@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use hir::def_id::{CrateNum, DefId};
+use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
 
@@ -528,8 +528,8 @@ define_dep_nodes!( <'tcx>
     [] ExternCrate(DefId),
     [] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
-    [] InScopeTraits(HirId),
-    [] ModuleExports(HirId),
+    [] InScopeTraits(DefIndex),
+    [] ModuleExports(DefId),
     [] IsSanitizerRuntime(CrateNum),
     [] IsProfilerRuntime(CrateNum),
     [] GetPanicStrategy(CrateNum),
@@ -551,15 +551,15 @@ define_dep_nodes!( <'tcx>
     [] NativeLibraryKind(DefId),
     [] LinkArgs,
 
-    [] NamedRegion(HirId),
-    [] IsLateBound(HirId),
-    [] ObjectLifetimeDefaults(HirId),
+    [] NamedRegion(DefIndex),
+    [] IsLateBound(DefIndex),
+    [] ObjectLifetimeDefaults(DefIndex),
 
     [] Visibility(DefId),
     [] DepKind(CrateNum),
     [] CrateName(CrateNum),
     [] ItemChildren(DefId),
-    [] ExternModStmtCnum(HirId),
+    [] ExternModStmtCnum(DefId),
     [] GetLangItems,
     [] DefinedLangItems(CrateNum),
     [] MissingLangItems(CrateNum),
@@ -570,8 +570,8 @@ define_dep_nodes!( <'tcx>
     [] UsedCrateSource(CrateNum),
     [] PostorderCnums,
 
-    [] Freevars(HirId),
-    [] MaybeUnusedTraitImport(HirId),
+    [] Freevars(DefId),
+    [] MaybeUnusedTraitImport(DefId),
     [] MaybeUnusedExternCrates,
     [] StabilityIndex,
     [] AllCrateNums,

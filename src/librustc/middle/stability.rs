@@ -612,8 +612,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 // compiler-generated `extern crate` items have a dummy span.
                 if item.span == DUMMY_SP { return }
 
-                let hir_id = self.tcx.hir.node_to_hir_id(item.id);
-                let cnum = match self.tcx.extern_mod_stmt_cnum(hir_id) {
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                let cnum = match self.tcx.extern_mod_stmt_cnum(def_id) {
                     Some(cnum) => cnum,
                     None => return,
                 };

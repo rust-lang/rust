@@ -1066,8 +1066,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let hir_id = cx.tcx.hir.node_to_hir_id(it.id);
-        let prfn = match cx.tcx.extern_mod_stmt_cnum(hir_id) {
+        let def_id = cx.tcx.hir.local_def_id(it.id);
+        let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
             Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
