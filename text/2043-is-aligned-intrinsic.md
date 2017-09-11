@@ -1,7 +1,7 @@
 - Feature Name: align_to_intrinsic
 - Start Date: 2017-06-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2043
+- Rust Issue: https://github.com/rust-lang/rust/issues/44488
 
 # Summary
 [summary]: #summary
