@@ -25,6 +25,7 @@ fn main() {
        .file("../rt/hoedown/src/stack.c")
        .file("../rt/hoedown/src/version.c")
        .include(src_dir)
+       .warnings(false)
        .compile("libhoedown.a");
 }
 

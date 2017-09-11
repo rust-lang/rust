@@ -16,9 +16,10 @@
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
 use hir::map::Map;
-use session::Session;
 use hir::def::Def;
 use hir::def_id::DefId;
+use middle::cstore::CrateStore;
+use session::Session;
 use ty;
 
 use std::cell::Cell;
@@ -160,6 +161,7 @@ pub struct NamedRegionMap {
 
 struct LifetimeContext<'a, 'tcx: 'a> {
     sess: &'a Session,
+    cstore: &'a CrateStore,
     hir_map: &'a Map<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
@@ -251,6 +253,7 @@ type ScopeRef<'a> = &'a Scope<'a>;
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn krate(sess: &Session,
+             cstore: &CrateStore,
              hir_map: &Map)
              -> Result<NamedRegionMap, ErrorReported> {
     let krate = hir_map.krate();
@@ -262,6 +265,7 @@ pub fn krate(sess: &Session,
     sess.track_errors(|| {
         let mut visitor = LifetimeContext {
             sess,
+            cstore,
             hir_map,
             map: &mut map,
             scope: ROOT_SCOPE,
@@ -765,12 +769,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn with<F>(&mut self, wrap_scope: Scope, f: F) where
         F: for<'b> FnOnce(ScopeRef, &mut LifetimeContext<'b, 'tcx>),
     {
-        let LifetimeContext {sess, hir_map, ref mut map, ..} = *self;
+        let LifetimeContext {sess, cstore, hir_map, ref mut map, ..} = *self;
         let labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
         let xcrate_object_lifetime_defaults =
             replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap());
         let mut this = LifetimeContext {
             sess,
+            cstore,
             hir_map,
             map: *map,
             scope: &wrap_scope,
@@ -932,7 +937,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let def_key = if def_id.is_local() {
                 this.hir_map.def_key(def_id)
             } else {
-                this.sess.cstore.def_key(def_id)
+                this.cstore.def_key(def_id)
             };
             DefId {
                 krate: def_id.krate,
@@ -976,7 +981,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let unsubst = if let Some(id) = self.hir_map.as_local_node_id(def_id) {
                 &map.object_lifetime_defaults[&id]
             } else {
-                let cstore = &self.sess.cstore;
+                let cstore = self.cstore;
                 self.xcrate_object_lifetime_defaults.entry(def_id).or_insert_with(|| {
                     cstore.item_generics_cloned_untracked(def_id).types.into_iter().map(|def| {
                         def.object_lifetime_default
