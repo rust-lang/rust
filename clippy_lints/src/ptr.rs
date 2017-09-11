@@ -7,7 +7,8 @@ use rustc::ty;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use syntax_pos::MultiSpan;
-use utils::{match_qpath, match_type, paths, span_lint, span_lint_and_then};
+use utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
+            span_lint_and_sugg, walk_ptrs_hir_ty};
 
 /// **What it does:** This lint checks for function arguments of type `&String`
 /// or `&Vec` unless
@@ -137,20 +138,37 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
         ) = ty.sty
         {
             if match_type(cx, ty, &paths::VEC) {
-                span_lint(
+                let mut ty_snippet = None;
+                if_let_chain!([
+                    let TyPath(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node,
+                    let Some(&PathSegment{ref parameters, ..}) = path.segments.last(),
+                    parameters.types.len() == 1,
+                ], {
+                    ty_snippet = snippet_opt(cx, parameters.types[0].span);
+                });
+                //TODO: Suggestion
+                span_lint_and_then(
                     cx,
                     PTR_ARG,
                     arg.span,
                     "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
-                     with non-Vec-based slices. Consider changing the type to `&[...]`",
+                     with non-Vec-based slices.",
+                    |db| {
+                        if let Some(ref snippet) = ty_snippet {
+                            db.span_suggestion(arg.span,
+                                               "change this to",
+                                               format!("&[{}]", snippet));
+                        }
+                    }
                 );
             } else if match_type(cx, ty, &paths::STRING) {
-                span_lint(
+                span_lint_and_sugg(
                     cx,
                     PTR_ARG,
                     arg.span,
-                    "writing `&String` instead of `&str` involves a new object where a slice will do. \
-                     Consider changing the type to `&str`",
+                    "writing `&String` instead of `&str` involves a new object where a slice will do.",
+                    "change this to",
+                    "&str".to_string()
                 );
             }
         }
