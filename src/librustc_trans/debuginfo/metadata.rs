@@ -38,6 +38,7 @@ use rustc::util::common::path2cstr;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
+use std::fmt::Write;
 use std::ptr;
 use std::path::Path;
 use syntax::ast;
@@ -1257,9 +1258,12 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            layout::StructWrappedNullablePointer { nonnull: ref struct_def,
-                                                nndiscr,
-                                                ref discrfield_source, ..} => {
+            layout::StructWrappedNullablePointer {
+                nonnull: ref struct_def,
+                nndiscr,
+                discr,
+                discr_offset
+            } => {
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,
@@ -1280,19 +1284,37 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - nndiscr) as usize;
-                let null_variant_name = adt.variants[null_variant_index].name;
-                let discrfield_source = discrfield_source.iter()
-                                           .map(|x| x.to_string())
-                                           .collect::<Vec<_>>().join("$");
-                let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                discrfield_source,
-                                                null_variant_name);
+                let mut name = String::from("RUST$ENCODED$ENUM$");
+                // HACK(eddyb) the debuggers should just handle offset+size
+                // of discriminant instead of us having to recover its path.
+                fn compute_field_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                name: &mut String,
+                                                layout: TyLayout<'tcx>,
+                                                offset: Size,
+                                                size: Size) {
+                    for i in 0..layout.field_count() {
+                        let field_offset = layout.field_offset(ccx, i);
+                        if field_offset > offset {
+                            continue;
+                        }
+                        let inner_offset = offset - field_offset;
+                        let field = layout.field(ccx, i);
+                        if inner_offset + size <= field.size(ccx) {
+                            write!(name, "{}$", i).unwrap();
+                            compute_field_path(ccx, name, field, inner_offset, size);
+                        }
+                    }
+                }
+                compute_field_path(cx, &mut name,
+                                   self.type_rep,
+                                   discr_offset,
+                                   discr.size(cx));
+                name.push_str(&adt.variants[(1 - nndiscr) as usize].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![
                     MemberDescription {
-                        name: union_member_name,
+                        name,
                         type_metadata: variant_type_metadata,
                         offset: Size::from_bytes(0),
                         size: struct_def.stride(),
