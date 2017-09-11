@@ -1,7 +1,7 @@
 - Feature Name: allow_if_let_irrefutables
 - Start Date: 2017-07-27
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2086
+- Rust Issue: https://github.com/rust-lang/rust/issues/44495
 
 # Summary
 [summary]: #summary
