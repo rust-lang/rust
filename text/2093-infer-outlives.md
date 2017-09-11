@@ -1,4 +1,4 @@
-- Feature Name: infer_outlives
+- Feature Name: `infer_outlives`
 - Start Date: 2017-08-02
 - RFC PR: https://github.com/rust-lang/rfcs/pull/2093
 - Rust Issue: https://github.com/rust-lang/rust/issues/44493
