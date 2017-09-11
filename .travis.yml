@@ -127,9 +127,9 @@ matrix:
 env:
   global:
     - SCCACHE_BUCKET=rust-lang-ci-sccache
-    - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
+    - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
     # AWS_SECRET_ACCESS_KEY=...
-    - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
+    - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
 
 before_install:
   # If we are building a pull request, do the build if $ALLOW_PR == 1
@@ -262,9 +262,9 @@ deploy:
     upload_dir: rustc-builds
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
       condition: $DEPLOY = 1
@@ -276,9 +276,9 @@ deploy:
     upload_dir: rustc-builds-try
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: try
       condition: $DEPLOY = 1 && $ALLOW_TRY = 1
@@ -292,9 +292,9 @@ deploy:
     upload_dir: rustc-builds-alt
     acl: public_read
     region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
       condition: $DEPLOY_ALT = 1
