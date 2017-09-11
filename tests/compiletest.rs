@@ -160,7 +160,9 @@ fn get_sysroot() -> PathBuf {
 }
 
 fn get_host() -> String {
-    let host = std::process::Command::new("rustc")
+    let rustc = rustc_test_suite().unwrap_or(PathBuf::from("rustc"));
+    println!("using rustc at {}", rustc.display());
+    let host = std::process::Command::new(rustc)
         .arg("-vV")
         .output()
         .expect("rustc not found for -vV")
