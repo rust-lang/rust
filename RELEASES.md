@@ -4,8 +4,11 @@ Version 1.21.0 (2017-10-12)
 Language
 --------
 - [Relaxed path syntax. You can now add type parameters to values][43540]
-  Example: `struct Foo<T>(T); let bar = Foo::<u8>(0);`.
-
+  Example:
+  ```
+  my_macro!(Vec<i32>::new); // Always worked
+  my_macro!(Vec::<i32>::new); // Now works aswell
+  ```
 Compiler
 --------
 - [Upgraded jemalloc to 4.5.0][43911]
@@ -13,7 +16,7 @@ Compiler
 
 Libraries
 ---------
-- [Generate builtin impls for `Clone` for `[T: N]` where `N` is between 0
+- [Generate builtin impls for `Clone` for `[T; N]` where `N` is between 0
   and 32][43690]
 - [`Stdin`, `Stdout`, and `Stderr` now implement `AsRawFd`.][43459]
 - [`Rc` and `Arc` now implement `From<&[T]> where T: Clone`, `From<str>`,
@@ -31,16 +34,17 @@ Cargo
 Misc
 ----
 - [Cargo docs are moving][43916]
-  to [doc.rust-lang.org/cargo](//doc.rust-lang.org/cargo)
+  to [doc.rust-lang.org/cargo](https://doc.rust-lang.org/cargo)
 - [The rustdoc book is now available][43863]
-  at [doc.rust-lang.org/rustdoc](//doc.rust-lang.org/rustdoc)
+  at [doc.rust-lang.org/rustdoc](https://doc.rust-lang.org/rustdoc)
 
 Compatibility Notes
 -------------------
 - [Remove the trait selection impl in method::probe][43880] This may cause
   breakage in subtyping corner cases.
-- [make JSON error's byte position start at top of file.][42973] Was previously
-  relative to the `CodeMap` which required unstable code.
+- [rustc's JSON error output's byte position start at top of file.][42973]
+  Was previously relative to the rustc's internal `CodeMap` struct which
+  required the unstable library `libsyntax`  to correctly use.
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
 [42973]: https://github.com/rust-lang/rust/pull/42973
