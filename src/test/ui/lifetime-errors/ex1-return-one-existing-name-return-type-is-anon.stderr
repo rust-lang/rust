@@ -1,11 +1,14 @@
-error[E0621]: explicit lifetime required in the type of `self`
+error[E0623]: lifetime mismatch
   --> $DIR/ex1-return-one-existing-name-return-type-is-anon.rs:18:5
    |
 16 |   fn foo<'a>(&self, x: &'a i32) -> &i32 {
-   |              ----- consider changing the type of `self` to `&'a Foo`
+   |                        -------     ----
+   |                        |
+   |                        this parameter and the return type are declared
+                  with different lifetimes...
 17 | 
 18 |     x
-   |     ^ lifetime `'a` required
+   |     ^ ...but data flows from `x` is returned here
 
 error: aborting due to previous error
 

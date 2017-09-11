@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.is_return_type_anon(scope_def_id_sub, bregion_sub, ty_fndecl_sub);
 
         let span_label_var1 = if let Some(simple_name) = anon_arg_sup.pat.simple_name() {
-            format!(" flows from `{}`", simple_name)
+            format!(" from `{}`", simple_name)
         } else {
             format!("")
         };
@@ -103,20 +103,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                              format!(" with one lifetime"),
                              format!(" into the other")))
                 } else {
-                    (format!("these two types was declared with multiple lifetimes..."),
+                    (format!("these two types was declared with different lifetimes..."),
                      format!("...but data{} flows{} here",
                              span_label_var1,
                              span_label_var2))
                 };
                 (ty_sup.span, ty_sub.span, main_label_1, span_label_1)
-            }
-            (Some(ret_span1), Some(ret_span2)) => {
-                (ret_span1,
-                 ret_span2,
-                 format!("the return type is declared with different lifetimes..."),
-                 format!("...but data{} flows{} here",
-                         format!(" with one lifetime"),
-                         format!(" into the other")))
             }
             
             (Some(ret_span), _) => {
