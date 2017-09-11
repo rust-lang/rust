@@ -7,12 +7,14 @@ Language
   Example:
   ```
   my_macro!(Vec<i32>::new); // Always worked
-  my_macro!(Vec::<i32>::new); // Now works aswell
+  my_macro!(Vec::<i32>::new); // Now works
   ```
+
 Compiler
 --------
 - [Upgraded jemalloc to 4.5.0][43911]
 - [Enabled unwinding panics on Redox][43917]
+- [Now emits a warning when you have an unused `extern crate`][42588]
 
 Libraries
 ---------
@@ -30,6 +32,14 @@ Cargo
 - [You can now call `cargo install` with multiple package names][cargo/4216]
 - [Cargo commands inside a virtual workspace will now implicitly
   pass `--all`][cargo/4335]
+- [Added a `[patch]` section to `Cargo.toml` to handle
+  prepublication dependencies][cargo/4123] [RFC 1969]
+- [`include` & `exclude` fields in `Cargo.toml` now accept gitignore
+  like patterns][cargo/4270]
+- [Added the `--all-targets` option][cargo/4400]
+- [Using required dependencies as a feature is now deprecated and emits
+  a warning][cargo/]
+
 
 Misc
 ----
@@ -44,9 +54,10 @@ Compatibility Notes
   breakage in subtyping corner cases.
 - [rustc's JSON error output's byte position start at top of file.][42973]
   Was previously relative to the rustc's internal `CodeMap` struct which
-  required the unstable library `libsyntax`  to correctly use.
+  required the unstable library `libsyntax` to correctly use.
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
+[42588]: https://github.com/rust-lang/rust/pull/42588
 [42973]: https://github.com/rust-lang/rust/pull/42973
 [43459]: https://github.com/rust-lang/rust/pull/43459
 [43540]: https://github.com/rust-lang/rust/pull/43540
@@ -56,8 +67,13 @@ Compatibility Notes
 [43911]: https://github.com/rust-lang/rust/pull/43911
 [43916]: https://github.com/rust-lang/rust/pull/43916
 [43917]: https://github.com/rust-lang/rust/pull/43917
+[cargo/4123]: https://github.com/rust-lang/cargo/pull/4123
 [cargo/4216]: https://github.com/rust-lang/cargo/pull/4216
+[cargo/4270]: https://github.com/rust-lang/cargo/pull/4270
 [cargo/4335]: https://github.com/rust-lang/cargo/pull/4335
+[cargo/4364]: https://github.com/rust-lang/cargo/pull/4364
+[cargo/4400]: https://github.com/rust-lang/cargo/pull/4400
+[RFC 1969]: https://github.com/rust-lang/rfcs/pull/1969
 
 
 Version 1.20.0 (2017-08-31)
