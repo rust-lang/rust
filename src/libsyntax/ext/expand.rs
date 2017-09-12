@@ -308,7 +308,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         err.emit();
                     }
 
-                    let item = item
+                    let item = self.fully_configure(item)
                         .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
                     let item_with_markers =
                         add_derived_markers(&mut self.cx, item.span(), &traits, item.clone());
@@ -398,6 +398,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         result
+    }
+
+    fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
+        let mut cfg = StripUnconfigured {
+            should_test: self.cx.ecfg.should_test,
+            sess: self.cx.parse_sess,
+            features: self.cx.ecfg.features,
+        };
+        // Since the item itself has already been configured by the InvocationCollector,
+        // we know that fold result vector will contain exactly one element
+        match item {
+            Annotatable::Item(item) => {
+                Annotatable::Item(cfg.fold_item(item).pop().unwrap())
+            }
+            Annotatable::TraitItem(item) => {
+                Annotatable::TraitItem(item.map(|item| cfg.fold_trait_item(item).pop().unwrap()))
+            }
+            Annotatable::ImplItem(item) => {
+                Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
+            }
+        }
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
@@ -740,15 +761,6 @@ struct InvocationCollector<'a, 'b: 'a> {
     monotonic: bool,
 }
 
-macro_rules! fully_configure {
-    ($this:ident, $node:ident, $noop_fold:ident) => {
-        match $noop_fold($node, &mut $this.cfg).pop() {
-            Some(node) => node,
-            None => return SmallVector::new(),
-        }
-    }
-}
-
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, expansion_kind: ExpansionKind, kind: InvocationKind) -> Expansion {
         let mark = Mark::fresh(self.cx.current_expansion.mark);
@@ -900,7 +912,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, mut item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item = Annotatable::Item(fully_configure!(self, item, noop_fold_item));
+            let item = Annotatable::Item(item);
             return self.collect_attr(attr, traits, item, ExpansionKind::Items).make_items();
         }
 
@@ -974,8 +986,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item =
-                Annotatable::TraitItem(P(fully_configure!(self, item, noop_fold_trait_item)));
+            let item = Annotatable::TraitItem(P(item));
             return self.collect_attr(attr, traits, item, ExpansionKind::TraitItems)
                 .make_trait_items()
         }
@@ -995,7 +1006,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         let (attr, traits, item) = self.classify_item(item);
         if attr.is_some() || !traits.is_empty() {
-            let item = Annotatable::ImplItem(P(fully_configure!(self, item, noop_fold_impl_item)));
+            let item = Annotatable::ImplItem(P(item));
             return self.collect_attr(attr, traits, item, ExpansionKind::ImplItems)
                 .make_impl_items();
         }
