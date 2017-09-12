@@ -143,37 +143,6 @@ registries not specified in this configuration option will be rejected at publis
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## Related issues
-
-In order to make working with multiple registries more convenient, we would also like to support:
-
-- Adding a `cargo add-registry` command that could prompt for index URL and authentication
-  information and place the right information in the right format in the right files to make setup
-  for each user easier.
-- [Being able to specify the API host rather than the index
-  location](https://github.com/rust-lang/cargo/issues/4208), so that, for example, you could
-  specify `https://crates.io` rather than `https://github.com/rust-lang/crates.io-index`. We do not
-  want to *require* specifying the API host, since some registries will choose not to have an API
-  host at all and only supply an index and a location for crate files. This would require the API
-  to have a way to tell Cargo where the associated registry index is located.
-- [Being able to save multiple tokens in
-  `.cargo/credentials`](https://github.com/rust-lang/cargo/issues/3365), one per registry, so that
-  people publishing to multiple registries don't need to log in over and over or specify tokens on
-  every publish.
-- Being able to specify `--registry registry-name` for all Cargo commands that currently take
-  `--index`
-- Being able to use a dependency under a different name. Alternate registries that are not mirrors
-  should be allowed to have crates with the same name as crates in any other registry, including
-  crates.io. In order to allow a crate to depend on both, say, the `http` crate from crates.io and
-  the `http` crate from a private registry, at least one will need to be renamed when listed as a
-  dependency in `Cargo.toml`. [RFC
-  2126](https://github.com/aturon/rfcs/blob/path-clarity/text/0000-path-clarity.md#basic-changes)
-  proposes this change as follows:
-
-  > Cargo will provide a new crate key for aliasing dependencies, so that e.g. users who want to
-  > use the `rand` crate but call it `random` instead can now write `random = { version = "0.3",
-  > crate = "rand" }`.
-
 ## Registry index format specification
 [registry-index-format-specification]: #registry-index-format-specification
 
@@ -242,7 +211,7 @@ A valid registry index meets the following criteria:
           {
               "name": "serde",
               "req": "^1.0",
-              "registry": "https://crates.io",
+              "registry": "https://github.com/rust-lang/crates.io-index",
               "features": [],
               "optional": true,
               "default_features": true,
@@ -271,7 +240,7 @@ A valid registry index meets the following criteria:
     - `name`: the name of the crate
     - `vers`: the version of the crate this row is describing
     - `deps`: a list of all dependencies of this crate
-    - `cksum`: a checksum of this version's files
+    - `cksum`: a checksum of the tarball downloaded
     - `features`: a list of the features available from this crate
     - `yanked`: whether or not this version has been yanked
 
@@ -299,6 +268,37 @@ Currently, the knowledge of how to create a file in the registry index format is
 Cargo and crates.io. This RFC proposes the addition of a Cargo command that would generate this
 file locally for the current crate so that it can be added to the git repository using a mechanism
 other than a server running crates.io's codebase.
+
+## Related issues
+
+In order to make working with multiple registries more convenient, we would also like to support:
+
+- Adding a `cargo add-registry` command that could prompt for index URL and authentication
+  information and place the right information in the right format in the right files to make setup
+  for each user easier.
+- [Being able to specify the API host rather than the index
+  location](https://github.com/rust-lang/cargo/issues/4208), so that, for example, you could
+  specify `https://crates.io` rather than `https://github.com/rust-lang/crates.io-index`. We do not
+  want to *require* specifying the API host, since some registries will choose not to have an API
+  host at all and only supply an index and a location for crate files. This would require the API
+  to have a way to tell Cargo where the associated registry index is located.
+- [Being able to save multiple tokens in
+  `.cargo/credentials`](https://github.com/rust-lang/cargo/issues/3365), one per registry, so that
+  people publishing to multiple registries don't need to log in over and over or specify tokens on
+  every publish.
+- Being able to specify `--registry registry-name` for all Cargo commands that currently take
+  `--index`
+- Being able to use a dependency under a different name. Alternate registries that are not mirrors
+  should be allowed to have crates with the same name as crates in any other registry, including
+  crates.io. In order to allow a crate to depend on both, say, the `http` crate from crates.io and
+  the `http` crate from a private registry, at least one will need to be renamed when listed as a
+  dependency in `Cargo.toml`. [RFC
+  2126](https://github.com/aturon/rfcs/blob/path-clarity/text/0000-path-clarity.md#basic-changes)
+  proposes this change as follows:
+
+  > Cargo will provide a new crate key for aliasing dependencies, so that e.g. users who want to
+  > use the `rand` crate but call it `random` instead can now write `random = { version = "0.3",
+  > crate = "rand" }`.
 
 # Drawbacks
 [drawbacks]: #drawbacks
