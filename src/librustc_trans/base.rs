@@ -886,8 +886,8 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
-    reachable.iter().cloned().filter(|&id| {
+pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
+    tcx.reachable_set(LOCAL_CRATE).iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -929,7 +929,6 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
 }
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             analysis: ty::CrateAnalysis,
                              incremental_hashes_map: IncrementalHashesMap,
                              output_filenames: &OutputFilenames)
                              -> OngoingCrateTranslation {
@@ -940,10 +939,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // `TransCrate`, you need to be careful to register "reads" of the
     // particular items that will be processed.
     let krate = tcx.hir.krate();
-    let ty::CrateAnalysis { reachable, .. } = analysis;
     let check_overflow = tcx.sess.overflow_checks();
     let link_meta = link::build_link_meta(&incremental_hashes_map);
-    let exported_symbol_node_ids = find_exported_symbols(tcx, &reachable);
+    let exported_symbol_node_ids = find_exported_symbols(tcx);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              check_overflow,

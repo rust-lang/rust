@@ -28,7 +28,6 @@ use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
-use rustc::util::nodemap::NodeSet;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
@@ -243,7 +242,7 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm(tcx, analysis, incremental_hashes_map,
+            let trans = phase_4_translate_to_llvm(tcx, incremental_hashes_map,
                                                   &outputs);
 
             if log_enabled!(::log::LogLevel::Info) {
@@ -885,7 +884,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
             access_levels: Rc::new(AccessLevels::default()),
-            reachable: Rc::new(NodeSet()),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
@@ -1103,11 +1101,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             return Ok(f(tcx, analysis, incremental_hashes_map, sess.compile_status()));
         }
 
-        analysis.reachable =
-            time(time_passes,
-                 "reachability checking",
-                 || reachable::find_reachable(tcx));
-
         time(time_passes, "death checking", || middle::dead::check_crate(tcx));
 
         time(time_passes, "unused lib feature checking", || {
@@ -1123,7 +1116,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: IncrementalHashesMap,
                                            output_filenames: &OutputFilenames)
                                            -> write::OngoingCrateTranslation {
@@ -1136,7 +1128,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let translation =
         time(time_passes,
              "translation",
-             move || trans::trans_crate(tcx, analysis, incremental_hashes_map, output_filenames));
+             move || trans::trans_crate(tcx, incremental_hashes_map, output_filenames));
 
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())

@@ -369,10 +369,6 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
     }
 }
 
-pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<NodeSet> {
-    tcx.reachable_set(LOCAL_CRATE)
-}
-
 fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> Rc<NodeSet> {
     debug_assert!(crate_num == LOCAL_CRATE);
 
