@@ -551,7 +551,7 @@ impl OpenOptions {
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
-    /// Note that setting `.write(true).append(true)` has the same effect as
+    /// Note that setting `.create(true)..write(true).append(true)` has the same effect as
     /// setting only `.append(true)`.
     ///
     /// For most filesystems, the operating system guarantees that all writes are
