@@ -98,12 +98,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             (None, None) => {
                 let (main_label_1, span_label_1) = if ty_sup == ty_sub {
 
-                    (format!("this type was declared with multiple lifetimes..."),
+                    (format!("this type is declared with multiple lifetimes..."),
                      format!("...but data{} flows{} here",
                              format!(" with one lifetime"),
                              format!(" into the other")))
                 } else {
-                    (format!("these two types was declared with different lifetimes..."),
+                    (format!("these two types are declared with different lifetimes..."),
                      format!("...but data{} flows{} here",
                              span_label_var1,
                              span_label_var2))

@@ -8,7 +8,7 @@ error[E0623]: lifetime mismatch
                   with different lifetimes...
 20 | 
 21 |         if x > y { x } else { y }
-   |                    ^ ...but data flows `x` is returned here
+   |                    ^ ...but data from `x` is returned here
 
 error: aborting due to previous error
 
