@@ -265,7 +265,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
-                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.shared(), ty);
+                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.tcx(), ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
@@ -429,7 +429,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let (instance, mut llfn) = match callee.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
-                        (Some(monomorphize::resolve(bcx.ccx.shared(), def_id, substs)),
+                        (Some(monomorphize::resolve(bcx.ccx.tcx(), def_id, substs)),
                          None)
                     }
                     ty::TyFnPtr(_) => {
@@ -546,7 +546,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
 
                     let callee_ty = common::instance_ty(
-                        bcx.ccx.shared(), instance.as_ref().unwrap());
+                        bcx.ccx.tcx(), instance.as_ref().unwrap());
                     trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &llargs, dest,
                                          terminator.source_info.span);
 

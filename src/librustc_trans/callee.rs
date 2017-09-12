@@ -45,7 +45,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     assert!(!instance.substs.has_escaping_regions());
     assert!(!instance.substs.has_param_types());
 
-    let fn_ty = common::instance_ty(ccx.shared(), &instance);
+    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return llfn;
     }
@@ -148,5 +148,5 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef
 {
-    get_fn(ccx, monomorphize::resolve(ccx.shared(), def_id, substs))
+    get_fn(ccx, monomorphize::resolve(ccx.tcx(), def_id, substs))
 }

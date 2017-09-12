@@ -133,7 +133,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         symbol_name: &str) {
         let def_id = ccx.tcx().hir.local_def_id(node_id);
         let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.shared(), &instance);
+        let ty = common::instance_ty(ccx.tcx(), &instance);
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -158,7 +158,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let mono_ty = common::instance_ty(ccx.shared(), &instance);
+        let mono_ty = common::instance_ty(ccx.tcx(), &instance);
         let attrs = instance.def.attrs(ccx.tcx());
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };

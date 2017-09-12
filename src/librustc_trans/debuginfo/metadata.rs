@@ -1803,7 +1803,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = common::def_ty(cx.shared(), node_def_id, Substs::empty());
+    let variable_type = common::def_ty(cx.tcx(), node_def_id, Substs::empty());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");

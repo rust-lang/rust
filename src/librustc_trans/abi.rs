@@ -612,7 +612,7 @@ pub struct FnType<'tcx> {
 impl<'a, 'tcx> FnType<'tcx> {
     pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
-        let fn_ty = instance_ty(ccx.shared(), &instance);
+        let fn_ty = instance_ty(ccx.tcx(), &instance);
         let sig = ty_fn_sig(ccx, fn_ty);
         let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
         Self::new(ccx, sig, &[])

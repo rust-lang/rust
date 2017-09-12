@@ -80,7 +80,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let nullptr = C_null(Type::nil(ccx).ptr_to());
 
     let mut components: Vec<_> = [
-        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.shared(), ty)),
+        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.tcx(), ty)),
         C_usize(ccx, ccx.size_of(ty)),
         C_usize(ccx, ccx.align_of(ty) as u64)
     ].iter().cloned().collect();

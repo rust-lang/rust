@@ -222,7 +222,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         match operand.ty.sty {
                             ty::TyClosure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
-                                    bcx.ccx.shared(), def_id, substs, ty::ClosureKind::FnOnce);
+                                    bcx.ccx.tcx(), def_id, substs, ty::ClosureKind::FnOnce);
                                 OperandValue::Immediate(callee::get_fn(bcx.ccx, instance))
                             }
                             _ => {

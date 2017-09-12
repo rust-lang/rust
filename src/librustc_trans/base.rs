@@ -578,7 +578,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = common::instance_ty(ccx.shared(), &instance);
+    let fn_ty = common::instance_ty(ccx.tcx(), &instance);
     let sig = common::ty_fn_sig(ccx, fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
@@ -1424,7 +1424,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(&scx,
+            collector::collect_crate_translation_items(scx.tcx(),
                                                        exported_symbols,
                                                        collection_mode)
     });

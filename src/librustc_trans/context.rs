@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common;
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe};
@@ -39,7 +40,6 @@ use std::str;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use syntax::symbol::InternedString;
-use syntax_pos::DUMMY_SP;
 use abi::Abi;
 
 #[derive(Clone, Default)]
@@ -319,15 +319,15 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
+        common::type_needs_drop(self.tcx, ty)
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+        common::type_is_sized(self.tcx, ty)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+        common::type_is_freeze(self.tcx, ty)
     }
 
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {

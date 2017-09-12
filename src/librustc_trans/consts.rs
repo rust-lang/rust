@@ -109,7 +109,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = common::instance_ty(ccx.shared(), &instance);
+    let ty = common::instance_ty(ccx.tcx(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -269,7 +269,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         };
 
         let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.shared(), &instance);
+        let ty = common::instance_ty(ccx.tcx(), &instance);
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g
