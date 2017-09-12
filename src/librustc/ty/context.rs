@@ -1083,6 +1083,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
+        // FIXME(mw): Each of the Vecs in the trait_map should be brought into
+        // a deterministic order here. Otherwise we might end up with
+        // unnecessarily unstable incr. comp. hashes.
         let mut trait_map = FxHashMap();
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
@@ -1171,17 +1174,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
-        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
-        // graph here to ignore the fact that `get_lang_items` below depends on
-        // the entire crate.  For now this'll prevent false positives of
-        // recompiling too much when anything changes.
-        //
-        // Once red/green incremental compilation lands we should be able to
-        // remove this because while the crate changes often the lint level map
-        // will change rarely.
-        self.dep_graph.with_ignore(|| {
-            self.get_lang_items(LOCAL_CRATE)
-        })
+        self.get_lang_items(LOCAL_CRATE)
     }
 
     pub fn stability(self) -> Rc<stability::Index<'tcx>> {
@@ -2198,7 +2191,15 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Rc::new(middle::lang_items::collect(tcx))
+        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
+        // graph here to ignore the fact that `get_lang_items` below depends on
+        // the entire crate.  For now this'll prevent false positives of
+        // recompiling too much when anything changes.
+        //
+        // Once red/green incremental compilation lands we should be able to
+        // remove this because while the crate changes often the lint level map
+        // will change rarely.
+        tcx.dep_graph.with_ignore(|| Rc::new(middle::lang_items::collect(tcx)))
     };
     providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
     providers.maybe_unused_trait_import = |tcx, id| {

@@ -65,6 +65,11 @@ pub struct DeprecationEntry {
     origin: Option<HirId>,
 }
 
+impl_stable_hash_for!(struct self::DeprecationEntry {
+    attr,
+    origin
+});
+
 impl DeprecationEntry {
     fn local(attr: Deprecation, id: HirId) -> DeprecationEntry {
         DeprecationEntry {
@@ -101,6 +106,13 @@ pub struct Index<'tcx> {
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
 }
+
+impl_stable_hash_for!(struct self::Index<'tcx> {
+    stab_map,
+    depr_map,
+    staged_api,
+    active_features
+});
 
 // A private tree-walker for producing an Index.
 struct Annotator<'a, 'tcx: 'a> {

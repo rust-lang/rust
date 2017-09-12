@@ -27,7 +27,8 @@ use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvider,
-                                           StableHasher, StableHasherResult};
+                                           StableHasher, StableHasherResult,
+                                           ToStableHashKey};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -48,9 +49,7 @@ pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum NodeIdHashingMode {
     Ignore,
-    CheckedIgnore,
     HashDefPath,
-    HashTraitsInScope,
 }
 
 impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
@@ -150,7 +149,7 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
             self.overflow_checks_enabled = true;
         }
         let prev_hash_node_ids = self.node_id_hashing_mode;
-        self.node_id_hashing_mode = NodeIdHashingMode::CheckedIgnore;
+        self.node_id_hashing_mode = NodeIdHashingMode::Ignore;
 
         f(self);
 
@@ -207,38 +206,25 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::N
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
             }
-            NodeIdHashingMode::CheckedIgnore => {
-                // Most NodeIds in the HIR can be ignored, but if there is a
-                // corresponding entry in the `trait_map` we need to hash that.
-                // Make sure we don't ignore too much by checking that there is
-                // no entry in a debug_assert!().
-                debug_assert!(hcx.tcx.in_scope_traits(hir_id).is_none());
-            }
             NodeIdHashingMode::HashDefPath => {
-                hir_id.hash_stable(hcx, hasher);
-            }
-            NodeIdHashingMode::HashTraitsInScope => {
-                if let Some(traits) = hcx.tcx.in_scope_traits(hir_id) {
-                    // The ordering of the candidates is not fixed. So we hash
-                    // the def-ids and then sort them and hash the collection.
-                    let mut candidates: AccumulateVec<[_; 8]> =
-                        traits.iter()
-                              .map(|&hir::TraitCandidate { def_id, import_id: _ }| {
-                                  hcx.def_path_hash(def_id)
-                              })
-                              .collect();
-                    if traits.len() > 1 {
-                        candidates.sort();
-                    }
-                    candidates.hash_stable(hcx, hasher);
-                }
+                hcx.tcx.hir.node_to_hir_id(*self).hash_stable(hcx, hasher);
             }
         }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for ast::NodeId {
+    type KeyType = (DefPathHash, hir::ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          -> (DefPathHash, hir::ItemLocalId) {
+        hcx.tcx.hir.node_to_hir_id(*self).to_stable_hash_key(hcx)
     }
 }
 

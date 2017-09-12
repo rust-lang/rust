@@ -45,3 +45,9 @@ impl_stable_hash_for!(struct middle::cstore::ExternCrate {
     direct,
     path_len
 });
+
+impl_stable_hash_for!(struct middle::cstore::CrateSource {
+    dylib,
+    rlib,
+    rmeta
+});

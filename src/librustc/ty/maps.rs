@@ -1400,7 +1400,7 @@ define_maps! { <'tcx>
     [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
-    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
+    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefId, usize)>>,
     [] fn missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
     [] fn extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
     [] fn visible_parent_map: visible_parent_map_node(CrateNum)

@@ -659,10 +659,11 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(&self) -> Vec<(DefIndex, usize)> {
+    pub fn get_lang_items(&self) -> Vec<(DefId, usize)> {
         self.root
             .lang_items
             .decode(self)
+            .map(|(def_index, index)| (self.local_def_id(def_index), index))
             .collect()
     }
 

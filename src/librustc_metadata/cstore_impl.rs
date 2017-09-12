@@ -264,7 +264,7 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
-                .find(|l| l.foreign_items.contains(&id.index))
+                .find(|l| l.foreign_items.contains(&id))
                 .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {

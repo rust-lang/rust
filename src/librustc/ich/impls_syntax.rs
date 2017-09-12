@@ -18,17 +18,17 @@ use std::mem;
 
 use syntax::ast;
 use syntax::parse::token;
+use syntax::symbol::InternedString;
 use syntax::tokenstream;
 use syntax_pos::{Span, FileMap};
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::syntax::symbol::InternedString {
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for InternedString {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
@@ -38,12 +38,34 @@ for ::syntax::symbol::InternedString {
     }
 }
 
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for InternedString {
+    type KeyType = InternedString;
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          _: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          -> InternedString {
+        self.clone()
+    }
+}
+
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::Name {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         self.as_str().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for ast::Name {
+    type KeyType = InternedString;
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          _: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          -> InternedString {
+        self.as_str()
     }
 }
 

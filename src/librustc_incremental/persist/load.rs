@@ -104,6 +104,7 @@ fn does_still_exist(tcx: TyCtxt, dep_node: &DepNode) -> bool {
     match dep_node.kind {
         DepKind::Hir |
         DepKind::HirBody |
+        DepKind::InScopeTraits |
         DepKind::MetaData => {
             dep_node.extract_def_id(tcx).is_some()
         }

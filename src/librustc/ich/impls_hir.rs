@@ -12,13 +12,13 @@
 //! types in no particular order.
 
 use hir;
+use hir::map::DefPathHash;
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
-use ich::{self, StableHashingContext, NodeIdHashingMode};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use ich::{StableHashingContext, NodeIdHashingMode};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use std::mem;
 use syntax::ast;
-use util::nodemap::DefIdSet;
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefId {
     #[inline]
@@ -29,14 +29,12 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefId 
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for DefIdSet
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        ich::hash_stable_hashset(hcx, hasher, self, |hcx, def_id| {
-            hcx.def_path_hash(*def_id)
-        });
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for DefId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a, 'gcx, 'tcx>) -> DefPathHash {
+        hcx.tcx().def_path_hash(*self)
     }
 }
 
@@ -50,11 +48,22 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::H
             local_id,
         } = *self;
 
-        hcx.def_path_hash(DefId::local(owner)).hash_stable(hcx, hasher);
+        hcx.tcx().hir.definitions().def_path_hash(owner).hash_stable(hcx, hasher);
         local_id.hash_stable(hcx, hasher);
     }
 }
 
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
+    type KeyType = (DefPathHash, hir::ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          -> (DefPathHash, hir::ItemLocalId) {
+        let def_path_hash = hcx.tcx().hir.definitions().def_path_hash(self.owner);
+        (def_path_hash, self.local_id)
+    }
+}
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for CrateNum {
     #[inline]
@@ -68,7 +77,29 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for CrateN
     }
 }
 
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for CrateNum {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a, 'gcx, 'tcx>) -> DefPathHash {
+        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
+        def_id.to_stable_hash_key(hcx)
+    }
+}
+
 impl_stable_hash_for!(tuple_struct hir::ItemLocalId { index });
+
+impl<'a, 'gcx, 'lcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'lcx>>
+for hir::ItemLocalId {
+    type KeyType = hir::ItemLocalId;
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          _: &StableHashingContext<'a, 'gcx, 'lcx>)
+                          -> hir::ItemLocalId {
+        *self
+    }
+}
 
 // The following implementations of HashStable for ItemId, TraitItemId, and
 // ImplItemId deserve special attention. Normally we do not hash NodeIds within
@@ -231,36 +262,13 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::T
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let node_id_hashing_mode = match self.node {
-            hir::TySlice(..)       |
-            hir::TyArray(..)       |
-            hir::TyPtr(..)         |
-            hir::TyRptr(..)        |
-            hir::TyBareFn(..)      |
-            hir::TyNever           |
-            hir::TyTup(..)         |
-            hir::TyTraitObject(..) |
-            hir::TyImplTrait(..)   |
-            hir::TyTypeof(..)      |
-            hir::TyErr             |
-            hir::TyInfer           => {
-                NodeIdHashingMode::CheckedIgnore
-            }
-            hir::TyPath(..) => {
-                NodeIdHashingMode::HashTraitsInScope
-            }
-        };
-
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
-                id,
+                id: _,
                 ref node,
                 ref span,
             } = *self;
 
-            hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
-                id.hash_stable(hcx, hasher);
-            });
             node.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
         })
@@ -317,13 +325,11 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::T
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitRef {
             ref path,
-            ref_id,
+            // Don't hash the ref_id. It is tracked via the thing it is used to access
+            ref_id: _,
         } = *self;
 
         path.hash_stable(hcx, hasher);
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashTraitsInScope, |hcx| {
-            ref_id.hash_stable(hcx, hasher);
-        });
     }
 }
 
@@ -357,7 +363,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
         let hir::Block {
             ref stmts,
             ref expr,
-            id,
+            id: _,
             hir_id: _,
             rules,
             span,
@@ -392,7 +398,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
         }
 
         expr.hash_stable(hcx, hasher);
-        id.hash_stable(hcx, hasher);
         rules.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);
         targeted_by_break.hash_stable(hcx, hasher);
@@ -403,34 +408,13 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::P
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let node_id_hashing_mode = match self.node {
-            hir::PatKind::Wild        |
-            hir::PatKind::Binding(..) |
-            hir::PatKind::Tuple(..)   |
-            hir::PatKind::Box(..)     |
-            hir::PatKind::Ref(..)     |
-            hir::PatKind::Lit(..)     |
-            hir::PatKind::Range(..)   |
-            hir::PatKind::Slice(..)   => {
-                NodeIdHashingMode::CheckedIgnore
-            }
-            hir::PatKind::Path(..)        |
-            hir::PatKind::Struct(..)      |
-            hir::PatKind::TupleStruct(..) => {
-                NodeIdHashingMode::HashTraitsInScope
-            }
-        };
-
         let hir::Pat {
-            id,
+            id: _,
             hir_id: _,
             ref node,
             ref span
         } = *self;
 
-        hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
-            id.hash_stable(hcx, hasher);
-        });
         node.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);
     }
@@ -552,14 +536,14 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                                           hasher: &mut StableHasher<W>) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Expr {
-                id,
+                id: _,
                 hir_id: _,
                 ref span,
                 ref node,
                 ref attrs
             } = *self;
 
-            let (spans_always_on, node_id_hashing_mode) = match *node {
+            let spans_always_on = match *node {
                 hir::ExprBox(..)        |
                 hir::ExprArray(..)      |
                 hir::ExprCall(..)       |
@@ -578,40 +562,32 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::E
                 hir::ExprBreak(..)      |
                 hir::ExprAgain(..)      |
                 hir::ExprRet(..)        |
-                hir::ExprYield(..)    |
+                hir::ExprYield(..)      |
                 hir::ExprInlineAsm(..)  |
                 hir::ExprRepeat(..)     |
-                hir::ExprTup(..)        => {
-                    // For these we only hash the span when debuginfo is on.
-                    (false, NodeIdHashingMode::CheckedIgnore)
-                }
-                // For the following, spans might be significant because of
-                // panic messages indicating the source location.
-                hir::ExprBinary(op, ..) => {
-                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::CheckedIgnore)
-                }
-                hir::ExprUnary(op, _) => {
-                    (hcx.unop_can_panic_at_runtime(op), NodeIdHashingMode::CheckedIgnore)
-                }
-                hir::ExprAssignOp(op, ..) => {
-                    (hcx.binop_can_panic_at_runtime(op.node), NodeIdHashingMode::CheckedIgnore)
-                }
-                hir::ExprIndex(..) => {
-                    (true, NodeIdHashingMode::CheckedIgnore)
-                }
-                // For these we don't care about the span, but want to hash the
-                // trait in scope
+                hir::ExprTup(..)        |
                 hir::ExprMethodCall(..) |
                 hir::ExprPath(..)       |
                 hir::ExprStruct(..)     |
                 hir::ExprField(..)      => {
-                    (false, NodeIdHashingMode::HashTraitsInScope)
+                    // For these we only hash the span when debuginfo is on.
+                    false
+                }
+                // For the following, spans might be significant because of
+                // panic messages indicating the source location.
+                hir::ExprBinary(op, ..) => {
+                    hcx.binop_can_panic_at_runtime(op.node)
+                }
+                hir::ExprUnary(op, _) => {
+                    hcx.unop_can_panic_at_runtime(op)
+                }
+                hir::ExprAssignOp(op, ..) => {
+                    hcx.binop_can_panic_at_runtime(op.node)
+                }
+                hir::ExprIndex(..) => {
+                    true
                 }
             };
-
-            hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
-                id.hash_stable(hcx, hasher);
-            });
 
             if spans_always_on {
                 hcx.while_hashing_spans(true, |hcx| {
@@ -815,7 +791,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::V
                 // No fields to hash.
             }
             hir::Visibility::Restricted { ref path, id } => {
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashTraitsInScope, |hcx| {
+                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     id.hash_stable(hcx, hasher);
                 });
                 path.hash_stable(hcx, hasher);
@@ -904,16 +880,13 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let (node_id_hashing_mode, hash_spans) = match self.node {
+        let hash_spans = match self.node {
             hir::ItemStatic(..)      |
             hir::ItemConst(..)       |
             hir::ItemFn(..)          => {
-                (NodeIdHashingMode::CheckedIgnore, hcx.hash_spans())
+                hcx.hash_spans()
             }
-            hir::ItemUse(..) => {
-                (NodeIdHashingMode::HashTraitsInScope, false)
-            }
-
+            hir::ItemUse(..)         |
             hir::ItemExternCrate(..) |
             hir::ItemForeignMod(..)  |
             hir::ItemGlobalAsm(..)   |
@@ -925,14 +898,14 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
             hir::ItemUnion(..)       => {
-                (NodeIdHashingMode::CheckedIgnore, false)
+                false
             }
         };
 
         let hir::Item {
             name,
             ref attrs,
-            id,
+            id: _,
             hir_id: _,
             ref node,
             ref vis,
@@ -941,9 +914,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::I
 
         hcx.hash_hir_item_like(attrs, |hcx| {
             hcx.while_hashing_spans(hash_spans, |hcx| {
-                hcx.with_node_id_hashing_mode(node_id_hashing_mode, |hcx| {
-                    id.hash_stable(hcx, hasher);
-                });
                 name.hash_stable(hcx, hasher);
                 attrs.hash_stable(hcx, hasher);
                 node.hash_stable(hcx, hasher);
@@ -1049,6 +1019,18 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
     }
 }
 
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
+    type KeyType = (DefPathHash, hir::ItemLocalId);
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          -> (DefPathHash, hir::ItemLocalId) {
+        let hir::BodyId { node_id } = *self;
+        node_id.to_stable_hash_key(hcx)
+    }
+}
+
 impl_stable_hash_for!(struct hir::InlineAsmOutput {
     constraint,
     is_rw,
@@ -1151,7 +1133,17 @@ for hir::def_id::DefIndex {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        DefId::local(*self).hash_stable(hcx, hasher);
+        hcx.tcx().hir.definitions().def_path_hash(*self).hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>>
+for hir::def_id::DefIndex {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a, 'gcx, 'tcx>) -> DefPathHash {
+         hcx.tcx().hir.definitions().def_path_hash(*self)
     }
 }
 
@@ -1170,6 +1162,11 @@ for ::middle::lang_items::LangItem {
     }
 }
 
+impl_stable_hash_for!(struct ::middle::lang_items::LanguageItems {
+    items,
+    missing
+});
+
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
 for hir::TraitCandidate {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -1186,3 +1183,8 @@ for hir::TraitCandidate {
         });
     }
 }
+
+impl_stable_hash_for!(struct hir::Freevar {
+    def,
+    span
+});

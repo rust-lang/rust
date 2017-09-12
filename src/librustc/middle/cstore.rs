@@ -132,7 +132,7 @@ pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Symbol,
     pub cfg: Option<ast::MetaItem>,
-    pub foreign_items: Vec<DefIndex>,
+    pub foreign_items: Vec<DefId>,
 }
 
 pub enum LoadedMacro {

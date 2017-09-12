@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
 use blake2b::Blake2bHasher;
@@ -222,6 +222,14 @@ pub trait HashStable<CTX> {
                                           hasher: &mut StableHasher<W>);
 }
 
+/// Implement this for types that can be turned into stable keys like, for
+/// example, for DefId that can be converted to a DefPathHash. This is used for
+/// bringing maps into a predictable order before hashing them.
+pub trait ToStableHashKey<HCX> {
+    type KeyType: Ord + Clone + Sized + HashStable<HCX>;
+    fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType;
+}
+
 // Implement HashStable by just calling `Hash::hash()`. This works fine for
 // self-contained values that don't depend on the hashing context `CTX`.
 macro_rules! impl_stable_hash_via_hash {
@@ -423,34 +431,6 @@ impl<T, CTX> HashStable<CTX> for ::std::mem::Discriminant<T> {
     }
 }
 
-impl<K, V, CTX> HashStable<CTX> for ::std::collections::BTreeMap<K, V>
-    where K: Ord + HashStable<CTX>,
-          V: HashStable<CTX>,
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          ctx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
-        self.len().hash_stable(ctx, hasher);
-        for (k, v) in self {
-            k.hash_stable(ctx, hasher);
-            v.hash_stable(ctx, hasher);
-        }
-    }
-}
-
-impl<T, CTX> HashStable<CTX> for ::std::collections::BTreeSet<T>
-    where T: Ord + HashStable<CTX>,
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          ctx: &mut CTX,
-                                          hasher: &mut StableHasher<W>) {
-        self.len().hash_stable(ctx, hasher);
-        for v in self {
-            v.hash_stable(ctx, hasher);
-        }
-    }
-}
-
 impl<I: ::indexed_vec::Idx, T, CTX> HashStable<CTX> for ::indexed_vec::IndexVec<I, T>
     where T: HashStable<CTX>,
 {
@@ -471,5 +451,68 @@ impl<I: ::indexed_vec::Idx, CTX> HashStable<CTX> for ::indexed_set::IdxSetBuf<I>
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
         self.words().hash_stable(ctx, hasher);
+    }
+}
+
+impl_stable_hash_via_hash!(::std::path::Path);
+impl_stable_hash_via_hash!(::std::path::PathBuf);
+
+impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
+    where K: ToStableHashKey<HCX> + Eq + Hash,
+          V: HashStable<HCX>,
+          R: BuildHasher,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
+        let mut entries: Vec<_> = self.iter()
+                                      .map(|(k, v)| (k.to_stable_hash_key(hcx), v))
+                                      .collect();
+        entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
+        entries.hash_stable(hcx, hasher);
+    }
+}
+
+impl<K, R, HCX> HashStable<HCX> for ::std::collections::HashSet<K, R>
+    where K: ToStableHashKey<HCX> + Eq + Hash,
+          R: BuildHasher,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
+        let mut keys: Vec<_> = self.iter()
+                                   .map(|k| k.to_stable_hash_key(hcx))
+                                   .collect();
+        keys.sort_unstable();
+        keys.hash_stable(hcx, hasher);
+    }
+}
+
+impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
+    where K: ToStableHashKey<HCX>,
+          V: HashStable<HCX>,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
+        let mut entries: Vec<_> = self.iter()
+                                      .map(|(k, v)| (k.to_stable_hash_key(hcx), v))
+                                      .collect();
+        entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
+        entries.hash_stable(hcx, hasher);
+    }
+}
+
+impl<K, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
+    where K: ToStableHashKey<HCX>,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
+        let mut keys: Vec<_> = self.iter()
+                                   .map(|k| k.to_stable_hash_key(hcx))
+                                   .collect();
+        keys.sort_unstable();
+        keys.hash_stable(hcx, hasher);
     }
 }
