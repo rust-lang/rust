@@ -134,6 +134,9 @@ registries not specified in this configuration option will be rejected at publis
 
 In order to make working with multiple registries more convenient, we would also like to support:
 
+- Adding a `cargo add-registry` command that could prompt for index URL and authentication
+  information and place the right information in the right format in the right files to make setup
+  for each user easier.
 - [Being able to specify the API host rather than the index
   location](https://github.com/rust-lang/cargo/issues/4208), so that, for example, you could
   specify `https://crates.io` rather than `https://github.com/rust-lang/crates.io-index`. We do not
