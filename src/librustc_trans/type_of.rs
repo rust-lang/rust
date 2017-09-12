@@ -254,7 +254,7 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
                 adt::memory_index_to_gep(index as u64)
             }
 
-            Layout::Univariant { ref variant, .. } => {
+            Layout::Univariant(ref variant) => {
                 adt::memory_index_to_gep(variant.memory_index[index] as u64)
             }
 

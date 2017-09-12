@@ -1054,16 +1054,16 @@ fn trans_const_adt<'a, 'tcx>(
             build_const_struct(ccx, l, &variant, vals,
                 Some(Const::new(lldiscr, d.to_ty(ccx.tcx(), false))))
         }
-        layout::UntaggedUnion { ref variants, .. }=> {
+        layout::UntaggedUnion(ref un) => {
             assert_eq!(variant_index, 0);
             let contents = [
                 vals[0].llval,
-                padding(ccx, variants.stride() - ccx.size_of(vals[0].ty))
+                padding(ccx, un.stride() - ccx.size_of(vals[0].ty))
             ];
 
-            Const::new(C_struct(ccx, &contents, variants.packed), t)
+            Const::new(C_struct(ccx, &contents, un.packed), t)
         }
-        layout::Univariant { ref variant, .. } => {
+        layout::Univariant(ref variant) => {
             assert_eq!(variant_index, 0);
             build_const_struct(ccx, l, &variant, vals, None)
         }

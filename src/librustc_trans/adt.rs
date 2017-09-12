@@ -74,7 +74,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::Univariant { ..}
         | layout::StructWrappedNullablePointer { .. } => {
             let (variant_layout, variant) = match *l {
-                layout::Univariant { ref variant, .. } => {
+                layout::Univariant(ref variant) => {
                     let is_enum = if let ty::TyAdt(def, _) = t.sty {
                         def.is_enum()
                     } else {
@@ -123,7 +123,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        layout::Univariant { ref variant, .. } => {
+        layout::Univariant(ref variant) => {
             match name {
                 None => {
                     Type::struct_(cx, &struct_llfields(cx, l, &variant),
@@ -134,16 +134,16 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        layout::UntaggedUnion { ref variants, .. }=> {
+        layout::UntaggedUnion(ref un) => {
             // Use alignment-sized ints to fill all the union storage.
-            let fill = union_fill(cx, variants.stride(), variants.align);
+            let fill = union_fill(cx, un.stride(), un.align);
             match name {
                 None => {
-                    Type::struct_(cx, &[fill], variants.packed)
+                    Type::struct_(cx, &[fill], un.packed)
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(&[fill], variants.packed);
+                    llty.set_struct_body(&[fill], un.packed);
                     llty
                 }
             }

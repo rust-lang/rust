@@ -913,7 +913,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 
         let tmp;
         let offsets = match *layout {
-            layout::Univariant { ref variant, .. } => &variant.offsets,
+            layout::Univariant(ref variant) => &variant.offsets,
             layout::Vector { element, count } => {
                 let element_size = element.size(cx).bytes();
                 tmp = (0..count).
@@ -993,7 +993,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
-        let offsets = if let layout::Univariant { ref variant, .. } = *layout {
+        let offsets = if let layout::Univariant(ref variant) = *layout {
             &variant.offsets
         } else {
             bug!("{} is not a tuple", self.ty);
@@ -1155,7 +1155,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         }
                     }).collect()
             },
-            layout::Univariant{ ref variant, .. } => {
+            layout::Univariant(ref variant) => {
                 assert!(adt.variants.len() <= 1);
 
                 if adt.variants.is_empty() {

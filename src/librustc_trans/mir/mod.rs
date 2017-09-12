@@ -577,7 +577,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             let layout = bcx.ccx.layout_of(closure_ty);
             let offsets = match *layout {
-                layout::Univariant { ref variant, .. } => &variant.offsets[..],
+                layout::Univariant(ref variant) => &variant.offsets[..],
                 _ => bug!("Closures are only supposed to be Univariant")
             };
 

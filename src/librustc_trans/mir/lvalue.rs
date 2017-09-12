@@ -58,8 +58,8 @@ impl ops::BitOr for Alignment {
 impl<'a> From<&'a Layout> for Alignment {
     fn from(layout: &Layout) -> Self {
         let (packed, align) = match *layout {
-            Layout::UntaggedUnion { ref variants } => (variants.packed, variants.align),
-            Layout::Univariant { ref variant, .. } => (variant.packed, variant.align),
+            Layout::UntaggedUnion(ref un) => (un.packed, un.align),
+            Layout::Univariant(ref variant) => (variant.packed, variant.align),
             _ => return Alignment::AbiAligned
         };
         if packed {
@@ -250,7 +250,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         // Check whether the variant being used is packed, if applicable.
         let is_packed = match (&*l, l.variant_index) {
-            (&layout::Univariant { ref variant, .. }, _) => variant.packed,
+            (&layout::Univariant(ref variant), _) => variant.packed,
             (&layout::StructWrappedNullablePointer { ref nonnull, .. }, _) => nonnull.packed,
             (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
             _ => return simple()
