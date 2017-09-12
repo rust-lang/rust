@@ -140,7 +140,8 @@ pub fn ftruncate(fd: usize, len: usize) -> Result<usize> {
 
 // Change modify and/or access times
 pub fn futimens(fd: usize, times: &[TimeSpec]) -> Result<usize> {
-    unsafe { syscall3(SYS_FUTIMENS, fd, times.as_ptr() as usize, times.len() * mem::size_of::<TimeSpec>()) }
+    unsafe { syscall3(SYS_FUTIMENS, fd, times.as_ptr() as usize,
+                      times.len() * mem::size_of::<TimeSpec>()) }
 }
 
 /// Fast userspace mutex
@@ -291,7 +292,8 @@ pub fn setreuid(ruid: usize, euid: usize) -> Result<usize> {
 }
 
 /// Set up a signal handler
-pub fn sigaction(sig: usize, act: Option<&SigAction>, oldact: Option<&mut SigAction>) -> Result<usize> {
+pub fn sigaction(sig: usize, act: Option<&SigAction>, oldact: Option<&mut SigAction>)
+-> Result<usize> {
     unsafe { syscall4(SYS_SIGACTION, sig,
                       act.map(|x| x as *const _).unwrap_or_else(ptr::null) as usize,
                       oldact.map(|x| x as *mut _).unwrap_or_else(ptr::null_mut) as usize,
