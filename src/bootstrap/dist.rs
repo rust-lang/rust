@@ -432,7 +432,7 @@ impl Step for Rustc {
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
-            cp_r(&build.src.join("man"), &image.join("share/man/man1"));
+            cp_r(&build.src.join("src/doc/man"), &image.join("share/man/man1"));
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {
@@ -834,7 +834,6 @@ impl Step for PlainSourceTarball {
             "config.toml.example",
         ];
         let src_dirs = [
-            "man",
             "src",
         ];
 
