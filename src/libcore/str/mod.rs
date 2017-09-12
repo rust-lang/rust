@@ -395,21 +395,6 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 ///
 /// assert_eq!("💖", heart);
 /// ```
-///
-/// Invalid UTF-8:
-///
-/// ```
-/// use std::str;
-///
-/// // Invalid bytes.
-/// let mut bytes = vec![240, 40, 140, 188];
-///
-/// // Returns a str:
-/// unsafe { str::from_utf8_unchecked_mut(&mut bytes) };
-///
-/// // from_utf8 returns an error instead:
-/// assert!(str::from_utf8(&bytes).is_err());
-/// ```
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
