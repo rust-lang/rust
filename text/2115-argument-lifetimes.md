@@ -1,7 +1,7 @@
 - Feature Name: argument_lifetimes
 - Start Date: 2017-08-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2115
+- Rust Issue: https://github.com/rust-lang/rust/issues/44524
 
 # Summary
 [summary]: #summary
