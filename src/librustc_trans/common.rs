@@ -27,7 +27,7 @@ use type_::Type;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{HasDataLayout, Layout, LayoutTyper};
+use rustc::ty::layout::{HasDataLayout, Layout, LayoutOf};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -81,8 +81,8 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
             }
 
             // The two fields must be both immediates.
-            type_is_immediate(ccx, layout.field_type(ccx, 0)) &&
-            type_is_immediate(ccx, layout.field_type(ccx, 1))
+            type_is_immediate(ccx, layout.field(ccx, 0).ty) &&
+            type_is_immediate(ccx, layout.field(ccx, 1).ty)
         }
         _ => false
     }

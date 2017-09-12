@@ -31,7 +31,7 @@ use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
 use common::{self, CrateContext};
 use rustc::ty::{self, AdtKind, Ty};
-use rustc::ty::layout::{self, Align, LayoutTyper, Size, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, Size, FullLayout};
 use rustc::session::{Session, config};
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::common::path2cstr;
@@ -1043,7 +1043,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 //=-----------------------------------------------------------------------------
 
 struct UnionMemberDescriptionFactory<'tcx> {
-    layout: TyLayout<'tcx>,
+    layout: FullLayout<'tcx>,
     variant: &'tcx ty::VariantDef,
     span: Span,
 }
@@ -1110,7 +1110,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // offset of zero bytes).
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
-    type_rep: TyLayout<'tcx>,
+    type_rep: FullLayout<'tcx>,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -1289,7 +1289,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // of discriminant instead of us having to recover its path.
                 fn compute_field_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 name: &mut String,
-                                                layout: TyLayout<'tcx>,
+                                                layout: FullLayout<'tcx>,
                                                 offset: Size,
                                                 size: Size) {
                     for i in 0..layout.field_count() {
@@ -1380,13 +1380,13 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    -> (DICompositeType, MemberDescriptionFactory<'tcx>) {
     let layout = cx.layout_of(enum_type);
     let maybe_discr = match *layout {
-        layout::General { .. } => Some(layout.field_type(cx, 0)),
+        layout::General { .. } => Some(layout.field(cx, 0).ty),
         _ => None,
     };
 
     let layout = layout.for_variant(variant_index);
     let mut field_tys = (0..layout.field_count()).map(|i| {
-        layout.field_type(cx, i)
+        layout.field(cx, i).ty
     }).collect::<Vec<_>>();
 
     if let Some(discr) = maybe_discr {

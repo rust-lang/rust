@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{Layout, LayoutTyper};
+use rustc::ty::layout::{Layout, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 

@@ -11,7 +11,7 @@
 use abi::{ArgAttribute, FnType, LayoutExt, Reg, RegKind};
 use common::CrateContext;
 
-use rustc::ty::layout::{self, Layout, TyLayout};
+use rustc::ty::layout::{self, Layout, FullLayout};
 
 #[derive(PartialEq)]
 pub enum Flavor {
@@ -20,7 +20,7 @@ pub enum Flavor {
 }
 
 fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  layout: TyLayout<'tcx>) -> bool {
+                                  layout: FullLayout<'tcx>) -> bool {
     match *layout {
         Layout::Scalar { value: layout::F32, .. } |
         Layout::Scalar { value: layout::F64, .. } => true,

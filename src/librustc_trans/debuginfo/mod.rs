@@ -43,7 +43,7 @@ use std::ptr;
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutOf};
 
 pub mod gdb;
 mod utils;

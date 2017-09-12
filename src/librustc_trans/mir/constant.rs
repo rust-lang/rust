@@ -18,7 +18,7 @@ use rustc::traits;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper, Size};
+use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -1100,7 +1100,7 @@ fn trans_const_adt<'a, 'tcx>(
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                layout: layout::TyLayout<'tcx>,
+                                layout: layout::FullLayout<'tcx>,
                                 st: &layout::Struct,
                                 vals: &[Const<'tcx>],
                                 discr: Option<Const<'tcx>>)
