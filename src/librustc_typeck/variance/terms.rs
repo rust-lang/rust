@@ -98,15 +98,6 @@ fn lang_items(tcx: TyCtxt) -> Vec<(ast::NodeId, Vec<ty::Variance>)> {
     let all = vec![
         (lang_items.phantom_data(), vec![ty::Covariant]),
         (lang_items.unsafe_cell_type(), vec![ty::Invariant]),
-
-        // Deprecated:
-        (lang_items.covariant_type(), vec![ty::Covariant]),
-        (lang_items.contravariant_type(), vec![ty::Contravariant]),
-        (lang_items.invariant_type(), vec![ty::Invariant]),
-        (lang_items.covariant_lifetime(), vec![ty::Covariant]),
-        (lang_items.contravariant_lifetime(), vec![ty::Contravariant]),
-        (lang_items.invariant_lifetime(), vec![ty::Invariant]),
-
         ];
 
     all.into_iter() // iterating over (Option<DefId>, Variance)
