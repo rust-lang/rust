@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use common::Config;
-use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use common::{CompileFail, ParseFail, Pretty, RunFail, CompilePass, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
 use diff;
@@ -126,6 +126,7 @@ impl<'test> TestCx<'test> {
             CompileFail |
             ParseFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
+            CompilePass => self.run_cpass_test(),
             RunPass => self.run_rpass_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
@@ -216,6 +217,14 @@ impl<'test> TestCx<'test> {
                 &format!("failure produced the wrong error: {}",
                          proc_res.status),
                 proc_res);
+        }
+    }
+
+    fn run_cpass_test(&self) {
+        let proc_res = self.compile_test();
+
+        if !proc_res.status.success() {
+            self.fatal_proc_rec("compilation failed!", &proc_res);
         }
     }
 
@@ -1417,6 +1426,7 @@ actual:\n\
 
                 rustc.arg(dir_opt);
             }
+            CompilePass |
             RunPass |
             RunFail |
             RunPassValgrind |
