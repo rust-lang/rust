@@ -281,13 +281,13 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(3);
     /// set.insert(5);
     /// set.insert(8);
-    /// for &elem in set.range((Included(&4), Included(&8))) {
+    /// for &elem in set.range((Included(4), Included(8))) {
     ///     println!("{}", elem);
     /// }
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
+    pub fn range<K, R>(&self, range: R) -> Range<T>
         where K: Ord, T: Borrow<K>, R: Into<RangeBounds<K>>
     {
         Range { iter: self.map.range(range.into()) }

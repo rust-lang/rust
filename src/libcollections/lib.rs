@@ -24,7 +24,6 @@
 #![deny(warnings)]
 
 #![feature(alloc)]
-#![feature(collections_range)]
 #![feature(macro_reexport)]
 #![feature(staged_api)]
 
@@ -33,13 +32,12 @@
 //! See [`std::collections`](../std/collections/index.html) for a detailed
 //! discussion of collections in Rust.
 
-extern crate core;
-
 #[macro_reexport(vec, format)]
 extern crate alloc;
 
 #[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
-pub use core::ops::range;
+#[unstable(feature = "range_argument", issue = "30877")]
+pub mod range { }
 
 pub use alloc::Bound;
 

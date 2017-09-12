@@ -106,6 +106,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
+#![feature(range_argument)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
 #![feature(slice_get_slice)]
@@ -204,9 +205,8 @@ trait SpecExtend<I: IntoIterator> {
 }
 
 #[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
+#[unstable(feature = "range_argument", issue = "30877")]
 pub use core::ops::Bound;
-
-pub use oom::oom;
 
 #[doc(no_inline)]
 pub use binary_heap::BinaryHeap;

@@ -436,7 +436,9 @@ pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;
 
 #[rustc_deprecated(reason = "moved to std::ops", since = "1.22.0")]
-pub use std::ops::range;
+#[unstable(feature = "range_argument", issue = "30877")]
+/// `RangeArgument` is deprecated and moved to std::ops
+pub mod range { }
 
 mod hash;
 

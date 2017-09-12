@@ -389,14 +389,13 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// `Bound`s are range endpoints:
 ///
 /// ```
-/// #![feature(collections_range)]
+/// # #![feature(range_argument)]
+/// use std::ops::RangeBounds;
+/// use std::ops::Bound::*;
 ///
-/// use std::collections::range::RangeArgument;
-/// use std::collections::Bound::*;
-///
-/// assert_eq!((..100).start(), Unbounded);
-/// assert_eq!((1..12).start(), Included(&1));
-/// assert_eq!((1..12).end(), Excluded(&12));
+/// assert_eq!(Into::<RangeBounds<i32>>::into((..100)).start, Unbounded);
+/// assert_eq!(Into::<RangeBounds<i32>>::into((1..12)).start, Included(1));
+/// assert_eq!(Into::<RangeBounds<i32>>::into((1..12)).end, Excluded(12));
 /// ```
 ///
 /// Using a tuple of `Bound`s as an argument to [`BTreeMap::range`].
@@ -404,7 +403,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 ///
 /// ```
 /// use std::collections::BTreeMap;
-/// use std::collections::Bound::{Excluded, Included, Unbounded};
+/// use std::ops::Bound::{Excluded, Included, Unbounded};
 ///
 /// let mut map = BTreeMap::new();
 /// map.insert(3, "a");
@@ -418,7 +417,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
 /// ```
 ///
-/// [`BTreeMap::range`]: btree_map/struct.BTreeMap.html#method.range
+/// [`BTreeMap::range`]: ../std/collections/struct.BTreeMap.html#method.range
 #[stable(feature = "collections_bound", since = "1.17.0")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {

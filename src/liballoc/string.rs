@@ -1375,6 +1375,7 @@ impl String {
         // Because the range removal happens in Drop, if the Drain iterator is leaked,
         // the removal will not happen.
         let len = self.len();
+        let range = range.into();
         let start = match range.start {
             Included(n) => n,
             Excluded(n) => n + 1,
@@ -1429,25 +1430,24 @@ impl String {
     /// assert_eq!(s, "Α is capital alpha; β is beta");
     /// ```
     #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
-    pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str) -> Splice<'a, 'b>
+    pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str)
         where R: Into<RangeBounds<usize>>
     {
         // Memory safety
         //
         // The String version of Splice does not have the memory safety issues
         // of the vector version. The data is just plain bytes.
-        // Because the range removal happens in Drop, if the Splice iterator is leaked,
-        // the removal will not happen.
-        let len = self.len();
-        let start = match range.start {
-             Included(n) => n,
-             Excluded(n) => n + 1,
-             Unbounded => 0,
+
+        let range = range.into();
+        match range.start {
+             Included(n) => assert!(self.is_char_boundary(n)),
+             Excluded(n) => assert!(self.is_char_boundary(n + 1)),
+             Unbounded => {},
         };
-        let end = match range.end {
-             Included(n) => n + 1,
-             Excluded(n) => n,
-             Unbounded => len,
+        match range.end {
+             Included(n) => assert!(self.is_char_boundary(n + 1)),
+             Excluded(n) => assert!(self.is_char_boundary(n)),
+             Unbounded => {},
         };
 
         unsafe {

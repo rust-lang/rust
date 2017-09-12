@@ -1101,6 +1101,7 @@ impl<T> Vec<T> {
         // the hole, and the vector length is restored to the new length.
         //
         let len = self.len();
+        let range = range.into();
         let start = match range.start {
             Included(n) => n,
             Excluded(n) => n + 1,
