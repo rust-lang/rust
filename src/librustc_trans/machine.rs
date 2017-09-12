@@ -48,7 +48,7 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     // there's no need for that contrivance.  The instruction
     // selection DAG generator would flatten that GEP(1) node into a
     // constant of the type's alloc size, so let's save it some work.
-    return C_uint(cx, llsize_of_alloc(cx, ty));
+    return C_usize(cx, llsize_of_alloc(cx, ty));
 }
 
 // Returns the preferred alignment of the given type for the current target.

@@ -193,6 +193,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::Substs;
@@ -564,24 +565,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
-        debug!("visiting constant {:?} @ {:?}", *constant, location);
+    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
+        debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        if let ty::TyFnDef(..) = constant.ty.sty {
-            // function definitions are zero-sized, and only generate
-            // IR when they are called/reified.
-            self.super_constant(constant, location);
-            return
-        }
-
-        if let mir::Literal::Item { def_id, substs } = constant.literal {
+        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
             let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                  &substs);
             let instance = monomorphize::resolve(self.scx, def_id, substs);
             collect_neighbours(self.scx, instance, true, self.output);
         }
 
-        self.super_constant(constant, location);
+        self.super_const(constant);
     }
 
     fn visit_terminator_kind(&mut self,

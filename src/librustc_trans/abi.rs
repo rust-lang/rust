@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, AttributePlace};
 use base;
 use builder::Builder;
-use common::{instance_ty, ty_fn_sig, type_is_fat_ptr, C_uint};
+use common::{instance_ty, ty_fn_sig, type_is_fat_ptr, C_usize};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -527,7 +527,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
-            let llsz = C_uint(ccx, self.layout.size(ccx).bytes());
+            let llsz = C_usize(ccx, self.layout.size(ccx).bytes());
             let llalign = self.layout.align(ccx).abi();
             base::call_memcpy(bcx, dst, val, llsz, llalign as u32);
         } else if let Some(ty) = self.cast {
@@ -564,7 +564,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
-                                  C_uint(ccx, self.layout.size(ccx).bytes()),
+                                  C_usize(ccx, self.layout.size(ccx).bytes()),
                                   cmp::min(self.layout.align(ccx).abi() as u32,
                                            llalign_of_min(ccx, ty)));
 

@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use rustc::middle::const_val::ConstVal::*;
+use rustc::middle::const_val::ConstAggregate::*;
 use rustc::middle::const_val::ErrKind::*;
-use rustc::middle::const_val::{ConstVal, ConstEvalErr, EvalResult, ErrKind};
+use rustc::middle::const_val::{ByteArray, ConstVal, ConstEvalErr, EvalResult, ErrKind};
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -88,7 +89,7 @@ pub struct ConstContext<'a, 'tcx: 'a> {
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     substs: &'tcx Substs<'tcx>,
-    fn_args: Option<NodeMap<ConstVal<'tcx>>>
+    fn_args: Option<NodeMap<&'tcx ty::Const<'tcx>>>
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
@@ -107,7 +108,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
 
     /// Evaluate a constant expression in a context where the expression isn't
     /// guaranteed to be evaluable.
-    pub fn eval(&self, e: &Expr) -> EvalResult<'tcx> {
+    pub fn eval(&self, e: &'tcx Expr) -> EvalResult<'tcx> {
         if self.tables.tainted_by_errors {
             signal!(e, TypeckError);
         }
@@ -118,9 +119,10 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
 type CastResult<'tcx> = Result<ConstVal<'tcx>, ErrKind<'tcx>>;
 
 fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
-                                     e: &Expr) -> EvalResult<'tcx> {
+                                     e: &'tcx Expr) -> EvalResult<'tcx> {
     let tcx = cx.tcx;
-    let ety = cx.tables.expr_ty(e).subst(tcx, cx.substs);
+    let ty = cx.tables.expr_ty(e).subst(tcx, cx.substs);
+    let mk_const = |val| tcx.mk_const(ty::Const { val, ty });
 
     let result = match e.node {
       hir::ExprUnary(hir::UnNeg, ref inner) => {
@@ -133,57 +135,66 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             const I32_OVERFLOW: u128 = i32::min_value() as u32 as u128;
             const I64_OVERFLOW: u128 = i64::min_value() as u64 as u128;
             const I128_OVERFLOW: u128 = i128::min_value() as u128;
-            match (&lit.node, &ety.sty) {
+            let negated = match (&lit.node, &ty.sty) {
                 (&LitKind::Int(I8_OVERFLOW, _), &ty::TyInt(IntTy::I8)) |
                 (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
-                    return Ok(Integral(I8(i8::min_value())))
+                    Some(I8(i8::min_value()))
                 },
                 (&LitKind::Int(I16_OVERFLOW, _), &ty::TyInt(IntTy::I16)) |
                 (&LitKind::Int(I16_OVERFLOW, Signed(IntTy::I16)), _) => {
-                    return Ok(Integral(I16(i16::min_value())))
+                    Some(I16(i16::min_value()))
                 },
                 (&LitKind::Int(I32_OVERFLOW, _), &ty::TyInt(IntTy::I32)) |
                 (&LitKind::Int(I32_OVERFLOW, Signed(IntTy::I32)), _) => {
-                    return Ok(Integral(I32(i32::min_value())))
+                    Some(I32(i32::min_value()))
                 },
                 (&LitKind::Int(I64_OVERFLOW, _), &ty::TyInt(IntTy::I64)) |
                 (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
-                    return Ok(Integral(I64(i64::min_value())))
+                    Some(I64(i64::min_value()))
                 },
                 (&LitKind::Int(I128_OVERFLOW, _), &ty::TyInt(IntTy::I128)) |
                 (&LitKind::Int(I128_OVERFLOW, Signed(IntTy::I128)), _) => {
-                    return Ok(Integral(I128(i128::min_value())))
+                    Some(I128(i128::min_value()))
                 },
                 (&LitKind::Int(n, _), &ty::TyInt(IntTy::Is)) |
                 (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
-                    match tcx.sess.target.int_type {
+                    match tcx.sess.target.isize_ty {
                         IntTy::I16 => if n == I16_OVERFLOW {
-                            return Ok(Integral(Isize(Is16(i16::min_value()))));
+                            Some(Isize(Is16(i16::min_value())))
+                        } else {
+                            None
                         },
                         IntTy::I32 => if n == I32_OVERFLOW {
-                            return Ok(Integral(Isize(Is32(i32::min_value()))));
+                            Some(Isize(Is32(i32::min_value())))
+                        } else {
+                            None
                         },
                         IntTy::I64 => if n == I64_OVERFLOW {
-                            return Ok(Integral(Isize(Is64(i64::min_value()))));
+                            Some(Isize(Is64(i64::min_value())))
+                        } else {
+                            None
                         },
                         _ => span_bug!(e.span, "typeck error")
                     }
                 },
-                _ => {},
+                _ => None
+            };
+            if let Some(i) = negated {
+                return Ok(mk_const(Integral(i)));
             }
         }
-        match cx.eval(inner)? {
+        mk_const(match cx.eval(inner)?.val {
           Float(f) => Float(-f),
           Integral(i) => Integral(math!(e, -i)),
-          const_val => signal!(e, NegateOn(const_val)),
-        }
+          _ => signal!(e, TypeckError)
+        })
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
-        match cx.eval(inner)? {
+        mk_const(match cx.eval(inner)?.val {
           Integral(i) => Integral(math!(e, !i)),
           Bool(b) => Bool(!b),
-          const_val => signal!(e, NotOn(const_val)),
-        }
+          _ => signal!(e, TypeckError)
+        })
       }
       hir::ExprUnary(hir::UnDeref, _) => signal!(e, UnimplementedConstVal("deref operation")),
       hir::ExprBinary(op, ref a, ref b) => {
@@ -191,7 +202,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         // gives us a type through a type-suffix, cast or const def type
         // we need to re-eval the other value of the BinOp if it was
         // not inferred
-        match (cx.eval(a)?, cx.eval(b)?) {
+        mk_const(match (cx.eval(a)?.val, cx.eval(b)?.val) {
           (Float(a), Float(b)) => {
             use std::cmp::Ordering::*;
             match op.node {
@@ -260,16 +271,16 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           }
 
           _ => signal!(e, MiscBinaryOp),
-        }
+        })
       }
       hir::ExprCast(ref base, _) => {
         let base_val = cx.eval(base)?;
         let base_ty = cx.tables.expr_ty(base).subst(tcx, cx.substs);
-        if ety == base_ty {
+        if ty == base_ty {
             base_val
         } else {
-            match cast_const(tcx, base_val, ety) {
-                Ok(val) => val,
+            match cast_const(tcx, base_val.val, ty) {
+                Ok(val) => mk_const(val),
                 Err(kind) => signal!(e, kind),
             }
         }
@@ -291,52 +302,53 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                     }
               },
               Def::VariantCtor(variant_def, CtorKind::Const) => {
-                Variant(variant_def)
+                mk_const(Variant(variant_def))
               }
               Def::VariantCtor(_, CtorKind::Fn) => {
                   signal!(e, UnimplementedConstVal("enum variants"));
               }
               Def::StructCtor(_, CtorKind::Const) => {
-                  ConstVal::Struct(Default::default())
+                  mk_const(Aggregate(Struct(&[])))
               }
               Def::StructCtor(_, CtorKind::Fn) => {
                   signal!(e, UnimplementedConstVal("tuple struct constructors"))
               }
               Def::Local(id) => {
                   debug!("Def::Local({:?}): {:?}", id, cx.fn_args);
-                  if let Some(val) = cx.fn_args.as_ref().and_then(|args| args.get(&id)) {
-                      val.clone()
+                  if let Some(&val) = cx.fn_args.as_ref().and_then(|args| args.get(&id)) {
+                      val
                   } else {
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Method(id) | Def::Fn(id) => Function(id, substs),
+              Def::Method(id) | Def::Fn(id) => mk_const(Function(id, substs)),
               Def::Err => span_bug!(e.span, "typeck error"),
               _ => signal!(e, NonConstPath),
           }
       }
       hir::ExprCall(ref callee, ref args) => {
-          let (def_id, substs) = match cx.eval(callee)? {
+          let (def_id, substs) = match cx.eval(callee)?.val {
               Function(def_id, substs) => (def_id, substs),
               _ => signal!(e, TypeckError),
           };
 
           if tcx.fn_sig(def_id).abi() == Abi::RustIntrinsic {
             let layout_of = |ty: Ty<'tcx>| {
-                ty.layout(tcx, cx.param_env).map_err(|err| {
+                let ty = tcx.erase_regions(&ty);
+                tcx.at(e.span).layout_raw(cx.param_env.reveal_all().and(ty)).map_err(|err| {
                     ConstEvalErr { span: e.span, kind: LayoutError(err) }
                 })
             };
             match &tcx.item_name(def_id)[..] {
                 "size_of" => {
-                    let size = layout_of(substs.type_at(0))?.size(tcx);
-                    return Ok(Integral(Usize(ConstUsize::new(size.bytes(),
-                        tcx.sess.target.uint_type).unwrap())));
+                    let size = layout_of(substs.type_at(0))?.size(tcx).bytes();
+                    return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
+                        tcx.sess.target.usize_ty).unwrap()))));
                 }
                 "min_align_of" => {
-                    let align = layout_of(substs.type_at(0))?.align(tcx);
-                    return Ok(Integral(Usize(ConstUsize::new(align.abi(),
-                        tcx.sess.target.uint_type).unwrap())));
+                    let align = layout_of(substs.type_at(0))?.align(tcx).abi();
+                    return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
+                        tcx.sess.target.usize_ty).unwrap()))));
                 }
                 _ => signal!(e, TypeckError)
             }
@@ -384,84 +396,83 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           };
           callee_cx.eval(&body.value)?
       },
-      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety) {
-          Ok(val) => val,
+      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ty) {
+          Ok(val) => mk_const(val),
           Err(err) => signal!(e, err),
       },
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => cx.eval(expr)?,
-            None => Tuple(vec![]),
+            None => mk_const(Aggregate(Tuple(&[]))),
         }
       }
       hir::ExprType(ref e, _) => cx.eval(e)?,
       hir::ExprTup(ref fields) => {
-        Tuple(fields.iter().map(|e| cx.eval(e)).collect::<Result<_, _>>()?)
+        let values = fields.iter().map(|e| cx.eval(e)).collect::<Result<Vec<_>, _>>()?;
+        mk_const(Aggregate(Tuple(tcx.alloc_const_slice(&values))))
       }
       hir::ExprStruct(_, ref fields, _) => {
-        Struct(fields.iter().map(|f| {
+        mk_const(Aggregate(Struct(tcx.alloc_name_const_slice(&fields.iter().map(|f| {
             cx.eval(&f.expr).map(|v| (f.name.node, v))
-        }).collect::<Result<_, _>>()?)
+        }).collect::<Result<Vec<_>, _>>()?))))
       }
       hir::ExprIndex(ref arr, ref idx) => {
         if !tcx.sess.features.borrow().const_indexing {
             signal!(e, IndexOpFeatureGated);
         }
         let arr = cx.eval(arr)?;
-        let idx = match cx.eval(idx)? {
-            Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
+        let idx = match cx.eval(idx)?.val {
+            Integral(Usize(i)) => i.as_u64(),
             _ => signal!(idx, IndexNotUsize),
         };
         assert_eq!(idx as usize as u64, idx);
-        match arr {
-            Array(ref v) => {
-                if let Some(elem) = v.get(idx as usize) {
-                    elem.clone()
+        match arr.val {
+            Aggregate(Array(v)) => {
+                if let Some(&elem) = v.get(idx as usize) {
+                    elem
                 } else {
                     let n = v.len() as u64;
-                    assert_eq!(n as usize as u64, n);
                     signal!(e, IndexOutOfBounds { len: n, index: idx })
                 }
             }
 
-            Repeat(.., n) if idx >= n => {
+            Aggregate(Repeat(.., n)) if idx >= n => {
                 signal!(e, IndexOutOfBounds { len: n, index: idx })
             }
-            Repeat(ref elem, _) => (**elem).clone(),
+            Aggregate(Repeat(elem, _)) => elem,
 
-            ByteStr(ref data) if idx >= data.len() as u64 => {
-                signal!(e, IndexOutOfBounds { len: data.len() as u64, index: idx })
+            ByteStr(b) if idx >= b.data.len() as u64 => {
+                signal!(e, IndexOutOfBounds { len: b.data.len() as u64, index: idx })
             }
-            ByteStr(data) => {
-                Integral(U8(data[idx as usize]))
+            ByteStr(b) => {
+                mk_const(Integral(U8(b.data[idx as usize])))
             },
 
             _ => signal!(e, IndexedNonVec),
         }
       }
       hir::ExprArray(ref v) => {
-        Array(v.iter().map(|e| cx.eval(e)).collect::<Result<_, _>>()?)
+        let values = v.iter().map(|e| cx.eval(e)).collect::<Result<Vec<_>, _>>()?;
+        mk_const(Aggregate(Array(tcx.alloc_const_slice(&values))))
       }
       hir::ExprRepeat(ref elem, _) => {
-          let n = match ety.sty {
-            ty::TyArray(_, n) => n as u64,
+          let n = match ty.sty {
+            ty::TyArray(_, n) => n.val.to_const_int().unwrap().to_u64().unwrap(),
             _ => span_bug!(e.span, "typeck error")
           };
-          Repeat(Box::new(cx.eval(elem)?), n)
+          mk_const(Aggregate(Repeat(cx.eval(elem)?, n)))
       },
       hir::ExprTupField(ref base, index) => {
-        let c = cx.eval(base)?;
-        if let Tuple(ref fields) = c {
-            fields[index.node].clone()
+        if let Aggregate(Tuple(fields)) = cx.eval(base)?.val {
+            fields[index.node]
         } else {
             signal!(base, ExpectedConstTuple);
         }
       }
       hir::ExprField(ref base, field_name) => {
-        let c = cx.eval(base)?;
-        if let Struct(ref fields) = c {
-            if let Some(f) = fields.get(&field_name.node) {
-                f.clone()
+        if let Aggregate(Struct(fields)) = cx.eval(base)?.val {
+            if let Some(&(_, f)) = fields.iter().find(|&&(name, _)| name == field_name.node) {
+                f
             } else {
                 signal!(e, MissingStructField);
             }
@@ -551,7 +562,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyInt(ast::IntTy::I64) => Ok(Integral(I64(v as i128 as i64))),
         ty::TyInt(ast::IntTy::I128) => Ok(Integral(I128(v as i128))),
         ty::TyInt(ast::IntTy::Is) => {
-            Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.int_type))))
+            Ok(Integral(Isize(ConstIsize::new_truncating(v as i128, tcx.sess.target.isize_ty))))
         },
         ty::TyUint(ast::UintTy::U8) => Ok(Integral(U8(v as u8))),
         ty::TyUint(ast::UintTy::U16) => Ok(Integral(U16(v as u16))),
@@ -559,7 +570,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::TyUint(ast::UintTy::U64) => Ok(Integral(U64(v as u64))),
         ty::TyUint(ast::UintTy::U128) => Ok(Integral(U128(v as u128))),
         ty::TyUint(ast::UintTy::Us) => {
-            Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.uint_type))))
+            Ok(Integral(Usize(ConstUsize::new_truncating(v, tcx.sess.target.usize_ty))))
         },
         ty::TyFloat(fty) => {
             if let Some(i) = val.to_u128() {
@@ -625,7 +636,14 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 Err(ErrKind::UnimplementedConstVal("casting a bytestr to a raw ptr"))
             },
             ty::TyRef(_, ty::TypeAndMut { ref ty, mutbl: hir::MutImmutable }) => match ty.sty {
-                ty::TyArray(ty, n) if ty == tcx.types.u8 && n == b.len() => Ok(ByteStr(b)),
+                ty::TyArray(ty, n) => {
+                    let n = n.val.to_const_int().unwrap().to_u64().unwrap();
+                    if ty == tcx.types.u8 && n == b.data.len() as u64 {
+                        Ok(val)
+                    } else {
+                        Err(CannotCast)
+                    }
+                }
                 ty::TySlice(_) => {
                     Err(ErrKind::UnimplementedConstVal("casting a bytestr to slice"))
                 },
@@ -645,7 +663,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
+fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           mut ty: Ty<'tcx>)
                           -> Result<ConstVal<'tcx>, ErrKind<'tcx>> {
@@ -660,19 +678,19 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
 
     match *lit {
         LitKind::Str(ref s, _) => Ok(Str(s.as_str())),
-        LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
+        LitKind::ByteStr(ref data) => Ok(ByteStr(ByteArray { data })),
         LitKind::Byte(n) => Ok(Integral(U8(n))),
         LitKind::Int(n, hint) => {
             match (&ty.sty, hint) {
                 (&ty::TyInt(ity), _) |
                 (_, Signed(ity)) => {
                     Ok(Integral(ConstInt::new_signed_truncating(n as i128,
-                        ity, tcx.sess.target.int_type)))
+                        ity, tcx.sess.target.isize_ty)))
                 }
                 (&ty::TyUint(uty), _) |
                 (_, Unsigned(uty)) => {
                     Ok(Integral(ConstInt::new_unsigned_truncating(n as u128,
-                        uty, tcx.sess.target.uint_type)))
+                        uty, tcx.sess.target.usize_ty)))
                 }
                 _ => bug!()
             }
@@ -708,8 +726,8 @@ pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
         (&Float(a), &Float(b)) => a.try_cmp(b).ok(),
         (&Str(ref a), &Str(ref b)) => Some(a.cmp(b)),
         (&Bool(a), &Bool(b)) => Some(a.cmp(&b)),
-        (&ByteStr(ref a), &ByteStr(ref b)) => Some(a.cmp(b)),
-        (&Char(a), &Char(ref b)) => Some(a.cmp(b)),
+        (&ByteStr(a), &ByteStr(b)) => Some(a.data.cmp(b.data)),
+        (&Char(a), &Char(b)) => Some(a.cmp(&b)),
         _ => None,
     };
 
@@ -717,10 +735,8 @@ pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
         Some(result) => Ok(result),
         None => {
             // FIXME: can this ever be reached?
-            span_err!(tcx.sess, span, E0298,
-                      "type mismatch comparing {} and {}",
-                      a.description(),
-                      b.description());
+            tcx.sess.delay_span_bug(span,
+                &format!("type mismatch comparing {:?} and {:?}", a, b));
             Err(ErrorReported)
         }
     }
@@ -729,8 +745,8 @@ pub fn compare_const_vals(tcx: TyCtxt, span: Span, a: &ConstVal, b: &ConstVal)
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     pub fn compare_lit_exprs(&self,
                              span: Span,
-                             a: &Expr,
-                             b: &Expr) -> Result<Ordering, ErrorReported> {
+                             a: &'tcx Expr,
+                             b: &'tcx Expr) -> Result<Ordering, ErrorReported> {
         let tcx = self.tcx;
         let a = match self.eval(a) {
             Ok(a) => a,
@@ -746,7 +762,7 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
                 return Err(ErrorReported);
             }
         };
-        compare_const_vals(tcx, span, &a, &b)
+        compare_const_vals(tcx, span, &a.val, &b.val)
     }
 }
 

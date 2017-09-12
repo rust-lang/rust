@@ -837,12 +837,22 @@ impl<'a, 'tcx> Struct {
 
             // Is this a fixed-size array of something non-zero
             // with at least one element?
-            (_, &ty::TyArray(ety, d)) if d > 0 => {
-                Struct::non_zero_field_paths(
-                    tcx,
-                    param_env,
-                    Some(ety).into_iter(),
-                    None)
+            (_, &ty::TyArray(ety, mut count)) => {
+                if count.has_projections() {
+                    count = tcx.normalize_associated_type_in_env(&count, param_env);
+                    if count.has_projections() {
+                        return Err(LayoutError::Unknown(ty));
+                    }
+                }
+                if count.val.to_const_int().unwrap().to_u64().unwrap() != 0 {
+                    Struct::non_zero_field_paths(
+                        tcx,
+                        param_env,
+                        Some(ety).into_iter(),
+                        None)
+                } else {
+                    Ok(None)
+                }
             }
 
             (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
@@ -1174,12 +1184,17 @@ impl<'a, 'tcx> Layout {
             }
 
             // Arrays and slices.
-            ty::TyArray(element, count) => {
+            ty::TyArray(element, mut count) => {
+                if count.has_projections() {
+                    count = tcx.normalize_associated_type_in_env(&count, param_env);
+                    if count.has_projections() {
+                        return Err(LayoutError::Unknown(ty));
+                    }
+                }
+
                 let element = element.layout(tcx, param_env)?;
                 let element_size = element.size(dl);
-                // FIXME(eddyb) Don't use host `usize` for array lengths.
-                let usize_count: usize = count;
-                let count = usize_count as u64;
+                let count = count.val.to_const_int().unwrap().to_u64().unwrap();
                 if element_size.checked_mul(count, dl).is_none() {
                     return Err(LayoutError::SizeOverflow(ty));
                 }

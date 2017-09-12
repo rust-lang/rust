@@ -64,7 +64,7 @@ pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
@@ -846,6 +846,9 @@ pub enum Predicate<'tcx> {
 
     /// `T1 <: T2`
     Subtype(PolySubtypePredicate<'tcx>),
+
+    /// Constant initializer must evaluate successfully.
+    ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
@@ -938,6 +941,8 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
                 Predicate::ObjectSafe(trait_def_id),
             Predicate::ClosureKind(closure_def_id, kind) =>
                 Predicate::ClosureKind(closure_def_id, kind),
+            Predicate::ConstEvaluatable(def_id, const_substs) =>
+                Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs)),
         }
     }
 }
@@ -1120,6 +1125,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::ClosureKind(_closure_def_id, _kind) => {
                 vec![]
             }
+            ty::Predicate::ConstEvaluatable(_, substs) => {
+                substs.types().collect()
+            }
         };
 
         // The only reason to collect into a vector here is that I was
@@ -1142,7 +1150,8 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |
             Predicate::ClosureKind(..) |
-            Predicate::TypeOutlives(..) => {
+            Predicate::TypeOutlives(..) |
+            Predicate::ConstEvaluatable(..) => {
                 None
             }
         }
@@ -1601,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 match tcx.const_eval(param_env.and((expr_did, substs))) {
-                    Ok(ConstVal::Integral(v)) => {
+                    Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                         discr = v;
                     }
                     err => {
@@ -1641,7 +1650,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                     match tcx.const_eval(param_env.and((expr_did, substs))) {
-                        Ok(ConstVal::Integral(v)) => {
+                        Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                             explicit_value = v;
                             break;
                         }
@@ -1665,11 +1674,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match repr_type {
             attr::UnsignedInt(ty) => {
                 ConstInt::new_unsigned_truncating(discr, ty,
-                                                  tcx.sess.target.uint_type)
+                                                  tcx.sess.target.usize_ty)
             }
             attr::SignedInt(ty) => {
                 ConstInt::new_signed_truncating(discr as i128, ty,
-                                                tcx.sess.target.int_type)
+                                                tcx.sess.target.isize_ty)
             }
         }
     }

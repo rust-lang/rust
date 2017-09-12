@@ -26,8 +26,8 @@ use abi::{self, Abi};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
-use common::{C_array, C_bool, C_bytes, C_integral, C_big_integral, C_u32, C_u64};
-use common::{C_null, C_struct, C_str_slice, C_undef, C_uint, C_vector, is_undef};
+use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u64};
+use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, is_undef};
 use common::const_to_opt_u128;
 use consts;
 use monomorphize;
@@ -66,35 +66,29 @@ impl<'tcx> Const<'tcx> {
     -> Const<'tcx> {
         let tcx = ccx.tcx();
         let (llval, ty) = match *ci {
-            I8(v) => (C_integral(Type::i8(ccx), v as u64, true), tcx.types.i8),
-            I16(v) => (C_integral(Type::i16(ccx), v as u64, true), tcx.types.i16),
-            I32(v) => (C_integral(Type::i32(ccx), v as u64, true), tcx.types.i32),
-            I64(v) => (C_integral(Type::i64(ccx), v as u64, true), tcx.types.i64),
+            I8(v) => (C_int(Type::i8(ccx), v as i64), tcx.types.i8),
+            I16(v) => (C_int(Type::i16(ccx), v as i64), tcx.types.i16),
+            I32(v) => (C_int(Type::i32(ccx), v as i64), tcx.types.i32),
+            I64(v) => (C_int(Type::i64(ccx), v as i64), tcx.types.i64),
             I128(v) => (C_big_integral(Type::i128(ccx), v as u128), tcx.types.i128),
-            Isize(v) => {
-                let i = v.as_i64(ccx.tcx().sess.target.int_type);
-                (C_integral(Type::int(ccx), i as u64, true), tcx.types.isize)
-            },
-            U8(v) => (C_integral(Type::i8(ccx), v as u64, false), tcx.types.u8),
-            U16(v) => (C_integral(Type::i16(ccx), v as u64, false), tcx.types.u16),
-            U32(v) => (C_integral(Type::i32(ccx), v as u64, false), tcx.types.u32),
-            U64(v) => (C_integral(Type::i64(ccx), v, false), tcx.types.u64),
+            Isize(v) => (C_int(Type::isize(ccx), v.as_i64()), tcx.types.isize),
+            U8(v) => (C_uint(Type::i8(ccx), v as u64), tcx.types.u8),
+            U16(v) => (C_uint(Type::i16(ccx), v as u64), tcx.types.u16),
+            U32(v) => (C_uint(Type::i32(ccx), v as u64), tcx.types.u32),
+            U64(v) => (C_uint(Type::i64(ccx), v), tcx.types.u64),
             U128(v) => (C_big_integral(Type::i128(ccx), v), tcx.types.u128),
-            Usize(v) => {
-                let u = v.as_u64(ccx.tcx().sess.target.uint_type);
-                (C_integral(Type::int(ccx), u, false), tcx.types.usize)
-            },
+            Usize(v) => (C_uint(Type::isize(ccx), v.as_u64()), tcx.types.usize),
         };
         Const { llval: llval, ty: ty }
     }
 
     /// Translate ConstVal into a LLVM constant value.
     pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
-                             cv: ConstVal,
+                             cv: &ConstVal,
                              ty: Ty<'tcx>)
                              -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
-        let val = match cv {
+        let val = match *cv {
             ConstVal::Float(v) => {
                 let bits = match v.ty {
                     ast::FloatTy::F32 => C_u32(ccx, v.bits as u32),
@@ -105,12 +99,12 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
-            ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-            ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
+            ConstVal::ByteStr(v) => consts::addr_of(ccx, C_bytes(ccx, v.data), 1, "byte_str"),
+            ConstVal::Char(c) => C_uint(Type::char(ccx), c as u64),
             ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
             ConstVal::Variant(_) |
-            ConstVal::Struct(_) | ConstVal::Tuple(_) |
-            ConstVal::Array(..) | ConstVal::Repeat(..) => {
+            ConstVal::Aggregate(..) |
+            ConstVal::Unevaluated(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
         };
@@ -207,7 +201,9 @@ impl<'tcx> ConstLvalue<'tcx> {
 
     pub fn len<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
         match self.ty.sty {
-            ty::TyArray(_, n) => C_uint(ccx, n),
+            ty::TyArray(_, n) => {
+                C_usize(ccx, n.val.to_const_int().unwrap().to_u64().unwrap())
+            }
             ty::TySlice(_) | ty::TyStr => {
                 assert!(self.llextra != ptr::null_mut());
                 self.llextra
@@ -367,13 +363,13 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let result = if fn_ty.fn_sig(tcx).abi() == Abi::RustIntrinsic {
                             match &tcx.item_name(def_id)[..] {
                                 "size_of" => {
-                                    let llval = C_uint(self.ccx,
+                                    let llval = C_usize(self.ccx,
                                         self.ccx.size_of(substs.type_at(0)));
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 "min_align_of" => {
-                                    let llval = C_uint(self.ccx,
-                                        self.ccx.align_of(substs.type_at(0)));
+                                    let llval = C_usize(self.ccx,
+                                        self.ccx.align_of(substs.type_at(0)) as u64);
                                     Ok(Const::new(llval, tcx.types.usize))
                                 }
                                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
@@ -514,16 +510,17 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
                 match constant.literal.clone() {
-                    mir::Literal::Item { def_id, substs } => {
-                        let substs = self.monomorphize(&substs);
-                        MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
-                    }
                     mir::Literal::Promoted { index } => {
                         let mir = &self.mir.promoted[index];
                         MirConstContext::new(self.ccx, mir, self.substs, IndexVec::new()).trans()
                     }
                     mir::Literal::Value { value } => {
-                        Ok(Const::from_constval(self.ccx, value, ty))
+                        if let ConstVal::Unevaluated(def_id, substs) = value.val {
+                            let substs = self.monomorphize(&substs);
+                            MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
+                        } else {
+                            Ok(Const::from_constval(self.ccx, &value.val, ty))
+                        }
                     }
                 }
             }
@@ -557,9 +554,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let val = match *rvalue {
             mir::Rvalue::Use(ref operand) => self.const_operand(operand, span)?,
 
-            mir::Rvalue::Repeat(ref elem, ref count) => {
+            mir::Rvalue::Repeat(ref elem, count) => {
                 let elem = self.const_operand(elem, span)?;
-                let size = count.as_u64(tcx.sess.target.uint_type);
+                let size = count.as_u64();
+                assert_eq!(size as usize as u64, size);
                 let fields = vec![elem.llval; size as usize];
                 self.const_array(dest_ty, &fields)
             }
@@ -836,7 +834,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(self.ccx.shared().type_is_sized(ty));
-                let llval = C_uint(self.ccx, self.ccx.size_of(ty));
+                let llval = C_usize(self.ccx, self.ccx.size_of(ty));
                 Const::new(llval, tcx.types.usize)
             }
 
@@ -854,10 +852,10 @@ fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
     match t.sty {
         ty::TyInt(int_type) => const_to_opt_u128(value, true)
             .and_then(|input| ConstInt::new_signed(input as i128, int_type,
-                                                   tcx.sess.target.int_type)),
+                                                   tcx.sess.target.isize_ty)),
         ty::TyUint(uint_type) => const_to_opt_u128(value, false)
             .and_then(|input| ConstInt::new_unsigned(input, uint_type,
-                                                     tcx.sess.target.uint_type)),
+                                                     tcx.sess.target.usize_ty)),
         _ => None
 
     }
@@ -963,16 +961,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         debug!("trans_constant({:?})", constant);
         let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
-            mir::Literal::Item { def_id, substs } => {
-                let substs = self.monomorphize(&substs);
-                MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
-            }
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
                 MirConstContext::new(bcx.ccx, mir, self.param_substs, IndexVec::new()).trans()
             }
             mir::Literal::Value { value } => {
-                Ok(Const::from_constval(bcx.ccx, value, ty))
+                if let ConstVal::Unevaluated(def_id, substs) = value.val {
+                    let substs = self.monomorphize(&substs);
+                    MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
+                } else {
+                    Ok(Const::from_constval(bcx.ccx, &value.val, ty))
+                }
             }
         };
 
@@ -1038,11 +1037,11 @@ fn trans_const<'a, 'tcx>(
             };
             assert_eq!(vals.len(), 0);
             adt::assert_discr_in_range(min, max, discr);
-            C_integral(Type::from_integer(ccx, d), discr, true)
+            C_int(Type::from_integer(ccx, d), discr as i64)
         }
         layout::General { discr: d, ref variants, .. } => {
             let variant = &variants[variant_index];
-            let lldiscr = C_integral(Type::from_integer(ccx, d), variant_index as u64, true);
+            let lldiscr = C_int(Type::from_integer(ccx, d), variant_index as i64);
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);

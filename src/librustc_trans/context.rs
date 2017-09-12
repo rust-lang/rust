@@ -136,7 +136,7 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
-    int_type: Type,
+    isize_ty: Type,
     opaque_vec_type: Type,
     str_slice_type: Type,
 
@@ -398,7 +398,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 statics_to_rauw: RefCell::new(Vec::new()),
                 used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
-                int_type: Type::from_ref(ptr::null_mut()),
+                isize_ty: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 str_slice_type: Type::from_ref(ptr::null_mut()),
                 dbg_cx,
@@ -410,23 +410,23 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 placeholder: PhantomData,
             };
 
-            let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
+            let (isize_ty, opaque_vec_type, str_slice_ty, mut local_ccx) = {
                 // Do a little dance to create a dummy CrateContext, so we can
                 // create some things in the LLVM module of this codegen unit
                 let mut local_ccxs = vec![local_ccx];
-                let (int_type, opaque_vec_type, str_slice_ty) = {
+                let (isize_ty, opaque_vec_type, str_slice_ty) = {
                     let dummy_ccx = LocalCrateContext::dummy_ccx(shared,
                                                                  local_ccxs.as_mut_slice());
                     let mut str_slice_ty = Type::named_struct(&dummy_ccx, "str_slice");
                     str_slice_ty.set_struct_body(&[Type::i8p(&dummy_ccx),
-                                                   Type::int(&dummy_ccx)],
+                                                   Type::isize(&dummy_ccx)],
                                                  false);
-                    (Type::int(&dummy_ccx), Type::opaque_vec(&dummy_ccx), str_slice_ty)
+                    (Type::isize(&dummy_ccx), Type::opaque_vec(&dummy_ccx), str_slice_ty)
                 };
-                (int_type, opaque_vec_type, str_slice_ty, local_ccxs.pop().unwrap())
+                (isize_ty, opaque_vec_type, str_slice_ty, local_ccxs.pop().unwrap())
             };
 
-            local_ccx.int_type = int_type;
+            local_ccx.isize_ty = isize_ty;
             local_ccx.opaque_vec_type = opaque_vec_type;
             local_ccx.str_slice_type = str_slice_ty;
 
@@ -549,8 +549,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().stats
     }
 
-    pub fn int_type(&self) -> Type {
-        self.local().int_type
+    pub fn isize_ty(&self) -> Type {
+        self.local().isize_ty
     }
 
     pub fn str_slice_type(&self) -> Type {

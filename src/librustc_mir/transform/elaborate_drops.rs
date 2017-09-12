@@ -520,7 +520,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
             ty: self.tcx.types.bool,
-            literal: Literal::Value { value: ConstVal::Bool(val) }
+            literal: Literal::Value {
+                value: self.tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(val),
+                    ty: self.tcx.types.bool
+                })
+            }
         })))
     }
 

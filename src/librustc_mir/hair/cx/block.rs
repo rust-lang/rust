@@ -64,10 +64,7 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                             first_statement_index: index as u32,
                         });
 
-                        let pattern = Pattern::from_hir(cx.tcx.global_tcx(),
-                                                        cx.param_env.and(cx.identity_substs),
-                                                        cx.tables(),
-                                                        &local.pat);
+                        let pattern = cx.pattern_from_hir(&local.pat);
                         result.push(StmtRef::Mirror(Box::new(Stmt {
                             kind: StmtKind::Let {
                                 remainder_scope: remainder_scope,

@@ -11,7 +11,6 @@
 
 use build;
 use hair::cx::Cx;
-use hair::Pattern;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -164,6 +163,26 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
             span_bug!(self.span,
                       "found type `{:?}` with inference types/regions in MIR",
                       ty);
+        }
+    }
+
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(region) {
+            *region = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found region `{:?}` with inference types/regions in MIR",
+                      region);
+        }
+    }
+
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(constant) {
+            *constant = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found constant `{:?}` with inference types/regions in MIR",
+                      constant);
         }
     }
 
@@ -537,10 +556,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let lvalue = Lvalue::Local(Local::new(index + 1));
 
             if let Some(pattern) = pattern {
-                let pattern = Pattern::from_hir(self.hir.tcx().global_tcx(),
-                                                self.hir.param_env.and(self.hir.identity_substs),
-                                                self.hir.tables(),
-                                                pattern);
+                let pattern = self.hir.pattern_from_hir(pattern);
                 scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }

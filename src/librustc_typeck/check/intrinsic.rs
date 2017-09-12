@@ -360,7 +360,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match name["simd_shuffle".len()..].parse() {
                 Ok(n) => {
                     let params = vec![param(0), param(0),
-                                      tcx.mk_ty(ty::TyArray(tcx.types.u32, n))];
+                                      tcx.mk_array(tcx.types.u32, n)];
                     (2, params, param(1))
                 }
                 Err(_) => {

@@ -120,7 +120,7 @@ impl<'a, 'gcx> AssociatedTypeNormalizer<'a, 'gcx> {
     }
 
     fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             value.clone()
         } else {
             value.fold_with(self)
@@ -134,7 +134,7 @@ impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projection_types() {
+        if !ty.has_projections() {
             ty
         } else {
             self.tcx.trans_trait_caches.project_cache.memoize(ty, || {

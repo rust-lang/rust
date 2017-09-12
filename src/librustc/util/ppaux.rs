@@ -10,6 +10,7 @@
 
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
+use middle::const_val::ConstVal;
 use middle::region::{self, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
@@ -24,6 +25,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
+use rustc_const_math::ConstInt;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::Symbol;
@@ -427,6 +429,9 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
             }
             ty::Predicate::ClosureKind(closure_def_id, kind) => {
                 write!(f, "ClosureKind({:?}, {:?})", closure_def_id, kind)
+            }
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                write!(f, "ConstEvaluatable({:?}, {:?})", def_id, substs)
             }
         }
     }
@@ -886,7 +891,21 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                 write!(f, "]")
             }),
-            TyArray(ty, sz) => write!(f, "[{}; {}]",  ty, sz),
+            TyArray(ty, sz) => {
+                write!(f, "[{}; ", ty)?;
+                match sz.val {
+                    ConstVal::Integral(ConstInt::Usize(sz)) => {
+                        write!(f, "{}", sz)?;
+                    }
+                    ConstVal::Unevaluated(_def_id, substs) => {
+                        write!(f, "<unevaluated{:?}>", &substs[..])?;
+                    }
+                    _ => {
+                        write!(f, "{:?}", sz)?;
+                    }
+                }
+                write!(f, "]")
+            }
             TySlice(ty) => write!(f, "[{}]",  ty)
         }
     }
@@ -1035,6 +1054,11 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
                     write!(f, "the closure `{}` implements the trait `{}`",
                            tcx.item_path_str(closure_def_id), kind)
                 }),
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                write!(f, "the constant `")?;
+                parameterized(f, substs, def_id, &[])?;
+                write!(f, "` can be evaluated")
+            }
         }
     }
 }

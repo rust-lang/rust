@@ -48,8 +48,8 @@ use std::path::PathBuf;
 
 pub struct Config {
     pub target: Target,
-    pub int_type: IntTy,
-    pub uint_type: UintTy,
+    pub isize_ty: IntTy,
+    pub usize_ty: UintTy,
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -1149,7 +1149,7 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
         }
     };
 
-    let (int_type, uint_type) = match &target.target_pointer_width[..] {
+    let (isize_ty, usize_ty) = match &target.target_pointer_width[..] {
         "16" => (ast::IntTy::I16, ast::UintTy::U16),
         "32" => (ast::IntTy::I32, ast::UintTy::U32),
         "64" => (ast::IntTy::I64, ast::UintTy::U64),
@@ -1159,8 +1159,8 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 
     Config {
         target,
-        int_type,
-        uint_type,
+        isize_ty,
+        usize_ty,
     }
 }
 

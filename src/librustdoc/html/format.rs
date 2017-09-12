@@ -633,7 +633,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Slice, "]")
         }
-        clean::Array(ref t, n) => {
+        clean::Array(ref t, ref n) => {
             primitive_link(f, PrimitiveType::Array, "[")?;
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Array, &format!("; {}]", n))

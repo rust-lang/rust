@@ -27,11 +27,13 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
@@ -40,6 +42,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use rustc::hir;
 
+use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -934,6 +937,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
             Predicate::ClosureKind(..) => panic!("not user writable"),
+            Predicate::ConstEvaluatable(..) => panic!("not user writable"),
         }
     }
 }
@@ -1555,7 +1559,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
-    Array(Box<Type>, usize),
+    Array(Box<Type>, String),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1782,9 +1786,16 @@ impl Clean<Type> for hir::Ty {
                              type_: box m.ty.clean(cx)}
             }
             TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, length) => {
-                use rustc::middle::const_val::eval_length;
-                let n = eval_length(cx.tcx, length, "array length").unwrap();
+            TyArray(ref ty, n) => {
+                let def_id = cx.tcx.hir.body_owner_def_id(n);
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let substs = Substs::identity_for_item(cx.tcx, def_id);
+                let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
                 Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
@@ -1895,7 +1906,14 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
+            ty::TyArray(ty, n) => {
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
+                Array(box ty.clean(cx), n)
+            }
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),

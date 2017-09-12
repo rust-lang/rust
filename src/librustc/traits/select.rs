@@ -732,6 +732,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     }
                 }
             }
+
+            ty::Predicate::ConstEvaluatable(def_id, substs) => {
+                match self.tcx().lift_to_global(&(obligation.param_env, substs)) {
+                    Some((param_env, substs)) => {
+                        match self.tcx().const_eval(param_env.and((def_id, substs))) {
+                            Ok(_) => EvaluatedToOk,
+                            Err(_) => EvaluatedToErr
+                        }
+                    }
+                    None => {
+                        // Inference variables still left in param_env or substs.
+                        EvaluatedToAmbig
+                    }
+                }
+            }
         }
     }
 

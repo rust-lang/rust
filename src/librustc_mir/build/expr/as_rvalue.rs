@@ -197,7 +197,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: expr_span,
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
-                            value: ConstVal::Integral(ConstInt::U32(0)),
+                            value: this.hir.tcx().mk_const(ty::Const {
+                                val: ConstVal::Integral(ConstInt::U32(0)),
+                                ty: this.hir.tcx().types.u32
+                            }),
                         },
                     }));
                     box AggregateKind::Generator(closure_id, substs, interior)
@@ -385,13 +388,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I64 => ConstInt::I64(-1),
                     ast::IntTy::I128 => ConstInt::I128(-1),
                     ast::IntTy::Is => {
-                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let val = ConstIsize::new(-1, int_ty).unwrap();
                         ConstInt::Isize(val)
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
@@ -412,7 +420,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
                     ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
                     ast::IntTy::Is => {
-                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let min = match int_ty {
                             ast::IntTy::I16 => std::i16::MIN as i64,
                             ast::IntTy::I32 => std::i32::MIN as i64,
@@ -424,7 +432,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)

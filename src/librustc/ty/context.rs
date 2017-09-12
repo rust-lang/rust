@@ -21,6 +21,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
+use middle::const_val::ConstVal;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -32,7 +33,7 @@ use ty::ReprOptions;
 use traits;
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
-use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region};
+use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region, Const};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -49,6 +50,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
 use arena::{TypedArena, DroplessArena};
+use rustc_const_math::{ConstInt, ConstUsize};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
@@ -108,6 +110,7 @@ pub struct CtxtInterners<'tcx> {
     region: RefCell<FxHashSet<Interned<'tcx, RegionKind>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
     predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
+    const_: RefCell<FxHashSet<Interned<'tcx, Const<'tcx>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -120,6 +123,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             region: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
             predicates: RefCell::new(FxHashSet()),
+            const_: RefCell::new(FxHashSet()),
         }
     }
 
@@ -934,6 +938,32 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.global_arenas.adt_def.alloc(def)
     }
 
+    pub fn alloc_byte_array(self, bytes: &[u8]) -> &'gcx [u8] {
+        if bytes.is_empty() {
+            &[]
+        } else {
+            self.global_interners.arena.alloc_slice(bytes)
+        }
+    }
+
+    pub fn alloc_const_slice(self, values: &[&'tcx ty::Const<'tcx>])
+                             -> &'tcx [&'tcx ty::Const<'tcx>] {
+        if values.is_empty() {
+            &[]
+        } else {
+            self.interners.arena.alloc_slice(values)
+        }
+    }
+
+    pub fn alloc_name_const_slice(self, values: &[(ast::Name, &'tcx ty::Const<'tcx>)])
+                                  -> &'tcx [(ast::Name, &'tcx ty::Const<'tcx>)] {
+        if values.is_empty() {
+            &[]
+        } else {
+            self.interners.arena.alloc_slice(values)
+        }
+    }
+
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
         if let Some(st) = self.stability_interner.borrow().get(&stab) {
             return st;
@@ -1175,21 +1205,39 @@ pub trait Lift<'tcx> {
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
-impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
-    type Lifted = ty::ParamEnv<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<ty::ParamEnv<'tcx>> {
-        self.caller_bounds.lift_to_tcx(tcx).and_then(|caller_bounds| {
-            Some(ty::ParamEnv {
-                reveal: self.reveal,
-                caller_bounds,
-            })
-        })
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
+    type Lifted = Region<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Region<'tcx>> {
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for &'a Const<'a> {
+    type Lifted = &'tcx Const<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Const<'tcx>> {
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1209,21 +1257,6 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
             return Some(Slice::empty());
         }
         if tcx.interners.arena.in_arena(&self[..] as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for Region<'a> {
-    type Lifted = Region<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Region<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
         // Also try in the global tcx if we're not that.
@@ -1522,6 +1555,12 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Predicate<'lcx>]>
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<Const<'lcx>> for Interned<'tcx, Const<'tcx>> {
+    fn borrow<'a>(&'a self) -> &'a Const<'lcx> {
+        &self.0
+    }
+}
+
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
                                             $alloc_method:ident,
@@ -1602,7 +1641,8 @@ direct_interners!('tcx,
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
             _ => false
         }
-    }) -> RegionKind
+    }) -> RegionKind,
+    const_: mk_const(|c: &Const| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
 );
 
 macro_rules! slice_interners {
@@ -1719,8 +1759,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_imm_ptr(self.mk_nil())
     }
 
-    pub fn mk_array(self, ty: Ty<'tcx>, n: usize) -> Ty<'tcx> {
-        self.mk_ty(TyArray(ty, n))
+    pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
+        let n = ConstUsize::new(n, self.sess.target.usize_ty).unwrap();
+        self.mk_array_const_usize(ty, n)
+    }
+
+    pub fn mk_array_const_usize(self, ty: Ty<'tcx>, n: ConstUsize) -> Ty<'tcx> {
+        self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
+            val: ConstVal::Integral(ConstInt::Usize(n)),
+            ty: self.types.usize
+        })))
     }
 
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
