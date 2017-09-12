@@ -48,13 +48,24 @@ In order to tell Cargo about a registry other than crates.io, you can specify an
 
 ```toml
 [registry.$choose-a-name]
-index = "https://username:password@my-intranet:8080/index"
+index = "https://my-intranet:8080/index"
 ```
 
 Instead of `$choose-a-name`, place the name you'd like to use to refer to this registry in your
 `Cargo.toml` files. The `index` key should contain the location of the registry index for this
 registry; the registry format is specified in the [Registry Index Format Specification
 section][registry-index-format-specification].
+
+If you need to specify authentication information such as a username or password to access a
+registry's index, those should be specified in a `.cargo/credentials` file since it has more
+restrictive file permissions than `.cargo/config`. Adding a username and password to
+`.cargo/credentials` for a registry named `my-registry` would look like this:
+
+```toml
+[registry.my-registry]
+username = "myusername"
+password = "mypassword"
+```
 
 ### CI
 
@@ -316,3 +327,5 @@ configuration in ways that would be more convenient in various situations.
   - `cargo generate-index-metadata`?
   - `registry = my-registry`?
   - `publish-registries = []`?
+
+- What kinds of authentication parameters do we need to support in `.cargo/credentials`?
