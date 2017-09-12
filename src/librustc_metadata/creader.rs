@@ -15,7 +15,7 @@ use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
 
-use rustc::hir::def_id::{CrateNum, DefIndex};
+use rustc::hir::def_id::{CrateNum, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
@@ -944,53 +944,80 @@ impl<'a> CrateLoader<'a> {
         // (need_lib_alloc and prefer_dynamic) then we select `None`, and if the
         // exe allocation crate doesn't exist for this target then we also
         // select `None`.
-        let exe_allocation_crate =
+        let exe_allocation_crate_data =
             if need_lib_alloc && !self.sess.opts.cg.prefer_dynamic {
                 None
             } else {
-                self.sess.target.target.options.exe_allocation_crate.as_ref()
+                self.sess
+                    .target
+                    .target
+                    .options
+                    .exe_allocation_crate
+                    .as_ref()
+                    .map(|name| {
+                        // We've determined that we're injecting an "exe allocator" which means
+                        // that we're going to load up a whole new crate. An example of this is
+                        // that we're producing a normal binary on Linux which means we need to
+                        // load the `alloc_jemalloc` crate to link as an allocator.
+                        let name = Symbol::intern(name);
+                        let (cnum, data) = self.resolve_crate(&None,
+                                                              name,
+                                                              name,
+                                                              None,
+                                                              DUMMY_SP,
+                                                              PathKind::Crate,
+                                                              DepKind::Implicit);
+                        self.sess.injected_allocator.set(Some(cnum));
+                        data
+                    })
             };
 
-        match exe_allocation_crate {
-            // We've determined that we're injecting an "exe allocator" which
-            // means that we're going to load up a whole new crate. An example
-            // of this is that we're producing a normal binary on Linux which
-            // means we need to load the `alloc_jemalloc` crate to link as an
-            // allocator.
-            Some(krate) => {
-                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultExe));
-                let name = Symbol::intern(krate);
-                let dep_kind = DepKind::Implicit;
-                let (cnum, _data) =
-                    self.resolve_crate(&None,
-                                       name,
-                                       name,
-                                       None,
-                                       DUMMY_SP,
-                                       PathKind::Crate, dep_kind);
-                self.sess.injected_allocator.set(Some(cnum));
+        let allocation_crate_data = exe_allocation_crate_data.or_else(|| {
+            if attr::contains_name(&krate.attrs, "default_lib_allocator") {
+                // Prefer self as the allocator if there's a collision
+                return None;
             }
-
             // We're not actually going to inject an allocator, we're going to
             // require that something in our crate graph is the default lib
             // allocator. This is typically libstd, so this'll rarely be an
             // error.
-            None => {
-                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));
-                let mut found_lib_allocator =
-                    attr::contains_name(&krate.attrs, "default_lib_allocator");
-                self.cstore.iter_crate_data(|_, data| {
-                    if !found_lib_allocator {
-                        if data.has_default_lib_allocator() {
-                            found_lib_allocator = true;
-                        }
-                    }
-                });
-                if found_lib_allocator {
-                    return
+            let mut allocator = None;
+            self.cstore.iter_crate_data(|_, data| {
+                if allocator.is_none() && data.has_default_lib_allocator() {
+                    allocator = Some(data.clone());
                 }
-                self.sess.err("no #[default_lib_allocator] found but one is \
-                               required; is libstd not linked?");
+            });
+            allocator
+        });
+
+        match allocation_crate_data {
+            Some(data) => {
+                // We have an allocator. We detect separately what kind it is, to allow for some
+                // flexibility in misconfiguration.
+                let attrs = data.get_item_attrs(CRATE_DEF_INDEX);
+                let kind_interned = attr::first_attr_value_str_by_name(&attrs, "rustc_alloc_kind")
+                    .map(Symbol::as_str);
+                let kind_str = kind_interned
+                    .as_ref()
+                    .map(|s| s as &str);
+                let alloc_kind = match kind_str {
+                    None |
+                    Some("lib") => AllocatorKind::DefaultLib,
+                    Some("exe") => AllocatorKind::DefaultExe,
+                    Some(other) => {
+                        self.sess.err(&format!("Allocator kind {} not known", other));
+                        return;
+                    }
+                };
+                self.sess.allocator_kind.set(Some(alloc_kind));
+            },
+            None => {
+                if !attr::contains_name(&krate.attrs, "default_lib_allocator") {
+                    self.sess.err("no #[default_lib_allocator] found but one is \
+                                   required; is libstd not linked?");
+                    return;
+                }
+                self.sess.allocator_kind.set(Some(AllocatorKind::DefaultLib));
             }
         }
 

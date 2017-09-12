@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![no_std]
+#![allow(unused_attributes)]
 #![deny(warnings)]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
@@ -19,7 +20,9 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
+#![feature(rustc_attrs)]
 #![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
+#![rustc_alloc_kind = "lib"]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
