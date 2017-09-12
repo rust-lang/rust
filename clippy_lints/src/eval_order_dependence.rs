@@ -1,8 +1,8 @@
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::ty;
 use rustc::lint::*;
+use syntax::ast;
 use utils::{get_parent_expr, span_lint, span_note_and_lint};
 
 /// **What it does:** Checks for a read and a write to the same variable where
@@ -65,14 +65,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
             ExprAssign(ref lhs, _) | ExprAssignOp(_, ref lhs, _) => if let ExprPath(ref qpath) = lhs.node {
                 if let QPath::Resolved(_, ref path) = *qpath {
                     if path.segments.len() == 1 {
-                        let var = cx.tables.qpath_def(qpath, lhs.hir_id).def_id();
-                        let mut visitor = ReadVisitor {
-                            cx: cx,
-                            var: var,
-                            write_expr: expr,
-                            last_expr: expr,
-                        };
-                        check_for_unsequenced_reads(&mut visitor);
+                        if let def::Def::Local(var) = cx.tables.qpath_def(qpath, lhs.hir_id) {
+                            let mut visitor = ReadVisitor {
+                                cx: cx,
+                                var: var,
+                                write_expr: expr,
+                                last_expr: expr,
+                            };
+                            check_for_unsequenced_reads(&mut visitor);
+                        }
                     }
                 }
             },
@@ -280,7 +281,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
 struct ReadVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     /// The id of the variable we're looking for.
-    var: DefId,
+    var: ast::NodeId,
     /// The expressions where the write to the variable occurred (for reporting
     /// in the lint).
     write_expr: &'tcx Expr,
@@ -297,22 +298,23 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 
         match expr.node {
             ExprPath(ref qpath) => {
-                if let QPath::Resolved(None, ref path) = *qpath {
-                    if path.segments.len() == 1 && self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var {
-                        if is_in_assignment_position(self.cx, expr) {
-                            // This is a write, not a read.
-                        } else {
-                            span_note_and_lint(
-                                self.cx,
-                                EVAL_ORDER_DEPENDENCE,
-                                expr.span,
-                                "unsequenced read of a variable",
-                                self.write_expr.span,
-                                "whether read occurs before this write depends on evaluation order"
-                            );
-                        }
-                    }
-                }
+                if_let_chain! {[
+                    let QPath::Resolved(None, ref path) = *qpath,
+                    path.segments.len() == 1,
+                    let def::Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id),
+                    local_id == self.var,
+                    // Check that this is a read, not a write.
+                    !is_in_assignment_position(self.cx, expr),
+                ], {
+                    span_note_and_lint(
+                        self.cx,
+                        EVAL_ORDER_DEPENDENCE,
+                        expr.span,
+                        "unsequenced read of a variable",
+                        self.write_expr.span,
+                        "whether read occurs before this write depends on evaluation order"
+                    );
+                }}
             }
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not

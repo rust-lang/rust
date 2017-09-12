@@ -2,7 +2,6 @@ use itertools::Itertools;
 use reexport::*;
 use rustc::hir::*;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
@@ -594,13 +593,14 @@ fn check_for_loop<'a, 'tcx>(
     detect_manual_memcpy(cx, pat, arg, body, expr);
 }
 
-fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: DefId) -> bool {
+fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> bool {
     if_let_chain! {[
         let ExprPath(ref qpath) = expr.node,
         let QPath::Resolved(None, ref path) = *qpath,
         path.segments.len() == 1,
+        let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id),
         // our variable!
-        cx.tables.qpath_def(qpath, expr.hir_id).def_id() == var
+        local_id == var
     ], {
         return true;
     }}
@@ -644,8 +644,8 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty) -> bool {
     is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
-fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: DefId) -> Option<FixedOffsetVar> {
-    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: DefId) -> Option<String> {
+fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: ast::NodeId) -> Option<FixedOffsetVar> {
+    fn extract_offset<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &Expr, var: ast::NodeId) -> Option<String> {
         match e.node {
             ExprLit(ref l) => match l.node {
                 ast::LitKind::Int(x, _ty) => Some(x.to_string()),
@@ -700,12 +700,12 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
 fn get_indexed_assignments<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr,
-    var: DefId,
+    var: ast::NodeId,
 ) -> Vec<(FixedOffsetVar, FixedOffsetVar)> {
     fn get_assignment<'a, 'tcx>(
         cx: &LateContext<'a, 'tcx>,
         e: &Expr,
-        var: DefId,
+        var: ast::NodeId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
         if let Expr_::ExprAssign(ref lhs, ref rhs) = e.node {
             match (get_fixed_offset_var(cx, lhs, var), get_fixed_offset_var(cx, rhs, var)) {
@@ -759,7 +759,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
     }) = higher::range(arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, def_id, _, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
             let print_sum = |arg1: &Offset, arg2: &Offset| -> String {
                 match (&arg1.value[..], arg1.negate, &arg2.value[..], arg2.negate) {
                     ("0", _, "0", _) => "".into(),
@@ -802,7 +802,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
 
             // The only statements in the for loops can be indexed assignments from
             // indexed retrievals.
-            let manual_copies = get_indexed_assignments(cx, body, def_id);
+            let manual_copies = get_indexed_assignments(cx, body, canonical_id);
 
             let big_sugg = manual_copies
                 .into_iter()
@@ -852,10 +852,10 @@ fn check_for_loop_range<'a, 'tcx>(
     }) = higher::range(arg)
     {
         // the var must be a single name
-        if let PatKind::Binding(_, def_id, ref ident, _) = pat.node {
+        if let PatKind::Binding(_, canonical_id, ref ident, _) = pat.node {
             let mut visitor = VarVisitor {
                 cx: cx,
-                var: def_id,
+                var: canonical_id,
                 indexed: HashMap::new(),
                 referenced: HashSet::new(),
                 nonindex: false,
@@ -1298,15 +1298,15 @@ impl<'tcx> Visitor<'tcx> for UsedVisitor {
     }
 }
 
-struct DefIdUsedVisitor<'a, 'tcx: 'a> {
+struct LocalUsedVisitor <'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    def_id: DefId,
+    local: ast::NodeId,
     used: bool,
 }
 
-impl<'a, 'tcx: 'a> Visitor<'tcx> for DefIdUsedVisitor<'a, 'tcx> {
+impl<'a, 'tcx: 'a> Visitor<'tcx> for LocalUsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if same_var(self.cx, expr, self.def_id) {
+        if same_var(self.cx, expr, self.local) {
             self.used = true;
         } else {
             walk_expr(self, expr);
@@ -1322,7 +1322,7 @@ struct VarVisitor<'a, 'tcx: 'a> {
     /// context reference
     cx: &'a LateContext<'a, 'tcx>,
     /// var name to look for as index
-    var: DefId,
+    var: ast::NodeId,
     /// indexed variables, the extend is `None` for global
     indexed: HashMap<Name, Option<region::Scope>>,
     /// Any names that are used outside an index operation.
@@ -1344,9 +1344,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             seqvar.segments.len() == 1,
         ], {
             let index_used = same_var(self.cx, idx, self.var) || {
-                let mut used_visitor = DefIdUsedVisitor {
+                let mut used_visitor = LocalUsedVisitor {
                     cx: self.cx,
-                    def_id: self.var,
+                    local: self.var,
                     used: false,
                 };
                 walk_expr(&mut used_visitor, idx);
@@ -1356,9 +1356,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if index_used {
                 let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                 match def {
-                    Def::Local(..) | Def::Upvar(..) => {
-                        let def_id = def.def_id();
-                        let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
+                    Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                         let hir_id = self.cx.tcx.hir.node_to_hir_id(node_id);
 
                         let parent_id = self.cx.tcx.hir.get_parent(expr.id);
@@ -1381,8 +1379,9 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             let ExprPath(ref qpath) = expr.node,
             let QPath::Resolved(None, ref path) = *qpath,
             path.segments.len() == 1,
+            let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id),
         ], {
-            if self.cx.tables.qpath_def(qpath, expr.hir_id).def_id() == self.var {
+            if local_id == self.var {
                 // we are not indexing anything, record that
                 self.nonindex = true;
             } else {
@@ -1672,11 +1671,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let ExprPath(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
-        if let Def::Local(def_id) = path_res {
-            let node_id = cx.tcx
-                .hir
-                .as_local_node_id(def_id)
-                .expect("That DefId should be valid");
+        if let Def::Local(node_id) = path_res {
             return Some(node_id);
         }
     }

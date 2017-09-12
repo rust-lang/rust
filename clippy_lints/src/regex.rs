@@ -9,7 +9,7 @@ use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{BytePos, Span};
 use syntax::symbol::InternedString;
-use utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
+use utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint, opt_def_id};
 
 /// **What it does:** Checks [regex](https://crates.io/crates/regex) creation
 /// (with `Regex::new`,`RegexBuilder::new` or `RegexSet::new`) for correct
@@ -116,8 +116,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(ref qpath) = fun.node,
             args.len() == 1,
+            let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, fun.hir_id)),
         ], {
-            let def_id = cx.tables.qpath_def(qpath, fun.hir_id).def_id();
             if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
                match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
                 check_regex(cx, &args[0], true);

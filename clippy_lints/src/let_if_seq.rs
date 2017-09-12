@@ -1,6 +1,8 @@
 use rustc::lint::*;
 use rustc::hir;
 use rustc::hir::BindingAnnotation;
+use rustc::hir::def::Def;
+use syntax::ast;
 use utils::{snippet, span_lint_and_then};
 
 /// **What it does:** Checks for variable declarations immediately followed by a
@@ -65,19 +67,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 let Some(expr) = it.peek(),
                 let hir::StmtDecl(ref decl, _) = stmt.node,
                 let hir::DeclLocal(ref decl) = decl.node,
-                let hir::PatKind::Binding(mode, def_id, ref name, None) = decl.pat.node,
+                let hir::PatKind::Binding(mode, canonical_id, ref name, None) = decl.pat.node,
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,
-                !used_in_expr(cx, def_id, cond),
+                !used_in_expr(cx, canonical_id, cond),
                 let hir::ExprBlock(ref then) = then.node,
-                let Some(value) = check_assign(cx, def_id, &*then),
-                !used_in_expr(cx, def_id, value),
+                let Some(value) = check_assign(cx, canonical_id, &*then),
+                !used_in_expr(cx, canonical_id, value),
             ], {
                 let span = stmt.span.to(if_.span);
 
                 let (default_multi_stmts, default) = if let Some(ref else_) = *else_ {
                     if let hir::ExprBlock(ref else_) = else_.node {
-                        if let Some(default) = check_assign(cx, def_id, else_) {
+                        if let Some(default) = check_assign(cx, canonical_id, else_) {
                             (else_.stmts.len() > 1, default)
                         } else if let Some(ref default) = decl.init {
                             (true, &**default)
@@ -130,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
 
 struct UsedVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    id: hir::def_id::DefId,
+    id: ast::NodeId,
     used: bool,
 }
 
@@ -138,7 +140,8 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_let_chain! {[
             let hir::ExprPath(ref qpath) = expr.node,
-            self.id == self.cx.tables.qpath_def(qpath, expr.hir_id).def_id(),
+            let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id),
+            self.id == local_id,
         ], {
             self.used = true;
             return;
@@ -152,7 +155,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
 
 fn check_assign<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    decl: hir::def_id::DefId,
+    decl: ast::NodeId,
     block: &'tcx hir::Block,
 ) -> Option<&'tcx hir::Expr> {
     if_let_chain! {[
@@ -161,7 +164,8 @@ fn check_assign<'a, 'tcx>(
         let hir::StmtSemi(ref expr, _) = expr.node,
         let hir::ExprAssign(ref var, ref value) = expr.node,
         let hir::ExprPath(ref qpath) = var.node,
-        decl == cx.tables.qpath_def(qpath, var.hir_id).def_id(),
+        let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id),
+        decl == local_id,
     ], {
         let mut v = UsedVisitor {
             cx: cx,
@@ -183,7 +187,7 @@ fn check_assign<'a, 'tcx>(
     None
 }
 
-fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: hir::def_id::DefId, expr: &'tcx hir::Expr) -> bool {
+fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: ast::NodeId, expr: &'tcx hir::Expr) -> bool {
     let mut v = UsedVisitor {
         cx: cx,
         id: id,

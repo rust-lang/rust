@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use syntax::ast::LitKind;
-use utils::{is_direct_expn_of, match_def_path, paths, resolve_node, span_lint};
+use utils::{is_direct_expn_of, match_def_path, paths, resolve_node, span_lint, opt_def_id};
 
 /// **What it does:** Checks for missing parameters in `panic!`.
 ///
@@ -40,7 +40,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let ExprCall(ref fun, ref params) = ex.node,
             params.len() == 2,
             let ExprPath(ref qpath) = fun.node,
-            match_def_path(cx.tcx, resolve_node(cx, qpath, fun.hir_id).def_id(), &paths::BEGIN_PANIC),
+            let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id)),
+            match_def_path(cx.tcx, fun_def_id, &paths::BEGIN_PANIC),
             let ExprLit(ref lit) = params[0].node,
             is_direct_expn_of(expr.span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,

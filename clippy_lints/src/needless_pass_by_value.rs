@@ -1,6 +1,5 @@
 use rustc::hir::*;
 use rustc::hir::intravisit::FnKind;
-use rustc::hir::def_id::DefId;
 use rustc::lint::*;
 use rustc::ty::{self, TypeFoldable};
 use rustc::traits;
@@ -129,8 +128,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 !implements_trait(cx, ty, asref_trait, &[]),
                 !implements_borrow_trait,
 
-                let PatKind::Binding(mode, defid, ..) = arg.pat.node,
-                !moved_vars.contains(&defid),
+                let PatKind::Binding(mode, canonical_id, ..) = arg.pat.node,
+                !moved_vars.contains(&canonical_id),
             ], {
                 // Note: `toplevel_ref_arg` warns if `BindByRef`
                 if mode == BindingAnnotation::Mutable || mode == BindingAnnotation::RefMut {
@@ -139,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                 // Suggestion logic
                 let sugg = |db: &mut DiagnosticBuilder| {
-                    let deref_span = spans_need_deref.get(&defid);
+                    let deref_span = spans_need_deref.get(&canonical_id);
                     if_let_chain! {[
                         match_type(cx, ty, &paths::VEC),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
@@ -186,11 +185,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    moved_vars: HashSet<DefId>,
+    moved_vars: HashSet<NodeId>,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional
     /// reference.
-    spans_need_deref: HashMap<DefId, HashSet<Span>>,
+    spans_need_deref: HashMap<NodeId, HashSet<Span>>,
 }
 
 impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
@@ -205,12 +204,9 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
     fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
-        if_let_chain! {[
-            let mc::Categorization::Local(vid) = cmt.cat,
-            let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
-        ], {
-                self.moved_vars.insert(def_id);
-        }}
+        if let mc::Categorization::Local(vid) = cmt.cat {
+            self.moved_vars.insert(vid);
+        }
     }
 
     fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
@@ -218,7 +214,6 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 
         if_let_chain! {[
             let mc::Categorization::Local(vid) = cmt.cat,
-            let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
         ], {
             let mut id = matched_pat.id;
             loop {
@@ -235,7 +230,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                             // `match` and `if let`
                             if let ExprMatch(ref c, ..) = e.node {
                                 self.spans_need_deref
-                                    .entry(def_id)
+                                    .entry(vid)
                                     .or_insert_with(HashSet::new)
                                     .insert(c.span);
                             }
@@ -248,7 +243,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
                                 let DeclLocal(ref local) = decl.node,
                             ], {
                                 self.spans_need_deref
-                                    .entry(def_id)
+                                    .entry(vid)
                                     .or_insert_with(HashSet::new)
                                     .insert(local.init
                                         .as_ref()

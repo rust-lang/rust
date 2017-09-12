@@ -7,7 +7,7 @@ use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
+use utils::{in_macro, match_def_path, paths, snippet_opt, span_lint, span_lint_and_then, opt_def_id};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -211,8 +211,11 @@ fn is_relevant_expr(tcx: TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> bool
         ExprRet(Some(ref e)) => is_relevant_expr(tcx, tables, e),
         ExprRet(None) | ExprBreak(_, None) => false,
         ExprCall(ref path_expr, _) => if let ExprPath(ref qpath) = path_expr.node {
-            let fun_id = tables.qpath_def(qpath, path_expr.hir_id).def_id();
-            !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
+            if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
+                !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
+            } else {
+                true
+            }
         } else {
             true
         },

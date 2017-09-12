@@ -950,12 +950,10 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::Method(id) |
         Def::Const(id) |
         Def::AssociatedConst(id) |
-        Def::Local(id) |
-        Def::Upvar(id, ..) |
         Def::Macro(id, ..) |
         Def::GlobalAsm(id) => Some(id),
 
-        Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
+        Def::Upvar(..) | Def::Local(_) | Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
     }
 }
 
@@ -991,7 +989,8 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
             match_qpath(path, &paths::RESULT_OK[1..]),
             let PatKind::Binding(_, defid, _, None) = pat[0].node,
             let ExprPath(QPath::Resolved(None, ref path)) = arm.body.node,
-            path.def.def_id() == defid,
+            let Def::Local(lid) = path.def,
+            lid == defid,
         ], {
             return true;
         }}

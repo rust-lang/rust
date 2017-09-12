@@ -2,7 +2,7 @@ use consts::{constant_simple, Constant};
 use rustc::lint::*;
 use rustc::hir::*;
 use std::cmp::{Ordering, PartialOrd};
-use utils::{match_def_path, paths, span_lint};
+use utils::{match_def_path, paths, span_lint, opt_def_id};
 
 /// **What it does:** Checks for expressions where `std::cmp::min` and `max` are
 /// used to clamp values, but switched so that the result is constant.
@@ -60,15 +60,15 @@ enum MinMax {
 fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'a Expr)> {
     if let ExprCall(ref path, ref args) = expr.node {
         if let ExprPath(ref qpath) = path.node {
-            let def_id = cx.tables.qpath_def(qpath, path.hir_id).def_id();
-
-            if match_def_path(cx.tcx, def_id, &paths::CMP_MIN) {
-                fetch_const(cx, args, MinMax::Min)
-            } else if match_def_path(cx.tcx, def_id, &paths::CMP_MAX) {
-                fetch_const(cx, args, MinMax::Max)
-            } else {
-                None
-            }
+            opt_def_id(cx.tables.qpath_def(qpath, path.hir_id)).and_then(|def_id| {
+                if match_def_path(cx.tcx, def_id, &paths::CMP_MIN) {
+                    fetch_const(cx, args, MinMax::Min)
+                } else if match_def_path(cx.tcx, def_id, &paths::CMP_MAX) {
+                    fetch_const(cx, args, MinMax::Max)
+                } else {
+                    None
+                }
+            })
         } else {
             None
         }

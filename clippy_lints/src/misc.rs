@@ -574,11 +574,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 /// Test whether `def` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
     match *def {
-        def::Def::Local(def_id) | def::Def::Upvar(def_id, _, _) => {
-            let id = cx.tcx
-                .hir
-                .as_local_node_id(def_id)
-                .expect("local variables should be found in the same crate");
+        def::Def::Local(id) | def::Def::Upvar(id, _, _) => {
             !in_macro(cx.tcx.hir.span(id))
         },
         _ => false,

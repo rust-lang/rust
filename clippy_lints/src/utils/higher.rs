@@ -6,7 +6,7 @@
 use rustc::hir;
 use rustc::lint::LateContext;
 use syntax::ast;
-use utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
+use utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node, opt_def_id};
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOp_) -> ast::BinOpKind {
@@ -181,13 +181,13 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
         let hir::ExprCall(ref fun, ref args) = expr.node,
         let hir::ExprPath(ref path) = fun.node,
         is_expn_of(fun.span, "vec").is_some(),
+        let Some(fun_def_id) = opt_def_id(resolve_node(cx, path, fun.hir_id)),
     ], {
-        let fun_def = resolve_node(cx, path, fun.hir_id);
-        return if match_def_path(cx.tcx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {
+        return if match_def_path(cx.tcx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))
         }
-        else if match_def_path(cx.tcx, fun_def.def_id(), &paths::SLICE_INTO_VEC) && args.len() == 1 {
+        else if match_def_path(cx.tcx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
             // `vec![a, b, c]` case
             if_let_chain!{[
                 let hir::ExprBox(ref boxed) = args[0].node,
