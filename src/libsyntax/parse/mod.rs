@@ -230,7 +230,7 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser {
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
 /// character and the number of characters consumed.
-pub fn char_lit(lit: &str) -> (char, isize) {
+pub fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
     use std::char;
 
     // Handle non-escaped chars first.
@@ -258,8 +258,19 @@ pub fn char_lit(lit: &str) -> (char, isize) {
         'u' => {
             assert_eq!(lit.as_bytes()[2], b'{');
             let idx = lit.find('}').unwrap();
-            let v = u32::from_str_radix(&lit[3..idx], 16).unwrap();
-            let c = char::from_u32(v).unwrap();
+            let s = &lit[3..idx].chars().filter(|&c| c != '_').collect::<String>();
+            let v = u32::from_str_radix(&s, 16).unwrap();
+            let c = char::from_u32(v).unwrap_or_else(|| {
+                if let Some((span, diag)) = diag {
+                    let mut diag = diag.struct_span_err(span, "invalid unicode character escape");
+                    if v > 0x10FFFF {
+                        diag.help("unicode escape must be at most 10FFFF").emit();
+                    } else {
+                        diag.help("unicode escape must not be a surrogate").emit();
+                    }
+                }
+                '\u{FFFD}'
+            });
             (c, (idx + 1) as isize)
         }
         _ => panic!("lexer should have rejected a bad character escape {}", lit)
@@ -272,7 +283,7 @@ pub fn escape_default(s: &str) -> String {
 
 /// Parse a string representing a string literal into its final form. Does
 /// unescaping.
-pub fn str_lit(lit: &str) -> String {
+pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
     debug!("parse_str_lit: given {}", escape_default(lit));
     let mut res = String::with_capacity(lit.len());
 
@@ -313,7 +324,7 @@ pub fn str_lit(lit: &str) -> String {
                     eat(&mut chars);
                 } else {
                     // otherwise, a normal escape
-                    let (c, n) = char_lit(&lit[i..]);
+                    let (c, n) = char_lit(&lit[i..], diag);
                     for _ in 0..n - 1 { // we don't need to move past the first \
                         chars.next();
                     }
@@ -385,7 +396,7 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
 
     match lit {
        token::Byte(i) => (true, Some(LitKind::Byte(byte_lit(&i.as_str()).0))),
-       token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str()).0))),
+       token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str(), diag).0))),
 
         // There are some valid suffixes for integer and float literals,
         // so all the handling is done internally.
@@ -393,7 +404,7 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
         token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
 
         token::Str_(s) => {
-            let s = Symbol::intern(&str_lit(&s.as_str()));
+            let s = Symbol::intern(&str_lit(&s.as_str(), diag));
             (true, Some(LitKind::Str(s, ast::StrStyle::Cooked)))
         }
         token::StrRaw(s, n) => {
