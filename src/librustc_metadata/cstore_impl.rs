@@ -175,7 +175,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
     is_no_builtins => { cdata.is_no_builtins() }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    exported_symbols => { Rc::new(cdata.get_exported_symbols()) }
+    exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
     native_libraries => { Rc::new(cdata.get_native_libraries()) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {

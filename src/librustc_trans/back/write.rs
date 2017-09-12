@@ -11,7 +11,7 @@
 use back::lto;
 use back::link::{self, get_linker, remove};
 use back::linker::LinkerInfo;
-use back::symbol_export::ExportedSymbols;
+use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};

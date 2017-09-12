@@ -16,6 +16,7 @@ use errors::{FatalError, Handler};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
+use rustc::middle::exported_symbols;
 use rustc::util::common::time;
 use rustc::util::common::path2cstr;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -68,7 +69,7 @@ pub fn run(cgcx: &CodegenContext,
         symbol_export::crates_export_threshold(&cgcx.crate_types);
 
     let symbol_filter = &|&(ref name, _, level): &(String, _, _)| {
-        if symbol_export::is_below_threshold(level, export_threshold) {
+        if exported_symbols::is_below_threshold(level, export_threshold) {
             let mut bytes = Vec::with_capacity(name.len() + 1);
             bytes.extend(name.bytes());
             Some(CString::new(bytes).unwrap())

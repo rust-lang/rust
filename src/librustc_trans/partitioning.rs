@@ -102,7 +102,6 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use back::symbol_export::ExportedSymbols;
 use collector::InliningMap;
 use common;
 use context::SharedCrateContext;
@@ -110,6 +109,7 @@ use llvm;
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
+use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;

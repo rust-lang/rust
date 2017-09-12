@@ -23,6 +23,7 @@ use middle::region;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
+use middle::exported_symbols::ExportedSymbols;
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -48,6 +49,7 @@ use std::mem;
 use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::attr;
 use syntax::ast;
@@ -595,7 +597,7 @@ impl<'tcx> QueryDescription for queries::is_sanitizer_runtime<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::exported_symbols<'tcx> {
+impl<'tcx> QueryDescription for queries::exported_symbol_ids<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the exported symbols of a crate")
     }
@@ -742,6 +744,12 @@ impl<'tcx> QueryDescription for queries::stability_index<'tcx> {
 impl<'tcx> QueryDescription for queries::all_crate_nums<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("fetching all foreign CrateNum instances")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::exported_symbol_set<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("exported symbol set")
     }
 }
 
@@ -1322,7 +1330,7 @@ define_maps! { <'tcx>
     [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
-    [] fn exported_symbols: ExportedSymbols(CrateNum) -> Rc<Vec<DefId>>,
+    [] fn exported_symbol_ids: ExportedSymbolIds(CrateNum) -> Rc<Vec<DefId>>,
     [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
@@ -1371,6 +1379,9 @@ define_maps! { <'tcx>
 
     [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
+
+    [] fn exported_symbol_set: exported_symbol_set_node(CrateNum)
+        -> Arc<ExportedSymbols>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1483,4 +1494,8 @@ fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::AllCrateNums
+}
+
+fn exported_symbol_set_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::ExportedSymbols
 }

@@ -19,8 +19,8 @@ use context::SharedCrateContext;
 
 use back::archive;
 use back::command::Command;
-use back::symbol_export::ExportedSymbols;
 use rustc::middle::dependency_format::Linkage;
+use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc_back::LinkerFlavor;
 use rustc::session::Session;

@@ -194,6 +194,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
+use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::Substs;
@@ -209,7 +210,6 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
-use back::symbol_export::ExportedSymbols;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum TransItemCollectionMode {

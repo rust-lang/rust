@@ -956,7 +956,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    trans::provide(&mut local_providers);
+    trans::provide_local(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     traits::provide(&mut local_providers);
@@ -968,7 +968,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    trans::provide(&mut extern_providers);
+    trans::provide_extern(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.

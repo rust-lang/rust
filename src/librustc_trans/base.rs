@@ -31,7 +31,7 @@ use super::ModuleKind;
 use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
-use back::symbol_export::{self, ExportedSymbols};
+use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation};
 use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
@@ -42,6 +42,7 @@ use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
+use rustc::middle::exported_symbols::{ExportedSymbols, SymbolExportLevel};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
@@ -973,7 +974,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
        !tcx.sess.opts.output_types.should_trans() {
-        let empty_exported_symbols = ExportedSymbols::empty();
+        let empty_exported_symbols = ExportedSymbols::new(
+            SymbolExportLevel::C,
+            Default::default(),
+            Default::default(),
+        );
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
         let ongoing_translation = write::start_async_translation(
             tcx.sess,
@@ -1001,13 +1006,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return ongoing_translation;
     }
 
-    let exported_symbols = Arc::new(ExportedSymbols::compute(tcx,
-                                                             &exported_symbol_node_ids));
+    let exported_symbols = tcx.exported_symbols();
 
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let (translation_items, codegen_units) =
-        collect_and_partition_translation_items(&shared_ccx, &exported_symbols);
+        collect_and_partition_translation_items(shared_ccx.tcx(), &exported_symbols);
 
     assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
 
@@ -1394,13 +1398,13 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_i
     }
 }
 
-fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                      exported_symbols: &ExportedSymbols)
                                                      -> (FxHashSet<TransItem<'tcx>>,
                                                          Vec<CodegenUnit<'tcx>>) {
-    let time_passes = scx.sess().time_passes();
+    let time_passes = tcx.sess.time_passes();
 
-    let collection_mode = match scx.sess().opts.debugging_opts.print_trans_items {
+    let collection_mode = match tcx.sess.opts.debugging_opts.print_trans_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
@@ -1411,7 +1415,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                     let message = format!("Unknown codegen-item collection mode '{}'. \
                                            Falling back to 'lazy' mode.",
                                            mode_string);
-                    scx.sess().warn(&message);
+                    tcx.sess.warn(&message);
                 }
 
                 TransItemCollectionMode::Lazy
@@ -1422,33 +1426,33 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(scx.tcx(),
+            collector::collect_crate_translation_items(tcx,
                                                        exported_symbols,
                                                        collection_mode)
     });
 
-    assert_symbols_are_distinct(scx.tcx(), items.iter());
+    assert_symbols_are_distinct(tcx, items.iter());
 
-    let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
+    let strategy = if tcx.sess.opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
-        PartitioningStrategy::FixedUnitCount(scx.sess().opts.cg.codegen_units)
+        PartitioningStrategy::FixedUnitCount(tcx.sess.opts.cg.codegen_units)
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
-        partitioning::partition(scx.tcx(),
+        partitioning::partition(tcx,
                                 items.iter().cloned(),
                                 strategy,
                                 &inlining_map,
                                 exported_symbols)
     });
 
-    assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
-            scx.tcx().sess.opts.debugging_opts.incremental.is_some());
+    assert!(tcx.sess.opts.cg.codegen_units == codegen_units.len() ||
+            tcx.sess.opts.debugging_opts.incremental.is_some());
 
     let translation_items: FxHashSet<TransItem<'tcx>> = items.iter().cloned().collect();
 
-    if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
+    if tcx.sess.opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = FxHashMap();
 
         for cgu in &codegen_units {
@@ -1462,7 +1466,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(scx.tcx());
+                let mut output = i.to_string(tcx);
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);

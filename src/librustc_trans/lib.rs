@@ -64,16 +64,17 @@ extern crate serialize;
 extern crate gcc; // Used to locate MSVC, not gcc :)
 
 pub use base::trans_crate;
-pub use back::symbol_names::provide;
 
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
 use std::rc::Rc;
+use std::sync::Arc;
 
-use rustc::hir::def_id::CrateNum;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+use rustc::ty::maps::Providers;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 pub mod back {
     mod archive;
@@ -247,3 +248,15 @@ pub struct CrateInfo {
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
+
+pub fn provide_local(providers: &mut Providers) {
+    back::symbol_names::provide(providers);
+    providers.exported_symbol_set = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Arc::new(back::symbol_export::compute(tcx))
+    };
+}
+
+pub fn provide_extern(providers: &mut Providers) {
+    back::symbol_names::provide(providers);
+}
