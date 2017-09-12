@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.159
+* Update to *rustc 1.22.0-nightly (eba374fb2 2017-09-11)*
+* New lint: [`clone_on_ref_ptr`]
+
 ## 0.0.158
 * New lint: [`manual_memcpy`]
 * [`cast_lossless`] no longer has redundant parentheses in its suggestions
@@ -450,6 +454,7 @@ All notable changes to this project will be documented in this file.
 [`chars_next_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#chars_next_cmp
 [`clone_double_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#clone_double_ref
 [`clone_on_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#clone_on_copy
+[`clone_on_ref_ptr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#clone_on_ref_ptr
 [`cmp_nan`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cmp_nan
 [`cmp_null`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cmp_null
 [`cmp_owned`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cmp_owned

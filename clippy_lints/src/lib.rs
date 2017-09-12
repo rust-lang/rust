@@ -460,6 +460,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
         methods::CLONE_ON_COPY,
+        methods::CLONE_ON_REF_PTR,
         methods::FILTER_NEXT,
         methods::GET_UNWRAP,
         methods::ITER_CLONED_COLLECT,
