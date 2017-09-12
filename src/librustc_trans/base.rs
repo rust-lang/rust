@@ -1438,7 +1438,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
-        partitioning::partition(scx,
+        partitioning::partition(scx.tcx(),
                                 items.iter().cloned(),
                                 strategy,
                                 &inlining_map,

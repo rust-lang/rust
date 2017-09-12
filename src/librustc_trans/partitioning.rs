@@ -221,7 +221,7 @@ impl<'tcx> CodegenUnit<'tcx> {
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
-pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
                               inlining_map: &InliningMap<'tcx>,
@@ -229,12 +229,10 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
-    let tcx = scx.tcx();
-
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let mut initial_partitioning = place_root_translation_items(scx,
+    let mut initial_partitioning = place_root_translation_items(tcx,
                                                                 exported_symbols,
                                                                 trans_items);
 
@@ -272,10 +270,10 @@ pub fn partition<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
         (&cgu1.name[..]).cmp(&cgu2.name[..])
     });
 
-    if scx.sess().opts.enable_dep_node_debug_strs() {
+    if tcx.sess.opts.enable_dep_node_debug_strs() {
         for cgu in &result {
             let dep_node = cgu.work_product_dep_node();
-            scx.tcx().dep_graph.register_dep_node_debug_str(dep_node,
+            tcx.dep_graph.register_dep_node_debug_str(dep_node,
                                                             || cgu.name().to_string());
         }
     }
@@ -304,13 +302,12 @@ struct PostInliningPartitioning<'tcx> {
     internalization_candidates: FxHashSet<TransItem<'tcx>>,
 }
 
-fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
+fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              exported_symbols: &ExportedSymbols,
                                              trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
-    let tcx = scx.tcx();
     let exported_symbols = exported_symbols.local_exports();
 
     let mut roots = FxHashSet();
@@ -322,7 +319,7 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
         let is_root = trans_item.instantiation_mode(tcx) == InstantiationMode::GloballyShared;
 
         if is_root {
-            let characteristic_def_id = characteristic_def_id_of_trans_item(scx, trans_item);
+            let characteristic_def_id = characteristic_def_id_of_trans_item(tcx, trans_item);
             let is_volatile = is_incremental_build &&
                               trans_item.is_generic_fn();
 
@@ -592,10 +589,9 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  trans_item: TransItem<'tcx>)
                                                  -> Option<DefId> {
-    let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
             let def_id = match instance.def {
@@ -621,7 +617,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = common::def_ty(scx.tcx(), impl_def_id, instance.substs);
+                let impl_self_ty = common::def_ty(tcx, impl_def_id, instance.substs);
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }
