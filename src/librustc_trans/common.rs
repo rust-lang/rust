@@ -74,7 +74,7 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
     let layout = ccx.layout_of(ty);
     match *layout {
         Layout::FatPointer { .. } => true,
-        Layout::Univariant { ref variant, .. } => {
+        Layout::Univariant(ref variant) => {
             // There must be only 2 fields.
             if variant.offsets.len() != 2 {
                 return false;

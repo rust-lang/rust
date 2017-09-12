@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, Primitive};
+use rustc::ty::layout::{Layout, LayoutOf, Primitive};
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use util::nodemap::FxHashSet;
@@ -748,9 +748,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 // sizes only make sense for non-generic types
                 let item_def_id = cx.tcx.hir.local_def_id(it.id);
                 let t = cx.tcx.type_of(item_def_id);
-                let param_env = cx.param_env.reveal_all();
                 let ty = cx.tcx.erase_regions(&t);
-                let layout = ty.layout(cx.tcx, param_env).unwrap_or_else(|e| {
+                let layout = cx.layout_of(ty).unwrap_or_else(|e| {
                     bug!("failed to get layout for `{}`: {}", t, e)
                 });
 

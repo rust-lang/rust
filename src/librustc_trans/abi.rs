@@ -330,7 +330,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 }
             }
 
-            Layout::Univariant { ref variant, .. } => {
+            Layout::Univariant(ref variant) => {
                 let mut unaligned_offset = Size::from_bytes(0);
                 let mut result = None;
 

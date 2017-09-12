@@ -59,7 +59,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             debug!("DST {} layout: {:?}", t, layout);
 
             let (sized_size, sized_align) = match *layout {
-                ty::layout::Layout::Univariant { ref variant, .. } => {
+                ty::layout::Layout::Univariant(ref variant) => {
                     (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align.abi())
                 }
                 _ => {

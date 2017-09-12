@@ -101,7 +101,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 }
             }
 
-            Layout::Univariant { ref variant, .. } => {
+            Layout::Univariant(ref variant) => {
                 for i in 0..layout.field_count() {
                     let field_off = off + variant.offsets[i];
                     classify(ccx, layout.field(ccx, i), cls, field_off)?;
