@@ -93,7 +93,7 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
     stats: Stats,
-    codegen_unit: CodegenUnit<'tcx>,
+    codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// The translation items of the whole crate.
     crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
@@ -330,7 +330,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         common::type_is_freeze(self.tcx, ty)
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 
@@ -353,7 +353,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>,
+               codegen_unit: Arc<CodegenUnit<'tcx>>,
                crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
                exported_symbols: Arc<ExportedSymbols>,)
                -> LocalCrateContext<'a, 'tcx> {
@@ -465,7 +465,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local_ccx
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.shared.tcx
     }
 

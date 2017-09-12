@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use {debuginfo, machine};
 use base;
-use trans_item::TransItem;
+use trans_item::{TransItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
@@ -150,7 +150,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::llvm_linkage_by_name(&name.as_str()) {
+                    let linkage = match base::linkage_by_name(&name.as_str()) {
                         Some(linkage) => linkage,
                         None => {
                             ccx.sess().span_fatal(span, "invalid linkage specified");
@@ -165,7 +165,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::LLVMRustSetLinkage(g1, linkage);
+                        llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is

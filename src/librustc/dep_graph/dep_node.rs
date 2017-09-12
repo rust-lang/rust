@@ -576,6 +576,7 @@ define_dep_nodes!( <'tcx>
     [] StabilityIndex,
     [] AllCrateNums,
     [] ExportedSymbols,
+    [] CollectAndPartitionTranslationItems,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

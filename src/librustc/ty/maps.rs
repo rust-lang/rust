@@ -24,6 +24,7 @@ use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::ExportedSymbols;
+use middle::trans::{TransItem, CodegenUnit};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -753,6 +754,12 @@ impl<'tcx> QueryDescription for queries::exported_symbol_set<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::collect_and_partition_translation_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("collect_and_partition_translation_items")
+    }
+}
+
 // If enabled, send a message to the profile-queries thread
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
@@ -1382,6 +1389,9 @@ define_maps! { <'tcx>
 
     [] fn exported_symbol_set: exported_symbol_set_node(CrateNum)
         -> Arc<ExportedSymbols>,
+    [] fn collect_and_partition_translation_items:
+        collect_and_partition_translation_items_node(CrateNum)
+        -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>),
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1498,4 +1508,8 @@ fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn exported_symbol_set_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::ExportedSymbols
+}
+
+fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::CollectAndPartitionTranslationItems
 }

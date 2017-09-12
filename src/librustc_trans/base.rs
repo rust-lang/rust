@@ -33,16 +33,18 @@ use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation};
-use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
+use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
+use rustc::middle::trans::{Linkage, Visibility};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::Providers;
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
-use rustc::middle::exported_symbols::{ExportedSymbols, SymbolExportLevel};
+use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
@@ -68,10 +70,10 @@ use machine;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
-use partitioning::{self, PartitioningStrategy, CodegenUnit};
+use partitioning::{self, PartitioningStrategy, CodegenUnit, CodegenUnitExt};
 use symbol_names_test;
 use time_graph;
-use trans_item::{TransItem, DefPathBasedNames};
+use trans_item::{TransItem, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
@@ -615,7 +617,9 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
-pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
+pub fn linkage_by_name(name: &str) -> Option<Linkage> {
+    use rustc::middle::trans::Linkage::*;
+
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
     // Rust code in the first place but whitelist them anyway and trust that
@@ -625,17 +629,17 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
     // and don't have to be, LLVM treats them as no-ops.
     match name {
-        "appending" => Some(llvm::Linkage::AppendingLinkage),
-        "available_externally" => Some(llvm::Linkage::AvailableExternallyLinkage),
-        "common" => Some(llvm::Linkage::CommonLinkage),
-        "extern_weak" => Some(llvm::Linkage::ExternalWeakLinkage),
-        "external" => Some(llvm::Linkage::ExternalLinkage),
-        "internal" => Some(llvm::Linkage::InternalLinkage),
-        "linkonce" => Some(llvm::Linkage::LinkOnceAnyLinkage),
-        "linkonce_odr" => Some(llvm::Linkage::LinkOnceODRLinkage),
-        "private" => Some(llvm::Linkage::PrivateLinkage),
-        "weak" => Some(llvm::Linkage::WeakAnyLinkage),
-        "weak_odr" => Some(llvm::Linkage::WeakODRLinkage),
+        "appending" => Some(Appending),
+        "available_externally" => Some(AvailableExternally),
+        "common" => Some(Common),
+        "extern_weak" => Some(ExternalWeak),
+        "external" => Some(External),
+        "internal" => Some(Internal),
+        "linkonce" => Some(LinkOnceAny),
+        "linkonce_odr" => Some(LinkOnceODR),
+        "private" => Some(Private),
+        "weak" => Some(WeakAny),
+        "weak_odr" => Some(WeakODR),
         _ => None,
     }
 }
@@ -974,12 +978,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
        !tcx.sess.opts.output_types.should_trans() {
-        let empty_exported_symbols = ExportedSymbols::new(
-            SymbolExportLevel::C,
-            Default::default(),
-            Default::default(),
-        );
-        let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
+        let linker_info = LinkerInfo::new(&shared_ccx);
         let ongoing_translation = write::start_async_translation(
             tcx.sess,
             output_filenames,
@@ -987,7 +986,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx.crate_name(LOCAL_CRATE),
             link_meta,
             metadata,
-            Arc::new(empty_exported_symbols),
+            shared_ccx.tcx().exported_symbols(),
             no_builtins,
             None,
             linker_info,
@@ -1006,16 +1005,14 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return ongoing_translation;
     }
 
-    let exported_symbols = tcx.exported_symbols();
-
     // Run the translation item collector and partition the collected items into
     // codegen units.
     let (translation_items, codegen_units) =
-        collect_and_partition_translation_items(shared_ccx.tcx(), &exported_symbols);
+        shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE);
 
     assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
 
-    let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
+    let linker_info = LinkerInfo::new(&shared_ccx);
     let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
                                                        "windows_subsystem");
     let windows_subsystem = subsystem.map(|subsystem| {
@@ -1039,7 +1036,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.crate_name(LOCAL_CRATE),
         link_meta,
         metadata,
-        exported_symbols.clone(),
+        tcx.exported_symbols(),
         no_builtins,
         windows_subsystem,
         linker_info,
@@ -1090,8 +1087,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                              metadata_module,
                                                              codegen_unit_count == 0);
 
-    let translation_items = Arc::new(translation_items);
-
     let mut all_stats = Stats::default();
     let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
 
@@ -1124,7 +1119,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         AssertDepGraphSafe(&shared_ccx),
                                         AssertDepGraphSafe((cgu,
                                                             translation_items.clone(),
-                                                            exported_symbols.clone())),
+                                                            tcx.exported_symbols())),
                                         module_translation);
             all_stats.extend(stats);
 
@@ -1165,7 +1160,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
-        args: AssertDepGraphSafe<(CodegenUnit<'tcx>,
+        args: AssertDepGraphSafe<(Arc<CodegenUnit<'tcx>>,
                                   Arc<FxHashSet<TransItem<'tcx>>>,
                                   Arc<ExportedSymbols>)>)
         -> (Stats, ModuleTranslation)
@@ -1174,7 +1169,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let AssertDepGraphSafe(scx) = scx;
         let AssertDepGraphSafe((cgu, crate_trans_items, exported_symbols)) = args;
 
-        let cgu_name = String::from(cgu.name());
+        let cgu_name = cgu.name().to_string();
         let cgu_id = cgu.work_product_id();
         let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
 
@@ -1398,11 +1393,14 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_i
     }
 }
 
-fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                     exported_symbols: &ExportedSymbols)
-                                                     -> (FxHashSet<TransItem<'tcx>>,
-                                                         Vec<CodegenUnit<'tcx>>) {
+fn collect_and_partition_translation_items<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cnum: CrateNum,
+) -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>)
+{
+    assert_eq!(cnum, LOCAL_CRATE);
     let time_passes = tcx.sess.time_passes();
+    let exported_symbols = tcx.exported_symbols();
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_trans_items {
         Some(ref s) => {
@@ -1427,7 +1425,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
             collector::collect_crate_translation_items(tcx,
-                                                       exported_symbols,
+                                                       &exported_symbols,
                                                        collection_mode)
     });
 
@@ -1444,7 +1442,10 @@ fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
                                 items.iter().cloned(),
                                 strategy,
                                 &inlining_map,
-                                exported_symbols)
+                                &exported_symbols)
+            .into_iter()
+            .map(Arc::new)
+            .collect::<Vec<_>>()
     });
 
     assert!(tcx.sess.opts.cg.codegen_units == codegen_units.len() ||
@@ -1477,17 +1478,17 @@ fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
                     output.push_str(&cgu_name);
 
                     let linkage_abbrev = match linkage {
-                        llvm::Linkage::ExternalLinkage => "External",
-                        llvm::Linkage::AvailableExternallyLinkage => "Available",
-                        llvm::Linkage::LinkOnceAnyLinkage => "OnceAny",
-                        llvm::Linkage::LinkOnceODRLinkage => "OnceODR",
-                        llvm::Linkage::WeakAnyLinkage => "WeakAny",
-                        llvm::Linkage::WeakODRLinkage => "WeakODR",
-                        llvm::Linkage::AppendingLinkage => "Appending",
-                        llvm::Linkage::InternalLinkage => "Internal",
-                        llvm::Linkage::PrivateLinkage => "Private",
-                        llvm::Linkage::ExternalWeakLinkage => "ExternalWeak",
-                        llvm::Linkage::CommonLinkage => "Common",
+                        Linkage::External => "External",
+                        Linkage::AvailableExternally => "Available",
+                        Linkage::LinkOnceAny => "OnceAny",
+                        Linkage::LinkOnceODR => "OnceODR",
+                        Linkage::WeakAny => "WeakAny",
+                        Linkage::WeakODR => "WeakODR",
+                        Linkage::Appending => "Appending",
+                        Linkage::Internal => "Internal",
+                        Linkage::Private => "Private",
+                        Linkage::ExternalWeak => "ExternalWeak",
+                        Linkage::Common => "Common",
                     };
 
                     output.push_str("[");
@@ -1505,7 +1506,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
         }
     }
 
-    (translation_items, codegen_units)
+    (Arc::new(translation_items), codegen_units)
 }
 
 impl CrateInfo {
@@ -1548,5 +1549,34 @@ impl CrateInfo {
 
 
         return info
+    }
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.collect_and_partition_translation_items =
+        collect_and_partition_translation_items;
+}
+
+pub fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
+    match linkage {
+        Linkage::External => llvm::Linkage::ExternalLinkage,
+        Linkage::AvailableExternally => llvm::Linkage::AvailableExternallyLinkage,
+        Linkage::LinkOnceAny => llvm::Linkage::LinkOnceAnyLinkage,
+        Linkage::LinkOnceODR => llvm::Linkage::LinkOnceODRLinkage,
+        Linkage::WeakAny => llvm::Linkage::WeakAnyLinkage,
+        Linkage::WeakODR => llvm::Linkage::WeakODRLinkage,
+        Linkage::Appending => llvm::Linkage::AppendingLinkage,
+        Linkage::Internal => llvm::Linkage::InternalLinkage,
+        Linkage::Private => llvm::Linkage::PrivateLinkage,
+        Linkage::ExternalWeak => llvm::Linkage::ExternalWeakLinkage,
+        Linkage::Common => llvm::Linkage::CommonLinkage,
+    }
+}
+
+pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
+    match linkage {
+        Visibility::Default => llvm::Visibility::Default,
+        Visibility::Hidden => llvm::Visibility::Hidden,
+        Visibility::Protected => llvm::Visibility::Protected,
     }
 }

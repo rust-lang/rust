@@ -207,7 +207,7 @@ use common::{def_ty, instance_ty, type_is_sized};
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
 
-use trans_item::{TransItem, DefPathBasedNames, InstantiationMode};
+use trans_item::{TransItem, TransItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 

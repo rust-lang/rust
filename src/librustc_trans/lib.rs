@@ -251,6 +251,7 @@ __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
 
 pub fn provide_local(providers: &mut Providers) {
     back::symbol_names::provide(providers);
+    base::provide(providers);
     providers.exported_symbol_set = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Arc::new(back::symbol_export::compute(tcx))

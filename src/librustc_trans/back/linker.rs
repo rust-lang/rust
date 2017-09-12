@@ -34,11 +34,11 @@ pub struct LinkerInfo {
 }
 
 impl<'a, 'tcx> LinkerInfo {
-    pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               exports: &ExportedSymbols) -> LinkerInfo {
+    pub fn new(scx: &SharedCrateContext<'a, 'tcx>) -> LinkerInfo {
+        let exports = scx.tcx().exported_symbols();
         LinkerInfo {
             exports: scx.sess().crate_types.borrow().iter().map(|&c| {
-                (c, exported_symbols(scx, exports, c))
+                (c, exported_symbols(scx, &exports, c))
             }).collect(),
         }
     }
