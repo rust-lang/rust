@@ -114,15 +114,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             (Some(ret_span), _) => {
                 (ty_sub.span,
                  ret_span,
-                 format!("this parameter and the return type are declared
-                  with different lifetimes...",),
+                 format!("this parameter and the return type are declared \
+                          with different lifetimes...",),
                  format!("...but data{} is returned here", span_label_var1))
             }
             (_, Some(ret_span)) => {
                 (ty_sup.span,
                  ret_span,
-                 format!("this parameter and the return type are declared
-                  with different lifetimes...",),
+                 format!("this parameter and the return type are declared \
+                          with different lifetimes...",),
                  format!("...but data{} is returned here", span_label_var1))
             }
         };
