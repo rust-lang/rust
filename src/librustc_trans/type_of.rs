@@ -12,7 +12,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{Align, Layout, LayoutTyper, Size, TyLayout};
+use rustc::ty::layout::{Align, Layout, LayoutOf, Size, FullLayout};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -235,14 +235,14 @@ pub trait LayoutLlvmExt {
     fn llvm_field_index(&self, index: usize) -> u64;
 }
 
-impl<'tcx> LayoutLlvmExt for TyLayout<'tcx> {
+impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
     fn llvm_field_index(&self, index: usize) -> u64 {
         match **self {
             Layout::Scalar { .. } |
             Layout::CEnum { .. } |
             Layout::UntaggedUnion { .. } |
             Layout::RawNullablePointer { .. } => {
-                bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
             }
 
             Layout::Vector { .. } |
@@ -271,7 +271,7 @@ impl<'tcx> LayoutLlvmExt for TyLayout<'tcx> {
                 if self.variant_index == Some(nndiscr as usize) {
                     adt::memory_index_to_gep(nonnull.memory_index[index] as u64)
                 } else {
-                    bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
+                    bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
                 }
             }
         }

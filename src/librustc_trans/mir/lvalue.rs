@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, Layout, LayoutTyper, Size};
+use rustc::ty::layout::{self, Align, Layout, LayoutOf, Size};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -205,7 +205,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 l = l.for_variant(variant_index)
             }
         }
-        let fty = l.field_type(ccx, ix);
+        let fty = l.field(ccx, ix).ty;
 
         let alignment = self.alignment | Alignment::from(&*l);
 

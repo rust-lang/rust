@@ -14,7 +14,7 @@
 use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, Layout, TyLayout, Size};
+use rustc::ty::layout::{self, Layout, FullLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -53,7 +53,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     }
 
     fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          layout: TyLayout<'tcx>,
+                          layout: FullLayout<'tcx>,
                           cls: &mut [Class],
                           off: Size)
                           -> Result<(), Memory> {

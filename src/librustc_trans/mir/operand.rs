@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutTyper;
+use rustc::ty::layout::LayoutOf;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -140,10 +140,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 let layout = bcx.ccx.layout_of(self.ty);
 
                 let a = bcx.extract_value(llval, layout.llvm_field_index(0));
-                let a = base::to_immediate(bcx, a, layout.field_type(bcx.ccx, 0));
+                let a = base::to_immediate(bcx, a, layout.field(bcx.ccx, 0).ty);
 
                 let b = bcx.extract_value(llval, layout.llvm_field_index(1));
-                let b = base::to_immediate(bcx, b, layout.field_type(bcx.ccx, 1));
+                let b = base::to_immediate(bcx, b, layout.field(bcx.ccx, 1).ty);
 
                 self.val = OperandValue::Pair(a, b);
             }

@@ -42,7 +42,7 @@
 //!   taken to it, implementing them for Rust seems difficult.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutTyper, Size, TyLayout};
+use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, FullLayout};
 
 use context::CrateContext;
 use type_::Type;
@@ -207,7 +207,7 @@ pub fn memory_index_to_gep(index: u64) -> u64 {
 }
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 layout: TyLayout<'tcx>,
+                                 layout: FullLayout<'tcx>,
                                  variant: &layout::Struct) -> Vec<Type> {
     let field_count = layout.field_count();
     debug!("struct_llfields: variant: {:?}", variant);

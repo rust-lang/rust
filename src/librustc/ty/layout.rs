@@ -227,12 +227,6 @@ impl<'a> HasDataLayout for &'a TargetDataLayout {
     }
 }
 
-impl<'a, 'tcx> HasDataLayout for TyCtxt<'a, 'tcx, 'tcx> {
-    fn data_layout(&self) -> &TargetDataLayout {
-        &self.data_layout
-    }
-}
-
 /// Endianness of the target, which must match cfg(target-endian).
 #[derive(Copy, Clone)]
 pub enum Endian {
@@ -2089,80 +2083,85 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
     }
 }
 
-/// A pair of a type and its layout. Implements various
-/// type traversal APIs (e.g. recursing into fields).
+/// The details of the layout of a type, alongside the type itself.
+/// Provides various type traversal APIs (e.g. recursing into fields).
+///
+/// Note that the details are NOT guaranteed to always be identical
+/// to those obtained from `layout_of(ty)`, as we need to produce
+/// layouts for which Rust types do not exist, such as enum variants
+/// or synthetic fields of enums (i.e. discriminants) and fat pointers.
 #[derive(Copy, Clone, Debug)]
-pub struct TyLayout<'tcx> {
+pub struct FullLayout<'tcx> {
     pub ty: Ty<'tcx>,
-    pub layout: &'tcx Layout,
     pub variant_index: Option<usize>,
+    pub layout: &'tcx Layout,
 }
 
-impl<'tcx> Deref for TyLayout<'tcx> {
+impl<'tcx> Deref for FullLayout<'tcx> {
     type Target = Layout;
     fn deref(&self) -> &Layout {
         self.layout
     }
 }
 
-pub trait LayoutTyper<'tcx>: HasDataLayout {
-    type TyLayout;
-
+pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout;
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx>;
 }
 
-/// Combines a tcx with the parameter environment so that you can
-/// compute layout operations.
-#[derive(Copy, Clone)]
-pub struct LayoutCx<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-}
-
-impl<'a, 'tcx> LayoutCx<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        LayoutCx { tcx, param_env }
-    }
-}
-
-impl<'a, 'tcx> HasDataLayout for LayoutCx<'a, 'tcx> {
+impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
-        &self.tcx.data_layout
+        &self.data_layout
     }
 }
 
-impl<'a, 'tcx> LayoutTyper<'tcx> for LayoutCx<'a, 'tcx> {
-    type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
-
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
+impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
+        self.global_tcx()
     }
+}
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let ty = self.normalize_projections(ty);
+impl<'a, 'gcx, 'tcx, T: Copy> HasDataLayout for (TyCtxt<'a, 'gcx, 'tcx>, T) {
+    fn data_layout(&self) -> &TargetDataLayout {
+        self.0.data_layout()
+    }
+}
 
-        Ok(TyLayout {
+impl<'a, 'gcx, 'tcx, T: Copy> HasTyCtxt<'gcx> for (TyCtxt<'a, 'gcx, 'tcx>, T) {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
+        self.0.tcx()
+    }
+}
+
+pub trait LayoutOf<T> {
+    type FullLayout;
+
+    fn layout_of(self, ty: T) -> Self::FullLayout;
+}
+
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (TyCtxt<'a, 'tcx, 'tcx>, ty::ParamEnv<'tcx>) {
+    type FullLayout = Result<FullLayout<'tcx>, LayoutError<'tcx>>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::FullLayout {
+        let (tcx, param_env) = self;
+
+        let ty = tcx.normalize_associated_type_in_env(&ty, param_env);
+
+        Ok(FullLayout {
             ty,
-            layout: ty.layout(self.tcx, self.param_env)?,
-            variant_index: None
+            variant_index: None,
+            layout: ty.layout(tcx, param_env)?,
         })
     }
-
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx.normalize_associated_type_in_env(&ty, self.param_env)
-    }
 }
 
-impl<'a, 'tcx> TyLayout<'tcx> {
+impl<'a, 'tcx> FullLayout<'tcx> {
     pub fn for_variant(&self, variant_index: usize) -> Self {
         let is_enum = match self.ty.sty {
             ty::TyAdt(def, _) => def.is_enum(),
             _ => false
         };
         assert!(is_enum);
-        TyLayout {
+        FullLayout {
             variant_index: Some(variant_index),
             ..*self
         }
@@ -2199,7 +2198,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
         match *self.layout {
             Scalar { .. } => {
-                bug!("TyLayout::field_count({:?}): not applicable", self)
+                bug!("FullLayout::field_count({:?}): not applicable", self)
             }
 
             // Handled above (the TyAdt case).
@@ -2222,9 +2221,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         }
     }
 
-    fn field_type_unnormalized<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
-        let tcx = cx.tcx();
-
+    fn field_type_unnormalized(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, i: usize) -> Ty<'tcx> {
         let ptr_field_type = |pointee: Ty<'tcx>| {
             assert!(i < 2);
             let slice = |element: Ty<'tcx>| {
@@ -2238,7 +2235,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 ty::TySlice(element) => slice(element),
                 ty::TyStr => slice(tcx.types.u8),
                 ty::TyDynamic(..) => tcx.mk_mut_ptr(tcx.mk_nil()),
-                _ => bug!("TyLayout::field_type({:?}): not applicable", self)
+                _ => bug!("FullLayout::field_type({:?}): not applicable", self)
             }
         };
 
@@ -2253,7 +2250,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyFnDef(..) |
             ty::TyDynamic(..) |
             ty::TyForeign(..) => {
-                bug!("TyLayout::field_type({:?}): not applicable", self)
+                bug!("FullLayout::field_type({:?}): not applicable", self)
             }
 
             // Potentially-fat pointers.
@@ -2311,20 +2308,16 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
             ty::TyInfer(_) | ty::TyError => {
-                bug!("TyLayout::field_type: unexpected type `{}`", self.ty)
+                bug!("FullLayout::field_type: unexpected type `{}`", self.ty)
             }
         }
     }
 
-    pub fn field_type<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
-        cx.normalize_projections(self.field_type_unnormalized(cx, i))
-    }
-
-    pub fn field<C: LayoutTyper<'tcx>>(&self,
-                                       cx: C,
-                                       i: usize)
-                                       -> C::TyLayout {
-        cx.layout_of(self.field_type(cx, i))
+    pub fn field<C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>>(&self,
+                                                          cx: C,
+                                                          i: usize)
+                                                          -> C::FullLayout {
+        cx.layout_of(self.field_type_unnormalized(cx.tcx(), i))
     }
 }
 

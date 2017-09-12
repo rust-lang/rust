@@ -19,7 +19,7 @@ use common::*;
 use llvm::{ValueRef};
 use llvm;
 use meth;
-use rustc::ty::layout::LayoutTyper;
+use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use value::Value;
 
@@ -74,7 +74,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = layout.field_type(ccx, layout.field_count() - 1);
+            let field_ty = layout.field(ccx, layout.field_count() - 1).ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding

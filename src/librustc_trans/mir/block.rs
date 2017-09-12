@@ -12,7 +12,7 @@ use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::LayoutTyper;
+use rustc::ty::layout::LayoutOf;
 use rustc::traits;
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};

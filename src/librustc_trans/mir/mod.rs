@@ -12,7 +12,7 @@ use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutTyper};
+use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;

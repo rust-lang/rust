@@ -29,7 +29,7 @@ use rustc::middle::trans::Stats;
 use rustc_data_structures::stable_hasher::StableHashingContextProvider;
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
+use rustc::ty::layout::{LayoutError, LayoutOf, FullLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_trans_utils;
@@ -648,47 +648,43 @@ impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
+}
+
 impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.shared.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
-    type TyLayout = TyLayout<'tcx>;
-
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.tcx
+        self.shared.tcx
     }
+}
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = ty::ParamEnv::empty(traits::Reveal::All);
-        LayoutCx::new(self.tcx, param_env)
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a SharedCrateContext<'a, 'tcx> {
+    type FullLayout = FullLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::FullLayout {
+        (self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
             .layout_of(ty)
             .unwrap_or_else(|e| match e {
                 LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
                 _ => bug!("failed to get layout for `{}`: {}", ty, e)
             })
     }
-
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.tcx().fully_normalize_associated_types_in(&ty)
-    }
 }
 
-impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
-    type TyLayout = TyLayout<'tcx>;
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CrateContext<'a, 'tcx> {
+    type FullLayout = FullLayout<'tcx>;
 
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-        self.shared.tcx
-    }
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::FullLayout {
         self.shared.layout_of(ty)
-    }
-
-    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.shared.normalize_projections(ty)
     }
 }
 

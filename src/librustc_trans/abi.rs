@@ -35,8 +35,8 @@ use type_::Type;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, Layout, Size, TyLayout};
-use rustc::ty::layout::{HasDataLayout, LayoutTyper};
+use rustc::ty::layout::{self, Align, Layout, Size, FullLayout};
+use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc_back::PanicStrategy;
 
 use libc::c_uint;
@@ -274,7 +274,7 @@ pub trait LayoutExt<'tcx> {
     fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
 }
 
-impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
+impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
     fn is_aggregate(&self) -> bool {
         match *self.layout {
             Layout::Scalar { .. } |
@@ -471,7 +471,7 @@ impl CastTarget {
 #[derive(Clone, Copy, Debug)]
 pub struct ArgType<'tcx> {
     kind: ArgKind,
-    pub layout: TyLayout<'tcx>,
+    pub layout: FullLayout<'tcx>,
     /// Cast target, either a single uniform or a pair of registers.
     pub cast: Option<CastTarget>,
     /// Dummy argument, which is emitted before the real argument.
@@ -481,7 +481,7 @@ pub struct ArgType<'tcx> {
 }
 
 impl<'a, 'tcx> ArgType<'tcx> {
-    fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
+    fn new(layout: FullLayout<'tcx>) -> ArgType<'tcx> {
         ArgType {
             kind: ArgKind::Direct,
             layout,
