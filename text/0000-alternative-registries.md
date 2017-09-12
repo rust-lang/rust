@@ -20,11 +20,6 @@ discoverability that Cargo and crates.io provides is lost. We would like to chan
 it is possible to have a local crates.io server which crates can be pushed to, while still making
 use of the public crates.io server.
 
-We would also like to support the use of crates.io mirrors. These differ from alternative
-registries in that a mirror completely replicates the functionality and content of crates.io. A
-mirror would be useful if we ever need a fallback for when crates.io goes down, or in areas of the
-world where crates.io is blocked.
-
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
