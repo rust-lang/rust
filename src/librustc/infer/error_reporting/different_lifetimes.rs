@@ -210,7 +210,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                 self.depth -= 1;
                 return;
             }
-            
+
             hir::TyRptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
                 let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
