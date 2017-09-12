@@ -249,8 +249,36 @@ pub struct ScopeTree {
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
     /// If there are any `yield` nested within a scope, this map
-    /// stores the `Span` of the last one and the number of expressions
-    /// which came before it in a generator body.
+    /// stores the `Span` of the last one and its index in the
+    /// postorder of the Visitor traversal on the HIR.
+    ///
+    /// HIR Visitor postorder indexes might seem like a peculiar
+    /// thing to care about. but it turns out that HIR bindings
+    /// and the temporary results of HIR expressions are never
+    /// storage-live at the end of HIR nodes with postorder indexes
+    /// lower than theirs, and therefore don't need to be suspended
+    /// at yield-points at these indexes.
+    ///
+    /// Let's show that: let `D` be our binding/temporary and `U` be our
+    /// other HIR node, with `HIR-postorder(U) < HIR-postorder(D)`.
+    ///
+    /// Then:
+    ///     1. From the ordering guarantee of HIR visitors (see
+    ///     `rustc::hir::intravisit`), `D` does not dominate `U`.
+    ///     2. Therefore, `D` is *potentially* storage-dead at `U` (because
+    ///     we might visit `U` without ever getting to `D`).
+    ///     3. However, we guarantee that at each HIR point, each
+    ///     binding/temporary is always either always storage-live
+    ///     or always storage-dead. This is what is being guaranteed
+    ///     by `terminating_scopes` including all blocks where the
+    ///     count of executions is not guaranteed.
+    ///     4. By `2.` and `3.`, `D` is *statically* dead at `U`,
+    ///     QED.
+    ///
+    /// I don't think this property relies on `3.` in an essential way - it
+    /// is probably still correct even if we have "unrestricted" terminating
+    /// scopes. However, why use the complicated proof when a simple one
+    /// works?
     yield_in_scope: FxHashMap<Scope, (Span, usize)>,
 
     /// The number of visit_expr calls done in the body.
@@ -754,8 +782,6 @@ fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt:
 fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr: &'tcx hir::Expr) {
     debug!("resolve_expr(expr.id={:?})", expr.id);
 
-    visitor.expr_count += 1;
-
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);
 
@@ -836,6 +862,8 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
 
         _ => intravisit::walk_expr(visitor, expr)
     }
+
+    visitor.expr_count += 1;
 
     if let hir::ExprYield(..) = expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.

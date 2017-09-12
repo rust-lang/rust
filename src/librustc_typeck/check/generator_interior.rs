@@ -35,7 +35,12 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
 
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
             self.region_scope_tree.yield_in_scope(s).and_then(|(span, expr_count)| {
-                // Check if the span in the region comes after the expression
+                // If we are recording an expression that is the last yield
+                // in the scope, or that has a postorder CFG index larger
+                // than the one of all of the yields, then its value can't
+                // be storage-live (and therefore live) at any of the yields.
+                //
+                // See the mega-comment at `yield_in_scope` for a proof.
                 if expr.is_none() || expr_count >= self.expr_count {
                     Some(span)
                 } else {
@@ -114,14 +119,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
+        intravisit::walk_expr(self, expr);
+
         self.expr_count += 1;
 
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
-
         let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
         self.record(ty, scope, Some(expr));
-
-        intravisit::walk_expr(self, expr);
     }
 }
