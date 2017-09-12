@@ -76,6 +76,8 @@ use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
+mod diagnostics;
+
 pub mod back {
     mod archive;
     mod command;
@@ -87,8 +89,6 @@ pub mod back {
     pub mod write;
     mod rpath;
 }
-
-mod diagnostics;
 
 mod abi;
 mod adt;

@@ -1392,6 +1392,8 @@ define_maps! { <'tcx>
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>),
+    [] fn export_name: ExportName(DefId) -> Option<Symbol>,
+    [] fn contains_extern_indicator: ContainsExternIndicator(DefId) -> bool,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

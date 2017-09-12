@@ -506,30 +506,6 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-/// Find the value of #[export_name=*] attribute and check its validity.
-pub fn find_export_name_attr(diag: &Handler, attrs: &[Attribute]) -> Option<Symbol> {
-    attrs.iter().fold(None, |ia,attr| {
-        if attr.check_name("export_name") {
-            if let s@Some(_) = attr.value_str() {
-                s
-            } else {
-                struct_span_err!(diag, attr.span, E0558,
-                                 "export_name attribute has invalid format")
-                    .span_label(attr.span, "did you mean #[export_name=\"*\"]?")
-                    .emit();
-                None
-            }
-        } else {
-            ia
-        }
-    })
-}
-
-pub fn contains_extern_indicator(diag: &Handler, attrs: &[Attribute]) -> bool {
-    contains_name(attrs, "no_mangle") ||
-        find_export_name_attr(diag, attrs).is_some()
-}
-
 #[derive(Copy, Clone, PartialEq)]
 pub enum InlineAttr {
     None,

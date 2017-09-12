@@ -17,7 +17,6 @@ use rustc::ty::TyCtxt;
 use rustc_allocator::ALLOCATOR_METHODS;
 use rustc::middle::exported_symbols::{ExportedSymbols, SymbolExportLevel};
 use rustc::middle::exported_symbols::is_below_threshold;
-use syntax::attr;
 
 pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ExportedSymbols {
     let export_threshold = crates_export_threshold(&tcx.sess.crate_types.borrow());
@@ -137,11 +136,8 @@ pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ExportedSymbols {
 
     return ExportedSymbols::new(export_threshold, exports, local_exports);
 
-    fn export_level(tcx: TyCtxt,
-                    sym_def_id: DefId)
-                    -> SymbolExportLevel {
-        let attrs = tcx.get_attrs(sym_def_id);
-        if attr::contains_extern_indicator(tcx.sess.diagnostic(), &attrs) {
+    fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
+        if tcx.contains_extern_indicator(sym_def_id) {
             SymbolExportLevel::C
         } else {
             SymbolExportLevel::Rust
