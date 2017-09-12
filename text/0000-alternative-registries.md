@@ -44,17 +44,24 @@ not be checked in. Separating the URLs and the use of the URLs in this way encou
 practices of not checking in credentials.
 
 In order to tell Cargo about a registry other than crates.io, you can specify and name it in a
-`.cargo/config` as follows:
+`.cargo/config` as follows, under the `registries` key:
 
 ```toml
-[registry.$choose-a-name]
-index = "https://my-intranet:8080/index"
+[registries]
+$choose-a-name = "https://my-intranet:8080/index"
 ```
 
 Instead of `$choose-a-name`, place the name you'd like to use to refer to this registry in your
-`Cargo.toml` files. The `index` key should contain the location of the registry index for this
+`Cargo.toml` files. The URL specified should contain the location of the registry index for this
 registry; the registry format is specified in the [Registry Index Format Specification
 section][registry-index-format-specification].
+
+Alternatively, you can specify each registry as follows:
+
+```toml
+[registries.$choose-a-name]
+index = "https://my-intranet:8080/index"
+```
 
 If you need to specify authentication information such as a username or password to access a
 registry's index, those should be specified in a `.cargo/credentials` file since it has more
