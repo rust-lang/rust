@@ -276,12 +276,13 @@ In order to make working with multiple registries more convenient, we would also
 - Adding a `cargo add-registry` command that could prompt for index URL and authentication
   information and place the right information in the right format in the right files to make setup
   for each user easier.
-- [Being able to specify the API host rather than the index
+- [Being able to specify the API location rather than the index
   location](https://github.com/rust-lang/cargo/issues/4208), so that, for example, you could
-  specify `https://crates.io` rather than `https://github.com/rust-lang/crates.io-index`. We do not
-  want to *require* specifying the API host, since some registries will choose not to have an API
-  host at all and only supply an index and a location for crate files. This would require the API
-  to have a way to tell Cargo where the associated registry index is located.
+  specify `https://host.company.com/api/cargo/private-repo` rather than
+  `https://github.com/host-company/cargo-index`. We do not want to *require* specifying the API
+  location, since some registries will choose not to have an API at all and only supply an index
+  and a location for crate files. This would require the API to have a way to tell Cargo where the
+  associated registry index is located.
 - [Being able to save multiple tokens in
   `.cargo/credentials`](https://github.com/rust-lang/cargo/issues/3365), one per registry, so that
   people publishing to multiple registries don't need to log in over and over or specify tokens on
