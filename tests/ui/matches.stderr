@@ -249,6 +249,25 @@ error: Err(_) will match all errors, maybe not a good idea
     = note: `-D match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error seperately or use unreachable macro
 
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:239:18
+    |
+239 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+    = note: `-D match-same-arms` implied by `-D warnings`
+note: same as this
+   --> $DIR/matches.rs:238:18
+    |
+238 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:238:18
+    |
+238 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
 error: Err(_) will match all errors, maybe not a good idea
    --> $DIR/matches.rs:246:9
     |
@@ -256,6 +275,24 @@ error: Err(_) will match all errors, maybe not a good idea
     |         ^^^^^^
     |
     = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:245:18
+    |
+245 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:244:18
+    |
+244 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:244:18
+    |
+244 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
 
 error: Err(_) will match all errors, maybe not a good idea
    --> $DIR/matches.rs:252:9
@@ -265,5 +302,95 @@ error: Err(_) will match all errors, maybe not a good idea
     |
     = note: to remove this warning, match each error seperately or use unreachable macro
 
-error: aborting due to 26 previous errors
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:251:18
+    |
+251 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:250:18
+    |
+250 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:250:18
+    |
+250 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:258:18
+    |
+258 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:257:18
+    |
+257 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:257:18
+    |
+257 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:265:18
+    |
+265 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:264:18
+    |
+264 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:264:18
+    |
+264 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:271:18
+    |
+271 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:270:18
+    |
+270 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:270:18
+    |
+270 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:277:18
+    |
+277 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:276:18
+    |
+276 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:276:18
+    |
+276 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate
+
+error: aborting due to 33 previous errors
 
