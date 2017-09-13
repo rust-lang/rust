@@ -145,32 +145,86 @@ The first two steps -- dependency resolution and build configuration -- need to
 operate on an entire dependency graph at once. Build lowering, by contrast, can
 be performed for any crate in isolation.
 
-### Cargo plugins
+### Customizing Cargo
 
 **A key point is that, in principle, each of these steps is separable from the
 others**. That is, we should be able to rearchitect Cargo so that each of these
 steps is managed by a distinct component, and the components have a stable --
 and public! -- way of communicating with one another. That in turn will enable
-replacing any particular component while keeping the others.
+replacing any particular component while keeping the others. (To be clear, the
+breakdown above is just a high-level sketch; in reality, we'll need a more
+nuanced and layered picture of Cargo's activities).
 
-More concretely, this RFC proposed that we pursue *some* kind of plugin system
-in which you can inform Cargo that part of its normal work should instead by
-done by an external tool. This might live in `Cargo.toml`, or in Cargo
-configuration. In any case, each phase of Cargo's work should be swappable.
+This RFC proposes to provide *some* means of customizing Cargo's activities at
+various layers and stages. The details here are *very much* up for grabs, and
+are part of the experimentation we need to do.
 
-Note that the four-step division above is a useful conceptual model, but is
-ultimately too coarse-grained; we will likely need to divide up Cargo's
-functionality into numerous small pieces that can be re-used when integrating
-into a larger build system. This finer division is left as a question for
-experimentation.
+#### Likely design constraints
+
+Some likely constraints for a Cargo customization/plugin system are:
+
+- It should be possible for Rust tools (like `rustfmt`, IDEs, linters) to "call
+  Cargo" to get information or artifacts in a standardized way, while remaining
+  oblivious to any customizations. Ideally, `Cargo` workflows (including custom
+  commands) would also work transparently.
+
+- It should be possible to customize or swap out a *small part* of Cargo's
+  behavior without understanding or reimplementing other parts.
+
+- The interface for customization should be *forward-compatible*: existing
+  plugins should continue to work with new versions of Cargo.
+
+- It should be difficult or impossible to introduce customizations that are
+  "incoherent", for example that result in unexpected differences in the way
+  that `rustc` is invoked in different workflows (because, say, the testing
+  workflow was customized but the normal build workflow wasn't). In other words,
+  customizations are subject to *cross-cutting concerns*, which need to be
+  identified and factored out.
+
+We will iterate on the constraints to form core design principles as we
+experiment.
+
+#### A concrete example
+
+Since the above is quite hand-wavy, it's helpful to see a very simple, concrete
+example of what a customization might look like. You could imagine something
+like the following for supplying manifest information from an external build
+system, rather than through `Cargo.toml`:
+
+**Cargo.toml**
+
+```toml
+[plugins.bazel]
+generate-manifest = true
+```
+
+**$root/.cargo/meta.toml**
+
+```toml
+[plugins]
+
+# These dependencies cannot themselves use plugins.
+# This file is "staged" earlier than Cargo.toml
+
+bazel = "1.0" # a regular crates.io dependency
+```
+
+**Semantics**
+
+If any `plugins` entry in `Cargo.toml` defines a `generate-manifest` key,
+whenever Cargo would be about to return the parsed results of `Cargo.toml` ,
+instead:
+
+- look for the associated plugin in `.cargo/meta.toml`, and ask it to generate the manifest
+- return that instead
 
 ## Specifics for the homogeneous build system case
 
 For homogeneous build systems, there are two kinds of code that must be dealt
 with: code originally written using vanilla Cargo and a crate registry, and code
-written "natively" in the context of the external build system.  Any integration
-has to handle the first case (to have access to crates.io or a vendored mirror
-thereof).
+written "natively" in the context of the external build system. Any integration
+has to handle the first case to have access to crates.io or a vendored mirror
+thereof.
 
 ### Using crates vendored from or managed by a crate registry
 
@@ -208,12 +262,13 @@ during the planning stage.
 ### Using crates managed by the build system
 
 Many organization want to employ their own strategy for maintaining and
-versioning code, and for resolving dependencies. In this case, they may wish to
-entirely forgo producing a meaningful Cargo.toml for the code the write, instead
-having one that just forwards to a plugin. The description of dependencies is
-then written in the external build system's rule format. Here, Cargo acts
-primarily as a *workflow and tool orchestrator*, since it is not involved in
-either planning or executing the build.
+versioning code and for resolving dependencies, *in addition* to build
+execution. In this case, they may wish to entirely forgo producing a meaningful
+Cargo.toml for the code the write, instead having one that just forwards to a
+plugin (as in the example plugin above). The description of dependencies is then
+written in the external build system's rule format. Here, Cargo acts primarily
+as a *workflow and tool orchestrator*, since it is not involved in either
+planning or executing the build. Let's dig into that.
 
 #### Workflow and interop story
 
@@ -229,7 +284,7 @@ then execute the build (possibly re-invoking Cargo for lowering). For `cargo
 run`, the same steps are followed by putting the resulting build artifact in an
 appropriate location, and then following Cargo's usual logic. And so on.
 
-A similar story plays out when using, for example, the RLS or rustfmt. Ideally,
+A similar story plays out when using, for example, the RLS or `rustfmt`. Ideally,
 these tools will have no idea that a Cargo plugin is in play; the information
 and artifacts they need can be obtained by using Cargo's in a standard way,
 transparently -- but the underlying information will be coming from the external
