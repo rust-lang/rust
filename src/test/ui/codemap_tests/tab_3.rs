@@ -11,9 +11,9 @@
 // ignore-tidy-tab
 
 fn main() {
-	bar;
-}
-
-fn foo() {
-	"bar			boo"
+	let some_vec = vec!["hi"];
+	some_vec.into_iter();
+	{
+		println!("{:?}", some_vec);
+	}
 }
