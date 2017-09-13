@@ -586,8 +586,11 @@ impl UdpSocket {
     /// receive data from the specified address.
     ///
     /// If `addr` yields multiple addresses, `connect` will be attempted with
-    /// each of the addresses until a connection is successful. If none of
-    /// the addresses are able to be connected, the error returned from the
+    /// each of the addresses until the underlying OS function returns no
+    /// error. Note that usually, a successful `connect` call does not specify
+    /// that there is a remote server listening on the port, rather, such an
+    /// error would only be detected after the first send. If the OS returns an
+    /// error for each of the specified addresses, the error returned from the
     /// last connection attempt (the last address) is returned.
     ///
     /// # Examples
@@ -602,20 +605,10 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// ```
     ///
-    /// Create a UDP socket bound to `127.0.0.1:3400` and connect the socket to
-    /// `127.0.0.1:8080`. If that connection fails, then the UDP socket will
-    /// connect to `127.0.0.1:8081`:
-    ///
-    /// ```no_run
-    /// use std::net::{SocketAddr, UdpSocket};
-    ///
-    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
-    /// let connect_addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 8080)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 8081)),
-    /// ];
-    /// socket.connect(&connect_addrs[..]).expect("connect function failed");
-    /// ```
+    /// Unlike in the TCP case, passing an array of addresses to the `connect`
+    /// function of a UDP socket is not a useful thing to do: The OS will be
+    /// unable to determine whether something is listening on the remote
+    /// address without the application sending data.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         super::each_addr(addr, |addr| self.0.connect(addr))
