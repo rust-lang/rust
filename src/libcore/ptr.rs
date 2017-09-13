@@ -1064,7 +1064,43 @@ impl<T: ?Sized> *const T {
         copy_nonoverlapping(self, dest, count)
     }
 
-
+    /// Computes the byte offset that needs to be applied in order to
+    /// make the pointer aligned to `align`.
+    /// If it is not possible to align the pointer, the implementation returns
+    /// `usize::max_value()`.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not
+    /// overflow or go beyond the allocation that the pointer points into.
+    /// It is up to the caller to ensure that the returned offset is correct
+    /// in all terms other than alignment.
+    ///
+    /// # Examples
+    ///
+    /// Accessing adjacent `u8` as `u16`
+    ///
+    /// ```
+    /// # #![feature(align_offset)]
+    /// # fn foo(n: usize) {
+    /// # use std::mem::align_of;
+    /// # unsafe {
+    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
+    /// let ptr = &x[n] as *const u8;
+    /// let offset = ptr.align_offset(align_of::<u16>());
+    /// if offset < x.len() - n - 1 {
+    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     assert_ne!(*u16_ptr, 500);
+    /// } else {
+    ///     // while the pointer can be aligned via `offset`, it would point
+    ///     // outside the allocation
+    /// }
+    /// # } }
+    /// ```
+    #[unstable(feature = "align_offset", issue = "44488")]
+    pub fn align_offset(self, align: usize) -> usize {
+        unsafe {
+            intrinsics::align_offset(self as *const _, align)
+        }
+    }
 }
 
 #[lang = "mut_ptr"]
@@ -1284,6 +1320,43 @@ impl<T: ?Sized> *mut T {
         }
     }
 
+    /// Computes the byte offset that needs to be applied in order to
+    /// make the pointer aligned to `align`.
+    /// If it is not possible to align the pointer, the implementation returns
+    /// `usize::max_value()`.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not
+    /// overflow or go beyond the allocation that the pointer points into.
+    /// It is up to the caller to ensure that the returned offset is correct
+    /// in all terms other than alignment.
+    ///
+    /// # Examples
+    ///
+    /// Accessing adjacent `u8` as `u16`
+    ///
+    /// ```
+    /// # #![feature(align_offset)]
+    /// # fn foo(n: usize) {
+    /// # use std::mem::align_of;
+    /// # unsafe {
+    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
+    /// let ptr = &x[n] as *const u8;
+    /// let offset = ptr.align_offset(align_of::<u16>());
+    /// if offset < x.len() - n - 1 {
+    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     assert_ne!(*u16_ptr, 500);
+    /// } else {
+    ///     // while the pointer can be aligned via `offset`, it would point
+    ///     // outside the allocation
+    /// }
+    /// # } }
+    /// ```
+    #[unstable(feature = "align_offset", issue = "44488")]
+    pub fn align_offset(self, align: usize) -> usize {
+        unsafe {
+            intrinsics::align_offset(self as *const _, align)
+        }
+    }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///

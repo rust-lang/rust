@@ -65,15 +65,12 @@ pub mod fallback {
         let usize_bytes = mem::size_of::<usize>();
 
         // search up to an aligned boundary
-        let align = (ptr as usize) & (usize_bytes- 1);
-        let mut offset;
-        if align > 0 {
-            offset = cmp::min(usize_bytes - align, len);
+        let mut offset = ptr.align_offset(usize_bytes);
+        if offset > 0 {
+            offset = cmp::min(offset, len);
             if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {
                 return Some(index);
             }
-        } else {
-            offset = 0;
         }
 
         // search the body of the text
