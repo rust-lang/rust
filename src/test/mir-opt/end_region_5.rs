@@ -44,8 +44,8 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _2 = const foo(_3) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
-//         StorageDead(_3);
 //         EndRegion('14s);
+//         StorageDead(_3);
 //         _0 = ();
 //         drop(_1) -> bb4;
 //     }
