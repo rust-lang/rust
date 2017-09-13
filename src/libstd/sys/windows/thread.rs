@@ -19,6 +19,8 @@ use sys::handle::Handle;
 use sys_common::thread::*;
 use time::Duration;
 
+use super::to_u16s;
+
 pub struct Thread {
     handle: Handle
 }
@@ -53,11 +55,12 @@ impl Thread {
         }
     }
 
-    pub fn set_name(_name: &CStr) {
-        // Windows threads are nameless
-        // The names in MSVC debugger are obtained using a "magic" exception,
-        // which requires a use of MS C++ extensions.
-        // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+    pub fn set_name(name: &CStr) {
+        if let Ok(utf8) = name.to_str() {
+            if let Ok(utf16) = to_u16s(utf8) {
+                unsafe { c::SetThreadDescription(c::GetCurrentThread(), utf16.as_ptr()); };
+            };
+        };
     }
 
     pub fn join(self) {

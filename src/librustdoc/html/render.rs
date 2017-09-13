@@ -54,13 +54,11 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::{abi, ast};
-use syntax::feature_gate::UnstableFeatures;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc::session::config::nightly_options::is_nightly_build;
 use rustc_data_structures::flock;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span};
@@ -1764,9 +1762,13 @@ fn render_markdown(w: &mut fmt::Formatter,
                    prefix: &str,
                    scx: &SharedContext)
                    -> fmt::Result {
-    let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
     // We only emit warnings if the user has opted-in to Pulldown rendering.
     let output = if render_type == RenderType::Pulldown {
+        // Save the state of USED_ID_MAP so it only gets updated once even
+        // though we're rendering twice.
+        let orig_used_id_map = USED_ID_MAP.with(|map| map.borrow().clone());
+        let hoedown_output = format!("{}", Markdown(md_text, RenderType::Hoedown));
+        USED_ID_MAP.with(|map| *map.borrow_mut() = orig_used_id_map);
         let pulldown_output = format!("{}", Markdown(md_text, RenderType::Pulldown));
         let mut differences = html_diff::get_differences(&pulldown_output, &hoedown_output);
         differences.retain(|s| {
@@ -1787,7 +1789,7 @@ fn render_markdown(w: &mut fmt::Formatter,
 
         pulldown_output
     } else {
-        hoedown_output
+        format!("{}", Markdown(md_text, RenderType::Hoedown))
     };
 
     write!(w, "<div class='docblock'>{}{}</div>", prefix, output)
@@ -2192,14 +2194,9 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    // FIXME(#24111): remove when `const_fn` is stabilized
-    let vis_constness = match UnstableFeatures::from_environment() {
-        UnstableFeatures::Allow => f.constness,
-        _ => hir::Constness::NotConst
-    };
     let name_len = format!("{}{}{}{:#}fn {}{:#}",
                            VisSpace(&it.visibility),
-                           ConstnessSpace(vis_constness),
+                           ConstnessSpace(f.constness),
                            UnsafetySpace(f.unsafety),
                            AbiSpace(f.abi),
                            it.name.as_ref().unwrap(),
@@ -2209,7 +2206,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
-           constness = ConstnessSpace(vis_constness),
+           constness = ConstnessSpace(f.constness),
            unsafety = UnsafetySpace(f.unsafety),
            abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
@@ -2591,14 +2588,8 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        // FIXME(#24111): remove when `const_fn` is stabilized
-        let vis_constness = if is_nightly_build() {
-            constness
-        } else {
-            hir::Constness::NotConst
-        };
         let mut head_len = format!("{}{}{:#}fn {}{:#}",
-                                   ConstnessSpace(vis_constness),
+                                   ConstnessSpace(constness),
                                    UnsafetySpace(unsafety),
                                    AbiSpace(abi),
                                    name,
@@ -2611,7 +2602,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
-               ConstnessSpace(vis_constness),
+               ConstnessSpace(constness),
                UnsafetySpace(unsafety),
                AbiSpace(abi),
                href = href,

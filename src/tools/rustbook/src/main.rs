@@ -13,13 +13,13 @@ extern crate mdbook;
 extern crate clap;
 
 use std::env;
-use std::error::Error;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use clap::{App, ArgMatches, SubCommand, AppSettings};
 
 use mdbook::MDBook;
+use mdbook::errors::Result;
 
 fn main() {
     let d_message = "-d, --dest-dir=[dest-dir]
@@ -49,32 +49,19 @@ fn main() {
         ::std::process::exit(101);
     }
 }
-
 // Build command implementation
-fn build(args: &ArgMatches) -> Result<(), Box<Error>> {
-    let book = build_mdbook_struct(args);
+pub fn build(args: &ArgMatches) -> Result<()> {
+    let book_dir = get_book_dir(args);
+    let book = MDBook::new(&book_dir).read_config()?;
 
     let mut book = match args.value_of("dest-dir") {
-        Some(dest_dir) => book.set_dest(Path::new(dest_dir)),
-        None => book
+        Some(dest_dir) => book.with_destination(dest_dir),
+        None => book,
     };
 
-    try!(book.build());
+    book.build()?;
 
     Ok(())
-}
-
-fn build_mdbook_struct(args: &ArgMatches) -> mdbook::MDBook {
-    let book_dir = get_book_dir(args);
-    let mut book = MDBook::new(&book_dir).read_config();
-
-    // By default mdbook will attempt to create non-existent files referenced
-    // from SUMMARY.md files. This is problematic on CI where we mount the
-    // source directory as readonly. To avoid any issues, we'll disabled
-    // mdbook's implicit file creation feature.
-    book.create_missing = false;
-
-    book
 }
 
 fn get_book_dir(args: &ArgMatches) -> PathBuf {
