@@ -1,11 +1,12 @@
 use int::Int;
+use float::Float;
 
-/// Returns `a` raised to the power `b`
-macro_rules! pow {
-    ($a: expr, $b: expr) => ({
-        let (mut a, mut b) = ($a, $b);
+trait Pow: Float {
+    /// Returns `a` raised to the power `b`
+    fn pow(self, mut b: i32) -> Self {
+        let mut a = self;
         let recip = b < 0;
-        let mut r = 1.0;
+        let mut r = Self::ONE;
         loop {
             if (b & 1) != 0 {
                 r *= a;
@@ -18,19 +19,22 @@ macro_rules! pow {
         }
 
         if recip {
-            1.0 / r
+            Self::ONE / r
         } else {
             r
         }
-    })
+    }
 }
+
+impl Pow for f32 {}
+impl Pow for f64 {}
 
 intrinsics! {
     pub extern "C" fn __powisf2(a: f32, b: i32) -> f32 {
-        pow!(a, b)
+        a.pow(b)
     }
 
     pub extern "C" fn __powidf2(a: f64, b: i32) -> f64 {
-        pow!(a, b)
+        a.pow(b)
     }
 }
