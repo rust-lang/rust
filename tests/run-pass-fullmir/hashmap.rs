@@ -1,5 +1,3 @@
-// FIXME: disable validation until we figure out how to handle <https://github.com/solson/miri/issues/296>.
-// compile-flags: -Zmir-emit-validate=0
 use std::collections::{self, HashMap};
 use std::hash::BuildHasherDefault;
 

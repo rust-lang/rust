@@ -126,8 +126,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-                    (std|alloc::heap::__core)::mem::uninitialized::|\
-                    (std|alloc::heap::__core)::mem::forget::|\
+                    (std|alloc::heap::__core)::mem::(uninitialized|forget)::|\
                     <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
                     <(std|alloc::heap::__core)::mem::ManuallyDrop<T>><.*>::new$|\
                     <(std|alloc::heap::__core)::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\

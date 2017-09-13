@@ -1,4 +1,4 @@
-// mir validation can't cope with `mem::uninitialized::<SomeEnum>()`
+// mir validation can't cope with `mem::uninitialized()`, so this test fails with validation & full-MIR.
 // compile-flags: -Zmir-emit-validate=0
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
