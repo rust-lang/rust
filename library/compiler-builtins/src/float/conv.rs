@@ -8,8 +8,8 @@ macro_rules! int_to_float {
             return 0.0
         }
 
-        let mant_dig = <$fty>::significand_bits() + 1;
-        let exponent_bias = <$fty>::exponent_bias();
+        let mant_dig = <$fty>::SIGNIFICAND_BITS + 1;
+        let exponent_bias = <$fty>::EXPONENT_BIAS;
 
         let n = <$ity>::BITS;
         let (s, a) = i.extract_sign();
@@ -145,9 +145,9 @@ macro_rules! float_to_int {
         let fixint_bits = <$ity>::BITS as usize;
         let fixint_unsigned = fixint_min == 0;
 
-        let sign_bit = <$fty>::sign_mask();
-        let significand_bits = <$fty>::significand_bits() as usize;
-        let exponent_bias = <$fty>::exponent_bias() as usize;
+        let sign_bit = <$fty>::SIGN_MASK;
+        let significand_bits = <$fty>::SIGNIFICAND_BITS as usize;
+        let exponent_bias = <$fty>::EXPONENT_BIAS as usize;
         //let exponent_max = <$fty>::exponent_max() as usize;
 
         // Break a into sign, exponent, significand
@@ -157,7 +157,7 @@ macro_rules! float_to_int {
         // this is used to work around -1 not being available for unsigned
         let sign = if (a_rep & sign_bit) == 0 { Sign::Positive } else { Sign::Negative };
         let mut exponent = (a_abs >> significand_bits) as usize;
-        let significand = (a_abs & <$fty>::significand_mask()) | <$fty>::implicit_bit();
+        let significand = (a_abs & <$fty>::SIGNIFICAND_MASK) | <$fty>::IMPLICIT_BIT;
 
         // if < 1 or unsigned & negative
         if  exponent < exponent_bias ||
