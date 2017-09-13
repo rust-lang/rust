@@ -1009,15 +1009,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // FIXME: ariel points SimplifyBranches should run after
     // mir-borrowck; otherwise code within `if false { ... }` would
     // not be checked.
-    passes.push_pass(MIR_VALIDATED,
-                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
     passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
     // borrowck runs between MIR_VALIDATED and MIR_OPTIMIZED.
 
-    // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);
+    passes.push_pass(MIR_OPTIMIZED,
+                     mir::transform::simplify_branches::SimplifyBranches::new("initial"));
+
+    // These next passes must be executed together
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::elaborate_drops::ElaborateDrops);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::no_landing_pads::NoLandingPads);

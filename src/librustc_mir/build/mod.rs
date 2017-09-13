@@ -11,6 +11,7 @@
 
 use build;
 use hair::cx::Cx;
+use hair::LintLevel;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
@@ -277,6 +278,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
     visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
+    visibility_scope_info: IndexVec<VisibilityScope, VisibilityScopeInfo>,
     visibility_scope: VisibilityScope,
 
     /// Maps node ids of variable bindings to the `Local`s created for them.
@@ -378,8 +380,10 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
-    unpack!(block = builder.in_scope((call_site_scope, source_info), block, |builder| {
-        unpack!(block = builder.in_scope((arg_scope, source_info), block, |builder| {
+    let call_site_s = (call_site_scope, source_info);
+    unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
+        let arg_scope_s = (arg_scope, source_info);
+        unpack!(block = builder.in_scope(arg_scope_s, LintLevel::Inherited, block, |builder| {
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
@@ -456,9 +460,10 @@ fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
 }
 
 fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
-                                       body_id: hir::BodyId)
-                                       -> Mir<'tcx> {
-    let span = hir.tcx().hir.span(hir.tcx().hir.body_owner(body_id));
+                                   body_id: hir::BodyId)
+                                   -> Mir<'tcx> {
+    let owner_id = hir.tcx().hir.body_owner(body_id);
+    let span = hir.tcx().hir.span(owner_id);
     let ty = hir.tcx().types.err;
     let mut builder = Builder::new(hir, span, 0, ty);
     let source_info = builder.source_info(span);
@@ -472,6 +477,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            arg_count: usize,
            return_ty: Ty<'tcx>)
            -> Builder<'a, 'gcx, 'tcx> {
+        let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
             hir,
             cfg: CFG { basic_blocks: IndexVec::new() },
@@ -480,6 +486,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
+            visibility_scope_info: IndexVec::new(),
             breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
                                                                              span), 1),
@@ -490,7 +497,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
-        assert_eq!(builder.new_visibility_scope(span), ARGUMENT_VISIBILITY_SCOPE);
+        assert_eq!(
+            builder.new_visibility_scope(span, lint_level),
+            ARGUMENT_VISIBILITY_SCOPE);
         builder.visibility_scopes[ARGUMENT_VISIBILITY_SCOPE].parent_scope = None;
 
         builder
@@ -509,6 +518,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         Mir::new(self.cfg.basic_blocks,
                  self.visibility_scopes,
+                 ClearOnDecode::Set(self.visibility_scope_info),
                  IndexVec::new(),
                  return_ty,
                  yield_ty,
@@ -543,6 +553,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope: ARGUMENT_VISIBILITY_SCOPE,
                     span: pattern.map_or(self.fn_span, |pat| pat.span)
                 },
+                lexical_scope: ARGUMENT_VISIBILITY_SCOPE,
                 name,
                 internal: false,
                 is_user_variable: false,
@@ -557,7 +568,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if let Some(pattern) = pattern {
                 let pattern = self.hir.pattern_from_hir(pattern);
-                scope = self.declare_bindings(scope, ast_body.span, &pattern);
+                scope = self.declare_bindings(scope, ast_body.span,
+                                              LintLevel::Inherited, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }
 

@@ -88,8 +88,10 @@ should go to.
 */
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
+use hair::LintLevel;
 use rustc::middle::region;
 use rustc::ty::{Ty, TyCtxt};
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use syntax_pos::{Span};
@@ -304,15 +306,37 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// to build its contents, popping the scope afterwards.
     pub fn in_scope<F, R>(&mut self,
                           region_scope: (region::Scope, SourceInfo),
+                          lint_level: LintLevel,
                           mut block: BasicBlock,
                           f: F)
                           -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(region_scope={:?}, block={:?})", region_scope, block);
+        let visibility_scope = self.visibility_scope;
+        let tcx = self.hir.tcx();
+        if let LintLevel::Explicit(node_id) = lint_level {
+            let same_lint_scopes = tcx.dep_graph.with_ignore(|| {
+                let sets = tcx.lint_levels(LOCAL_CRATE);
+                let parent_hir_id =
+                    tcx.hir.definitions().node_to_hir_id(
+                        self.visibility_scope_info[visibility_scope].lint_root
+                            );
+                let current_hir_id =
+                    tcx.hir.definitions().node_to_hir_id(node_id);
+                sets.lint_level_set(parent_hir_id) ==
+                    sets.lint_level_set(current_hir_id)
+            });
+
+            if !same_lint_scopes {
+                self.visibility_scope =
+                    self.new_visibility_scope(region_scope.1.span, lint_level);
+            }
+        }
         self.push_scope(region_scope);
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
+        self.visibility_scope = visibility_scope;
         debug!("in_scope: exiting region_scope={:?} block={:?}", region_scope, block);
         block.and(rv)
     }
@@ -474,13 +498,21 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Creates a new visibility scope, nested in the current one.
-    pub fn new_visibility_scope(&mut self, span: Span) -> VisibilityScope {
+    pub fn new_visibility_scope(&mut self,
+                                span: Span,
+                                lint_level: LintLevel) -> VisibilityScope {
+        debug!("new_visibility_scope({:?}, {:?})", span, lint_level);
         let parent = self.visibility_scope;
-        let scope = VisibilityScope::new(self.visibility_scopes.len());
-        self.visibility_scopes.push(VisibilityScopeData {
+        let info = if let LintLevel::Explicit(lint_level) = lint_level {
+            VisibilityScopeInfo { lint_root: lint_level }
+        } else {
+            self.visibility_scope_info[parent].clone()
+        };
+        let scope = self.visibility_scopes.push(VisibilityScopeData {
             span,
             parent_scope: Some(parent),
         });
+        self.visibility_scope_info.push(info);
         scope
     }
 
