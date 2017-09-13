@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(drop_types_in_const)]
-
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;

@@ -15,7 +15,6 @@ pub struct Test {
 }
 
 pub static g_test: Test = Test {mem: 0};
-//~^ ERROR destructors in statics are an unstable feature
 
 impl Drop for Test {
     fn drop(&mut self) {}

@@ -14,6 +14,5 @@ impl Drop for A {
 }
 
 const FOO: A = A;
-//~^ ERROR: destructors in constants are an unstable feature
 
 fn main() {}

@@ -431,29 +431,6 @@ Remember this solution is unsafe! You will have to ensure that accesses to the
 cell are synchronized.
 "##,
 
-E0493: r##"
-A type with a destructor was assigned to an invalid type of variable. Erroneous
-code example:
-
-```compile_fail,E0493
-struct Foo {
-    a: u32
-}
-
-impl Drop for Foo {
-    fn drop(&mut self) {}
-}
-
-const F : Foo = Foo { a : 0 };
-// error: constants are not allowed to have destructors
-static S : Foo = Foo { a : 0 };
-// error: destructors in statics are an unstable feature
-```
-
-To solve this issue, please use a type which does allow the usage of type with
-destructors.
-"##,
-
 E0494: r##"
 A reference of an interior static was assigned to another const/static.
 Erroneous code example:
@@ -991,6 +968,7 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 }
 
 register_diagnostics! {
+    E0493, // destructors cannot be evaluated at compile-time
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0625, // thread-local statics cannot be accessed at compile-time
