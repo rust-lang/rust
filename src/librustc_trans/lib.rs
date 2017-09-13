@@ -251,10 +251,11 @@ __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
 pub fn provide_local(providers: &mut Providers) {
     back::symbol_names::provide(providers);
     back::symbol_export::provide_local(providers);
-    base::provide(providers);
+    base::provide_local(providers);
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     back::symbol_names::provide(providers);
     back::symbol_export::provide_extern(providers);
+    base::provide_extern(providers);
 }

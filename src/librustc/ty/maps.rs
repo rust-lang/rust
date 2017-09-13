@@ -24,7 +24,7 @@ use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
-use middle::trans::{TransItem, CodegenUnit};
+use middle::trans::CodegenUnit;
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
@@ -1391,9 +1391,10 @@ define_maps! { <'tcx>
         -> Arc<Vec<(String, DefId, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
-        -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>),
+        -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
     [] fn export_name: ExportName(DefId) -> Option<Symbol>,
     [] fn contains_extern_indicator: ContainsExternIndicator(DefId) -> bool,
+    [] fn is_translated_function: IsTranslatedFunction(DefId) -> bool,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {

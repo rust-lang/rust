@@ -22,14 +22,13 @@ use declare;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use trans_item::TransItem;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashMap;
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -93,9 +92,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llcx: ContextRef,
     stats: Stats,
     codegen_unit: Arc<CodegenUnit<'tcx>>,
-
-    /// The translation items of the whole crate.
-    crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
 
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
@@ -349,8 +345,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: Arc<CodegenUnit<'tcx>>,
-               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>)
+               codegen_unit: Arc<CodegenUnit<'tcx>>)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -382,7 +377,6 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 llcx,
                 stats: Stats::default(),
                 codegen_unit,
-                crate_trans_items,
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -487,10 +481,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
         &self.local().codegen_unit
-    }
-
-    pub fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
-        &self.local().crate_trans_items
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {

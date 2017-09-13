@@ -23,7 +23,6 @@ use monomorphize::{self, Instance};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TypeFoldable;
 use rustc::ty::subst::Substs;
-use trans_item::TransItem;
 use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
@@ -109,10 +108,43 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             attributes::unwind(llfn, true);
         }
 
+        // Apply an appropriate linkage/visibility value to our item that we
+        // just declared.
+        //
+        // This is sort of subtle. Inside our codegen unit we started off
+        // compilation by predefining all our own `TransItem` instances. That
+        // is, everything we're translating ourselves is already defined. That
+        // means that anything we're actually translating ourselves will have
+        // hit the above branch in `get_declared_value`. As a result, we're
+        // guaranteed here that we're declaring a symbol that won't get defined,
+        // or in other words we're referencing a foreign value.
+        //
+        // So because this is a foreign value we blanket apply an external
+        // linkage directive because it's coming from a different object file.
+        // The visibility here is where it gets tricky. This symbol could be
+        // referencing some foreign crate or foreign library (an `extern`
+        // block) in which case we want to leave the default visibility. We may
+        // also, though, have multiple codegen units.
+        //
+        // In the situation of multiple codegen units this function may be
+        // referencing a function from another codegen unit. If we're
+        // indeed referencing a symbol in another codegen unit then we're in one
+        // of two cases:
+        //
+        //  * This is a symbol defined in a foreign crate and we're just
+        //    monomorphizing in another codegen unit. In this case this symbols
+        //    is for sure not exported, so both codegen units will be using
+        //    hidden visibility. Hence, we apply a hidden visibility here.
+        //
+        //  * This is a symbol defined in our local crate. If the symbol in the
+        //    other codegen unit is also not exported then like with the foreign
+        //    case we apply a hidden visibility. If the symbol is exported from
+        //    the foreign object file, however, then we leave this at the
+        //    default visibility as we'll just import it naturally.
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if ccx.crate_trans_items().contains(&TransItem::Fn(instance)) {
+            if ccx.tcx().is_translated_function(instance_def_id) {
                 if instance_def_id.is_local() {
                     if !ccx.tcx().is_exported_symbol(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);

@@ -35,7 +35,7 @@ use back::write::{self, OngoingCrateTranslation};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use metadata;
-use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
@@ -75,7 +75,7 @@ use trans_item::{TransItem, TransItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
-use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet};
+use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use libc::c_uint;
@@ -990,8 +990,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the translation item collector and partition the collected items into
     // codegen units.
-    let (translation_items, codegen_units) =
-        shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE);
+    let codegen_units =
+        shared_ccx.tcx().collect_and_partition_translation_items(LOCAL_CRATE).1;
+    let codegen_units = (*codegen_units).clone();
 
     assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
 
@@ -1076,8 +1077,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let ((stats, module), _) =
                 tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(&shared_ccx),
-                                        AssertDepGraphSafe((cgu,
-                                                            translation_items.clone())),
+                                        AssertDepGraphSafe(cgu),
                                         module_translation);
             all_stats.extend(stats);
 
@@ -1118,13 +1118,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
-        args: AssertDepGraphSafe<(Arc<CodegenUnit<'tcx>>,
-                                  Arc<FxHashSet<TransItem<'tcx>>>)>)
+        args: AssertDepGraphSafe<Arc<CodegenUnit<'tcx>>>)
         -> (Stats, ModuleTranslation)
     {
         // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
         let AssertDepGraphSafe(scx) = scx;
-        let AssertDepGraphSafe((cgu, crate_trans_items)) = args;
+        let AssertDepGraphSafe(cgu) = args;
 
         let cgu_name = cgu.name().to_string();
         let cgu_id = cgu.work_product_id();
@@ -1164,7 +1163,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu, crate_trans_items);
+        let lcx = LocalCrateContext::new(scx, cgu);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
@@ -1353,7 +1352,7 @@ fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_i
 fn collect_and_partition_translation_items<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum,
-) -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>)
+) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let time_passes = tcx.sess.time_passes();
@@ -1404,7 +1403,12 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     assert!(tcx.sess.opts.cg.codegen_units == codegen_units.len() ||
             tcx.sess.opts.debugging_opts.incremental.is_some());
 
-    let translation_items: FxHashSet<TransItem<'tcx>> = items.iter().cloned().collect();
+    let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
+        match *trans_item {
+            TransItem::Fn(ref instance) => Some(instance.def_id()),
+            _ => None,
+        }
+    }).collect();
 
     if tcx.sess.opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = FxHashMap();
@@ -1459,7 +1463,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
         }
     }
 
-    (Arc::new(translation_items), codegen_units)
+    (Arc::new(translation_items), Arc::new(codegen_units))
 }
 
 impl CrateInfo {
@@ -1505,9 +1509,25 @@ impl CrateInfo {
     }
 }
 
-pub fn provide(providers: &mut Providers) {
+fn is_translated_function(tcx: TyCtxt, id: DefId) -> bool {
+    // FIXME(#42293) needs red/green tracking to avoid failing a bunch of
+    // existing tests
+    tcx.dep_graph.with_ignore(|| {
+        let (all_trans_items, _) =
+            tcx.collect_and_partition_translation_items(LOCAL_CRATE);
+        all_trans_items.contains(&id)
+    })
+}
+
+pub fn provide_local(providers: &mut Providers) {
     providers.collect_and_partition_translation_items =
         collect_and_partition_translation_items;
+
+    providers.is_translated_function = is_translated_function;
+}
+
+pub fn provide_extern(providers: &mut Providers) {
+    providers.is_translated_function = is_translated_function;
 }
 
 pub fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
