@@ -254,7 +254,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             Aggregate(..) |
-            Variant(_) => unimplemented!(),
+            Variant(_) => bug!("should not have aggregate or variant constants in MIR"),
             // function items are zero sized and thus have no readable value
             Function(..) => PrimVal::Undef,
         };
