@@ -46,6 +46,14 @@ enum_from_u32! {
     }
 }
 
+impl LangItem {
+    fn name(self) -> &'static str {
+        match self {
+            $( $variant => $name, )*
+        }
+    }
+}
+
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
     pub missing: Vec<LangItem>,
@@ -65,22 +73,8 @@ impl LanguageItems {
         &*self.items
     }
 
-    pub fn item_name(index: usize) -> &'static str {
-        let item: Option<LangItem> = LangItem::from_u32(index as u32);
-        match item {
-            $( Some($variant) => $name, )*
-            None => "???"
-        }
-    }
-
     pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-        match self.items[it as usize] {
-            Some(id) => Ok(id),
-            None => {
-                Err(format!("requires `{}` lang_item",
-                            LanguageItems::item_name(it as usize)))
-            }
-        }
+        self.items[it as usize].ok_or(format!("requires `{}` lang_item", it.name()))
     }
 
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
@@ -158,7 +152,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                let name = LanguageItems::item_name(item_index);
+                let name = LangItem::from_u32(item_index as u32).unwrap().name();
                 let mut err = match self.tcx.hir.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.tcx.sess,
