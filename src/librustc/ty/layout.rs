@@ -836,7 +836,7 @@ impl<'a, 'tcx> Struct {
             }
 
             (&FatPointer { non_zero: true, .. }, _) => {
-                Ok(Some((layout.field_offset(tcx, FAT_PTR_ADDR), Pointer)))
+                Ok(Some((layout.fields.offset(FAT_PTR_ADDR), Pointer)))
             }
 
             // Is this the NonZero lang item wrapping a pointer or integer type?
@@ -846,11 +846,11 @@ impl<'a, 'tcx> Struct {
                     // FIXME(eddyb) also allow floating-point types here.
                     Scalar { value: value @ Int(_), non_zero: false } |
                     Scalar { value: value @ Pointer, non_zero: false } => {
-                        Ok(Some((layout.field_offset(tcx, 0), value)))
+                        Ok(Some((layout.fields.offset(0), value)))
                     }
                     FatPointer { non_zero: false, .. } => {
-                        Ok(Some((layout.field_offset(tcx, 0) +
-                                 field.field_offset(tcx, FAT_PTR_ADDR),
+                        Ok(Some((layout.fields.offset(0) +
+                                 field.fields.offset(FAT_PTR_ADDR),
                                  Pointer)))
                     }
                     _ => Ok(None)
@@ -862,7 +862,7 @@ impl<'a, 'tcx> Struct {
                 variant.non_zero_field(
                     tcx,
                     param_env,
-                    (0..layout.field_count()).map(|i| layout.field(cx, i)))
+                    (0..layout.fields.count()).map(|i| layout.field(cx, i)))
             }
 
             // Is this a fixed-size array of something non-zero
@@ -991,6 +991,59 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
+/// Describes how the fields of a type are located in memory.
+#[derive(Copy, Clone, Debug)]
+pub enum FieldPlacement<'a> {
+    /// Array-like placement. Can also express
+    /// unions, by using a stride of zero bytes.
+    Linear {
+        stride: Size,
+        count: u64
+    },
+
+    /// Struct-like placement, with precomputed offsets.
+    ///
+    /// Fields are guaranteed to not overlap, but note that gaps
+    /// before, between and after all the fields are NOT always
+    /// padding, and as such their contents may not be discarded.
+    /// For example, enum variants leave a gap at the start,
+    /// where the discriminant field in the enum layout goes.
+    Arbitrary {
+        offsets: &'a [Size]
+    }
+}
+
+impl<'a> FieldPlacement<'a> {
+    pub fn union(count: usize) -> Self {
+        FieldPlacement::Linear {
+            stride: Size::from_bytes(0),
+            count: count as u64
+        }
+    }
+
+    pub fn count(&self) -> usize {
+        match *self {
+            FieldPlacement::Linear { count, .. } => {
+                let usize_count = count as usize;
+                assert_eq!(usize_count as u64, count);
+                usize_count
+            }
+            FieldPlacement::Arbitrary { offsets } => offsets.len()
+        }
+    }
+
+    pub fn offset(&self, i: usize) -> Size {
+        match *self {
+            FieldPlacement::Linear { stride, count, .. } => {
+                let i = i as u64;
+                assert!(i < count);
+                stride * i
+            }
+            FieldPlacement::Arbitrary { offsets } => offsets[i]
+        }
+    }
+}
+
 /// Type layout, from which size and alignment can be cheaply computed.
 /// For ADTs, it also includes field placement and enum optimizations.
 /// NOTE: Because Layout is interned, redundant information should be
@@ -1105,9 +1158,15 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct CachedLayout<'tcx> {
+    pub layout: &'tcx Layout,
+    pub fields: FieldPlacement<'tcx>,
+}
+
 fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>>
+                        -> Result<CachedLayout<'tcx>, LayoutError<'tcx>>
 {
     let (param_env, ty) = query.into_parts();
 
@@ -1136,10 +1195,59 @@ impl<'a, 'tcx> Layout {
     fn compute_uncached(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         param_env: ty::ParamEnv<'tcx>,
                         ty: Ty<'tcx>)
-                        -> Result<&'tcx Layout, LayoutError<'tcx>> {
-        let success = |layout| Ok(tcx.intern_layout(layout));
+                        -> Result<CachedLayout<'tcx>, LayoutError<'tcx>> {
         let cx = (tcx, param_env);
         let dl = cx.data_layout();
+        let success = |layout| {
+            let layout = tcx.intern_layout(layout);
+            let fields = match *layout {
+                Scalar { .. } |
+                CEnum { .. } |
+                RawNullablePointer { .. } |
+                StructWrappedNullablePointer { .. } => {
+                    FieldPlacement::union(0)
+                }
+
+                Vector { element, count } => {
+                    FieldPlacement::Linear {
+                        stride: element.size(tcx),
+                        count
+                    }
+                }
+
+                Array { element_size, count, .. } => {
+                    FieldPlacement::Linear {
+                        stride: element_size,
+                        count
+                    }
+                }
+
+                FatPointer { .. } => {
+                    FieldPlacement::Linear {
+                        stride: Pointer.size(tcx),
+                        count: 2
+                    }
+                }
+
+                Univariant(ref variant) => {
+                    FieldPlacement::Arbitrary {
+                        offsets: &variant.offsets
+                    }
+                }
+
+                UntaggedUnion(_) => {
+                    // Handle unions through the type rather than Layout.
+                    let def = ty.ty_adt_def().unwrap();
+                    FieldPlacement::union(def.struct_variant().fields.len())
+                }
+
+                General { .. } => FieldPlacement::union(1)
+            };
+            Ok(CachedLayout {
+                layout,
+                fields
+            })
+        };
         assert!(!ty.has_infer_types());
 
         let ptr_layout = |pointee: Ty<'tcx>| {
@@ -1536,7 +1644,11 @@ impl<'a, 'tcx> Layout {
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
-                return Ok(cx.layout_of(normalized)?.layout);
+                let layout = cx.layout_of(normalized)?;
+                return Ok(CachedLayout {
+                    layout: layout.layout,
+                    fields: layout.fields
+                });
             }
             ty::TyParam(_) => {
                 return Err(LayoutError::Unknown(ty));
@@ -1653,61 +1765,6 @@ impl<'a, 'tcx> Layout {
             },
 
             _ => self.align(cx.data_layout())
-        }
-    }
-
-    pub fn field_offset<C: HasDataLayout>(&self,
-                                          cx: C,
-                                          i: usize,
-                                          variant_index: Option<usize>)
-                                          -> Size {
-        let dl = cx.data_layout();
-
-        match *self {
-            Scalar { .. } |
-            CEnum { .. } |
-            UntaggedUnion(_) |
-            RawNullablePointer { .. } => {
-                Size::from_bytes(0)
-            }
-
-            Vector { element, count } => {
-                let element_size = element.size(dl);
-                let i = i as u64;
-                assert!(i < count);
-                Size::from_bytes(element_size.bytes() * count)
-            }
-
-            Array { element_size, count, .. } => {
-                let i = i as u64;
-                assert!(i < count);
-                Size::from_bytes(element_size.bytes() * count)
-            }
-
-            FatPointer { metadata, .. } => {
-                // Effectively a (ptr, meta) tuple.
-                assert!(i < 2);
-                if i == 0 {
-                    Size::from_bytes(0)
-                } else {
-                    Pointer.size(dl).abi_align(metadata.align(dl))
-                }
-            }
-
-            Univariant(ref variant) => variant.offsets[i],
-
-            General { ref variants, .. } => {
-                let v = variant_index.expect("variant index required");
-                variants[v].offsets[i]
-            }
-
-            StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
-                if Some(nndiscr as usize) == variant_index {
-                    nonnull.offsets[i]
-                } else {
-                    Size::from_bytes(0)
-                }
-            }
         }
     }
 
@@ -2077,6 +2134,7 @@ pub struct FullLayout<'tcx> {
     pub ty: Ty<'tcx>,
     pub variant_index: Option<usize>,
     pub layout: &'tcx Layout,
+    pub fields: FieldPlacement<'tcx>,
 }
 
 impl<'tcx> Deref for FullLayout<'tcx> {
@@ -2130,90 +2188,94 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (TyCtxt<'a, 'tcx, 'tcx>, ty::ParamEnv<'tcx
         let (tcx, param_env) = self;
 
         let ty = tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let layout = tcx.layout_raw(param_env.reveal_all().and(ty));
+        let cached = tcx.layout_raw(param_env.reveal_all().and(ty))?;
 
         // NB: This recording is normally disabled; when enabled, it
-        // can however trigger recursive invocations of `layout()`.
+        // can however trigger recursive invocations of `layout_of`.
         // Therefore, we execute it *after* the main query has
         // completed, to avoid problems around recursive structures
         // and the like. (Admitedly, I wasn't able to reproduce a problem
         // here, but it seems like the right thing to do. -nmatsakis)
-        if let Ok(l) = layout {
-            Layout::record_layout_for_printing(tcx, ty, param_env, l);
-        }
+        Layout::record_layout_for_printing(tcx, ty, param_env, cached.layout);
 
         Ok(FullLayout {
             ty,
             variant_index: None,
-            layout: layout?,
+            layout: cached.layout,
+            fields: cached.fields
+        })
+    }
+}
+
+impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>,
+                                       ty::ParamEnv<'tcx>) {
+    type FullLayout = Result<FullLayout<'tcx>, LayoutError<'tcx>>;
+
+    /// Computes the layout of a type. Note that this implicitly
+    /// executes in "reveal all" mode.
+    #[inline]
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::FullLayout {
+        let (tcx_at, param_env) = self;
+
+        let ty = tcx_at.tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
+        let cached = tcx_at.layout_raw(param_env.reveal_all().and(ty))?;
+
+        // NB: This recording is normally disabled; when enabled, it
+        // can however trigger recursive invocations of `layout_of`.
+        // Therefore, we execute it *after* the main query has
+        // completed, to avoid problems around recursive structures
+        // and the like. (Admitedly, I wasn't able to reproduce a problem
+        // here, but it seems like the right thing to do. -nmatsakis)
+        Layout::record_layout_for_printing(tcx_at.tcx, ty, param_env, cached.layout);
+
+        Ok(FullLayout {
+            ty,
+            variant_index: None,
+            layout: cached.layout,
+            fields: cached.fields
         })
     }
 }
 
 impl<'a, 'tcx> FullLayout<'tcx> {
     pub fn for_variant(&self, variant_index: usize) -> Self {
-        let is_enum = match self.ty.sty {
-            ty::TyAdt(def, _) => def.is_enum(),
-            _ => false
+        let variants = match self.ty.sty {
+            ty::TyAdt(def, _) if def.is_enum() => &def.variants[..],
+            _ => &[]
         };
-        assert!(is_enum);
+        let count = if variants.is_empty() {
+            0
+        } else {
+            variants[variant_index].fields.len()
+        };
+
+        let fields = match *self.layout {
+            Univariant(ref variant) => {
+                FieldPlacement::Arbitrary {
+                    offsets: &variant.offsets
+                }
+            }
+
+            General { ref variants, .. } => {
+                FieldPlacement::Arbitrary {
+                    offsets: &variants[variant_index].offsets
+                }
+            }
+
+            StructWrappedNullablePointer { nndiscr, ref nonnull, .. }
+                    if nndiscr as usize == variant_index => {
+                FieldPlacement::Arbitrary {
+                    offsets: &nonnull.offsets
+                }
+            }
+
+            _ => FieldPlacement::union(count)
+        };
+
         FullLayout {
             variant_index: Some(variant_index),
+            fields,
             ..*self
-        }
-    }
-
-    pub fn field_offset<C: HasDataLayout>(&self, cx: C, i: usize) -> Size {
-        self.layout.field_offset(cx, i, self.variant_index)
-    }
-
-    pub fn field_count(&self) -> usize {
-        // Handle enum/union through the type rather than Layout.
-        if let ty::TyAdt(def, _) = self.ty.sty {
-            let v = if def.is_enum() {
-                if def.variants.is_empty() {
-                    return 0;
-                }
-                match self.variant_index {
-                    None => match *self.layout {
-                        // Discriminant field for enums (where applicable).
-                        General { .. } => return 1,
-                        _ if def.variants.len() > 1 => return 0,
-
-                        // Enums with one variant behave like structs.
-                        _ => 0
-                    },
-                    Some(v) => v
-                }
-            } else {
-                0
-            };
-
-            return def.variants[v].fields.len();
-        }
-
-        match *self.layout {
-            Scalar { .. } => {
-                bug!("FullLayout::field_count({:?}): not applicable", self)
-            }
-
-            // Handled above (the TyAdt case).
-            CEnum { .. } |
-            General { .. } |
-            UntaggedUnion(_) |
-            RawNullablePointer { .. } |
-            StructWrappedNullablePointer { .. } => bug!(),
-
-            FatPointer { .. } => 2,
-
-            Vector { count, .. } |
-            Array { count, .. } => {
-                let usize_count = count as usize;
-                assert_eq!(usize_count as u64, count);
-                usize_count
-            }
-
-            Univariant(ref variant) => variant.offsets.len(),
         }
     }
 
@@ -2383,6 +2445,30 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
         }
     }
 }
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for FieldPlacement<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use ty::layout::FieldPlacement::*;
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Linear { count, stride } => {
+                count.hash_stable(hcx, hasher);
+                stride.hash_stable(hcx, hasher);
+            }
+            Arbitrary { offsets } => {
+                offsets.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(struct ::ty::layout::CachedLayout<'tcx> {
+    layout,
+    fields
+});
 
 impl_stable_hash_for!(enum ::ty::layout::Integer {
     I1,

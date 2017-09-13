@@ -334,7 +334,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 let mut unaligned_offset = Size::from_bytes(0);
                 let mut result = None;
 
-                for i in 0..self.field_count() {
+                for i in 0..self.fields.count() {
                     if unaligned_offset != variant.offsets[i] {
                         return None;
                     }
@@ -371,7 +371,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 let mut max = Size::from_bytes(0);
                 let mut result = None;
 
-                for i in 0..self.field_count() {
+                for i in 0..self.fields.count() {
                     let field = self.field(ccx, i);
                     match (result, field.homogeneous_aggregate(ccx)) {
                         // The field itself must be a homogeneous aggregate.

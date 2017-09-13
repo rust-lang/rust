@@ -1292,8 +1292,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                 layout: FullLayout<'tcx>,
                                                 offset: Size,
                                                 size: Size) {
-                    for i in 0..layout.field_count() {
-                        let field_offset = layout.field_offset(ccx, i);
+                    for i in 0..layout.fields.count() {
+                        let field_offset = layout.fields.offset(i);
                         if field_offset > offset {
                             continue;
                         }
@@ -1385,7 +1385,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     let layout = layout.for_variant(variant_index);
-    let mut field_tys = (0..layout.field_count()).map(|i| {
+    let mut field_tys = (0..layout.fields.count()).map(|i| {
         layout.field(cx, i).ty
     }).collect::<Vec<_>>();
 
