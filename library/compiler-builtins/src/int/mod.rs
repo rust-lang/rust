@@ -39,11 +39,11 @@ pub trait Int:
     /// Unsigned version of Self
     type UnsignedInt: Int;
 
-    /// Returns the bitwidth of the int type
-    fn bits() -> u32;
+    /// The bitwidth of the int type
+    const BITS: u32;
 
-    fn zero() -> Self;
-    fn one() -> Self;
+    const ZERO: Self;
+    const ONE: Self;
 
     /// Extracts the sign from self and returns a tuple.
     ///
@@ -83,17 +83,10 @@ macro_rules! int_impl {
             type OtherSign = $ity;
             type UnsignedInt = $uty;
 
-            fn zero() -> Self {
-                0
-            }
+            const BITS: u32 = $bits;
 
-            fn one() -> Self {
-                1
-            }
-
-            fn bits() -> u32 {
-                $bits
-            }
+            const ZERO: Self = 0;
+            const ONE: Self = 1;
 
             fn extract_sign(self) -> (bool, $uty) {
                 (false, self)
@@ -140,17 +133,10 @@ macro_rules! int_impl {
             type OtherSign = $uty;
             type UnsignedInt = $uty;
 
-            fn bits() -> u32 {
-                $bits
-            }
+            const BITS: u32 = $bits;
 
-            fn zero() -> Self {
-                0
-            }
-
-            fn one() -> Self {
-                1
-            }
+            const ZERO: Self = 0;
+            const ONE: Self = 1;
 
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {

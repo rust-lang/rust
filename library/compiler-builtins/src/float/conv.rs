@@ -11,7 +11,7 @@ macro_rules! int_to_float {
         let mant_dig = <$fty>::significand_bits() + 1;
         let exponent_bias = <$fty>::exponent_bias();
 
-        let n = <$ity>::bits();
+        let n = <$ity>::BITS;
         let (s, a) = i.extract_sign();
         let mut a = a;
 
@@ -21,7 +21,7 @@ macro_rules! int_to_float {
         // exponent
         let mut e = sd - 1;
 
-        if <$ity>::bits() < mant_dig {
+        if <$ity>::BITS < mant_dig {
             return <$fty>::from_parts(s,
                 (e + exponent_bias) as <$fty as Float>::Int,
                 (a as <$fty as Float>::Int) << (mant_dig - e - 1))
@@ -142,7 +142,7 @@ macro_rules! float_to_int {
         let f = $f;
         let fixint_min = <$ity>::min_value();
         let fixint_max = <$ity>::max_value();
-        let fixint_bits = <$ity>::bits() as usize;
+        let fixint_bits = <$ity>::BITS as usize;
         let fixint_unsigned = fixint_min == 0;
 
         let sign_bit = <$fty>::sign_mask();
