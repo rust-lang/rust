@@ -216,6 +216,11 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 return LvalueRef::new_sized(
                     bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
             }
+            layout::General { .. } if l.variant_index.is_none() => {
+                let ty = ccx.llvm_type_of(fty);
+                return LvalueRef::new_sized(
+                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
+            }
             layout::RawNullablePointer { nndiscr, .. } |
             layout::StructWrappedNullablePointer { nndiscr,  .. }
                 if l.variant_index.unwrap() as u64 != nndiscr => {
