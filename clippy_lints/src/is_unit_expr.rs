@@ -18,7 +18,6 @@ use utils::span_note_and_lint;
 /// **Example:**
 /// * `let x = {"foo" ;}` when the user almost certainly intended `let x
 /// ={"foo"}`
-
 declare_lint! {
     pub UNIT_EXPR,
     Warn,

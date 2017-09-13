@@ -30,10 +30,8 @@ declare_lint! {
     "invalid regular expressions"
 }
 
-/// **What it does:** Checks for trivial [regex] creation (with `Regex::new`,
-/// `RegexBuilder::new` or `RegexSet::new`).
-///
-/// [regex]: https://crates.io/crates/regex
+/// **What it does:** Checks for trivial [regex](https://crates.io/crates/regex)
+/// creation (with `Regex::new`, `RegexBuilder::new` or `RegexSet::new`).
 ///
 /// **Why is this bad?** Matching the regex can likely be replaced by `==` or
 /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`

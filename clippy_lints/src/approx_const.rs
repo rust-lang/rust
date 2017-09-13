@@ -7,11 +7,9 @@ use utils::span_lint;
 
 /// **What it does:** Checks for floating point literals that approximate
 /// constants which are defined in
-/// [`std::f32::consts`](https://doc.rust-lang.
-/// org/stable/std/f32/consts/#constants)
+/// [`std::f32::consts`](https://doc.rust-lang.org/stable/std/f32/consts/#constants)
 /// or
-/// [`std::f64::consts`](https://doc.rust-lang.
-/// org/stable/std/f64/consts/#constants),
+/// [`std::f64::consts`](https://doc.rust-lang.org/stable/std/f64/consts/#constants),
 /// respectively, suggesting to use the predefined constant.
 ///
 /// **Why is this bad?** Usually, the definition in the standard library is more
