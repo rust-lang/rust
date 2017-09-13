@@ -15,7 +15,6 @@
 pub mod fallback {
     use cmp;
     use mem;
-    use intrinsics::align_offset;
 
     const LO_U64: u64 = 0x0101010101010101;
     const HI_U64: u64 = 0x8080808080808080;
@@ -66,7 +65,7 @@ pub mod fallback {
         let usize_bytes = mem::size_of::<usize>();
 
         // search up to an aligned boundary
-        let mut offset = unsafe { align_offset(ptr as *const _, usize_bytes) };
+        let mut offset = ptr.align_offset(usize_bytes);
         if offset > 0 {
             offset = cmp::min(offset, len);
             if let Some(index) = text[..offset].iter().position(|elt| *elt == x) {

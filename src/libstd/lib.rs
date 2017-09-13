@@ -242,6 +242,7 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![cfg_attr(not(stage0), feature(align_offset))]
 #![feature(asm)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]

@@ -23,7 +23,6 @@ use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use slice::{self, SliceIndex};
 use mem;
-use intrinsics::align_offset;
 
 pub mod pattern;
 
@@ -1471,7 +1470,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             let ptr = v.as_ptr();
             let align = unsafe {
                 // the offset is safe, because `index` is guaranteed inbounds
-                align_offset(ptr.offset(index as isize) as *const (), usize_bytes)
+                ptr.offset(index as isize).align_offset(usize_bytes)
             };
             if align == 0 {
                 while index < blocks_end {
