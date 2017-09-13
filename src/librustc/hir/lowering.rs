@@ -45,6 +45,7 @@ use hir::map::{Definitions, DefKey};
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
 use lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
+use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
 use session::Session;
 use util::common::FN_OUTPUT_NAME;
@@ -73,6 +74,8 @@ pub struct LoweringContext<'a> {
 
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
     sess: &'a Session,
+
+    cstore: &'a CrateStore,
 
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
@@ -118,6 +121,7 @@ pub trait Resolver {
 }
 
 pub fn lower_crate(sess: &Session,
+                   cstore: &CrateStore,
                    krate: &Crate,
                    resolver: &mut Resolver)
                    -> hir::Crate {
@@ -129,6 +133,7 @@ pub fn lower_crate(sess: &Session,
     LoweringContext {
         crate_root: std_inject::injected_crate_name(krate),
         sess,
+        cstore,
         parent_def: None,
         resolver,
         name_map: FxHashMap(),
@@ -534,7 +539,7 @@ impl<'a> LoweringContext<'a> {
         if id.is_local() {
             self.resolver.definitions().def_key(id.index)
         } else {
-            self.sess.cstore.def_key(id)
+            self.cstore.def_key(id)
         }
     }
 
@@ -786,7 +791,7 @@ impl<'a> LoweringContext<'a> {
                         return n;
                     }
                     assert!(!def_id.is_local());
-                    let n = self.sess.cstore.item_generics_cloned_untracked(def_id).regions.len();
+                    let n = self.cstore.item_generics_cloned_untracked(def_id).regions.len();
                     self.type_def_lifetime_params.insert(def_id, n);
                     n
                 });

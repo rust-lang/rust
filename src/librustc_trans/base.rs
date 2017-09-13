@@ -777,16 +777,13 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadataHashes::new());
     }
 
-    let cstore = &tcx.sess.cstore;
-    let (metadata, hashes) = cstore.encode_metadata(tcx,
-                                                    &link_meta,
-                                                    exported_symbols);
+    let (metadata, hashes) = tcx.encode_metadata(link_meta, exported_symbols);
     if kind == MetadataKind::Uncompressed {
         return (metadata_llcx, metadata_llmod, metadata, hashes);
     }
 
     assert!(kind == MetadataKind::Compressed);
-    let mut compressed = cstore.metadata_encoding_version().to_vec();
+    let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::Fast)
         .write_all(&metadata.raw_data).unwrap();
 

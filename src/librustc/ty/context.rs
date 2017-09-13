@@ -22,6 +22,8 @@ use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{self, StableHashingContext, NodeIdHashingMode};
 use middle::const_val::ConstVal;
+use middle::cstore::{CrateStore, LinkMeta, EncodedMetadataHashes};
+use middle::cstore::EncodedMetadata;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
@@ -52,6 +54,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use arena::{TypedArena, DroplessArena};
 use rustc_const_math::{ConstInt, ConstUsize};
 use rustc_data_structures::indexed_vec::IndexVec;
+use std::any::Any;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
@@ -810,7 +813,10 @@ pub struct GlobalCtxt<'tcx> {
     global_arenas: &'tcx GlobalArenas<'tcx>,
     global_interners: CtxtInterners<'tcx>,
 
+    cstore: &'tcx CrateStore,
+
     pub sess: &'tcx Session,
+
 
     pub trans_trait_caches: traits::trans::TransTraitCaches<'tcx>,
 
@@ -1009,6 +1015,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
+                                  cstore: &'tcx CrateStore,
                                   local_providers: ty::maps::Providers<'tcx>,
                                   extern_providers: ty::maps::Providers<'tcx>,
                                   mir_passes: Rc<Passes>,
@@ -1025,16 +1032,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let interners = CtxtInterners::new(arena);
         let common_types = CommonTypes::new(&interners);
         let dep_graph = hir.dep_graph.clone();
-        let max_cnum = s.cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
+        let max_cnum = cstore.crates_untracked().iter().map(|c| c.as_usize()).max().unwrap_or(0);
         let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
         providers[LOCAL_CRATE] = local_providers;
 
         let def_path_hash_to_def_id = if s.opts.build_dep_graph() {
-            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = s
-                .cstore
+            let upstream_def_path_tables: Vec<(CrateNum, Rc<_>)> = cstore
                 .crates_untracked()
                 .iter()
-                .map(|&cnum| (cnum, s.cstore.def_path_table(cnum)))
+                .map(|&cnum| (cnum, cstore.def_path_table(cnum)))
                 .collect();
 
             let def_path_tables = || {
@@ -1093,6 +1099,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         tls::enter_global(GlobalCtxt {
             sess: s,
+            cstore,
             trans_trait_caches: traits::trans::TransTraitCaches::new(dep_graph.clone()),
             global_arenas: arenas,
             global_interners: interners,
@@ -1170,6 +1177,54 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn crates(self) -> Rc<Vec<CrateNum>> {
         self.all_crate_nums(LOCAL_CRATE)
+    }
+
+    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
+        if id.is_local() {
+            self.hir.def_key(id)
+        } else {
+            self.cstore.def_key(id)
+        }
+    }
+
+    /// Convert a `DefId` into its fully expanded `DefPath` (every
+    /// `DefId` is really just an interned def-path).
+    ///
+    /// Note that if `id` is not local to this crate, the result will
+    ///  be a non-local `DefPath`.
+    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
+        if id.is_local() {
+            self.hir.def_path(id)
+        } else {
+            self.cstore.def_path(id)
+        }
+    }
+
+    #[inline]
+    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
+        if def_id.is_local() {
+            self.hir.definitions().def_path_hash(def_id.index)
+        } else {
+            self.cstore.def_path_hash(def_id)
+        }
+    }
+
+    pub fn metadata_encoding_version(self) -> Vec<u8> {
+        self.cstore.metadata_encoding_version().to_vec()
+    }
+
+    // Note that this is *untracked* and should only be used within the query
+    // system if the result is otherwise tracked through queries
+    pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Rc<Any> {
+        self.cstore.crate_data_as_rc_any(cnum)
+    }
+}
+
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn encode_metadata(self, link_meta: &LinkMeta, reachable: &NodeSet)
+        -> (EncodedMetadata, EncodedMetadataHashes)
+    {
+        self.cstore.encode_metadata(self, link_meta, reachable)
     }
 }
 
@@ -2150,5 +2205,17 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(id.krate, LOCAL_CRATE);
         let id = tcx.hir.definitions().def_index_to_hir_id(id.index);
         tcx.stability().local_deprecation_entry(id)
+    };
+    providers.extern_mod_stmt_cnum = |tcx, id| {
+        let id = tcx.hir.as_local_node_id(id).unwrap();
+        tcx.cstore.extern_mod_stmt_cnum_untracked(id)
+    };
+    providers.all_crate_nums = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.cstore.crates_untracked())
+    };
+    providers.postorder_cnums = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Rc::new(tcx.cstore.postorder_cnums_untracked())
     };
 }
