@@ -289,7 +289,8 @@ impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
-        self.0.hash_stable(ctx, hasher);
+        let (ref _0,) = *self;
+        _0.hash_stable(ctx, hasher);
     }
 }
 
@@ -297,8 +298,24 @@ impl<T1: HashStable<CTX>, T2: HashStable<CTX>, CTX> HashStable<CTX> for (T1, T2)
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
-        self.0.hash_stable(ctx, hasher);
-        self.1.hash_stable(ctx, hasher);
+        let (ref _0, ref _1) = *self;
+        _0.hash_stable(ctx, hasher);
+        _1.hash_stable(ctx, hasher);
+    }
+}
+
+impl<T1, T2, T3, CTX> HashStable<CTX> for (T1, T2, T3)
+     where T1: HashStable<CTX>,
+           T2: HashStable<CTX>,
+           T3: HashStable<CTX>,
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let (ref _0, ref _1, ref _2) = *self;
+        _0.hash_stable(ctx, hasher);
+        _1.hash_stable(ctx, hasher);
+        _2.hash_stable(ctx, hasher);
     }
 }
 
@@ -462,14 +479,11 @@ impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
           V: HashStable<HCX>,
           R: BuildHasher,
 {
+    #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut HCX,
                                           hasher: &mut StableHasher<W>) {
-        let mut entries: Vec<_> = self.iter()
-                                      .map(|(k, v)| (k.to_stable_hash_key(hcx), v))
-                                      .collect();
-        entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-        entries.hash_stable(hcx, hasher);
+        hash_stable_hashmap(hcx, hasher, self, ToStableHashKey::to_stable_hash_key);
     }
 }
 
@@ -516,3 +530,23 @@ impl<K, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
         keys.hash_stable(hcx, hasher);
     }
 }
+
+pub fn hash_stable_hashmap<HCX, K, V, R, SK, F, W>(
+    hcx: &mut HCX,
+    hasher: &mut StableHasher<W>,
+    map: &::std::collections::HashMap<K, V, R>,
+    to_stable_hash_key: F)
+    where K: Eq + Hash,
+          V: HashStable<HCX>,
+          R: BuildHasher,
+          SK: HashStable<HCX> + Ord + Clone,
+          F: Fn(&K, &HCX) -> SK,
+          W: StableHasherResult,
+{
+    let mut entries: Vec<_> = map.iter()
+                                  .map(|(k, v)| (to_stable_hash_key(k, hcx), v))
+                                  .collect();
+    entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
+    entries.hash_stable(hcx, hasher);
+}
+

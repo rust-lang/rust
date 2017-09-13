@@ -382,20 +382,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Childr
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Graph {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let Graph {
-            ref parent,
-            ref children,
-        } = *self;
-
-        ich::hash_stable_hashmap(hcx, hasher, parent, |hcx, def_id| {
-            hcx.def_path_hash(*def_id)
-        });
-        ich::hash_stable_hashmap(hcx, hasher, children, |hcx, def_id| {
-            hcx.def_path_hash(*def_id)
-        });
-    }
-}
+impl_stable_hash_for!(struct self::Graph {
+    parent,
+    children
+});

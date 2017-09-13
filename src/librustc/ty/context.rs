@@ -21,7 +21,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
-use ich::{self, StableHashingContext, NodeIdHashingMode};
+use ich::{StableHashingContext, NodeIdHashingMode};
 use middle::const_val::ConstVal;
 use middle::cstore::{CrateStore, LinkMeta, EncodedMetadataHashes};
 use middle::cstore::EncodedMetadata;
@@ -49,8 +49,8 @@ use ty::BindingMode;
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
+                                           StableHasher, StableHasherResult};
 
 use arena::{TypedArena, DroplessArena};
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -714,12 +714,12 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_itemlocalmap(hcx, hasher, type_dependent_defs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, node_types);
-            ich::hash_stable_itemlocalmap(hcx, hasher, node_substs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, adjustments);
-            ich::hash_stable_itemlocalmap(hcx, hasher, pat_binding_modes);
-            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
+            type_dependent_defs.hash_stable(hcx, hasher);
+            node_types.hash_stable(hcx, hasher);
+            node_substs.hash_stable(hcx, hasher);
+            adjustments.hash_stable(hcx, hasher);
+            pat_binding_modes.hash_stable(hcx, hasher);
+            hash_stable_hashmap(hcx, hasher, upvar_capture_map, |up_var_id, hcx| {
                 let ty::UpvarId {
                     var_id,
                     closure_expr_id
@@ -736,22 +736,19 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
                     krate: local_id_root.krate,
                     index: closure_expr_id,
                 };
-                ((hcx.def_path_hash(var_owner_def_id), var_id.local_id),
-                 hcx.def_path_hash(closure_def_id))
+                (hcx.tcx().def_path_hash(var_owner_def_id),
+                 var_id.local_id,
+                 hcx.tcx().def_path_hash(closure_def_id))
             });
 
-            ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);
-            ich::hash_stable_itemlocalmap(hcx, hasher, closure_kinds);
-            ich::hash_stable_itemlocalmap(hcx, hasher, liberated_fn_sigs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, fru_field_types);
-            ich::hash_stable_itemlocalmap(hcx, hasher, cast_kinds);
-            ich::hash_stable_itemlocalmap(hcx, hasher, generator_sigs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, generator_interiors);
-
-            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
-                hcx.def_path_hash(*def_id)
-            });
-
+            closure_tys.hash_stable(hcx, hasher);
+            closure_kinds.hash_stable(hcx, hasher);
+            liberated_fn_sigs.hash_stable(hcx, hasher);
+            fru_field_types.hash_stable(hcx, hasher);
+            cast_kinds.hash_stable(hcx, hasher);
+            generator_sigs.hash_stable(hcx, hasher);
+            generator_interiors.hash_stable(hcx, hasher);
+            used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
         })

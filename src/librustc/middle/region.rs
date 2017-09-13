@@ -14,7 +14,7 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
-use ich::{self, StableHashingContext, NodeIdHashingMode};
+use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
@@ -1259,22 +1259,11 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ScopeT
             root_parent.hash_stable(hcx, hasher);
         });
 
-        ich::hash_stable_hashmap(hcx, hasher, parent_map, |hcx, scope| {
-            let mut hasher = StableHasher::new();
-            scope.hash_stable(hcx, &mut hasher);
-            let stable: u64 = hasher.finish();
-            stable
-        });
-
-        ich::hash_stable_itemlocalmap(hcx, hasher, var_map);
-        ich::hash_stable_itemlocalmap(hcx, hasher, destruction_scopes);
-        ich::hash_stable_itemlocalmap(hcx, hasher, rvalue_scopes);
-        ich::hash_stable_itemlocalmap(hcx, hasher, closure_tree);
-        ich::hash_stable_hashmap(hcx, hasher, yield_in_scope, |hcx, scope| {
-            let mut hasher = StableHasher::new();
-            scope.hash_stable(hcx, &mut hasher);
-            let stable: u64 = hasher.finish();
-            stable
-        });
+        parent_map.hash_stable(hcx, hasher);
+        var_map.hash_stable(hcx, hasher);
+        destruction_scopes.hash_stable(hcx, hasher);
+        rvalue_scopes.hash_stable(hcx, hasher);
+        closure_tree.hash_stable(hcx, hasher);
+        yield_in_scope.hash_stable(hcx, hasher);
     }
 }

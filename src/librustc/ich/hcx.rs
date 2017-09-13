@@ -14,11 +14,10 @@ use hir::map::DefPathHash;
 use ich::{self, CachingCodemapView};
 use session::config::DebugInfoLevel::NoDebugInfo;
 use ty::{self, TyCtxt, fast_reject};
-use util::nodemap::{NodeMap, NodeSet, ItemLocalMap};
 
 use std::cmp::Ord;
 use std::hash as std_hash;
-use std::collections::{HashMap, HashSet, BTreeMap};
+use std::collections::HashMap;
 
 use syntax::ast;
 use syntax::attr;
@@ -334,111 +333,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
             1u8.hash_stable(hcx, hasher);
             self.source_callsite().hash_stable(hcx, hasher);
         }
-    }
-}
-
-pub fn hash_stable_hashmap<'a, 'gcx, 'tcx, K, V, R, SK, F, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    map: &HashMap<K, V, R>,
-    extract_stable_key: F)
-    where K: Eq + std_hash::Hash,
-          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
-          R: std_hash::BuildHasher,
-          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
-          W: StableHasherResult,
-{
-    let mut keys: Vec<_> = map.keys()
-                              .map(|k| (extract_stable_key(hcx, k), k))
-                              .collect();
-    keys.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-    keys.len().hash_stable(hcx, hasher);
-    for (stable_key, key) in keys {
-        stable_key.hash_stable(hcx, hasher);
-        map[key].hash_stable(hcx, hasher);
-    }
-}
-
-pub fn hash_stable_hashset<'a, 'tcx, 'gcx, K, R, SK, F, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    set: &HashSet<K, R>,
-    extract_stable_key: F)
-    where K: Eq + std_hash::Hash,
-          R: std_hash::BuildHasher,
-          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
-          W: StableHasherResult,
-{
-    let mut keys: Vec<_> = set.iter()
-                              .map(|k| extract_stable_key(hcx, k))
-                              .collect();
-    keys.sort_unstable();
-    keys.hash_stable(hcx, hasher);
-}
-
-pub fn hash_stable_nodemap<'a, 'tcx, 'gcx, V, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    map: &NodeMap<V>)
-    where V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
-          W: StableHasherResult,
-{
-    let definitions = hcx.tcx.hir.definitions();
-    hash_stable_hashmap(hcx, hasher, map, |_, node_id| {
-        let hir_id = definitions.node_to_hir_id(*node_id);
-        let owner_def_path_hash = definitions.def_path_hash(hir_id.owner);
-        (owner_def_path_hash, hir_id.local_id)
-    });
-}
-
-pub fn hash_stable_nodeset<'a, 'tcx, 'gcx, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    map: &NodeSet)
-    where W: StableHasherResult,
-{
-    let definitions = hcx.tcx.hir.definitions();
-    hash_stable_hashset(hcx, hasher, map, |_, node_id| {
-        let hir_id = definitions.node_to_hir_id(*node_id);
-        let owner_def_path_hash = definitions.def_path_hash(hir_id.owner);
-        (owner_def_path_hash, hir_id.local_id)
-    });
-}
-
-pub fn hash_stable_itemlocalmap<'a, 'tcx, 'gcx, V, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    map: &ItemLocalMap<V>)
-    where V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
-          W: StableHasherResult,
-{
-    hash_stable_hashmap(hcx, hasher, map, |_, local_id| {
-        *local_id
-    });
-}
-
-
-pub fn hash_stable_btreemap<'a, 'tcx, 'gcx, K, V, SK, F, W>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-    hasher: &mut StableHasher<W>,
-    map: &BTreeMap<K, V>,
-    extract_stable_key: F)
-    where K: Eq + Ord,
-          V: HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
-          SK: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + Ord + Clone,
-          F: Fn(&mut StableHashingContext<'a, 'gcx, 'tcx>, &K) -> SK,
-          W: StableHasherResult,
-{
-    let mut keys: Vec<_> = map.keys()
-                              .map(|k| (extract_stable_key(hcx, k), k))
-                              .collect();
-    keys.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-    keys.len().hash_stable(hcx, hasher);
-    for (stable_key, key) in keys {
-        stable_key.hash_stable(hcx, hasher);
-        map[key].hash_stable(hcx, hasher);
     }
 }
 

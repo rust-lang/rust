@@ -11,9 +11,9 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::{self, StableHashingContext, NodeIdHashingMode};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use ich::{StableHashingContext, NodeIdHashingMode};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use std::hash as std_hash;
 use std::mem;
 use middle::region;
@@ -124,8 +124,9 @@ for ty::adjustment::Adjust<'gcx> {
 
 impl_stable_hash_for!(struct ty::adjustment::Adjustment<'tcx> { kind, target });
 impl_stable_hash_for!(struct ty::adjustment::OverloadedDeref<'tcx> { region, mutbl });
-impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 impl_stable_hash_for!(struct ty::UpvarBorrow<'tcx> { kind, region });
+
+impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
 
 impl_stable_hash_for!(enum ty::BorrowKind {
     ImmBorrow,
@@ -513,28 +514,20 @@ impl_stable_hash_for!(enum ty::cast::CastKind {
     FnPtrAddrCast
 });
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for region::Scope
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            match *self {
-                region::Scope::Node(node_id) |
-                region::Scope::Destruction(node_id) => {
-                    node_id.hash_stable(hcx, hasher);
-                }
-                region::Scope::CallSite(body_id) |
-                region::Scope::Arguments(body_id) => {
-                    body_id.hash_stable(hcx, hasher);
-                }
-                region::Scope::Remainder(block_remainder) => {
-                    block_remainder.hash_stable(hcx, hasher);
-                }
-            }
-        })
+impl_stable_hash_for!(enum ::middle::region::Scope {
+    Node(local_id),
+    Destruction(local_id),
+    CallSite(local_id),
+    Arguments(local_id),
+    Remainder(block_remainder)
+});
+
+impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for region::Scope {
+    type KeyType = region::Scope;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a, 'gcx, 'tcx>) -> region::Scope {
+        *self
     }
 }
 
@@ -770,10 +763,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::Cr
         } = *self;
 
         dependencies.hash_stable(hcx, hasher);
-
-        ich::hash_stable_hashmap(hcx, hasher, variances, |hcx, def_id| {
-            hcx.def_path_hash(*def_id)
-        });
+        variances.hash_stable(hcx, hasher);
     }
 }
 
@@ -836,25 +826,14 @@ for ::middle::privacy::AccessLevels {
                 ref map
             } = *self;
 
-            ich::hash_stable_nodemap(hcx, hasher, map);
+            map.hash_stable(hcx, hasher);
         });
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ty::CrateInherentImpls {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::CrateInherentImpls {
-            ref inherent_impls,
-        } = *self;
-
-        ich::hash_stable_hashmap(hcx, hasher, inherent_impls, |hcx, def_id| {
-            hcx.def_path_hash(*def_id)
-        });
-    }
-}
+impl_stable_hash_for!(struct ty::CrateInherentImpls {
+    inherent_impls
+});
 
 impl_stable_hash_for!(enum ::session::CompileIncomplete {
     Stopped,
@@ -863,14 +842,6 @@ impl_stable_hash_for!(enum ::session::CompileIncomplete {
 
 impl_stable_hash_for!(struct ::util::common::ErrorReported {});
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::middle::reachable::ReachableSet {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let ::middle::reachable::ReachableSet(ref reachable_set) = *self;
-
-        ich::hash_stable_nodeset(hcx, hasher, reachable_set);
-    }
-}
-
+impl_stable_hash_for!(tuple_struct ::middle::reachable::ReachableSet {
+    reachable_set
+});
