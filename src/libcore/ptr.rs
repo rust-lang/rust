@@ -646,7 +646,7 @@ impl<T: ?Sized> *const T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # #![feature(core_intrinsics)]
+    /// # #![feature(align_offset)]
     /// # fn foo(n: usize) {
     /// # use std::mem::align_of;
     /// # unsafe {
@@ -875,7 +875,7 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// # #![feature(core_intrinsics)]
+    /// # #![feature(align_offset)]
     /// # fn foo(n: usize) {
     /// # use std::mem::align_of;
     /// # unsafe {
