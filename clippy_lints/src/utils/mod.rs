@@ -313,6 +313,10 @@ pub fn path_to_def(cx: &LateContext, path: &[&str]) -> Option<def::Def> {
     }
 }
 
+pub fn const_to_u64(c: &ty::Const) -> u64 {
+    c.val.to_const_int().expect("eddyb says this works").to_u64().expect("see previous expect")
+}
+
 /// Convenience function to get the `DefId` of a trait by path.
 pub fn get_trait_def_id(cx: &LateContext, path: &[&str]) -> Option<DefId> {
     let def = match path_to_def(cx, path) {

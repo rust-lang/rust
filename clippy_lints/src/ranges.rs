@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                 use consts::{constant, Constant};
                 use rustc_const_math::ConstInt::Usize;
                 if let Some((Constant::Int(Usize(us)), _)) = constant(cx, &args[1]) {
-                    if us.as_u64(cx.sess().target.uint_type) == 0 {
+                    if us.as_u64() == 0 {
                         span_lint(
                             cx,
                             ITERATOR_STEP_BY_ZERO,

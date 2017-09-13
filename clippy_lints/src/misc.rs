@@ -419,12 +419,12 @@ fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     }
 }
 
-fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
+fn is_allowed<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> bool {
     let parent_item = cx.tcx.hir.get_parent(expr.id);
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     let res = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr);
-    if let Ok(ConstVal::Float(val)) = res {
+    if let Ok(&ty::Const { val: ConstVal::Float(val), .. }) = res {
         use std::cmp::Ordering;
         match val.ty {
             FloatTy::F32 => {

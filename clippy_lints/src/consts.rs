@@ -14,6 +14,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind, StrStyle};
 use syntax::ptr::P;
+use utils::const_to_u64;
 
 #[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {
@@ -49,7 +50,7 @@ pub enum Constant {
     /// an array of constants
     Vec(Vec<Constant>),
     /// also an array, but with only one constant, repeated N times
-    Repeat(Box<Constant>, usize),
+    Repeat(Box<Constant>, u64),
     /// a tuple of constants
     Tuple(Vec<Constant>),
 }
@@ -175,10 +176,10 @@ pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, hint) => match (&ty.sty, hint) {
             (&ty::TyInt(ity), _) | (_, Signed(ity)) => {
-                Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.int_type))
+                Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.isize_ty))
             },
             (&ty::TyUint(uty), _) | (_, Unsigned(uty)) => {
-                Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.uint_type))
+                Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.usize_ty))
             },
             _ => bug!(),
         },
@@ -249,7 +250,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprRepeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::TyArray(_, n) => n,
+                    ty::TyArray(_, n) => const_to_u64(n),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))

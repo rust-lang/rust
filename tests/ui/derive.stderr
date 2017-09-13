@@ -74,5 +74,37 @@ note: consider deriving `Clone` or removing `Copy`
 67 | | }
    | |_^
 
-error: aborting due to 5 previous errors
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:75:1
+   |
+75 | / impl Clone for BigArray {
+76 | |     fn clone(&self) -> Self { unimplemented!() }
+77 | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:75:1
+   |
+75 | / impl Clone for BigArray {
+76 | |     fn clone(&self) -> Self { unimplemented!() }
+77 | | }
+   | |_^
+
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:85:1
+   |
+85 | / impl Clone for FnPtr {
+86 | |     fn clone(&self) -> Self { unimplemented!() }
+87 | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:85:1
+   |
+85 | / impl Clone for FnPtr {
+86 | |     fn clone(&self) -> Self { unimplemented!() }
+87 | | }
+   | |_^
+
+error: aborting due to 7 previous errors
 

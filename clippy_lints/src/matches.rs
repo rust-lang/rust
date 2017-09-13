@@ -318,7 +318,7 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     }
 }
 
-fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
+fn check_overlapping_arms<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ex: &'tcx Expr, arms: &'tcx [Arm]) {
     if arms.len() >= 2 && cx.tables.expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms, ex.id);
         let type_ranges = type_ranges(&ranges);
@@ -411,7 +411,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm], id: NodeId) -> Vec<SpannedRange<ConstVal<'tcx>>> {
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm], id: NodeId) -> Vec<SpannedRange<&'tcx ty::Const<'tcx>>> {
     let parent_item = cx.tcx.hir.get_parent(id);
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
@@ -444,7 +444,7 @@ fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm], id: NodeId) ->
                     let PatKind::Lit(ref value) = pat.node,
                     let Ok(value) = constcx.eval(value)
                 ], {
-                    return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
+                    return Some(SpannedRange { span: pat.span, node: (value, Bound::Included(value)) });
                 }}
 
                 None
@@ -464,19 +464,19 @@ type TypedRanges = Vec<SpannedRange<ConstInt>>;
 /// Get all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway
 /// and other types than
 /// `Uint` and `Int` probably don't make sense.
-fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
+fn type_ranges(ranges: &[SpannedRange<&ty::Const>]) -> TypedRanges {
     ranges
         .iter()
         .filter_map(|range| match range.node {
-            (ConstVal::Integral(start), Bound::Included(ConstVal::Integral(end))) => Some(SpannedRange {
+            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Included(&ty::Const { val: ConstVal::Integral(end), .. })) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Included(end)),
             }),
-            (ConstVal::Integral(start), Bound::Excluded(ConstVal::Integral(end))) => Some(SpannedRange {
+            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Excluded(&ty::Const { val: ConstVal::Integral(end), .. })) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Excluded(end)),
             }),
-            (ConstVal::Integral(start), Bound::Unbounded) => Some(SpannedRange {
+            (&ty::Const { val: ConstVal::Integral(start), .. }, Bound::Unbounded) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Unbounded),
             }),

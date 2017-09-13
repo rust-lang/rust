@@ -14,6 +14,7 @@ use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_
             span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 use utils::paths;
 use utils::sugg;
+use utils::const_to_u64;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -1049,7 +1050,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
             ty::TySlice(_) => true,
             ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
-            ty::TyArray(_, size) => size < 32,
+            ty::TyArray(_, size) => const_to_u64(size) < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) => may_slice(cx, inner),
             _ => false,
         }
@@ -1155,7 +1156,7 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
 }
 
 /// lint use of `map().unwrap_or_else()` for `Option`s
-fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr], unwrap_args: &[hir::Expr]) {
+fn lint_map_unwrap_or_else<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, map_args: &'tcx [hir::Expr], unwrap_args: &'tcx [hir::Expr]) {
     // lint if the caller of `map()` is an `Option`
     if match_type(cx, cx.tables.expr_ty(&map_args[0]), &paths::OPTION) {
         // lint message
@@ -1188,7 +1189,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::
 }
 
 /// lint use of `filter().next()` for `Iterators`
-fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &[hir::Expr]) {
+fn lint_filter_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, filter_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter().next()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
@@ -1211,7 +1212,7 @@ fn lint_filter_next(cx: &LateContext, expr: &hir::Expr, filter_args: &[hir::Expr
 }
 
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
+fn lint_filter_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, _filter_args: &'tcx [hir::Expr], _map_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).map(q)` on an `Iterator`. \
@@ -1221,7 +1222,7 @@ fn lint_filter_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr
 }
 
 /// lint use of `filter().map()` for `Iterators`
-fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
+fn lint_filter_map_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, _filter_args: &'tcx [hir::Expr], _map_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter().map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).map(q)` on an `Iterator`. \
@@ -1231,7 +1232,7 @@ fn lint_filter_map_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::
 }
 
 /// lint use of `filter().flat_map()` for `Iterators`
-fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
+fn lint_filter_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, _filter_args: &'tcx [hir::Expr], _map_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).flat_map(q)` on an `Iterator`. \
@@ -1242,7 +1243,7 @@ fn lint_filter_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir:
 }
 
 /// lint use of `filter_map().flat_map()` for `Iterators`
-fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[hir::Expr], _map_args: &[hir::Expr]) {
+fn lint_filter_map_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, _filter_args: &'tcx [hir::Expr], _map_args: &'tcx [hir::Expr]) {
     // lint if caller of `.filter_map().flat_map()` is an Iterator
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter_map(p).flat_map(q)` on an `Iterator`. \
@@ -1253,12 +1254,12 @@ fn lint_filter_map_flat_map(cx: &LateContext, expr: &hir::Expr, _filter_args: &[
 }
 
 /// lint searching an Iterator followed by `is_some()`
-fn lint_search_is_some(
-    cx: &LateContext,
-    expr: &hir::Expr,
+fn lint_search_is_some<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
     search_method: &str,
-    search_args: &[hir::Expr],
-    is_some_args: &[hir::Expr],
+    search_args: &'tcx [hir::Expr],
+    is_some_args: &'tcx [hir::Expr],
 ) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
@@ -1285,7 +1286,7 @@ fn lint_search_is_some(
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint.
-fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other: &hir::Expr, eq: bool) -> bool {
+fn lint_chars_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, chain: &'tcx hir::Expr, other: &'tcx hir::Expr, eq: bool) -> bool {
     if_let_chain! {[
         let Some(args) = method_chain_args(chain, &["chars", "next"]),
         let hir::ExprCall(ref fun, ref arg_char) = other.node,
@@ -1317,11 +1318,11 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
 }
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
-fn lint_single_char_pattern(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
+fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
     let parent_item = cx.tcx.hir.get_parent(arg.id);
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
-    if let Ok(ConstVal::Str(r)) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg) {
+    if let Ok(&ty::Const { val: ConstVal::Str(r), .. }) = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(arg) {
         if r.len() == 1 {
             let hint = snippet(cx, expr.span, "..").replace(&format!("\"{}\"", r), &format!("'{}'", r));
             span_lint_and_then(

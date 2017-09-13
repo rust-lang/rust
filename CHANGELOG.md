@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.160
+* Update to *rustc 1.22.0-nightly (dd08c3070 2017-09-12)*
+
 ## 0.0.159
 * Update to *rustc 1.22.0-nightly (eba374fb2 2017-09-11)*
 * New lint: [`clone_on_ref_ptr`]

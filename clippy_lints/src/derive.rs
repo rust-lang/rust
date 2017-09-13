@@ -143,17 +143,8 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
             // Some types are not Clone by default but could be cloned “by hand” if necessary
             ty::TyAdt(def, substs) => for variant in &def.variants {
                 for field in &variant.fields {
-                    match field.ty(cx.tcx, substs).sty {
-                        ty::TyArray(_, size) if size > 32 => {
-                            return;
-                        },
-                        ty::TyFnPtr(..) => {
-                            return;
-                        },
-                        ty::TyTuple(tys, _) if tys.len() > 12 => {
-                            return;
-                        },
-                        _ => (),
+                    if let ty::TyFnDef(..) = field.ty(cx.tcx, substs).sty {
+                        return;
                     }
                 }
             },

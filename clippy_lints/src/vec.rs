@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_vec_macro(cx: &LateContext, vec_args: &higher::VecArgs, span: Span) {
+fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
             let parent_item = cx.tcx.hir.get_parent(len.id);

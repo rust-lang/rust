@@ -7,6 +7,7 @@ use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
+use utils::const_to_u64;
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
 /// index.
@@ -63,7 +64,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
                 let size = ConstInt::Usize(
-                    ConstUsize::new(size as u64, cx.sess().target.uint_type).expect("array size is invalid"),
+                    ConstUsize::new(const_to_u64(size), cx.sess().target.usize_ty).expect("array size is invalid"),
                 );
                 let parent_item = cx.tcx.hir.get_parent(e.id);
                 let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
@@ -71,13 +72,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 let constcx = ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables);
 
                 // Index is a constant uint
-                let const_index = constcx.eval(index);
-                if let Ok(ConstVal::Integral(const_index)) = const_index {
-                    if size <= const_index {
-                        utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
-                    }
+                if let Ok(const_index) = constcx.eval(index) {
+                    if let ConstVal::Integral(const_index) = const_index.val {
+                        if size <= const_index {
+                            utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
+                        }
 
-                    return;
+                        return;
+                    }
                 }
 
                 // Index is a constant range
@@ -112,19 +114,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
 /// Returns an option containing a tuple with the start and end (exclusive) of
 /// the range.
 fn to_const_range(
-    start: &Option<Option<ConstVal>>,
-    end: &Option<Option<ConstVal>>,
+    start: &Option<Option<&ty::Const>>,
+    end: &Option<Option<&ty::Const>>,
     limits: RangeLimits,
     array_size: ConstInt,
 ) -> Option<(ConstInt, ConstInt)> {
     let start = match *start {
-        Some(Some(ConstVal::Integral(x))) => x,
+        Some(Some(&ty::Const { val: ConstVal::Integral(x), .. })) => x,
         Some(_) => return None,
         None => ConstInt::U8(0),
     };
 
     let end = match *end {
-        Some(Some(ConstVal::Integral(x))) => if limits == RangeLimits::Closed {
+        Some(Some(&ty::Const { val: ConstVal::Integral(x), .. })) => if limits == RangeLimits::Closed {
             match x {
                 ConstInt::U8(_) => (x + ConstInt::U8(1)),
                 ConstInt::U16(_) => (x + ConstInt::U16(1)),

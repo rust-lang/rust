@@ -1,6 +1,7 @@
 use regex_syntax;
 use rustc::hir::*;
 use rustc::lint::*;
+use rustc::ty;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use rustc::ty::subst::Substs;
@@ -145,12 +146,12 @@ fn str_span(base: Span, s: &str, c: usize) -> Span {
     }
 }
 
-fn const_str(cx: &LateContext, e: &Expr) -> Option<InternedString> {
+fn const_str<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) -> Option<InternedString> {
     let parent_item = cx.tcx.hir.get_parent(e.id);
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(e) {
-        Ok(ConstVal::Str(r)) => Some(r),
+        Ok(&ty::Const { val: ConstVal::Str(r), .. }) => Some(r),
         _ => None,
     }
 }
@@ -179,7 +180,7 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
     }
 }
 
-fn check_set(cx: &LateContext, expr: &Expr, utf8: bool) {
+fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
     if_let_chain! {[
         let ExprAddrOf(_, ref expr) = expr.node,
         let ExprArray(ref exprs) = expr.node,
@@ -190,7 +191,7 @@ fn check_set(cx: &LateContext, expr: &Expr, utf8: bool) {
     }}
 }
 
-fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
+fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
     let builder = regex_syntax::ExprBuilder::new().unicode(utf8);
 
     if let ExprLit(ref lit) = expr.node {

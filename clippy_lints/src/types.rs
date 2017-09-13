@@ -1061,12 +1061,12 @@ enum AbsurdComparisonResult {
 
 
 
-fn detect_absurd_comparison<'a>(
-    cx: &LateContext,
+fn detect_absurd_comparison<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
     op: BinOp_,
-    lhs: &'a Expr,
-    rhs: &'a Expr,
-) -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
+    lhs: &'tcx Expr,
+    rhs: &'tcx Expr,
+) -> Option<(ExtremeExpr<'tcx>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     use utils::comparisons::*;
@@ -1108,7 +1108,7 @@ fn detect_absurd_comparison<'a>(
     })
 }
 
-fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeExpr<'a>> {
+fn detect_extreme_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<ExtremeExpr<'tcx>> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_math::*;
     use rustc_const_eval::*;
@@ -1129,7 +1129,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         Err(_) => return None,
     };
 
-    let which = match (&ty.sty, cv) {
+    let which = match (&ty.sty, cv.val) {
         (&ty::TyBool, Bool(false)) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MIN)))) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MIN)))) |
@@ -1336,7 +1336,7 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 }
 
 #[allow(cast_possible_wrap)]
-fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
+fn node_as_const_fullint<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<FullInt> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_eval::ConstContext;
 
@@ -1344,7 +1344,7 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     let parent_def_id = cx.tcx.hir.local_def_id(parent_item);
     let substs = Substs::identity_for_item(cx.tcx, parent_def_id);
     match ConstContext::new(cx.tcx, cx.param_env.and(substs), cx.tables).eval(expr) {
-        Ok(val) => if let Integral(const_int) = val {
+        Ok(val) => if let Integral(const_int) = val.val {
             match const_int.int_type() {
                 IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
                 IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
@@ -1371,13 +1371,13 @@ fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: boo
     }
 }
 
-fn upcast_comparison_bounds_err(
-    cx: &LateContext,
+fn upcast_comparison_bounds_err<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
     span: &Span,
     rel: comparisons::Rel,
     lhs_bounds: Option<(FullInt, FullInt)>,
-    lhs: &Expr,
-    rhs: &Expr,
+    lhs: &'tcx Expr,
+    rhs: &'tcx Expr,
     invert: bool,
 ) {
     use utils::comparisons::*;

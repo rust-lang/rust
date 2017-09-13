@@ -13,6 +13,7 @@ use rustc_const_eval::ConstContext;
 use std::collections::{HashMap, HashSet};
 use syntax::ast;
 use utils::sugg;
+use utils::const_to_u64;
 
 use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
             last_path_segment, match_trait_method, match_type, multispan_sugg, snippet, snippet_opt,
@@ -969,7 +970,7 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
     false
 }
 
-fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
+fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx Expr, expr: &'tcx Expr) {
     // if this for loop is iterating over a two-sided range...
     if let Some(higher::Range {
         start: Some(start),
@@ -989,7 +990,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                 // who think that this will iterate from the larger value to the
                 // smaller value.
                 let (sup, eq) = match (start_idx, end_idx) {
-                    (ConstVal::Integral(start_idx), ConstVal::Integral(end_idx)) => {
+                    (&ty::Const{ val: ConstVal::Integral(start_idx), .. }, &ty::Const{ val: ConstVal::Integral(end_idx), .. }) => {
                         (start_idx > end_idx, start_idx == end_idx)
                     },
                     _ => (false, false),
@@ -1461,7 +1462,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
 fn is_iterable_array(ty: Ty) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, 0...32) => true,
+        ty::TyArray(_, n) => (0...32).contains(const_to_u64(n)),
         _ => false,
     }
 }
