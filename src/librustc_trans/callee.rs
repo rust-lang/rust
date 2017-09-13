@@ -53,35 +53,34 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let sym = tcx.symbol_name(instance);
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
-    // This is subtle and surprising, but sometimes we have to bitcast
-    // the resulting fn pointer.  The reason has to do with external
-    // functions.  If you have two crates that both bind the same C
-    // library, they may not use precisely the same types: for
-    // example, they will probably each declare their own structs,
-    // which are distinct types from LLVM's point of view (nominal
-    // types).
-    //
-    // Now, if those two crates are linked into an application, and
-    // they contain inlined code, you can wind up with a situation
-    // where both of those functions wind up being loaded into this
-    // application simultaneously. In that case, the same function
-    // (from LLVM's point of view) requires two types. But of course
-    // LLVM won't allow one function to have two types.
-    //
-    // What we currently do, therefore, is declare the function with
-    // one of the two types (whichever happens to come first) and then
-    // bitcast as needed when the function is referenced to make sure
-    // it has the type we expect.
-    //
-    // This can occur on either a crate-local or crate-external
-    // reference. It also occurs when testing libcore and in some
-    // other weird situations. Annoying.
-
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+        // This is subtle and surprising, but sometimes we have to bitcast
+        // the resulting fn pointer.  The reason has to do with external
+        // functions.  If you have two crates that both bind the same C
+        // library, they may not use precisely the same types: for
+        // example, they will probably each declare their own structs,
+        // which are distinct types from LLVM's point of view (nominal
+        // types).
+        //
+        // Now, if those two crates are linked into an application, and
+        // they contain inlined code, you can wind up with a situation
+        // where both of those functions wind up being loaded into this
+        // application simultaneously. In that case, the same function
+        // (from LLVM's point of view) requires two types. But of course
+        // LLVM won't allow one function to have two types.
+        //
+        // What we currently do, therefore, is declare the function with
+        // one of the two types (whichever happens to come first) and then
+        // bitcast as needed when the function is referenced to make sure
+        // it has the type we expect.
+        //
+        // This can occur on either a crate-local or crate-external
+        // reference. It also occurs when testing libcore and in some
+        // other weird situations. Annoying.
         if common::val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
             consts::ptrcast(llfn, llptrty)
