@@ -75,7 +75,7 @@ impl<'tcx> Lvalue {
 
     pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
-            ty::TyArray(elem, n) => (elem, n as u64),
+            ty::TyArray(elem, n) => (elem, n.val.to_const_int().unwrap().to_u64().unwrap() as u64),
 
             ty::TySlice(elem) => {
                 match self {
@@ -266,7 +266,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let field = field_index as u64;
                 let elem_size = match base_ty.sty {
                     ty::TyArray(elem_ty, n) => {
-                        assert!(field < n as u64);
+                        assert!(field < n.val.to_const_int().unwrap().to_u64().unwrap() as u64);
                         self.type_size(elem_ty)?.expect("array elements are sized") as u64
                     }
                     _ => {

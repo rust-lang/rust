@@ -246,7 +246,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         {
             let param_env = ty::ParamEnv::empty(Reveal::All);
 
-            if !value.has_projection_types() {
+            if !value.has_projections() {
                 return value.clone();
             }
 
@@ -525,6 +525,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 Ok(())
             }
             TyArray(elem_ty, len) => {
+                let len = len.val.to_const_int().unwrap().to_u64().unwrap();
                 for i in 0..len {
                     let inner_lvalue = self.lvalue_index(query.lval, query.ty, i as u64)?;
                     self.validate(

@@ -240,17 +240,23 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
-                let ptr = self.memory.allocate_cached(bs)?;
+                let ptr = self.memory.allocate_cached(bs.data)?;
                 PrimVal::Ptr(ptr)
             }
 
-            Variant(_) => unimplemented!(),
-            Struct(_) => unimplemented!(),
-            Tuple(_) => unimplemented!(),
+            Unevaluated(def_id, substs) => {
+                let instance = self.resolve_associated_const(def_id, substs);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                return Ok(Value::ByRef(*self.globals.get(&cid).expect("static/const not cached")));
+            }
+
+            Aggregate(..) |
+            Variant(_) => bug!("should not have aggregate or variant constants in MIR"),
             // function items are zero sized and thus have no readable value
             Function(..) => PrimVal::Undef,
-            Array(_) => unimplemented!(),
-            Repeat(_, _) => unimplemented!(),
         };
 
         Ok(Value::ByVal(primval))
@@ -817,7 +823,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n as u64),
+                    ty::TyArray(elem_ty, n) => (elem_ty, n.val.to_const_int().unwrap().to_u64().unwrap()),
                     _ => {
                         bug!(
                             "tried to assign array-repeat to non-array type {:?}",
@@ -1288,16 +1294,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 use rustc::mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(value)?,
-
-                    Literal::Item { def_id, substs } => {
-                        let instance = self.resolve_associated_const(def_id, substs);
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        Value::ByRef(*self.globals.get(&cid).expect("static/const not cached"))
-                    }
+                    Literal::Value { ref value } => self.const_to_value(&value.val)?,
 
                     Literal::Promoted { index } => {
                         let cid = GlobalId {
@@ -1920,7 +1917,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr = src.into_ptr(&self.memory)?;
                 // u64 cast is from usize to u64, which is always good
                 let valty = ValTy {
-                    value: ptr.to_value_with_len(length as u64),
+                    value: ptr.to_value_with_len(length.val.to_const_int().unwrap().to_u64().unwrap() ),
                     ty: dest_ty,
                 };
                 self.write_value(valty, dest)
@@ -2505,7 +2502,7 @@ struct AssociatedTypeNormalizer<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> AssociatedTypeNormalizer<'a, 'tcx> {
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             value.clone()
         } else {
             value.fold_with(self)
@@ -2519,7 +2516,7 @@ impl<'a, 'tcx> ::rustc::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNorma
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_projection_types() {
+        if !ty.has_projections() {
             ty
         } else {
             self.tcx.normalize_associated_type(&ty)

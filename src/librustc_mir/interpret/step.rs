@@ -10,6 +10,7 @@ use rustc::traits::Reveal;
 use rustc::ty;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
+use rustc::middle::const_val::ConstVal;
 
 use super::{EvalResult, EvalContext, StackPopCleanup, PtrAndAlign, GlobalId, Lvalue,
             MemoryKind, Machine, PrimVal};
@@ -300,8 +301,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
         self.super_constant(constant, location);
         match constant.literal {
             // already computed by rustc
-            mir::Literal::Value { .. } => {}
-            mir::Literal::Item { def_id, substs } => {
+            mir::Literal::Value { value: &ty::Const { val: ConstVal::Unevaluated(def_id, substs), .. } } => {
                 self.try(|this| {
                     this.ecx.global_item(
                         def_id,
@@ -311,6 +311,7 @@ impl<'a, 'b, 'tcx, M: Machine<'tcx>> Visitor<'tcx> for ConstantExtractor<'a, 'b,
                     )
                 });
             }
+            mir::Literal::Value { .. } => {}
             mir::Literal::Promoted { index } => {
                 let cid = GlobalId {
                     instance: self.instance,

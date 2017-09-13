@@ -38,38 +38,45 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         self.cast_from_int(val as u128, ty, val < 0)
     }
 
+    fn int_to_int(&self, v: i128, ty: IntTy) -> u128 {
+        match ty {
+            IntTy::I8 => v as i8 as u128,
+            IntTy::I16 => v as i16 as u128,
+            IntTy::I32 => v as i32 as u128,
+            IntTy::I64 => v as i64 as u128,
+            IntTy::I128 => v as u128,
+            IntTy::Is => {
+                let ty = self.tcx.sess.target.isize_ty;
+                self.int_to_int(v, ty)
+            }
+        }
+    }
+    fn int_to_uint(&self, v: u128, ty: UintTy) -> u128 {
+        match ty {
+            UintTy::U8 => v as u8 as u128,
+            UintTy::U16 => v as u16 as u128,
+            UintTy::U32 => v as u32 as u128,
+            UintTy::U64 => v as u64 as u128,
+            UintTy::U128 => v,
+            UintTy::Us => {
+                let ty = self.tcx.sess.target.usize_ty;
+                self.int_to_uint(v, ty)
+            }
+        }
+    }
+
     fn cast_from_int(
         &self,
         v: u128,
         ty: ty::Ty<'tcx>,
         negative: bool,
     ) -> EvalResult<'tcx, PrimVal> {
+        trace!("cast_from_int: {}, {}, {}", v, ty, negative);
         use rustc::ty::TypeVariants::*;
         match ty.sty {
             // Casts to bool are not permitted by rustc, no need to handle them here.
-            TyInt(IntTy::I8) => Ok(PrimVal::Bytes(v as i128 as i8 as u128)),
-            TyInt(IntTy::I16) => Ok(PrimVal::Bytes(v as i128 as i16 as u128)),
-            TyInt(IntTy::I32) => Ok(PrimVal::Bytes(v as i128 as i32 as u128)),
-            TyInt(IntTy::I64) => Ok(PrimVal::Bytes(v as i128 as i64 as u128)),
-            TyInt(IntTy::I128) => Ok(PrimVal::Bytes(v as u128)),
-
-            TyUint(UintTy::U8) => Ok(PrimVal::Bytes(v as u8 as u128)),
-            TyUint(UintTy::U16) => Ok(PrimVal::Bytes(v as u16 as u128)),
-            TyUint(UintTy::U32) => Ok(PrimVal::Bytes(v as u32 as u128)),
-            TyUint(UintTy::U64) => Ok(PrimVal::Bytes(v as u64 as u128)),
-            TyUint(UintTy::U128) => Ok(PrimVal::Bytes(v)),
-
-            TyInt(IntTy::Is) => {
-                let int_ty = self.tcx.sess.target.int_type;
-                let ty = self.tcx.mk_mach_int(int_ty);
-                self.cast_from_int(v, ty, negative)
-            }
-
-            TyUint(UintTy::Us) => {
-                let uint_ty = self.tcx.sess.target.uint_type;
-                let ty = self.tcx.mk_mach_uint(uint_ty);
-                self.cast_from_int(v, ty, negative)
-            }
+            TyInt(ty) => Ok(PrimVal::Bytes(self.int_to_int(v as i128, ty))),
+            TyUint(ty) => Ok(PrimVal::Bytes(self.int_to_uint(v, ty))),
 
             TyFloat(FloatTy::F64) if negative => Ok(PrimVal::from_f64(v as i128 as f64)),
             TyFloat(FloatTy::F64) => Ok(PrimVal::from_f64(v as f64)),
