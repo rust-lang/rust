@@ -569,11 +569,17 @@ impl OpenOptions {
     /// end of the file. So, before writing, save the current position (using
     /// [`seek`]`(`[`SeekFrom`]`::`[`Current`]`(0))`, and restore it before the next read.
     ///
+    /// ## Note
+    ///
+    /// This function doesn't create the file if it doesn't exist. Use the [`create`]
+    /// method to do so.
+    ///
     /// [`write()`]: ../../std/fs/struct.File.html#method.write
     /// [`flush()`]: ../../std/fs/struct.File.html#method.flush
     /// [`seek`]: ../../std/fs/struct.File.html#method.seek
     /// [`SeekFrom`]: ../../std/io/enum.SeekFrom.html
     /// [`Current`]: ../../std/io/enum.SeekFrom.html#variant.Current
+    /// [`create`]: #method.create
     ///
     /// # Examples
     ///
