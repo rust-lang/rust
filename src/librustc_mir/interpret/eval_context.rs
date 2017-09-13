@@ -618,7 +618,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         }
         for (field_index, operand) in operands.iter().enumerate() {
             let value = self.eval_operand(operand)?;
-            let field_dest = self.lvalue_field(dest, field_index, dest_ty, value.ty)?;
+            let field_dest = self.lvalue_field(dest, mir::Field::new(field_index), dest_ty, value.ty)?;
             self.write_value(value, field_dest)?;
         }
         Ok(())
@@ -1466,7 +1466,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     /// ensures this Value is not a ByRef
     pub(super) fn follow_by_ref_value(
-        &mut self,
+        &self,
         value: Value,
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Value> {
@@ -1479,7 +1479,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn value_to_primval(
-        &mut self,
+        &self,
         ValTy { value, ty } : ValTy<'tcx>,
     ) -> EvalResult<'tcx, PrimVal> {
         match self.follow_by_ref_value(value, ty)? {

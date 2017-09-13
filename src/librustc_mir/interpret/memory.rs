@@ -9,7 +9,7 @@ use syntax::ast::Mutability;
 use rustc::middle::region;
 
 use super::{EvalResult, EvalErrorKind, PrimVal, Pointer, EvalContext, DynamicLifetime, Machine,
-            RangeMap};
+            RangeMap, AbsLvalue};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Locks
@@ -23,12 +23,27 @@ pub enum AccessKind {
 
 /// Information about a lock that is currently held.
 #[derive(Clone, Debug)]
-struct LockInfo {
+struct LockInfo<'tcx> {
     /// Stores for which lifetimes (of the original write lock) we got
     /// which suspensions.
-    suspended: HashMap<DynamicLifetime, Vec<region::Scope>>,
+    suspended: HashMap<WriteLockId<'tcx>, Vec<region::Scope>>,
     /// The current state of the lock that's actually effective.
     active: Lock,
+}
+
+/// Write locks are identified by a stack frame and an "abstract" (untyped) lvalue.
+/// It may be tempting to use the lifetime as identifier, but that does not work
+/// for two reasons:
+/// * First of all, due to subtyping, the same lock may be referred to with different
+///   lifetimes.
+/// * Secondly, different write locks may actually have the same lifetime.  See `test2`
+///   in `run-pass/many_shr_bor.rs`.
+/// The Id is "captured" when the lock is first suspended; at that point, the borrow checker
+/// considers the path frozen and hence the Id remains stable.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct WriteLockId<'tcx> {
+    frame: usize,
+    path: AbsLvalue<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,14 +54,14 @@ pub enum Lock {
 }
 use self::Lock::*;
 
-impl Default for LockInfo {
+impl<'tcx> Default for LockInfo<'tcx> {
     fn default() -> Self {
         LockInfo::new(NoLock)
     }
 }
 
-impl LockInfo {
-    fn new(lock: Lock) -> LockInfo {
+impl<'tcx> LockInfo<'tcx> {
+    fn new(lock: Lock) -> LockInfo<'tcx> {
         LockInfo {
             suspended: HashMap::new(),
             active: lock,
@@ -128,7 +143,7 @@ impl fmt::Debug for AllocId {
 }
 
 #[derive(Debug)]
-pub struct Allocation<M> {
+pub struct Allocation<'tcx, M> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
     pub bytes: Vec<u8>,
@@ -146,17 +161,17 @@ pub struct Allocation<M> {
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
     pub kind: MemoryKind<M>,
     /// Memory regions that are locked by some function
-    locks: RangeMap<LockInfo>,
+    locks: RangeMap<LockInfo<'tcx>>,
 }
 
-impl<M> Allocation<M> {
-    fn check_locks<'tcx>(
+impl<'tcx, M> Allocation<'tcx, M> {
+    fn check_locks(
         &self,
         frame: Option<usize>,
         offset: u64,
         len: u64,
         access: AccessKind,
-    ) -> Result<(), LockInfo> {
+    ) -> Result<(), LockInfo<'tcx>> {
         if len == 0 {
             return Ok(());
         }
@@ -237,7 +252,7 @@ pub struct Memory<'a, 'tcx, M: Machine<'tcx>> {
     pub data: M::MemoryData,
 
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
-    alloc_map: HashMap<u64, Allocation<M::MemoryKinds>>,
+    alloc_map: HashMap<u64, Allocation<'tcx, M::MemoryKinds>>,
 
     /// The AllocId to assign to the next new regular allocation. Always incremented, never gets smaller.
     next_alloc_id: u64,
@@ -610,61 +625,71 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
     /// Release or suspend a write lock of the given lifetime prematurely.
     /// When releasing, if there is a read lock or someone else's write lock, that's an error.
-    /// We *do* accept relasing a NoLock, as this can happen when a local is first acquired and later force_allocate'd.
+    /// If no lock is held, that's fine.  This can happen when e.g. a local is initialized
+    /// from a constant, and then suspended.
     /// When suspending, the same cases are fine; we just register an additional suspension.
     pub(crate) fn suspend_write_lock(
         &mut self,
         ptr: MemoryPointer,
         len: u64,
-        lock_region: Option<region::Scope>,
+        lock_path: &AbsLvalue<'tcx>,
         suspend: Option<region::Scope>,
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
-        let lock_lft = DynamicLifetime {
-            frame: cur_frame,
-            region: lock_region,
-        };
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         'locks: for lock in alloc.locks.iter_mut(ptr.offset, len) {
             let is_our_lock = match lock.active {
-                WriteLock(lft) => lft == lock_lft,
+                WriteLock(lft) =>
+                    // Double-check that we are holding the lock.
+                    // (Due to subtyping, checking the region would not make any sense.)
+                    lft.frame == cur_frame,
                 ReadLock(_) | NoLock => false,
             };
             if is_our_lock {
-                trace!("Releasing {:?} at {:?}", lock.active, lock_lft);
+                trace!("Releasing {:?}", lock.active);
                 // Disable the lock
                 lock.active = NoLock;
             } else {
                 trace!(
-                    "Not touching {:?} at {:?} as its not our lock",
+                    "Not touching {:?} as it is not our lock",
                     lock.active,
-                    lock_lft
                 );
             }
-            match suspend {
-                Some(suspend_region) => {
-                    trace!("Adding suspension to {:?} at {:?}", lock.active, lock_lft);
-                    // We just released this lock, so add a new suspension.
-                    // FIXME: Really, if there ever already is a suspension when is_our_lock, or if there is no suspension when !is_our_lock, something is amiss.
-                    // But this model is not good enough yet to prevent that.
-                    lock.suspended
-                        .entry(lock_lft)
-                        .or_insert_with(|| Vec::new())
-                        .push(suspend_region);
+            // Check if we want to register a suspension
+            if let Some(suspend_region) = suspend {
+                let lock_id = WriteLockId {
+                    frame: cur_frame,
+                    path: lock_path.clone(),
+                };
+                trace!("Adding suspension to {:?}", lock_id);
+                let mut new_suspension = false;
+                lock.suspended
+                    .entry(lock_id)
+                    // Remember whether we added a new suspension or not
+                    .or_insert_with(|| { new_suspension = true; Vec::new() })
+                    .push(suspend_region);
+                // If the suspension is new, we should have owned this.
+                // If there already was a suspension, we should NOT have owned this.
+                if new_suspension == is_our_lock {
+                    // All is well
+                    continue 'locks;
                 }
-                None => {
-                    // Make sure we did not try to release someone else's lock.
-                    if !is_our_lock && lock.active != NoLock {
-                        return err!(InvalidMemoryLockRelease {
-                            ptr,
-                            len,
-                            frame: cur_frame,
-                            lock: lock.active.clone(),
-                        });
-                    }
+            } else {
+                if !is_our_lock {
+                    // All is well.
+                    continue 'locks;
                 }
+            }
+            // If we get here, releasing this is an error except for NoLock.
+            if lock.active != NoLock {
+                return err!(InvalidMemoryLockRelease {
+                    ptr,
+                    len,
+                    frame: cur_frame,
+                    lock: lock.active.clone(),
+                });
             }
         }
 
@@ -676,26 +701,27 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         &mut self,
         ptr: MemoryPointer,
         len: u64,
+        lock_path: &AbsLvalue<'tcx>,
         lock_region: Option<region::Scope>,
         suspended_region: region::Scope,
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
-        let lock_lft = DynamicLifetime {
+        let lock_id = WriteLockId {
             frame: cur_frame,
-            region: lock_region,
+            path: lock_path.clone(),
         };
         let alloc = self.get_mut_unchecked(ptr.alloc_id)?;
 
         for lock in alloc.locks.iter_mut(ptr.offset, len) {
             // Check if we have a suspension here
-            let (got_the_lock, remove_suspension) = match lock.suspended.get_mut(&lock_lft) {
+            let (got_the_lock, remove_suspension) = match lock.suspended.get_mut(&lock_id) {
                 None => {
                     trace!("No suspension around, we can just acquire");
                     (true, false)
                 }
                 Some(suspensions) => {
-                    trace!("Found suspension of {:?}, removing it", lock_lft);
+                    trace!("Found suspension of {:?}, removing it", lock_id);
                     // That's us!  Remove suspension (it should be in there).  The same suspension can
                     // occur multiple times (when there are multiple shared borrows of this that have the same
                     // lifetime); only remove one of them.
@@ -715,12 +741,17 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             if remove_suspension {
                 // with NLL, we could do that up in the match above...
                 assert!(got_the_lock);
-                lock.suspended.remove(&lock_lft);
+                lock.suspended.remove(&lock_id);
             }
             if got_the_lock {
                 match lock.active {
                     ref mut active @ NoLock => {
-                        *active = WriteLock(lock_lft);
+                        *active = WriteLock(
+                            DynamicLifetime {
+                                frame: cur_frame,
+                                region: lock_region,
+                            }
+                        );
                     }
                     _ => {
                         return err!(MemoryAcquireConflict {
@@ -770,8 +801,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
                 if lock_ended {
                     lock.active = NoLock;
                 }
-                // Also clean up suspended write locks
-                lock.suspended.retain(|lft, _suspensions| !has_ended(lft));
+                // Also clean up suspended write locks when the function returns
+                if ending_region.is_none() {
+                    lock.suspended.retain(|id, _suspensions| id.frame != cur_frame);
+                }
             }
             // Clean up the map
             alloc.locks.retain(|lock| match lock.active {
@@ -784,7 +817,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
 
 /// Allocation accessors
 impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::MemoryKinds>> {
+    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<'tcx, M::MemoryKinds>> {
         match id.into_alloc_id_kind() {
             AllocIdKind::Function(_) => err!(DerefFunctionPointer),
             AllocIdKind::Runtime(id) => {
@@ -799,7 +832,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
     fn get_mut_unchecked(
         &mut self,
         id: AllocId,
-    ) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
+    ) -> EvalResult<'tcx, &mut Allocation<'tcx, M::MemoryKinds>> {
         match id.into_alloc_id_kind() {
             AllocIdKind::Function(_) => err!(DerefFunctionPointer),
             AllocIdKind::Runtime(id) => {
@@ -811,7 +844,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
         }
     }
 
-    fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<M::MemoryKinds>> {
+    fn get_mut(&mut self, id: AllocId) -> EvalResult<'tcx, &mut Allocation<'tcx, M::MemoryKinds>> {
         let alloc = self.get_mut_unchecked(id)?;
         if alloc.mutable == Mutability::Mutable {
             Ok(alloc)
