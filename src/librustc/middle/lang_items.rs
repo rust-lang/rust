@@ -74,14 +74,14 @@ impl LanguageItems {
     }
 
     pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-        self.items[it as usize].ok_or(format!("requires `{}` lang_item", it.name()))
+        self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
     }
 
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
         match Some(id) {
             x if x == self.fn_trait() => Some(ty::ClosureKind::Fn),
             x if x == self.fn_mut_trait() => Some(ty::ClosureKind::FnMut),
-            x if x == self.fn_once_trait() =>  Some(ty::ClosureKind::FnOnce),
+            x if x == self.fn_once_trait() => Some(ty::ClosureKind::FnOnce),
             _ => None
         }
     }
