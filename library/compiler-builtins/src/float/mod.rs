@@ -1,4 +1,5 @@
 use core::mem;
+use core::ops;
 
 use super::int::Int;
 
@@ -8,9 +9,22 @@ pub mod pow;
 pub mod sub;
 
 /// Trait for some basic operations on floats
-pub trait Float: Sized + Copy {
+pub trait Float:
+    Copy +
+    PartialEq +
+    PartialOrd +
+    ops::AddAssign +
+    ops::MulAssign +
+    ops::Add<Output = Self> +
+    ops::Sub<Output = Self> +
+    ops::Div<Output = Self> +
+    ops::Rem<Output = Self> +
+{
     /// A uint of the same with as the float
     type Int: Int;
+
+    const ZERO: Self;
+    const ONE: Self;
 
     /// The bitwidth of the float type
     const BITS: u32;
@@ -64,6 +78,9 @@ macro_rules! float_impl {
     ($ty:ident, $ity:ident, $bits:expr, $significand_bits:expr) => {
         impl Float for $ty {
             type Int = $ity;
+            const ZERO: Self = 0.0;
+            const ONE: Self = 1.0;
+
             const BITS: u32 = $bits;
             const SIGNIFICAND_BITS: u32 = $significand_bits;
 
