@@ -83,10 +83,6 @@ impl LanguageItems {
         }
     }
 
-    pub fn require_owned_box(&self) -> Result<DefId, String> {
-        self.require(OwnedBoxLangItem)
-    }
-
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
         let def_id_kinds = [
             (self.fn_trait(), ty::ClosureKind::Fn),
