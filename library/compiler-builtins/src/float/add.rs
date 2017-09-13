@@ -10,8 +10,8 @@ macro_rules! add {
         let one = Wrapping(1 as <$ty as Float>::Int);
         let zero = Wrapping(0 as <$ty as Float>::Int);
 
-        let bits =             Wrapping(<$ty>::bits() as <$ty as Float>::Int);
-        let significand_bits = Wrapping(<$ty>::significand_bits() as <$ty as Float>::Int);
+        let bits =             Wrapping(<$ty>::BITS as <$ty as Float>::Int);
+        let significand_bits = Wrapping(<$ty>::SIGNIFICAND_BITS as <$ty as Float>::Int);
         let exponent_bits =    bits - significand_bits - one;
         let max_exponent =     (one << exponent_bits.0 as usize) - one;
 

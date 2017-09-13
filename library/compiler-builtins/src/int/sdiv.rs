@@ -3,9 +3,9 @@ use int::Int;
 trait Div: Int {
     /// Returns `a / b`
     fn div(self, other: Self) -> Self {
-        let s_a = self >> (Self::bits() - 1);
-        let s_b = other >> (Self::bits() - 1);
-        // NOTE it's OK to overflow here because of the `as $uty` cast below
+        let s_a = self >> (Self::BITS - 1);
+        let s_b = other >> (Self::BITS - 1);
+        // NOTE it's OK to overflow here because of the `.unsigned()` below.
         // This whole operation is computing the absolute value of the inputs
         // So some overflow will happen when dealing with e.g. `i64::MIN`
         // where the absolute value is `(-i64::MIN) as u64`
@@ -25,10 +25,10 @@ impl Div for i128 {}
 trait Mod: Int {
     /// Returns `a % b`
     fn mod_(self, other: Self) -> Self {
-        let s = other >> (Self::bits() - 1);
+        let s = other >> (Self::BITS - 1);
         // NOTE(wrapping_sub) see comment in the `div`
         let b = (other ^ s).wrapping_sub(s);
-        let s = self >> (Self::bits() - 1);
+        let s = self >> (Self::BITS - 1);
         let a = (self ^ s).wrapping_sub(s);
 
         let r = a.unsigned().aborting_rem(b.unsigned());

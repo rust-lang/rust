@@ -5,8 +5,8 @@ use int::Int;
 
 trait Mul: LargeInt {
     fn mul(self, other: Self) -> Self {
-        let half_bits = Self::bits() / 4;
-        let lower_mask = !<<Self as LargeInt>::LowHalf>::zero() >> half_bits;
+        let half_bits = Self::BITS / 4;
+        let lower_mask = !<<Self as LargeInt>::LowHalf>::ZERO >> half_bits;
         let mut low = (self.low() & lower_mask).wrapping_mul(other.low() & lower_mask);
         let mut t = low >> half_bits;
         low &= lower_mask;
@@ -33,23 +33,23 @@ trait Mulo: Int + ops::Neg<Output = Self> {
         *overflow = 0;
         let result = self.wrapping_mul(other);
         if self == Self::min_value() {
-            if other != Self::zero() && other != Self::one() {
+            if other != Self::ZERO && other != Self::ONE {
                 *overflow = 1;
             }
             return result;
         }
         if other == Self::min_value() {
-            if self != Self::zero() && self != Self::one() {
+            if self != Self::ZERO && self != Self::ONE {
                 *overflow = 1;
             }
             return result;
         }
 
-        let sa = self >> (Self::bits() - 1);
+        let sa = self >> (Self::BITS - 1);
         let abs_a = (self ^ sa) - sa;
-        let sb = other >> (Self::bits() - 1);
+        let sb = other >> (Self::BITS - 1);
         let abs_b = (other ^ sb) - sb;
-        let two = Self::one() + Self::one();
+        let two = Self::ONE + Self::ONE;
         if abs_a < two || abs_b < two {
             return result;
         }

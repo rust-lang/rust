@@ -1,13 +1,13 @@
 use int::{Int, LargeInt};
 
 trait Ashl: Int + LargeInt {
-    /// Returns `a << b`, requires `b < $ty::bits()`
+    /// Returns `a << b`, requires `b < Self::BITS`
     fn ashl(self, offset: u32) -> Self
         where Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
     {
-        let half_bits = Self::bits() / 2;
+        let half_bits = Self::BITS / 2;
         if offset & half_bits != 0 {
-            Self::from_parts(Int::zero(), self.low() << (offset - half_bits))
+            Self::from_parts(Int::ZERO, self.low() << (offset - half_bits))
         } else if offset == 0 {
             self
         } else {
@@ -22,11 +22,11 @@ impl Ashl for u64 {}
 impl Ashl for u128 {}
 
 trait Ashr: Int + LargeInt {
-    /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
+    /// Returns arithmetic `a >> b`, requires `b < Self::BITS`
     fn ashr(self, offset: u32) -> Self
         where Self: LargeInt<LowHalf = <<Self as LargeInt>::HighHalf as Int>::UnsignedInt>,
     {
-        let half_bits = Self::bits() / 2;
+        let half_bits = Self::BITS / 2;
         if offset & half_bits != 0 {
             Self::from_parts((self.high() >> (offset - half_bits)).unsigned(),
                               self.high() >> (half_bits - 1))
@@ -44,13 +44,13 @@ impl Ashr for i64 {}
 impl Ashr for i128 {}
 
 trait Lshr: Int + LargeInt {
-    /// Returns logical `a >> b`, requires `b < $ty::bits()`
+    /// Returns logical `a >> b`, requires `b < Self::BITS`
     fn lshr(self, offset: u32) -> Self
         where Self: LargeInt<HighHalf = <Self as LargeInt>::LowHalf>,
     {
-        let half_bits = Self::bits() / 2;
+        let half_bits = Self::BITS / 2;
         if offset & half_bits != 0 {
-            Self::from_parts(self.high() >> (offset - half_bits), Int::zero())
+            Self::from_parts(self.high() >> (offset - half_bits), Int::ZERO)
         } else if offset == 0 {
             self
         } else {

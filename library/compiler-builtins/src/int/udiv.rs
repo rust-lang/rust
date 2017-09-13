@@ -63,7 +63,7 @@ macro_rules! udivmod_inner {
             sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
 
             // D > N
-            if sr > <hty!($ty)>::bits() - 2 {
+            if sr > <hty!($ty)>::BITS - 2 {
                 if let Some(rem) = rem {
                     *rem = n;
                 }
@@ -72,8 +72,8 @@ macro_rules! udivmod_inner {
 
             sr += 1;
 
-            // 1 <= sr <= <hty!($ty)>::bits() - 1
-            q = n << (<$ty>::bits() - sr);
+            // 1 <= sr <= <hty!($ty)>::BITS - 1
+            q = n << (<$ty>::BITS - sr);
             r = n >> sr;
         } else if d.high() == 0 {
             // K X
@@ -92,10 +92,10 @@ macro_rules! udivmod_inner {
                 };
             }
 
-            sr = 1 + <hty!($ty)>::bits() + d.low().leading_zeros() - n.high().leading_zeros();
+            sr = 1 + <hty!($ty)>::BITS + d.low().leading_zeros() - n.high().leading_zeros();
 
-            // 2 <= sr <= u64::bits() - 1
-            q = n << (<$ty>::bits() - sr);
+            // 2 <= sr <= u64::BITS - 1
+            q = n << (<$ty>::BITS - sr);
             r = n >> sr;
         } else {
             // K X
@@ -104,7 +104,7 @@ macro_rules! udivmod_inner {
             sr = d.high().leading_zeros().wrapping_sub(n.high().leading_zeros());
 
             // D > N
-            if sr > <hty!($ty)>::bits() - 1 {
+            if sr > <hty!($ty)>::BITS - 1 {
                 if let Some(rem) = rem {
                     *rem = n;
                 }
@@ -113,16 +113,16 @@ macro_rules! udivmod_inner {
 
             sr += 1;
 
-            // 1 <= sr <= <hty!($ty)>::bits()
-            q = n << (<$ty>::bits() - sr);
+            // 1 <= sr <= <hty!($ty)>::BITS
+            q = n << (<$ty>::BITS - sr);
             r = n >> sr;
         }
 
         // Not a special case
         // q and r are initialized with
-        // q = n << (u64::bits() - sr)
+        // q = n << (u64::BITS - sr)
         // r = n >> sr
-        // 1 <= sr <= u64::bits() - 1
+        // 1 <= sr <= u64::BITS - 1
         let mut carry = 0;
 
         // Don't use a range because they may generate references to memcpy in unoptimized code
@@ -131,7 +131,7 @@ macro_rules! udivmod_inner {
             i += 1;
 
             // r:q = ((r:q) << 1) | carry
-            r = (r << 1) | (q >> (<$ty>::bits() - 1));
+            r = (r << 1) | (q >> (<$ty>::BITS - 1));
             q = (q << 1) | carry as $ty;
 
             // carry = 0
@@ -139,7 +139,7 @@ macro_rules! udivmod_inner {
             //     r -= d;
             //     carry = 1;
             // }
-            let s = (d.wrapping_sub(r).wrapping_sub(1)) as os_ty!($ty) >> (<$ty>::bits() - 1);
+            let s = (d.wrapping_sub(r).wrapping_sub(1)) as os_ty!($ty) >> (<$ty>::BITS - 1);
             carry = (s & 1) as hty!($ty);
             r -= d & s as $ty;
         }
@@ -169,19 +169,19 @@ intrinsics! {
         let mut sr = d.leading_zeros().wrapping_sub(n.leading_zeros());
 
         // d > n
-        if sr > u32::bits() - 1 {
+        if sr > u32::BITS - 1 {
             return 0;
         }
 
         // d == 1
-        if sr == u32::bits() - 1 {
+        if sr == u32::BITS - 1 {
             return n;
         }
 
         sr += 1;
 
-        // 1 <= sr <= u32::bits() - 1
-        let mut q = n << (u32::bits() - sr);
+        // 1 <= sr <= u32::BITS - 1
+        let mut q = n << (u32::BITS - sr);
         let mut r = n >> sr;
 
         let mut carry = 0;
@@ -192,7 +192,7 @@ intrinsics! {
             i += 1;
 
             // r:q = ((r:q) << 1) | carry
-            r = (r << 1) | (q >> (u32::bits() - 1));
+            r = (r << 1) | (q >> (u32::BITS - 1));
             q = (q << 1) | carry;
 
             // carry = 0;
@@ -201,7 +201,7 @@ intrinsics! {
             //     carry = 1;
             // }
 
-            let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32::bits() - 1);
+            let s = (d.wrapping_sub(r).wrapping_sub(1)) as i32 >> (u32::BITS - 1);
             carry = (s & 1) as u32;
             r -= d & s as u32;
         }
