@@ -377,31 +377,30 @@ plumb this information through to Cargo.
 
 ## Specifics for the mixed build system case
 
-Switching gears, let's look at mixed build systems. Here, we generally don't
-want to use Cargo plugins, because Cargo is still doing the vast majority of the
-work. Instead, we need to incorporate new features or points of
-customization/extensibility to handle specific concerns. The primary ones on the
-radar right now are as follows.
+Switching gears, let's look at mixed build systems. Here, we may address the
+need for customization with a mixture of plugins and new core Cargo
+features. The primary ones on the radar right now are as follows.
 
 - **Multiple/custom registries**. There is a longstanding desire to support
   registries other than crates.io, e.g. for private code, and to allow them to
   be used *in conjunction* with crates.io. In particular, this is a key pain
   point for customers who are otherwise happy to use Cargo as-is, but want a
   crates.io-like experience for their own code. There's
-  an [early RFC](https://github.com/rust-lang/cargo/pull/4036) on this topic,
-  and more work here is planned soon.
+  an [RFC](https://github.com/rust-lang/rfcs/pull/2141) on this topic, and more
+  work here is planned soon. Note: here, we address the needs via a
+  straightforward enhancement to Cargo's features, rather than via a plugin
+  system.
 
 - **Network and source control**. We've already put significant work into
   providing control over where sources live (though vendoring) and tools for
   preventing network access. However, we could do more to make the experience
   here first class, and to give people a greater sense of control and assurance
-  when using Cargo on their build farm.
+  when using Cargo on their build farm. Here again, this is probably more about
+  flags and configuration than plugins per se.
 
 - **Caching and artifact control**. Many organizations would like to provide a
   shared build cache for the entire organization, across all of its
-  projects. More generally, it seems plausible and useful to provide a way of
-  customizing caching and artifact storage without having to go all the way to a
-  full plugin.
+  projects. Here we'd likely need some kind of plugin.
 
 These bullets are quite vague, and that's because, while we know there are needs
 here, the precise problem -- let alone the solution -- it not yet clear. The
