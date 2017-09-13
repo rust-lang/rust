@@ -240,10 +240,20 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
-                let ptr = self.memory.allocate_cached(bs)?;
+                let ptr = self.memory.allocate_cached(bs.data)?;
                 PrimVal::Ptr(ptr)
             }
 
+            Unevaluated(def_id, substs) => {
+                let instance = self.resolve_associated_const(def_id, substs);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                return Ok(Value::ByRef(*self.globals.get(&cid).expect("static/const not cached")));
+            }
+
+            Aggregate(..) |
             Variant(_) => unimplemented!(),
             // function items are zero sized and thus have no readable value
             Function(..) => PrimVal::Undef,
@@ -1284,16 +1294,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 use rustc::mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
-                    Literal::Value { ref value } => self.const_to_value(value)?,
-
-                    Literal::Item { def_id, substs } => {
-                        let instance = self.resolve_associated_const(def_id, substs);
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        Value::ByRef(*self.globals.get(&cid).expect("static/const not cached"))
-                    }
+                    Literal::Value { ref value } => self.const_to_value(&value.val)?,
 
                     Literal::Promoted { index } => {
                         let cid = GlobalId {
@@ -2501,7 +2502,7 @@ struct AssociatedTypeNormalizer<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> AssociatedTypeNormalizer<'a, 'tcx> {
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             value.clone()
         } else {
             value.fold_with(self)
@@ -2515,7 +2516,7 @@ impl<'a, 'tcx> ::rustc::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNorma
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_projection_types() {
+        if !ty.has_projections() {
             ty
         } else {
             self.tcx.normalize_associated_type(&ty)

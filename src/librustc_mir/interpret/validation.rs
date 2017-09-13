@@ -246,7 +246,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         {
             let param_env = ty::ParamEnv::empty(Reveal::All);
 
-            if !value.has_projection_types() {
+            if !value.has_projections() {
                 return value.clone();
             }
 
