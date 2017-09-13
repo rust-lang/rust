@@ -38,33 +38,6 @@ impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for D
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let hir::HirId {
-            owner,
-            local_id,
-        } = *self;
-
-        hcx.tcx().hir.definitions().def_path_hash(owner).hash_stable(hcx, hasher);
-        local_id.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
-    type KeyType = (DefPathHash, hir::ItemLocalId);
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
-                          -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.tcx().hir.definitions().def_path_hash(self.owner);
-        (def_path_hash, self.local_id)
-    }
-}
-
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for CrateNum {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
@@ -414,6 +387,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::P
             ref node,
             ref span
         } = *self;
+
 
         node.hash_stable(hcx, hasher);
         span.hash_stable(hcx, hasher);
@@ -1003,11 +977,23 @@ impl_stable_hash_for!(struct hir::Arg {
     hir_id
 });
 
-impl_stable_hash_for!(struct hir::Body {
-    arguments,
-    value,
-    is_generator
-});
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::Body {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::Body {
+            ref arguments,
+            ref value,
+            is_generator,
+        } = *self;
+
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::Ignore, |hcx| {
+            arguments.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+            is_generator.hash_stable(hcx, hasher);
+        });
+    }
+}
 
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
     fn hash_stable<W: StableHasherResult>(&self,

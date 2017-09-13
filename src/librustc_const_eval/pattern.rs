@@ -607,7 +607,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
                             self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
                         } else {
-                            self.tcx.extern_const_body(def_id)
+                            self.tcx.extern_const_body(def_id).body
                         };
                         let pat = self.lower_const_expr(&body.value, pat_id, span);
                         self.tables = old_tables;

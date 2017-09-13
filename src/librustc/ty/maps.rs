@@ -16,8 +16,9 @@ use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
 use middle::const_val;
-use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
-use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
+use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
+                     ExternBodyNestedBodies};
+use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
 use middle::region;
@@ -50,7 +51,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
-use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -1321,8 +1321,7 @@ define_maps! { <'tcx>
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
-    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId)
-        -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
 
@@ -1402,7 +1401,7 @@ define_maps! { <'tcx>
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
     [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefId, usize)>>,
     [] fn missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
-    [] fn extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
+    [] fn extern_const_body: ExternConstBody(DefId) -> ExternConstBody<'tcx>,
     [] fn visible_parent_map: visible_parent_map_node(CrateNum)
         -> Rc<DefIdMap<DefId>>,
     [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,

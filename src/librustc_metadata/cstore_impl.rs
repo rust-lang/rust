@@ -159,7 +159,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_exported_symbol => {
         cdata.exported_symbols.contains(&def_id.index)
     }
-    item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
+    item_body_nested_bodies => { cdata.item_body_nested_bodies(def_id.index) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
