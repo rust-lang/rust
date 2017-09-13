@@ -11,24 +11,27 @@
 use back::lto;
 use back::link::{self, get_linker, remove};
 use back::linker::LinkerInfo;
-use rustc::middle::exported_symbols::ExportedSymbols;
+use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
+use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use CrateInfo;
-use rustc::hir::def_id::CrateNum;
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc::ty::TyCtxt;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
 use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
 use errors::emitter::{Emitter};
+use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
@@ -667,19 +670,40 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
-pub fn start_async_translation(sess: &Session,
+pub fn start_async_translation(tcx: TyCtxt,
                                crate_output: &OutputFilenames,
                                time_graph: Option<TimeGraph>,
-                               crate_name: Symbol,
                                link: LinkMeta,
-                               metadata: EncodedMetadata,
-                               exported_symbols: Arc<ExportedSymbols>,
-                               no_builtins: bool,
-                               windows_subsystem: Option<String>,
-                               linker_info: LinkerInfo,
-                               crate_info: CrateInfo,
-                               no_integrated_as: bool)
+                               metadata: EncodedMetadata)
                                -> OngoingCrateTranslation {
+    let sess = tcx.sess;
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
+    let no_builtins = attr::contains_name(&tcx.hir.krate().attrs, "no_builtins");
+    let subsystem = attr::first_attr_value_str_by_name(&tcx.hir.krate().attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
+    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
+        (tcx.sess.target.target.options.no_integrated_as &&
+         (crate_output.outputs.contains_key(&OutputType::Object) ||
+          crate_output.outputs.contains_key(&OutputType::Exe)));
+    let linker_info = LinkerInfo::new(tcx);
+    let crate_info = CrateInfo::new(tcx);
+
+    let mut exported_symbols = FxHashMap();
+    exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
+    for &cnum in tcx.crates().iter() {
+        exported_symbols.insert(cnum, tcx.exported_symbols(cnum));
+    }
+    let exported_symbols = Arc::new(exported_symbols);
+
     let output_types_override = if no_integrated_as {
         OutputTypes::new(&[(OutputType::Assembly, None)])
     } else {

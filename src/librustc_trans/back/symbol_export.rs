@@ -8,89 +8,140 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rc::Rc;
+use std::sync::Arc;
+
 use base;
 use monomorphize::Instance;
-use rustc::util::nodemap::{FxHashMap, NodeSet};
+use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE, INVALID_CRATE, CRATE_DEF_INDEX};
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config;
 use rustc::ty::TyCtxt;
+use rustc::ty::maps::Providers;
+use rustc::util::nodemap::FxHashMap;
 use rustc_allocator::ALLOCATOR_METHODS;
-use rustc::middle::exported_symbols::{ExportedSymbols, SymbolExportLevel};
-use rustc::middle::exported_symbols::is_below_threshold;
 
-pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ExportedSymbols {
-    let export_threshold = crates_export_threshold(&tcx.sess.crate_types.borrow());
-    let local_exported_symbols = base::find_exported_symbols(tcx);
+pub type ExportedSymbols = FxHashMap<
+    CrateNum,
+    Arc<Vec<(String, DefId, SymbolExportLevel)>>,
+>;
 
-    let mut local_crate: Vec<_> = local_exported_symbols
-        .iter()
-        .map(|&node_id| {
-            tcx.hir.local_def_id(node_id)
-        })
-        .map(|def_id| {
-            let name = tcx.symbol_name(Instance::mono(tcx, def_id));
-            let export_level = export_level(tcx, def_id);
-            debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-            (str::to_owned(&name), def_id, export_level)
-        })
-        .collect();
+pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
+    crates_export_threshold(&tcx.sess.crate_types.borrow())
+}
 
-    let mut local_exports = local_crate
-        .iter()
-        .filter_map(|&(_, def_id, level)| {
-            if is_below_threshold(level, export_threshold) {
-                tcx.hir.as_local_node_id(def_id)
-            } else {
-                None
-            }
-        })
-        .collect::<NodeSet>();
+pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
+    format!("rust_metadata_{}_{}",
+            tcx.crate_name(LOCAL_CRATE),
+            tcx.crate_disambiguator(LOCAL_CRATE))
+}
 
-    const INVALID_DEF_ID: DefId = DefId {
-        krate: INVALID_CRATE,
-        index: CRATE_DEF_INDEX,
+fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
+    match crate_type {
+        config::CrateTypeExecutable |
+        config::CrateTypeStaticlib  |
+        config::CrateTypeProcMacro  |
+        config::CrateTypeCdylib     => SymbolExportLevel::C,
+        config::CrateTypeRlib       |
+        config::CrateTypeDylib      => SymbolExportLevel::Rust,
+    }
+}
+
+pub fn crates_export_threshold(crate_types: &[config::CrateType])
+                                      -> SymbolExportLevel {
+    if crate_types.iter().any(|&crate_type| {
+        crate_export_threshold(crate_type) == SymbolExportLevel::Rust
+    }) {
+        SymbolExportLevel::Rust
+    } else {
+        SymbolExportLevel::C
+    }
+}
+
+pub fn provide_local(providers: &mut Providers) {
+    providers.exported_symbol_ids = |tcx, cnum| {
+        let export_threshold = threshold(tcx);
+        Rc::new(tcx.exported_symbols(cnum)
+            .iter()
+            .filter_map(|&(_, id, level)| {
+                if level.is_below_threshold(export_threshold) {
+                    Some(id)
+                } else {
+                    None
+                }
+            })
+            .collect())
     };
 
-    if let Some(_) = *tcx.sess.entry_fn.borrow() {
-        local_crate.push(("main".to_string(),
-                          INVALID_DEF_ID,
-                          SymbolExportLevel::C));
-    }
+    providers.is_exported_symbol = |tcx, id| {
+        // FIXME(#42293) needs red/green to not break a bunch of incremental
+        // tests
+        tcx.dep_graph.with_ignore(|| {
+            tcx.exported_symbol_ids(id.krate).contains(&id)
+        })
+    };
 
-    if tcx.sess.allocator_kind.get().is_some() {
-        for method in ALLOCATOR_METHODS {
-            local_crate.push((format!("__rust_{}", method.name),
+    providers.exported_symbols = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        let local_exported_symbols = base::find_exported_symbols(tcx);
+
+        let mut local_crate: Vec<_> = local_exported_symbols
+            .iter()
+            .map(|&node_id| {
+                tcx.hir.local_def_id(node_id)
+            })
+            .map(|def_id| {
+                let name = tcx.symbol_name(Instance::mono(tcx, def_id));
+                let export_level = export_level(tcx, def_id);
+                debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
+                (str::to_owned(&name), def_id, export_level)
+            })
+            .collect();
+
+        const INVALID_DEF_ID: DefId = DefId {
+            krate: INVALID_CRATE,
+            index: CRATE_DEF_INDEX,
+        };
+
+        if let Some(_) = *tcx.sess.entry_fn.borrow() {
+            local_crate.push(("main".to_string(),
+                              INVALID_DEF_ID,
+                              SymbolExportLevel::C));
+        }
+
+        if tcx.sess.allocator_kind.get().is_some() {
+            for method in ALLOCATOR_METHODS {
+                local_crate.push((format!("__rust_{}", method.name),
+                                  INVALID_DEF_ID,
+                                  SymbolExportLevel::Rust));
+            }
+        }
+
+        if let Some(id) = tcx.sess.derive_registrar_fn.get() {
+            let def_id = tcx.hir.local_def_id(id);
+            let idx = def_id.index;
+            let disambiguator = tcx.sess.local_crate_disambiguator();
+            let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
+            local_crate.push((registrar, def_id, SymbolExportLevel::C));
+        }
+
+        if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
+            local_crate.push((metadata_symbol_name(tcx),
                               INVALID_DEF_ID,
                               SymbolExportLevel::Rust));
         }
-    }
+        Arc::new(local_crate)
+    };
+}
 
-    if let Some(id) = tcx.sess.derive_registrar_fn.get() {
-        let def_id = tcx.hir.local_def_id(id);
-        let idx = def_id.index;
-        let disambiguator = tcx.sess.local_crate_disambiguator();
-        let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
-        local_crate.push((registrar, def_id, SymbolExportLevel::C));
-        local_exports.insert(id);
-    }
-
-    if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
-        local_crate.push((metadata_symbol_name(tcx),
-                          INVALID_DEF_ID,
-                          SymbolExportLevel::Rust));
-    }
-
-    let mut exports = FxHashMap();
-    exports.insert(LOCAL_CRATE, local_crate);
-
-    for &cnum in tcx.crates().iter() {
-        debug_assert!(cnum != LOCAL_CRATE);
-
+pub fn provide_extern(providers: &mut Providers) {
+    providers.exported_symbols = |tcx, cnum| {
         // If this crate is a plugin and/or a custom derive crate, then
         // we're not even going to link those in so we skip those crates.
         if tcx.plugin_registrar_fn(cnum).is_some() ||
            tcx.derive_registrar_fn(cnum).is_some() {
-            continue;
+            return Arc::new(Vec::new())
         }
 
         // Check to see if this crate is a "special runtime crate". These
@@ -131,45 +182,14 @@ pub fn compute<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ExportedSymbols {
             })
             .collect();
 
-        exports.insert(cnum, crate_exports);
-    }
-
-    return ExportedSymbols::new(export_threshold, exports, local_exports);
-
-    fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
-        if tcx.contains_extern_indicator(sym_def_id) {
-            SymbolExportLevel::C
-        } else {
-            SymbolExportLevel::Rust
-        }
-    }
+        Arc::new(crate_exports)
+    };
 }
 
-pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
-    format!("rust_metadata_{}_{}",
-            tcx.crate_name(LOCAL_CRATE),
-            tcx.crate_disambiguator(LOCAL_CRATE))
-}
-
-pub fn crate_export_threshold(crate_type: config::CrateType)
-                                     -> SymbolExportLevel {
-    match crate_type {
-        config::CrateTypeExecutable |
-        config::CrateTypeStaticlib  |
-        config::CrateTypeProcMacro  |
-        config::CrateTypeCdylib     => SymbolExportLevel::C,
-        config::CrateTypeRlib       |
-        config::CrateTypeDylib      => SymbolExportLevel::Rust,
-    }
-}
-
-pub fn crates_export_threshold(crate_types: &[config::CrateType])
-                                      -> SymbolExportLevel {
-    if crate_types.iter().any(|&crate_type| {
-        crate_export_threshold(crate_type) == SymbolExportLevel::Rust
-    }) {
-        SymbolExportLevel::Rust
-    } else {
+fn export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
+    if tcx.contains_extern_indicator(sym_def_id) {
         SymbolExportLevel::C
+    } else {
+        SymbolExportLevel::Rust
     }
 }

@@ -23,7 +23,7 @@ use middle::region;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
-use middle::exported_symbols::ExportedSymbols;
+use middle::exported_symbols::SymbolExportLevel;
 use middle::trans::{TransItem, CodegenUnit};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
@@ -748,9 +748,9 @@ impl<'tcx> QueryDescription for queries::all_crate_nums<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::exported_symbol_set<'tcx> {
+impl<'tcx> QueryDescription for queries::exported_symbols<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("exported symbol set")
+        format!("exported_symbols")
     }
 }
 
@@ -1337,7 +1337,7 @@ define_maps! { <'tcx>
     [] fn lint_levels: lint_levels_node(CrateNum) -> Rc<lint::LintLevelMap>,
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
-    [] fn exported_symbol_ids: ExportedSymbolIds(CrateNum) -> Rc<Vec<DefId>>,
+    [] fn exported_symbol_ids: ExportedSymbolIds(CrateNum) -> Rc<DefIdSet>,
     [] fn native_libraries: NativeLibraries(CrateNum) -> Rc<Vec<NativeLibrary>>,
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
@@ -1387,8 +1387,8 @@ define_maps! { <'tcx>
     [] fn stability_index: stability_index_node(CrateNum) -> Rc<stability::Index<'tcx>>,
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
-    [] fn exported_symbol_set: exported_symbol_set_node(CrateNum)
-        -> Arc<ExportedSymbols>,
+    [] fn exported_symbols: ExportedSymbols(CrateNum)
+        -> Arc<Vec<(String, DefId, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<FxHashSet<TransItem<'tcx>>>, Vec<Arc<CodegenUnit<'tcx>>>),
@@ -1506,10 +1506,6 @@ fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::AllCrateNums
-}
-
-fn exported_symbol_set_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
-    DepConstructor::ExportedSymbols
 }
 
 fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

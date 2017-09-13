@@ -114,8 +114,8 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
             if ccx.crate_trans_items().contains(&TransItem::Fn(instance)) {
-                if let Some(node_id) = tcx.hir.as_local_node_id(instance_def_id) {
-                    if !ccx.exported_symbols().local_exports().contains(&node_id) {
+                if instance_def_id.is_local() {
+                    if !ccx.tcx().is_exported_symbol(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 } else {

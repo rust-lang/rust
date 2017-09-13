@@ -130,7 +130,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
                 let g = declare::define_global(ccx, &sym[..], llty).unwrap();
 
-                if !ccx.exported_symbols().local_exports().contains(&id) {
+                if !ccx.tcx().is_exported_symbol(def_id) {
                     unsafe {
                         llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                     }

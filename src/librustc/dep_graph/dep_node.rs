@@ -575,7 +575,7 @@ define_dep_nodes!( <'tcx>
     [] MaybeUnusedExternCrates,
     [] StabilityIndex,
     [] AllCrateNums,
-    [] ExportedSymbols,
+    [] ExportedSymbols(CrateNum),
     [] CollectAndPartitionTranslationItems,
     [] ExportName(DefId),
     [] ContainsExternIndicator(DefId),

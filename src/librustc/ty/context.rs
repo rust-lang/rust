@@ -27,7 +27,6 @@ use middle::cstore::EncodedMetadata;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
-use middle::exported_symbols::ExportedSymbols;
 use middle::stability;
 use mir::Mir;
 use mir::transform::Passes;
@@ -65,7 +64,6 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
-use std::sync::Arc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -1219,10 +1217,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // system if the result is otherwise tracked through queries
     pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Rc<Any> {
         self.cstore.crate_data_as_rc_any(cnum)
-    }
-
-    pub fn exported_symbols(self) -> Arc<ExportedSymbols> {
-        self.exported_symbol_set(LOCAL_CRATE)
     }
 }
 

@@ -30,7 +30,6 @@ use super::ModuleKind;
 
 use assert_module_sources;
 use back::link;
-use back::linker::LinkerInfo;
 use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
@@ -44,10 +43,9 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
-use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
+use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
 use rustc::session::Session;
 use rustc_incremental::{self, IncrementalHashesMap};
 use abi;
@@ -939,11 +937,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> OngoingCrateTranslation {
     check_for_rustc_errors_attr(tcx);
 
-    // Be careful with this krate: obviously it gives access to the
-    // entire contents of the krate. So if you push any subtasks of
-    // `TransCrate`, you need to be careful to register "reads" of the
-    // particular items that will be processed.
-    let krate = tcx.hir.krate();
     let check_overflow = tcx.sess.overflow_checks();
     let link_meta = link::build_link_meta(&incremental_hashes_map);
     let exported_symbol_node_ids = find_exported_symbols(tcx);
@@ -967,31 +960,21 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         kind: ModuleKind::Metadata,
     };
 
-    let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
     let time_graph = if tcx.sess.opts.debugging_opts.trans_time_graph {
         Some(time_graph::TimeGraph::new())
     } else {
         None
     };
-    let crate_info = CrateInfo::new(tcx);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
        !tcx.sess.opts.output_types.should_trans() {
-        let linker_info = LinkerInfo::new(&shared_ccx);
         let ongoing_translation = write::start_async_translation(
-            tcx.sess,
+            tcx,
             output_filenames,
             time_graph.clone(),
-            tcx.crate_name(LOCAL_CRATE),
             link_meta,
-            metadata,
-            shared_ccx.tcx().exported_symbols(),
-            no_builtins,
-            None,
-            linker_info,
-            crate_info,
-            false);
+            metadata);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
 
@@ -1012,36 +995,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     assert!(codegen_units.len() <= 1 || !tcx.sess.lto());
 
-    let linker_info = LinkerInfo::new(&shared_ccx);
-    let subsystem = attr::first_attr_value_str_by_name(&krate.attrs,
-                                                       "windows_subsystem");
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != "windows" && subsystem != "console" {
-            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                                    subsystem));
-        }
-        subsystem.to_string()
-    });
-
-    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
-        (tcx.sess.target.target.options.no_integrated_as &&
-         (output_filenames.outputs.contains_key(&OutputType::Object) ||
-          output_filenames.outputs.contains_key(&OutputType::Exe)));
-
     let ongoing_translation = write::start_async_translation(
-        tcx.sess,
+        tcx,
         output_filenames,
         time_graph.clone(),
-        tcx.crate_name(LOCAL_CRATE),
         link_meta,
-        metadata,
-        tcx.exported_symbols(),
-        no_builtins,
-        windows_subsystem,
-        linker_info,
-        crate_info,
-        no_integrated_as);
+        metadata);
 
     // Translate an allocator shim, if any
     //
@@ -1118,8 +1077,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(&shared_ccx),
                                         AssertDepGraphSafe((cgu,
-                                                            translation_items.clone(),
-                                                            tcx.exported_symbols())),
+                                                            translation_items.clone())),
                                         module_translation);
             all_stats.extend(stats);
 
@@ -1161,13 +1119,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
         args: AssertDepGraphSafe<(Arc<CodegenUnit<'tcx>>,
-                                  Arc<FxHashSet<TransItem<'tcx>>>,
-                                  Arc<ExportedSymbols>)>)
+                                  Arc<FxHashSet<TransItem<'tcx>>>)>)
         -> (Stats, ModuleTranslation)
     {
         // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
         let AssertDepGraphSafe(scx) = scx;
-        let AssertDepGraphSafe((cgu, crate_trans_items, exported_symbols)) = args;
+        let AssertDepGraphSafe((cgu, crate_trans_items)) = args;
 
         let cgu_name = cgu.name().to_string();
         let cgu_id = cgu.work_product_id();
@@ -1207,7 +1164,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu, crate_trans_items, exported_symbols);
+        let lcx = LocalCrateContext::new(scx, cgu, crate_trans_items);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
@@ -1400,7 +1357,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let time_passes = tcx.sess.time_passes();
-    let exported_symbols = tcx.exported_symbols();
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_trans_items {
         Some(ref s) => {
@@ -1424,9 +1380,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 
     let (items, inlining_map) =
         time(time_passes, "translation item collection", || {
-            collector::collect_crate_translation_items(tcx,
-                                                       &exported_symbols,
-                                                       collection_mode)
+            collector::collect_crate_translation_items(tcx, collection_mode)
     });
 
     assert_symbols_are_distinct(tcx, items.iter());
@@ -1441,8 +1395,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
         partitioning::partition(tcx,
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map,
-                                &exported_symbols)
+                                &inlining_map)
             .into_iter()
             .map(Arc::new)
             .collect::<Vec<_>>()
@@ -1510,7 +1463,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 }
 
 impl CrateInfo {
-    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CrateInfo {
+    pub fn new(tcx: TyCtxt) -> CrateInfo {
         let mut info = CrateInfo {
             panic_runtime: None,
             compiler_builtins: None,

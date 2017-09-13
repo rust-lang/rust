@@ -194,7 +194,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::Substs;
@@ -294,14 +293,13 @@ impl<'tcx> InliningMap<'tcx> {
 }
 
 pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 exported_symbols: &ExportedSymbols,
                                                  mode: TransItemCollectionMode)
                                                  -> (FxHashSet<TransItem<'tcx>>,
                                                      InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     tcx.dep_graph.with_ignore(|| {
-        let roots = collect_roots(tcx, exported_symbols, mode);
+        let roots = collect_roots(tcx, mode);
 
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FxHashSet();
@@ -323,7 +321,6 @@ pub fn collect_crate_translation_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
 fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           exported_symbols: &ExportedSymbols,
                            mode: TransItemCollectionMode)
                            -> Vec<TransItem<'tcx>> {
     debug!("Collecting roots");
@@ -333,7 +330,6 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut visitor = RootCollector {
             tcx,
             mode,
-            exported_symbols,
             output: &mut roots,
         };
 
@@ -865,7 +861,6 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    exported_symbols: &'b ExportedSymbols,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
 }
@@ -926,8 +921,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let def_id = tcx.hir.local_def_id(item.id);
 
                 if (self.mode == TransItemCollectionMode::Eager ||
-                    !tcx.is_const_fn(def_id) ||
-                    self.exported_symbols.local_exports().contains(&item.id)) &&
+                    !tcx.is_const_fn(def_id) || tcx.is_exported_symbol(def_id)) &&
                    !item_has_type_parameters(tcx, def_id) {
 
                     debug!("RootCollector: ItemFn({})",
@@ -953,7 +947,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
 
                 if (self.mode == TransItemCollectionMode::Eager ||
                     !tcx.is_const_fn(def_id) ||
-                    self.exported_symbols.local_exports().contains(&ii.id)) &&
+                    tcx.is_exported_symbol(def_id)) &&
                    !item_has_type_parameters(tcx, def_id) {
                     debug!("RootCollector: MethodImplItem({})",
                            def_id_to_string(tcx, def_id));

@@ -24,6 +24,7 @@ use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
+use rustc::util::nodemap::DefIdSet;
 
 use rustc::mir::Mir;
 
@@ -1017,7 +1018,7 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self) -> Vec<DefId> {
+    pub fn get_exported_symbols(&self) -> DefIdSet {
         self.exported_symbols
             .iter()
             .map(|&index| self.local_def_id(index))

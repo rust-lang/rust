@@ -108,7 +108,6 @@ use context::SharedCrateContext;
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
-use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::middle::trans::{Linkage, Visibility};
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
 use rustc::ty::{self, TyCtxt, InstanceDef};
@@ -212,8 +211,7 @@ const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               trans_items: I,
                               strategy: PartitioningStrategy,
-                              inlining_map: &InliningMap<'tcx>,
-                              exported_symbols: &ExportedSymbols)
+                              inlining_map: &InliningMap<'tcx>)
                               -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
@@ -221,7 +219,6 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
     let mut initial_partitioning = place_root_translation_items(tcx,
-                                                                exported_symbols,
                                                                 trans_items);
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
@@ -291,13 +288,10 @@ struct PostInliningPartitioning<'tcx> {
 }
 
 fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                             exported_symbols: &ExportedSymbols,
                                              trans_items: I)
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
-    let exported_symbols = exported_symbols.local_exports();
-
     let mut roots = FxHashSet();
     let mut codegen_units = FxHashMap();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
@@ -330,8 +324,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         TransItem::Fn(ref instance) => {
                             let visibility = match instance.def {
                                 InstanceDef::Item(def_id) => {
-                                    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-                                        if exported_symbols.contains(&node_id) {
+                                    if def_id.is_local() {
+                                        if tcx.is_exported_symbol(def_id) {
                                             Visibility::Default
                                         } else {
                                             internalization_candidates.insert(trans_item);
@@ -357,7 +351,8 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         }
                         TransItem::Static(node_id) |
                         TransItem::GlobalAsm(node_id) => {
-                            let visibility = if exported_symbols.contains(&node_id) {
+                            let def_id = tcx.hir.local_def_id(node_id);
+                            let visibility = if tcx.is_exported_symbol(def_id) {
                                 Visibility::Default
                             } else {
                                 internalization_candidates.insert(trans_item);

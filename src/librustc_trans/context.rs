@@ -14,7 +14,6 @@ use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::exported_symbols::ExportedSymbols;
 use rustc::traits;
 use debuginfo;
 use callee;
@@ -97,9 +96,6 @@ pub struct LocalCrateContext<'a, 'tcx: 'a> {
 
     /// The translation items of the whole crate.
     crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
-
-    /// Information about which symbols are exported from the crate.
-    exported_symbols: Arc<ExportedSymbols>,
 
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
@@ -354,8 +350,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
                codegen_unit: Arc<CodegenUnit<'tcx>>,
-               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
-               exported_symbols: Arc<ExportedSymbols>,)
+               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -388,7 +383,6 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                 stats: Stats::default(),
                 codegen_unit,
                 crate_trans_items,
-                exported_symbols,
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -497,10 +491,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
         &self.local().crate_trans_items
-    }
-
-    pub fn exported_symbols(&self) -> &ExportedSymbols {
-        &self.local().exported_symbols
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {
