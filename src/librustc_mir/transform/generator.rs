@@ -343,7 +343,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         dataflow::do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
                               |bd, p| &bd.mir().local_decls[p]);
 
-    let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.basic_blocks().len()));
+    let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
     ignored.visit_mir(mir);
 
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
@@ -365,7 +365,7 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let mut live_locals = storage_liveness;
 
-            // Mark locals without storage statements as always live
+            // Mark locals without storage statements as always having live storage
             live_locals.union(&ignored.0);
 
             // Locals live are live at this point only if they are used across suspension points
