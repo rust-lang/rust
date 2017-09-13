@@ -64,6 +64,7 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::rc::Rc;
+use std::sync::mpsc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -901,6 +902,14 @@ pub struct GlobalCtxt<'tcx> {
     /// error reporting, and so is lazily initialized and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<Vec<DefId>>>,
+
+    /// A general purpose channel to throw data out the back towards LLVM worker
+    /// threads.
+    ///
+    /// This is intended to only get used during the trans phase of the compiler
+    /// when satisfying the query for a particular codegen unit. Internally in
+    /// the query it'll send data along this channel to get processed later.
+    pub tx_to_llvm_workers: mpsc::Sender<Box<Any + Send>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1025,6 +1034,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
                                   crate_name: &str,
+                                  tx: mpsc::Sender<Box<Any + Send>>,
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
     {
@@ -1145,6 +1155,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: RefCell::new(FxHashSet()),
             all_traits: RefCell::new(None),
+            tx_to_llvm_workers: tx,
        }, f)
     }
 

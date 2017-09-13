@@ -79,11 +79,13 @@ use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use libc::c_uint;
+use std::any::Any;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 use std::i32;
+use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax::attr;
 use rustc::hir;
@@ -933,6 +935,7 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              incremental_hashes_map: IncrementalHashesMap,
+                             rx: mpsc::Receiver<Box<Any + Send>>,
                              output_filenames: &OutputFilenames)
                              -> OngoingCrateTranslation {
     check_for_rustc_errors_attr(tcx);
@@ -974,7 +977,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             output_filenames,
             time_graph.clone(),
             link_meta,
-            metadata);
+            metadata,
+            rx);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
 
@@ -1001,7 +1005,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         output_filenames,
         time_graph.clone(),
         link_meta,
-        metadata);
+        metadata,
+        rx);
 
     // Translate an allocator shim, if any
     //

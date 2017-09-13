@@ -39,6 +39,7 @@ use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
+use std::any::Any;
 use std::ffi::CString;
 use std::fmt;
 use std::fs;
@@ -348,7 +349,7 @@ pub struct CodegenContext {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    coordinator_send: Sender<Message>,
+    coordinator_send: Sender<Box<Any + Send>>,
     // A reference to the TimeGraph so we can register timings. None means that
     // measuring is disabled.
     time_graph: Option<TimeGraph>,
@@ -674,7 +675,8 @@ pub fn start_async_translation(tcx: TyCtxt,
                                crate_output: &OutputFilenames,
                                time_graph: Option<TimeGraph>,
                                link: LinkMeta,
-                               metadata: EncodedMetadata)
+                               metadata: EncodedMetadata,
+                               coordinator_receive: Receiver<Box<Any + Send>>)
                                -> OngoingCrateTranslation {
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
@@ -798,13 +800,12 @@ pub fn start_async_translation(tcx: TyCtxt,
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (trans_worker_send, trans_worker_receive) = channel();
-    let (coordinator_send, coordinator_receive) = channel();
 
     let coordinator_thread = start_executing_work(sess,
                                                   &crate_info,
                                                   shared_emitter,
                                                   trans_worker_send,
-                                                  coordinator_send.clone(),
+                                                  tcx.tx_to_llvm_workers.clone(),
                                                   coordinator_receive,
                                                   client,
                                                   time_graph.clone(),
@@ -824,7 +825,7 @@ pub fn start_async_translation(tcx: TyCtxt,
 
         time_graph,
         output_filenames: crate_output.clone(),
-        coordinator_send,
+        coordinator_send: tcx.tx_to_llvm_workers.clone(),
         trans_worker_receive,
         shared_emitter_main,
         future: coordinator_thread
@@ -1138,8 +1139,8 @@ fn start_executing_work(sess: &Session,
                         crate_info: &CrateInfo,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
-                        coordinator_send: Sender<Message>,
-                        coordinator_receive: Receiver<Message>,
+                        coordinator_send: Sender<Box<Any + Send>>,
+                        coordinator_receive: Receiver<Box<Any + Send>>,
                         jobserver: Client,
                         time_graph: Option<TimeGraph>,
                         exported_symbols: Arc<ExportedSymbols>)
@@ -1156,7 +1157,7 @@ fn start_executing_work(sess: &Session,
     // tokens on `rx` above which will get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver.into_helper_thread(move |token| {
-        drop(coordinator_send2.send(Message::Token(token)));
+        drop(coordinator_send2.send(Box::new(Message::Token(token))));
     }).expect("failed to spawn helper thread");
 
     let mut each_linked_rlib_for_lto = Vec::new();
@@ -1430,7 +1431,8 @@ fn start_executing_work(sess: &Session,
             // Relinquish accidentally acquired extra tokens
             tokens.truncate(running);
 
-            match coordinator_receive.recv().unwrap() {
+            let msg = coordinator_receive.recv().unwrap();
+            match *msg.downcast::<Message>().ok().unwrap() {
                 // Save the token locally and the next turn of the loop will use
                 // this to spawn a new unit of work, or it may get dropped
                 // immediately if we have no more work to spawn.
@@ -1588,7 +1590,7 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb {
-            coordinator_send: Sender<Message>,
+            coordinator_send: Sender<Box<Any + Send>>,
             result: Option<CompiledModule>,
             worker_id: usize,
         }
@@ -1599,10 +1601,10 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
                     None => Err(())
                 };
 
-                drop(self.coordinator_send.send(Message::Done {
+                drop(self.coordinator_send.send(Box::new(Message::Done {
                     result,
                     worker_id: self.worker_id,
-                }));
+                })));
             }
         }
 
@@ -1845,7 +1847,7 @@ pub struct OngoingCrateTranslation {
     allocator_module_config: ModuleConfig,
 
     time_graph: Option<TimeGraph>,
-    coordinator_send: Sender<Message>,
+    coordinator_send: Sender<Box<Any + Send>>,
     trans_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<CompiledModules>,
@@ -1931,11 +1933,11 @@ impl OngoingCrateTranslation {
                                              module_config,
                                              self.output_filenames.clone());
 
-        drop(self.coordinator_send.send(Message::TranslationDone {
+        drop(self.coordinator_send.send(Box::new(Message::TranslationDone {
             llvm_work_item,
             cost,
             is_last
-        }));
+        })));
     }
 
     pub fn submit_pre_translated_module_to_llvm(&self,

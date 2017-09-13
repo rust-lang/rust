@@ -46,6 +46,7 @@ use super::Compilation;
 
 use serialize::json;
 
+use std::any::Any;
 use std::env;
 use std::ffi::{OsString, OsStr};
 use std::fs;
@@ -53,6 +54,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
@@ -214,7 +216,7 @@ pub fn compile_input(sess: &Session,
                                     &arena,
                                     &arenas,
                                     &crate_name,
-                                    |tcx, analysis, incremental_hashes_map, result| {
+                                    |tcx, analysis, incremental_hashes_map, rx, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -242,7 +244,9 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm(tcx, incremental_hashes_map,
+            let trans = phase_4_translate_to_llvm(tcx,
+                                                  incremental_hashes_map,
+                                                  rx,
                                                   &outputs);
 
             if log_enabled!(::log::LogLevel::Info) {
@@ -914,6 +918,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             ty::CrateAnalysis,
                             IncrementalHashesMap,
+                            mpsc::Receiver<Box<Any + Send>>,
                             CompileResult) -> R
 {
     macro_rules! try_with_f {
@@ -1028,6 +1033,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
 
+    let (tx, rx) = mpsc::channel();
+
     TyCtxt::create_and_enter(sess,
                              cstore,
                              local_providers,
@@ -1039,6 +1046,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              named_region_map,
                              hir_map,
                              name,
+                             tx,
                              |tcx| {
         let incremental_hashes_map =
             time(time_passes,
@@ -1109,7 +1117,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes, "lint checking", || lint::check_crate(tcx));
 
-        return Ok(f(tcx, analysis, incremental_hashes_map, tcx.sess.compile_status()));
+        return Ok(f(tcx, analysis, incremental_hashes_map, rx, tcx.sess.compile_status()));
     })
 }
 
@@ -1117,6 +1125,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            incremental_hashes_map: IncrementalHashesMap,
+                                           rx: mpsc::Receiver<Box<Any + Send>>,
                                            output_filenames: &OutputFilenames)
                                            -> write::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -1126,9 +1135,9 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          || ::rustc::middle::dependency_format::calculate(tcx));
 
     let translation =
-        time(time_passes,
-             "translation",
-             move || trans::trans_crate(tcx, incremental_hashes_map, output_filenames));
+        time(time_passes, "translation", move || {
+            trans::trans_crate(tcx, incremental_hashes_map, rx, output_filenames)
+        });
 
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())
