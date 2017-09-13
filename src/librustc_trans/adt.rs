@@ -148,36 +148,15 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        layout::General { discr, size, align, primitive_align, .. } => {
-            // We need a representation that has:
-            // * The alignment of the most-aligned field
-            // * The size of the largest variant (rounded up to that alignment)
-            // * No alignment padding anywhere any variant has actual data
-            //   (currently matters only for enums small enough to be immediate)
-            // * The discriminant in an obvious place.
-            //
-            // So we start with the discriminant, pad it up to the alignment with
-            // more of its own type, then use alignment-sized ints to get the rest
-            // of the size.
-            let discr_ty = Type::from_integer(cx, discr);
-            let discr_size = discr.size().bytes();
-            let padded_discr_size = discr.size().abi_align(align);
-            let variant_part_size = size - padded_discr_size;
-
-            // Ensure discr_ty can fill pad evenly
-            assert_eq!(padded_discr_size.bytes() % discr_size, 0);
-            let fields = [
-                discr_ty,
-                Type::array(&discr_ty, padded_discr_size.bytes() / discr_size - 1),
-                union_fill(cx, variant_part_size, primitive_align)
-            ];
+        layout::General { size, align, .. } => {
+            let fill = union_fill(cx, size, align);
             match name {
                 None => {
-                    Type::struct_(cx, &fields, false)
+                    Type::struct_(cx, &[fill], false)
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(&fields, false);
+                    llty.set_struct_body(&[fill], false);
                     llty
                 }
             }

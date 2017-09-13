@@ -262,8 +262,7 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
                 if let Some(v) = self.variant_index {
                     adt::memory_index_to_gep(variants[v].memory_index[index] as u64)
                 } else {
-                    assert_eq!(index, 0);
-                    index as u64
+                    bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
                 }
             }
 
