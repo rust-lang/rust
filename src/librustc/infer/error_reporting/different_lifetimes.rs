@@ -173,6 +173,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             hir_map: &self.tcx.hir,
             bound_region: *br,
             found_type: None,
+            depth: 1,
         };
         nested_visitor.visit_ty(arg);
         nested_visitor.found_type
@@ -195,6 +196,7 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // The type where the anonymous lifetime appears
     // for e.g. Vec<`&u8`> and <`&u8`>
     found_type: Option<&'gcx hir::Ty>,
+    depth: u32,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
@@ -204,6 +206,21 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_ty(&mut self, arg: &'gcx hir::Ty) {
         match arg.node {
+            hir::TyBareFn(_) => {
+                self.depth += 1;
+                intravisit::walk_ty(self, arg);
+                self.depth -= 1;
+                return;
+            }
+
+            hir::TyTraitObject(ref bounds, _) => {
+                for bound in bounds {
+                    self.depth += 1;
+                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    self.depth -= 1;
+                }
+            }
+
             hir::TyRptr(ref lifetime, _) => {
                 // the lifetime of the TyRptr
                 let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
@@ -217,7 +234,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                                debruijn_index.depth,
                                anon_index,
                                br_index);
-                        if debruijn_index.depth == 1 && anon_index == br_index {
+                        if debruijn_index.depth == self.depth && anon_index == br_index {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
@@ -246,7 +263,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                         debug!("self.infcx.tcx.hir.local_def_id(id)={:?}",
                                self.infcx.tcx.hir.local_def_id(id));
                         debug!("def_id={:?}", def_id);
-                        if debruijn_index.depth == 1 &&
+                        if debruijn_index.depth == self.depth &&
                            self.infcx.tcx.hir.local_def_id(id) == def_id {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
