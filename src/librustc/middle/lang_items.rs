@@ -78,19 +78,12 @@ impl LanguageItems {
     }
 
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
-        let def_id_kinds = [
-            (self.fn_trait(), ty::ClosureKind::Fn),
-            (self.fn_mut_trait(), ty::ClosureKind::FnMut),
-            (self.fn_once_trait(), ty::ClosureKind::FnOnce),
-            ];
-
-        for &(opt_def_id, kind) in &def_id_kinds {
-            if Some(id) == opt_def_id {
-                return Some(kind);
-            }
+        match Some(id) {
+            x if x == self.fn_trait() => Some(ty::ClosureKind::Fn),
+            x if x == self.fn_mut_trait() => Some(ty::ClosureKind::FnMut),
+            x if x == self.fn_once_trait() =>  Some(ty::ClosureKind::FnOnce),
+            _ => None
         }
-
-        None
     }
 
     $(
