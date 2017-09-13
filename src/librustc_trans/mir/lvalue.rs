@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, Layout, LayoutOf, Size};
+use rustc::ty::layout::{self, Align, Layout, LayoutOf};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -205,37 +205,55 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 l = l.for_variant(variant_index)
             }
         }
-        let fty = l.field(ccx, ix).ty;
+        let field = l.field(ccx, ix);
+        let offset = l.fields.offset(ix).bytes();
 
         let alignment = self.alignment | Alignment::from(&*l);
 
         // Handle all the non-aggregate cases first.
         match *l {
             layout::UntaggedUnion { .. } => {
-                let ty = ccx.llvm_type_of(fty);
+                let ty = ccx.llvm_type_of(field.ty);
                 return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
+                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty, alignment);
             }
-            layout::General { .. } if l.variant_index.is_none() => {
-                let ty = ccx.llvm_type_of(fty);
+            // Discriminant field of enums.
+            layout::General { .. } |
+            layout::RawNullablePointer { .. } |
+            layout::StructWrappedNullablePointer { .. } if l.variant_index.is_none() => {
+                let ty = ccx.llvm_type_of(field.ty);
+                let size = field.size(ccx).bytes();
+
+                // If the discriminant is not on a multiple of the primitive's size,
+                // we need to go through i8*. Also assume the worst alignment.
+                if offset % size != 0 {
+                    let byte_ptr = bcx.pointercast(self.llval, Type::i8p(ccx));
+                    let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(ccx, offset)]);
+                    let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
+                    return LvalueRef::new_sized(
+                        bcx.pointercast(byte_ptr, ty.ptr_to()), field.ty, byte_align);
+                }
+
+                let discr_ptr = bcx.pointercast(self.llval, ty.ptr_to());
                 return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
+                    bcx.inbounds_gep(discr_ptr, &[C_usize(ccx, offset / size)]),
+                    field.ty, alignment);
             }
             layout::RawNullablePointer { nndiscr, .. } |
             layout::StructWrappedNullablePointer { nndiscr,  .. }
                 if l.variant_index.unwrap() as u64 != nndiscr => {
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.d., Result of Either with (), as one side.)
-                let ty = ccx.llvm_type_of(fty);
-                assert_eq!(ccx.size_of(fty).bytes(), 0);
+                let ty = ccx.llvm_type_of(field.ty);
+                assert_eq!(field.size(ccx).bytes(), 0);
                 return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), fty,
+                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty,
                     Alignment::Packed(Align::from_bytes(1, 1).unwrap()));
             }
             layout::RawNullablePointer { .. } => {
-                let ty = ccx.llvm_type_of(fty);
+                let ty = ccx.llvm_type_of(field.ty);
                 return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), fty, alignment);
+                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty, alignment);
             }
             _ => {}
         }
@@ -243,12 +261,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let simple = || {
             LvalueRef {
                 llval: bcx.struct_gep(self.llval, l.llvm_field_index(ix)),
-                llextra: if !ccx.shared().type_has_metadata(fty) {
-                    ptr::null_mut()
-                } else {
+                llextra: if ccx.shared().type_has_metadata(field.ty) {
                     self.llextra
+                } else {
+                    ptr::null_mut()
                 },
-                ty: LvalueTy::from_ty(fty),
+                ty: LvalueTy::from_ty(field.ty),
                 alignment,
             }
         };
@@ -264,13 +282,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         // Simple case - we can just GEP the field
         //   * Packed struct - There is no alignment padding
         //   * Field is sized - pointer is properly aligned already
-        if is_packed || ccx.shared().type_is_sized(fty) {
+        if is_packed || !field.is_unsized() {
             return simple();
         }
 
         // If the type of the last field is [T], str or a foreign type, then we don't need to do
         // any adjusments
-        match fty.sty {
+        match field.ty.sty {
             ty::TySlice(..) | ty::TyStr | ty::TyForeign(..) => return simple(),
             _ => ()
         }
@@ -299,12 +317,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let meta = self.llextra;
 
-
-        let offset = l.fields.offset(ix).bytes();
         let unaligned_offset = C_usize(ccx, offset);
 
         // Get the alignment of the field
-        let (_, align) = glue::size_and_align_of_dst(bcx, fty, meta);
+        let (_, align) = glue::size_and_align_of_dst(bcx, field.ty, meta);
 
         // Bump the unaligned offset up to the appropriate alignment using the
         // following expression:
@@ -323,37 +339,15 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
-        let ll_fty = ccx.llvm_type_of(fty);
+        let ll_fty = ccx.llvm_type_of(field.ty);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         LvalueRef {
             llval: bcx.pointercast(byte_ptr, ll_fty.ptr_to()),
             llextra: self.llextra,
-            ty: LvalueTy::from_ty(fty),
+            ty: LvalueTy::from_ty(field.ty),
             alignment,
         }
-    }
-
-    // Return a pointer to the discriminant, given its type and offset.
-    fn gepi_discr_at_offset(self, bcx: &Builder,
-                            discr: ty::layout::Primitive,
-                            offset: Size)
-                            -> (ValueRef, Alignment) {
-        let size = discr.size(bcx.ccx);
-        let ptr_ty = Type::from_primitive(bcx.ccx, discr).ptr_to();
-
-        // If the discriminant is not on a multiple of the primitive's size,
-        // we need to go through i8*. Also assume the worst alignment.
-        if offset.bytes() % size.bytes() != 0 {
-            let byte_ptr = bcx.pointercast(self.llval, Type::i8p(bcx.ccx));
-            let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(bcx.ccx, offset.bytes())]);
-            let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
-            return (bcx.pointercast(byte_ptr, ptr_ty), byte_align);
-        }
-
-        let discr_ptr = bcx.pointercast(self.llval, ptr_ty);
-        (bcx.inbounds_gep(discr_ptr, &[C_usize(bcx.ccx, offset.bytes() / size.bytes())]),
-         self.alignment)
     }
 
     /// Helper for cases where the discriminant is simply loaded.
@@ -394,16 +388,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 self.load_discr(bcx, discr, ptr.llval, 0, variants.len() as u64 - 1)
             }
             layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
-            layout::RawNullablePointer { nndiscr, discr } |
-            layout::StructWrappedNullablePointer { nndiscr, discr, .. } => {
-                let discr_offset = match *l {
-                    layout::StructWrappedNullablePointer { discr_offset, .. } => discr_offset,
-                    _ => Size::from_bytes(0),
-                };
-                let (lldiscrptr, alignment) = self.gepi_discr_at_offset(bcx, discr, discr_offset);
-                let lldiscr = bcx.load(lldiscrptr, alignment.non_abi());
+            layout::RawNullablePointer { nndiscr, .. } |
+            layout::StructWrappedNullablePointer { nndiscr, .. } => {
+                let ptr = self.project_field(bcx, 0);
+                let lldiscr = bcx.load(ptr.llval, ptr.alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                bcx.icmp(cmp, lldiscr, C_null(Type::from_primitive(bcx.ccx, discr)))
+                bcx.icmp(cmp, lldiscr, C_null(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx()))))
             },
             _ => bug!("{} is not an enum", l.ty)
         };
@@ -434,14 +424,14 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             | layout::Vector { .. } => {
                 assert_eq!(to, 0);
             }
-            layout::RawNullablePointer { nndiscr, discr, .. } |
-            layout::StructWrappedNullablePointer { nndiscr, discr, .. } => {
+            layout::RawNullablePointer { nndiscr, .. } |
+            layout::StructWrappedNullablePointer { nndiscr, .. } => {
                 if to != nndiscr {
-                    let (use_memset, discr_offset) = match *l {
-                        layout::StructWrappedNullablePointer { discr_offset, .. } => {
-                            (target_sets_discr_via_memset(bcx), discr_offset)
+                    let use_memset = match *l {
+                        layout::StructWrappedNullablePointer { .. } => {
+                            target_sets_discr_via_memset(bcx)
                         }
-                        _ => (false, Size::from_bytes(0)),
+                        _ => false,
                     };
                     if use_memset {
                         // Issue #34427: As workaround for LLVM bug on
@@ -454,10 +444,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                         let align = C_u32(bcx.ccx, align.abi() as u32);
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
                     } else {
-                        let (lldiscrptr, alignment) =
-                            self.gepi_discr_at_offset(bcx, discr, discr_offset);
-                        bcx.store(C_null(Type::from_primitive(bcx.ccx, discr)),
-                            lldiscrptr, alignment.non_abi());
+                        let ptr = self.project_field(bcx, 0);
+                        bcx.store(C_null(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx()))),
+                            ptr.llval, ptr.alignment.non_abi());
                     }
                 }
             }
