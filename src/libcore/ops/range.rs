@@ -417,7 +417,8 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
 /// ```
 ///
-/// [`BTreeMap::range`]: ../std/collections/struct.BTreeMap.html#method.range
+/// [`BTreeMap::range`]:
+/// https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.range
 #[stable(feature = "collections_bound", since = "1.17.0")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
