@@ -3,6 +3,7 @@
     rustc_private,
     conservative_impl_trait,
     never_type,
+    catch_expr,
 )]
 
 // From rustc.

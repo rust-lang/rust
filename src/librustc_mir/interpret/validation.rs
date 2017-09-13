@@ -1,4 +1,4 @@
-use rustc::hir::Mutability;
+use rustc::hir::{self, Mutability};
 use rustc::hir::Mutability::*;
 use rustc::mir::{self, ValidationOp, ValidationOperand};
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
@@ -7,11 +7,12 @@ use rustc::traits;
 use rustc::infer::InferCtxt;
 use rustc::traits::Reveal;
 use rustc::middle::region;
+use rustc_data_structures::indexed_vec::Idx;
 
 use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
-            Lvalue, LvalueExtra, Machine};
+            Lvalue, LvalueExtra, Machine, ValTy};
 
-pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, Lvalue>;
+pub type ValidationQuery<'tcx> = ValidationOperand<'tcx, (AbsLvalue<'tcx>, Lvalue)>;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ValidationMode {
@@ -31,8 +32,77 @@ impl ValidationMode {
     }
 }
 
-// Validity checks
+// Abstract lvalues
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AbsLvalue<'tcx> {
+    Local(mir::Local),
+    Static(hir::def_id::DefId),
+    Projection(Box<AbsLvalueProjection<'tcx>>),
+}
+
+type AbsLvalueProjection<'tcx> = mir::Projection<'tcx, AbsLvalue<'tcx>, u64, ()>;
+type AbsLvalueElem<'tcx> = mir::ProjectionElem<'tcx, u64, ()>;
+
+impl<'tcx> AbsLvalue<'tcx> {
+    pub fn field(self, f: mir::Field) -> AbsLvalue<'tcx> {
+        self.elem(mir::ProjectionElem::Field(f, ()))
+    }
+
+    pub fn deref(self) -> AbsLvalue<'tcx> {
+        self.elem(mir::ProjectionElem::Deref)
+    }
+
+    pub fn downcast(self, adt_def: &'tcx ty::AdtDef, variant_index: usize) -> AbsLvalue<'tcx> {
+        self.elem(mir::ProjectionElem::Downcast(adt_def, variant_index))
+    }
+
+    pub fn index(self, index: u64) -> AbsLvalue<'tcx> {
+        self.elem(mir::ProjectionElem::Index(index))
+    }
+
+    fn elem(self, elem: AbsLvalueElem<'tcx>) -> AbsLvalue<'tcx> {
+        AbsLvalue::Projection(Box::new(AbsLvalueProjection {
+            base: self,
+            elem,
+        }))
+    }
+}
+
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+    fn abstract_lvalue_projection(&self, proj: &mir::LvalueProjection<'tcx>) -> EvalResult<'tcx, AbsLvalueProjection<'tcx>> {
+        use self::mir::ProjectionElem::*;
+
+        let elem = match proj.elem {
+            Deref => Deref,
+            Field(f, _) => Field(f, ()),
+            Index(v) => {
+                let value = self.frame().get_local(v)?;
+                let ty = self.tcx.types.usize;
+                let n = self.value_to_primval(ValTy { value, ty })?.to_u64()?;
+                Index(n)
+            },
+            ConstantIndex { offset, min_length, from_end } =>
+                ConstantIndex { offset, min_length, from_end },
+            Subslice { from, to } =>
+                Subslice { from, to },
+            Downcast(adt, sz) => Downcast(adt, sz),
+        };
+        Ok(AbsLvalueProjection {
+            base: self.abstract_lvalue(&proj.base)?,
+            elem
+        })
+    }
+
+    fn abstract_lvalue(&self, lval: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, AbsLvalue<'tcx>> {
+        Ok(match lval {
+            &mir::Lvalue::Local(l) => AbsLvalue::Local(l),
+            &mir::Lvalue::Static(ref s) => AbsLvalue::Static(s.def_id),
+            &mir::Lvalue::Projection(ref p) =>
+                AbsLvalue::Projection(Box::new(self.abstract_lvalue_projection(&*p)?)),
+        })
+    }
+
+    // Validity checks
     pub(crate) fn validation_op(
         &mut self,
         op: ValidationOp,
@@ -56,8 +126,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             use regex::Regex;
             lazy_static! {
                 static ref RE: Regex = Regex::new("^(\
-                    (std|alloc::heap::__core)::mem::uninitialized::|\
-                    (std|alloc::heap::__core)::mem::forget::|\
+                    (std|alloc::heap::__core)::mem::(uninitialized|forget)::|\
                     <(std|alloc)::heap::Heap as (std::heap|alloc::allocator)::Alloc>::|\
                     <(std|alloc::heap::__core)::mem::ManuallyDrop<T>><.*>::new$|\
                     <(std|alloc::heap::__core)::mem::ManuallyDrop<T> as std::ops::DerefMut><.*>::deref_mut$|\
@@ -79,8 +148,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // We need to monomorphize ty *without* erasing lifetimes
         let ty = operand.ty.subst(self.tcx, self.substs());
         let lval = self.eval_lvalue(&operand.lval)?;
+        let abs_lval = self.abstract_lvalue(&operand.lval)?;
         let query = ValidationQuery {
-            lval,
+            lval: (abs_lval, lval),
             ty,
             re: operand.re,
             mutbl: operand.mutbl,
@@ -264,12 +334,13 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {
         // TODO: Maybe take visibility/privacy into account.
-        for (idx, field) in variant.fields.iter().enumerate() {
-            let field_ty = field.ty(self.tcx, subst);
-            let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
+        for (idx, field_def) in variant.fields.iter().enumerate() {
+            let field_ty = field_def.ty(self.tcx, subst);
+            let field = mir::Field::new(idx);
+            let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
             self.validate(
                 ValidationQuery {
-                    lval: field_lvalue,
+                    lval: (query.lval.0.clone().field(field), field_lvalue),
                     ty: field_ty,
                     ..query
                 },
@@ -282,6 +353,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     fn validate_ptr(
         &mut self,
         val: Value,
+        abs_lval: AbsLvalue<'tcx>,
         pointee_ty: Ty<'tcx>,
         re: Option<region::Scope>,
         mutbl: Mutability,
@@ -296,7 +368,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let pointee_lvalue = self.val_to_lvalue(val, pointee_ty)?;
         self.validate(
             ValidationQuery {
-                lval: pointee_lvalue,
+                lval: (abs_lval.deref(), pointee_lvalue),
                 ty: pointee_ty,
                 re,
                 mutbl,
@@ -306,23 +378,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     /// Validate the lvalue at the given type. If `acquire` is false, just do a release of all write locks
-    #[inline]
-    fn validate(&mut self, query: ValidationQuery<'tcx>, mode: ValidationMode) -> EvalResult<'tcx> {
-        match self.try_validate(query, mode) {
-            // ReleaseUntil(None) of an uninitalized variable is a NOP.  This is needed because
-            // we have to release the return value of a function; due to destination-passing-style
-            // the callee may directly write there.
-            // TODO: Ideally we would know whether the destination is already initialized, and only
-            // release if it is.  But of course that can't even always be statically determined.
-            Err(EvalError { kind: EvalErrorKind::ReadUndefBytes, .. })
-                if mode == ValidationMode::ReleaseUntil(None) => {
-                return Ok(());
-            }
-            res => res,
-        }
-    }
-
-    fn try_validate(
+    fn validate(
         &mut self,
         mut query: ValidationQuery<'tcx>,
         mode: ValidationMode,
@@ -345,7 +401,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
         // StorageDead before EndRegion due to https://github.com/rust-lang/rust/issues/43481).
         // TODO: We should rather fix the MIR.
-        match query.lval {
+        match query.lval.1 {
             Lvalue::Local { frame, local } => {
                 let res = self.stack[frame].get_local(local);
                 match (res, mode) {
@@ -380,7 +436,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             // Tracking the same state for locals not backed by memory would just duplicate too
             // much machinery.
             // FIXME: We ignore alignment.
-            let (ptr, extra) = self.force_allocation(query.lval)?.to_ptr_extra_aligned();
+            let (ptr, extra) = self.force_allocation(query.lval.1)?.to_ptr_extra_aligned();
             // Determine the size
             // FIXME: Can we reuse size_and_align_of_dst for Lvalues?
             let len = match self.type_size(query.ty)? {
@@ -431,6 +487,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 self.memory.recover_write_lock(
                                     ptr,
                                     len,
+                                    &query.lval.0,
                                     query.re,
                                     ending_ce,
                                 )?
@@ -439,7 +496,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                                 self.memory.suspend_write_lock(
                                     ptr,
                                     len,
-                                    query.re,
+                                    &query.lval.0,
                                     suspended_ce,
                                 )?
                             }
@@ -449,206 +506,225 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         }
 
-        match query.ty.sty {
-            TyInt(_) | TyUint(_) | TyRawPtr(_) => {
-                // TODO: Make sure these are not undef.
-                // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
-                Ok(())
-            }
-            TyBool | TyFloat(_) | TyChar | TyStr => {
-                // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
-                Ok(())
-            }
-            TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
-            TyRef(region,
-                  ty::TypeAndMut {
-                      ty: pointee_ty,
-                      mutbl,
-                  }) => {
-                let val = self.read_lvalue(query.lval)?;
-                // Sharing restricts our context
-                if mutbl == MutImmutable {
-                    query.mutbl = MutImmutable;
+        let res = do catch {
+            match query.ty.sty {
+                TyInt(_) | TyUint(_) | TyRawPtr(_) => {
+                    // TODO: Make sure these are not undef.
+                    // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
+                    Ok(())
                 }
-                // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
-                // we record the region of this borrow to the context.
-                if query.re == None {
-                    match *region {
-                        ReScope(scope) => query.re = Some(scope),
-                        // It is possible for us to encounter erased lifetimes here because the lifetimes in
-                        // this functions' Subst will be erased.
-                        _ => {}
+                TyBool | TyFloat(_) | TyChar | TyStr => {
+                    // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
+                    Ok(())
+                }
+                TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
+                TyRef(region,
+                    ty::TypeAndMut {
+                        ty: pointee_ty,
+                        mutbl,
+                    }) => {
+                    let val = self.read_lvalue(query.lval.1)?;
+                    // Sharing restricts our context
+                    if mutbl == MutImmutable {
+                        query.mutbl = MutImmutable;
                     }
-                }
-                self.validate_ptr(val, pointee_ty, query.re, query.mutbl, mode)
-            }
-            TyAdt(adt, _) if adt.is_box() => {
-                let val = self.read_lvalue(query.lval)?;
-                self.validate_ptr(val, query.ty.boxed_ty(), query.re, query.mutbl, mode)
-            }
-            TyFnPtr(_sig) => {
-                let ptr = self.read_lvalue(query.lval)?
-                    .into_ptr(&self.memory)?
-                    .to_ptr()?;
-                self.memory.get_fn(ptr)?;
-                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
-                Ok(())
-            }
-            TyFnDef(..) => {
-                // This is a zero-sized type with all relevant data sitting in the type.
-                // There is nothing to validate.
-                Ok(())
-            }
-
-            // Compound types
-            TySlice(elem_ty) => {
-                let len = match query.lval {
-                    Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
-                    _ => {
-                        bug!(
-                            "acquire_valid of a TySlice given non-slice lvalue: {:?}",
-                            query.lval
-                        )
+                    // Inner lifetimes *outlive* outer ones, so only if we have no lifetime restriction yet,
+                    // we record the region of this borrow to the context.
+                    if query.re == None {
+                        match *region {
+                            ReScope(scope) => query.re = Some(scope),
+                            // It is possible for us to encounter erased lifetimes here because the lifetimes in
+                            // this functions' Subst will be erased.
+                            _ => {}
+                        }
                     }
-                };
-                for i in 0..len {
-                    let inner_lvalue = self.lvalue_index(query.lval, query.ty, i)?;
-                    self.validate(
-                        ValidationQuery {
-                            lval: inner_lvalue,
-                            ty: elem_ty,
-                            ..query
-                        },
-                        mode,
-                    )?;
+                    self.validate_ptr(val, query.lval.0, pointee_ty, query.re, query.mutbl, mode)
                 }
-                Ok(())
-            }
-            TyArray(elem_ty, len) => {
-                let len = len.val.to_const_int().unwrap().to_u64().unwrap();
-                for i in 0..len {
-                    let inner_lvalue = self.lvalue_index(query.lval, query.ty, i as u64)?;
-                    self.validate(
-                        ValidationQuery {
-                            lval: inner_lvalue,
-                            ty: elem_ty,
-                            ..query
-                        },
-                        mode,
-                    )?;
+                TyAdt(adt, _) if adt.is_box() => {
+                    let val = self.read_lvalue(query.lval.1)?;
+                    self.validate_ptr(val, query.lval.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
                 }
-                Ok(())
-            }
-            TyDynamic(_data, _region) => {
-                // Check that this is a valid vtable
-                let vtable = match query.lval {
-                    Lvalue::Ptr { extra: LvalueExtra::Vtable(vtable), .. } => vtable,
-                    _ => {
-                        bug!(
-                            "acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}",
-                            query.lval
-                        )
-                    }
-                };
-                self.read_size_and_align_from_vtable(vtable)?;
-                // TODO: Check that the vtable contains all the function pointers we expect it to have.
-                // Trait objects cannot have any operations performed
-                // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
-                // contain an UnsafeCell.  If we call functions to get access to data, we will validate
-                // their return values.  So, it doesn't seem like there's anything else to do.
-                Ok(())
-            }
-            TyAdt(adt, subst) => {
-                if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
-                    query.mutbl == MutImmutable
-                {
-                    // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
-                    return Ok(());
+                TyFnPtr(_sig) => {
+                    let ptr = self.read_lvalue(query.lval.1)?
+                        .into_ptr(&self.memory)?
+                        .to_ptr()?;
+                    self.memory.get_fn(ptr)?;
+                    // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                    Ok(())
+                }
+                TyFnDef(..) => {
+                    // This is a zero-sized type with all relevant data sitting in the type.
+                    // There is nothing to validate.
+                    Ok(())
                 }
 
-                match adt.adt_kind() {
-                    AdtKind::Enum => {
-                        // TODO: Can we get the discriminant without forcing an allocation?
-                        let ptr = self.force_allocation(query.lval)?.to_ptr()?;
-                        let discr = self.read_discriminant_value(ptr, query.ty)?;
-
-                        // Get variant index for discriminant
-                        let variant_idx = adt.discriminants(self.tcx).position(|variant_discr| {
-                            variant_discr.to_u128_unchecked() == discr
-                        });
-                        let variant_idx = match variant_idx {
-                            Some(val) => val,
-                            None => return err!(InvalidDiscriminant),
-                        };
-                        let variant = &adt.variants[variant_idx];
-
-                        if variant.fields.len() > 0 {
-                            // Downcast to this variant, if needed
-                            let lval = if adt.variants.len() > 1 {
-                                self.eval_lvalue_projection(
-                                    query.lval,
-                                    query.ty,
-                                    &mir::ProjectionElem::Downcast(adt, variant_idx),
-                                )?
-                            } else {
+                // Compound types
+                TySlice(elem_ty) => {
+                    let len = match query.lval.1 {
+                        Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
+                        _ => {
+                            bug!(
+                                "acquire_valid of a TySlice given non-slice lvalue: {:?}",
                                 query.lval
-                            };
-
-                            // Recursively validate the fields
-                            self.validate_variant(
-                                ValidationQuery { lval, ..query },
-                                variant,
-                                subst,
-                                mode,
                             )
-                        } else {
-                            // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
+                        }
+                    };
+                    for i in 0..len {
+                        let inner_lvalue = self.lvalue_index(query.lval.1, query.ty, i)?;
+                        self.validate(
+                            ValidationQuery {
+                                lval: (query.lval.0.clone().index(i), inner_lvalue),
+                                ty: elem_ty,
+                                ..query
+                            },
+                            mode,
+                        )?;
+                    }
+                    Ok(())
+                }
+                TyArray(elem_ty, len) => {
+                    let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+                    for i in 0..len {
+                        let inner_lvalue = self.lvalue_index(query.lval.1, query.ty, i as u64)?;
+                        self.validate(
+                            ValidationQuery {
+                                lval: (query.lval.0.clone().index(i as u64), inner_lvalue),
+                                ty: elem_ty,
+                                ..query
+                            },
+                            mode,
+                        )?;
+                    }
+                    Ok(())
+                }
+                TyDynamic(_data, _region) => {
+                    // Check that this is a valid vtable
+                    let vtable = match query.lval.1 {
+                        Lvalue::Ptr { extra: LvalueExtra::Vtable(vtable), .. } => vtable,
+                        _ => {
+                            bug!(
+                                "acquire_valid of a TyDynamic given non-trait-object lvalue: {:?}",
+                                query.lval
+                            )
+                        }
+                    };
+                    self.read_size_and_align_from_vtable(vtable)?;
+                    // TODO: Check that the vtable contains all the function pointers we expect it to have.
+                    // Trait objects cannot have any operations performed
+                    // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
+                    // contain an UnsafeCell.  If we call functions to get access to data, we will validate
+                    // their return values.  So, it doesn't seem like there's anything else to do.
+                    Ok(())
+                }
+                TyAdt(adt, subst) => {
+                    if Some(adt.did) == self.tcx.lang_items().unsafe_cell_type() &&
+                        query.mutbl == MutImmutable
+                    {
+                        // No locks for shared unsafe cells.  Also no other validation, the only field is private anyway.
+                        return Ok(());
+                    }
+
+                    match adt.adt_kind() {
+                        AdtKind::Enum => {
+                            // TODO: Can we get the discriminant without forcing an allocation?
+                            let ptr = self.force_allocation(query.lval.1)?.to_ptr()?;
+                            let discr = self.read_discriminant_value(ptr, query.ty)?;
+
+                            // Get variant index for discriminant
+                            let variant_idx = adt.discriminants(self.tcx).position(|variant_discr| {
+                                variant_discr.to_u128_unchecked() == discr
+                            });
+                            let variant_idx = match variant_idx {
+                                Some(val) => val,
+                                None => return err!(InvalidDiscriminant),
+                            };
+                            let variant = &adt.variants[variant_idx];
+
+                            if variant.fields.len() > 0 {
+                                // Downcast to this variant, if needed
+                                let lval = if adt.variants.len() > 1 {
+                                    (
+                                        query.lval.0.downcast(adt, variant_idx),
+                                        self.eval_lvalue_projection(
+                                            query.lval.1,
+                                            query.ty,
+                                            &mir::ProjectionElem::Downcast(adt, variant_idx),
+                                        )?,
+                                    )
+                                } else {
+                                    query.lval
+                                };
+
+                                // Recursively validate the fields
+                                self.validate_variant(
+                                    ValidationQuery { lval, ..query },
+                                    variant,
+                                    subst,
+                                    mode,
+                                )
+                            } else {
+                                // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
+                                Ok(())
+                            }
+                        }
+                        AdtKind::Struct => {
+                            self.validate_variant(query, adt.struct_variant(), subst, mode)
+                        }
+                        AdtKind::Union => {
+                            // No guarantees are provided for union types.
+                            // TODO: Make sure that all access to union fields is unsafe; otherwise, we may have some checking to do (but what exactly?)
                             Ok(())
                         }
                     }
-                    AdtKind::Struct => {
-                        self.validate_variant(query, adt.struct_variant(), subst, mode)
+                }
+                TyTuple(ref types, _) => {
+                    for (idx, field_ty) in types.iter().enumerate() {
+                        let field = mir::Field::new(idx);
+                        let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
+                        self.validate(
+                            ValidationQuery {
+                                lval: (query.lval.0.clone().field(field), field_lvalue),
+                                ty: field_ty,
+                                ..query
+                            },
+                            mode,
+                        )?;
                     }
-                    AdtKind::Union => {
-                        // No guarantees are provided for union types.
-                        // TODO: Make sure that all access to union fields is unsafe; otherwise, we may have some checking to do (but what exactly?)
-                        Ok(())
+                    Ok(())
+                }
+                TyClosure(def_id, ref closure_substs) => {
+                    for (idx, field_ty) in closure_substs.upvar_tys(def_id, self.tcx).enumerate() {
+                        let field = mir::Field::new(idx);
+                        let field_lvalue = self.lvalue_field(query.lval.1, field, query.ty, field_ty)?;
+                        self.validate(
+                            ValidationQuery {
+                                lval: (query.lval.0.clone().field(field), field_lvalue),
+                                ty: field_ty,
+                                ..query
+                            },
+                            mode,
+                        )?;
                     }
+                    // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
+                    // Is there other things we can/should check?  Like vtable pointers?
+                    Ok(())
                 }
+                // FIXME: generators aren't validated right now
+                TyGenerator(..) => Ok(()),
+                _ => bug!("We already established that this is a type we support. ({})", query.ty),
             }
-            TyTuple(ref types, _) => {
-                for (idx, field_ty) in types.iter().enumerate() {
-                    let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
-                    self.validate(
-                        ValidationQuery {
-                            lval: field_lvalue,
-                            ty: field_ty,
-                            ..query
-                        },
-                        mode,
-                    )?;
-                }
-                Ok(())
+        };
+        match res {
+            // ReleaseUntil(None) of an uninitalized variable is a NOP.  This is needed because
+            // we have to release the return value of a function; due to destination-passing-style
+            // the callee may directly write there.
+            // TODO: Ideally we would know whether the destination is already initialized, and only
+            // release if it is.  But of course that can't even always be statically determined.
+            Err(EvalError { kind: EvalErrorKind::ReadUndefBytes, .. })
+                if mode == ValidationMode::ReleaseUntil(None) => {
+                return Ok(());
             }
-            TyClosure(def_id, ref closure_substs) => {
-                for (idx, field_ty) in closure_substs.upvar_tys(def_id, self.tcx).enumerate() {
-                    let field_lvalue = self.lvalue_field(query.lval, idx, query.ty, field_ty)?;
-                    self.validate(
-                        ValidationQuery {
-                            lval: field_lvalue,
-                            ty: field_ty,
-                            ..query
-                        },
-                        mode,
-                    )?;
-                }
-                // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
-                // Is there other things we can/should check?  Like vtable pointers?
-                Ok(())
-            }
-            // FIXME: generators aren't validated right now
-            TyGenerator(..) => Ok(()),
-            _ => bug!("We already established that this is a type we support. ({})", query.ty),
+            res => res,
         }
     }
 }

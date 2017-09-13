@@ -39,4 +39,4 @@ pub use self::const_eval::{eval_body_as_integer, eval_body_as_primval};
 
 pub use self::machine::Machine;
 
-pub use self::validation::ValidationQuery;
+pub use self::validation::{ValidationQuery, AbsLvalue};

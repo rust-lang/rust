@@ -218,12 +218,14 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn lvalue_field(
         &mut self,
         base: Lvalue,
-        field_index: usize,
+        field: mir::Field,
         base_ty: Ty<'tcx>,
         field_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Lvalue> {
-        let base_layout = self.type_layout(base_ty)?;
         use rustc::ty::layout::Layout::*;
+
+        let base_layout = self.type_layout(base_ty)?;
+        let field_index = field.index();
         let (offset, packed) = match *base_layout {
             Univariant { ref variant, .. } => (variant.offsets[field_index], variant.packed),
 
@@ -405,7 +407,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match *proj_elem {
             Field(field, field_ty) => {
-                return self.lvalue_field(base, field.index(), base_ty, field_ty);
+                return self.lvalue_field(base, field, base_ty, field_ty);
             }
 
             Downcast(_, variant) => {
