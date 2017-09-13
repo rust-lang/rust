@@ -1,5 +1,6 @@
 use core::num::Wrapping;
 
+use int::Int;
 use float::Float;
 
 /// Returns `a + b`
@@ -7,8 +8,8 @@ macro_rules! add {
     ($a:expr, $b:expr, $ty:ty) => ({
         let a = $a;
         let b = $b;
-        let one = Wrapping(1 as <$ty as Float>::Int);
-        let zero = Wrapping(0 as <$ty as Float>::Int);
+        let one = Wrapping(<$ty as Float>::Int::ONE);
+        let zero = Wrapping(<$ty as Float>::Int::ZERO);
 
         let bits =             Wrapping(<$ty>::BITS as <$ty as Float>::Int);
         let significand_bits = Wrapping(<$ty>::SIGNIFICAND_BITS as <$ty as Float>::Int);
