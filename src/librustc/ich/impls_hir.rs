@@ -245,6 +245,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::Ty {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty {
                 id: _,
+                hir_id: _,
                 ref node,
                 ref span,
             } = *self;
