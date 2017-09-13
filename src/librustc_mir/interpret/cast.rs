@@ -60,14 +60,12 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             TyUint(UintTy::U128) => Ok(PrimVal::Bytes(v)),
 
             TyInt(IntTy::Is) => {
-                let int_ty = self.tcx.sess.target.int_type;
-                let ty = self.tcx.mk_mach_int(int_ty);
+                let ty = self.tcx.types.isize;
                 self.cast_from_int(v, ty, negative)
             }
 
             TyUint(UintTy::Us) => {
-                let uint_ty = self.tcx.sess.target.uint_type;
-                let ty = self.tcx.mk_mach_uint(uint_ty);
+                let ty = self.tcx.types.usize;
                 self.cast_from_int(v, ty, negative)
             }
 

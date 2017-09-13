@@ -245,12 +245,8 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
 
             Variant(_) => unimplemented!(),
-            Struct(_) => unimplemented!(),
-            Tuple(_) => unimplemented!(),
             // function items are zero sized and thus have no readable value
             Function(..) => PrimVal::Undef,
-            Array(_) => unimplemented!(),
-            Repeat(_, _) => unimplemented!(),
         };
 
         Ok(Value::ByVal(primval))
@@ -817,7 +813,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n as u64),
+                    ty::TyArray(elem_ty, n) => (elem_ty, n.val.to_const_int().unwrap().to_u64().unwrap()),
                     _ => {
                         bug!(
                             "tried to assign array-repeat to non-array type {:?}",
@@ -1920,7 +1916,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let ptr = src.into_ptr(&self.memory)?;
                 // u64 cast is from usize to u64, which is always good
                 let valty = ValTy {
-                    value: ptr.to_value_with_len(length as u64),
+                    value: ptr.to_value_with_len(length.val.to_const_int().unwrap().to_u64().unwrap() ),
                     ty: dest_ty,
                 };
                 self.write_value(valty, dest)
