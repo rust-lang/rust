@@ -429,7 +429,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             type_metadata: type_metadata(cx,
                 cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
                 syntax_pos::DUMMY_SP),
-            offset: layout.field_offset(cx, 0),
+            offset: layout.fields.offset(0),
             size: data_ptr_field.size(cx),
             align: data_ptr_field.align(cx),
             flags: DIFlags::FlagArtificial,
@@ -437,7 +437,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         MemberDescription {
             name: "vtable".to_string(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
-            offset: layout.field_offset(cx, 1),
+            offset: layout.fields.offset(1),
             size: vtable_field.size(cx),
             align: vtable_field.align(cx),
             flags: DIFlags::FlagArtificial,
@@ -1321,8 +1321,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                 layout: FullLayout<'tcx>,
                                                 offset: Size,
                                                 size: Size) {
-                    for i in 0..layout.field_count() {
-                        let field_offset = layout.field_offset(ccx, i);
+                    for i in 0..layout.fields.count() {
+                        let field_offset = layout.fields.offset(i);
                         if field_offset > offset {
                             continue;
                         }
@@ -1414,7 +1414,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     let layout = layout.for_variant(variant_index);
-    let mut field_tys = (0..layout.field_count()).map(|i| {
+    let mut field_tys = (0..layout.fields.count()).map(|i| {
         layout.field(cx, i).ty
     }).collect::<Vec<_>>();
 

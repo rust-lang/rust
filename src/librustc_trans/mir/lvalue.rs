@@ -295,7 +295,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let meta = self.llextra;
 
 
-        let offset = l.field_offset(ccx, ix).bytes();
+        let offset = l.fields.offset(ix).bytes();
         let unaligned_offset = C_usize(ccx, offset);
 
         // Get the alignment of the field

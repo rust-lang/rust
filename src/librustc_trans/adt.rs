@@ -209,7 +209,7 @@ pub fn memory_index_to_gep(index: u64) -> u64 {
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  layout: FullLayout<'tcx>,
                                  variant: &layout::Struct) -> Vec<Type> {
-    let field_count = layout.field_count();
+    let field_count = layout.fields.count();
     debug!("struct_llfields: variant: {:?}", variant);
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);

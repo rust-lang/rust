@@ -102,14 +102,14 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             }
 
             Layout::Univariant(ref variant) => {
-                for i in 0..layout.field_count() {
+                for i in 0..layout.fields.count() {
                     let field_off = off + variant.offsets[i];
                     classify(ccx, layout.field(ccx, i), cls, field_off)?;
                 }
             }
 
             Layout::UntaggedUnion { .. } => {
-                for i in 0..layout.field_count() {
+                for i in 0..layout.fields.count() {
                     classify(ccx, layout.field(ccx, i), cls, off)?;
                 }
             }

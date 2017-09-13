@@ -25,7 +25,7 @@ fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Layout::Scalar { value: layout::F32, .. } |
         Layout::Scalar { value: layout::F64, .. } => true,
         Layout::Univariant { .. } => {
-            if layout.field_count() == 1 {
+            if layout.fields.count() == 1 {
                 is_single_fp_element(ccx, layout.field(ccx, 0))
             } else {
                 false
