@@ -2061,6 +2061,17 @@ impl str {
 
 /// Converts a boxed slice of bytes to a boxed string slice without checking
 /// that the string contains valid UTF-8.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let smile_utf8 = Box::new([226, 152, 186]);
+/// let smile = unsafe { std::str::from_boxed_utf8_unchecked(smile_utf8) };
+///
+/// assert_eq!("☺", &*smile);
+/// ```
 #[stable(feature = "str_box_extras", since = "1.20.0")]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     mem::transmute(v)
