@@ -319,6 +319,7 @@ struct Test {
 
 static DEFAULT_COMPILETESTS: &[Test] = &[
     Test { path: "src/test/ui", mode: "ui", suite: "ui" },
+    Test { path: "src/test/compile-pass", mode: "compile-pass", suite: "compile-pass" },
     Test { path: "src/test/run-pass", mode: "run-pass", suite: "run-pass" },
     Test { path: "src/test/compile-fail", mode: "compile-fail", suite: "compile-fail" },
     Test { path: "src/test/parse-fail", mode: "parse-fail", suite: "parse-fail" },
@@ -410,6 +411,7 @@ static HOST_COMPILETESTS: &[Test] = &[
     Test { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" },
 
     Test { path: "src/test/pretty", mode: "pretty", suite: "pretty" },
+    Test { path: "src/test/compile-pass/pretty", mode: "pretty", suite: "compile-pass" },
     Test { path: "src/test/run-pass/pretty", mode: "pretty", suite: "run-pass" },
     Test { path: "src/test/run-fail/pretty", mode: "pretty", suite: "run-fail" },
     Test { path: "src/test/run-pass-valgrind/pretty", mode: "pretty", suite: "run-pass-valgrind" },
