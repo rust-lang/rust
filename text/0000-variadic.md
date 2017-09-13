@@ -68,13 +68,17 @@ To access the arguments, Rust provides the following public interfaces in
 /// underlying C `va_list`. Opaque.
 pub struct VaList<'a> { /* fields omitted */ }
 
+// Note: the lifetime on VaList is invariant
 impl<'a> VaList<'a> {
     /// Extract the next argument from the argument list. T must have a type
     /// usable in an FFI interface.
     pub unsafe fn arg<T>(&mut self) -> T;
-}
 
-impl<'a> Clone for VaList<'a>;
+    /// Copy the argument list. Destroys the copy after the closure returns.
+    pub fn copy<'ret, F, T>(&self, F) -> T
+    where
+        F: for<'copy> FnOnce(VaList<'copy>) -> T, T: 'ret;
+}
 ```
 
 The type returned from `VaList::arg` must have a type usable in an `extern "C"`
@@ -98,7 +102,8 @@ platform-specific representation.
 A variadic function may pass the `VaList` to another function. However, the
 lifetime attached to the `VaList` will prevent the variadic function from
 returning the `VaList` or otherwise allowing it to outlive that call to the
-variadic function.
+variadic function. Similarly, the closure called by `copy` cannot return the
+`VaList` passed to it or otherwise allow it to outlive the closure.
 
 A function declared with `extern "C"` may accept a `VaList` parameter,
 corresponding to a `va_list` parameter in the corresponding C function. For
@@ -117,7 +122,7 @@ extern "C" {
 Note that, per the C semantics, after passing `VaList` to these functions, the
 caller can no longer use it, hence the use of the `VaList` type to take
 ownership of the object. To continue using the object after a call to these
-functions, pass a clone of it instead.
+functions, use `VaList::copy` to pass a copy of it instead.
 
 Conversely, an `unsafe extern "C"` function written in Rust may accept a
 `VaList` parameter, to allow implementing the `v` variants of such functions in
@@ -169,31 +174,21 @@ Compiling and linking these two together will produce a program that prints:
 LLVM already provides a set of intrinsics, implementing `va_start`, `va_arg`,
 `va_end`, and `va_copy`. The compiler will insert a call to the `va_start`
 intrinsic at the start of the function to provide the `VaList` argument (if
-used). The implementation of `VaList::arg` will call `va_arg`.  The
-implementation of `Clone` for `VaList` wil call `va_copy`. The compiler will
-ensure that a call to `va_end` occurs exactly once on every `VaList` at an
-appropriate time, similar to drop semantics. (This may occur via an
-implementation of `Drop`, but this must take into account the semantics of
-passing a `VaList` to or from an `extern "C"` function.)
+used), and a matching call to the `va_end` intrinsic on any exit from the
+function. The implementation of `VaList::arg` will call `va_arg`. The
+implementation of `VaList::copy` wil call `va_copy`, and then `va_end` after
+the closure exits.
 
 `VaList` may become a language item (`#[lang="VaList"]`) to attach the
 appropriate compiler handling.
 
 The compiler may need to handle the type `VaList` specially, in order to
-provide the desired drop semantics at FFI boundaries. In particular, some
-platforms pass `va_list` by value, and others pass it by pointer; the standard
-leaves unspecified whether changes made in the called function appear in the
-caller's copy. Rust must match the underlying C semantics, to allow passing
-VaList values between C and Rust. To avoid forcing variadic functions to cope
-with these platform-specific differences, the compiler should ensure that the
-type behaves as if it has `Drop` semantics, and has `va_end` called on the
-original `VaList` as well as any clones of it. For instance, passing a `VaList`
-to a `vprintf` function as declared in this RFC semantically passes ownership
-of that `VaList`, and prevents calling the `arg` function again in the caller,
-but it remains the caller's responsibility to call `va_end`, so the compiler
-needs to insert the appropriate drop glue at the FFI boundary. Conversely,
-functions accepting a `VaList` argument must not drop it themselves, since the
-caller will drop it instead.
+provide the desired parameter-passing semantics at FFI boundaries. In
+particular, some platforms define `va_list` as a single-element array, such
+that declaring a `va_list` allocates storage, but passing a `va_list` as a
+function parameter occurs by pointer. The compiler must arrange to handle both
+receiving and passing `VaList` parameters in a manner compatible with the C
+ABI.
 
 The C standard requires that the call to `va_end` for a `va_list` occur in the
 same function as the matching `va_start` or `va_copy` for that `va_list`. Some
@@ -219,7 +214,7 @@ the appropriate argument types provided by the caller, based on whatever
 arbitrary runtime information determines those types. However, in this regard,
 this feature provides no more unsafety than the equivalent C code, and in fact
 provides several additional safety mechanisms, such as automatic handling of
-type promotions, lifetimes, copies, and destruction.
+type promotions, lifetimes, copies, and cleanup.
 
 # Rationale and Alternatives
 [alternatives]: #alternatives
