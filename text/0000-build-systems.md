@@ -107,9 +107,7 @@ model of the work that Cargo does today, broken into several stages:
 
 The first stage, dependency resolution, is the most complex; it's where our
 model of semver comes into play, as well as a huge list of related
-concerns. Interestingly, it's also the area where external build systems tend to
-have the *least* to say, because it's not really about *building* so much as
-*figuring out what even goes into a build*.
+concerns.
 
 Dependency resolution produces a lockfile, which records what crates are
 included in the dependency graph, coming from what sources and at what versions,
