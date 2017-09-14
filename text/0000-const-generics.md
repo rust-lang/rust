@@ -12,7 +12,7 @@ allow users to write impls which are abstract over all array types.
 # Motivation
 [motivation]: #motivation
 
-Rust currently has one type which is parametric over constants: the built-in
+Rust currently has one type which is parametric over constants: the built-inf
 array type `[T; LEN]`. However, because const generics are not a first class
 feature, users cannot define their own types which are generic over constant
 values, and cannot implement traits for all arrays.
@@ -66,9 +66,9 @@ the length parameter of a static array.
 associated type. Unlike a const parameter, an associated const is *determined*
 by a type.
 
-* __Const variable:__ Either a const parameter or a trait, contrast with
-concrete const; a const which is undetermined in this context (prior to
-monomorphization).
+* __Const variable:__ Either a const parameter or an associated const,
+contrast with concrete const; a const which is undetermined in this context
+(prior to monomorphization).
 
 * __Concrete const:__ In contrast to a const variable, a const which has a
 known and singular value in this context.
@@ -93,8 +93,7 @@ well all idents - e.g. `3`, `"Hello, world"`, `foo_bar`.
 
 In any sequence of type parameter declarations (such as in the definition of a
 type or on the `impl` header of an impl block) const parameters can also be
-declared. Const parameters always come after type parameters, and their
-declarations take the form `const $ident: $ty`, as in:
+declared. Const parameters declarations take the form `const $ident: $ty`:
 
 ```rust
 struct RectangularArray<T, const WIDTH: usize, const HEIGHT: usize> {
