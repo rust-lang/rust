@@ -662,17 +662,7 @@ impl<T: ?Sized> *const T {
     /// }
     /// # } }
     /// ```
-    #[cfg(not(stage0))]
     #[unstable(feature = "align_offset", issue = "44488")]
-    pub fn align_offset(self, align: usize) -> usize {
-        unsafe {
-            intrinsics::align_offset(self as *const _, align)
-        }
-    }
-
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    /// remove me after the next release
     pub fn align_offset(self, align: usize) -> usize {
         unsafe {
             intrinsics::align_offset(self as *const _, align)
@@ -901,17 +891,7 @@ impl<T: ?Sized> *mut T {
     /// }
     /// # } }
     /// ```
-    #[cfg(not(stage0))]
     #[unstable(feature = "align_offset", issue = "44488")]
-    pub fn align_offset(self, align: usize) -> usize {
-        unsafe {
-            intrinsics::align_offset(self as *const _, align)
-        }
-    }
-
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    /// remove me after the next release
     pub fn align_offset(self, align: usize) -> usize {
         unsafe {
             intrinsics::align_offset(self as *const _, align)
