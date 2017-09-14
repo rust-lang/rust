@@ -57,9 +57,10 @@ mkdir -p $objdir/tmp
 
 args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
-    args="$args --env SCCACHE_BUCKET=$SCCACHE_BUCKET"
-    args="$args --env AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-    args="$args --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+    args="$args --env SCCACHE_BUCKET"
+    args="$args --env SCCACHE_REGION"
+    args="$args --env AWS_ACCESS_KEY_ID"
+    args="$args --env AWS_SECRET_ACCESS_KEY"
     args="$args --env SCCACHE_ERROR_LOG=/tmp/sccache/sccache.log"
     args="$args --volume $objdir/tmp:/tmp/sccache"
 else
@@ -82,10 +83,10 @@ exec docker \
   --env SRC=/checkout \
   $args \
   --env CARGO_HOME=/cargo \
-  --env DEPLOY=$DEPLOY \
-  --env DEPLOY_ALT=$DEPLOY_ALT \
+  --env DEPLOY \
+  --env DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
-  --env TRAVIS=${TRAVIS-false} \
+  --env TRAVIS \
   --env TRAVIS_BRANCH \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
