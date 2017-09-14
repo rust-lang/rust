@@ -1,5 +1,3 @@
-use core::num::Wrapping;
-
 use int::Int;
 use float::Float;
 
@@ -8,44 +6,44 @@ macro_rules! add {
     ($a:expr, $b:expr, $ty:ty) => ({
         let a = $a;
         let b = $b;
-        let one = Wrapping(<$ty as Float>::Int::ONE);
-        let zero = Wrapping(<$ty as Float>::Int::ZERO);
+        let one = <$ty as Float>::Int::ONE;
+        let zero = <$ty as Float>::Int::ZERO;
 
-        let bits =             Wrapping(<$ty>::BITS as <$ty as Float>::Int);
-        let significand_bits = Wrapping(<$ty>::SIGNIFICAND_BITS as <$ty as Float>::Int);
-        let exponent_bits =    bits - significand_bits - one;
-        let max_exponent =     (one << exponent_bits.0 as usize) - one;
+        let bits =             <$ty>::BITS as <$ty as Float>::Int;
+        let significand_bits = <$ty>::SIGNIFICAND_BITS as <$ty as Float>::Int;
+        let exponent_bits =    <$ty>::EXPONENT_BITS as <$ty as Float>::Int;
+        let max_exponent =     (one << exponent_bits as usize) - one;
 
-        let implicit_bit =     one << significand_bits.0 as usize;
+        let implicit_bit =     one << significand_bits as usize;
         let significand_mask = implicit_bit - one;
-        let sign_bit =         one << (significand_bits + exponent_bits).0 as usize;
+        let sign_bit =         <$ty>::SIGN_MASK as <$ty as Float>::Int;
         let abs_mask =         sign_bit - one;
         let exponent_mask =    abs_mask ^ significand_mask;
         let inf_rep =          exponent_mask;
         let quiet_bit =        implicit_bit >> 1;
         let qnan_rep =         exponent_mask | quiet_bit;
 
-        let mut a_rep = Wrapping(a.repr());
-        let mut b_rep = Wrapping(b.repr());
+        let mut a_rep = a.repr();
+        let mut b_rep = b.repr();
         let a_abs = a_rep & abs_mask;
         let b_abs = b_rep & abs_mask;
 
         // Detect if a or b is zero, infinity, or NaN.
-        if a_abs - one >= inf_rep - one ||
-            b_abs - one >= inf_rep - one {
+        if a_abs.wrapping_sub(one) >= inf_rep - one ||
+            b_abs.wrapping_sub(one) >= inf_rep - one {
             // NaN + anything = qNaN
             if a_abs > inf_rep {
-                return <$ty as Float>::from_repr((a_abs | quiet_bit).0);
+                return <$ty as Float>::from_repr(a_abs | quiet_bit);
             }
             // anything + NaN = qNaN
             if b_abs > inf_rep {
-                return <$ty as Float>::from_repr((b_abs | quiet_bit).0);
+                return <$ty as Float>::from_repr(b_abs | quiet_bit);
             }
 
             if a_abs == inf_rep {
                 // +/-infinity + -/+infinity = qNaN
-                if (a.repr() ^ b.repr()) == sign_bit.0 {
-                    return <$ty as Float>::from_repr(qnan_rep.0);
+                if (a.repr() ^ b.repr()) == sign_bit {
+                    return <$ty as Float>::from_repr(qnan_rep);
                 } else {
                     // +/-infinity + anything remaining = +/- infinity
                     return a;
@@ -58,9 +56,9 @@ macro_rules! add {
             }
 
             // zero + anything = anything
-            if a_abs.0 == 0 {
+            if a_abs == 0 {
                 // but we need to get the sign right for zero + zero
-                if b_abs.0 == 0 {
+                if b_abs == 0 {
                     return <$ty as Float>::from_repr(a.repr() & b.repr());
                 } else {
                     return b;
@@ -68,7 +66,7 @@ macro_rules! add {
             }
 
             // anything + zero = anything
-            if b_abs.0 == 0 {
+            if b_abs == 0 {
                  return a;
             }
         }
@@ -82,21 +80,21 @@ macro_rules! add {
         }
 
         // Extract the exponent and significand from the (possibly swapped) a and b.
-        let mut a_exponent = Wrapping((a_rep >> significand_bits.0 as usize & max_exponent).0 as i32);
-        let mut b_exponent = Wrapping((b_rep >> significand_bits.0 as usize & max_exponent).0 as i32);
+        let mut a_exponent = ((a_rep >> significand_bits) & max_exponent) as i32;
+        let mut b_exponent = ((b_rep >> significand_bits) & max_exponent) as i32;
         let mut a_significand = a_rep & significand_mask;
         let mut b_significand = b_rep & significand_mask;
 
         // normalize any denormals, and adjust the exponent accordingly.
-        if a_exponent.0 == 0 {
-            let (exponent, significand) = <$ty>::normalize(a_significand.0);
-            a_exponent = Wrapping(exponent);
-            a_significand = Wrapping(significand);
+        if a_exponent == 0 {
+            let (exponent, significand) = <$ty>::normalize(a_significand);
+            a_exponent = exponent;
+            a_significand = significand;
         }
-        if b_exponent.0 == 0 {
-            let (exponent, significand) = <$ty>::normalize(b_significand.0);
-            b_exponent = Wrapping(exponent);
-            b_significand = Wrapping(significand);
+        if b_exponent == 0 {
+            let (exponent, significand) = <$ty>::normalize(b_significand);
+            b_exponent = exponent;
+            b_significand = significand;
         }
 
         // The sign of the result is the sign of the larger operand, a.  If they
@@ -113,64 +111,64 @@ macro_rules! add {
 
         // Shift the significand of b by the difference in exponents, with a sticky
         // bottom bit to get rounding correct.
-        let align = Wrapping((a_exponent - b_exponent).0 as <$ty as Float>::Int);
-        if align.0 != 0 {
+        let align = a_exponent.wrapping_sub(b_exponent) as <$ty as Float>::Int;
+        if align != 0 {
             if align < bits {
-                let sticky = ((b_significand << (bits - align).0 as usize).0 != 0) as <$ty as Float>::Int;
-                b_significand = (b_significand >> align.0 as usize) | Wrapping(sticky);
+                let sticky = (b_significand << (bits.wrapping_sub(align) as usize) != 0) as <$ty as Float>::Int;
+                b_significand = (b_significand >> align as usize) | sticky;
             } else {
                 b_significand = one; // sticky; b is known to be non-zero.
             }
         }
         if subtraction {
-            a_significand -= b_significand;
+            a_significand = a_significand.wrapping_sub(b_significand);
             // If a == -b, return +zero.
-            if a_significand.0 == 0 {
+            if a_significand == 0 {
                 return <$ty as Float>::from_repr(0);
             }
 
             // If partial cancellation occured, we need to left-shift the result
             // and adjust the exponent:
             if a_significand < implicit_bit << 3 {
-                let shift = a_significand.0.leading_zeros() as i32
-                    - (implicit_bit << 3).0.leading_zeros() as i32;
+                let shift = a_significand.leading_zeros() as i32
+                    - (implicit_bit << 3).leading_zeros() as i32;
                 a_significand <<= shift as usize;
-                a_exponent -= Wrapping(shift);
+                a_exponent -= shift;
             }
         } else /* addition */ {
             a_significand += b_significand;
 
             // If the addition carried up, we need to right-shift the result and
             // adjust the exponent:
-            if (a_significand & implicit_bit << 4).0 != 0 {
-                let sticky = ((a_significand & one).0 != 0) as <$ty as Float>::Int;
-                a_significand = a_significand >> 1 | Wrapping(sticky);
-                a_exponent += Wrapping(1);
+            if a_significand & implicit_bit << 4 != 0 {
+                let sticky = (a_significand & one != 0) as <$ty as Float>::Int;
+                a_significand = a_significand >> 1 | sticky;
+                a_exponent += 1;
             }
         }
 
         // If we have overflowed the type, return +/- infinity:
-        if a_exponent >= Wrapping(max_exponent.0 as i32) {
-            return <$ty>::from_repr((inf_rep | result_sign).0);
+        if a_exponent >= max_exponent as i32 {
+            return <$ty>::from_repr(inf_rep | result_sign);
         }
 
-        if a_exponent.0 <= 0 {
+        if a_exponent <= 0 {
             // Result is denormal before rounding; the exponent is zero and we
             // need to shift the significand.
-            let shift = Wrapping((Wrapping(1) - a_exponent).0 as <$ty as Float>::Int);
-            let sticky = ((a_significand << (bits - shift).0 as usize).0 != 0) as <$ty as Float>::Int;
-            a_significand = a_significand >> shift.0 as usize | Wrapping(sticky);
-            a_exponent = Wrapping(0);
+            let shift = (1 - a_exponent) as <$ty as Float>::Int;
+            let sticky = ((a_significand << bits.wrapping_sub(shift) as usize) != 0) as <$ty as Float>::Int;
+            a_significand = a_significand >> shift as usize | sticky;
+            a_exponent = 0;
         }
 
         // Low three bits are round, guard, and sticky.
-        let round_guard_sticky: i32 = (a_significand.0 & 0x7) as i32;
+        let round_guard_sticky: i32 = (a_significand & 0x7) as i32;
 
         // Shift the significand into place, and mask off the implicit bit.
         let mut result = a_significand >> 3 & significand_mask;
 
         // Insert the exponent and sign.
-        result |= Wrapping(a_exponent.0 as <$ty as Float>::Int) << significand_bits.0 as usize;
+        result |= (a_exponent as <$ty as Float>::Int) << (significand_bits as usize);
         result |= result_sign;
 
         // Final rounding.  The result may overflow to infinity, but that is the
@@ -178,7 +176,7 @@ macro_rules! add {
         if round_guard_sticky > 0x4 { result += one; }
         if round_guard_sticky == 0x4 { result += result & one; }
 
-        <$ty>::from_repr(result.0)
+        <$ty>::from_repr(result)
     })
 }
 
