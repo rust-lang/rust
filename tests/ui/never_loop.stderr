@@ -24,12 +24,12 @@ error: this loop never actually loops
 error: this loop never actually loops
   --> $DIR/never_loop.rs:47:2
    |
-47 | / \tloop { // never loops
-48 | | \t       while i == 0 { // never loops
-49 | | \t           break
-50 | | \t       }
-51 | | \t       return
-52 | | \t}
+47 | /  loop { // never loops
+48 | |         while i == 0 { // never loops
+49 | |             break
+50 | |         }
+51 | |         return
+52 | |  }
    | |__^
 
 error: this loop never actually loops
@@ -45,20 +45,20 @@ error: this loop never actually loops
    |
 57 | /     'outer: loop { // never loops
 58 | |         x += 1;
-59 | | \t\tloop { // never loops
+59 | |   loop { // never loops
 60 | |             if x == 5 { break }
 ...  |
-63 | | \t\treturn
-64 | | \t}
+63 | |   return
+64 | |  }
    | |__^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:59:3
    |
-59 | / \t\tloop { // never loops
-60 | | \t\t          if x == 5 { break }
-61 | | \t\t\tcontinue 'outer
-62 | | \t\t}
+59 | /   loop { // never loops
+60 | |             if x == 5 { break }
+61 | |    continue 'outer
+62 | |   }
    | |___^
 
 error: this loop never actually loops
