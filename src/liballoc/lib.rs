@@ -204,8 +204,6 @@ mod std {
 /// `Bound`s are range endpoints:
 ///
 /// ```
-/// #![feature(collections_range)]
-///
 /// use std::collections::range::RangeArgument;
 /// use std::collections::Bound::*;
 ///

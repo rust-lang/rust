@@ -24,7 +24,6 @@
 #![deny(warnings)]
 
 #![feature(alloc)]
-#![feature(collections_range)]
 #![feature(macro_reexport)]
 #![feature(staged_api)]
 
