@@ -848,12 +848,12 @@ extern "rust-intrinsic" {
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
     /// // same Vec internals. Therefore the new inner type must have the
-    /// // exact same size, and the same or lesser alignment, as the old
-    /// // type. The same caveats exist for this method as transmute, for
+    /// // exact same size, and the same alignment, as the old type.
+    /// // The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
     /// // (`Option<&i32>`), so read the nomicon pages linked above.
     /// let v_from_raw = unsafe {
-    ///     Vec::from_raw_parts(v_orig.as_mut_ptr(),
+    ///     Vec::from_raw_parts(v_orig.as_mut_ptr() as *mut Option<&i32>,
     ///                         v_orig.len(),
     ///                         v_orig.capacity())
     /// };

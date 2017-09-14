@@ -370,6 +370,7 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
+    /// * `ptr`'s `T` needs to have the same size and alignment as it was allocated with.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
@@ -1969,16 +1970,19 @@ impl<T> Vec<T> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
-    /// # let some_predicate = |x: &mut i32| { *x == 2 };
-    /// # let mut vec = vec![1, 2, 3, 4, 5];
+    /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
+    /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
     /// let mut i = 0;
     /// while i != vec.len() {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
+    ///     } else {
+    ///         i += 1;
     ///     }
-    ///     i += 1;
     /// }
+    ///
+    /// # assert_eq!(vec, vec![1, 4, 5]);
     /// ```
     ///
     /// But `drain_filter` is easier to use. `drain_filter` is also more efficient,
