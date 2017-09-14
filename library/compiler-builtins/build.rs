@@ -4106,9 +4106,11 @@ mod c {
         // also needs to satisfy intrinsics that jemalloc or C in general may
         // need, so include a few more that aren't typically needed by
         // LLVM/Rust.
-        sources.extend(&[
-            "ffsdi2.c",
-        ]);
+        if cfg!(feature = "rustbuild") {
+            sources.extend(&[
+                "ffsdi2.c",
+            ]);
+        }
 
         if target_os != "ios" {
             sources.extend(
@@ -4359,7 +4361,9 @@ mod c {
             sources.remove(&["aeabi_cdcmp", "aeabi_cfcmp"]);
         }
 
-        let root = if env::var_os("CARGO_FEATURE_RUSTBUILD").is_some() {
+        // When compiling in rustbuild (the rust-lang/rust repo) this build
+        // script runs from a directory other than this root directory.
+        let root = if cfg!(feature = "rustbuild") {
             Path::new("../../libcompiler_builtins")
         } else {
             Path::new(".")
