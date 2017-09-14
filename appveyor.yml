@@ -1,5 +1,6 @@
 environment:
-  SCCACHE_BUCKET: rust-lang-ci-sccache
+  SCCACHE_BUCKET: rust-lang-ci-sccache2
+  SCCACHE_REGION: us-west-1
   AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
   AWS_SECRET_ACCESS_KEY:
     secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
