@@ -66,7 +66,7 @@ impl<'q> Predecessors<'q> {
         // Reduce the graph to the most important nodes.
         let compress::Reduction { graph, input_nodes } =
             compress::reduce_graph(&query.graph,
-                                   |n| HashContext::is_hashable(tcx, n),
+                                   |n| n.kind.is_input(),
                                    |n| is_output(n));
 
         let mut hashes = FxHashMap();

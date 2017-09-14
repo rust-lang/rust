@@ -45,21 +45,6 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         }
     }
 
-    pub fn is_hashable(tcx: TyCtxt, dep_node: &DepNode) -> bool {
-        match dep_node.kind {
-            DepKind::Krate |
-            DepKind::Hir |
-            DepKind::InScopeTraits |
-            DepKind::HirBody =>
-                true,
-            DepKind::MetaData => {
-                let def_id = dep_node.extract_def_id(tcx).unwrap();
-                !def_id.is_local()
-            }
-            _ => false,
-        }
-    }
-
     pub fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
         match dep_node.kind {
             DepKind::Krate => {
@@ -79,13 +64,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // save it for others to use.
             DepKind::MetaData => {
                 let def_id = dep_node.extract_def_id(self.tcx).unwrap();
-                if !def_id.is_local() {
-                    Some(self.metadata_hash(def_id,
+                assert!(!def_id.is_local());
+
+                Some(self.metadata_hash(def_id,
                                         def_id.krate,
                                         |this| &mut this.metadata_hashes))
-                } else {
-                    None
-                }
             }
 
             _ => {
