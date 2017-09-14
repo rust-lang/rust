@@ -1,5 +1,4 @@
 #![feature(plugin)]
-#![feature(iterator_for_each)]
 #![plugin(clippy)]
 use std::iter::repeat;
 
