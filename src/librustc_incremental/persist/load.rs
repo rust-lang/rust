@@ -42,30 +42,10 @@ pub type DirtyNodes = FxHashMap<DepNodeIndex, DepNodeIndex>;
 /// more general overview.
 pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 incremental_hashes_map: &IncrementalHashesMap) {
-    if tcx.sess.opts.incremental.is_none() {
-        return;
+    if tcx.sess.incr_session_load_dep_graph() {
+        let _ignore = tcx.dep_graph.in_ignore();
+        load_dep_graph_if_exists(tcx, incremental_hashes_map);
     }
-
-    match prepare_session_directory(tcx) {
-        Ok(true) => {
-            // We successfully allocated a session directory and there is
-            // something in it to load, so continue
-        }
-        Ok(false) => {
-            // We successfully allocated a session directory, but there is no
-            // dep-graph data in it to load (because this is the first
-            // compilation session with this incr. comp. dir.)
-            return
-        }
-        Err(()) => {
-            // Something went wrong while trying to allocate the session
-            // directory. Don't try to use it any further.
-            return
-        }
-    }
-
-    let _ignore = tcx.dep_graph.in_ignore();
-    load_dep_graph_if_exists(tcx, incremental_hashes_map);
 }
 
 fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

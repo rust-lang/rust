@@ -22,7 +22,6 @@ use std::sync::{Arc, Mutex};
 
 use testing;
 use rustc_lint;
-use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, CompileIncomplete, config};
@@ -83,11 +82,9 @@ pub fn run(input: &str,
     let handler =
         errors::Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(codemap.clone()));
 
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone()
+        sessopts, Some(input_path.clone()), handler, codemap.clone(),
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -100,7 +97,14 @@ pub fn run(input: &str,
     let krate = ReplaceBodyWithLoop::new().fold_crate(krate);
     let driver::ExpansionResult { defs, mut hir_forest, .. } = {
         phase_2_configure_and_expand(
-            &sess, &cstore, krate, None, "rustdoc-test", None, MakeGlobMap::No, |_| Ok(())
+            &sess,
+            &cstore,
+            krate,
+            None,
+            "rustdoc-test",
+            None,
+            MakeGlobMap::No,
+            |_| Ok(()),
         ).expect("phase_2_configure_and_expand aborted in rustdoc!")
     };
 
@@ -120,8 +124,6 @@ pub fn run(input: &str,
                                        render_type);
 
     {
-        let dep_graph = DepGraph::new(false);
-        let _ignore = dep_graph.in_ignore();
         let map = hir::map::map_crate(&mut hir_forest, defs);
         let krate = map.krate();
         let mut hir_collector = HirCollector {
@@ -237,10 +239,9 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     // Compile the code
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
-    let dep_graph = DepGraph::new(false);
     let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, None, diagnostic_handler, codemap
+        sessopts, None, diagnostic_handler, codemap,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));

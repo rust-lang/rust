@@ -1949,7 +1949,6 @@ mod dep_tracking {
 
 #[cfg(test)]
 mod tests {
-    use dep_graph::DepGraph;
     use errors;
     use getopts;
     use lint;
@@ -1982,7 +1981,6 @@ mod tests {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
-        let dep_graph = DepGraph::new(false);
         let matches =
             &match optgroups().parse(&["--test".to_string()]) {
               Ok(m) => m,
@@ -1990,7 +1988,7 @@ mod tests {
             };
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, &dep_graph, None, registry);
+        let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, cfg);
         assert!(cfg.contains(&(Symbol::intern("test"), None)));
     }
@@ -1999,7 +1997,6 @@ mod tests {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        let dep_graph = DepGraph::new(false);
         let matches =
             &match optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]) {
               Ok(m) => m,
@@ -2009,7 +2006,7 @@ mod tests {
             };
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, &dep_graph, None, registry);
+        let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess, cfg);
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
         assert!(test_items.next().is_some());
@@ -2018,14 +2015,13 @@ mod tests {
 
     #[test]
     fn test_can_print_warnings() {
-        let dep_graph = DepGraph::new(false);
         {
             let matches = optgroups().parse(&[
                 "-Awarnings".to_string()
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry);
+            let sess = build_session(sessopts, None, registry);
             assert!(!sess.diagnostic().can_emit_warnings);
         }
 
@@ -2036,7 +2032,7 @@ mod tests {
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry);
+            let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().can_emit_warnings);
         }
 
@@ -2046,7 +2042,7 @@ mod tests {
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry);
+            let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().can_emit_warnings);
         }
     }

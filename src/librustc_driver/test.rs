@@ -11,7 +11,6 @@
 //! # Standalone Tests for the Inference Module
 
 use driver;
-use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
@@ -102,11 +101,8 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
     let cstore = Rc::new(CStore::new(box ::MetadataLoader));
     let sess = session::build_session_(options,
-                                       &dep_graph,
                                        None,
                                        diagnostic_handler,
                                        Rc::new(CodeMap::new(FilePathMapping::empty())));
@@ -130,7 +126,6 @@ fn test_env<F>(source_string: &str,
                                              |_| Ok(()))
             .expect("phase 2 aborted")
     };
-    let _ignore = dep_graph.in_ignore();
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();

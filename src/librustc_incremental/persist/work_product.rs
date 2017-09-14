@@ -11,7 +11,7 @@
 //! This module contains files for saving intermediate work-products.
 
 use persist::fs::*;
-use rustc::dep_graph::{WorkProduct, WorkProductId};
+use rustc::dep_graph::{WorkProduct, WorkProductId, DepGraph};
 use rustc::session::Session;
 use rustc::session::config::OutputType;
 use rustc::util::fs::link_or_copy;
@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::fs as std_fs;
 
 pub fn save_trans_partition(sess: &Session,
+                            dep_graph: &DepGraph,
                             cgu_name: &str,
                             partition_hash: u64,
                             files: &[(OutputType, PathBuf)]) {
@@ -60,7 +61,7 @@ pub fn save_trans_partition(sess: &Session,
         saved_files,
     };
 
-    sess.dep_graph.insert_work_product(&work_product_id, work_product);
+    dep_graph.insert_work_product(&work_product_id, work_product);
 }
 
 pub fn delete_workproduct_files(sess: &Session, work_product: &WorkProduct) {

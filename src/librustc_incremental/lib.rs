@@ -40,4 +40,5 @@ pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;
 pub use persist::save_work_products;
 pub use persist::in_incr_comp_dir;
+pub use persist::prepare_session_directory;
 pub use persist::finalize_session_directory;

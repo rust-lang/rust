@@ -22,6 +22,7 @@ mod save;
 mod work_product;
 mod file_format;
 
+pub use self::fs::prepare_session_directory;
 pub use self::fs::finalize_session_directory;
 pub use self::fs::in_incr_comp_dir;
 pub use self::load::load_dep_graph;
