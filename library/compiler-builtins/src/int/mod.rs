@@ -23,6 +23,10 @@ pub trait Int:
     PartialEq +
     PartialOrd +
     ops::AddAssign +
+    ops::BitAndAssign +
+    ops::BitOrAssign +
+    ops::ShlAssign<i32> +
+    ops::ShrAssign<u32> +
     ops::Add<Output = Self> +
     ops::Sub<Output = Self> +
     ops::Div<Output = Self> +
@@ -31,7 +35,6 @@ pub trait Int:
     ops::BitOr<Output = Self> +
     ops::BitXor<Output = Self> +
     ops::BitAnd<Output = Self> +
-    ops::BitAndAssign +
     ops::Not<Output = Self> +
 {
     /// Type with the same width but other signedness
@@ -60,14 +63,18 @@ pub trait Int:
     fn unsigned(self) -> Self::UnsignedInt;
     fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
 
+    fn from_bool(b: bool) -> Self;
+
     // copied from primitive integers, but put in a trait
     fn max_value() -> Self;
     fn min_value() -> Self;
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
     fn wrapping_sub(self, other: Self) -> Self;
+    fn wrapping_shl(self, other: u32) -> Self;
     fn aborting_div(self, other: Self) -> Self;
     fn aborting_rem(self, other: Self) -> Self;
+    fn leading_zeros(self) -> u32;
 }
 
 fn unwrap<T>(t: Option<T>) -> T {
@@ -77,27 +84,15 @@ fn unwrap<T>(t: Option<T>) -> T {
     }
 }
 
-macro_rules! int_impl {
-    ($ity:ty, $uty:ty, $bits:expr) => {
-        impl Int for $uty {
-            type OtherSign = $ity;
-            type UnsignedInt = $uty;
-
+macro_rules! int_impl_common {
+    ($ty:ty, $bits:expr) => {
             const BITS: u32 = $bits;
 
             const ZERO: Self = 0;
             const ONE: Self = 1;
 
-            fn extract_sign(self) -> (bool, $uty) {
-                (false, self)
-            }
-
-            fn unsigned(self) -> $uty {
-                self
-            }
-
-            fn from_unsigned(me: $uty) -> Self {
-                me
+            fn from_bool(b: bool) -> Self {
+                b as $ty
             }
 
             fn max_value() -> Self {
@@ -120,6 +115,10 @@ macro_rules! int_impl {
                 <Self>::wrapping_sub(self, other)
             }
 
+            fn wrapping_shl(self, other: u32) -> Self {
+                <Self>::wrapping_shl(self, other)
+            }
+
             fn aborting_div(self, other: Self) -> Self {
                 unwrap(<Self>::checked_div(self, other))
             }
@@ -127,16 +126,37 @@ macro_rules! int_impl {
             fn aborting_rem(self, other: Self) -> Self {
                 unwrap(<Self>::checked_rem(self, other))
             }
+
+            fn leading_zeros(self) -> u32 {
+                <Self>::leading_zeros(self)
+            }
+    }
+}
+
+macro_rules! int_impl {
+    ($ity:ty, $uty:ty, $bits:expr) => {
+        impl Int for $uty {
+            type OtherSign = $ity;
+            type UnsignedInt = $uty;
+
+            fn extract_sign(self) -> (bool, $uty) {
+                (false, self)
+            }
+
+            fn unsigned(self) -> $uty {
+                self
+            }
+
+            fn from_unsigned(me: $uty) -> Self {
+                me
+            }
+
+            int_impl_common!($uty, $bits);
         }
 
         impl Int for $ity {
             type OtherSign = $uty;
             type UnsignedInt = $uty;
-
-            const BITS: u32 = $bits;
-
-            const ZERO: Self = 0;
-            const ONE: Self = 1;
 
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {
@@ -154,33 +174,7 @@ macro_rules! int_impl {
                 me as $ity
             }
 
-            fn max_value() -> Self {
-                <Self>::max_value()
-            }
-
-            fn min_value() -> Self {
-                <Self>::min_value()
-            }
-
-            fn wrapping_add(self, other: Self) -> Self {
-                <Self>::wrapping_add(self, other)
-            }
-
-            fn wrapping_mul(self, other: Self) -> Self {
-                <Self>::wrapping_mul(self, other)
-            }
-
-            fn wrapping_sub(self, other: Self) -> Self {
-                <Self>::wrapping_sub(self, other)
-            }
-
-            fn aborting_div(self, other: Self) -> Self {
-                unwrap(<Self>::checked_div(self, other))
-            }
-
-            fn aborting_rem(self, other: Self) -> Self {
-                unwrap(<Self>::checked_rem(self, other))
-            }
+            int_impl_common!($ity, $bits);
         }
     }
 }
@@ -230,3 +224,28 @@ large_int!(u64, u32, u32, 32);
 large_int!(i64, u32, i32, 32);
 large_int!(u128, u64, u64, 64);
 large_int!(i128, u64, i64, 64);
+
+/// Trait to express (possibly lossy) casting of integers
+pub trait CastInto<T: Copy>: Copy {
+    fn cast(self) -> T;
+}
+
+macro_rules! cast_into {
+    ($ty:ty) => {
+        cast_into!($ty; usize, isize, u32, i32, u64, i64, u128, i128);
+    };
+    ($ty:ty; $($into:ty),*) => {$(
+        impl CastInto<$into> for $ty {
+            fn cast(self) -> $into {
+                self as $into
+            }
+        }
+    )*};
+}
+
+cast_into!(u32);
+cast_into!(i32);
+cast_into!(u64);
+cast_into!(i64);
+cast_into!(u128);
+cast_into!(i128);
