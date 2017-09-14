@@ -11,6 +11,7 @@ extern crate syntax;
 extern crate log;
 
 use rustc::session::Session;
+use rustc::middle::cstore::CrateStore;
 use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
@@ -64,11 +65,12 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         &mut self,
         matches: &getopts::Matches,
         sess: &Session,
+        cstore: &CrateStore,
         input: &Input,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(matches, sess, input, odir, ofile)
+        self.default.late_callback(matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(
         &mut self,
