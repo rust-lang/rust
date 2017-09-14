@@ -526,7 +526,7 @@ fn contains_continue_expr(expr: &Expr, dest: &NodeId) -> bool {
         ExprMatch(ref e, ref arms, _) => {
             contains_continue_expr(e, dest) || arms.iter().any(|a| contains_continue_expr(&a.body, dest))
         },
-        ExprBlock(ref block) => contains_continue_block(block, dest),
+        ExprBlock(ref block) | ExprLoop(ref block, ..) => contains_continue_block(block, dest),
         ExprStruct(_, _, ref base) => base.as_ref()
             .map_or(false, |e| contains_continue_expr(e, dest)),
         ExprAgain(d) => d.target_id.opt_id().map_or(false, |id| id == *dest),
