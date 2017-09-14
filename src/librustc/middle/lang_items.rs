@@ -46,6 +46,14 @@ enum_from_u32! {
     }
 }
 
+impl LangItem {
+    fn name(self) -> &'static str {
+        match self {
+            $( $variant => $name, )*
+        }
+    }
+}
+
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
     pub missing: Vec<LangItem>,
@@ -65,42 +73,17 @@ impl LanguageItems {
         &*self.items
     }
 
-    pub fn item_name(index: usize) -> &'static str {
-        let item: Option<LangItem> = LangItem::from_u32(index as u32);
-        match item {
-            $( Some($variant) => $name, )*
-            None => "???"
-        }
-    }
-
     pub fn require(&self, it: LangItem) -> Result<DefId, String> {
-        match self.items[it as usize] {
-            Some(id) => Ok(id),
-            None => {
-                Err(format!("requires `{}` lang_item",
-                            LanguageItems::item_name(it as usize)))
-            }
-        }
-    }
-
-    pub fn require_owned_box(&self) -> Result<DefId, String> {
-        self.require(OwnedBoxLangItem)
+        self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
     }
 
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
-        let def_id_kinds = [
-            (self.fn_trait(), ty::ClosureKind::Fn),
-            (self.fn_mut_trait(), ty::ClosureKind::FnMut),
-            (self.fn_once_trait(), ty::ClosureKind::FnOnce),
-            ];
-
-        for &(opt_def_id, kind) in &def_id_kinds {
-            if Some(id) == opt_def_id {
-                return Some(kind);
-            }
+        match Some(id) {
+            x if x == self.fn_trait() => Some(ty::ClosureKind::Fn),
+            x if x == self.fn_mut_trait() => Some(ty::ClosureKind::FnMut),
+            x if x == self.fn_once_trait() => Some(ty::ClosureKind::FnOnce),
+            _ => None
         }
-
-        None
     }
 
     $(
@@ -162,7 +145,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                let name = LanguageItems::item_name(item_index);
+                let name = LangItem::from_u32(item_index as u32).unwrap().name();
                 let mut err = match self.tcx.hir.span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.tcx.sess,
@@ -326,14 +309,6 @@ language_item_table! {
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
     PhantomDataItem,                 "phantom_data",            phantom_data;
-
-    // Deprecated:
-    CovariantTypeItem,               "covariant_type",          covariant_type;
-    ContravariantTypeItem,           "contravariant_type",      contravariant_type;
-    InvariantTypeItem,               "invariant_type",          invariant_type;
-    CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
-    ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
-    InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
 
     NonZeroItem,                     "non_zero",                non_zero;
 
