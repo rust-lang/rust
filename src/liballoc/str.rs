@@ -855,6 +855,19 @@ impl str {
     }
 
     /// Returns an iterator of `u16` over the string encoded as UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let text = "Zażółć gęślą jaźń";
+    ///
+    /// let utf8_len = text.len();
+    /// let utf16_len = text.encode_utf16().count();
+    ///
+    /// assert!(utf16_len <= utf8_len);
+    /// ```
     #[stable(feature = "encode_utf16", since = "1.8.0")]
     pub fn encode_utf16(&self) -> EncodeUtf16 {
         EncodeUtf16 { encoder: Utf16Encoder::new(self[..].chars()) }
