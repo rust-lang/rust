@@ -84,31 +84,15 @@ fn unwrap<T>(t: Option<T>) -> T {
     }
 }
 
-macro_rules! int_impl {
-    ($ity:ty, $uty:ty, $bits:expr) => {
-        impl Int for $uty {
-            type OtherSign = $ity;
-            type UnsignedInt = $uty;
-
+macro_rules! int_impl_common {
+    ($ty:ty, $bits:expr) => {
             const BITS: u32 = $bits;
 
             const ZERO: Self = 0;
             const ONE: Self = 1;
 
-            fn extract_sign(self) -> (bool, $uty) {
-                (false, self)
-            }
-
-            fn unsigned(self) -> $uty {
-                self
-            }
-
-            fn from_unsigned(me: $uty) -> Self {
-                me
-            }
-
             fn from_bool(b: bool) -> Self {
-                b as $uty
+                b as $ty
             }
 
             fn max_value() -> Self {
@@ -146,16 +130,33 @@ macro_rules! int_impl {
             fn leading_zeros(self) -> u32 {
                 <Self>::leading_zeros(self)
             }
+    }
+}
+
+macro_rules! int_impl {
+    ($ity:ty, $uty:ty, $bits:expr) => {
+        impl Int for $uty {
+            type OtherSign = $ity;
+            type UnsignedInt = $uty;
+
+            fn extract_sign(self) -> (bool, $uty) {
+                (false, self)
+            }
+
+            fn unsigned(self) -> $uty {
+                self
+            }
+
+            fn from_unsigned(me: $uty) -> Self {
+                me
+            }
+
+            int_impl_common!($uty, $bits);
         }
 
         impl Int for $ity {
             type OtherSign = $uty;
             type UnsignedInt = $uty;
-
-            const BITS: u32 = $bits;
-
-            const ZERO: Self = 0;
-            const ONE: Self = 1;
 
             fn extract_sign(self) -> (bool, $uty) {
                 if self < 0 {
@@ -173,45 +174,7 @@ macro_rules! int_impl {
                 me as $ity
             }
 
-            fn from_bool(b: bool) -> Self {
-                b as $ity
-            }
-
-            fn max_value() -> Self {
-                <Self>::max_value()
-            }
-
-            fn min_value() -> Self {
-                <Self>::min_value()
-            }
-
-            fn wrapping_add(self, other: Self) -> Self {
-                <Self>::wrapping_add(self, other)
-            }
-
-            fn wrapping_mul(self, other: Self) -> Self {
-                <Self>::wrapping_mul(self, other)
-            }
-
-            fn wrapping_sub(self, other: Self) -> Self {
-                <Self>::wrapping_sub(self, other)
-            }
-
-            fn wrapping_shl(self, other: u32) -> Self {
-                <Self>::wrapping_shl(self, other)
-            }
-
-            fn aborting_div(self, other: Self) -> Self {
-                unwrap(<Self>::checked_div(self, other))
-            }
-
-            fn aborting_rem(self, other: Self) -> Self {
-                unwrap(<Self>::checked_rem(self, other))
-            }
-
-            fn leading_zeros(self) -> u32 {
-                <Self>::leading_zeros(self)
-            }
+            int_impl_common!($ity, $bits);
         }
     }
 }
