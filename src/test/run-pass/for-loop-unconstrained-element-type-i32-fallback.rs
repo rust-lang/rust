@@ -12,11 +12,9 @@
 // and that the for loop desugaring doesn't interfere with
 // that.
 
-// ignore-test
-
 fn main() {
     let mut sum = 0;
     for i in Vec::new() {
-        sum += i;
+        sum += &i;
     }
 }
