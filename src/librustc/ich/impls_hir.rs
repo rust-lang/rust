@@ -1160,6 +1160,25 @@ for hir::TraitCandidate {
     }
 }
 
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::TraitCandidate {
+    type KeyType = (DefPathHash, Option<(DefPathHash, hir::ItemLocalId)>);
+
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'gcx>)
+                          -> Self::KeyType {
+        let hir::TraitCandidate {
+            def_id,
+            import_id,
+        } = *self;
+
+        let import_id = import_id.map(|node_id| hcx.node_to_hir_id(node_id))
+                                 .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
+                                                hir_id.local_id));
+        (hcx.def_path_hash(def_id), import_id)
+    }
+}
+
+
 impl_stable_hash_for!(struct hir::Freevar {
     def,
     span
