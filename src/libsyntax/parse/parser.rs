@@ -481,6 +481,12 @@ fn dummy_arg(span: Span) -> Arg {
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum TokenExpectType {
+    Expect,
+    NoExpect,
+}
+
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                tokens: TokenStream,
@@ -797,6 +803,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Expect and consume an `|`. If `||` is seen, replace it with a single
+    /// `|` and continue. If an `|` is not seen, signal an error.
+    fn expect_or(&mut self) -> PResult<'a, ()> {
+        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Or)));
+        match self.token {
+            token::BinOp(token::Or) => {
+                self.bump();
+                Ok(())
+            }
+            token::OrOr => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::BinOp(token::Or), span))
+            }
+            _ => self.unexpected()
+        }
+    }
+
     pub fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
         match suffix {
             None => {/* everything ok */}
@@ -946,6 +969,7 @@ impl<'a> Parser<'a> {
 
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
+                                        TokenExpectType::Expect,
                                         |p| Ok(p.parse_token_tree()),
                                         |mut e| handler.cancel(&mut e));
     }
@@ -975,13 +999,14 @@ impl<'a> Parser<'a> {
                                          -> Vec<T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>
     {
-        self.parse_seq_to_before_tokens(&[ket], sep, f, |mut e| e.emit())
+        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f, |mut e| e.emit())
     }
 
     // `fe` is an error handler.
     fn parse_seq_to_before_tokens<T, F, Fe>(&mut self,
                                             kets: &[&token::Token],
                                             sep: SeqSep,
+                                            expect: TokenExpectType,
                                             mut f: F,
                                             mut fe: Fe)
                                             -> Vec<T>
@@ -1005,7 +1030,12 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| self.check(k)) {
+            if sep.trailing_sep_allowed && kets.iter().any(|k| {
+                match expect {
+                    TokenExpectType::Expect => self.check(k),
+                    TokenExpectType::NoExpect => self.token == **k,
+                }
+            }) {
                 break;
             }
 
@@ -4694,12 +4724,14 @@ impl<'a> Parser<'a> {
                 Vec::new()
             } else {
                 self.expect(&token::BinOp(token::Or))?;
-                let args = self.parse_seq_to_before_end(
-                    &token::BinOp(token::Or),
+                let args = self.parse_seq_to_before_tokens(
+                    &[&token::BinOp(token::Or), &token::OrOr],
                     SeqSep::trailing_allowed(token::Comma),
-                    |p| p.parse_fn_block_arg()
+                    TokenExpectType::NoExpect,
+                    |p| p.parse_fn_block_arg(),
+                    |mut e| e.emit()
                 );
-                self.expect(&token::BinOp(token::Or))?;
+                self.expect_or()?;
                 args
             }
         };
