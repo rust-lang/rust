@@ -141,10 +141,10 @@ impl<'a, 'tcx> DepGraphSafe for SharedCrateContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> StableHashingContextProvider for SharedCrateContext<'a, 'tcx> {
-    type ContextType = StableHashingContext<'a, 'tcx, 'tcx>;
+    type ContextType = StableHashingContext<'tcx>;
 
     fn create_stable_hashing_context(&self) -> Self::ContextType {
-        StableHashingContext::new(self.tcx)
+        self.tcx.create_stable_hashing_context()
     }
 }
 

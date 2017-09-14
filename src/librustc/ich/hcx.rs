@@ -11,7 +11,9 @@
 use hir;
 use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
+use hir::map::definitions::Definitions;
 use ich::{self, CachingCodemapView};
+use middle::cstore::CrateStore;
 use session::config::DebugInfoLevel::NoDebugInfo;
 use ty::{self, TyCtxt, fast_reject};
 use session::Session;
@@ -41,8 +43,10 @@ thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
 /// a reference to the TyCtxt) and it holds a few caches for speeding up various
 /// things (e.g. each DefId/DefPath is only hashed once).
-pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+pub struct StableHashingContext<'gcx> {
+    sess: &'gcx Session,
+    definitions: &'gcx Definitions,
+    cstore: &'gcx CrateStore,
     body_resolver: BodyResolver<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
@@ -65,21 +69,27 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the hir::Crate but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'hir>(&'hir hir::Crate);
+struct BodyResolver<'gcx>(&'gcx hir::Crate);
 
-impl<'hir> BodyResolver<'hir> {
+impl<'gcx> BodyResolver<'gcx> {
     // Return a reference to the hir::Body with the given BodyId.
     // DOES NOT DO ANY TRACKING, use carefully.
-    fn body(self, id: hir::BodyId) -> &'hir hir::Body {
+    fn body(self, id: hir::BodyId) -> &'gcx hir::Body {
         self.0.body(id)
     }
 }
 
-impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
-
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
-        let hash_spans_initial = tcx.sess.opts.debuginfo != NoDebugInfo;
-        let check_overflow_initial = tcx.sess.overflow_checks();
+impl<'gcx> StableHashingContext<'gcx> {
+    // The `krate` here is only used for mapping BodyIds to Bodies.
+    // Don't use it for anything else or you'll run the risk of
+    // leaking data out of the tracking system.
+    pub fn new(sess: &'gcx Session,
+               krate: &'gcx hir::Crate,
+               definitions: &'gcx Definitions,
+               cstore: &'gcx CrateStore)
+               -> Self {
+        let hash_spans_initial = sess.opts.debuginfo != NoDebugInfo;
+        let check_overflow_initial = sess.overflow_checks();
 
         debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
         IGNORED_ATTR_NAMES.with(|names| {
@@ -90,13 +100,13 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
             }
         });
 
-        let body_resolver = BodyResolver(tcx.dep_graph.with_ignore(|| tcx.hir.krate()));
-
         StableHashingContext {
-            tcx,
-            body_resolver,
+            sess,
+            body_resolver: BodyResolver(krate),
+            definitions,
+            cstore,
             caching_codemap: None,
-            raw_codemap: tcx.sess.codemap(),
+            raw_codemap: sess.codemap(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             overflow_checks_enabled: check_overflow_initial,
@@ -106,7 +116,7 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn sess(&self) -> &'gcx Session {
-        self.tcx.sess
+        self.sess
     }
 
     pub fn force_span_hashing(mut self) -> Self {
@@ -146,12 +156,16 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
-        self.tcx.def_path_hash(def_id)
+        if def_id.is_local() {
+            self.definitions.def_path_hash(def_id.index)
+        } else {
+            self.cstore.def_path_hash(def_id)
+        }
     }
 
     #[inline]
     pub fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash {
-        self.tcx.hir.definitions().def_path_hash(def_index)
+        self.definitions.def_path_hash(def_index)
     }
 
     #[inline]
@@ -239,15 +253,15 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'lcx> StableHashingContextProvider for ty::TyCtxt<'a, 'gcx, 'lcx> {
-    type ContextType = StableHashingContext<'a, 'gcx, 'lcx>;
+    type ContextType = StableHashingContext<'gcx>;
     fn create_stable_hashing_context(&self) -> Self::ContextType {
-        StableHashingContext::new(*self)
+        (*self).create_stable_hashing_context()
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::BodyId {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         if hcx.hash_bodies() {
             hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
@@ -255,10 +269,10 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::HirId {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
@@ -270,52 +284,52 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::H
                     local_id,
                 } = *self;
 
-                hcx.tcx.hir.definitions().def_path_hash(owner).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::HirId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
     #[inline]
     fn to_stable_hash_key(&self,
-                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          hcx: &StableHashingContext<'gcx>)
                           -> (DefPathHash, hir::ItemLocalId) {
         let def_path_hash = hcx.local_def_path_hash(self.owner);
         (def_path_hash, self.local_id)
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::NodeId {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::NodeId {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Don't do anything.
             }
             NodeIdHashingMode::HashDefPath => {
-                hcx.tcx.hir.node_to_hir_id(*self).hash_stable(hcx, hasher);
+                hcx.definitions.node_to_hir_id(*self).hash_stable(hcx, hasher);
             }
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for ast::NodeId {
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for ast::NodeId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
     #[inline]
     fn to_stable_hash_key(&self,
-                          hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
+                          hcx: &StableHashingContext<'gcx>)
                           -> (DefPathHash, hir::ItemLocalId) {
-        hcx.tcx.hir.node_to_hir_id(*self).to_stable_hash_key(hcx)
+        hcx.definitions.node_to_hir_id(*self).to_stable_hash_key(hcx)
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Span {
 
     // Hash a span in a stable way. We can't directly hash the span's BytePos
     // fields (that would be similar to hashing pointers, since those are just
@@ -327,7 +341,7 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
     // Also, hashing filenames is expensive so we avoid doing it twice when the
     // span starts and ends in the same file, which is almost always the case.
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         use syntax_pos::Pos;
 
@@ -390,8 +404,8 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Span {
     }
 }
 
-pub fn hash_stable_trait_impls<'a, 'tcx, 'gcx, W, R>(
-    hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+pub fn hash_stable_trait_impls<'gcx, W, R>(
+    hcx: &mut StableHashingContext<'gcx>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &Vec<DefId>,
     non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)

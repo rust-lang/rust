@@ -144,12 +144,12 @@ impl<D: Copy + Debug + Ord + Eq + Hash> SimplifiedTypeGen<D> {
     }
 }
 
-impl<'a, 'gcx, 'tcx, D> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for SimplifiedTypeGen<D>
+impl<'gcx, D> HashStable<StableHashingContext<'gcx>> for SimplifiedTypeGen<D>
     where D: Copy + Debug + Ord + Eq + Hash +
-             HashStable<StableHashingContext<'a, 'gcx, 'tcx>>,
+             HashStable<StableHashingContext<'gcx>>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {

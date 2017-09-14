@@ -2306,10 +2306,10 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Layout
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         use ty::layout::Layout::*;
         mem::discriminant(self).hash_stable(hcx, hasher);
@@ -2399,10 +2399,10 @@ impl_stable_hash_for!(struct ::ty::layout::Size {
     raw
 });
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for LayoutError<'gcx>
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for LayoutError<'gcx>
 {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         use ty::layout::LayoutError::*;
         mem::discriminant(self).hash_stable(hcx, hasher);

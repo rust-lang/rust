@@ -369,9 +369,9 @@ pub fn ancestors(tcx: TyCtxt,
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Children {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Children {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let Children {
             ref nonblanket_impls,

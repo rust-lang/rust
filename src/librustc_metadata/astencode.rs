@@ -16,7 +16,7 @@ use schema::*;
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 
-use rustc::ich::{StableHashingContext, Fingerprint};
+use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -43,7 +43,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
         // In order to avoid having to hash hir::Bodies from extern crates, we
         // hash them here, during export, and store the hash with metadata.
         let stable_bodies_hash = {
-            let mut hcx = StableHashingContext::new(self.tcx);
+            let mut hcx = self.tcx.create_stable_hashing_context();
             let mut hasher = StableHasher::new();
 
             hcx.while_hashing_hir_bodies(true, |hcx| {

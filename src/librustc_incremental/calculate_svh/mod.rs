@@ -91,7 +91,7 @@ impl<'a> ::std::ops::Index<&'a DepNode> for IncrementalHashesMap {
 
 struct ComputeItemHashesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    hcx: StableHashingContext<'a, 'tcx, 'tcx>,
+    hcx: StableHashingContext<'tcx>,
     hashes: IncrementalHashesMap,
 }
 
@@ -100,7 +100,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                               def_index: DefIndex,
                                               hash_bodies: bool,
                                               item_like: T)
-        where T: HashStable<StableHashingContext<'a, 'tcx, 'tcx>>
+        where T: HashStable<StableHashingContext<'tcx>>
     {
         if !hash_bodies && !self.tcx.sess.opts.build_dep_graph() {
             // If we just need the hashes in order to compute the SVH, we don't
@@ -303,7 +303,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     let mut visitor = ComputeItemHashesVisitor {
         tcx,
-        hcx: StableHashingContext::new(tcx),
+        hcx: tcx.create_stable_hashing_context(),
         hashes: IncrementalHashesMap::new(),
     };
 

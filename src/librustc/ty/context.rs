@@ -687,9 +687,9 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TypeckTables<'gcx> {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
             local_id_root,
@@ -1224,6 +1224,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // system if the result is otherwise tracked through queries
     pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Rc<Any> {
         self.cstore.crate_data_as_rc_any(cnum)
+    }
+
+    pub fn create_stable_hashing_context(self) -> StableHashingContext<'gcx> {
+        let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
+
+        StableHashingContext::new(self.sess,
+                                  krate,
+                                  self.hir.definitions(),
+                                  self.cstore)
     }
 }
 

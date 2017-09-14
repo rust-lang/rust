@@ -603,12 +603,12 @@ trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
 }
 
 impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a, T> DepNodeParams<'a, 'gcx, 'tcx> for T
-    where T: HashStable<StableHashingContext<'a, 'gcx, 'tcx>> + fmt::Debug
+    where T: HashStable<StableHashingContext<'gcx>> + fmt::Debug
 {
     default const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
 
     default fn to_fingerprint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Fingerprint {
-        let mut hcx = StableHashingContext::new(tcx);
+        let mut hcx = tcx.create_stable_hashing_context();
         let mut hasher = StableHasher::new();
 
         self.hash_stable(&mut hcx, &mut hasher);

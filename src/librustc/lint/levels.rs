@@ -386,10 +386,10 @@ impl LintLevelMap {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for LintLevelMap {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for LintLevelMap {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let LintLevelMap {
             ref sets,
