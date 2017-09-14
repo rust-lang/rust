@@ -434,6 +434,12 @@ impl From<Span> for MultiSpan {
     }
 }
 
+impl From<Vec<Span>> for MultiSpan {
+    fn from(spans: Vec<Span>) -> MultiSpan {
+        MultiSpan::from_spans(spans)
+    }
+}
+
 pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
 
 /// Identifies an offset of a multi-byte character in a FileMap
