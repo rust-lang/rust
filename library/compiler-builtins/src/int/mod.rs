@@ -25,6 +25,7 @@ pub trait Int:
     ops::AddAssign +
     ops::BitAndAssign +
     ops::BitOrAssign +
+    ops::ShlAssign<i32> +
     ops::ShrAssign<u32> +
     ops::Add<Output = Self> +
     ops::Sub<Output = Self> +
