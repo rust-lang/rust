@@ -28,7 +28,7 @@ use super::ModuleSource;
 use super::ModuleTranslation;
 use super::ModuleKind;
 
-use assert_module_sources;
+use assert_module_sources::{self, Disposition};
 use back::link;
 use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation};
@@ -37,7 +37,7 @@ use llvm;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
-use rustc::middle::trans::{Linkage, Visibility};
+use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
@@ -45,7 +45,7 @@ use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
+use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
 use rustc_incremental::{self, IncrementalHashesMap};
 use abi;
@@ -61,7 +61,7 @@ use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::{self, LocalCrateContext, SharedCrateContext, Stats};
+use context::{self, LocalCrateContext, SharedCrateContext};
 use debuginfo;
 use declare;
 use machine;
@@ -80,6 +80,7 @@ use CrateInfo;
 
 use libc::c_uint;
 use std::any::Any;
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::str;
 use std::sync::Arc;
@@ -87,6 +88,7 @@ use std::time::{Instant, Duration};
 use std::i32;
 use std::sync::mpsc;
 use syntax_pos::Span;
+use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use rustc::hir;
 use syntax::ast;
@@ -101,7 +103,7 @@ pub struct StatRecorder<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
     pub fn new(ccx: &'a CrateContext<'a, 'tcx>, name: String) -> StatRecorder<'a, 'tcx> {
-        let istart = ccx.stats().n_llvm_insns.get();
+        let istart = ccx.stats().borrow().n_llvm_insns;
         StatRecorder {
             ccx,
             name: Some(name),
@@ -113,12 +115,12 @@ impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
 impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     fn drop(&mut self) {
         if self.ccx.sess().trans_stats() {
-            let iend = self.ccx.stats().n_llvm_insns.get();
-            self.ccx.stats().fn_stats.borrow_mut()
-                .push((self.name.take().unwrap(), iend - self.istart));
-            self.ccx.stats().n_fns.set(self.ccx.stats().n_fns.get() + 1);
+            let mut stats = self.ccx.stats().borrow_mut();
+            let iend = stats.n_llvm_insns;
+            stats.fn_stats.push((self.name.take().unwrap(), iend - self.istart));
+            stats.n_fns += 1;
             // Reset LLVM insn count to avoid compound costs.
-            self.ccx.stats().n_llvm_insns.set(self.istart);
+            stats.n_llvm_insns = self.istart;
         }
     }
 }
@@ -590,7 +592,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         None => bug!("Instance `{:?}` not already declared", instance)
     };
 
-    ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
+    ccx.stats().borrow_mut().n_closures += 1;
 
     // The `uwtable` attribute according to LLVM is:
     //
@@ -935,18 +937,14 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              incremental_hashes_map: IncrementalHashesMap,
-                             rx: mpsc::Receiver<Box<Any + Send>>,
-                             output_filenames: &OutputFilenames)
+                             rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCrateTranslation {
     check_for_rustc_errors_attr(tcx);
 
-    let check_overflow = tcx.sess.overflow_checks();
     let link_meta = link::build_link_meta(&incremental_hashes_map);
     let exported_symbol_node_ids = find_exported_symbols(tcx);
 
-    let shared_ccx = SharedCrateContext::new(tcx,
-                                             check_overflow,
-                                             output_filenames);
+    let shared_ccx = SharedCrateContext::new(tcx);
     // Translate the metadata.
     let (metadata_llcx, metadata_llmod, metadata, metadata_incr_hashes) =
         time(tcx.sess.time_passes(), "write metadata", || {
@@ -974,13 +972,13 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_trans() {
         let ongoing_translation = write::start_async_translation(
             tcx,
-            output_filenames,
             time_graph.clone(),
             link_meta,
             metadata,
             rx);
 
-        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx, metadata_module);
+        ongoing_translation.translation_finished(tcx);
 
         assert_and_save_dep_graph(tcx,
                                   incremental_hashes_map,
@@ -1002,7 +1000,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let ongoing_translation = write::start_async_translation(
         tcx,
-        output_filenames,
         time_graph.clone(),
         link_meta,
         metadata,
@@ -1044,16 +1041,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     if let Some(allocator_module) = allocator_module {
-        ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, allocator_module, false);
+        ongoing_translation.submit_pre_translated_module_to_llvm(tcx, allocator_module);
     }
 
-    let codegen_unit_count = codegen_units.len();
-    ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess,
-                                                             metadata_module,
-                                                             codegen_unit_count == 0);
-
-    let mut all_stats = Stats::default();
-    let mut module_dispositions = tcx.sess.opts.incremental.as_ref().map(|_| Vec::new());
+    ongoing_translation.submit_pre_translated_module_to_llvm(tcx, metadata_module);
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently. Note that "size" is defined rather crudely at the
@@ -1066,50 +1057,24 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let mut total_trans_time = Duration::new(0, 0);
+    let mut all_stats = Stats::default();
 
-    for (cgu_index, cgu) in codegen_units.into_iter().enumerate() {
+    for cgu in codegen_units.into_iter() {
         ongoing_translation.wait_for_signal_to_translate_item();
         ongoing_translation.check_for_errors(tcx.sess);
 
+        let _timing_guard = time_graph
+            .as_ref()
+            .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
+                                               write::TRANS_WORK_PACKAGE_KIND));
         let start_time = Instant::now();
+        all_stats.extend(tcx.compile_codegen_unit(*cgu.name()));
+        total_trans_time += start_time.elapsed();
 
-        let module = {
-            let _timing_guard = time_graph
-                .as_ref()
-                .map(|time_graph| time_graph.start(write::TRANS_WORKER_TIMELINE,
-                                                   write::TRANS_WORK_PACKAGE_KIND));
-            let dep_node = cgu.work_product_dep_node();
-            let ((stats, module), _) =
-                tcx.dep_graph.with_task(dep_node,
-                                        AssertDepGraphSafe(&shared_ccx),
-                                        AssertDepGraphSafe(cgu),
-                                        module_translation);
-            all_stats.extend(stats);
-
-            if let Some(ref mut module_dispositions) = module_dispositions {
-                module_dispositions.push(module.disposition());
-            }
-
-            module
-        };
-
-        let time_to_translate = Instant::now().duration_since(start_time);
-
-        // We assume that the cost to run LLVM on a CGU is proportional to
-        // the time we needed for translating it.
-        let cost = time_to_translate.as_secs() * 1_000_000_000 +
-                   time_to_translate.subsec_nanos() as u64;
-
-        total_trans_time += time_to_translate;
-
-        let is_last_cgu = (cgu_index + 1) == codegen_unit_count;
-
-        ongoing_translation.submit_translated_module_to_llvm(tcx.sess,
-                                                             module,
-                                                             cost,
-                                                             is_last_cgu);
         ongoing_translation.check_for_errors(tcx.sess);
     }
+
+    ongoing_translation.translation_finished(tcx);
 
     // Since the main thread is sometimes blocked during trans, we keep track
     // -Ztime-passes output manually.
@@ -1117,166 +1082,32 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             "translate to LLVM IR",
                             total_trans_time);
 
-    if let Some(module_dispositions) = module_dispositions {
-        assert_module_sources::assert_module_sources(tcx, &module_dispositions);
-    }
-
-    fn module_translation<'a, 'tcx>(
-        scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
-        args: AssertDepGraphSafe<Arc<CodegenUnit<'tcx>>>)
-        -> (Stats, ModuleTranslation)
-    {
-        // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
-        let AssertDepGraphSafe(scx) = scx;
-        let AssertDepGraphSafe(cgu) = args;
-
-        let cgu_name = cgu.name().to_string();
-        let cgu_id = cgu.work_product_id();
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
-
-        // Check whether there is a previous work-product we can
-        // re-use.  Not only must the file exist, and the inputs not
-        // be dirty, but the hash of the symbols we will generate must
-        // be the same.
-        let previous_work_product =
-            scx.dep_graph().previous_work_product(&cgu_id).and_then(|work_product| {
-                if work_product.input_hash == symbol_name_hash {
-                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
-                    Some(work_product)
-                } else {
-                    if scx.sess().opts.debugging_opts.incremental_info {
-                        eprintln!("incremental: CGU `{}` invalidated because of \
-                                   changed partitioning hash.",
-                                   cgu.name());
-                    }
-                    debug!("trans_reuse_previous_work_products: \
-                            not reusing {:?} because hash changed to {:?}",
-                           work_product, symbol_name_hash);
-                    None
-                }
-            });
-
-        if let Some(buf) = previous_work_product {
-            // Don't need to translate this module.
-            let module = ModuleTranslation {
-                name: cgu_name,
-                symbol_name_hash,
-                source: ModuleSource::Preexisting(buf.clone()),
-                kind: ModuleKind::Regular,
-            };
-            return (Stats::default(), module);
-        }
-
-        // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu);
-        let module = {
-            let ccx = CrateContext::new(scx, &lcx);
-            let trans_items = ccx.codegen_unit()
-                                 .items_in_deterministic_order(ccx.tcx());
-            for &(trans_item, (linkage, visibility)) in &trans_items {
-                trans_item.predefine(&ccx, linkage, visibility);
-            }
-
-            // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(trans_item, _) in &trans_items {
-                trans_item.define(&ccx);
-            }
-
-            // If this codegen unit contains the main function, also create the
-            // wrapper here
-            maybe_create_entry_wrapper(&ccx);
-
-            // Run replace-all-uses-with for statics that need it
-            for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
-                unsafe {
-                    let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
-                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
-                    llvm::LLVMDeleteGlobal(old_g);
-                }
-            }
-
-            // Create the llvm.used variable
-            // This variable has type [N x i8*] and is stored in the llvm.metadata section
-            if !ccx.used_statics().borrow().is_empty() {
-                let name = CString::new("llvm.used").unwrap();
-                let section = CString::new("llvm.metadata").unwrap();
-                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
-
-                unsafe {
-                    let g = llvm::LLVMAddGlobal(ccx.llmod(),
-                                                val_ty(array).to_ref(),
-                                                name.as_ptr());
-                    llvm::LLVMSetInitializer(g, array);
-                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-                    llvm::LLVMSetSection(g, section.as_ptr());
-                }
-            }
-
-            // Finalize debuginfo
-            if ccx.sess().opts.debuginfo != NoDebugInfo {
-                debuginfo::finalize(&ccx);
-            }
-
-            let llvm_module = ModuleLlvm {
-                llcx: ccx.llcx(),
-                llmod: ccx.llmod(),
-            };
-
-            // In LTO mode we inject the allocator shim into the existing
-            // module.
-            if ccx.sess().lto() {
-                if let Some(kind) = ccx.sess().allocator_kind.get() {
-                    time(ccx.sess().time_passes(), "write allocator module", || {
-                        unsafe {
-                            allocator::trans(ccx.tcx(), &llvm_module, kind);
-                        }
-                    });
-                }
-            }
-
-            // Adjust exported symbols for MSVC dllimport
-            if ccx.sess().target.target.options.is_like_msvc &&
-               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-                create_imps(ccx.sess(), &llvm_module);
-            }
-
-            ModuleTranslation {
-                name: cgu_name,
-                symbol_name_hash,
-                source: ModuleSource::Translated(llvm_module),
-                kind: ModuleKind::Regular,
-            }
-        };
-
-        (lcx.into_stats(), module)
+    if tcx.sess.opts.incremental.is_some() {
+        DISPOSITIONS.with(|d| {
+            assert_module_sources::assert_module_sources(tcx, &d.borrow());
+        });
     }
 
     symbol_names_test::report_symbol_names(tcx);
 
     if shared_ccx.sess().trans_stats() {
         println!("--- trans stats ---");
-        println!("n_glues_created: {}", all_stats.n_glues_created.get());
-        println!("n_null_glues: {}", all_stats.n_null_glues.get());
-        println!("n_real_glues: {}", all_stats.n_real_glues.get());
+        println!("n_glues_created: {}", all_stats.n_glues_created);
+        println!("n_null_glues: {}", all_stats.n_null_glues);
+        println!("n_real_glues: {}", all_stats.n_real_glues);
 
-        println!("n_fns: {}", all_stats.n_fns.get());
-        println!("n_inlines: {}", all_stats.n_inlines.get());
-        println!("n_closures: {}", all_stats.n_closures.get());
+        println!("n_fns: {}", all_stats.n_fns);
+        println!("n_inlines: {}", all_stats.n_inlines);
+        println!("n_closures: {}", all_stats.n_closures);
         println!("fn stats:");
-        all_stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
-            insns_b.cmp(&insns_a)
-        });
-        for tuple in all_stats.fn_stats.borrow().iter() {
-            match *tuple {
-                (ref name, insns) => {
-                    println!("{} insns, {}", insns, *name);
-                }
-            }
+        all_stats.fn_stats.sort_by_key(|&(_, insns)| insns);
+        for &(ref name, insns) in all_stats.fn_stats.iter() {
+            println!("{} insns, {}", insns, *name);
         }
     }
 
     if shared_ccx.sess().count_llvm_insns() {
-        for (k, v) in all_stats.llvm_insns.borrow().iter() {
+        for (k, v) in all_stats.llvm_insns.iter() {
             println!("{:7} {}", *v, *k);
         }
     }
@@ -1289,6 +1120,10 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               link_meta);
     ongoing_translation
 }
+
+// FIXME(#42293) hopefully once red/green is enabled we're testing everything
+// via a method that doesn't require this!
+thread_local!(static DISPOSITIONS: RefCell<Vec<(String, Disposition)>> = Default::default());
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        incremental_hashes_map: IncrementalHashesMap,
@@ -1524,11 +1359,185 @@ fn is_translated_function(tcx: TyCtxt, id: DefId) -> bool {
     })
 }
 
+fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  cgu: InternedString) -> Stats {
+    // FIXME(#42293) needs red/green tracking to avoid failing a bunch of
+    // existing tests
+    let cgu = tcx.dep_graph.with_ignore(|| {
+        tcx.codegen_unit(cgu)
+    });
+
+    let start_time = Instant::now();
+    let dep_node = cgu.work_product_dep_node();
+    let ((stats, module), _) =
+        tcx.dep_graph.with_task(dep_node,
+                                AssertDepGraphSafe(tcx),
+                                AssertDepGraphSafe(cgu),
+                                module_translation);
+    let time_to_translate = start_time.elapsed();
+
+    if tcx.sess.opts.incremental.is_some() {
+        DISPOSITIONS.with(|d| {
+            d.borrow_mut().push(module.disposition());
+        });
+    }
+
+    // We assume that the cost to run LLVM on a CGU is proportional to
+    // the time we needed for translating it.
+    let cost = time_to_translate.as_secs() * 1_000_000_000 +
+               time_to_translate.subsec_nanos() as u64;
+
+    write::submit_translated_module_to_llvm(tcx,
+                                            module,
+                                            cost);
+    return stats;
+
+    fn module_translation<'a, 'tcx>(
+        tcx: AssertDepGraphSafe<TyCtxt<'a, 'tcx, 'tcx>>,
+        args: AssertDepGraphSafe<Arc<CodegenUnit<'tcx>>>)
+        -> (Stats, ModuleTranslation)
+    {
+        // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
+        let AssertDepGraphSafe(tcx) = tcx;
+        let AssertDepGraphSafe(cgu) = args;
+
+        let cgu_name = cgu.name().to_string();
+        let cgu_id = cgu.work_product_id();
+        let symbol_name_hash = cgu.compute_symbol_name_hash(tcx);
+
+        // Check whether there is a previous work-product we can
+        // re-use.  Not only must the file exist, and the inputs not
+        // be dirty, but the hash of the symbols we will generate must
+        // be the same.
+        let previous_work_product =
+            tcx.dep_graph.previous_work_product(&cgu_id).and_then(|work_product| {
+                if work_product.input_hash == symbol_name_hash {
+                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
+                    Some(work_product)
+                } else {
+                    if tcx.sess.opts.debugging_opts.incremental_info {
+                        eprintln!("incremental: CGU `{}` invalidated because of \
+                                   changed partitioning hash.",
+                                   cgu.name());
+                    }
+                    debug!("trans_reuse_previous_work_products: \
+                            not reusing {:?} because hash changed to {:?}",
+                           work_product, symbol_name_hash);
+                    None
+                }
+            });
+
+        if let Some(buf) = previous_work_product {
+            // Don't need to translate this module.
+            let module = ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Preexisting(buf.clone()),
+                kind: ModuleKind::Regular,
+            };
+            return (Stats::default(), module);
+        }
+
+        // Instantiate translation items without filling out definitions yet...
+        let scx = SharedCrateContext::new(tcx);
+        let lcx = LocalCrateContext::new(&scx, cgu);
+        let module = {
+            let ccx = CrateContext::new(&scx, &lcx);
+            let trans_items = ccx.codegen_unit()
+                                 .items_in_deterministic_order(ccx.tcx());
+            for &(trans_item, (linkage, visibility)) in &trans_items {
+                trans_item.predefine(&ccx, linkage, visibility);
+            }
+
+            // ... and now that we have everything pre-defined, fill out those definitions.
+            for &(trans_item, _) in &trans_items {
+                trans_item.define(&ccx);
+            }
+
+            // If this codegen unit contains the main function, also create the
+            // wrapper here
+            maybe_create_entry_wrapper(&ccx);
+
+            // Run replace-all-uses-with for statics that need it
+            for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
+                unsafe {
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
+                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                    llvm::LLVMDeleteGlobal(old_g);
+                }
+            }
+
+            // Create the llvm.used variable
+            // This variable has type [N x i8*] and is stored in the llvm.metadata section
+            if !ccx.used_statics().borrow().is_empty() {
+                let name = CString::new("llvm.used").unwrap();
+                let section = CString::new("llvm.metadata").unwrap();
+                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
+
+                unsafe {
+                    let g = llvm::LLVMAddGlobal(ccx.llmod(),
+                                                val_ty(array).to_ref(),
+                                                name.as_ptr());
+                    llvm::LLVMSetInitializer(g, array);
+                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+                    llvm::LLVMSetSection(g, section.as_ptr());
+                }
+            }
+
+            // Finalize debuginfo
+            if ccx.sess().opts.debuginfo != NoDebugInfo {
+                debuginfo::finalize(&ccx);
+            }
+
+            let llvm_module = ModuleLlvm {
+                llcx: ccx.llcx(),
+                llmod: ccx.llmod(),
+            };
+
+            // In LTO mode we inject the allocator shim into the existing
+            // module.
+            if ccx.sess().lto() {
+                if let Some(kind) = ccx.sess().allocator_kind.get() {
+                    time(ccx.sess().time_passes(), "write allocator module", || {
+                        unsafe {
+                            allocator::trans(ccx.tcx(), &llvm_module, kind);
+                        }
+                    });
+                }
+            }
+
+            // Adjust exported symbols for MSVC dllimport
+            if ccx.sess().target.target.options.is_like_msvc &&
+               ccx.sess().crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
+                create_imps(ccx.sess(), &llvm_module);
+            }
+
+            ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Translated(llvm_module),
+                kind: ModuleKind::Regular,
+            }
+        };
+
+        (lcx.into_stats(), module)
+    }
+}
+
 pub fn provide_local(providers: &mut Providers) {
     providers.collect_and_partition_translation_items =
         collect_and_partition_translation_items;
 
     providers.is_translated_function = is_translated_function;
+
+    providers.codegen_unit = |tcx, name| {
+        let (_, all) = tcx.collect_and_partition_translation_items(LOCAL_CRATE);
+        all.iter()
+            .find(|cgu| *cgu.name() == name)
+            .cloned()
+            .expect(&format!("failed to find cgu with name {:?}", name))
+    };
+    providers.compile_codegen_unit = compile_codegen_unit;
 }
 
 pub fn provide_extern(providers: &mut Providers) {

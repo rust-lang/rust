@@ -822,9 +822,9 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.output_filenames().with_extension("gcno")),
+                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcno")),
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.output_filenames().with_extension("gcda")),
+                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcda")),
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,

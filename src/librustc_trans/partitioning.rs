@@ -104,7 +104,6 @@
 
 use collector::InliningMap;
 use common;
-use context::SharedCrateContext;
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -155,13 +154,11 @@ pub trait CodegenUnitExt<'tcx> {
         self.work_product_id().to_dep_node()
     }
 
-    fn compute_symbol_name_hash<'a>(&self,
-                                    scx: &SharedCrateContext<'a, 'tcx>)
-                                    -> u64 {
+    fn compute_symbol_name_hash<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> u64 {
         let mut state = IchHasher::new();
-        let all_items = self.items_in_deterministic_order(scx.tcx());
+        let all_items = self.items_in_deterministic_order(tcx);
         for (item, (linkage, visibility)) in all_items {
-            let symbol_name = item.symbol_name(scx.tcx());
+            let symbol_name = item.symbol_name(tcx);
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
             linkage.hash(&mut state);

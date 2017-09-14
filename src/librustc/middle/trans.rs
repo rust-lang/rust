@@ -77,3 +77,34 @@ impl<'tcx> CodegenUnit<'tcx> {
         &mut self.items
     }
 }
+
+#[derive(Clone, Default)]
+pub struct Stats {
+    pub n_glues_created: usize,
+    pub n_null_glues: usize,
+    pub n_real_glues: usize,
+    pub n_fns: usize,
+    pub n_inlines: usize,
+    pub n_closures: usize,
+    pub n_llvm_insns: usize,
+    pub llvm_insns: FxHashMap<String, usize>,
+    // (ident, llvm-instructions)
+    pub fn_stats: Vec<(String, usize)>,
+}
+
+impl Stats {
+    pub fn extend(&mut self, stats: Stats) {
+        self.n_glues_created += stats.n_glues_created;
+        self.n_null_glues += stats.n_null_glues;
+        self.n_real_glues += stats.n_real_glues;
+        self.n_fns += stats.n_fns;
+        self.n_inlines += stats.n_inlines;
+        self.n_closures += stats.n_closures;
+        self.n_llvm_insns += stats.n_llvm_insns;
+
+        for (k, v) in stats.llvm_insns {
+            *self.llvm_insns.entry(k).or_insert(0) += v;
+        }
+        self.fn_stats.extend(stats.fn_stats);
+    }
+}

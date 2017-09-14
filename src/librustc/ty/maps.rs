@@ -24,10 +24,11 @@ use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::SymbolExportLevel;
-use middle::trans::CodegenUnit;
+use middle::trans::{CodegenUnit, Stats};
 use mir;
 use mir::transform::{MirSuite, MirPassIndex};
 use session::CompileResult;
+use session::config::OutputFilenames;
 use traits::specialization_graph;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::layout::{Layout, LayoutError};
@@ -52,6 +53,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::symbol::InternedString;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -177,6 +179,15 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
         self.value.default_span(tcx)
+    }
+}
+
+impl Key for InternedString {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _tcx: TyCtxt) -> Span {
+        DUMMY_SP
     }
 }
 
@@ -757,6 +768,24 @@ impl<'tcx> QueryDescription for queries::exported_symbols<'tcx> {
 impl<'tcx> QueryDescription for queries::collect_and_partition_translation_items<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("collect_and_partition_translation_items")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::codegen_unit<'tcx> {
+    fn describe(_tcx: TyCtxt, _: InternedString) -> String {
+        format!("codegen_unit")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::compile_codegen_unit<'tcx> {
+    fn describe(_tcx: TyCtxt, _: InternedString) -> String {
+        format!("compile_codegen_unit")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::output_filenames<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("output_filenames")
     }
 }
 
@@ -1395,6 +1424,10 @@ define_maps! { <'tcx>
     [] fn export_name: ExportName(DefId) -> Option<Symbol>,
     [] fn contains_extern_indicator: ContainsExternIndicator(DefId) -> bool,
     [] fn is_translated_function: IsTranslatedFunction(DefId) -> bool,
+    [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
+    [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
+    [] fn output_filenames: output_filenames_node(CrateNum)
+        -> Arc<OutputFilenames>,
 }
 
 fn type_param_predicates<'tcx>((item_id, param_id): (DefId, DefId)) -> DepConstructor<'tcx> {
@@ -1511,4 +1544,8 @@ fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::CollectAndPartitionTranslationItems
+}
+
+fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::OutputFilenames
 }

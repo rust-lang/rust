@@ -101,11 +101,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn count_insn(&self, category: &str) {
         if self.ccx.sess().trans_stats() {
-            self.ccx.stats().n_llvm_insns.set(self.ccx.stats().n_llvm_insns.get() + 1);
+            self.ccx.stats().borrow_mut().n_llvm_insns += 1;
         }
         if self.ccx.sess().count_llvm_insns() {
-            let mut h = self.ccx.stats().llvm_insns.borrow_mut();
-            *h.entry(category.to_string()).or_insert(0) += 1;
+            *self.ccx.stats()
+                .borrow_mut()
+                .llvm_insns
+                .entry(category.to_string())
+                .or_insert(0) += 1;
         }
     }
 

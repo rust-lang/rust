@@ -20,9 +20,8 @@ use llvm::{ValueRef};
 use llvm;
 use meth;
 use monomorphize;
-use rustc::traits;
 use rustc::ty::layout::LayoutTyper;
-use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
+use rustc::ty::{self, Ty};
 use value::Value;
 
 pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)

@@ -10,6 +10,9 @@
 
 //! # Standalone Tests for the Inference Module
 
+use std::path::PathBuf;
+use std::sync::mpsc;
+
 use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
@@ -26,6 +29,7 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::mir::transform::Passes;
 use rustc::session::{self, config};
+use rustc::session::config::{OutputFilenames, OutputTypes};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -133,6 +137,14 @@ fn test_env<F>(source_string: &str,
 
     // run just enough stuff to build a tcx:
     let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
+    let (tx, _rx) = mpsc::channel();
+    let outputs = OutputFilenames {
+        out_directory: PathBuf::new(),
+        out_filestem: String::new(),
+        single_output_file: None,
+        extra: String::new(),
+        outputs: OutputTypes::new(&[]),
+    };
     TyCtxt::create_and_enter(&sess,
                              &*cstore,
                              ty::maps::Providers::default(),
@@ -144,6 +156,8 @@ fn test_env<F>(source_string: &str,
                              named_region_map.unwrap(),
                              hir_map,
                              "test_crate",
+                             tx,
+                             &outputs,
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
             let mut region_scope_tree = region::ScopeTree::default();

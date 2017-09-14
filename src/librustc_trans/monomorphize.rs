@@ -187,7 +187,7 @@ pub fn resolve<'a, 'tcx>(
             _ => {
                 if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
                     let ty = substs.type_at(0);
-                    if common::type_needs_drop(tcx, ty) {
+                    if type_needs_drop(tcx, ty) {
                         debug!(" => nontrivial drop glue");
                         ty::InstanceDef::DropGlue(def_id, Some(ty))
                     } else {

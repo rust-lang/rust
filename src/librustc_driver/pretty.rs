@@ -23,7 +23,7 @@ use rustc::cfg::graphviz::LabelledCFG;
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
-use rustc::session::config::Input;
+use rustc::session::config::{Input, OutputFilenames};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 
@@ -205,6 +205,7 @@ impl PpSourceMode {
                                                resolutions: &Resolutions,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
+                                               output_filenames: &OutputFilenames,
                                                id: &str,
                                                f: F)
                                                -> A
@@ -235,7 +236,8 @@ impl PpSourceMode {
                                                                  arena,
                                                                  arenas,
                                                                  id,
-                                                                 |tcx, _, _, _| {
+                                                                 output_filenames,
+                                                                 |tcx, _, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -888,6 +890,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 ppm: PpMode,
                                                 arena: &'tcx DroplessArena,
                                                 arenas: &'tcx GlobalArenas<'tcx>,
+                                                output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
@@ -902,6 +905,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                             crate_name,
                             arena,
                             arenas,
+                            output_filenames,
                             ppm,
                             opt_uii,
                             ofile);
@@ -940,6 +944,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            resolutions,
                                            arena,
                                            arenas,
+                                           output_filenames,
                                            crate_name,
                                            move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
@@ -964,6 +969,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                            resolutions,
                                            arena,
                                            arenas,
+                                           output_filenames,
                                            crate_name,
                                            move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
@@ -1007,6 +1013,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        crate_name: &str,
                                        arena: &'tcx DroplessArena,
                                        arenas: &'tcx GlobalArenas<'tcx>,
+                                       output_filenames: &OutputFilenames,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
                                        ofile: Option<&Path>) {
@@ -1028,7 +1035,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      arena,
                                                      arenas,
                                                      crate_name,
-                                                     |tcx, _, _, _| {
+                                                     output_filenames,
+                                                     |tcx, _, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

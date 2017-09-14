@@ -24,10 +24,11 @@ use monomorphize::Instance;
 use partitioning::CodegenUnit;
 use type_::Type;
 use rustc_data_structures::base_n;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
+use rustc::middle::trans::Stats;
 use rustc::session::Session;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::session::config::{self, NoDebugInfo};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 
 use std::ffi::{CStr, CString};
@@ -40,36 +41,6 @@ use std::marker::PhantomData;
 use syntax::symbol::InternedString;
 use abi::Abi;
 
-#[derive(Clone, Default)]
-pub struct Stats {
-    pub n_glues_created: Cell<usize>,
-    pub n_null_glues: Cell<usize>,
-    pub n_real_glues: Cell<usize>,
-    pub n_fns: Cell<usize>,
-    pub n_inlines: Cell<usize>,
-    pub n_closures: Cell<usize>,
-    pub n_llvm_insns: Cell<usize>,
-    pub llvm_insns: RefCell<FxHashMap<String, usize>>,
-    // (ident, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(String, usize)> >,
-}
-
-impl Stats {
-    pub fn extend(&mut self, stats: Stats) {
-        self.n_glues_created.set(self.n_glues_created.get() + stats.n_glues_created.get());
-        self.n_null_glues.set(self.n_null_glues.get() + stats.n_null_glues.get());
-        self.n_real_glues.set(self.n_real_glues.get() + stats.n_real_glues.get());
-        self.n_fns.set(self.n_fns.get() + stats.n_fns.get());
-        self.n_inlines.set(self.n_inlines.get() + stats.n_inlines.get());
-        self.n_closures.set(self.n_closures.get() + stats.n_closures.get());
-        self.n_llvm_insns.set(self.n_llvm_insns.get() + stats.n_llvm_insns.get());
-        self.llvm_insns.borrow_mut().extend(
-            stats.llvm_insns.borrow().iter()
-                                     .map(|(key, value)| (key.clone(), value.clone())));
-        self.fn_stats.borrow_mut().append(&mut *stats.fn_stats.borrow_mut());
-    }
-}
-
 /// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
 /// per crate.  The data here is shared between all compilation units of the
 /// crate, so it must not contain references to any LLVM data structures
@@ -77,10 +48,7 @@ impl Stats {
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
-
     use_dll_storage_attrs: bool,
-
-    output_filenames: &'a OutputFilenames,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -90,7 +58,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    stats: Stats,
+    stats: RefCell<Stats>,
     codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
@@ -253,10 +221,7 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 }
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               check_overflow: bool,
-               output_filenames: &'b OutputFilenames)
-               -> SharedCrateContext<'b, 'tcx> {
+    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> SharedCrateContext<'b, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -302,11 +267,12 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         // start) and then strongly recommending static linkage on MSVC!
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
+        let check_overflow = tcx.sess.overflow_checks();
+
         SharedCrateContext {
             tcx,
             check_overflow,
             use_dll_storage_attrs,
-            output_filenames,
         }
     }
 
@@ -336,10 +302,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
-    }
-
-    pub fn output_filenames(&self) -> &OutputFilenames {
-        self.output_filenames
     }
 }
 
@@ -375,7 +337,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod,
                 llcx,
-                stats: Stats::default(),
+                stats: RefCell::new(Stats::default()),
                 codegen_unit,
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
@@ -440,7 +402,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     }
 
     pub fn into_stats(self) -> Stats {
-        self.stats
+        self.stats.into_inner()
     }
 }
 
@@ -525,7 +487,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().lltypes
     }
 
-    pub fn stats<'a>(&'a self) -> &'a Stats {
+    pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
         &self.local().stats
     }
 

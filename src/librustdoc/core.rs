@@ -176,6 +176,11 @@ pub fn run_core(search_paths: SearchPaths,
     let arena = DroplessArena::new();
     let arenas = GlobalArenas::new();
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
+    let output_filenames = driver::build_output_filenames(&input,
+                                                          &None,
+                                                          &None,
+                                                          &[],
+                                                          &sess);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      &*cstore,
@@ -185,7 +190,8 @@ pub fn run_core(search_paths: SearchPaths,
                                                      &arena,
                                                      &arenas,
                                                      &name,
-                                                     |tcx, analysis, _, result| {
+                                                     &output_filenames,
+                                                     |tcx, analysis, _, _, result| {
         if let Err(_) = result {
             sess.fatal("Compilation failed, aborting rustdoc");
         }

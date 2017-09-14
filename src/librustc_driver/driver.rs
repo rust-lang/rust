@@ -193,6 +193,7 @@ pub fn compile_input(sess: &Session,
                                                                   &resolutions,
                                                                   &expanded_crate,
                                                                   &hir_map.krate(),
+                                                                  &outputs,
                                                                   &crate_name),
                                     Ok(()));
         }
@@ -216,6 +217,7 @@ pub fn compile_input(sess: &Session,
                                     &arena,
                                     &arenas,
                                     &crate_name,
+                                    &outputs,
                                     |tcx, analysis, incremental_hashes_map, rx, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -246,8 +248,7 @@ pub fn compile_input(sess: &Session,
 
             let trans = phase_4_translate_to_llvm(tcx,
                                                   incremental_hashes_map,
-                                                  rx,
-                                                  &outputs);
+                                                  rx);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -261,7 +262,7 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            Ok((outputs, trans, tcx.dep_graph.clone()))
+            Ok((outputs.clone(), trans, tcx.dep_graph.clone()))
         })??
     };
 
@@ -486,6 +487,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 resolutions: &'a Resolutions,
                                 krate: &'a ast::Crate,
                                 hir_crate: &'a hir::Crate,
+                                output_filenames: &'a OutputFilenames,
                                 crate_name: &'a str)
                                 -> Self {
         CompileState {
@@ -498,6 +500,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: Some(resolutions),
             expanded_crate: Some(krate),
             hir_crate: Some(hir_crate),
+            output_filenames: Some(output_filenames),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -913,6 +916,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                name: &str,
+                                               output_filenames: &OutputFilenames,
                                                f: F)
                                                -> Result<R, CompileIncomplete>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
@@ -922,11 +926,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                             CompileResult) -> R
 {
     macro_rules! try_with_f {
-        ($e: expr, ($t: expr, $a: expr, $h: expr)) => {
+        ($e: expr, ($($t:tt)*)) => {
             match $e {
                 Ok(x) => x,
                 Err(x) => {
-                    f($t, $a, $h, Err(x));
+                    f($($t)*, Err(x));
                     return Err(x);
                 }
             }
@@ -1047,6 +1051,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              hir_map,
                              name,
                              tx,
+                             output_filenames,
                              |tcx| {
         let incremental_hashes_map =
             time(time_passes,
@@ -1062,7 +1067,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
+        try_with_f!(typeck::check_crate(tcx),
+                    (tcx, analysis, incremental_hashes_map, rx));
 
         time(time_passes,
              "const checking",
@@ -1106,7 +1112,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, sess.compile_status()));
+            return Ok(f(tcx, analysis, incremental_hashes_map, rx, sess.compile_status()));
         }
 
         time(time_passes, "death checking", || middle::dead::check_crate(tcx));
@@ -1125,8 +1131,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            incremental_hashes_map: IncrementalHashesMap,
-                                           rx: mpsc::Receiver<Box<Any + Send>>,
-                                           output_filenames: &OutputFilenames)
+                                           rx: mpsc::Receiver<Box<Any + Send>>)
                                            -> write::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
@@ -1136,7 +1141,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let translation =
         time(time_passes, "translation", move || {
-            trans::trans_crate(tcx, incremental_hashes_map, rx, output_filenames)
+            trans::trans_crate(tcx, incremental_hashes_map, rx)
         });
 
     if tcx.sess.profile_queries() {
