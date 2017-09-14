@@ -169,6 +169,11 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for [ast::
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
+        if self.len() == 0 {
+            self.len().hash_stable(hcx, hasher);
+            return
+        }
+
         // Some attributes are always ignored during hashing.
         let filtered: AccumulateVec<[&ast::Attribute; 8]> = self
             .iter()

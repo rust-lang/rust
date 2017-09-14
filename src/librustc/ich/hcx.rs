@@ -17,6 +17,7 @@ use ty::{self, TyCtxt, fast_reject};
 
 use std::cmp::Ord;
 use std::hash as std_hash;
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use syntax::ast;
@@ -30,6 +31,10 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHashingContextProvi
                                            StableHasher, StableHasherResult,
                                            ToStableHashKey};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::fx::FxHashSet;
+
+thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
+    RefCell::new(FxHashSet()));
 
 /// This is the context state available during incr. comp. hashing. It contains
 /// enough information to transform DefIds and HirIds into stable DefPaths (i.e.
@@ -41,8 +46,6 @@ pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     hash_bodies: bool,
     overflow_checks_enabled: bool,
     node_id_hashing_mode: NodeIdHashingMode,
-    // A sorted array of symbol keys for fast lookup.
-    ignored_attr_names: Vec<Symbol>,
 
     // Very often, we are hashing something that does not need the
     // CachingCodemapView, so we initialize it lazily.
@@ -62,12 +65,14 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
         let hash_spans_initial = tcx.sess.opts.debuginfo != NoDebugInfo;
         let check_overflow_initial = tcx.sess.overflow_checks();
 
-        let mut ignored_attr_names: Vec<_> = ich::IGNORED_ATTRIBUTES
-            .iter()
-            .map(|&s| Symbol::intern(s))
-            .collect();
-
-        ignored_attr_names.sort();
+        debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
+        IGNORED_ATTR_NAMES.with(|names| {
+            let mut names = names.borrow_mut();
+            if names.is_empty() {
+                names.extend(ich::IGNORED_ATTRIBUTES.iter()
+                                                    .map(|&s| Symbol::intern(s)));
+            }
+        });
 
         StableHashingContext {
             tcx,
@@ -77,7 +82,6 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
             hash_bodies: true,
             overflow_checks_enabled: check_overflow_initial,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            ignored_attr_names,
         }
     }
 
@@ -151,7 +155,9 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn is_ignored_attr(&self, name: Symbol) -> bool {
-        self.ignored_attr_names.binary_search(&name).is_ok()
+        IGNORED_ATTR_NAMES.with(|names| {
+            names.borrow().contains(&name)
+        })
     }
 
     pub fn hash_hir_item_like<F: FnOnce(&mut Self)>(&mut self,
