@@ -18,7 +18,7 @@ script:
   # Test plain miri
   cargo build --locked --release --all-features &&
   cargo test --locked --release --all-features --all &&
-  cargo install --locked --release --all-features
+  cargo install --locked --all-features
 - |
   # Test cargo miri
   cd cargo-miri-test &&
