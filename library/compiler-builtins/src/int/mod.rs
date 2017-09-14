@@ -23,6 +23,9 @@ pub trait Int:
     PartialEq +
     PartialOrd +
     ops::AddAssign +
+    ops::BitAndAssign +
+    ops::BitOrAssign +
+    ops::ShrAssign<u32> +
     ops::Add<Output = Self> +
     ops::Sub<Output = Self> +
     ops::Div<Output = Self> +
@@ -31,7 +34,6 @@ pub trait Int:
     ops::BitOr<Output = Self> +
     ops::BitXor<Output = Self> +
     ops::BitAnd<Output = Self> +
-    ops::BitAndAssign +
     ops::Not<Output = Self> +
 {
     /// Type with the same width but other signedness
@@ -60,14 +62,18 @@ pub trait Int:
     fn unsigned(self) -> Self::UnsignedInt;
     fn from_unsigned(unsigned: Self::UnsignedInt) -> Self;
 
+    fn from_bool(b: bool) -> Self;
+
     // copied from primitive integers, but put in a trait
     fn max_value() -> Self;
     fn min_value() -> Self;
     fn wrapping_add(self, other: Self) -> Self;
     fn wrapping_mul(self, other: Self) -> Self;
     fn wrapping_sub(self, other: Self) -> Self;
+    fn wrapping_shl(self, other: u32) -> Self;
     fn aborting_div(self, other: Self) -> Self;
     fn aborting_rem(self, other: Self) -> Self;
+    fn leading_zeros(self) -> u32;
 }
 
 fn unwrap<T>(t: Option<T>) -> T {
@@ -100,6 +106,10 @@ macro_rules! int_impl {
                 me
             }
 
+            fn from_bool(b: bool) -> Self {
+                b as $uty
+            }
+
             fn max_value() -> Self {
                 <Self>::max_value()
             }
@@ -120,12 +130,20 @@ macro_rules! int_impl {
                 <Self>::wrapping_sub(self, other)
             }
 
+            fn wrapping_shl(self, other: u32) -> Self {
+                <Self>::wrapping_shl(self, other)
+            }
+
             fn aborting_div(self, other: Self) -> Self {
                 unwrap(<Self>::checked_div(self, other))
             }
 
             fn aborting_rem(self, other: Self) -> Self {
                 unwrap(<Self>::checked_rem(self, other))
+            }
+
+            fn leading_zeros(self) -> u32 {
+                <Self>::leading_zeros(self)
             }
         }
 
@@ -154,6 +172,10 @@ macro_rules! int_impl {
                 me as $ity
             }
 
+            fn from_bool(b: bool) -> Self {
+                b as $ity
+            }
+
             fn max_value() -> Self {
                 <Self>::max_value()
             }
@@ -174,12 +196,20 @@ macro_rules! int_impl {
                 <Self>::wrapping_sub(self, other)
             }
 
+            fn wrapping_shl(self, other: u32) -> Self {
+                <Self>::wrapping_shl(self, other)
+            }
+
             fn aborting_div(self, other: Self) -> Self {
                 unwrap(<Self>::checked_div(self, other))
             }
 
             fn aborting_rem(self, other: Self) -> Self {
                 unwrap(<Self>::checked_rem(self, other))
+            }
+
+            fn leading_zeros(self) -> u32 {
+                <Self>::leading_zeros(self)
             }
         }
     }
