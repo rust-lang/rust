@@ -40,7 +40,7 @@ use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc_back::PanicStrategy;
 
 use libc::c_uint;
-use std::iter;
+use std::{cmp, iter};
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -276,26 +276,17 @@ pub trait LayoutExt<'tcx> {
 
 impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
     fn is_aggregate(&self) -> bool {
-        match *self.layout {
-            Layout::Scalar { .. } |
-            Layout::RawNullablePointer { .. } |
-            Layout::CEnum { .. } |
-            Layout::Vector { .. } => false,
-
-            Layout::Array { .. } |
-            Layout::FatPointer { .. } |
-            Layout::Univariant { .. } |
-            Layout::UntaggedUnion { .. } |
-            Layout::General { .. } |
-            Layout::StructWrappedNullablePointer { .. } => true
+        match self.abi {
+            layout::Abi::Scalar(_) |
+            layout::Abi::Vector => false,
+            layout::Abi::Aggregate => true
         }
     }
 
     fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg> {
-        match *self.layout {
-            // The primitives for this algorithm.
-            Layout::Scalar { value, .. } |
-            Layout::RawNullablePointer { discr: value, .. } => {
+        match self.abi {
+            // The primitive for this algorithm.
+            layout::Abi::Scalar(value) => {
                 let kind = match value {
                     layout::Int(_) |
                     layout::Pointer => RegKind::Integer,
@@ -308,34 +299,32 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 })
             }
 
-            Layout::CEnum { .. } => {
-                Some(Reg {
-                    kind: RegKind::Integer,
-                    size: self.size(ccx)
-                })
-            }
-
-            Layout::Vector { .. } => {
+            layout::Abi::Vector => {
                 Some(Reg {
                     kind: RegKind::Vector,
                     size: self.size(ccx)
                 })
             }
 
-            Layout::Array { count, .. } => {
-                if count > 0 {
-                    self.field(ccx, 0).homogeneous_aggregate(ccx)
-                } else {
-                    None
+            layout::Abi::Aggregate => {
+                if let Layout::Array { count, .. } = *self.layout {
+                    if count > 0 {
+                        return self.field(ccx, 0).homogeneous_aggregate(ccx);
+                    }
                 }
-            }
 
-            Layout::Univariant(ref variant) => {
-                let mut unaligned_offset = Size::from_bytes(0);
+                let mut total = Size::from_bytes(0);
                 let mut result = None;
 
+                let is_union = match self.fields {
+                    layout::FieldPlacement::Linear { stride, .. } => {
+                        stride.bytes() == 0
+                    }
+                    layout::FieldPlacement::Arbitrary { .. } => false
+                };
+
                 for i in 0..self.fields.count() {
-                    if unaligned_offset != variant.offsets[i] {
+                    if !is_union && total != self.fields.offset(i) {
                         return None;
                     }
 
@@ -356,57 +345,21 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                     }
 
                     // Keep track of the offset (without padding).
-                    unaligned_offset += field.size(ccx);
-                }
-
-                // There needs to be no padding.
-                if unaligned_offset != self.size(ccx) {
-                    None
-                } else {
-                    result
-                }
-            }
-
-            Layout::UntaggedUnion { .. } => {
-                let mut max = Size::from_bytes(0);
-                let mut result = None;
-
-                for i in 0..self.fields.count() {
-                    let field = self.field(ccx, i);
-                    match (result, field.homogeneous_aggregate(ccx)) {
-                        // The field itself must be a homogeneous aggregate.
-                        (_, None) => return None,
-                        // If this is the first field, record the unit.
-                        (None, Some(unit)) => {
-                            result = Some(unit);
-                        }
-                        // For all following fields, the unit must be the same.
-                        (Some(prev_unit), Some(unit)) => {
-                            if prev_unit != unit {
-                                return None;
-                            }
-                        }
-                    }
-
-                    // Keep track of the offset (without padding).
                     let size = field.size(ccx);
-                    if size > max {
-                        max = size;
+                    if is_union {
+                        total = cmp::max(total, size);
+                    } else {
+                        total += size;
                     }
                 }
 
                 // There needs to be no padding.
-                if max != self.size(ccx) {
+                if total != self.size(ccx) {
                     None
                 } else {
                     result
                 }
             }
-
-            // Rust-specific types, which we can ignore for C ABIs.
-            Layout::FatPointer { .. } |
-            Layout::General { .. } |
-            Layout::StructWrappedNullablePointer { .. } => None
         }
     }
 }
@@ -870,8 +823,9 @@ impl<'a, 'tcx> FnType<'tcx> {
         if abi == Abi::Rust || abi == Abi::RustCall ||
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType<'tcx>| {
-                if !arg.layout.is_aggregate() {
-                    return;
+                match arg.layout.abi {
+                    layout::Abi::Aggregate => {}
+                    _ => return
                 }
 
                 let size = arg.layout.size(ccx);

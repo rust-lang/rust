@@ -64,9 +64,8 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             return Ok(());
         }
 
-        match *layout {
-            Layout::Scalar { value, .. } |
-            Layout::RawNullablePointer { discr: value, .. } => {
+        match layout.abi {
+            layout::Abi::Scalar(value) => {
                 let reg = match value {
                     layout::Int(_) |
                     layout::Pointer => Class::Int,
@@ -76,47 +75,32 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 unify(cls, off, reg);
             }
 
-            Layout::CEnum { .. } => {
-                unify(cls, off, Class::Int);
-            }
-
-            Layout::Vector { element, count } => {
+            layout::Abi::Vector => {
                 unify(cls, off, Class::Sse);
 
                 // everything after the first one is the upper
                 // half of a register.
-                let eltsz = element.size(ccx);
-                for i in 1..count {
-                    unify(cls, off + eltsz * i, Class::SseUp);
+                let eltsz = layout.field(ccx, 0).size(ccx);
+                for i in 1..layout.fields.count() {
+                    unify(cls, off + eltsz * (i as u64), Class::SseUp);
                 }
             }
 
-            Layout::Array { count, .. } => {
-                if count > 0 {
-                    let elt = layout.field(ccx, 0);
-                    let eltsz = elt.size(ccx);
-                    for i in 0..count {
-                        classify(ccx, elt, cls, off + eltsz * i)?;
-                    }
+            layout::Abi::Aggregate => {
+                // FIXME(eddyb) have to work around Rust enums for now.
+                // Fix is either guarantee no data where there is no field,
+                // by putting variants in fields, or be more clever.
+                match *layout {
+                    Layout::General { .. } |
+                    Layout::StructWrappedNullablePointer { .. } => return Err(Memory),
+                    _ => {}
                 }
-            }
-
-            Layout::Univariant(ref variant) => {
                 for i in 0..layout.fields.count() {
-                    let field_off = off + variant.offsets[i];
+                    let field_off = off + layout.fields.offset(i);
                     classify(ccx, layout.field(ccx, i), cls, field_off)?;
                 }
             }
 
-            Layout::UntaggedUnion { .. } => {
-                for i in 0..layout.fields.count() {
-                    classify(ccx, layout.field(ccx, i), cls, off)?;
-                }
-            }
-
-            Layout::FatPointer { .. } |
-            Layout::General { .. } |
-            Layout::StructWrappedNullablePointer { .. } => return Err(Memory)
         }
 
         Ok(())

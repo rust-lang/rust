@@ -1054,6 +1054,15 @@ impl<'a> FieldPlacement<'a> {
     }
 }
 
+/// Describes how values of the type are passed by target ABIs,
+/// in terms of categories of C types there are ABI rules for.
+#[derive(Copy, Clone, Debug)]
+pub enum Abi {
+    Scalar(Primitive),
+    Vector,
+    Aggregate
+}
+
 /// Type layout, from which size and alignment can be cheaply computed.
 /// For ADTs, it also includes field placement and enum optimizations.
 /// NOTE: Because Layout is interned, redundant information should be
@@ -1172,6 +1181,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 pub struct CachedLayout<'tcx> {
     pub layout: &'tcx Layout,
     pub fields: FieldPlacement<'tcx>,
+    pub abi: Abi,
 }
 
 fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1258,9 +1268,24 @@ impl<'a, 'tcx> Layout {
                     }
                 }
             };
+            let abi = match *layout {
+                Scalar { value, .. } |
+                RawNullablePointer { discr: value, .. } => Abi::Scalar(value),
+                CEnum { discr, .. } => Abi::Scalar(Int(discr)),
+
+                Vector { .. } => Abi::Vector,
+
+                Array { .. } |
+                FatPointer { .. } |
+                Univariant(_) |
+                UntaggedUnion(_) |
+                General { .. } |
+                StructWrappedNullablePointer { .. } => Abi::Aggregate
+            };
             Ok(CachedLayout {
                 layout,
-                fields
+                fields,
+                abi
             })
         };
         assert!(!ty.has_infer_types());
@@ -1670,7 +1695,8 @@ impl<'a, 'tcx> Layout {
                 let layout = cx.layout_of(normalized)?;
                 return Ok(CachedLayout {
                     layout: layout.layout,
-                    fields: layout.fields
+                    fields: layout.fields,
+                    abi: layout.abi
                 });
             }
             ty::TyParam(_) => {
@@ -2158,6 +2184,7 @@ pub struct FullLayout<'tcx> {
     pub variant_index: Option<usize>,
     pub layout: &'tcx Layout,
     pub fields: FieldPlacement<'tcx>,
+    pub abi: Abi,
 }
 
 impl<'tcx> Deref for FullLayout<'tcx> {
@@ -2225,7 +2252,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (TyCtxt<'a, 'tcx, 'tcx>, ty::ParamEnv<'tcx
             ty,
             variant_index: None,
             layout: cached.layout,
-            fields: cached.fields
+            fields: cached.fields,
+            abi: cached.abi
         })
     }
 }
@@ -2255,7 +2283,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for (ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>,
             ty,
             variant_index: None,
             layout: cached.layout,
-            fields: cached.fields
+            fields: cached.fields,
+            abi: cached.abi
         })
     }
 }
@@ -2492,9 +2521,29 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FieldPlacement<'gcx> {
     }
 }
 
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Abi {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use ty::layout::Abi::*;
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Scalar(value) => {
+                value.hash_stable(hcx, hasher);
+            }
+            Vector => {
+            }
+            Aggregate => {
+            }
+        }
+    }
+}
+
 impl_stable_hash_for!(struct ::ty::layout::CachedLayout<'tcx> {
     layout,
-    fields
+    fields,
+    abi
 });
 
 impl_stable_hash_for!(enum ::ty::layout::Integer {

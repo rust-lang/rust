@@ -27,7 +27,7 @@ use type_::Type;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{HasDataLayout, Layout, LayoutOf};
+use rustc::ty::layout::{self, HasDataLayout, Layout, LayoutOf};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -50,19 +50,10 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     let layout = ccx.layout_of(ty);
-    match *layout {
-        Layout::CEnum { .. } |
-        Layout::Scalar { .. } |
-        Layout::Vector { .. } => true,
+    match layout.abi {
+        layout::Abi::Scalar(_) | layout::Abi::Vector => true,
 
-        Layout::FatPointer { .. } => false,
-
-        Layout::Array { .. } |
-        Layout::Univariant { .. } |
-        Layout::General { .. } |
-        Layout::UntaggedUnion { .. } |
-        Layout::RawNullablePointer { .. } |
-        Layout::StructWrappedNullablePointer { .. } => {
+        layout::Abi::Aggregate => {
             !layout.is_unsized() && layout.size(ccx).bytes() == 0
         }
     }
