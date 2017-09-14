@@ -15,6 +15,8 @@ set -e
 # Find out where the pretty printer Python module is
 RUSTC_SYSROOT=`rustc --print=sysroot`
 GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
+# Find rust source for gdb
+RUST_SRCROOT="${RUSTC_SYSROOT}/lib/rustlib/src/rust"
 
 # Run GDB with the additional arguments that load the pretty printers
 # Set the environment variable `RUST_GDB` to overwrite the call to a
@@ -23,4 +25,5 @@ RUST_GDB="${RUST_GDB:-gdb}"
 PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" ${RUST_GDB} \
   -d "$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
+  -iex "set substitute-path /checkout $RUST_SRCROOT" \
   "$@"
