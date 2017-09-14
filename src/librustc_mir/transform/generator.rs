@@ -38,7 +38,8 @@
 //! This pass computes the meaning of the state field and the MIR locals which are live
 //! across a suspension point. There are however two hardcoded generator states:
 //!     0 - Generator have not been resumed yet
-//!     1 - Generator has been poisoned
+//!     1 - Generator has returned / is completed
+//!     2 - Generator has been poisoned
 //!
 //! It also rewrites `return x` and `yield y` as setting a new generator state and returning
 //! GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
@@ -49,15 +50,13 @@
 //! the action to take.
 //!
 //! One of them is the implementation of Generator::resume.
-//! For generators which have already returned it panics.
 //! For generators with state 0 (unresumed) it starts the execution of the generator.
-//! For generators with state 1 (poisoned) it panics.
+//! For generators with state 1 (returned) and state 2 (poisoned) it panics.
 //! Otherwise it continues the execution from the last suspension point.
 //!
 //! The other function is the drop glue for the generator.
-//! For generators which have already returned it does nothing.
 //! For generators with state 0 (unresumed) it drops the upvars of the generator.
-//! For generators with state 1 (poisoned) it does nothing.
+//! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use rustc::hir;
@@ -65,19 +64,21 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
-use rustc::mir::visit::{LvalueContext, MutVisitor};
+use rustc::mir::visit::{LvalueContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
 use rustc::ty::subst::{Kind, Substs};
 use util::dump_mir;
 use util::liveness;
 use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use std::collections::HashMap;
 use std::borrow::Cow;
 use std::iter::once;
 use std::mem;
 use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
+use dataflow::{self, MaybeStorageLive, state_for_location};
 
 pub struct StateTransform;
 
@@ -126,6 +127,13 @@ fn self_arg() -> Local {
     Local::new(1)
 }
 
+struct SuspensionPoint {
+    state: u32,
+    resume: BasicBlock,
+    drop: Option<BasicBlock>,
+    storage_liveness: liveness::LocalSet,
+}
+
 struct TransformVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     state_adt_ref: &'tcx AdtDef,
@@ -137,18 +145,14 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     // Mapping from Local to (type of local, generator struct index)
     remap: HashMap<Local, (Ty<'tcx>, usize)>,
 
-    // The number of generator states. 0 is unresumed, 1 is poisoned. So this is initialized to 2
-    bb_target_count: u32,
+    // A map from a suspension point in a block to the locals which have live storage at that point
+    storage_liveness: HashMap<BasicBlock, liveness::LocalSet>,
 
-    // Map from a (which block to resume execution at, which block to use to drop the generator)
-    // to a generator state
-    bb_targets: HashMap<(BasicBlock, Option<BasicBlock>), u32>,
+    // A list of suspension points, generated during the transform
+    suspension_points: Vec<SuspensionPoint>,
 
     // The original RETURN_POINTER local
     new_ret_local: Local,
-
-    // The block to resume execution when for Return
-    return_block: BasicBlock,
 }
 
 impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
@@ -225,33 +229,39 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
 
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => Some((1,
-                self.return_block,
+                None,
                 Operand::Consume(Lvalue::Local(self.new_ret_local)),
                 None)),
             TerminatorKind::Yield { ref value, resume, drop } => Some((0,
-                resume,
+                Some(resume),
                 value.clone(),
                 drop)),
             _ => None
         };
 
         if let Some((state_idx, resume, v, drop)) = ret_val {
-            let bb_idx = {
-                let bb_targets = &mut self.bb_targets;
-                let bb_target = &mut self.bb_target_count;
-                *bb_targets.entry((resume, drop)).or_insert_with(|| {
-                    let target = *bb_target;
-                    *bb_target = target.checked_add(1).unwrap();
-                    target
-                })
-            };
             let source_info = data.terminator().source_info;
-            data.statements.push(self.set_state(bb_idx, source_info));
+            // We must assign the value first in case it gets declared dead below
             data.statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(Lvalue::Local(RETURN_POINTER),
                     self.make_state(state_idx, v)),
             });
+            let state = if let Some(resume) = resume { // Yield
+                let state = 3 + self.suspension_points.len() as u32;
+
+                self.suspension_points.push(SuspensionPoint {
+                    state,
+                    resume,
+                    drop,
+                    storage_liveness: self.storage_liveness.get(&block).unwrap().clone(),
+                });
+
+                state
+            } else { // Return
+                 1 // state for returned
+            };
+            data.statements.push(self.set_state(state, source_info));
             data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
         }
 
@@ -286,16 +296,11 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
 
 fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
                             mir: &mut Mir<'tcx>) -> Local {
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
-
     let new_ret = LocalDecl {
         mutability: Mutability::Mut,
         ty: ret_ty,
         name: None,
-        source_info,
+        source_info: source_info(mir),
         internal: false,
         is_user_variable: false,
     };
@@ -311,33 +316,84 @@ fn replace_result_variable<'tcx>(ret_ty: Ty<'tcx>,
     new_ret_local
 }
 
+struct StorageIgnored(liveness::LocalSet);
+
+impl<'tcx> Visitor<'tcx> for StorageIgnored {
+    fn visit_statement(&mut self,
+                       _block: BasicBlock,
+                       statement: &Statement<'tcx>,
+                       _location: Location) {
+        match statement.kind {
+            StatementKind::StorageLive(l) |
+            StatementKind::StorageDead(l) => { self.0.remove(&l); }
+            _ => (),
+        }
+    }
+}
+
 fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                mir: &Mir<'tcx>,
-                                               source: MirSource) -> liveness::LocalSet {
+                                               source: MirSource) ->
+                                               (liveness::LocalSet,
+                                                HashMap<BasicBlock, liveness::LocalSet>) {
+    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
+    let node_id = source.item_id();
+    let analysis = MaybeStorageLive::new(mir);
+    let storage_live =
+        dataflow::do_dataflow(tcx, mir, node_id, &[], &dead_unwinds, analysis,
+                              |bd, p| &bd.mir().local_decls[p]);
+
+    let mut ignored = StorageIgnored(IdxSetBuf::new_filled(mir.local_decls.len()));
+    ignored.visit_mir(mir);
+
     let mut set = liveness::LocalSet::new_empty(mir.local_decls.len());
-    let result = liveness::liveness_of_locals(mir);
-    liveness::dump_mir(tcx, "generator_liveness", source, mir, &result);
+    let liveness = liveness::liveness_of_locals(mir);
+    liveness::dump_mir(tcx, "generator_liveness", source, mir, &liveness);
+
+    let mut storage_liveness_map = HashMap::new();
 
     for (block, data) in mir.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            set.union(&result.outs[block]);
+            let loc = Location {
+                block: block,
+                statement_index: data.statements.len(),
+            };
+
+            let storage_liveness = state_for_location(loc, &analysis, &storage_live);
+
+            storage_liveness_map.insert(block, storage_liveness.clone());
+
+            let mut live_locals = storage_liveness;
+
+            // Mark locals without storage statements as always having live storage
+            live_locals.union(&ignored.0);
+
+            // Locals live are live at this point only if they are used across suspension points
+            // and their storage is live
+            live_locals.intersect(&liveness.outs[block]);
+
+            // Add the locals life at this suspension point to the set of locals which live across
+            // any suspension points
+            set.union(&live_locals);
         }
     }
 
     // The generator argument is ignored
     set.remove(&self_arg());
 
-    set
+    (set, storage_liveness_map)
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             source: MirSource,
                             interior: GeneratorInterior<'tcx>,
                             mir: &mut Mir<'tcx>)
-    -> (HashMap<Local, (Ty<'tcx>, usize)>, GeneratorLayout<'tcx>)
+    -> (HashMap<Local, (Ty<'tcx>, usize)>,
+        GeneratorLayout<'tcx>,
+        HashMap<BasicBlock, liveness::LocalSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let live_locals = locals_live_across_suspend_points(tcx, mir, source);
+    let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx, mir, source);
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -381,12 +437,31 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fields: vars
     };
 
-    (remap, layout)
+    (remap, layout, storage_liveness)
 }
 
-fn insert_entry_point<'tcx>(mir: &mut Mir<'tcx>,
-                            block: BasicBlockData<'tcx>) {
-    mir.basic_blocks_mut().raw.insert(0, block);
+fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           mir: &mut Mir<'tcx>,
+                           cases: Vec<(u32, BasicBlock)>,
+                           transform: &TransformVisitor<'a, 'tcx>) {
+    let return_block = insert_return_block(mir);
+
+    let switch = TerminatorKind::SwitchInt {
+        discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
+        switch_ty: tcx.types.u32,
+        values: Cow::from(cases.iter().map(|&(i, _)| ConstInt::U32(i)).collect::<Vec<_>>()),
+        targets: cases.iter().map(|&(_, d)| d).chain(once(return_block)).collect(),
+    };
+
+    let source_info = source_info(mir);
+    mir.basic_blocks_mut().raw.insert(0, BasicBlockData {
+        statements: Vec::new(),
+        terminator: Some(Terminator {
+            source_info,
+            kind: switch,
+        }),
+        is_cleanup: false,
+    });
 
     let blocks = mir.basic_blocks_mut().iter_mut();
 
@@ -458,46 +533,16 @@ fn create_generator_drop_shim<'a, 'tcx>(
                 drop_clean: BasicBlock) -> Mir<'tcx> {
     let mut mir = mir.clone();
 
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
+    let source_info = source_info(&mir);
 
-    let return_block = BasicBlock::new(mir.basic_blocks().len());
-    mir.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator {
-            source_info,
-            kind: TerminatorKind::Return,
-        }),
-        is_cleanup: false,
-    });
-
-    let mut cases: Vec<_> = transform.bb_targets.iter().filter_map(|(&(_, u), &s)| {
-        u.map(|d| (s, d))
-    }).collect();
+    let mut cases = create_cases(&mut mir, transform, |point| point.drop);
 
     cases.insert(0, (0, drop_clean));
 
-    // The poisoned state 1 falls through to the default case which is just to return
+    // The returned state (1) and the poisoned state (2) falls through to
+    // the default case which is just to return
 
-    let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
-        switch_ty: tcx.types.u32,
-        values: Cow::from(cases.iter().map(|&(i, _)| {
-                ConstInt::U32(i)
-            }).collect::<Vec<_>>()),
-        targets: cases.iter().map(|&(_, d)| d).chain(once(return_block)).collect(),
-    };
-
-    insert_entry_point(&mut mir, BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator {
-            source_info,
-            kind: switch,
-        }),
-        is_cleanup: false,
-    });
+    insert_switch(tcx, &mut mir, cases, &transform);
 
     for block in mir.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
@@ -507,11 +552,6 @@ fn create_generator_drop_shim<'a, 'tcx>(
     }
 
     // Replace the return variable
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
-
     mir.return_ty = tcx.mk_nil();
     mir.local_decls[RETURN_POINTER] = LocalDecl {
         mutability: Mutability::Mut,
@@ -548,8 +588,23 @@ fn create_generator_drop_shim<'a, 'tcx>(
     mir
 }
 
-fn insert_panic_on_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        mir: &mut Mir<'tcx>) {
+fn insert_return_block<'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
+    let return_block = BasicBlock::new(mir.basic_blocks().len());
+    let source_info = source_info(mir);
+    mir.basic_blocks_mut().push(BasicBlockData {
+        statements: Vec::new(),
+        terminator: Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Return,
+        }),
+        is_cleanup: false,
+    });
+    return_block
+}
+
+fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                mir: &mut Mir<'tcx>,
+                                message: AssertMessage<'tcx>) -> BasicBlock {
     let assert_block = BasicBlock::new(mir.basic_blocks().len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
@@ -563,16 +618,12 @@ fn insert_panic_on_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             },
         }),
         expected: true,
-        msg: AssertMessage::GeneratorResumedAfterReturn,
+        msg: message,
         target: assert_block,
         cleanup: None,
     };
 
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
-
+    let source_info = source_info(mir);
     mir.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator {
@@ -581,11 +632,13 @@ fn insert_panic_on_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }),
         is_cleanup: false,
     });
+
+    assert_block
 }
 
 fn create_generator_resume_function<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        mut transform: TransformVisitor<'a, 'tcx>,
+        transform: TransformVisitor<'a, 'tcx>,
         def_id: DefId,
         source: MirSource,
         mir: &mut Mir<'tcx>) {
@@ -597,61 +650,16 @@ fn create_generator_resume_function<'a, 'tcx>(
         }
     }
 
-    let source_info = SourceInfo {
-        span: mir.span,
-        scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
+    let mut cases = create_cases(mir, &transform, |point| Some(point.resume));
 
-    let poisoned_block = BasicBlock::new(mir.basic_blocks().len());
+    // Jump to the entry point on the 0 state
+    cases.insert(0, (0, BasicBlock::new(0)));
+    // Panic when resumed on the returned (1) state
+    cases.insert(1, (1, insert_panic_block(tcx, mir, AssertMessage::GeneratorResumedAfterReturn)));
+    // Panic when resumed on the poisoned (2) state
+    cases.insert(2, (2, insert_panic_block(tcx, mir, AssertMessage::GeneratorResumedAfterPanic)));
 
-    let term = TerminatorKind::Assert {
-        cond: Operand::Constant(box Constant {
-            span: mir.span,
-            ty: tcx.types.bool,
-            literal: Literal::Value {
-                value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Bool(false),
-                    ty: tcx.types.bool
-                }),
-            },
-        }),
-        expected: true,
-        msg: AssertMessage::GeneratorResumedAfterPanic,
-        target: transform.return_block,
-        cleanup: None,
-    };
-
-    mir.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator {
-            source_info,
-            kind: term,
-        }),
-        is_cleanup: false,
-    });
-
-    transform.bb_targets.insert((poisoned_block, None), 1);
-
-    let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Consume(transform.make_field(transform.state_field, tcx.types.u32)),
-        switch_ty: tcx.types.u32,
-        values: Cow::from(transform.bb_targets.values().map(|&i| {
-                ConstInt::U32(i)
-            }).collect::<Vec<_>>()),
-        targets: transform.bb_targets.keys()
-            .map(|&(k, _)| k)
-            .chain(once(transform.return_block))
-            .collect(),
-    };
-
-    insert_entry_point(mir, BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator {
-            source_info,
-            kind: switch,
-        }),
-        is_cleanup: false,
-    });
+    insert_switch(tcx, mir, cases, &transform);
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
 
@@ -664,21 +672,15 @@ fn create_generator_resume_function<'a, 'tcx>(
     dump_mir(tcx, None, "generator_resume", &0, source, mir);
 }
 
-fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
-    let source_info = SourceInfo {
+fn source_info<'a, 'tcx>(mir: &Mir<'tcx>) -> SourceInfo {
+    SourceInfo {
         span: mir.span,
         scope: ARGUMENT_VISIBILITY_SCOPE,
-    };
+    }
+}
 
-    let return_block = BasicBlock::new(mir.basic_blocks().len());
-    mir.basic_blocks_mut().push(BasicBlockData {
-        statements: Vec::new(),
-        terminator: Some(Terminator {
-            source_info,
-            kind: TerminatorKind::Return,
-        }),
-        is_cleanup: false,
-    });
+fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
+    let return_block = insert_return_block(mir);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
     let drop_clean = BasicBlock::new(mir.basic_blocks().len());
@@ -687,6 +689,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
         target: return_block,
         unwind: None,
     };
+    let source_info = source_info(mir);
     mir.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator {
@@ -697,6 +700,46 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
     });
 
     drop_clean
+}
+
+fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
+                          transform: &TransformVisitor<'a, 'tcx>,
+                          target: F) -> Vec<(u32, BasicBlock)>
+    where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
+    let source_info = source_info(mir);
+
+    transform.suspension_points.iter().filter_map(|point| {
+        // Find the target for this suspension point, if applicable
+        target(point).map(|target| {
+            let block = BasicBlock::new(mir.basic_blocks().len());
+            let mut statements = Vec::new();
+
+            // Create StorageLive instructions for locals with live storage
+            for i in 0..(mir.local_decls.len()) {
+                let l = Local::new(i);
+                if point.storage_liveness.contains(&l) && !transform.remap.contains_key(&l) {
+                    statements.push(Statement {
+                        source_info,
+                        kind: StatementKind::StorageLive(l),
+                    });
+                }
+            }
+
+            // Then jump to the real target
+            mir.basic_blocks_mut().push(BasicBlockData {
+                statements,
+                terminator: Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Goto {
+                        target,
+                    },
+                }),
+                is_cleanup: false,
+            });
+
+            (point.state, block)
+        })
+    }).collect()
 }
 
 impl MirPass for StateTransform {
@@ -736,15 +779,10 @@ impl MirPass for StateTransform {
 
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
-        let (remap, layout) = compute_layout(tcx, source, interior, mir);
+        // `storage_liveness` tells us which locals have live storage at suspension points
+        let (remap, layout, storage_liveness) = compute_layout(tcx, source, interior, mir);
 
         let state_field = mir.upvar_decls.len();
-
-        let mut bb_targets = HashMap::new();
-
-        // If we jump to the entry point, we should go to the initial 0 generator state.
-        // FIXME: Could this result in the need for destruction for state 0?
-        bb_targets.insert((BasicBlock::new(0), None), 0);
 
         // Run the transformation which converts Lvalues from Local to generator struct
         // accesses for locals in `remap`.
@@ -755,14 +793,10 @@ impl MirPass for StateTransform {
             state_adt_ref,
             state_substs,
             remap,
-            bb_target_count: 2,
-            bb_targets,
+            storage_liveness,
+            suspension_points: Vec::new(),
             new_ret_local,
             state_field,
-
-            // For returns we will resume execution at the next added basic block.
-            // This happens in `insert_panic_on_resume_after_return`
-            return_block: BasicBlock::new(mir.basic_blocks().len()),
         };
         transform.visit_mir(mir);
 
@@ -772,9 +806,6 @@ impl MirPass for StateTransform {
         mir.arg_count = 1;
         mir.spread_arg = None;
         mir.generator_layout = Some(layout);
-
-        // Panic if we resumed after returning
-        insert_panic_on_resume_after_return(tcx, mir);
 
         // Insert `drop(generator_struct)` which is used to drop upvars for generators in
         // the unresumed (0) state.
