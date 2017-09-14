@@ -34,7 +34,7 @@ impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for D
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a, 'gcx, 'tcx>) -> DefPathHash {
-        hcx.tcx().def_path_hash(*self)
+        hcx.def_path_hash(*self)
     }
 }
 
@@ -995,16 +995,6 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::B
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        if hcx.hash_bodies() {
-            hcx.tcx().hir.body(*self).hash_stable(hcx, hasher);
-        }
-    }
-}
-
 impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
     type KeyType = (DefPathHash, hir::ItemLocalId);
 
@@ -1119,7 +1109,7 @@ for hir::def_id::DefIndex {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        hcx.tcx().hir.definitions().def_path_hash(*self).hash_stable(hcx, hasher);
+        hcx.local_def_path_hash(*self).hash_stable(hcx, hasher);
     }
 }
 
@@ -1129,7 +1119,7 @@ for hir::def_id::DefIndex {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a, 'gcx, 'tcx>) -> DefPathHash {
-         hcx.tcx().hir.definitions().def_path_hash(*self)
+         hcx.local_def_path_hash(*self)
     }
 }
 

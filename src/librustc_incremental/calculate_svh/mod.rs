@@ -90,6 +90,7 @@ impl<'a> ::std::ops::Index<&'a DepNode> for IncrementalHashesMap {
 }
 
 struct ComputeItemHashesVisitor<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hcx: StableHashingContext<'a, 'tcx, 'tcx>,
     hashes: IncrementalHashesMap,
 }
@@ -101,14 +102,14 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                               item_like: T)
         where T: HashStable<StableHashingContext<'a, 'tcx, 'tcx>>
     {
-        if !hash_bodies && !self.hcx.tcx().sess.opts.build_dep_graph() {
+        if !hash_bodies && !self.tcx.sess.opts.build_dep_graph() {
             // If we just need the hashes in order to compute the SVH, we don't
             // need have two hashes per item. Just the one containing also the
             // item's body is sufficient.
             return
         }
 
-        let def_path_hash = self.hcx.tcx().hir.definitions().def_path_hash(def_index);
+        let def_path_hash = self.hcx.local_def_path_hash(def_index);
 
         let mut hasher = IchHasher::new();
         self.hcx.while_hashing_hir_bodies(hash_bodies, |hcx| {
@@ -125,14 +126,12 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
         debug!("calculate_def_hash: dep_node={:?} hash={:?}", dep_node, item_hash);
         self.hashes.insert(dep_node, item_hash);
 
-        let tcx = self.hcx.tcx();
         let bytes_hashed =
-            tcx.sess.perf_stats.incr_comp_bytes_hashed.get() +
-            bytes_hashed;
-        tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
+            self.tcx.sess.perf_stats.incr_comp_bytes_hashed.get() + bytes_hashed;
+        self.tcx.sess.perf_stats.incr_comp_bytes_hashed.set(bytes_hashed);
 
         if hash_bodies {
-            let in_scope_traits_map = tcx.in_scope_traits_map(def_index);
+            let in_scope_traits_map = self.tcx.in_scope_traits_map(def_index);
             let mut hasher = IchHasher::new();
             in_scope_traits_map.hash_stable(&mut self.hcx, &mut hasher);
             let dep_node = def_path_hash.to_dep_node(DepKind::InScopeTraits);
@@ -141,12 +140,11 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
     }
 
     fn compute_crate_hash(&mut self) {
-        let tcx = self.hcx.tcx();
-        let krate = tcx.hir.krate();
+        let krate = self.tcx.hir.krate();
 
         let mut crate_state = IchHasher::new();
 
-        let crate_disambiguator = tcx.sess.local_crate_disambiguator();
+        let crate_disambiguator = self.tcx.sess.local_crate_disambiguator();
         "crate_disambiguator".hash(&mut crate_state);
         crate_disambiguator.as_str().len().hash(&mut crate_state);
         crate_disambiguator.as_str().hash(&mut crate_state);
@@ -221,7 +219,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
 
     fn compute_and_store_ich_for_trait_impls(&mut self, krate: &'tcx hir::Crate)
     {
-        let tcx = self.hcx.tcx();
+        let tcx = self.tcx;
 
         let mut impls: Vec<(DefPathHash, Fingerprint)> = krate
             .trait_impls
@@ -266,7 +264,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for ComputeItemHashesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let def_index = self.hcx.tcx().hir.local_def_id(item.id).index;
+        let def_index = self.tcx.hir.local_def_id(item.id).index;
         self.compute_and_store_ich_for_item_like(def_index,
                                                  false,
                                                  item);
@@ -276,7 +274,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for ComputeItemHashesVisitor<'a, 'tcx> 
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
-        let def_index = self.hcx.tcx().hir.local_def_id(item.id).index;
+        let def_index = self.tcx.hir.local_def_id(item.id).index;
         self.compute_and_store_ich_for_item_like(def_index,
                                                  false,
                                                  item);
@@ -286,7 +284,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for ComputeItemHashesVisitor<'a, 'tcx> 
     }
 
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
-        let def_index = self.hcx.tcx().hir.local_def_id(item.id).index;
+        let def_index = self.tcx.hir.local_def_id(item.id).index;
         self.compute_and_store_ich_for_item_like(def_index,
                                                  false,
                                                  item);
@@ -304,6 +302,7 @@ pub fn compute_incremental_hashes_map<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     let krate = tcx.hir.krate();
 
     let mut visitor = ComputeItemHashesVisitor {
+        tcx,
         hcx: StableHashingContext::new(tcx),
         hashes: IncrementalHashesMap::new(),
     };

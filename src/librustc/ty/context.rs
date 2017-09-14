@@ -736,9 +736,9 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
                     krate: local_id_root.krate,
                     index: closure_expr_id,
                 };
-                (hcx.tcx().def_path_hash(var_owner_def_id),
+                (hcx.def_path_hash(var_owner_def_id),
                  var_id.local_id,
-                 hcx.tcx().def_path_hash(closure_def_id))
+                 hcx.def_path_hash(closure_def_id))
             });
 
             closure_tys.hash_stable(hcx, hasher);

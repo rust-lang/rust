@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use hir;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex};
 use hir::map::DefPathHash;
 use ich::{self, CachingCodemapView};
 use session::config::DebugInfoLevel::NoDebugInfo;
 use ty::{self, TyCtxt, fast_reject};
+use session::Session;
 
 use std::cmp::Ord;
 use std::hash as std_hash;
@@ -42,6 +43,7 @@ thread_local!(static IGNORED_ATTR_NAMES: RefCell<FxHashSet<Symbol>> =
 /// things (e.g. each DefId/DefPath is only hashed once).
 pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    body_resolver: BodyResolver<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
     overflow_checks_enabled: bool,
@@ -59,6 +61,20 @@ pub enum NodeIdHashingMode {
     HashDefPath,
 }
 
+/// The BodyResolver allows to map a BodyId to the corresponding hir::Body.
+/// We could also just store a plain reference to the hir::Crate but we want
+/// to avoid that the crate is used to get untracked access to all of the HIR.
+#[derive(Clone, Copy)]
+struct BodyResolver<'hir>(&'hir hir::Crate);
+
+impl<'hir> BodyResolver<'hir> {
+    // Return a reference to the hir::Body with the given BodyId.
+    // DOES NOT DO ANY TRACKING, use carefully.
+    fn body(self, id: hir::BodyId) -> &'hir hir::Body {
+        self.0.body(id)
+    }
+}
+
 impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
@@ -74,8 +90,11 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
             }
         });
 
+        let body_resolver = BodyResolver(tcx.dep_graph.with_ignore(|| tcx.hir.krate()));
+
         StableHashingContext {
             tcx,
+            body_resolver,
             caching_codemap: None,
             raw_codemap: tcx.sess.codemap(),
             hash_spans: hash_spans_initial,
@@ -83,6 +102,11 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
             overflow_checks_enabled: check_overflow_initial,
             node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
         }
+    }
+
+    #[inline]
+    pub fn sess(&self) -> &'gcx Session {
+        self.tcx.sess
     }
 
     pub fn force_span_hashing(mut self) -> Self {
@@ -121,13 +145,13 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
-        self.tcx
+    pub fn def_path_hash(&self, def_id: DefId) -> DefPathHash {
+        self.tcx.def_path_hash(def_id)
     }
 
     #[inline]
-    pub fn def_path_hash(&mut self, def_id: DefId) -> DefPathHash {
-        self.tcx.def_path_hash(def_id)
+    pub fn local_def_path_hash(&self, def_index: DefIndex) -> DefPathHash {
+        self.tcx.hir.definitions().def_path_hash(def_index)
     }
 
     #[inline]
@@ -221,6 +245,16 @@ impl<'a, 'gcx, 'lcx> StableHashingContextProvider for ty::TyCtxt<'a, 'gcx, 'lcx>
     }
 }
 
+impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::BodyId {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        if hcx.hash_bodies() {
+            hcx.body_resolver.body(*self).hash_stable(hcx, hasher);
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for hir::HirId {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
@@ -250,7 +284,7 @@ impl<'a, 'gcx, 'tcx> ToStableHashKey<StableHashingContext<'a, 'gcx, 'tcx>> for h
     fn to_stable_hash_key(&self,
                           hcx: &StableHashingContext<'a, 'gcx, 'tcx>)
                           -> (DefPathHash, hir::ItemLocalId) {
-        let def_path_hash = hcx.tcx().hir.definitions().def_path_hash(self.owner);
+        let def_path_hash = hcx.local_def_path_hash(self.owner);
         (def_path_hash, self.local_id)
     }
 }
@@ -378,10 +412,9 @@ pub fn hash_stable_trait_impls<'a, 'tcx, 'gcx, W, R>(
     }
 
     {
-        let tcx = hcx.tcx();
         let mut keys: AccumulateVec<[_; 8]> =
             non_blanket_impls.keys()
-                             .map(|k| (k, k.map_def(|d| tcx.def_path_hash(d))))
+                             .map(|k| (k, k.map_def(|d| hcx.def_path_hash(d))))
                              .collect();
         keys.sort_unstable_by(|&(_, ref k1), &(_, ref k2)| k1.cmp(k2));
         keys.len().hash_stable(hcx, hasher);
