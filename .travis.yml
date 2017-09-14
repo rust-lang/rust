@@ -16,9 +16,9 @@ script:
   xargo/build.sh
 - |
   # Test plain miri
-  cargo build --locked --release --features "cargo_miri" &&
-  cargo test --release --all &&
-  cargo install --features "cargo_miri"
+  cargo build --locked --release --all-features &&
+  cargo test --locked --release --all-features --all &&
+  cargo install --locked --release --all-features
 - |
   # Test cargo miri
   cd cargo-miri-test &&
@@ -27,7 +27,7 @@ script:
   cd ..
 - |
   # and run all tests with full mir
-  MIRI_SYSROOT=~/.xargo/HOST cargo test --release
+  MIRI_SYSROOT=~/.xargo/HOST cargo test --locked --release
 - |
   # test that the rustc_tests binary compiles
   cd rustc_tests &&
