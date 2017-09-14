@@ -21,6 +21,7 @@ use std::collections::HashMap;
 
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap::CodeMap;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -36,13 +37,17 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 /// things (e.g. each DefId/DefPath is only hashed once).
 pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    codemap: CachingCodemapView<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
     overflow_checks_enabled: bool,
     node_id_hashing_mode: NodeIdHashingMode,
     // A sorted array of symbol keys for fast lookup.
     ignored_attr_names: Vec<Symbol>,
+
+    // Very often, we are hashing something that does not need the
+    // CachingCodemapView, so we initialize it lazily.
+    raw_codemap: &'gcx CodeMap,
+    caching_codemap: Option<CachingCodemapView<'gcx>>,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -66,7 +71,8 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
         StableHashingContext {
             tcx,
-            codemap: CachingCodemapView::new(tcx),
+            caching_codemap: None,
+            raw_codemap: tcx.sess.codemap(),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
             overflow_checks_enabled: check_overflow_initial,
@@ -132,7 +138,15 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn codemap(&mut self) -> &mut CachingCodemapView<'gcx> {
-        &mut self.codemap
+        match self.caching_codemap {
+            Some(ref mut cm) => {
+                cm
+            }
+            ref mut none => {
+                *none = Some(CachingCodemapView::new(self.raw_codemap));
+                none.as_mut().unwrap()
+            }
+        }
     }
 
     #[inline]

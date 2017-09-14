@@ -11,7 +11,6 @@
 use std::rc::Rc;
 use syntax::codemap::CodeMap;
 use syntax_pos::{BytePos, FileMap};
-use ty::TyCtxt;
 
 #[derive(Clone)]
 struct CacheEntry {
@@ -23,15 +22,14 @@ struct CacheEntry {
     file_index: usize,
 }
 
-pub struct CachingCodemapView<'tcx> {
-    codemap: &'tcx CodeMap,
+pub struct CachingCodemapView<'cm> {
+    codemap: &'cm CodeMap,
     line_cache: [CacheEntry; 3],
     time_stamp: usize,
 }
 
-impl<'gcx> CachingCodemapView<'gcx> {
-    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> CachingCodemapView<'gcx> {
-        let codemap = tcx.sess.codemap();
+impl<'cm> CachingCodemapView<'cm> {
+    pub fn new(codemap: &'cm CodeMap) -> CachingCodemapView<'cm> {
         let files = codemap.files();
         let first_file = files[0].clone();
         let entry = CacheEntry {
