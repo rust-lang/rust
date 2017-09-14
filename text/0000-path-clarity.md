@@ -471,9 +471,9 @@ epoch**.
   resolve to a top-level definition of `foo`, and otherwise fall back to
   available external crates.
 
-- Cargo will provide a new `crate` key for aliasing dependencies, so that
-  e.g. users who want to use the `rand` crate but call it `random` instead can
-  now write `random = { version = "0.3", crate = "rand" }`.
+- Cargo will provide a new `alias` key for aliasing dependencies, so that
+  e.g. users who want to use the `rand` crate but call its library crate
+  `random` instead can now write `rand = { version = "0.3", alias = "random" }`.
 
 - We introduce several lints, which all start out allow-by-default but are
   expected to ratchet up over time:
@@ -574,6 +574,15 @@ motivation. The crucial insight of the design is that, by making absolute paths
 unambiguous about which crate they draw from, we can solve a number of
 confusions and papercuts with the module system.
 
+## Epoch-based migration story
+
+We can avoid the need for fallback in resolution by leveraging epochs instead.
+On the current epoch, we would make `crate::` paths available and start warning
+about *not* using them for crate-internal paths, but we would not issue warnings
+about `extern crate`. In the next epoch, we would change absolute path
+interpretations, such that warning-free code on the previous epoch would
+continue to compile and have the same meaning.
+
 ## Bike-sheddy choices
 
 There are a few aspects of this proposal that could be colored a bit differently
@@ -643,4 +652,6 @@ ideas off into a separate *experimental* RFC:
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None.
+- How should we approach migration? Via a fallback, as proposed, or via epochs?
+  It is probably best to make this determination with more experience,
+  e.g. after we have a `rustfix` tool in hand.
