@@ -174,7 +174,7 @@ use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
 use sys_common::mutex;
 use sys_common::thread_info;
-use sys_common::util;
+use sys_common::thread;
 use sys_common::{AsInner, IntoInner};
 use time::Duration;
 
@@ -374,7 +374,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or_else(util::min_stack);
+        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
