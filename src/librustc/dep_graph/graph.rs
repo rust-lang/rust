@@ -26,7 +26,8 @@ use super::edges::{DepGraphEdges, DepNodeIndex};
 
 #[derive(Clone)]
 pub struct DepGraph {
-    data: Option<Rc<DepGraphData>>
+    data: Option<Rc<DepGraphData>>,
+    fingerprints: Rc<RefCell<FxHashMap<DepNode, Fingerprint>>>
 }
 
 struct DepGraphData {
@@ -57,7 +58,8 @@ impl DepGraph {
                 }))
             } else {
                 None
-            }
+            },
+            fingerprints: Rc::new(RefCell::new(FxHashMap())),
         }
     }
 
@@ -139,11 +141,27 @@ impl DepGraph {
 
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
-            let _: Fingerprint = stable_hasher.finish();
+
+            assert!(self.fingerprints
+                        .borrow_mut()
+                        .insert(key, stable_hasher.finish())
+                        .is_none());
 
             (result, dep_node_index)
         } else {
-            (task(cx, arg), DepNodeIndex::INVALID)
+            if key.kind.fingerprint_needed_for_crate_hash() {
+                let mut hcx = cx.create_stable_hashing_context();
+                let result = task(cx, arg);
+                let mut stable_hasher = StableHasher::new();
+                result.hash_stable(&mut hcx, &mut stable_hasher);
+                assert!(self.fingerprints
+                            .borrow_mut()
+                            .insert(key, stable_hasher.finish())
+                            .is_none());
+                (result, DepNodeIndex::INVALID)
+            } else {
+                (task(cx, arg), DepNodeIndex::INVALID)
+            }
         }
     }
 
@@ -193,6 +211,10 @@ impl DepGraph {
         } else {
             DepNodeIndex::INVALID
         }
+    }
+
+    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
+        self.fingerprints.borrow().get(dep_node).cloned()
     }
 
     /// Indicates that a previous work product exists for `v`. This is

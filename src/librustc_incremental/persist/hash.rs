@@ -18,7 +18,6 @@ use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
 
-use IncrementalHashesMap;
 use super::data::*;
 use super::fs::*;
 use super::file_format;
@@ -28,18 +27,14 @@ use std::fmt::Debug;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    incremental_hashes_map: &'a IncrementalHashesMap,
     metadata_hashes: FxHashMap<DefId, Fingerprint>,
     crate_hashes: FxHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               incremental_hashes_map: &'a IncrementalHashesMap)
-               -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         HashContext {
             tcx,
-            incremental_hashes_map,
             metadata_hashes: FxHashMap(),
             crate_hashes: FxHashMap(),
         }
@@ -47,15 +42,12 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
     pub fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
         match dep_node.kind {
-            DepKind::Krate => {
-                Some(self.incremental_hashes_map[dep_node])
-            }
-
             // HIR nodes (which always come from our crate) are an input:
+            DepKind::Krate |
             DepKind::InScopeTraits |
             DepKind::Hir |
             DepKind::HirBody => {
-                Some(self.incremental_hashes_map[dep_node])
+                Some(self.tcx.dep_graph.fingerprint_of(dep_node).unwrap())
             }
 
             // MetaData from other crates is an *input* to us.

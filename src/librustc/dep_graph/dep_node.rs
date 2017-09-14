@@ -387,6 +387,17 @@ impl DefId {
     }
 }
 
+impl DepKind {
+    #[inline]
+    pub fn fingerprint_needed_for_crate_hash(self) -> bool {
+        match self {
+            DepKind::HirBody |
+            DepKind::Krate => true,
+            _ => false,
+        }
+    }
+}
+
 define_dep_nodes!( <'tcx>
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
@@ -401,12 +412,12 @@ define_dep_nodes!( <'tcx>
     // edges yourself for the individual items that you read.
     [input] Krate,
 
-    // Represents the HIR node with the given node-id
-    [input] Hir(DefId),
-
     // Represents the body of a function or method. The def-id is that of the
     // function/method.
     [input] HirBody(DefId),
+
+    // Represents the HIR node with the given node-id
+    [input] Hir(DefId),
 
     // Represents metadata from an extern crate.
     [input] MetaData(DefId),

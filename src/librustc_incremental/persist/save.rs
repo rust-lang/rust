@@ -51,7 +51,7 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         eprintln!("incremental: {} edges in dep-graph", query.graph.len_edges());
     }
 
-    let mut hcx = HashContext::new(tcx, &incremental_hashes_map);
+    let mut hcx = HashContext::new(tcx);
     let preds = Predecessors::new(&query, &mut hcx);
     let mut current_metadata_hashes = FxHashMap();
 

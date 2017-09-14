@@ -1236,6 +1236,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   self.hir.definitions(),
                                   self.cstore)
     }
+
+    pub fn precompute_in_scope_traits_hashes(self) {
+        for &def_index in self.trait_map.keys() {
+            self.in_scope_traits_map(def_index);
+        }
+    }
 }
 
 impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
