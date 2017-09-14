@@ -442,6 +442,7 @@ macro_rules! impl_trans_normalize {
 
 impl_trans_normalize!('gcx,
     Ty<'gcx>,
+    &'gcx ty::Const<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
     ty::PolyFnSig<'gcx>,
@@ -493,7 +494,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 
@@ -515,7 +516,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 
@@ -1158,6 +1159,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
         let mut r = resolve::OpportunisticTypeResolver::new(self);
         value.fold_with(&mut r)
+    }
+
+    /// Returns true if `T` contains unresolved type variables. In the
+    /// process of visiting `T`, this will resolve (where possible)
+    /// type variables in `T`, but it never constructs the final,
+    /// resolved type, so it's more efficient than
+    /// `resolve_type_vars_if_possible()`.
+    pub fn any_unresolved_type_vars<T>(&self, value: &T) -> bool
+        where T: TypeFoldable<'tcx>
+    {
+        let mut r = resolve::UnresolvedTypeFinder::new(self);
+        value.visit_with(&mut r)
     }
 
     pub fn resolve_type_and_region_vars_if_possible<T>(&self, value: &T) -> T

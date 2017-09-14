@@ -15,7 +15,6 @@ use dep_graph::DepGraph;
 use hir::def_id::{CrateNum, DefIndex};
 
 use lint;
-use middle::cstore::CrateStore;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
@@ -63,7 +62,6 @@ pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
-    pub cstore: Rc<CrateStore>,
     pub parse_sess: ParseSess,
     // For a library crate, this is always none
     pub entry_fn: RefCell<Option<(NodeId, Span)>>,
@@ -410,6 +408,10 @@ impl Session {
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
     }
+    pub fn emit_end_regions(&self) -> bool {
+        self.opts.debugging_opts.emit_end_regions ||
+            (self.opts.debugging_opts.mir_emit_validate > 0)
+    }
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
     }
@@ -617,8 +619,7 @@ impl Session {
 pub fn build_session(sopts: config::Options,
                      dep_graph: &DepGraph,
                      local_crate_source_file: Option<PathBuf>,
-                     registry: errors::registry::Registry,
-                     cstore: Rc<CrateStore>)
+                     registry: errors::registry::Registry)
                      -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
@@ -626,7 +627,6 @@ pub fn build_session(sopts: config::Options,
                                dep_graph,
                                local_crate_source_file,
                                registry,
-                               cstore,
                                Rc::new(codemap::CodeMap::new(file_path_mapping)),
                                None)
 }
@@ -635,7 +635,6 @@ pub fn build_session_with_codemap(sopts: config::Options,
                                   dep_graph: &DepGraph,
                                   local_crate_source_file: Option<PathBuf>,
                                   registry: errors::registry::Registry,
-                                  cstore: Rc<CrateStore>,
                                   codemap: Rc<codemap::CodeMap>,
                                   emitter_dest: Option<Box<Write + Send>>)
                                   -> Session {
@@ -676,16 +675,14 @@ pub fn build_session_with_codemap(sopts: config::Options,
                    dep_graph,
                    local_crate_source_file,
                    diagnostic_handler,
-                   codemap,
-                   cstore)
+                   codemap)
 }
 
 pub fn build_session_(sopts: config::Options,
                       dep_graph: &DepGraph,
                       local_crate_source_file: Option<PathBuf>,
                       span_diagnostic: errors::Handler,
-                      codemap: Rc<codemap::CodeMap>,
-                      cstore: Rc<CrateStore>)
+                      codemap: Rc<codemap::CodeMap>)
                       -> Session {
     let host = match Target::search(config::host_triple()) {
         Ok(t) => t,
@@ -722,7 +719,6 @@ pub fn build_session_(sopts: config::Options,
         target: target_cfg,
         host,
         opts: sopts,
-        cstore,
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),

@@ -44,14 +44,14 @@ pub mod thread_local;
 pub mod util;
 pub mod wtf8;
 
-#[cfg(target_os = "redox")]
+#[cfg(any(target_os = "redox", target_os = "l4re"))]
 pub use sys::net;
 
-#[cfg(not(target_os = "redox"))]
+#[cfg(not(any(target_os = "redox", target_os = "l4re")))]
 pub mod net;
 
 #[cfg(feature = "backtrace")]
-#[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
+#[cfg(any(all(unix, not(target_os = "emscripten")),
           all(windows, target_env = "gnu"),
           target_os = "redox"))]
 pub mod gnu;

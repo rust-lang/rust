@@ -878,7 +878,17 @@ impl<'hir> Map<'hir> {
 
             Some(RootCrate(_)) => self.forest.krate.span,
             Some(NotPresent) | None => {
-                bug!("hir::map::Map::span: id not in map: {:?}", id)
+                // Some nodes, notably macro definitions, are not
+                // present in the map for whatever reason, but
+                // they *do* have def-ids. So if we encounter an
+                // empty hole, check for that case.
+                if let Some(def_index) = self.definitions.opt_def_index(id) {
+                    let def_path_hash = self.definitions.def_path_hash(def_index);
+                    self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
+                    DUMMY_SP
+                } else {
+                    bug!("hir::map::Map::span: id not in map: {:?}", id)
+                }
             }
         }
     }

@@ -209,7 +209,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic ||
                            f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id).as_str())
+                            Some(this.hir.tcx().item_name(def_id))
                         } else {
                             None
                         }

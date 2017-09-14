@@ -110,8 +110,8 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
     pub fn method_call(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, source: Ty<'tcx>)
                        -> (DefId, &'tcx Substs<'tcx>) {
         let trait_def_id = match self.mutbl {
-            hir::MutImmutable => tcx.lang_items.deref_trait(),
-            hir::MutMutable => tcx.lang_items.deref_mut_trait()
+            hir::MutImmutable => tcx.lang_items().deref_trait(),
+            hir::MutMutable => tcx.lang_items().deref_mut_trait()
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
             .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;

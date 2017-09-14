@@ -128,7 +128,6 @@ use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
-use rustc::middle::const_val::eval_length;
 use rustc_const_math::ConstInt;
 
 mod autoderef;
@@ -1554,9 +1553,12 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.sess.features.borrow().i128_type {
+        if !tcx.sess.features.borrow().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
-                             "i128_type", sp, GateIssue::Language, "128-bit type is unstable");
+                             "repr128",
+                             sp,
+                             GateIssue::Language,
+                             "repr with 128-bit type is unstable");
         }
     }
 
@@ -2296,13 +2298,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
         let (tr, name) = match (op, is_mut) {
             (LvalueOp::Deref, false) =>
-                (self.tcx.lang_items.deref_trait(), "deref"),
+                (self.tcx.lang_items().deref_trait(), "deref"),
             (LvalueOp::Deref, true) =>
-                (self.tcx.lang_items.deref_mut_trait(), "deref_mut"),
+                (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
             (LvalueOp::Index, false) =>
-                (self.tcx.lang_items.index_trait(), "index"),
+                (self.tcx.lang_items().index_trait(), "index"),
             (LvalueOp::Index, true) =>
-                (self.tcx.lang_items.index_mut_trait(), "index_mut"),
+                (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
         (tr, Symbol::intern(name))
     }
@@ -2633,7 +2635,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ast::LitKind::Str(..) => tcx.mk_static_str(),
             ast::LitKind::ByteStr(ref v) => {
                 tcx.mk_imm_ref(tcx.types.re_static,
-                                tcx.mk_array(tcx.types.u8, v.len()))
+                                tcx.mk_array(tcx.types.u8, v.len() as u64))
             }
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
@@ -3892,11 +3894,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               } else {
                   self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
               };
-              tcx.mk_array(element_ty, args.len())
+              tcx.mk_array(element_ty, args.len() as u64)
           }
           hir::ExprRepeat(ref element, count) => {
-            let count = eval_length(self.tcx, count, "repeat count")
-                  .unwrap_or(0);
+            let count_def_id = tcx.hir.body_owner_def_id(count);
+            let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+            let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+
+            if let Err(ref err) = count {
+               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+            }
 
             let uty = match expected {
                 ExpectHasType(uty) => {
@@ -3920,17 +3928,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            if count > 1 {
-                // For [foo, ..n] where n > 1, `foo` must have
-                // Copy type:
-                let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+            if let Ok(count) = count {
+                let zero_or_one = count.val.to_const_int().and_then(|count| {
+                    count.to_u64().map(|count| count <= 1)
+                }).unwrap_or(false);
+                if !zero_or_one {
+                    // For [foo, ..n] where n > 1, `foo` must have
+                    // Copy type:
+                    let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+                    self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+                }
             }
 
             if element_ty.references_error() {
                 tcx.types.err
+            } else if let Ok(count) = count {
+                tcx.mk_ty(ty::TyArray(t, count))
             } else {
-                tcx.mk_array(t, count)
+                tcx.types.err
             }
           }
           hir::ExprTup(ref elts) => {
@@ -4612,8 +4627,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(def_id) | Def::Upvar(def_id, ..) => {
-                let nid = self.tcx.hir.as_local_node_id(def_id).unwrap();
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);

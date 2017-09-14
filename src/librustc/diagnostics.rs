@@ -1389,30 +1389,66 @@ A lifetime of reference outlives lifetime of borrowed content.
 Erroneous code example:
 
 ```compile_fail,E0312
-fn make_child<'human, 'elve>(x: &mut &'human isize, y: &mut &'elve isize) {
-    *x = *y;
-    // error: lifetime of reference outlives lifetime of borrowed content
+fn make_child<'tree, 'human>(
+  x: &'human i32,
+  y: &'tree i32
+) -> &'human i32 {
+    if x > y
+       { x }
+    else
+       { y }
+       // error: lifetime of reference outlives lifetime of borrowed content
 }
 ```
 
-The compiler cannot determine if the `human` lifetime will live long enough
-to keep up on the elve one. To solve this error, you have to give an
-explicit lifetime hierarchy:
+The function declares that it returns a reference with the `'human`
+lifetime, but it may return data with the `'tree` lifetime. As neither
+lifetime is declared longer than the other, this results in an
+error. Sometimes, this error is because the function *body* is
+incorrect -- that is, maybe you did not *mean* to return data from
+`y`. In that case, you should fix the function body.
+
+Often, however, the body is correct. In that case, the function
+signature needs to be altered to match the body, so that the caller
+understands that data from either `x` or `y` may be returned. The
+simplest way to do this is to give both function parameters the *same*
+named lifetime:
 
 ```
-fn make_child<'human, 'elve: 'human>(x: &mut &'human isize,
-                                     y: &mut &'elve isize) {
-    *x = *y; // ok!
+fn make_child<'human>(
+  x: &'human i32,
+  y: &'human i32
+) -> &'human i32 {
+    if x > y
+       { x }
+    else
+       { y } // ok!
 }
 ```
 
-Or use the same lifetime for every variable:
+However, in some cases, you may prefer to explicitly declare that one lifetime
+outlives another using a `where` clause:
 
 ```
-fn make_child<'elve>(x: &mut &'elve isize, y: &mut &'elve isize) {
-    *x = *y; // ok!
+fn make_child<'tree, 'human>(
+  x: &'human i32,
+  y: &'tree i32
+) -> &'human i32
+where
+  'tree: 'human
+{
+    if x > y
+       { x }
+    else
+       { y } // ok!
 }
 ```
+
+Here, the where clause `'tree: 'human` can be read as "the lifetime
+'tree outlives the lifetime 'human" -- meaning, references with the
+`'tree` lifetime live *at least as long as* references with the
+`'human` lifetime. Therefore, it is safe to return data with lifetime
+`'tree` when data with the lifetime `'human` is needed.
 "##,
 
 E0317: r##"

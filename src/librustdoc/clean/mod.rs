@@ -27,11 +27,13 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind};
 use rustc::middle::stability;
@@ -40,6 +42,7 @@ use rustc_typeck::hir_ty_to_ty;
 
 use rustc::hir;
 
+use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -125,13 +128,13 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         {
             let mut r = cx.renderinfo.borrow_mut();
-            r.deref_trait_did = cx.tcx.lang_items.deref_trait();
-            r.deref_mut_trait_did = cx.tcx.lang_items.deref_mut_trait();
-            r.owned_box_did = cx.tcx.lang_items.owned_box();
+            r.deref_trait_did = cx.tcx.lang_items().deref_trait();
+            r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+            r.owned_box_did = cx.tcx.lang_items().owned_box();
         }
 
         let mut externs = Vec::new();
-        for cnum in cx.sess().cstore.crates() {
+        for &cnum in cx.tcx.crates().iter() {
             externs.push((cnum, cnum.clean(cx)));
             // Analyze doc-reachability for extern items
             LibEmbargoVisitor::new(cx).visit_lib(cnum);
@@ -244,7 +247,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
+            cx.tcx.item_children(root).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 
@@ -672,7 +675,7 @@ impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+        let path = external_path(cx, &cx.tcx.item_name(did),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
@@ -689,7 +692,7 @@ impl TyParamBound {
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
         if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id() == cx.tcx.lang_items.sized_trait() {
+            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
         }
@@ -713,7 +716,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items.fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
                 ty::TyTuple(ref tys, _) => tys.iter().map(|t| t.clean(cx)).collect(),
@@ -763,7 +766,7 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
 impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(self.def_id).as_str(),
+        let path = external_path(cx, &cx.tcx.item_name(self.def_id),
                                  Some(self.def_id), true, vec![], self.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", self.substs);
@@ -830,7 +833,8 @@ impl Lifetime {
 
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext) -> Lifetime {
-        let def = cx.tcx.named_region_map.defs.get(&self.id).cloned();
+        let hir_id = cx.tcx.hir.node_to_hir_id(self.id);
+        let def = cx.tcx.named_region(hir_id);
         match def {
             Some(rl::Region::EarlyBound(_, node_id)) |
             Some(rl::Region::LateBound(_, node_id)) |
@@ -933,6 +937,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
             Predicate::ClosureKind(..) => panic!("not user writable"),
+            Predicate::ConstEvaluatable(..) => panic!("not user writable"),
         }
     }
 }
@@ -1554,7 +1559,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
-    Array(Box<Type>, usize),
+    Array(Box<Type>, String),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1781,9 +1786,16 @@ impl Clean<Type> for hir::Ty {
                              type_: box m.ty.clean(cx)}
             }
             TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, length) => {
-                use rustc::middle::const_val::eval_length;
-                let n = eval_length(cx.tcx, length, "array length").unwrap();
+            TyArray(ref ty, n) => {
+                let def_id = cx.tcx.hir.body_owner_def_id(n);
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let substs = Substs::identity_for_item(cx.tcx, def_id);
+                let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
                 Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
@@ -1894,7 +1906,14 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
+            ty::TyArray(ty, n) => {
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else {
+                    format!("{:?}", n)
+                };
+                Array(box ty.clean(cx), n)
+            }
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),
@@ -1924,7 +1943,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                let path = external_path(cx, &cx.tcx.item_name(did),
                                          None, false, vec![], substs);
                 ResolvedPath {
                     path,
@@ -1942,7 +1961,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     reg.clean(cx).map(|b| typarams.push(RegionBound(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
-                        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                        let path = external_path(cx, &cx.tcx.item_name(did),
                             Some(did), false, vec![], empty);
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
                         let bound = TraitBound(PolyTrait {
@@ -1965,7 +1984,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
+                    let path = external_path(cx, &cx.tcx.item_name(did), Some(did),
                         false, bindings, principal.0.substs);
                     ResolvedPath {
                         path,
@@ -2535,7 +2554,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items.deref_trait() {
+        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 
@@ -2591,27 +2610,27 @@ fn build_deref_target_impls(cx: &DocContext,
             }
         };
         let did = match primitive {
-            Isize => tcx.lang_items.isize_impl(),
-            I8 => tcx.lang_items.i8_impl(),
-            I16 => tcx.lang_items.i16_impl(),
-            I32 => tcx.lang_items.i32_impl(),
-            I64 => tcx.lang_items.i64_impl(),
-            I128 => tcx.lang_items.i128_impl(),
-            Usize => tcx.lang_items.usize_impl(),
-            U8 => tcx.lang_items.u8_impl(),
-            U16 => tcx.lang_items.u16_impl(),
-            U32 => tcx.lang_items.u32_impl(),
-            U64 => tcx.lang_items.u64_impl(),
-            U128 => tcx.lang_items.u128_impl(),
-            F32 => tcx.lang_items.f32_impl(),
-            F64 => tcx.lang_items.f64_impl(),
-            Char => tcx.lang_items.char_impl(),
+            Isize => tcx.lang_items().isize_impl(),
+            I8 => tcx.lang_items().i8_impl(),
+            I16 => tcx.lang_items().i16_impl(),
+            I32 => tcx.lang_items().i32_impl(),
+            I64 => tcx.lang_items().i64_impl(),
+            I128 => tcx.lang_items().i128_impl(),
+            Usize => tcx.lang_items().usize_impl(),
+            U8 => tcx.lang_items().u8_impl(),
+            U16 => tcx.lang_items().u16_impl(),
+            U32 => tcx.lang_items().u32_impl(),
+            U64 => tcx.lang_items().u64_impl(),
+            U128 => tcx.lang_items().u128_impl(),
+            F32 => tcx.lang_items().f32_impl(),
+            F64 => tcx.lang_items().f64_impl(),
+            Char => tcx.lang_items().char_impl(),
             Bool => None,
-            Str => tcx.lang_items.str_impl(),
-            Slice => tcx.lang_items.slice_impl(),
-            Array => tcx.lang_items.slice_impl(),
+            Str => tcx.lang_items().str_impl(),
+            Slice => tcx.lang_items().slice_impl(),
+            Array => tcx.lang_items().slice_impl(),
             Tuple => None,
-            RawPointer => tcx.lang_items.const_ptr_impl(),
+            RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,
         };

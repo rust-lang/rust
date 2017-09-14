@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions -Z span_free_formats
+// compile-flags: -Z identify_regions -Z span_free_formats -Z emit-end-regions
 // ignore-tidy-linelength
 
 // Unwinding should EndRegion for in-scope borrows: Borrow of moved data.
@@ -84,8 +84,8 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _3 = ((*_2).0: i32);
 //         _0 = _3;
 //         StorageDead(_3);
-//         StorageDead(_2);
 //         EndRegion('15_0rs);
+//         StorageDead(_2);
 //         drop(_1) -> bb1;
 //     }
 //     bb1: {

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
-impl Drop for A {
-    fn drop(&mut self) {}
+
+fn main() {
+    let x: &[u8] = "foo";
+    let y: &[u8; 4] = "baaa";
+    let z: &str = b"foo";
 }
-
-const FOO: A = A;
-//~^ ERROR: constants are not allowed to have destructors
-
-fn main() {}

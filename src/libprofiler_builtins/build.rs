@@ -19,7 +19,7 @@ use std::path::Path;
 
 fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
-    let cfg = &mut gcc::Config::new();
+    let cfg = &mut gcc::Build::new();
 
     let mut profile_sources = vec!["GCDAProfiling.c",
                                    "InstrProfiling.c",

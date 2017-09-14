@@ -31,6 +31,10 @@ use mem;
 /// within a thread, and values that implement [`Drop`] get destructed when a
 /// thread exits. Some caveats apply, which are explained below.
 ///
+/// A `LocalKey`'s initializer cannot recursively depend on itself, and using
+/// a `LocalKey` in this way will cause the initializer to infinitely recurse
+/// on the first call to `with`.
+///
 /// # Examples
 ///
 /// ```
@@ -159,8 +163,9 @@ macro_rules! thread_local {
 #[allow_internal_unstable]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
-        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
+    (@key $(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        {
+            #[inline]
             fn __init() -> $t { $init }
 
             unsafe fn __getit() -> $crate::option::Option<
@@ -182,7 +187,16 @@ macro_rules! __thread_local_inner {
             unsafe {
                 $crate::thread::LocalKey::new(__getit, __init)
             }
-        };
+        }
+    };
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        #[cfg(stage0)]
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
+
+        #[cfg(not(stage0))]
+        $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
+            __thread_local_inner!(@key $(#[$attr])* $vis $name, $t, $init);
     }
 }
 

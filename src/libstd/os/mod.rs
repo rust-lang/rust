@@ -27,7 +27,7 @@ pub use sys::unix_ext as unix;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use sys::windows_ext as windows;
 
-#[cfg(any(dox, target_os = "linux"))]
+#[cfg(any(dox, target_os = "linux", target_os = "l4re"))]
 #[doc(cfg(target_os = "linux"))]
 pub mod linux;
 

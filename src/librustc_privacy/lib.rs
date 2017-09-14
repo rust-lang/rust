@@ -325,8 +325,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            let hir_id = self.tcx.hir.node_to_hir_id(id);
-            if let Some(exports) = self.tcx.module_exports(hir_id) {
+            let def_id = self.tcx.hir.local_def_id(id);
+            if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
@@ -630,7 +630,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                 };
                 ty::Visibility::from_hir(vis, node_id, self.tcx)
             }
-            None => self.tcx.sess.cstore.visibility(did),
+            None => self.tcx.visibility(did),
         }
     }
 

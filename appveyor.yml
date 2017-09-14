@@ -1,8 +1,8 @@
 environment:
   SCCACHE_BUCKET: rust-lang-ci-sccache
-  AWS_ACCESS_KEY_ID: AKIAIMX7VLAS3PZAVLUQ
+  AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
   AWS_SECRET_ACCESS_KEY:
-    secure: 1UkmbiDd15tWtYbMm5O2Uqm0b0Ur8v1MoSlydxl4ojcroPeerRMlUges0l57py8c
+    secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
 
   # By default schannel checks revocation of certificates unlike some other SSL
@@ -185,9 +185,9 @@ before_deploy:
 deploy:
   - provider: S3
     skip_cleanup: true
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: +11jsUNFTQ9dq5Ad1i2+PeUJaXluFJ0zIJAXESE1dFT3Kdjku4/eDdgyjgsB6GnV
+      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
     bucket: rust-lang-ci
     set_public: true
     region: us-east-1
@@ -202,9 +202,9 @@ deploy:
   # different upload directory and a slightly different trigger
   - provider: S3
     skip_cleanup: true
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: +11jsUNFTQ9dq5Ad1i2+PeUJaXluFJ0zIJAXESE1dFT3Kdjku4/eDdgyjgsB6GnV
+      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
     bucket: rust-lang-ci
     set_public: true
     region: us-east-1

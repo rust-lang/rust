@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions -Z span_free_formats
+// compile-flags: -Z identify_regions -Z span_free_formats -Z emit-end-regions
 // ignore-tidy-linelength
 
 // This test models a scenario that arielb1 found during review.
@@ -42,7 +42,7 @@ fn main() {
 //     let mut _0: ();
 //     let mut _1: bool;
 //     let _2: i32;
-//     let mut _4: &'13_0rs i32;
+//     let mut _4: &'33_0rs i32;
 //     let mut _3: ();
 //     let mut _5: !;
 //     let mut _6: ();
@@ -67,15 +67,15 @@ fn main() {
 //    bb2: {
 //        _0 = ();
 //        StorageDead(_7);
+//        EndRegion('33_0rs);
 //        StorageDead(_4);
-//        EndRegion('13_0rs);
 //        StorageDead(_2);
 //        StorageDead(_1);
 //        return;
 //    }
 //
 //    bb3: {
-//        _4 = &'13_0rs _2;
+//        _4 = &'33_0rs _2;
 //        _6 = ();
 //        StorageDead(_7);
 //        _1 = const true;
@@ -83,3 +83,4 @@ fn main() {
 //        goto -> bb1;
 //    }
 // }
+// END rustc.node4.SimplifyCfg-qualify-consts.after.mir

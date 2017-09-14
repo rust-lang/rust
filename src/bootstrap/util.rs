@@ -34,8 +34,12 @@ pub fn staticlib(name: &str, target: &str) -> String {
 /// Copies a file from `src` to `dst`
 pub fn copy(src: &Path, dst: &Path) {
     let _ = fs::remove_file(&dst);
-    let res = fs::copy(src, dst);
-    if let Err(e) = res {
+    // Attempt to "easy copy" by creating a hard link (symlinks don't work on
+    // windows), but if that fails just fall back to a slow `copy` operation.
+    if let Ok(()) = fs::hard_link(src, dst) {
+        return
+    }
+    if let Err(e) = fs::copy(src, dst) {
         panic!("failed to copy `{}` to `{}`: {}", src.display(),
                dst.display(), e)
     }
@@ -44,7 +48,6 @@ pub fn copy(src: &Path, dst: &Path) {
     let atime = FileTime::from_last_access_time(&metadata);
     let mtime = FileTime::from_last_modification_time(&metadata);
     t!(filetime::set_file_times(dst, atime, mtime));
-
 }
 
 /// Copies the `src` directory recursively to `dst`. Both are assumed to exist

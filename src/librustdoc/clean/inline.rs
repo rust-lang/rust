@@ -120,7 +120,7 @@ pub fn load_attrs(cx: &DocContext, did: DefId) -> clean::Attributes {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
-    let crate_name = cx.tcx.sess.cstore.crate_name(did.krate).to_string();
+    let crate_name = cx.tcx.crate_name(did.krate).to_string();
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
         let s = elem.data.to_string();
@@ -236,31 +236,34 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
 
     cx.populated_all_crate_impls.set(true);
 
-    for did in tcx.sess.cstore.implementations_of_trait(None) {
-        build_impl(cx, did, &mut impls);
+    for &cnum in tcx.crates().iter() {
+        for did in tcx.all_trait_implementations(cnum).iter() {
+            build_impl(cx, *did, &mut impls);
+        }
     }
 
     // Also try to inline primitive impls from other crates.
+    let lang_items = tcx.lang_items();
     let primitive_impls = [
-        tcx.lang_items.isize_impl(),
-        tcx.lang_items.i8_impl(),
-        tcx.lang_items.i16_impl(),
-        tcx.lang_items.i32_impl(),
-        tcx.lang_items.i64_impl(),
-        tcx.lang_items.i128_impl(),
-        tcx.lang_items.usize_impl(),
-        tcx.lang_items.u8_impl(),
-        tcx.lang_items.u16_impl(),
-        tcx.lang_items.u32_impl(),
-        tcx.lang_items.u64_impl(),
-        tcx.lang_items.u128_impl(),
-        tcx.lang_items.f32_impl(),
-        tcx.lang_items.f64_impl(),
-        tcx.lang_items.char_impl(),
-        tcx.lang_items.str_impl(),
-        tcx.lang_items.slice_impl(),
-        tcx.lang_items.const_ptr_impl(),
-        tcx.lang_items.mut_ptr_impl(),
+        lang_items.isize_impl(),
+        lang_items.i8_impl(),
+        lang_items.i16_impl(),
+        lang_items.i32_impl(),
+        lang_items.i64_impl(),
+        lang_items.i128_impl(),
+        lang_items.usize_impl(),
+        lang_items.u8_impl(),
+        lang_items.u16_impl(),
+        lang_items.u32_impl(),
+        lang_items.u64_impl(),
+        lang_items.u128_impl(),
+        lang_items.f32_impl(),
+        lang_items.f64_impl(),
+        lang_items.char_impl(),
+        lang_items.str_impl(),
+        lang_items.slice_impl(),
+        lang_items.const_ptr_impl(),
+        lang_items.mut_ptr_impl(),
     ];
 
     for def_id in primitive_impls.iter().filter_map(|&def_id| def_id) {
@@ -399,7 +402,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
             clean::RegionBound(..) => unreachable!(),
         }
     });
-    if trait_.def_id() == tcx.lang_items.deref_trait() {
+    if trait_.def_id() == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
 
@@ -443,9 +446,9 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         let mut visited = FxHashSet();
-        for item in cx.tcx.sess.cstore.item_children(did, cx.tcx.sess) {
+        for &item in cx.tcx.item_children(did).iter() {
             let def_id = item.def.def_id();
-            if cx.tcx.sess.cstore.visibility(def_id) == ty::Visibility::Public {
+            if cx.tcx.visibility(def_id) == ty::Visibility::Public {
                 if !visited.insert(def_id) { continue }
                 if let Some(i) = try_inline(cx, item.def, item.ident.name) {
                     items.extend(i)
@@ -471,7 +474,7 @@ impl hir::print::PpAnn for InlinedConst {
 }
 
 fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
-    let body = cx.tcx.sess.cstore.item_body(cx.tcx, did);
+    let body = cx.tcx.extern_const_body(did);
     let inlined = InlinedConst {
         nested_bodies: cx.tcx.item_body_nested_bodies(did)
     };

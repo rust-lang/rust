@@ -66,23 +66,11 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic($msg, {
-            // static requires less code at runtime, more constant data
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
-                __rust_unstable_column!());
-            &_FILE_LINE_COL
-        })
+        $crate::rt::begin_panic($msg, &(file!(), line!(), __rust_unstable_column!()))
     });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+), {
-            // The leading _'s are to avoid dead code warnings if this is
-            // used inside a dead function. Just `#[allow(dead_code)]` is
-            // insufficient, since the user may have
-            // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE_COL: (&'static str, u32, u32) = (file!(), line!(),
-                __rust_unstable_column!());
-            &_FILE_LINE_COL
-        })
+        $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+),
+                                    &(file!(), line!(), __rust_unstable_column!()))
     });
 }
 

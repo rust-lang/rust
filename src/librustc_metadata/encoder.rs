@@ -248,7 +248,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 def_index: DefIndex,
                                 op: fn(&mut IsolatedEncoder<'x, 'a, 'tcx>, DATA) -> R,
                                 data: DATA)
-                                -> Tracked<R> {
+                                -> R {
         let mut entry_builder = IsolatedEncoder::new(self);
         let ret = op(&mut entry_builder, data);
         let (fingerprint, this) = entry_builder.finish();
@@ -260,7 +260,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             })
         }
 
-        Tracked::new(ret)
+        ret
     }
 
     fn encode_info_for_items(&mut self) -> Index {
@@ -408,9 +408,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
-            panic_strategy: Tracked::new(tcx.sess.panic_strategy()),
-            has_global_allocator: Tracked::new(has_global_allocator),
-            has_default_lib_allocator: Tracked::new(has_default_lib_allocator),
+            panic_strategy: tcx.sess.panic_strategy(),
+            has_global_allocator: has_global_allocator,
+            has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.sess
                 .plugin_registrar_fn
                 .get()
@@ -548,12 +548,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                                                                  &hir::Visibility)>)
                            -> Entry<'tcx> {
         let tcx = self.tcx;
-        let hir_id = tcx.hir.node_to_hir_id(id);
         let def_id = tcx.hir.local_def_id(id);
         debug!("IsolatedEncoder::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
-            reexports: match tcx.module_exports(hir_id) {
+            reexports: match tcx.module_exports(def_id) {
                 Some(ref exports) if *vis == hir::Public => {
                     self.lazy_seq_from_slice(exports.as_slice())
                 }
@@ -991,7 +990,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 // "unsized info", else just store None
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
-                        if Some(t.def_id) == tcx.lang_items.coerce_unsized_trait() {
+                        if Some(t.def_id) == tcx.lang_items().coerce_unsized_trait() {
                             Some(tcx.at(item.span).coerce_unsized_info(def_id))
                         } else {
                             None
@@ -1283,21 +1282,20 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     }
 
     fn encode_native_libraries(&mut self, _: ()) -> LazySeq<NativeLibrary> {
-        let used_libraries = self.tcx.sess.cstore.used_libraries();
-        self.lazy_seq(used_libraries)
+        let used_libraries = self.tcx.native_libraries(LOCAL_CRATE);
+        self.lazy_seq(used_libraries.iter().cloned())
     }
 
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {
-        let cstore = &*self.tcx.sess.cstore;
-        let crates = cstore.crates();
+        let crates = self.tcx.crates();
 
         let mut deps = crates
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: cstore.original_crate_name(cnum),
-                    hash: cstore.crate_hash(cnum),
-                    kind: cstore.dep_kind(cnum),
+                    name: self.tcx.original_crate_name(cnum),
+                    hash: self.tcx.crate_hash(cnum),
+                    kind: self.tcx.dep_kind(cnum),
                 };
                 (cnum, dep)
             })
@@ -1323,7 +1321,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_lang_items(&mut self, _: ()) -> LazySeq<(DefIndex, usize)> {
         let tcx = self.tcx;
-        let lang_items = tcx.lang_items.items().iter();
+        let lang_items = tcx.lang_items();
+        let lang_items = lang_items.items().iter();
         self.lazy_seq(lang_items.enumerate().filter_map(|(i, &opt_def_id)| {
             if let Some(def_id) = opt_def_id {
                 if def_id.is_local() {
@@ -1336,7 +1335,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn encode_lang_items_missing(&mut self, _: ()) -> LazySeq<lang_items::LangItem> {
         let tcx = self.tcx;
-        self.lazy_seq_ref(&tcx.lang_items.missing)
+        self.lazy_seq_ref(&tcx.lang_items().missing)
     }
 
     /// Encodes an index, mapping each trait to its (local) implementations.
@@ -1521,9 +1520,16 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_ty(&mut self, ty: &hir::Ty) {
-        if let hir::TyImplTrait(_) = ty.node {
-            let def_id = self.tcx.hir.local_def_id(ty.id);
-            self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
+        match ty.node {
+            hir::TyImplTrait(_) => {
+                let def_id = self.tcx.hir.local_def_id(ty.id);
+                self.record(def_id, IsolatedEncoder::encode_info_for_anon_ty, def_id);
+            }
+            hir::TyArray(_, len) => {
+                let def_id = self.tcx.hir.body_owner_def_id(len);
+                self.record(def_id, IsolatedEncoder::encode_info_for_embedded_const, def_id);
+            }
+            _ => {}
         }
     }
 

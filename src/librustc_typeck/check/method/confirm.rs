@@ -540,7 +540,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn predicates_require_illegal_sized_bound(&self,
                                               predicates: &ty::InstantiatedPredicates<'tcx>)
                                               -> bool {
-        let sized_def_id = match self.tcx.lang_items.sized_trait() {
+        let sized_def_id = match self.tcx.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => return false,
         };

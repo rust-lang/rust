@@ -70,8 +70,8 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
         let align = bcx.ccx.align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
                t, Value(info), size, align);
-        let size = C_uint(bcx.ccx, size);
-        let align = C_uint(bcx.ccx, align);
+        let size = C_usize(bcx.ccx, size);
+        let align = C_usize(bcx.ccx, align as u64);
         return (size, align);
     }
     assert!(!info.is_null());
@@ -96,8 +96,8 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             };
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
-            let sized_size = C_uint(ccx, sized_size);
-            let sized_align = C_uint(ccx, sized_align);
+            let sized_size = C_usize(ccx, sized_size);
+            let sized_align = C_usize(ccx, sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
@@ -128,7 +128,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
-                    C_uint(ccx, std::cmp::max(sized_align, unsized_align) as u64)
+                    C_usize(ccx, std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => bcx.select(bcx.icmp(llvm::IntUGT, sized_align, unsized_align),
                                 sized_align,
@@ -146,7 +146,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = bcx.sub(align, C_uint(bcx.ccx, 1_u64));
+            let addend = bcx.sub(align, C_usize(bcx.ccx, 1));
             let size = bcx.and(bcx.add(size, addend), bcx.neg(align));
 
             (size, align)
@@ -159,8 +159,8 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let unit = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            (bcx.mul(info, C_uint(bcx.ccx, bcx.ccx.size_of(unit))),
-             C_uint(bcx.ccx, bcx.ccx.align_of(unit)))
+            (bcx.mul(info, C_usize(bcx.ccx, bcx.ccx.size_of(unit))),
+             C_usize(bcx.ccx, bcx.ccx.align_of(unit) as u64))
         }
         _ => bug!("Unexpected unsized type, found {}", t)
     }

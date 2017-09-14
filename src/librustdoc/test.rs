@@ -85,9 +85,9 @@ pub fn run(input: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone(), cstore.clone(),
+        sessopts, &dep_graph, Some(input_path.clone()), handler, codemap.clone()
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -238,9 +238,9 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
 
     let dep_graph = DepGraph::new(false);
-    let cstore = Rc::new(CStore::new(&dep_graph, box rustc_trans::LlvmMetadataLoader));
+    let cstore = Rc::new(CStore::new(box rustc_trans::LlvmMetadataLoader));
     let mut sess = session::build_session_(
-        sessopts, &dep_graph, None, diagnostic_handler, codemap, cstore.clone(),
+        sessopts, &dep_graph, None, diagnostic_handler, codemap
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));

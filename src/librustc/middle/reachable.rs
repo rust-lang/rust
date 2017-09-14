@@ -115,28 +115,34 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
             _ => None
         };
 
-        if let Some(def) = def {
-            let def_id = def.def_id();
-            if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                if self.def_id_represents_local_inlined_item(def_id) {
-                    self.worklist.push(node_id);
-                } else {
-                    match def {
-                        // If this path leads to a constant, then we need to
-                        // recurse into the constant to continue finding
-                        // items that are reachable.
-                        Def::Const(..) | Def::AssociatedConst(..) => {
-                            self.worklist.push(node_id);
-                        }
+        match def {
+            Some(Def::Local(node_id)) | Some(Def::Upvar(node_id, ..)) => {
+                self.reachable_symbols.insert(node_id);
+            }
+            Some(def) => {
+                let def_id = def.def_id();
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                    if self.def_id_represents_local_inlined_item(def_id) {
+                        self.worklist.push(node_id);
+                    } else {
+                        match def {
+                            // If this path leads to a constant, then we need to
+                            // recurse into the constant to continue finding
+                            // items that are reachable.
+                            Def::Const(..) | Def::AssociatedConst(..) => {
+                                self.worklist.push(node_id);
+                            }
 
-                        // If this wasn't a static, then the destination is
-                        // surely reachable.
-                        _ => {
-                            self.reachable_symbols.insert(node_id);
+                            // If this wasn't a static, then the destination is
+                            // surely reachable.
+                            _ => {
+                                self.reachable_symbols.insert(node_id);
+                            }
                         }
                     }
                 }
             }
+            _ => {}
         }
 
         intravisit::walk_expr(self, expr)
@@ -392,7 +398,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     for (id, _) in &access_levels.map {
         reachable_context.worklist.push(*id);
     }
-    for item in tcx.lang_items.items().iter() {
+    for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.hir.as_local_node_id(did) {
                 reachable_context.worklist.push(node_id);

@@ -64,8 +64,7 @@ fn test<'a>(log: d::Log<'a>) {
     d::println(&format!("result {}", result));
 }
 
-// FIXME(#33490) Remove the double braces when old trans is gone.
-fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {{
+fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {
     d::println("entered foo");
     let de2 = de1.incr();      // creates D(de_2, 2)
     let de4 = {
@@ -74,7 +73,7 @@ fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {{
     };
     d::println("eval tail of foo");
     de4.incr().incr()          // creates D(de_5, 6) and D(de_6, 7)
-}}
+}
 
 // This module provides simultaneous printouts of the dynamic extents
 // of all of the D values, in addition to logging the order that each

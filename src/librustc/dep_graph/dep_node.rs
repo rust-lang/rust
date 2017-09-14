@@ -60,9 +60,9 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use hir::def_id::{CrateNum, DefId};
+use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map::DefPathHash;
-use hir::HirId;
+use hir::{HirId, ItemLocalId};
 
 use ich::Fingerprint;
 use ty::{TyCtxt, Instance, InstanceDef};
@@ -511,8 +511,8 @@ define_dep_nodes!( <'tcx>
     [] ParamEnv(DefId),
     [] DescribeDef(DefId),
     [] DefSpan(DefId),
-    [] Stability(DefId),
-    [] Deprecation(DefId),
+    [] LookupStability(DefId),
+    [] LookupDeprecationEntry(DefId),
     [] ItemBodyNestedBodies(DefId),
     [] ConstIsRvaluePromotableToStatic(DefId),
     [] ImplParent(DefId),
@@ -521,16 +521,60 @@ define_dep_nodes!( <'tcx>
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
     [] FnArgNames(DefId),
-    [] DylibDepFormats(DefId),
-    [] IsAllocator(DefId),
-    [] IsPanicRuntime(DefId),
-    [] IsCompilerBuiltins(DefId),
-    [] HasGlobalAllocator(DefId),
+    [] DylibDepFormats(CrateNum),
+    [] IsPanicRuntime(CrateNum),
+    [] IsCompilerBuiltins(CrateNum),
+    [] HasGlobalAllocator(CrateNum),
     [] ExternCrate(DefId),
     [] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
-    [] InScopeTraits(HirId),
-    [] ModuleExports(HirId),
+    [] InScopeTraits(DefIndex),
+    [] ModuleExports(DefId),
+    [] IsSanitizerRuntime(CrateNum),
+    [] IsProfilerRuntime(CrateNum),
+    [] GetPanicStrategy(CrateNum),
+    [] IsNoBuiltins(CrateNum),
+    [] ImplDefaultness(DefId),
+    [] ExportedSymbols(CrateNum),
+    [] NativeLibraries(CrateNum),
+    [] PluginRegistrarFn(CrateNum),
+    [] DeriveRegistrarFn(CrateNum),
+    [] CrateDisambiguator(CrateNum),
+    [] CrateHash(CrateNum),
+    [] OriginalCrateName(CrateNum),
+
+    [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
+    [] AllTraitImplementations(CrateNum),
+
+    [] IsDllimportForeignItem(DefId),
+    [] IsStaticallyIncludedForeignItem(DefId),
+    [] NativeLibraryKind(DefId),
+    [] LinkArgs,
+
+    [] NamedRegion(DefIndex),
+    [] IsLateBound(DefIndex),
+    [] ObjectLifetimeDefaults(DefIndex),
+
+    [] Visibility(DefId),
+    [] DepKind(CrateNum),
+    [] CrateName(CrateNum),
+    [] ItemChildren(DefId),
+    [] ExternModStmtCnum(DefId),
+    [] GetLangItems,
+    [] DefinedLangItems(CrateNum),
+    [] MissingLangItems(CrateNum),
+    [] ExternConstBody(DefId),
+    [] VisibleParentMap,
+    [] IsDirectExternCrate(CrateNum),
+    [] MissingExternCrateItem(CrateNum),
+    [] UsedCrateSource(CrateNum),
+    [] PostorderCnums,
+
+    [] Freevars(DefId),
+    [] MaybeUnusedTraitImport(DefId),
+    [] MaybeUnusedExternCrates,
+    [] StabilityIndex,
+    [] AllCrateNums,
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
@@ -635,6 +679,25 @@ impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (DefIdList
         write!(&mut s, "]").unwrap();
 
         s
+    }
+}
+
+impl<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> DepNodeParams<'a, 'gcx, 'tcx> for (HirId,) {
+    const CAN_RECONSTRUCT_QUERY_KEY: bool = false;
+
+    // We actually would not need to specialize the implementation of this
+    // method but it's faster to combine the hashes than to instantiate a full
+    // hashing context and stable-hashing state.
+    fn to_fingerprint(&self, tcx: TyCtxt) -> Fingerprint {
+        let (HirId {
+            owner,
+            local_id: ItemLocalId(local_id),
+        },) = *self;
+
+        let def_path_hash = tcx.def_path_hash(DefId::local(owner));
+        let local_id = Fingerprint::from_smaller_hash(local_id as u64);
+
+        def_path_hash.0.combine(local_id)
     }
 }
 

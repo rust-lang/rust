@@ -15,11 +15,9 @@ use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
-use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
-use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -106,13 +104,12 @@ fn test_env<F>(source_string: &str,
 
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
     let sess = session::build_session_(options,
                                        &dep_graph,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())),
-                                       cstore.clone());
+                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
@@ -140,10 +137,9 @@ fn test_env<F>(source_string: &str,
     let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
-    let index = stability::Index::new(&sess);
+    let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
     TyCtxt::create_and_enter(&sess,
+                             &*cstore,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              Rc::new(Passes::new()),
@@ -152,8 +148,6 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
-                             lang_items,
-                             index,
                              "test_crate",
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
@@ -807,13 +801,13 @@ fn walk_ty() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
-                   [tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
-                    uint_ty, int_ty, uint_ty, uint_ty]);
+                   [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
+                    usize_ty, int_ty, usize_ty, usize_ty]);
     })
 }
 
@@ -822,20 +816,20 @@ fn walk_ty_skip_subtree() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
         let mut expected = vec![(tup2_ty, false),
                                 (tup1_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (tup1_ty, true), // skip the isize/usize/isize/usize
-                                (uint_ty, false)];
+                                (usize_ty, false)];
         expected.reverse();
 
         let mut walker = tup2_ty.walk();

@@ -17,6 +17,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir::{self, Location, TerminatorKind, Literal};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
+use rustc::ty;
 use common;
 use super::MirContext;
 
@@ -110,11 +111,11 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             mir::TerminatorKind::Call {
                 func: mir::Operand::Constant(box mir::Constant {
                     literal: Literal::Value {
-                        value: ConstVal::Function(def_id, _), ..
+                        value: &ty::Const { val: ConstVal::Function(def_id, _), .. }, ..
                     }, ..
                 }),
                 ref args, ..
-            } if Some(def_id) == self.cx.ccx.tcx().lang_items.box_free_fn() => {
+            } if Some(def_id) == self.cx.ccx.tcx().lang_items().box_free_fn() => {
                 // box_free(x) shares with `drop x` the property that it
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.

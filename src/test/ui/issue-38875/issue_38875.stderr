@@ -4,7 +4,7 @@ error[E0080]: constant evaluation error
 11 | pub const FOO: usize = *&0;
    |                        ^^^ unimplemented constant expression: deref operation
    |
-note: for repeat count here
+note: for constant expression here
   --> $DIR/issue_38875.rs:16:22
    |
 16 |     let test_x = [0; issue_38875_b::FOO];

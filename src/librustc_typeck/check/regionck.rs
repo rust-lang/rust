@@ -511,7 +511,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                             ty::Predicate::Subtype(..) |
                             ty::Predicate::Projection(..) |
                             ty::Predicate::ClosureKind(..) |
-                            ty::Predicate::ObjectSafe(..) =>
+                            ty::Predicate::ObjectSafe(..) |
+                            ty::Predicate::ConstEvaluatable(..) =>
                                 vec![],
 
                             ty::Predicate::WellFormed(subty) => {

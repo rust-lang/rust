@@ -21,6 +21,8 @@ use time::Duration;
 
 use super::to_u16s;
 
+pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
+
 pub struct Thread {
     handle: Handle
 }

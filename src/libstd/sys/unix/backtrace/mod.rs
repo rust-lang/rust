@@ -91,14 +91,28 @@ mod tracing;
 // symbol resolvers:
 mod printing;
 
-#[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "emscripten")))]
+#[cfg(not(target_os = "emscripten"))]
 pub mod gnu {
     use io;
     use fs;
     use libc::c_char;
 
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
     pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
         Err(io::Error::new(io::ErrorKind::Other, "Not implemented"))
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    pub fn get_executable_filename() -> io::Result<(Vec<c_char>, fs::File)> {
+        use env;
+        use os::unix::ffi::OsStrExt;
+
+        let filename = env::current_exe()?;
+        let file = fs::File::open(&filename)?;
+        let mut filename_cstr: Vec<_> = filename.as_os_str().as_bytes().iter()
+            .map(|&x| x as c_char).collect();
+        filename_cstr.push(0); // Null terminate
+        Ok((filename_cstr, file))
     }
 }
 

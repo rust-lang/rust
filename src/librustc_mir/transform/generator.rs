@@ -175,7 +175,10 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             literal: Literal::Value {
-                value: ConstVal::Integral(ConstInt::U32(state_disc)),
+                value: self.tcx.mk_const(ty::Const {
+                    val: ConstVal::Integral(ConstInt::U32(state_disc)),
+                    ty: self.tcx.types.u32
+                }),
             },
         });
         Statement {
@@ -553,7 +556,10 @@ fn insert_panic_on_resume_after_return<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             literal: Literal::Value {
-                value: ConstVal::Bool(false),
+                value: tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(false),
+                    ty: tcx.types.bool
+                }),
             },
         }),
         expected: true,
@@ -603,7 +609,10 @@ fn create_generator_resume_function<'a, 'tcx>(
             span: mir.span,
             ty: tcx.types.bool,
             literal: Literal::Value {
-                value: ConstVal::Bool(false),
+                value: tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(false),
+                    ty: tcx.types.bool
+                }),
             },
         }),
         expected: true,
@@ -715,7 +724,7 @@ impl MirPass for StateTransform {
         let gen_ty = mir.local_decls.raw[1].ty;
 
         // Compute GeneratorState<yield_ty, return_ty>
-        let state_did = tcx.lang_items.gen_state().unwrap();
+        let state_did = tcx.lang_items().gen_state().unwrap();
         let state_adt_ref = tcx.adt_def(state_did);
         let state_substs = tcx.mk_substs([Kind::from(yield_ty),
             Kind::from(mir.return_ty)].iter());

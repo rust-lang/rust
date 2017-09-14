@@ -8,64 +8,66 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::ConstVal::*;
 pub use rustc_const_math::ConstInt;
 
-use hir;
-use hir::def::Def;
 use hir::def_id::DefId;
-use traits::Reveal;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
-use util::common::ErrorReported;
 use rustc_const_math::*;
 
 use graphviz::IntoCow;
 use errors::DiagnosticBuilder;
+use serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax::symbol::InternedString;
 use syntax::ast;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::rc::Rc;
 
-pub type EvalResult<'tcx> = Result<ConstVal<'tcx>, ConstEvalErr<'tcx>>;
+pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 
-#[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal<'tcx> {
-    Float(ConstFloat),
     Integral(ConstInt),
+    Float(ConstFloat),
     Str(InternedString),
-    ByteStr(Rc<Vec<u8>>),
+    ByteStr(ByteArray<'tcx>),
     Bool(bool),
     Char(char),
     Variant(DefId),
     Function(DefId, &'tcx Substs<'tcx>),
-    Struct(BTreeMap<ast::Name, ConstVal<'tcx>>),
-    Tuple(Vec<ConstVal<'tcx>>),
-    Array(Vec<ConstVal<'tcx>>),
-    Repeat(Box<ConstVal<'tcx>>, u64),
+    Aggregate(ConstAggregate<'tcx>),
+    Unevaluated(DefId, &'tcx Substs<'tcx>),
+}
+
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, Eq, PartialEq)]
+pub struct ByteArray<'tcx> {
+    pub data: &'tcx [u8],
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for ByteArray<'tcx> {}
+
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub enum ConstAggregate<'tcx> {
+    Struct(&'tcx [(ast::Name, &'tcx ty::Const<'tcx>)]),
+    Tuple(&'tcx [&'tcx ty::Const<'tcx>]),
+    Array(&'tcx [&'tcx ty::Const<'tcx>]),
+    Repeat(&'tcx ty::Const<'tcx>, u64),
+}
+
+impl<'tcx> Encodable for ConstAggregate<'tcx> {
+    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
+        bug!("should never encode ConstAggregate::{:?}", self)
+    }
+}
+
+impl<'tcx> Decodable for ConstAggregate<'tcx> {
+    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
+        bug!("should never decode ConstAggregate")
+    }
 }
 
 impl<'tcx> ConstVal<'tcx> {
-    pub fn description(&self) -> &'static str {
-        match *self {
-            Float(f) => f.description(),
-            Integral(i) => i.description(),
-            Str(_) => "string literal",
-            ByteStr(_) => "byte string literal",
-            Bool(_) => "boolean",
-            Char(..) => "char",
-            Variant(_) => "enum variant",
-            Struct(_) => "struct",
-            Tuple(_) => "tuple",
-            Function(..) => "function definition",
-            Array(..) => "array",
-            Repeat(..) => "repeat",
-        }
-    }
-
     pub fn to_const_int(&self) -> Option<ConstInt> {
         match *self {
             ConstVal::Integral(i) => Some(i),
@@ -86,8 +88,6 @@ pub struct ConstEvalErr<'tcx> {
 pub enum ErrKind<'tcx> {
     CannotCast,
     MissingStructField,
-    NegateOn(ConstVal<'tcx>),
-    NotOn(ConstVal<'tcx>),
 
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -146,9 +146,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
 
         match self.kind {
             CannotCast => simple!("can't cast this type"),
-            NegateOn(ref const_val) => simple!("negate on {}", const_val.description()),
-            NotOn(ref const_val) => simple!("not on {}", const_val.description()),
-
             MissingStructField  => simple!("nonexistent struct field"),
             NonConstPath        => simple!("non-constant path in constant expression"),
             UnimplementedConstVal(what) =>
@@ -219,39 +216,5 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             return;
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();
-    }
-}
-
-/// Returns the value of the length-valued expression
-pub fn eval_length(tcx: TyCtxt,
-                   count: hir::BodyId,
-                   reason: &str)
-                   -> Result<usize, ErrorReported>
-{
-    let count_expr = &tcx.hir.body(count).value;
-    let count_def_id = tcx.hir.body_owner_def_id(count);
-    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
-    let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-    match tcx.at(count_expr.span).const_eval(param_env.and((count_def_id, substs))) {
-        Ok(Integral(Usize(count))) => {
-            let val = count.as_u64(tcx.sess.target.uint_type);
-            assert_eq!(val as usize as u64, val);
-            Ok(val as usize)
-        },
-        Ok(_) |
-        Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
-        Err(err) => {
-            let mut diag = err.struct_error(tcx, count_expr.span, reason);
-
-            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
-                if let Def::Local(..) = path.def {
-                    diag.note(&format!("`{}` is a variable",
-                                       tcx.hir.node_to_pretty_string(count_expr.id)));
-                }
-            }
-
-            diag.emit();
-            Err(ErrorReported)
-        }
     }
 }

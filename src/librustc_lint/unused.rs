@@ -22,6 +22,7 @@ use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::symbol::keywords;
 use syntax::ptr::P;
+use syntax::util::parser;
 use syntax_pos::Span;
 
 use rustc_back::slice;
@@ -313,45 +314,12 @@ impl UnusedParens {
                                 msg: &str,
                                 struct_lit_needs_parens: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&inner);
+            let necessary = struct_lit_needs_parens &&
+                            parser::contains_exterior_struct_lit(&inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS,
                              value.span,
                              &format!("unnecessary parentheses around {}", msg))
-            }
-        }
-
-        /// Expressions that syntactically contain an "exterior" struct
-        /// literal i.e. not surrounded by any parens or other
-        /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
-        /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {
-        /// y: 1 }) == foo` does not.
-        fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
-            match value.node {
-                ast::ExprKind::Struct(..) => true,
-
-                ast::ExprKind::Assign(ref lhs, ref rhs) |
-                ast::ExprKind::AssignOp(_, ref lhs, ref rhs) |
-                ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
-                    // X { y: 1 } + X { y: 2 }
-                    contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
-                }
-                ast::ExprKind::Unary(_, ref x) |
-                ast::ExprKind::Cast(ref x, _) |
-                ast::ExprKind::Type(ref x, _) |
-                ast::ExprKind::Field(ref x, _) |
-                ast::ExprKind::TupField(ref x, _) |
-                ast::ExprKind::Index(ref x, _) => {
-                    // &X { y: 1 }, X { y: 1 }.y
-                    contains_exterior_struct_lit(&x)
-                }
-
-                ast::ExprKind::MethodCall(.., ref exprs) => {
-                    // X { y: 1 }.bar(...)
-                    contains_exterior_struct_lit(&exprs[0])
-                }
-
-                _ => false,
             }
         }
     }

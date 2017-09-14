@@ -9,7 +9,7 @@
 // except according to those terms.
 use parse::token::{Token, BinOpToken};
 use symbol::keywords;
-use ast::BinOpKind;
+use ast::{self, BinOpKind, ExprKind};
 
 /// Associative operator with precedence.
 ///
@@ -213,5 +213,107 @@ impl AssocOp {
             LOr => Some(BinOpKind::Or),
             Inplace | Assign | AssignOp(_) | As | DotDot | DotDotDot | Colon => None
         }
+    }
+}
+
+pub const PREC_RESET: i8 = -100;
+pub const PREC_CLOSURE: i8 = -40;
+pub const PREC_JUMP: i8 = -30;
+pub const PREC_RANGE: i8 = -10;
+// The range 2 ... 14 is reserved for AssocOp binary operator precedences.
+pub const PREC_PREFIX: i8 = 50;
+pub const PREC_POSTFIX: i8 = 60;
+pub const PREC_PAREN: i8 = 99;
+pub const PREC_FORCE_PAREN: i8 = 100;
+
+pub fn expr_precedence(expr: &ast::Expr) -> i8 {
+    match expr.node {
+        ExprKind::Closure(..) => PREC_CLOSURE,
+
+        ExprKind::Break(..) |
+        ExprKind::Continue(..) |
+        ExprKind::Ret(..) |
+        ExprKind::Yield(..) => PREC_JUMP,
+
+        // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to parse,
+        // instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence ensures that
+        // `pprust` will add parentheses in the right places to get the desired parse.
+        ExprKind::Range(..) => PREC_RANGE,
+
+        // Binop-like expr kinds, handled by `AssocOp`.
+        ExprKind::Binary(op, _, _) =>
+            AssocOp::from_ast_binop(op.node).precedence() as i8,
+
+        ExprKind::InPlace(..) => AssocOp::Inplace.precedence() as i8,
+        ExprKind::Cast(..) => AssocOp::As.precedence() as i8,
+        ExprKind::Type(..) => AssocOp::Colon.precedence() as i8,
+
+        ExprKind::Assign(..) |
+        ExprKind::AssignOp(..) => AssocOp::Assign.precedence() as i8,
+
+        // Unary, prefix
+        ExprKind::Box(..) |
+        ExprKind::AddrOf(..) |
+        ExprKind::Unary(..) => PREC_PREFIX,
+
+        // Unary, postfix
+        ExprKind::Call(..) |
+        ExprKind::MethodCall(..) |
+        ExprKind::Field(..) |
+        ExprKind::TupField(..) |
+        ExprKind::Index(..) |
+        ExprKind::Try(..) |
+        ExprKind::InlineAsm(..) |
+        ExprKind::Mac(..) => PREC_POSTFIX,
+
+        // Never need parens
+        ExprKind::Array(..) |
+        ExprKind::Repeat(..) |
+        ExprKind::Tup(..) |
+        ExprKind::Lit(..) |
+        ExprKind::Path(..) |
+        ExprKind::Paren(..) |
+        ExprKind::If(..) |
+        ExprKind::IfLet(..) |
+        ExprKind::While(..) |
+        ExprKind::WhileLet(..) |
+        ExprKind::ForLoop(..) |
+        ExprKind::Loop(..) |
+        ExprKind::Match(..) |
+        ExprKind::Block(..) |
+        ExprKind::Catch(..) |
+        ExprKind::Struct(..) => PREC_PAREN,
+    }
+}
+
+/// Expressions that syntactically contain an "exterior" struct literal i.e. not surrounded by any
+/// parens or other delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
+/// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
+pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
+    match value.node {
+        ast::ExprKind::Struct(..) => true,
+
+        ast::ExprKind::Assign(ref lhs, ref rhs) |
+        ast::ExprKind::AssignOp(_, ref lhs, ref rhs) |
+        ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
+            // X { y: 1 } + X { y: 2 }
+            contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
+        }
+        ast::ExprKind::Unary(_, ref x) |
+        ast::ExprKind::Cast(ref x, _) |
+        ast::ExprKind::Type(ref x, _) |
+        ast::ExprKind::Field(ref x, _) |
+        ast::ExprKind::TupField(ref x, _) |
+        ast::ExprKind::Index(ref x, _) => {
+            // &X { y: 1 }, X { y: 1 }.y
+            contains_exterior_struct_lit(&x)
+        }
+
+        ast::ExprKind::MethodCall(.., ref exprs) => {
+            // X { y: 1 }.bar(...)
+            contains_exterior_struct_lit(&exprs[0])
+        }
+
+        _ => false,
     }
 }

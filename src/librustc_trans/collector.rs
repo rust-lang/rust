@@ -193,6 +193,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::Substs;
@@ -432,7 +433,7 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
     debug!(" => recursion depth={}", recursion_depth);
 
-    let recursion_depth = if Some(def_id) == tcx.lang_items.drop_in_place_fn() {
+    let recursion_depth = if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
         // HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
         recursion_depth / 4
@@ -550,7 +551,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::Rvalue::NullaryOp(mir::NullOp::Box, _) => {
                 let tcx = self.scx.tcx();
                 let exchange_malloc_fn_def_id = tcx
-                    .lang_items
+                    .lang_items()
                     .require(ExchangeMallocFnLangItem)
                     .unwrap_or_else(|e| self.scx.sess().fatal(&e));
                 let instance = Instance::mono(tcx, exchange_malloc_fn_def_id);
@@ -564,24 +565,17 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_rvalue(rvalue, location);
     }
 
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
-        debug!("visiting constant {:?} @ {:?}", *constant, location);
+    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
+        debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        if let ty::TyFnDef(..) = constant.ty.sty {
-            // function definitions are zero-sized, and only generate
-            // IR when they are called/reified.
-            self.super_constant(constant, location);
-            return
-        }
-
-        if let mir::Literal::Item { def_id, substs } = constant.literal {
+        if let ConstVal::Unevaluated(def_id, substs) = constant.val {
             let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                  &substs);
             let instance = monomorphize::resolve(self.scx, def_id, substs);
             collect_neighbours(self.scx, instance, true, self.output);
         }
 
-        self.super_constant(constant, location);
+        self.super_const(constant);
     }
 
     fn visit_terminator_kind(&mut self,

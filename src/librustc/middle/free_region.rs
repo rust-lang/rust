@@ -147,7 +147,8 @@ impl<'tcx> FreeRegionMap<'tcx> {
                 ty::Predicate::WellFormed(..) |
                 ty::Predicate::ObjectSafe(..) |
                 ty::Predicate::ClosureKind(..) |
-                ty::Predicate::TypeOutlives(..) => {
+                ty::Predicate::TypeOutlives(..) |
+                ty::Predicate::ConstEvaluatable(..) => {
                     // No region bounds here
                 }
                 ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {

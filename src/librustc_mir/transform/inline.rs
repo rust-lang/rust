@@ -88,12 +88,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                     if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                        callsites.push_back(CallSite {
-                            callee: callee_def_id,
-                            substs,
-                            bb,
-                            location: terminator.source_info
-                        });
+                        if self.tcx.trait_of_item(callee_def_id).is_none() {
+                            callsites.push_back(CallSite {
+                                callee: callee_def_id,
+                                substs,
+                                bb,
+                                location: terminator.source_info
+                            });
+                        }
                     }
                 }
             }
@@ -338,7 +340,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
                 debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
 
-                let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
+                let is_box_free = Some(callsite.callee) == self.tcx.lang_items().box_free_fn();
 
                 let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_mir.visibility_scopes.len());
@@ -606,14 +608,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_POINTER {
             match self.destination {
-                Lvalue::Local(l) => *local = l,
+                Lvalue::Local(l) => {
+                    *local = l;
+                    return;
+                },
                 ref lval => bug!("Return lvalue is {:?}, not local", lval)
             }
         }
         let idx = local.index() - 1;
         if idx < self.args.len() {
             match self.args[idx] {
-                Operand::Consume(Lvalue::Local(l)) => *local = l,
+                Operand::Consume(Lvalue::Local(l)) => {
+                    *local = l;
+                    return;
+                },
                 ref op => bug!("Arg operand `{:?}` is {:?}, not local", idx, op)
             }
         }

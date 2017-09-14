@@ -112,6 +112,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
 
         let def_id = self.tcx.hir.local_def_id(item.id);
         let self_ty = self.tcx.type_of(def_id);
+        let lang_items = self.tcx.lang_items();
         match self_ty.sty {
             ty::TyAdt(def, _) => {
                 self.check_def_id(item, def.did);
@@ -121,133 +122,133 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             }
             ty::TyChar => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.char_impl(),
+                                          lang_items.char_impl(),
                                           "char",
                                           "char",
                                           item.span);
             }
             ty::TyStr => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.str_impl(),
+                                          lang_items.str_impl(),
                                           "str",
                                           "str",
                                           item.span);
             }
             ty::TySlice(_) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.slice_impl(),
+                                          lang_items.slice_impl(),
                                           "slice",
                                           "[T]",
                                           item.span);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.const_ptr_impl(),
+                                          lang_items.const_ptr_impl(),
                                           "const_ptr",
                                           "*const T",
                                           item.span);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.mut_ptr_impl(),
+                                          lang_items.mut_ptr_impl(),
                                           "mut_ptr",
                                           "*mut T",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::I8) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.i8_impl(),
+                                          lang_items.i8_impl(),
                                           "i8",
                                           "i8",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::I16) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.i16_impl(),
+                                          lang_items.i16_impl(),
                                           "i16",
                                           "i16",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::I32) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.i32_impl(),
+                                          lang_items.i32_impl(),
                                           "i32",
                                           "i32",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::I64) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.i64_impl(),
+                                          lang_items.i64_impl(),
                                           "i64",
                                           "i64",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::I128) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.i128_impl(),
+                                          lang_items.i128_impl(),
                                           "i128",
                                           "i128",
                                           item.span);
             }
             ty::TyInt(ast::IntTy::Is) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.isize_impl(),
+                                          lang_items.isize_impl(),
                                           "isize",
                                           "isize",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::U8) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.u8_impl(),
+                                          lang_items.u8_impl(),
                                           "u8",
                                           "u8",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::U16) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.u16_impl(),
+                                          lang_items.u16_impl(),
                                           "u16",
                                           "u16",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::U32) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.u32_impl(),
+                                          lang_items.u32_impl(),
                                           "u32",
                                           "u32",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::U64) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.u64_impl(),
+                                          lang_items.u64_impl(),
                                           "u64",
                                           "u64",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::U128) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.u128_impl(),
+                                          lang_items.u128_impl(),
                                           "u128",
                                           "u128",
                                           item.span);
             }
             ty::TyUint(ast::UintTy::Us) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.usize_impl(),
+                                          lang_items.usize_impl(),
                                           "usize",
                                           "usize",
                                           item.span);
             }
             ty::TyFloat(ast::FloatTy::F32) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.f32_impl(),
+                                          lang_items.f32_impl(),
                                           "f32",
                                           "f32",
                                           item.span);
             }
             ty::TyFloat(ast::FloatTy::F64) => {
                 self.check_primitive_impl(def_id,
-                                          self.tcx.lang_items.f64_impl(),
+                                          lang_items.f64_impl(),
                                           "f64",
                                           "f64",
                                           item.span);

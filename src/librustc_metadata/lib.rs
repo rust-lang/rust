@@ -50,6 +50,8 @@ mod decoder;
 mod cstore_impl;
 mod isolated_encoder;
 mod schema;
+mod native_libs;
+mod link_args;
 
 pub mod creader;
 pub mod cstore;

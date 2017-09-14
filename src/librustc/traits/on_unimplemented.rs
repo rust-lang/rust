@@ -227,7 +227,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
               span: Span)
               -> Result<(), ErrorReported>
     {
-        let name = tcx.item_name(trait_def_id).as_str();
+        let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
         let parser = Parser::new(&self.0);
         let types = &generics.types;
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                   trait_ref: ty::TraitRef<'tcx>)
                   -> String
     {
-        let name = tcx.item_name(trait_ref.def_id).as_str();
+        let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics.types.iter().map(|param| {

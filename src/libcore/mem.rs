@@ -22,6 +22,7 @@ use hash;
 use intrinsics;
 use marker::{Copy, PhantomData, Sized};
 use ptr;
+use ops::{Deref, DerefMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
@@ -821,6 +822,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// ```
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
+#[derive(Copy)]
 pub union ManuallyDrop<T>{ value: T }
 
 impl<T> ManuallyDrop<T> {
@@ -870,7 +872,7 @@ impl<T> ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> ::ops::Deref for ManuallyDrop<T> {
+impl<T> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -881,7 +883,7 @@ impl<T> ::ops::Deref for ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> ::ops::DerefMut for ManuallyDrop<T> {
+impl<T> DerefMut for ManuallyDrop<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
@@ -896,6 +898,75 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
         unsafe {
             fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
         }
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Clone> Clone for ManuallyDrop<T> {
+    fn clone(&self) -> Self {
+        ManuallyDrop::new(self.deref().clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.deref_mut().clone_from(source);
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Default> Default for ManuallyDrop<T> {
+    fn default() -> Self {
+        ManuallyDrop::new(Default::default())
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.deref().eq(other)
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.deref().ne(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Eq> Eq for ManuallyDrop<T> {}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<::cmp::Ordering> {
+        self.deref().partial_cmp(other)
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        self.deref().lt(other)
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        self.deref().le(other)
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        self.deref().gt(other)
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        self.deref().ge(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Ord> Ord for ManuallyDrop<T> {
+    fn cmp(&self, other: &Self) -> ::cmp::Ordering {
+        self.deref().cmp(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: ::hash::Hash> ::hash::Hash for ManuallyDrop<T> {
+    fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
+        self.deref().hash(state);
     }
 }
 

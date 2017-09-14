@@ -547,7 +547,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.lang_items.debug_trait() {
+        let debug = match cx.tcx.lang_items().debug_trait() {
             Some(debug) => debug,
             None => return,
         };
@@ -913,7 +913,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     } else {
                         return false;
                     };
-                    def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    match def {
+                        Def::Local(..) | Def::Upvar(..) => false,
+                        _ => def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    }
                 }
                 _ => false,
             }
@@ -1063,8 +1066,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let prfn = match cx.sess().cstore.extern_mod_stmt_cnum(it.id) {
-            Some(cnum) => cx.sess().cstore.plugin_registrar_fn(cnum),
+        let def_id = cx.tcx.hir.local_def_id(it.id);
+        let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
+            Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
                 //

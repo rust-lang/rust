@@ -41,7 +41,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::AssertDepGraphSafe;
-use rustc::middle::cstore::LinkMeta;
+use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType};
@@ -53,7 +53,7 @@ use mir::lvalue::LvalueRef;
 use attributes;
 use builder::Builder;
 use callee;
-use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
+use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef, C_array};
 use common::CrateContext;
@@ -75,6 +75,7 @@ use type_::Type;
 use type_of;
 use value::Value;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet};
+use CrateInfo;
 
 use libc::c_uint;
 use std::ffi::{CStr, CString};
@@ -200,7 +201,9 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 -> ValueRef {
     let (source, target) = ccx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
-        (&ty::TyArray(_, len), &ty::TySlice(_)) => C_uint(ccx, len),
+        (&ty::TyArray(_, len), &ty::TySlice(_)) => {
+            C_usize(ccx, len.val.to_const_int().unwrap().to_u64().unwrap())
+        }
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
             // traits, and hence never actually require an actual
@@ -523,7 +526,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.int_type(), false);
+    let size = b.intcast(n_bytes, ccx.isize_ty(), false);
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
@@ -544,7 +547,7 @@ pub fn memcpy_ty<'a, 'tcx>(
     }
 
     let align = align.unwrap_or_else(|| ccx.align_of(t));
-    call_memcpy(bcx, dst, src, C_uint(ccx, size), align);
+    call_memcpy(bcx, dst, src, C_usize(ccx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
@@ -695,7 +698,7 @@ fn maybe_create_entry_wrapper(ccx: &CrateContext) {
                        sp: Span,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()], &ccx.int_type());
+        let llfty = Type::func(&[ccx.isize_ty(), Type::i8p(ccx).ptr_to()], &ccx.isize_ty());
 
         if declare::get_defined_value(ccx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -774,16 +777,13 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadataHashes::new());
     }
 
-    let cstore = &tcx.sess.cstore;
-    let (metadata, hashes) = cstore.encode_metadata(tcx,
-                                                    &link_meta,
-                                                    exported_symbols);
+    let (metadata, hashes) = tcx.encode_metadata(link_meta, exported_symbols);
     if kind == MetadataKind::Uncompressed {
         return (metadata_llcx, metadata_llmod, metadata, hashes);
     }
 
     assert!(kind == MetadataKind::Compressed);
-    let mut compressed = cstore.metadata_encoding_version().to_vec();
+    let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::Fast)
         .write_all(&metadata.raw_data).unwrap();
 
@@ -904,7 +904,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(..) => {
                 let def_id = tcx.hir.local_def_id(id);
-                tcx.sess.cstore.is_statically_included_foreign_item(def_id)
+                tcx.is_statically_included_foreign_item(def_id)
             }
 
             // Only consider nodes that actually have exported symbols.
@@ -970,6 +970,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         None
     };
+    let crate_info = CrateInfo::new(tcx);
 
     // Skip crate items and just output metadata in -Z no-trans mode.
     if tcx.sess.opts.debugging_opts.no_trans ||
@@ -987,6 +988,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             no_builtins,
             None,
             linker_info,
+            crate_info,
             false);
 
         ongoing_translation.submit_pre_translated_module_to_llvm(tcx.sess, metadata_module, true);
@@ -1039,6 +1041,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         no_builtins,
         windows_subsystem,
         linker_info,
+        crate_info,
         no_integrated_as);
 
     // Translate an allocator shim, if any
@@ -1501,4 +1504,47 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     }
 
     (translation_items, codegen_units)
+}
+
+impl CrateInfo {
+    pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CrateInfo {
+        let mut info = CrateInfo {
+            panic_runtime: None,
+            compiler_builtins: None,
+            profiler_runtime: None,
+            sanitizer_runtime: None,
+            is_no_builtins: FxHashSet(),
+            native_libraries: FxHashMap(),
+            used_libraries: tcx.native_libraries(LOCAL_CRATE),
+            link_args: tcx.link_args(LOCAL_CRATE),
+            crate_name: FxHashMap(),
+            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
+            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
+            used_crate_source: FxHashMap(),
+        };
+
+        for &cnum in tcx.crates().iter() {
+            info.native_libraries.insert(cnum, tcx.native_libraries(cnum));
+            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
+            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
+            if tcx.is_panic_runtime(cnum) {
+                info.panic_runtime = Some(cnum);
+            }
+            if tcx.is_compiler_builtins(cnum) {
+                info.compiler_builtins = Some(cnum);
+            }
+            if tcx.is_profiler_runtime(cnum) {
+                info.profiler_runtime = Some(cnum);
+            }
+            if tcx.is_sanitizer_runtime(cnum) {
+                info.sanitizer_runtime = Some(cnum);
+            }
+            if tcx.is_no_builtins(cnum) {
+                info.is_no_builtins.insert(cnum);
+            }
+        }
+
+
+        return info
+    }
 }

@@ -14,7 +14,7 @@ extern crate gcc;
 fn main() {
     let src_dir = std::path::Path::new("../rt/hoedown/src");
     build_helper::rerun_if_changed_anything_in_dir(src_dir);
-    let mut cfg = gcc::Config::new();
+    let mut cfg = gcc::Build::new();
     cfg.file("../rt/hoedown/src/autolink.c")
        .file("../rt/hoedown/src/buffer.c")
        .file("../rt/hoedown/src/document.c")
@@ -24,7 +24,9 @@ fn main() {
        .file("../rt/hoedown/src/html_smartypants.c")
        .file("../rt/hoedown/src/stack.c")
        .file("../rt/hoedown/src/version.c")
+       .warnings(false)
        .include(src_dir)
+       .warnings(false)
        .compile("libhoedown.a");
 }
 

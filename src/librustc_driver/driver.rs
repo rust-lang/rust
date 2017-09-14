@@ -21,6 +21,7 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, stability, reachable};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
@@ -200,6 +201,7 @@ pub fn compile_input(sess: &Session,
         };
 
         phase_3_run_analysis_passes(sess,
+                                    cstore,
                                     hir_map,
                                     analysis,
                                     resolutions,
@@ -385,7 +387,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub session: &'tcx Session,
     pub krate: Option<ast::Crate>,
     pub registry: Option<Registry<'a>>,
-    pub cstore: Option<&'a CStore>,
+    pub cstore: Option<&'tcx CStore>,
     pub crate_name: Option<&'a str>,
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
@@ -433,7 +435,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                          out_dir: &'a Option<PathBuf>,
                          out_file: &'a Option<PathBuf>,
                          krate: ast::Crate,
-                         cstore: &'a CStore)
+                         cstore: &'tcx CStore)
                          -> Self {
         CompileState {
             // Initialize the registry before moving `krate`
@@ -449,7 +451,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                           session: &'tcx Session,
                           out_dir: &'a Option<PathBuf>,
                           out_file: &'a Option<PathBuf>,
-                          cstore: &'a CStore,
+                          cstore: &'tcx CStore,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
                           -> Self {
@@ -468,7 +470,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 out_file: &'a Option<PathBuf>,
                                 arena: &'tcx DroplessArena,
                                 arenas: &'tcx GlobalArenas<'tcx>,
-                                cstore: &'a CStore,
+                                cstore: &'tcx CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
                                 analysis: &'a ty::CrateAnalysis,
                                 resolutions: &'a Resolutions,
@@ -694,9 +696,9 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     // this back at some point.
     let _ignore = sess.dep_graph.in_ignore();
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
-    crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
     let mut resolver = Resolver::new(sess,
+                                     cstore,
                                      &krate,
                                      crate_name,
                                      make_glob_map,
@@ -845,7 +847,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     // Lower ast -> hir.
     let hir_forest = time(time_passes, "lowering ast -> hir", || {
-        let hir_crate = lower_crate(sess, &krate, &mut resolver);
+        let hir_crate = lower_crate(sess, cstore, &krate, &mut resolver);
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
@@ -887,6 +889,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
+                                               cstore: &'tcx CrateStore,
                                                hir_map: hir_map::Map<'tcx>,
                                                mut analysis: ty::CrateAnalysis,
                                                resolutions: Resolutions,
@@ -914,15 +917,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let time_passes = sess.time_passes();
 
-    let lang_items = time(time_passes, "language item collection", || {
-        sess.track_errors(|| {
-            middle::lang_items::collect_language_items(&sess, &hir_map)
-        })
-    })?;
-
     let named_region_map = time(time_passes,
                                 "lifetime resolution",
-                                || middle::resolve_lifetime::krate(sess, &hir_map))?;
+                                || middle::resolve_lifetime::krate(sess, cstore, &hir_map))?;
 
     time(time_passes,
          "looking for entry point",
@@ -940,8 +937,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     time(time_passes,
               "static item recursion checking",
               || static_recursion::check_crate(sess, &hir_map))?;
-
-    let index = stability::Index::new(&sess);
 
     let mut local_providers = ty::maps::Providers::default();
     borrowck::provide(&mut local_providers);
@@ -1021,6 +1016,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
 
     TyCtxt::create_and_enter(sess,
+                             cstore,
                              local_providers,
                              extern_providers,
                              Rc::new(passes),
@@ -1029,8 +1025,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              resolutions,
                              named_region_map,
                              hir_map,
-                             lang_items,
-                             index,
                              name,
                              |tcx| {
         let incremental_hashes_map =
@@ -1041,10 +1035,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         time(time_passes,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
-
-        time(time_passes, "stability index", || {
-            tcx.stability.borrow_mut().build(tcx)
-        });
 
         time(time_passes,
              "stability checking",
@@ -1166,7 +1156,10 @@ pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(), "linking", || {
-        ::rustc_trans::back::link::link_binary(sess, trans, outputs, &trans.crate_name.as_str())
+        ::rustc_trans::back::link::link_binary(sess,
+                                               trans,
+                                               outputs,
+                                               &trans.crate_name.as_str())
     });
 }
 

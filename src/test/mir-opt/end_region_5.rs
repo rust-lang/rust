@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions -Z span_free_formats
+// compile-flags: -Z identify_regions -Z span_free_formats -Z emit-end-regions
 // ignore-tidy-linelength
 
 // Unwinding should EndRegion for in-scope borrows: Borrowing via by-ref closure.
@@ -44,8 +44,8 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //         _2 = const foo(_3) -> [return: bb1, unwind: bb3];
 //     }
 //     bb1: {
-//         StorageDead(_3);
 //         EndRegion('14s);
+//         StorageDead(_3);
 //         _0 = ();
 //         drop(_1) -> bb4;
 //     }

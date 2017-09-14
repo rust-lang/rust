@@ -199,20 +199,19 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::N
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
+        let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
         match hcx.node_id_hashing_mode {
             NodeIdHashingMode::Ignore => {
                 // Most NodeIds in the HIR can be ignored, but if there is a
                 // corresponding entry in the `trait_map` we need to hash that.
                 // Make sure we don't ignore too much by checking that there is
                 // no entry in a debug_assert!().
-                let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
                 debug_assert!(hcx.tcx.in_scope_traits(hir_id).is_none());
             }
             NodeIdHashingMode::HashDefPath => {
-                hcx.tcx.hir.definitions().node_to_hir_id(*self).hash_stable(hcx, hasher);
+                hir_id.hash_stable(hcx, hasher);
             }
             NodeIdHashingMode::HashTraitsInScope => {
-                let hir_id = hcx.tcx.hir.node_to_hir_id(*self);
                 if let Some(traits) = hcx.tcx.in_scope_traits(hir_id) {
                     // The ordering of the candidates is not fixed. So we hash
                     // the def-ids and then sort them and hash the collection.

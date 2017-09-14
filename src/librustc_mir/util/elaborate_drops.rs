@@ -515,7 +515,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
-        let drop_trait = tcx.lang_items.drop_trait().unwrap();
+        let drop_trait = tcx.lang_items().drop_trait().unwrap();
         let drop_fn = tcx.associated_items(drop_trait).next().unwrap();
         let ty = self.lvalue_ty(self.lvalue);
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
@@ -922,7 +922,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         Operand::Constant(box Constant {
             span: self.source_info.span,
             ty: self.tcx().types.usize,
-            literal: Literal::Value { value: ConstVal::Integral(self.tcx().const_usize(val)) }
+            literal: Literal::Value {
+                value: self.tcx().mk_const(ty::Const {
+                    val: ConstVal::Integral(self.tcx().const_usize(val)),
+                    ty: self.tcx().types.usize
+                })
+            }
         })
     }
 

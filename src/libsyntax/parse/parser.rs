@@ -481,6 +481,12 @@ fn dummy_arg(span: Span) -> Arg {
     Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum TokenExpectType {
+    Expect,
+    NoExpect,
+}
+
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                tokens: TokenStream,
@@ -797,6 +803,23 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Expect and consume an `|`. If `||` is seen, replace it with a single
+    /// `|` and continue. If an `|` is not seen, signal an error.
+    fn expect_or(&mut self) -> PResult<'a, ()> {
+        self.expected_tokens.push(TokenType::Token(token::BinOp(token::Or)));
+        match self.token {
+            token::BinOp(token::Or) => {
+                self.bump();
+                Ok(())
+            }
+            token::OrOr => {
+                let span = self.span.with_lo(self.span.lo() + BytePos(1));
+                Ok(self.bump_with(token::BinOp(token::Or), span))
+            }
+            _ => self.unexpected()
+        }
+    }
+
     pub fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
         match suffix {
             None => {/* everything ok */}
@@ -946,6 +969,7 @@ impl<'a> Parser<'a> {
 
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
+                                        TokenExpectType::Expect,
                                         |p| Ok(p.parse_token_tree()),
                                         |mut e| handler.cancel(&mut e));
     }
@@ -975,13 +999,14 @@ impl<'a> Parser<'a> {
                                          -> Vec<T>
         where F: FnMut(&mut Parser<'a>) -> PResult<'a,  T>
     {
-        self.parse_seq_to_before_tokens(&[ket], sep, f, |mut e| e.emit())
+        self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f, |mut e| e.emit())
     }
 
     // `fe` is an error handler.
     fn parse_seq_to_before_tokens<T, F, Fe>(&mut self,
                                             kets: &[&token::Token],
                                             sep: SeqSep,
+                                            expect: TokenExpectType,
                                             mut f: F,
                                             mut fe: Fe)
                                             -> Vec<T>
@@ -1005,7 +1030,12 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            if sep.trailing_sep_allowed && kets.iter().any(|k| self.check(k)) {
+            if sep.trailing_sep_allowed && kets.iter().any(|k| {
+                match expect {
+                    TokenExpectType::Expect => self.check(k),
+                    TokenExpectType::NoExpect => self.token == **k,
+                }
+            }) {
                 break;
             }
 
@@ -3789,9 +3819,9 @@ impl<'a> Parser<'a> {
         is_defaultness
     }
 
-    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
+    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility, lo: Span)
                      -> PResult<'a, Option<P<Item>>> {
-        let lo = self.span;
+        let token_lo = self.span;
         let (ident, def) = match self.token {
             token::Ident(ident) if ident.name == keywords::Macro.name() => {
                 self.bump();
@@ -3811,7 +3841,7 @@ impl<'a> Parser<'a> {
                     };
                     TokenStream::concat(vec![
                         args.into(),
-                        TokenTree::Token(lo.to(self.prev_span), token::FatArrow).into(),
+                        TokenTree::Token(token_lo.to(self.prev_span), token::FatArrow).into(),
                         body.into(),
                     ])
                 } else {
@@ -3861,7 +3891,7 @@ impl<'a> Parser<'a> {
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
                 span: lo.to(self.prev_span),
             }
-        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited)? {
+        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited, lo)? {
             Stmt {
                 id: ast::DUMMY_NODE_ID,
                 node: StmtKind::Item(macro_def),
@@ -4694,12 +4724,14 @@ impl<'a> Parser<'a> {
                 Vec::new()
             } else {
                 self.expect(&token::BinOp(token::Or))?;
-                let args = self.parse_seq_to_before_end(
-                    &token::BinOp(token::Or),
+                let args = self.parse_seq_to_before_tokens(
+                    &[&token::BinOp(token::Or), &token::OrOr],
                     SeqSep::trailing_allowed(token::Comma),
-                    |p| p.parse_fn_block_arg()
+                    TokenExpectType::NoExpect,
+                    |p| p.parse_fn_block_arg(),
+                    |mut e| e.emit()
                 );
-                self.bump();
+                self.expect_or()?;
                 args
             }
         };
@@ -6011,7 +6043,7 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
-        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility)? {
+        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility, lo)? {
             return Ok(Some(macro_def));
         }
 

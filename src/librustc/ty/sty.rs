@@ -12,6 +12,7 @@
 
 use hir::def_id::DefId;
 
+use middle::const_val::ConstVal;
 use middle::region;
 use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
@@ -109,7 +110,7 @@ pub enum TypeVariants<'tcx> {
     TyStr,
 
     /// An array with the given length. Written as `[T; n]`.
-    TyArray(Ty<'tcx>, usize),
+    TyArray(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// The pointee of an array slice.  Written as `[T]`.
     TySlice(Ty<'tcx>),
@@ -1041,19 +1042,6 @@ impl RegionKind {
 
         flags
     }
-
-    // This method returns whether the given Region is Named
-    pub fn is_named_region(&self) -> bool {
-        match *self {
-            ty::ReFree(ref free_region) => {
-                match free_region.bound_region {
-                    ty::BrNamed(..) => true,
-                    _ => false,
-                }
-            }
-            _ => false,
-        }
-    }
 }
 
 /// Type utilities
@@ -1471,3 +1459,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 }
+
+/// Typed constant value.
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+pub struct Const<'tcx> {
+    pub ty: Ty<'tcx>,
+
+    // FIXME(eddyb) Replace this with a miri value.
+    pub val: ConstVal<'tcx>,
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

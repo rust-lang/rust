@@ -10,8 +10,6 @@
 
 // Verifies all possible restrictions for statics values.
 
-// gate-test-drop_types_in_const
-
 #![allow(warnings)]
 #![feature(box_syntax)]
 
@@ -37,15 +35,8 @@ enum SafeEnum {
 // These should be ok
 static STATIC1: SafeEnum = SafeEnum::Variant1;
 static STATIC2: SafeEnum = SafeEnum::Variant2(0);
-
-// This one should fail
 static STATIC3: SafeEnum = SafeEnum::Variant3(WithDtor);
-//~^ ERROR destructors in statics are an unstable feature
 
-
-// This enum will be used to test that variants
-// are considered unsafe if their enum type implements
-// a destructor.
 enum UnsafeEnum {
     Variant5,
     Variant6(isize)
@@ -57,9 +48,7 @@ impl Drop for UnsafeEnum {
 
 
 static STATIC4: UnsafeEnum = UnsafeEnum::Variant5;
-//~^ ERROR destructors in statics are an unstable feature
 static STATIC5: UnsafeEnum = UnsafeEnum::Variant6(0);
-//~^ ERROR destructors in statics are an unstable feature
 
 
 struct SafeStruct {
@@ -71,10 +60,8 @@ struct SafeStruct {
 // Struct fields are safe, hence this static should be safe
 static STATIC6: SafeStruct = SafeStruct{field1: SafeEnum::Variant1, field2: SafeEnum::Variant2(0)};
 
-// field2 has an unsafe value, hence this should fail
 static STATIC7: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
                                         field2: SafeEnum::Variant3(WithDtor)};
-//~^ ERROR destructors in statics are an unstable feature
 
 // Test variadic constructor for structs. The base struct should be examined
 // as well as every field present in the constructor.
@@ -86,8 +73,7 @@ static STATIC8: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
 // This example should fail because field1 in the base struct is not safe
 static STATIC9: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
                                         ..SafeStruct{field1: SafeEnum::Variant3(WithDtor),
-//~^ ERROR destructors in statics are an unstable feature
-//~| ERROR statics are not allowed to have destructors
+//~^ ERROR destructors cannot be evaluated at compile-time
                                                      field2: SafeEnum::Variant1}};
 
 struct UnsafeStruct;
@@ -96,29 +82,19 @@ impl Drop for UnsafeStruct {
     fn drop(&mut self) {}
 }
 
-// Types with destructors are not allowed for statics
 static STATIC10: UnsafeStruct = UnsafeStruct;
-//~^ ERROR destructors in statics are an unstable feature
 
 struct MyOwned;
 
 static STATIC11: Box<MyOwned> = box MyOwned;
 //~^ ERROR allocations are not allowed in statics
 
-// The following examples test that mutable structs are just forbidden
-// to have types with destructors
-// These should fail
 static mut STATIC12: UnsafeStruct = UnsafeStruct;
-//~^ ERROR destructors in statics are an unstable feature
-//~^^ ERROR destructors in statics are an unstable feature
 
 static mut STATIC13: SafeStruct = SafeStruct{field1: SafeEnum::Variant1,
-//~^ ERROR destructors in statics are an unstable feature
                                              field2: SafeEnum::Variant3(WithDtor)};
-//~^ ERROR: destructors in statics are an unstable feature
 
 static mut STATIC14: SafeStruct = SafeStruct {
-//~^ ERROR destructors in statics are an unstable feature
     field1: SafeEnum::Variant1,
     field2: SafeEnum::Variant4("str".to_string())
 //~^ ERROR calls in statics are limited to constant functions
@@ -135,7 +111,6 @@ static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) = (
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
-//~^ ERROR destructors in statics are an unstable feature
 
 static STATIC19: Box<isize> =
     box 3;

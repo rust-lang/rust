@@ -670,13 +670,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
               }))
           }
 
-          Def::Upvar(def_id, _, fn_node_id) => {
-              let var_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+          Def::Upvar(var_id, _, fn_node_id) => {
               self.cat_upvar(id, span, var_id, fn_node_id)
           }
 
-          Def::Local(def_id) => {
-            let vid = self.tcx.hir.as_local_node_id(def_id).unwrap();
+          Def::Local(vid) => {
             Ok(Rc::new(cmt_ {
                 id,
                 span,
@@ -736,13 +734,12 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         };
 
         let closure_expr_def_index = self.tcx.hir.local_def_id(fn_node_id).index;
-        let var_def_index = self.tcx.hir.local_def_id(var_id).index;
-
+        let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
-            var_id: var_def_index,
+            var_id: var_hir_id,
             closure_expr_id: closure_expr_def_index
         };
-        let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
+
         let var_ty = self.node_ty(var_hir_id)?;
 
         // Mutability of original variable itself
@@ -879,7 +876,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
-            ty::TyArray(_, 0) => true,
+            ty::TyArray(_, len) if
+                len.val.to_const_int().and_then(|i| i.to_u64()) == Some(0) => true,
             _ => promotable,
         };
 
@@ -1441,7 +1439,7 @@ impl<'tcx> fmt::Debug for Categorization<'tcx> {
             Categorization::StaticItem => write!(f, "static"),
             Categorization::Rvalue(r) => { write!(f, "rvalue({:?})", r) }
             Categorization::Local(id) => {
-               let name = ty::tls::with(|tcx| tcx.local_var_name_str(id));
+               let name = ty::tls::with(|tcx| tcx.hir.name(id));
                write!(f, "local({})", name)
             }
             Categorization::Upvar(upvar) => {

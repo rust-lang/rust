@@ -64,7 +64,7 @@ pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
@@ -575,7 +575,7 @@ impl<T> Slice<T> {
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UpvarId {
-    pub var_id: DefIndex,
+    pub var_id: hir::HirId,
     pub closure_expr_id: DefIndex,
 }
 
@@ -846,6 +846,9 @@ pub enum Predicate<'tcx> {
 
     /// `T1 <: T2`
     Subtype(PolySubtypePredicate<'tcx>),
+
+    /// Constant initializer must evaluate successfully.
+    ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
@@ -938,6 +941,8 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
                 Predicate::ObjectSafe(trait_def_id),
             Predicate::ClosureKind(closure_def_id, kind) =>
                 Predicate::ClosureKind(closure_def_id, kind),
+            Predicate::ConstEvaluatable(def_id, const_substs) =>
+                Predicate::ConstEvaluatable(def_id, const_substs.subst(tcx, substs)),
         }
     }
 }
@@ -1016,6 +1021,10 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // return value, so we are preserving the number of binding
         // levels.
         ty::Binder(self.0.projection_ty.trait_ref(tcx))
+    }
+
+    pub fn ty(&self) -> Binder<Ty<'tcx>> {
+        Binder(self.skip_binder().ty) // preserves binding levels
     }
 }
 
@@ -1116,6 +1125,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::ClosureKind(_closure_def_id, _kind) => {
                 vec![]
             }
+            ty::Predicate::ConstEvaluatable(_, substs) => {
+                substs.types().collect()
+            }
         };
 
         // The only reason to collect into a vector here is that I was
@@ -1138,7 +1150,8 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |
             Predicate::ClosureKind(..) |
-            Predicate::TypeOutlives(..) => {
+            Predicate::TypeOutlives(..) |
+            Predicate::ConstEvaluatable(..) => {
                 None
             }
         }
@@ -1447,10 +1460,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
-        if Some(did) == tcx.lang_items.phantom_data() {
+        if Some(did) == tcx.lang_items().phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
         }
-        if Some(did) == tcx.lang_items.owned_box() {
+        if Some(did) == tcx.lang_items().owned_box() {
             flags = flags | AdtFlags::IS_BOX;
         }
         match kind {
@@ -1597,7 +1610,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                 match tcx.const_eval(param_env.and((expr_did, substs))) {
-                    Ok(ConstVal::Integral(v)) => {
+                    Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                         discr = v;
                     }
                     err => {
@@ -1637,7 +1650,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
                     match tcx.const_eval(param_env.and((expr_did, substs))) {
-                        Ok(ConstVal::Integral(v)) => {
+                        Ok(&ty::Const { val: ConstVal::Integral(v), .. }) => {
                             explicit_value = v;
                             break;
                         }
@@ -1661,11 +1674,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match repr_type {
             attr::UnsignedInt(ty) => {
                 ConstInt::new_unsigned_truncating(discr, ty,
-                                                  tcx.sess.target.uint_type)
+                                                  tcx.sess.target.usize_ty)
             }
             attr::SignedInt(ty) => {
                 ConstInt::new_signed_truncating(discr as i128, ty,
-                                                tcx.sess.target.int_type)
+                                                tcx.sess.target.isize_ty)
             }
         }
     }
@@ -1746,7 +1759,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 // we know that `T` is Sized and do not need to check
                 // it on the impl.
 
-                let sized_trait = match tcx.lang_items.sized_trait() {
+                let sized_trait = match tcx.lang_items().sized_trait() {
                     Some(x) => x,
                     _ => return vec![ty]
                 };
@@ -1975,25 +1988,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn local_var_name_str(self, id: NodeId) -> InternedString {
-        match self.hir.find(id) {
-            Some(hir_map::NodeBinding(pat)) => {
-                match pat.node {
-                    hir::PatKind::Binding(_, _, ref path1, _) => path1.node.as_str(),
-                    _ => {
-                        bug!("Variable id {} maps to {:?}, not local", id, pat);
-                    },
-                }
-            },
-            r => bug!("Variable id {} maps to {:?}, not local", id, r),
-        }
-    }
-
-    pub fn local_var_name_str_def_index(self, def_index: DefIndex) -> InternedString {
-        let node_id = self.hir.as_local_node_id(DefId::local(def_index)).unwrap();
-        self.local_var_name_str(node_id)
-    }
-
     pub fn expr_is_lval(self, expr: &hir::Expr) -> bool {
          match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
@@ -2176,43 +2170,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn def_key(self, id: DefId) -> hir_map::DefKey {
-        if id.is_local() {
-            self.hir.def_key(id)
-        } else {
-            self.sess.cstore.def_key(id)
-        }
-    }
-
-    /// Convert a `DefId` into its fully expanded `DefPath` (every
-    /// `DefId` is really just an interned def-path).
-    ///
-    /// Note that if `id` is not local to this crate, the result will
-    ///  be a non-local `DefPath`.
-    pub fn def_path(self, id: DefId) -> hir_map::DefPath {
-        if id.is_local() {
-            self.hir.def_path(id)
-        } else {
-            self.sess.cstore.def_path(id)
-        }
-    }
-
-    #[inline]
-    pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
-        if def_id.is_local() {
-            self.hir.definitions().def_path_hash(def_id.index)
-        } else {
-            self.sess.cstore.def_path_hash(def_id)
-        }
-    }
-
-    pub fn item_name(self, id: DefId) -> ast::Name {
+    pub fn item_name(self, id: DefId) -> InternedString {
         if let Some(id) = self.hir.as_local_node_id(id) {
-            self.hir.name(id)
+            self.hir.name(id).as_str()
         } else if id.index == CRATE_DEF_INDEX {
-            self.sess.cstore.original_crate_name(id.krate)
+            self.original_crate_name(id.krate).as_str()
         } else {
-            let def_key = self.sess.cstore.def_key(id);
+            let def_key = self.def_key(id);
             // The name of a StructCtor is that of its struct parent.
             if let hir_map::DefPathData::StructCtor = def_key.disambiguated_data.data {
                 self.item_name(DefId {
@@ -2315,7 +2279,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let node_id = self.hir.as_local_node_id(impl_did).unwrap();
             Ok(self.hir.span(node_id))
         } else {
-            Err(self.sess.cstore.crate_name(impl_did.krate))
+            Err(self.crate_name(impl_did.krate))
         }
     }
 
@@ -2340,9 +2304,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {
-        match self.freevars.borrow().get(&fid) {
+        let def_id = self.hir.local_def_id(fid);
+        match self.freevars(def_id) {
             None => f(&[]),
-            Some(d) => f(&d[..])
+            Some(d) => f(&d),
         }
     }
 }
@@ -2510,6 +2475,18 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
 }
 
+fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 crate_num: CrateNum) -> Symbol {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.sess.local_crate_disambiguator()
+}
+
+fn original_crate_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 crate_num: CrateNum) -> Symbol {
+    assert_eq!(crate_num, LOCAL_CRATE);
+    tcx.crate_name.clone()
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     util::provide(providers);
     context::provide(providers);
@@ -2521,6 +2498,8 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         def_span,
         param_env,
         trait_of_item,
+        crate_disambiguator,
+        original_crate_name,
         trait_impls_of: trait_def::trait_impls_of_provider,
         ..*providers
     };

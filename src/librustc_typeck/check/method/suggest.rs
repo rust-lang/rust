@@ -45,7 +45,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::TyFnPtr(_) => true,
             // If it's not a simple function, look for things which implement FnOnce
             _ => {
-                let fn_once = match tcx.lang_items.require(FnOnceTraitLangItem) {
+                let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
                     Ok(fn_once) => fn_once,
                     Err(..) => return false,
                 };
@@ -552,14 +552,14 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
                     if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in tcx.sess.cstore.item_children(def_id, tcx.sess) {
+                    for child in tcx.item_children(def_id).iter() {
                         handle_external_def(tcx, traits, external_mods, child.def)
                     }
                 }
                 _ => {}
             }
         }
-        for cnum in tcx.sess.cstore.crates() {
+        for &cnum in tcx.crates().iter() {
             let def_id = DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,

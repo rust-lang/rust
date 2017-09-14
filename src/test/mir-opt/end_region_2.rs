@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions
+// compile-flags: -Z identify_regions -Z emit-end-regions
 // ignore-tidy-linelength
 
 // We will EndRegion for borrows in a loop that occur before break but
@@ -46,8 +46,8 @@ fn main() {
 //     bb2: {
 //         _0 = ();
 //         StorageDead(_5);
-//         StorageDead(_3);
 //         EndRegion('23_1rs);
+//         StorageDead(_3);
 //         StorageDead(_2);
 //         return;
 //     }
@@ -56,10 +56,10 @@ fn main() {
 //         StorageLive(_7);
 //         _7 = &'23_3rs _2;
 //         _1 = ();
-//         StorageDead(_7);
 //         EndRegion('23_3rs);
-//         StorageDead(_3);
+//         StorageDead(_7);
 //         EndRegion('23_1rs);
+//         StorageDead(_3);
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }

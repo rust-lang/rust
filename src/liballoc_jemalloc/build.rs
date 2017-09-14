@@ -63,7 +63,7 @@ fn main() {
         _ => return,
     };
 
-    let compiler = gcc::Config::new().get_compiler();
+    let compiler = gcc::Build::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
     let cflags = compiler.args()
@@ -150,7 +150,7 @@ fn main() {
     // sure the symbols are available.
     if target.contains("androideabi") {
         println!("cargo:rerun-if-changed=pthread_atfork_dummy.c");
-        gcc::Config::new()
+        gcc::Build::new()
             .flag("-fvisibility=hidden")
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");

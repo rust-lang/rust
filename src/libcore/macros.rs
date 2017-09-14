@@ -17,18 +17,11 @@ macro_rules! panic {
         panic!("explicit panic")
     );
     ($msg:expr) => ({
-        static _MSG_FILE_LINE_COL: (&'static str, &'static str, u32, u32) =
-            ($msg, file!(), line!(), __rust_unstable_column!());
-        $crate::panicking::panic(&_MSG_FILE_LINE_COL)
+        $crate::panicking::panic(&($msg, file!(), line!(), __rust_unstable_column!()))
     });
     ($fmt:expr, $($arg:tt)*) => ({
-        // The leading _'s are to avoid dead code warnings if this is
-        // used inside a dead function. Just `#[allow(dead_code)]` is
-        // insufficient, since the user may have
-        // `#[forbid(dead_code)]` and which cannot be overridden.
-        static _MSG_FILE_LINE_COL: (&'static str, u32, u32) =
-            (file!(), line!(), __rust_unstable_column!());
-        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_MSG_FILE_LINE_COL)
+        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
+                                     &(file!(), line!(), __rust_unstable_column!()))
     });
 }
 
@@ -531,15 +524,13 @@ macro_rules! unreachable {
 
 /// A standardized placeholder for marking unfinished code.
 ///
-/// It panics with the message `"not yet implemented"` when executed.
-///
 /// This can be useful if you are prototyping and are just looking to have your
 /// code typecheck, or if you're implementing a trait that requires multiple
 /// methods, and you're only planning on using one of them.
 ///
 /// # Panics
 ///
-/// This macro always panics.
+/// This will always [panic!](macro.panic.html)
 ///
 /// # Examples
 ///

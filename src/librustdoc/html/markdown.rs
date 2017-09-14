@@ -16,10 +16,12 @@
 //! of `fmt::Display`. Example usage:
 //!
 //! ```
-//! use rustdoc::html::markdown::Markdown;
+//! #![feature(rustc_private)]
+//!
+//! use rustdoc::html::markdown::{RenderType, Markdown};
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s));
+//! let html = format!("{}", Markdown(s, RenderType::Pulldown));
 //! // ... something using html
 //! ```
 

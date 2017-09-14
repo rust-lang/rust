@@ -13,3 +13,7 @@
 fn main() {
 	bar;
 }
+
+fn foo() {
+	"bar			boo"
+}

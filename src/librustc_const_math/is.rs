@@ -21,18 +21,22 @@ pub enum ConstIsize {
 }
 pub use self::ConstIsize::*;
 
+impl ::std::fmt::Display for ConstIsize {
+    fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(fmt, "{}", self.as_i64())
+    }
+}
+
 impl ConstIsize {
-    pub fn as_i64(self, target_int_ty: ast::IntTy) -> i64 {
-        match (self, target_int_ty) {
-            (Is16(i), ast::IntTy::I16) => i as i64,
-            (Is32(i), ast::IntTy::I32) => i as i64,
-            (Is64(i), ast::IntTy::I64) => i,
-            _ => panic!("unable to convert self ({:?}) to target isize ({:?})",
-                        self, target_int_ty),
+    pub fn as_i64(self) -> i64 {
+        match self {
+            Is16(i) => i as i64,
+            Is32(i) => i as i64,
+            Is64(i) => i,
         }
     }
-    pub fn new(i: i64, target_int_ty: ast::IntTy) -> Result<Self, ConstMathErr> {
-        match target_int_ty {
+    pub fn new(i: i64, isize_ty: ast::IntTy) -> Result<Self, ConstMathErr> {
+        match isize_ty {
             ast::IntTy::I16 if i as i16 as i64 == i => Ok(Is16(i as i16)),
             ast::IntTy::I16 => Err(LitOutOfRange(ast::IntTy::Is)),
             ast::IntTy::I32 if i as i32 as i64 == i => Ok(Is32(i as i32)),
@@ -41,8 +45,8 @@ impl ConstIsize {
             _ => unreachable!(),
         }
     }
-    pub fn new_truncating(i: i128, target_int_ty: ast::IntTy) -> Self {
-        match target_int_ty {
+    pub fn new_truncating(i: i128, isize_ty: ast::IntTy) -> Self {
+        match isize_ty {
             ast::IntTy::I16 => Is16(i as i16),
             ast::IntTy::I32 => Is32(i as i32),
             ast::IntTy::I64 => Is64(i as i64),

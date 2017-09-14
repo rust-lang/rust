@@ -19,6 +19,7 @@ use super::{
     OnUnimplementedNote,
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
+    ConstEvalFailure,
     PredicateObligation,
     Reveal,
     SelectionContext,
@@ -31,6 +32,7 @@ use hir;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
+use middle::const_val;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
@@ -348,7 +350,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                method = self.tcx.item_name(item).as_str();
+                method = self.tcx.item_name(item);
                 flags.push(("from_method", None));
                 flags.push(("from_method", Some(&*method)));
             }
@@ -698,6 +700,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // (which may fail).
                         span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
+
+                    ty::Predicate::ConstEvaluatable(..) => {
+                        // Errors for `ConstEvaluatable` predicates show up as
+                        // `SelectionError::ConstEvalFailure`,
+                        // not `Unimplemented`.
+                        span_bug!(span,
+                            "const-evaluatable requirement gave wrong error: `{:?}`", obligation)
+                    }
                 }
             }
 
@@ -761,6 +771,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 self.tcx.report_object_safety_error(span, did,
                                                     violations)
+            }
+
+            ConstEvalFailure(ref err) => {
+                if let const_val::ErrKind::TypeckError = err.kind {
+                    return;
+                }
+                err.struct_error(self.tcx, span, "constant expression")
             }
         };
         self.note_obligation_cause(&mut err, obligation);
@@ -919,7 +936,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // anyway. In that case, why inundate the user.
                 if !self.tcx.sess.has_errors() {
                     if
-                        self.tcx.lang_items.sized_trait()
+                        self.tcx.lang_items().sized_trait()
                         .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                     {
                         self.need_type_info(body_id, span, self_ty);

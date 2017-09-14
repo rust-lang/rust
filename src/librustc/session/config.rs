@@ -48,8 +48,8 @@ use std::path::PathBuf;
 
 pub struct Config {
     pub target: Target,
-    pub int_type: IntTy,
-    pub uint_type: UintTy,
+    pub isize_ty: IntTy,
+    pub usize_ty: UintTy,
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -919,6 +919,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
+    emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
+        "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck_mir: bool = (false, parse_bool, [UNTRACKED],
         "implicitly treat functions as if they have `#[rustc_mir_borrowck]` attribute"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
@@ -1147,7 +1149,7 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
         }
     };
 
-    let (int_type, uint_type) = match &target.target_pointer_width[..] {
+    let (isize_ty, usize_ty) = match &target.target_pointer_width[..] {
         "16" => (ast::IntTy::I16, ast::UintTy::U16),
         "32" => (ast::IntTy::I32, ast::UintTy::U32),
         "64" => (ast::IntTy::I64, ast::UintTy::U64),
@@ -1157,8 +1159,8 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 
     Config {
         target,
-        int_type,
-        uint_type,
+        isize_ty,
+        usize_ty,
     }
 }
 
@@ -1951,13 +1953,12 @@ mod tests {
     use errors;
     use getopts;
     use lint;
-    use middle::cstore::{self, DummyCrateStore};
+    use middle::cstore;
     use session::config::{build_configuration, build_session_options_and_crate_config};
     use session::build_session;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
     use std::path::PathBuf;
-    use std::rc::Rc;
     use super::{OutputType, OutputTypes, Externs};
     use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
@@ -1989,7 +1990,7 @@ mod tests {
             };
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, &dep_graph, None, registry, Rc::new(DummyCrateStore));
+        let sess = build_session(sessopts, &dep_graph, None, registry);
         let cfg = build_configuration(&sess, cfg);
         assert!(cfg.contains(&(Symbol::intern("test"), None)));
     }
@@ -2008,8 +2009,7 @@ mod tests {
             };
         let registry = errors::registry::Registry::new(&[]);
         let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, &dep_graph, None, registry,
-                                 Rc::new(DummyCrateStore));
+        let sess = build_session(sessopts, &dep_graph, None, registry);
         let cfg = build_configuration(&sess, cfg);
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
         assert!(test_items.next().is_some());
@@ -2025,8 +2025,7 @@ mod tests {
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry,
-                                     Rc::new(DummyCrateStore));
+            let sess = build_session(sessopts, &dep_graph, None, registry);
             assert!(!sess.diagnostic().can_emit_warnings);
         }
 
@@ -2037,8 +2036,7 @@ mod tests {
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry,
-                                     Rc::new(DummyCrateStore));
+            let sess = build_session(sessopts, &dep_graph, None, registry);
             assert!(sess.diagnostic().can_emit_warnings);
         }
 
@@ -2048,8 +2046,7 @@ mod tests {
             ]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
-            let sess = build_session(sessopts, &dep_graph, None, registry,
-                                     Rc::new(DummyCrateStore));
+            let sess = build_session(sessopts, &dep_graph, None, registry);
             assert!(sess.diagnostic().can_emit_warnings);
         }
     }
