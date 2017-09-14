@@ -230,3 +230,28 @@ large_int!(u64, u32, u32, 32);
 large_int!(i64, u32, i32, 32);
 large_int!(u128, u64, u64, 64);
 large_int!(i128, u64, i64, 64);
+
+/// Trait to express (possibly lossy) casting of integers
+pub trait CastInto<T: Copy>: Copy {
+    fn cast(self) -> T;
+}
+
+macro_rules! cast_into {
+    ($ty:ty) => {
+        cast_into!($ty; usize, isize, u32, i32, u64, i64, u128, i128);
+    };
+    ($ty:ty; $($into:ty),*) => {$(
+        impl CastInto<$into> for $ty {
+            fn cast(self) -> $into {
+                self as $into
+            }
+        }
+    )*};
+}
+
+cast_into!(u32);
+cast_into!(i32);
+cast_into!(u64);
+cast_into!(i64);
+cast_into!(u128);
+cast_into!(i128);
