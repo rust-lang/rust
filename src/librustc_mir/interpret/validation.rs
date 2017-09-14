@@ -398,23 +398,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
         }
 
-        // HACK: For now, bail out if we hit a dead local during recovery (can happen because sometimes we have
-        // StorageDead before EndRegion due to https://github.com/rust-lang/rust/issues/43481).
-        // TODO: We should rather fix the MIR.
-        match query.lval.1 {
-            Lvalue::Local { frame, local } => {
-                let res = self.stack[frame].get_local(local);
-                match (res, mode) {
-                    (Err(EvalError { kind: EvalErrorKind::DeadLocal, .. }),
-                     ValidationMode::Recover(_)) => {
-                        return Ok(());
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
         query.ty = self.normalize_type_unerased(&query.ty);
         trace!("{:?} on {:?}", mode, query);
 
