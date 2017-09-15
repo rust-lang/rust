@@ -16,7 +16,7 @@ source shared.sh
 
 # Download sources
 SRCS=(
-  "https://fuchsia.googlesource.com/magenta magenta d17073dc8de344ead3b65e8cc6a12280dec38c84"
+  "https://fuchsia.googlesource.com/zircon zircon d17073dc8de344ead3b65e8cc6a12280dec38c84"
   "https://llvm.googlesource.com/llvm llvm 3f58a16d8eec385e2b3ebdfbb84ff9d3bf27e025"
   "https://llvm.googlesource.com/clang llvm/tools/clang 727ea63e6e82677f6e10e05e08bc7d6bdbae3111"
   "https://llvm.googlesource.com/lld llvm/tools/lld a31286c1366e5e89b8872803fded13805a1a084b"
@@ -51,7 +51,7 @@ cd llvm
 mkdir build
 cd build
 hide_output cmake -GNinja \
-  -DFUCHSIA_SYSROOT=${PWD}/../../magenta/third_party/ulib/musl \
+  -DFUCHSIA_SYSROOT=${PWD}/../../zircon/third_party/ulib/musl \
   -DLLVM_ENABLE_LTO=OFF \
   -DCLANG_BOOTSTRAP_PASSTHROUGH=LLVM_ENABLE_LTO \
   -C ../tools/clang/cmake/caches/Fuchsia.cmake \
@@ -62,21 +62,21 @@ cd ../..
 
 # Build sysroot
 rm -rf llvm/runtimes/compiler-rt
-./magenta/scripts/download-toolchain
+./zircon/scripts/download-toolchain
 
 build_sysroot() {
   local arch="$1"
 
   case "${arch}" in
-    x86_64) tgt="magenta-pc-x86-64" ;;
-    aarch64) tgt="magenta-qemu-arm64" ;;
+    x86_64) tgt="zircon-pc-x86-64" ;;
+    aarch64) tgt="zircon-qemu-arm64" ;;
   esac
 
-  hide_output make -C magenta -j$(getconf _NPROCESSORS_ONLN) $tgt
+  hide_output make -C zircon -j$(getconf _NPROCESSORS_ONLN) $tgt
   dst=/usr/local/${arch}-unknown-fuchsia
   mkdir -p $dst
-  cp -r magenta/build-${tgt}/sysroot/include $dst/
-  cp -r magenta/build-${tgt}/sysroot/lib $dst/
+  cp -r zircon/build-${tgt}/sysroot/include $dst/
+  cp -r zircon/build-${tgt}/sysroot/lib $dst/
 
   cd llvm
   mkdir build-runtimes-${arch}
@@ -112,7 +112,7 @@ build_sysroot() {
 build_sysroot "x86_64"
 build_sysroot "aarch64"
 
-rm -rf magenta llvm
+rm -rf zircon llvm
 
 for arch in x86_64 aarch64; do
   for tool in clang clang++; do

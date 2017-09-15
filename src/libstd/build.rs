@@ -68,8 +68,8 @@ fn main() {
         if cfg!(feature = "backtrace") {
             println!("cargo:rustc-link-lib=backtrace");
         }
-        println!("cargo:rustc-link-lib=magenta");
-        println!("cargo:rustc-link-lib=mxio");
+        println!("cargo:rustc-link-lib=zircon");
+        println!("cargo:rustc-link-lib=fdio");
         println!("cargo:rustc-link-lib=launchpad"); // for std::process
     }
 }
