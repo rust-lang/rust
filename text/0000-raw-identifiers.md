@@ -153,7 +153,8 @@ However, this might not be possible for all future keywords.
 There might also be a need for raw keywords in the other direction, e.g. so the
 older epoch can still use the new `catch` functionality somehow. I think this
 particular case is already served well enough by `do catch { ... }`, if we
-choose to stabilize it that way.
+choose to stabilize it that way.  Perhaps `br#keyword` could be used for this,
+but that may not be a good intuitive relationship.
 
 [Swift]: https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/LexicalStructure.html
 [Kotlin]: https://kotlinlang.org/docs/reference/grammar.html
