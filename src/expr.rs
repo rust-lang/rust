@@ -101,7 +101,7 @@ pub fn format_expr(
                 "",
                 context,
                 shape,
-                context.config.binop_sep(),
+                context.config.binop_separator(),
             )
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
