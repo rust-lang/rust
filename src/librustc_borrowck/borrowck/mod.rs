@@ -34,7 +34,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
 use rustc::middle::region;
 use rustc::middle::free_region::RegionRelations;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -275,7 +275,7 @@ impl<'tcx> Loan<'tcx> {
 #[derive(Eq)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
 }
 
 impl<'tcx> PartialEq for LoanPath<'tcx> {
@@ -299,11 +299,11 @@ pub enum LoanPathKind<'tcx> {
 }
 
 impl<'tcx> LoanPath<'tcx> {
-    fn new(kind: LoanPathKind<'tcx>, ty: ty::Ty<'tcx>) -> LoanPath<'tcx> {
+    fn new(kind: LoanPathKind<'tcx>, ty: Ty<'tcx>) -> LoanPath<'tcx> {
         LoanPath { kind: kind, ty: ty }
     }
 
-    fn to_type(&self) -> ty::Ty<'tcx> { self.ty }
+    fn to_type(&self) -> Ty<'tcx> { self.ty }
 }
 
 // FIXME (pnkfelix): See discussion here
