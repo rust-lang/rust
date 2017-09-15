@@ -92,7 +92,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 // by putting variants in fields, or be more clever.
                 match *layout {
                     Layout::General { .. } |
-                    Layout::StructWrappedNullablePointer { .. } => return Err(Memory),
+                    Layout::NullablePointer { .. } => return Err(Memory),
                     _ => {}
                 }
                 for i in 0..layout.fields.count() {

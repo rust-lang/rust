@@ -12,7 +12,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{Align, Layout, LayoutOf, Size, FullLayout};
+use rustc::ty::layout::{self, Align, Layout, LayoutOf, Size, FullLayout};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -237,11 +237,13 @@ pub trait LayoutLlvmExt {
 
 impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
     fn llvm_field_index(&self, index: usize) -> u64 {
+        if let layout::Abi::Scalar(_) = self.abi {
+            bug!("FullLayout::llvm_field_index({:?}): not applicable", self);
+        }
         match **self {
             Layout::Scalar { .. } |
             Layout::CEnum { .. } |
-            Layout::UntaggedUnion { .. } |
-            Layout::RawNullablePointer { .. } => {
+            Layout::UntaggedUnion { .. } => {
                 bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
             }
 
@@ -266,7 +268,7 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
                 }
             }
 
-            Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+            Layout::NullablePointer { nndiscr, ref nonnull, .. } => {
                 if self.variant_index == Some(nndiscr as usize) {
                     adt::memory_index_to_gep(nonnull.memory_index[index] as u64)
                 } else {

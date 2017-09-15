@@ -69,10 +69,11 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let l = cx.layout_of(t);
     debug!("finish_type_of: {} with layout {:#?}", t, l);
     match *l {
-        layout::CEnum { .. } | layout::General { .. }
-        | layout::UntaggedUnion { .. } | layout::RawNullablePointer { .. } => { }
-        layout::Univariant { ..}
-        | layout::StructWrappedNullablePointer { .. } => {
+        layout::CEnum { .. } | layout::General { .. } | layout::UntaggedUnion { .. } => { }
+        layout::Univariant { ..} | layout::NullablePointer { .. } => {
+            if let layout::Abi::Scalar(_) = l.abi {
+                return;
+            }
             let (variant_layout, variant) = match *l {
                 layout::Univariant(ref variant) => {
                     let is_enum = if let ty::TyAdt(def, _) = t.sty {
@@ -86,7 +87,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         (l, variant)
                     }
                 }
-                layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } =>
+                layout::NullablePointer { nndiscr, ref nonnull, .. } =>
                     (l.for_variant(nndiscr as usize), nonnull),
                 _ => unreachable!()
             };
@@ -103,15 +104,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     debug!("adt::generic_type_of t: {:?} name: {:?}", t, name);
     match *l {
         layout::CEnum { discr, .. } => Type::from_integer(cx, discr),
-        layout::RawNullablePointer { nndiscr, .. } => {
-            let nnfield = l.for_variant(nndiscr as usize).field(cx, 0);
-            if let layout::Scalar { value: layout::Pointer, .. } = *nnfield {
-                Type::i8p(cx)
-            } else {
-                cx.llvm_type_of(nnfield.ty)
+        layout::NullablePointer { nndiscr, ref nonnull, .. } => {
+            if let layout::Abi::Scalar(_) = l.abi {
+                return cx.llvm_type_of(l.field(cx, 0).ty);
             }
-        }
-        layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
             match name {
                 None => {
                     Type::struct_(cx, &struct_llfields(cx, l.for_variant(nndiscr as usize),
