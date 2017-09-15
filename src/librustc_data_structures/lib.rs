@@ -29,7 +29,6 @@
 #![feature(unsize)]
 #![feature(i128_type)]
 #![feature(conservative_impl_trait)]
-#![feature(discriminant_value)]
 #![feature(specialization)]
 
 #![cfg_attr(unix, feature(libc))]
