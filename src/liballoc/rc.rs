@@ -611,7 +611,7 @@ impl<T: Clone> Rc<T> {
 
 impl Rc<Any> {
     #[inline]
-    #[unstable(feature = "rc_downcast", issue = "0")]
+    #[unstable(feature = "rc_downcast", issue = "44608")]
     /// Attempt to downcast the `Rc<Any>` to a concrete type.
     ///
     /// # Examples
