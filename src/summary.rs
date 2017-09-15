@@ -44,8 +44,8 @@ impl Summary {
     }
 
     pub fn has_no_errors(&self) -> bool {
-        !(self.has_operational_errors || self.has_parsing_errors || self.has_formatting_errors ||
-            self.has_diff)
+        !(self.has_operational_errors || self.has_parsing_errors || self.has_formatting_errors
+            || self.has_diff)
     }
 
     pub fn add(&mut self, other: Summary) {

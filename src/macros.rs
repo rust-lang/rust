@@ -230,8 +230,8 @@ pub fn rewrite_macro(
                 let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
                 let lhs = try_opt!(arg_vec[0].rewrite(context, nested_shape));
                 let rhs = try_opt!(arg_vec[1].rewrite(context, nested_shape));
-                if !lhs.contains('\n') && !rhs.contains('\n') &&
-                    lhs.len() + rhs.len() + total_overhead <= shape.width
+                if !lhs.contains('\n') && !rhs.contains('\n')
+                    && lhs.len() + rhs.len() + total_overhead <= shape.width
                 {
                     Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))
                 } else {
@@ -373,13 +373,13 @@ fn indent_macro_snippet(
     );
 
     Some(
-        String::from(first_line) + "\n" +
-            &trimmed_lines
+        String::from(first_line) + "\n"
+            + &trimmed_lines
                 .iter()
                 .map(|&(line, prefix_space_width)| match prefix_space_width {
                     Some(original_indent_width) => {
-                        let new_indent_width = indent.width() +
-                            original_indent_width
+                        let new_indent_width = indent.width()
+                            + original_indent_width
                                 .checked_sub(min_prefix_space_width)
                                 .unwrap_or(0);
                         let new_indent = Indent::from_width(context.config, new_indent_width);

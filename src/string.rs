@@ -82,8 +82,8 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
                     // If we can't break at whitespace or punctuation, grow the string instead.
                     if cur_end < cur_start + MIN_STRING {
                         cur_end = cur_start + max_chars;
-                        while !(punctuation.contains(graphemes[cur_end - 1]) ||
-                            graphemes[cur_end - 1].trim().is_empty())
+                        while !(punctuation.contains(graphemes[cur_end - 1])
+                            || graphemes[cur_end - 1].trim().is_empty())
                         {
                             if cur_end >= graphemes.len() {
                                 let line = &graphemes[cur_start..].join("");

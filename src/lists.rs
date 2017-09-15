@@ -118,18 +118,18 @@ impl ListItem {
     }
 
     pub fn is_different_group(&self) -> bool {
-        self.inner_as_ref().contains('\n') || self.pre_comment.is_some() ||
-            self.post_comment
+        self.inner_as_ref().contains('\n') || self.pre_comment.is_some()
+            || self.post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
     }
 
     pub fn is_multiline(&self) -> bool {
-        self.inner_as_ref().contains('\n') ||
-            self.pre_comment
+        self.inner_as_ref().contains('\n')
+            || self.pre_comment
                 .as_ref()
-                .map_or(false, |s| s.contains('\n')) ||
-            self.post_comment
+                .map_or(false, |s| s.contains('\n'))
+            || self.post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
     }
@@ -137,8 +137,8 @@ impl ListItem {
     pub fn has_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
-            .map_or(false, |comment| comment.starts_with("//")) ||
-            self.post_comment
+            .map_or(false, |comment| comment.starts_with("//"))
+            || self.post_comment
                 .as_ref()
                 .map_or(false, |comment| comment.starts_with("//"))
     }
@@ -243,8 +243,8 @@ where
     let total_sep_len = sep.len() * sep_count.checked_sub(1).unwrap_or(0);
     let real_total = total_width + total_sep_len;
 
-    if real_total <= limit && !pre_line_comments &&
-        !items.into_iter().any(|item| item.as_ref().is_multiline())
+    if real_total <= limit && !pre_line_comments
+        && !items.into_iter().any(|item| item.as_ref().is_multiline())
     {
         DefinitiveListTactic::Horizontal
     } else {
@@ -346,8 +346,8 @@ where
 
             if tactic == DefinitiveListTactic::Vertical {
                 // We cannot keep pre-comments on the same line if the comment if normalized.
-                let keep_comment = if formatting.config.normalize_comments() ||
-                    item.pre_comment_style == ListItemCommentStyle::DifferentLine
+                let keep_comment = if formatting.config.normalize_comments()
+                    || item.pre_comment_style == ListItemCommentStyle::DifferentLine
                 {
                     false
                 } else {
@@ -416,9 +416,9 @@ where
                 let comment_shape = Shape::legacy(width, offset);
 
                 // Use block-style only for the last item or multiline comments.
-                let block_style = !formatting.ends_with_newline && last ||
-                    comment.trim().contains('\n') ||
-                    comment.trim().len() > width;
+                let block_style = !formatting.ends_with_newline && last
+                    || comment.trim().contains('\n')
+                    || comment.trim().len() > width;
 
                 rewrite_comment(comment, block_style, comment_shape, formatting.config)
             };
@@ -428,8 +428,8 @@ where
             if !formatted_comment.starts_with('\n') {
                 let mut comment_alignment =
                     post_comment_alignment(item_max_width, inner_item.len());
-                if first_line_width(&formatted_comment) + last_line_width(&result) +
-                    comment_alignment + 1 > formatting.config.max_width()
+                if first_line_width(&formatted_comment) + last_line_width(&result)
+                    + comment_alignment + 1 > formatting.config.max_width()
                 {
                     item_max_width = None;
                     formatted_comment = try_opt!(rewrite_post_comment(&mut item_max_width));
@@ -452,8 +452,8 @@ where
             item_max_width = None;
         }
 
-        if formatting.preserve_newline && !last && tactic == DefinitiveListTactic::Vertical &&
-            item.new_lines
+        if formatting.preserve_newline && !last && tactic == DefinitiveListTactic::Vertical
+            && item.new_lines
         {
             item_max_width = None;
             result.push('\n');
@@ -478,9 +478,9 @@ where
     for item in items.clone().into_iter().skip(i) {
         let item = item.as_ref();
         let inner_item_width = item.inner_as_ref().len();
-        if !first &&
-            (item.is_different_group() || !item.post_comment.is_some() ||
-                inner_item_width + overhead > max_budget)
+        if !first
+            && (item.is_different_group() || !item.post_comment.is_some()
+                || inner_item_width + overhead > max_budget)
         {
             return max_width;
         }
@@ -714,9 +714,9 @@ where
 }
 
 fn total_item_width(item: &ListItem) -> usize {
-    comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..])) +
-        comment_len(item.post_comment.as_ref().map(|x| &(*x)[..])) +
-        item.item.as_ref().map_or(0, |str| str.len())
+    comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
+        + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
+        + item.item.as_ref().map_or(0, |str| str.len())
 }
 
 fn comment_len(comment: Option<&str>) -> usize {
@@ -800,8 +800,8 @@ pub fn struct_lit_formatting<'a>(
     context: &'a RewriteContext,
     force_no_trailing_comma: bool,
 ) -> ListFormatting<'a> {
-    let ends_with_newline = context.config.struct_lit_style() != IndentStyle::Visual &&
-        tactic == DefinitiveListTactic::Vertical;
+    let ends_with_newline = context.config.struct_lit_style() != IndentStyle::Visual
+        && tactic == DefinitiveListTactic::Vertical;
     ListFormatting {
         tactic: tactic,
         separator: ",",

@@ -51,8 +51,8 @@ impl Range {
         if self.is_empty() || other.is_empty() {
             false
         } else {
-            (self.lo <= other.hi && other.hi <= self.hi) ||
-                (other.lo <= self.hi && self.hi <= other.hi)
+            (self.lo <= other.hi && other.hi <= self.hi)
+                || (other.lo <= self.hi && self.hi <= other.hi)
         }
     }
 

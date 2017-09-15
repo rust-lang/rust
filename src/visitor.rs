@@ -722,8 +722,8 @@ impl<'a> FmtVisitor<'a> {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
         let inner_span = source!(self, m.inner);
-        let is_internal = !(inner_span.lo().0 == 0 && inner_span.hi().0 == 0) &&
-            local_file_name == self.codemap.span_to_filename(inner_span);
+        let is_internal = !(inner_span.lo().0 == 0 && inner_span.hi().0 == 0)
+            && local_file_name == self.codemap.span_to_filename(inner_span);
 
         self.buffer.push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");
@@ -883,8 +883,8 @@ impl<'a> Rewrite for [ast::Attribute] {
                 // This particular horror show is to preserve line breaks in between doc
                 // comments. An alternative would be to force such line breaks to start
                 // with the usual doc comment token.
-                let (multi_line_before, multi_line_after) = if a.is_sugared_doc ||
-                    is_prev_sugared_doc
+                let (multi_line_before, multi_line_after) = if a.is_sugared_doc
+                    || is_prev_sugared_doc
                 {
                     // Look at before and after comment and see if there are any empty lines.
                     let comment_begin = comment.chars().position(|c| c == '/');

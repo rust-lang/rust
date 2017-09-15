@@ -786,8 +786,8 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 }
 
                 // Check for any line width errors we couldn't correct.
-                let report_error_on_line_overflow = config.error_on_line_overflow() &&
-                    (config.error_on_line_overflow_comments() || !is_comment);
+                let report_error_on_line_overflow = config.error_on_line_overflow()
+                    && (config.error_on_line_overflow_comments() || !is_comment);
                 if report_error_on_line_overflow && line_len > config.max_width() {
                     errors.push(FormattingError {
                         line: cur_line,

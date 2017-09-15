@@ -513,8 +513,8 @@ where
         },
     };
     let ends_with_newline = tactic.ends_with_newline(context.config.array_layout());
-    if context.config.array_horizontal_layout_threshold() > 0 &&
-        items.len() > context.config.array_horizontal_layout_threshold()
+    if context.config.array_horizontal_layout_threshold() > 0
+        && items.len() > context.config.array_horizontal_layout_threshold()
     {
         tactic = DefinitiveListTactic::Mixed;
     }
@@ -537,8 +537,8 @@ where
     };
     let list_str = try_opt!(write_list(&items, &fmt));
 
-    let result = if context.config.array_layout() == IndentStyle::Visual ||
-        tactic == DefinitiveListTactic::Horizontal
+    let result = if context.config.array_layout() == IndentStyle::Visual
+        || tactic == DefinitiveListTactic::Horizontal
     {
         if context.config.spaces_within_square_brackets() && !list_str.is_empty() {
             format!("[ {} ]", list_str)
@@ -671,10 +671,10 @@ fn rewrite_closure(
         }
 
         // Figure out if the block is necessary.
-        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1 ||
-            context.inside_macro ||
-            block_contains_comment(block, context.codemap) ||
-            prefix.contains('\n');
+        let needs_block = block.rules != ast::BlockCheckMode::Default || block.stmts.len() > 1
+            || context.inside_macro
+            || block_contains_comment(block, context.codemap)
+            || prefix.contains('\n');
 
         let no_return_type = if let ast::FunctionRetTy::Default(_) = fn_decl.output {
             true
@@ -756,8 +756,8 @@ fn rewrite_closure_block(
     let block_threshold = context.config.closure_block_indent_threshold();
     if block_threshold >= 0 {
         if let Some(block_str) = block.rewrite(context, shape) {
-            if block_str.matches('\n').count() <= block_threshold as usize &&
-                !need_block_indent(&block_str, shape)
+            if block_str.matches('\n').count() <= block_threshold as usize
+                && !need_block_indent(&block_str, shape)
             {
                 if let Some(block_str) = block_str.rewrite(context, shape) {
                     return Some(format!("{} {}", prefix, block_str));
@@ -780,8 +780,8 @@ fn and_one_line(x: Option<String>) -> Option<String> {
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
     block_str.map(|block_str| {
-        if block_str.starts_with('{') && budget >= 2 &&
-            (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
+        if block_str.starts_with('{') && budget >= 2
+            && (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
         {
             "{}".to_owned()
         } else {
@@ -805,8 +805,8 @@ fn rewrite_empty_block(
     let user_str = user_str.trim();
     if user_str.starts_with('{') && user_str.ends_with('}') {
         let comment_str = user_str[1..user_str.len() - 1].trim();
-        if block.stmts.is_empty() && !comment_str.contains('\n') &&
-            !comment_str.starts_with("//") && comment_str.len() + 4 <= shape.width
+        if block.stmts.is_empty() && !comment_str.contains('\n') && !comment_str.starts_with("//")
+            && comment_str.len() + 4 <= shape.width
         {
             return Some(format!("{{ {} }}", comment_str));
         }
@@ -1118,9 +1118,9 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node) = else_block.node {
-            if !is_simple_block(self.block, context.codemap) ||
-                !is_simple_block(else_node, context.codemap) ||
-                pat_expr_str.contains('\n')
+            if !is_simple_block(self.block, context.codemap)
+                || !is_simple_block(else_node, context.codemap)
+                || pat_expr_str.contains('\n')
             {
                 return None;
             }
@@ -1216,9 +1216,9 @@ impl<'a> ControlFlow<'a> {
             .max_width()
             .checked_sub(constr_shape.used_width() + offset + brace_overhead)
             .unwrap_or(0);
-        let force_newline_brace = context.config.control_style() == Style::Rfc &&
-            (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget) &&
-            !last_line_extendable(&pat_expr_string);
+        let force_newline_brace = context.config.control_style() == Style::Rfc
+            && (pat_expr_string.contains('\n') || pat_expr_string.len() > one_line_budget)
+            && !last_line_extendable(&pat_expr_string);
 
         // Try to format if-else on single line.
         if self.allow_single_line && context.config.single_line_if_else_max_width() > 0 {
@@ -1259,8 +1259,8 @@ impl<'a> ControlFlow<'a> {
 
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
-        } else if context.config.control_brace_style() == ControlBraceStyle::AlwaysNextLine ||
-            force_newline_brace
+        } else if context.config.control_brace_style() == ControlBraceStyle::AlwaysNextLine
+            || force_newline_brace
         {
             alt_block_sep
         } else {
@@ -1443,8 +1443,8 @@ fn block_contains_comment(block: &ast::Block, codemap: &CodeMap) -> bool {
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
 pub fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
-    (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0]) &&
-        !block_contains_comment(block, codemap))
+    (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0])
+        && !block_contains_comment(block, codemap))
 }
 
 /// Checks whether a block contains at most one statement or expression, and no comments.
@@ -1739,8 +1739,8 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
-                    !context.config.multiline_match_arm_forces_block() &&
-                        expr.can_be_overflowed(context, 1),
+                    !context.config.multiline_match_arm_forces_block()
+                        && expr.can_be_overflowed(context, 1),
                     &**expr,
                 )
             } else {
@@ -1748,8 +1748,8 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
             }
         }
         _ => (
-            !context.config.multiline_match_arm_forces_block() &&
-                body.can_be_overflowed(context, 1),
+            !context.config.multiline_match_arm_forces_block()
+                && body.can_be_overflowed(context, 1),
             &*body,
         ),
     }
@@ -1841,9 +1841,9 @@ fn rewrite_match_body(
 
         match rewrite {
             Some(ref body_str)
-                if !forbid_same_line &&
-                    (is_block ||
-                        (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
+                if !forbid_same_line
+                    && (is_block
+                        || (!body_str.contains('\n') && body_str.len() <= body_shape.width)) =>
             {
                 return combine_orig_body(body_str);
             }
@@ -1989,8 +1989,8 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
         }
     }
 
-    if !context.config.force_format_strings() &&
-        !string_requires_rewrite(context, span, &string_lit, shape)
+    if !context.config.force_format_strings()
+        && !string_requires_rewrite(context, span, &string_lit, shape)
     {
         return Some(string_lit);
     }
@@ -2370,8 +2370,8 @@ where
             ast::ExprKind::Closure(..) => {
                 // If the argument consists of multiple closures, we do not overflow
                 // the last closure.
-                if args.len() > 1 &&
-                    args.iter()
+                if args.len() > 1
+                    && args.iter()
                         .rev()
                         .skip(1)
                         .filter_map(|arg| arg.to_expr())
@@ -2410,8 +2410,8 @@ where
 pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_len: usize) -> bool {
     match expr.node {
         ast::ExprKind::Match(..) => {
-            (context.use_block_indent() && args_len == 1) ||
-                (context.config.fn_call_style() == IndentStyle::Visual && args_len > 1)
+            (context.use_block_indent() && args_len == 1)
+                || (context.config.fn_call_style() == IndentStyle::Visual && args_len > 1)
         }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
@@ -2422,8 +2422,8 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
         ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
-            context.use_block_indent() ||
-                context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
+            context.use_block_indent()
+                || context.config.fn_call_style() == IndentStyle::Visual && args_len > 1
         }
         ast::ExprKind::Array(..) |
         ast::ExprKind::Call(..) |
@@ -2447,9 +2447,9 @@ pub fn wrap_args_with_parens(
     shape: Shape,
     nested_shape: Shape,
 ) -> String {
-    if !context.use_block_indent() ||
-        (context.inside_macro && !args_str.contains('\n') &&
-            args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
+    if !context.use_block_indent()
+        || (context.inside_macro && !args_str.contains('\n')
+            && args_str.len() + paren_overhead(context) <= shape.width) || is_extendable
     {
         if context.config.spaces_within_parens() && !args_str.is_empty() {
             format!("( {} )", args_str)
@@ -2492,8 +2492,8 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
     let subexpr_str = try_opt!(subexpr.rewrite(context, sub_shape));
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
 
-    if subexpr_str.contains('\n') ||
-        first_line_width(&subexpr_str) + total_paren_overhead <= shape.width
+    if subexpr_str.contains('\n')
+        || first_line_width(&subexpr_str) + total_paren_overhead <= shape.width
     {
         Some(paren_wrapper(&subexpr_str))
     } else {
@@ -2603,8 +2603,8 @@ fn rewrite_struct_lit<'a>(
 
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
     let body_lo = context.codemap.span_after(span, "{");
-    let fields_str = if struct_lit_can_be_aligned(fields, &base) &&
-        context.config.struct_field_align_threshold() > 0
+    let fields_str = if struct_lit_can_be_aligned(fields, &base)
+        && context.config.struct_field_align_threshold() > 0
     {
         try_opt!(rewrite_with_alignment(
             fields,
@@ -2678,10 +2678,10 @@ pub fn wrap_struct_field(
     nested_shape: Shape,
     one_line_width: usize,
 ) -> String {
-    if context.config.struct_lit_style() == IndentStyle::Block &&
-        (fields_str.contains('\n') ||
-            context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti ||
-            fields_str.len() > one_line_width)
+    if context.config.struct_lit_style() == IndentStyle::Block
+        && (fields_str.contains('\n')
+            || context.config.struct_lit_multiline_style() == MultilineStyle::ForceMulti
+            || fields_str.len() > one_line_width)
     {
         format!(
             "\n{}{}\n{}",
@@ -2992,8 +2992,8 @@ fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str) -> bool {
         src.chars().filter(|&x| x == '\n').count()
     }
 
-    !next_line_rhs.contains('\n') ||
-        count_line_breaks(orig_rhs) > count_line_breaks(next_line_rhs) + 1
+    !next_line_rhs.contains('\n')
+        || count_line_breaks(orig_rhs) > count_line_breaks(next_line_rhs) + 1
 }
 
 fn rewrite_expr_addrof(
