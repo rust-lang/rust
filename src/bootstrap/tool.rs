@@ -148,13 +148,25 @@ macro_rules! tool {
 
         impl<'a> Builder<'a> {
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+                let stage = self.tool_default_stage(tool);
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(0, self.build.build),
+                            compiler: self.compiler(stage, self.build.build),
                             target: self.build.build,
                         }),
                     )+
+                }
+            }
+
+            pub fn tool_default_stage(&self, tool: Tool) -> u32 {
+                // Compile the error-index in the top stage as it depends on
+                // rustdoc, so we want to avoid recompiling rustdoc twice if we
+                // can. Otherwise compile everything else in stage0 as there's
+                // no need to rebootstrap everything
+                match tool {
+                    Tool::ErrorIndex => self.top_stage,
+                    _ => 0,
                 }
             }
         }
@@ -436,7 +448,7 @@ impl<'a> Builder<'a> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
-        let compiler = self.compiler(0, self.build.build);
+        let compiler = self.compiler(self.tool_default_stage(tool), self.build.build);
         self.prepare_tool_cmd(compiler, &mut cmd);
         cmd
     }
