@@ -104,7 +104,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     parse_macro_arg!(ty, Ty, parse_ty);
     parse_macro_arg!(pat, Pat, parse_pat);
 
-    return None;
+    None
 }
 
 pub fn rewrite_macro(
