@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Debug;
-use std::hash::Hash;
+use std::any::Any;
 use std::cell::RefCell;
+use std::collections::BTreeSet;
+use std::env;
+use std::fmt::Debug;
+use std::fs;
+use std::hash::Hash;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
-use std::ops::Deref;
-use std::any::Any;
-use std::collections::BTreeSet;
 
 use compile;
 use install;
@@ -437,8 +438,13 @@ impl<'a> Builder<'a> {
         let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
-             .arg("-j").arg(self.jobs().to_string())
              .arg("--target").arg(target);
+
+        // If we were invoked from `make` then that's already got a jobserver
+        // set up for us so no need to tell Cargo about jobs all over again.
+        if env::var_os("MAKEFLAGS").is_none() && env::var_os("MFLAGS").is_none() {
+             cargo.arg("-j").arg(self.jobs().to_string());
+        }
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
