@@ -1,5 +1,8 @@
 use rustc::mir;
 use rustc::ty::Ty;
+use rustc_const_math::ConstFloat;
+use syntax::ast::FloatTy;
+use std::cmp::Ordering;
 
 use super::{EvalResult, EvalContext, Lvalue, Machine, ValTy};
 
@@ -103,27 +106,6 @@ macro_rules! int_shift {
     })
 }
 
-macro_rules! float_arithmetic {
-    ($from_bytes:ident, $to_bytes:ident, $float_op:tt, $l:expr, $r:expr) => ({
-        let l = $from_bytes($l);
-        let r = $from_bytes($r);
-        let bytes = $to_bytes(l $float_op r);
-        PrimVal::Bytes(bytes)
-    })
-}
-
-macro_rules! f32_arithmetic {
-    ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(bytes_to_f32, f32_to_bytes, $float_op, $l, $r)
-    )
-}
-
-macro_rules! f64_arithmetic {
-    ($float_op:tt, $l:expr, $r:expr) => (
-        float_arithmetic!(bytes_to_f64, f64_to_bytes, $float_op, $l, $r)
-    )
-}
-
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     /// Returns the result of the specified operation and whether it overflowed.
     pub fn binary_op(
@@ -173,32 +155,35 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             return err!(Unimplemented(msg));
         }
 
+        let float_op = |op, l, r, ty| {
+            let l = ConstFloat {
+                bits: l,
+                ty,
+            };
+            let r = ConstFloat {
+                bits: r,
+                ty,
+            };
+            match op {
+                Eq => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Equal),
+                Ne => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Equal),
+                Lt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Less),
+                Le => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Greater),
+                Gt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Greater),
+                Ge => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Less),
+                Add => PrimVal::Bytes((l + r).unwrap().bits),
+                Sub => PrimVal::Bytes((l - r).unwrap().bits),
+                Mul => PrimVal::Bytes((l * r).unwrap().bits),
+                Div => PrimVal::Bytes((l / r).unwrap().bits),
+                Rem => PrimVal::Bytes((l % r).unwrap().bits),
+                _ => bug!("invalid float op: `{:?}`", op),
+            }
+        };
+
         let val = match (bin_op, left_kind) {
-            (Eq, F32) => PrimVal::from_bool(bytes_to_f32(l) == bytes_to_f32(r)),
-            (Ne, F32) => PrimVal::from_bool(bytes_to_f32(l) != bytes_to_f32(r)),
-            (Lt, F32) => PrimVal::from_bool(bytes_to_f32(l) < bytes_to_f32(r)),
-            (Le, F32) => PrimVal::from_bool(bytes_to_f32(l) <= bytes_to_f32(r)),
-            (Gt, F32) => PrimVal::from_bool(bytes_to_f32(l) > bytes_to_f32(r)),
-            (Ge, F32) => PrimVal::from_bool(bytes_to_f32(l) >= bytes_to_f32(r)),
+            (_, F32) => float_op(bin_op, l, r, FloatTy::F32),
+            (_, F64) => float_op(bin_op, l, r, FloatTy::F64),
 
-            (Eq, F64) => PrimVal::from_bool(bytes_to_f64(l) == bytes_to_f64(r)),
-            (Ne, F64) => PrimVal::from_bool(bytes_to_f64(l) != bytes_to_f64(r)),
-            (Lt, F64) => PrimVal::from_bool(bytes_to_f64(l) < bytes_to_f64(r)),
-            (Le, F64) => PrimVal::from_bool(bytes_to_f64(l) <= bytes_to_f64(r)),
-            (Gt, F64) => PrimVal::from_bool(bytes_to_f64(l) > bytes_to_f64(r)),
-            (Ge, F64) => PrimVal::from_bool(bytes_to_f64(l) >= bytes_to_f64(r)),
-
-            (Add, F32) => f32_arithmetic!(+, l, r),
-            (Sub, F32) => f32_arithmetic!(-, l, r),
-            (Mul, F32) => f32_arithmetic!(*, l, r),
-            (Div, F32) => f32_arithmetic!(/, l, r),
-            (Rem, F32) => f32_arithmetic!(%, l, r),
-
-            (Add, F64) => f64_arithmetic!(+, l, r),
-            (Sub, F64) => f64_arithmetic!(-, l, r),
-            (Mul, F64) => f64_arithmetic!(*, l, r),
-            (Div, F64) => f64_arithmetic!(/, l, r),
-            (Rem, F64) => f64_arithmetic!(%, l, r),
 
             (Eq, _) => PrimVal::from_bool(l == r),
             (Ne, _) => PrimVal::from_bool(l != r),
