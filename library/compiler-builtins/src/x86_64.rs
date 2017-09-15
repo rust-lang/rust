@@ -8,9 +8,9 @@ use core::intrinsics;
 // NOTE These functions are never mangled as they are not tested against compiler-rt
 // and mangling ___chkstk would break the `jmp ___chkstk` instruction in __alloca
 
-#[cfg(all(windows, target_env = "gnu"))]
+#[cfg(all(windows, target_env = "gnu", not(feature = "mangled-names")))]
 #[naked]
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+#[no_mangle]
 pub unsafe fn ___chkstk_ms() {
     asm!("
         push   %rcx
@@ -33,18 +33,18 @@ pub unsafe fn ___chkstk_ms() {
     intrinsics::unreachable();
 }
 
-#[cfg(all(windows, target_env = "gnu"))]
+#[cfg(all(windows, target_env = "gnu", not(feature = "mangled-names")))]
 #[naked]
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+#[no_mangle]
 pub unsafe fn __alloca() {
     asm!("mov    %rcx,%rax  // x64 _alloca is a normal function with parameter in rcx
           jmp    ___chkstk  // Jump to ___chkstk since fallthrough may be unreliable");
     intrinsics::unreachable();
 }
 
-#[cfg(all(windows, target_env = "gnu"))]
+#[cfg(all(windows, target_env = "gnu", not(feature = "mangled-names")))]
 #[naked]
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+#[no_mangle]
 pub unsafe fn ___chkstk() {
     asm!("
         push   %rcx

@@ -44,8 +44,8 @@
 #![cfg(not(windows))] // Windows already has builtins to do this
 
 #[naked]
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg(target_arch = "x86_64")]
+#[no_mangle]
+#[cfg(all(target_arch = "x86_64", not(feature = "mangled-names")))]
 pub unsafe extern fn __rust_probestack() {
     // Our goal here is to touch each page between %rsp+8 and %rsp+8-%rax,
     // ensuring that if any pages are unmapped we'll make a page fault.
@@ -87,8 +87,8 @@ pub unsafe extern fn __rust_probestack() {
 }
 
 #[naked]
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-#[cfg(target_arch = "x86")]
+#[no_mangle]
+#[cfg(all(target_arch = "x86", not(feature = "mangled-names")))]
 pub unsafe extern fn __rust_probestack() {
     // This is the same as x86_64 above, only translated for 32-bit sizes. Note
     // that on Unix we're expected to restore everything as it was, this
