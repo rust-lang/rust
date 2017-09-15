@@ -83,7 +83,7 @@ currently supports configuring any key in `.cargo/config` using environment vari
 To configure TravisCI to use an alternate registry named `my-registry` for example, you can use
 [Travis' encrypted environment variables feature](https://docs.travis-ci.com/user/environment-variables/#Defining-encrypted-variables-in-.travis.yml) to set:
 
-`CARGO_REGISTRY_MY_REGISTRY_INDEX=https://username:password@my-intranet:8080/index`
+`CARGO_REGISTRY_MY_REGISTRY_INDEX=https://my-intranet:8080/index`
 
 ## Using a dependency from another registry
 
