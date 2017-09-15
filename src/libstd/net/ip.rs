@@ -10,7 +10,7 @@
 
 #![unstable(feature = "ip", reason = "extra functionality has not been \
                                       scrutinized to the level that it should \
-                                      be stable",
+                                      be to be stable",
             issue = "27709")]
 
 use cmp::Ordering;
@@ -347,12 +347,15 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
+    /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::localhost();
     /// assert_eq!(addr, Ipv4Addr::new(127, 0, 0, 1));
     /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
     pub fn localhost() -> Ipv4Addr {
         Ipv4Addr::new(127, 0, 0, 1)
     }
@@ -362,12 +365,15 @@ impl Ipv4Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
+    /// #![feature(ip_constructors)]
     /// use std::net::Ipv4Addr;
     ///
     /// let addr = Ipv4Addr::unspecified();
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
     pub fn unspecified() -> Ipv4Addr {
         Ipv4Addr::new(0, 0, 0, 0)
     }
@@ -823,12 +829,15 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
+    /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::localhost();
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1));
     /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
     pub fn localhost() -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1)
     }
@@ -838,12 +847,15 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
+    /// #![feature(ip_constructors)]
     /// use std::net::Ipv6Addr;
     ///
     /// let addr = Ipv6Addr::unspecified();
     /// assert_eq!(addr, Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0));
     /// ```
+    #[unstable(feature = "ip_constructors",
+               reason = "requires greater scrutiny before stabilization",
+               issue = "44582")]
     pub fn unspecified() -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)
     }
