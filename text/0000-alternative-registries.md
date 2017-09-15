@@ -101,17 +101,22 @@ secret-crate = { version = "1.0", registry = "my-registry" }
 
 ## Publishing to another registry; preventing unwanted publishes
 
-In order to specify that a crate should only be published to a particular set of registries,
-specify in the `[package]` section the allowed registries using the `publish-registries` key and
-specifying the list of registries that are allowed with `cargo publish`.
+Today, Cargo allows you to add a key `publish = false` to your Cargo.toml to indicate that you do
+not want to publish a crate anywhere. In order to specify that a crate should only be published to
+a particular set of registries, this key will be extended to accept a list of registries that are
+allowed with `cargo publish`:
 
 ```
-publish-registries = ["my-registry"]
+publish = ["my-registry"]
 ```
 
 If you run `cargo publish` without specifying an `--index` argument pointing to an allowed
 registry, the command will fail. This prevents accidental publishes of private crates to crates.io,
 for example.
+
+Not having a `publish` key is equivalent to specifying `publish = true`, which means publishing to
+crates.io is allowed. `publish = []` is equivalent to `publish = false`, meaning that publishing to
+anywhere is disallowed.
 
 ## Running a minimal registry
 
