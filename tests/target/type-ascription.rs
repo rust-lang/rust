@@ -5,8 +5,8 @@ fn main() {
     let xxxxxxxxxxxxxxx =
         yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
-    let z = funk(yyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz, wwwwww)
-        : AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+    let z = funk(yyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz, wwwwww):
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
 
     x: u32 - 1u32 / 10f32: u32
 }

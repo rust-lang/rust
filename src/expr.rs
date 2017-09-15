@@ -232,7 +232,7 @@ pub fn format_expr(
             "",
             context,
             shape,
-            SeparatorPlace::Front,
+            SeparatorPlace::Back,
         ),
         ast::ExprKind::Index(ref expr, ref index) => {
             rewrite_index(&**expr, &**index, context, shape)
