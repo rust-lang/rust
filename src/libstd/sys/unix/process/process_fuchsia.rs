@@ -67,8 +67,8 @@ impl Command {
         }
 
         // Duplicate the job handle
-        let mut job_copy: zx_handle_t = zx_HANDLE_INVALID;
-        zx_cvt(zx_handle_duplicate(job_handle, zx_RIGHT_SAME_RIGHTS, &mut job_copy))?;
+        let mut job_copy: zx_handle_t = ZX_HANDLE_INVALID;
+        zx_cvt(zx_handle_duplicate(job_handle, ZX_RIGHT_SAME_RIGHTS, &mut job_copy))?;
         // Create a launchpad
         let mut launchpad: *mut launchpad_t = ptr::null_mut();
         zx_cvt(launchpad_create(job_copy, self.get_argv()[0], &mut launchpad))?;
@@ -82,7 +82,7 @@ impl Command {
         zx_cvt(launchpad_add_vdso_vmo(launchpad))?;
         // Load the executable
         zx_cvt(launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.get_argv()[0])))?;
-        zx_cvt(launchpad_load_vdso(launchpad, zx_HANDLE_INVALID))?;
+        zx_cvt(launchpad_load_vdso(launchpad, ZX_HANDLE_INVALID))?;
         zx_cvt(launchpad_clone(launchpad, LP_CLONE_FDIO_ROOT | LP_CLONE_FDIO_CWD))?;
 
         // Clone stdin, stdout, and stderr
@@ -152,9 +152,9 @@ impl Process {
         let mut avail: zx_size_t = 0;
 
         unsafe {
-            zx_cvt(zx_object_wait_one(self.handle.raw(), zx_TASK_TERMINATED,
-                                      zx_TIME_INFINITE, ptr::null_mut()))?;
-            zx_cvt(zx_object_get_info(self.handle.raw(), zx_INFO_PROCESS,
+            zx_cvt(zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED,
+                                      ZX_TIME_INFINITE, ptr::null_mut()))?;
+            zx_cvt(zx_object_get_info(self.handle.raw(), ZX_INFO_PROCESS,
                                       &mut proc_info as *mut _ as *mut libc::c_void,
                                       mem::size_of::<zx_info_process_t>(), &mut actual,
                                       &mut avail))?;
@@ -175,7 +175,7 @@ impl Process {
         let mut avail: zx_size_t = 0;
 
         unsafe {
-            let status = zx_object_wait_one(self.handle.raw(), zx_TASK_TERMINATED,
+            let status = zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED,
                                             0, ptr::null_mut());
             match status {
                 0 => { }, // Success
@@ -184,7 +184,7 @@ impl Process {
                 },
                 _ => { panic!("Failed to wait on process handle: {}", status); },
             }
-            zx_cvt(zx_object_get_info(self.handle.raw(), zx_INFO_PROCESS,
+            zx_cvt(zx_object_get_info(self.handle.raw(), ZX_INFO_PROCESS,
                                       &mut proc_info as *mut _ as *mut libc::c_void,
                                       mem::size_of::<zx_info_process_t>(), &mut actual,
                                       &mut avail))?;

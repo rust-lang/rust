@@ -24,22 +24,22 @@ pub type zx_status_t = i32;
 
 pub type zx_size_t = usize;
 
-pub const zx_HANDLE_INVALID: zx_handle_t = 0;
+pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
 
 pub type zx_time_t = u64;
-pub const zx_TIME_INFINITE : zx_time_t = u64::MAX;
+pub const ZX_TIME_INFINITE : zx_time_t = u64::MAX;
 
 pub type zx_signals_t = u32;
 
-pub const zx_OBJECT_SIGNAL_3         : zx_signals_t = 1 << 3;
+pub const ZX_OBJECT_SIGNAL_3         : zx_signals_t = 1 << 3;
 
-pub const zx_TASK_TERMINATED        : zx_signals_t = zx_OBJECT_SIGNAL_3;
+pub const ZX_TASK_TERMINATED        : zx_signals_t = ZX_OBJECT_SIGNAL_3;
 
-pub const zx_RIGHT_SAME_RIGHTS  : zx_rights_t = 1 << 31;
+pub const ZX_RIGHT_SAME_RIGHTS  : zx_rights_t = 1 << 31;
 
 pub type zx_object_info_topic_t = u32;
 
-pub const zx_INFO_PROCESS         : zx_object_info_topic_t = 3;
+pub const ZX_INFO_PROCESS         : zx_object_info_topic_t = 3;
 
 pub fn zx_cvt<T>(t: T) -> io::Result<T> where T: TryInto<zx_status_t>+Copy {
     if let Ok(status) = TryInto::try_into(t) {
@@ -76,7 +76,7 @@ impl Drop for Handle {
     }
 }
 
-// Common zx_INFO header
+// Common ZX_INFO header
 #[derive(Default)]
 #[repr(C)]
 pub struct zx_info_header_t {
@@ -93,7 +93,7 @@ pub struct zx_record_process_t {
     pub return_code: c_int,
 }
 
-// Returned for topic zx_INFO_PROCESS
+// Returned for topic ZX_INFO_PROCESS
 #[derive(Default)]
 #[repr(C)]
 pub struct zx_info_process_t {
