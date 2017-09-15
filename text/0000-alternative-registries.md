@@ -145,6 +145,16 @@ crates.io's code, this will likely include the private registry itself plus crat
 private crates are allowed to depend on open source crates. Any crates with dependencies from
 registries not specified in this configuration option will be rejected at publish time.
 
+## Interaction with existing features
+
+This RFC is not proposing any changes to the way [source
+replacement](http://doc.crates.io/source-replacement.html) and
+[cargo-vendor](https://crates.io/crates/cargo-vendor) work; everything proposed here should be
+compatible with those.
+
+Mirrors will still be required to serve exactly the same files (matched checksums) as the source
+they're mirroring.
+
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
