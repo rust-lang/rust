@@ -54,7 +54,7 @@ fn test5() {
 
 fn test6() {
     let mut x = 0;
-    'outer: loop { // never loops
+    'outer: loop {
         x += 1;
 		loop { // never loops
             if x == 5 { break }
@@ -112,6 +112,20 @@ fn test11<F: FnMut() -> i32>(mut f: F) {
     }
 }
 
+pub fn test12(a: bool, b: bool) {
+    'label: loop {
+        loop {
+            if a {
+                continue 'label;
+            }
+            if b {
+                break;
+            }
+        }
+        break;
+    }
+}
+
 fn main() {
     test1();
     test2();
@@ -124,5 +138,6 @@ fn main() {
     test9();
     test10();
     test11(|| 0);
+    test12(true, false);
 }
 

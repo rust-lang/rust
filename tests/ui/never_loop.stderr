@@ -41,18 +41,6 @@ error: this loop never actually loops
    | |_________^
 
 error: this loop never actually loops
-  --> $DIR/never_loop.rs:57:5
-   |
-57 | /     'outer: loop { // never loops
-58 | |         x += 1;
-59 | |   loop { // never loops
-60 | |             if x == 5 { break }
-...  |
-63 | |   return
-64 | |  }
-   | |__^
-
-error: this loop never actually loops
   --> $DIR/never_loop.rs:59:3
    |
 59 | /   loop { // never loops
@@ -80,5 +68,5 @@ error: this loop never actually loops
 103 | |     }
     | |_____^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
