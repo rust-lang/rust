@@ -143,6 +143,9 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
 fn run_cargo_test(cargo_path: &Path, crate_path: &Path, packages: &[&str]) -> bool {
     let mut command = Command::new(cargo_path);
     command.arg("test");
+    if packages.is_empty() {
+        command.arg("--all");
+    }
     for name in packages {
         command.arg("-p").arg(name);
     }
