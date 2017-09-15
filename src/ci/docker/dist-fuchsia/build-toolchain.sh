@@ -16,7 +16,7 @@ source shared.sh
 
 # Download sources
 SRCS=(
-  "https://fuchsia.googlesource.com/zircon zircon d17073dc8de344ead3b65e8cc6a12280dec38c84"
+  "https://fuchsia.googlesource.com/zircon zircon e9a26dbc70d631029f8ee9763103910b7e3a2fe1"
   "https://llvm.googlesource.com/llvm llvm 3f58a16d8eec385e2b3ebdfbb84ff9d3bf27e025"
   "https://llvm.googlesource.com/clang llvm/tools/clang 727ea63e6e82677f6e10e05e08bc7d6bdbae3111"
   "https://llvm.googlesource.com/lld llvm/tools/lld a31286c1366e5e89b8872803fded13805a1a084b"
