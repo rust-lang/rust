@@ -727,7 +727,7 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::Tup(ref items) => rewrite_tuple(
                 context,
-                &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+                &::utils::ptr_vec_to_ref_vec(&items),
                 self.span,
                 shape,
             ),
