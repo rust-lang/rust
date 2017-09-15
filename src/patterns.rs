@@ -18,7 +18,7 @@ use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
            wrap_struct_field};
 use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-            struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorTactic};
+            struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use types::{rewrite_path, PathContext};
 use utils::{format_mutability, mk_sp, wrap_str};
@@ -59,8 +59,26 @@ impl Rewrite for Pat {
                 None
             },
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => match *end_kind {
-                RangeEnd::Included => rewrite_pair(&**lhs, &**rhs, "", "...", "", context, shape),
-                RangeEnd::Excluded => rewrite_pair(&**lhs, &**rhs, "", "..", "", context, shape),
+                RangeEnd::Included => rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    "",
+                    "...",
+                    "",
+                    context,
+                    shape,
+                    SeparatorPlace::Front,
+                ),
+                RangeEnd::Excluded => rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    "",
+                    "..",
+                    "",
+                    context,
+                    shape,
+                    SeparatorPlace::Front,
+                ),
             },
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));

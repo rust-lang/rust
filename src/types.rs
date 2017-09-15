@@ -738,7 +738,16 @@ impl Rewrite for ast::Ty {
                 let use_spaces = context.config.spaces_within_square_brackets();
                 let lbr = if use_spaces { "[ " } else { "[" };
                 let rbr = if use_spaces { " ]" } else { "]" };
-                rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, shape)
+                rewrite_pair(
+                    &**ty,
+                    &**repeats,
+                    lbr,
+                    "; ",
+                    rbr,
+                    context,
+                    shape,
+                    SeparatorPlace::Back,
+                )
             }
             ast::TyKind::Infer => if shape.width >= 1 {
                 Some("_".to_owned())

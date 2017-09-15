@@ -101,6 +101,7 @@ pub fn format_expr(
                 "",
                 context,
                 shape,
+                context.config.binop_sep(),
             )
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
@@ -213,12 +214,26 @@ pub fn format_expr(
         ast::ExprKind::AddrOf(mutability, ref expr) => {
             rewrite_expr_addrof(context, mutability, expr, shape)
         }
-        ast::ExprKind::Cast(ref expr, ref ty) => {
-            rewrite_pair(&**expr, &**ty, "", " as ", "", context, shape)
-        }
-        ast::ExprKind::Type(ref expr, ref ty) => {
-            rewrite_pair(&**expr, &**ty, "", ": ", "", context, shape)
-        }
+        ast::ExprKind::Cast(ref expr, ref ty) => rewrite_pair(
+            &**expr,
+            &**ty,
+            "",
+            " as ",
+            "",
+            context,
+            shape,
+            SeparatorPlace::Front,
+        ),
+        ast::ExprKind::Type(ref expr, ref ty) => rewrite_pair(
+            &**expr,
+            &**ty,
+            "",
+            ": ",
+            "",
+            context,
+            shape,
+            SeparatorPlace::Front,
+        ),
         ast::ExprKind::Index(ref expr, ref index) => {
             rewrite_index(&**expr, &**index, context, shape)
         }
@@ -228,7 +243,16 @@ pub fn format_expr(
             } else {
                 ("[", "]")
             };
-            rewrite_pair(&**expr, &**repeats, lbr, "; ", rbr, context, shape)
+            rewrite_pair(
+                &**expr,
+                &**repeats,
+                lbr,
+                "; ",
+                rbr,
+                context,
+                shape,
+                SeparatorPlace::Back,
+            )
         }
         ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
             let delim = match limits {
@@ -257,7 +281,16 @@ pub fn format_expr(
                     } else {
                         delim.into()
                     };
-                    rewrite_pair(&*lhs, &*rhs, "", &sp_delim, "", context, shape)
+                    rewrite_pair(
+                        &*lhs,
+                        &*rhs,
+                        "",
+                        &sp_delim,
+                        "",
+                        context,
+                        shape,
+                        SeparatorPlace::Front,
+                    )
                 }
                 (None, Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
@@ -323,26 +356,29 @@ pub fn rewrite_pair<LHS, RHS>(
     suffix: &str,
     context: &RewriteContext,
     shape: Shape,
+    separator_place: SeparatorPlace,
 ) -> Option<String>
 where
     LHS: Rewrite,
     RHS: Rewrite,
 {
-    let sep = if infix.ends_with(' ') { " " } else { "" };
-    let infix = infix.trim_right();
-    let lhs_overhead = shape.used_width() + prefix.len() + infix.len();
+    let lhs_overhead = match separator_place {
+        SeparatorPlace::Back => shape.used_width() + prefix.len() + infix.trim_right().len(),
+        SeparatorPlace::Front => shape.used_width(),
+    };
     let lhs_shape = Shape {
-        width: try_opt!(context.config.max_width().checked_sub(lhs_overhead)),
+        width: context.budget(lhs_overhead),
         ..shape
     };
     let lhs_result = try_opt!(
         lhs.rewrite(context, lhs_shape)
-            .map(|lhs_str| format!("{}{}{}", prefix, lhs_str, infix))
+            .map(|lhs_str| format!("{}{}", prefix, lhs_str))
     );
 
     // Try to the both lhs and rhs on the same line.
     let rhs_orig_result = shape
-        .offset_left(last_line_width(&lhs_result) + suffix.len() + sep.len())
+        .offset_left(last_line_width(&lhs_result) + infix.len())
+        .and_then(|s| s.sub_width(suffix.len()))
         .and_then(|rhs_shape| rhs.rewrite(context, rhs_shape));
     if let Some(ref rhs_result) = rhs_orig_result {
         // If the rhs looks like block expression, we allow it to stay on the same line
@@ -353,33 +389,49 @@ where
             .map(|first_line| first_line.ends_with('{'))
             .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            return Some(format!("{}{}{}{}", lhs_result, sep, rhs_result, suffix));
+            return Some(format!("{}{}{}{}", lhs_result, infix, rhs_result, suffix));
         }
     }
 
     // We have to use multiple lines.
     // Re-evaluate the rhs because we have more space now:
-    let rhs_shape = match context.config.control_style() {
-        Style::Legacy => {
-            try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len())
-        }
+    let mut rhs_shape = try_opt!(match context.config.control_style() {
+        Style::Legacy => shape
+            .sub_width(suffix.len() + prefix.len())
+            .map(|s| s.visual_indent(prefix.len())),
         Style::Rfc => {
             // Try to calculate the initial constraint on the right hand side.
             let rhs_overhead = shape.rhs_overhead(context.config);
-            try_opt!(
-                Shape::indented(shape.indent.block_indent(context.config), context.config)
-                    .sub_width(rhs_overhead)
-            )
+            Shape::indented(shape.indent.block_indent(context.config), context.config)
+                .sub_width(rhs_overhead)
         }
+    });
+    let infix = match separator_place {
+        SeparatorPlace::Back => infix.trim_right(),
+        SeparatorPlace::Front => infix.trim_left(),
     };
+    if separator_place == SeparatorPlace::Front {
+        rhs_shape = try_opt!(rhs_shape.offset_left(infix.len()));
+    }
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
-    Some(format!(
-        "{}\n{}{}{}",
-        lhs_result,
-        rhs_shape.indent.to_string(context.config),
-        rhs_result,
-        suffix
-    ))
+    match separator_place {
+        SeparatorPlace::Back => Some(format!(
+            "{}{}\n{}{}{}",
+            lhs_result,
+            infix,
+            rhs_shape.indent.to_string(context.config),
+            rhs_result,
+            suffix
+        )),
+        SeparatorPlace::Front => Some(format!(
+            "{}\n{}{}{}{}",
+            lhs_result,
+            rhs_shape.indent.to_string(context.config),
+            infix,
+            rhs_result,
+            suffix
+        )),
+    }
 }
 
 pub fn rewrite_array<'a, I>(
