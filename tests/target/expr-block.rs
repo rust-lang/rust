@@ -197,8 +197,8 @@ fn issue_1450() {
 }
 
 fn foo() {
-    if real_total <= limit && !pre_line_comments &&
-        !items.into_iter().any(|item| item.as_ref().is_multiline())
+    if real_total <= limit && !pre_line_comments
+        && !items.into_iter().any(|item| item.as_ref().is_multiline())
     {
         DefinitiveListTactic::Horizontal
     }
