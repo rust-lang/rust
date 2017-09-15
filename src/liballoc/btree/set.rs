@@ -1110,15 +1110,13 @@ impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> {
-        loop {
-            match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
-                Less => return self.a.next(),
-                Equal => {
-                    self.b.next();
-                    return self.a.next();
-                }
-                Greater => return self.b.next(),
+        match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
+            Less => self.a.next(),
+            Equal => {
+                self.b.next();
+                self.a.next()
             }
+            Greater => self.b.next(),
         }
     }
 

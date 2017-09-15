@@ -48,11 +48,12 @@ use time::Duration;
 /// {
 ///     let mut socket = UdpSocket::bind("127.0.0.1:34254")?;
 ///
-///     // read from the socket
+///     // Receives a single datagram message on the socket. If `buf` is too small to hold
+///     // the message, it will be cut off.
 ///     let mut buf = [0; 10];
 ///     let (amt, src) = socket.recv_from(&mut buf)?;
 ///
-///     // send a reply to the socket we received data from
+///     // Redeclare `buf` as slice of the received data and send reverse data back to origin.
 ///     let buf = &mut buf[..amt];
 ///     buf.reverse();
 ///     socket.send_to(buf, &src)?;
@@ -103,8 +104,12 @@ impl UdpSocket {
         super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
     }
 
-    /// Receives data from the socket. On success, returns the number of bytes
-    /// read and the address from whence the data came.
+    /// Receives a single datagram message on the socket. On success, returns the number
+    /// of bytes read and the origin.
+    ///
+    /// The function must be called with valid byte array `buf` of sufficient size to
+    /// hold the message bytes. If a message is too long to fit in the supplied buffer,
+    /// excess bytes may be discarded.
     ///
     /// # Examples
     ///
@@ -115,19 +120,25 @@ impl UdpSocket {
     /// let mut buf = [0; 10];
     /// let (number_of_bytes, src_addr) = socket.recv_from(&mut buf)
     ///                                         .expect("Didn't receive data");
+    /// let filled_buf = &mut buf[..number_of_bytes];
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.recv_from(buf)
     }
 
-    /// Receives data from the socket, without removing it from the queue.
+    /// Receives a single datagram message on the socket, without removing it from the
+    /// queue. On success, returns the number of bytes read and the origin.
+    ///
+    /// The function must be called with valid byte array `buf` of sufficient size to
+    /// hold the message bytes. If a message is too long to fit in the supplied buffer,
+    /// excess bytes may be discarded.
     ///
     /// Successive calls return the same data. This is accomplished by passing
     /// `MSG_PEEK` as a flag to the underlying `recvfrom` system call.
     ///
-    /// On success, returns the number of bytes peeked and the address from
-    /// whence the data came.
+    /// Do not use this function to implement busy waiting, instead use `libc::poll` to
+    /// synchronize IO events on one or more sockets.
     ///
     /// # Examples
     ///
@@ -138,6 +149,7 @@ impl UdpSocket {
     /// let mut buf = [0; 10];
     /// let (number_of_bytes, src_addr) = socket.peek_from(&mut buf)
     ///                                         .expect("Didn't receive data");
+    /// let filled_buf = &mut buf[..number_of_bytes];
     /// ```
     #[stable(feature = "peek", since = "1.18.0")]
     pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
@@ -586,8 +598,11 @@ impl UdpSocket {
     /// receive data from the specified address.
     ///
     /// If `addr` yields multiple addresses, `connect` will be attempted with
-    /// each of the addresses until a connection is successful. If none of
-    /// the addresses are able to be connected, the error returned from the
+    /// each of the addresses until the underlying OS function returns no
+    /// error. Note that usually, a successful `connect` call does not specify
+    /// that there is a remote server listening on the port, rather, such an
+    /// error would only be detected after the first send. If the OS returns an
+    /// error for each of the specified addresses, the error returned from the
     /// last connection attempt (the last address) is returned.
     ///
     /// # Examples
@@ -602,20 +617,10 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// ```
     ///
-    /// Create a UDP socket bound to `127.0.0.1:3400` and connect the socket to
-    /// `127.0.0.1:8080`. If that connection fails, then the UDP socket will
-    /// connect to `127.0.0.1:8081`:
-    ///
-    /// ```no_run
-    /// use std::net::{SocketAddr, UdpSocket};
-    ///
-    /// let socket = UdpSocket::bind("127.0.0.1:3400").expect("couldn't bind to address");
-    /// let connect_addrs = [
-    ///     SocketAddr::from(([127, 0, 0, 1], 8080)),
-    ///     SocketAddr::from(([127, 0, 0, 1], 8081)),
-    /// ];
-    /// socket.connect(&connect_addrs[..]).expect("connect function failed");
-    /// ```
+    /// Unlike in the TCP case, passing an array of addresses to the `connect`
+    /// function of a UDP socket is not a useful thing to do: The OS will be
+    /// unable to determine whether something is listening on the remote
+    /// address without the application sending data.
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
         super::each_addr(addr, |addr| self.0.connect(addr))
@@ -642,8 +647,12 @@ impl UdpSocket {
         self.0.send(buf)
     }
 
-    /// Receives data on the socket from the remote address to which it is
-    /// connected.
+    /// Receives a single datagram message on the socket from the remote address to
+    /// which it is connected. On success, returns the number of bytes read.
+    ///
+    /// The function must be called with valid byte array `buf` of sufficient size to
+    /// hold the message bytes. If a message is too long to fit in the supplied buffer,
+    /// excess bytes may be discarded.
     ///
     /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
@@ -659,7 +668,7 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// let mut buf = [0; 10];
     /// match socket.recv(&mut buf) {
-    ///     Ok(received) => println!("received {} bytes", received),
+    ///     Ok(received) => println!("received {} bytes {:?}", received, &buf[..received]),
     ///     Err(e) => println!("recv function failed: {:?}", e),
     /// }
     /// ```
@@ -668,12 +677,24 @@ impl UdpSocket {
         self.0.recv(buf)
     }
 
-    /// Receives data on the socket from the remote address to which it is
-    /// connected, without removing that data from the queue. On success,
-    /// returns the number of bytes peeked.
+    /// Receives single datagram on the socket from the remote address to which it is
+    /// connected, without removing the message from input queue. On success, returns
+    /// the number of bytes peeked.
+    ///
+    /// The function must be called with valid byte array `buf` of sufficient size to
+    /// hold the message bytes. If a message is too long to fit in the supplied buffer,
+    /// excess bytes may be discarded.
     ///
     /// Successive calls return the same data. This is accomplished by passing
     /// `MSG_PEEK` as a flag to the underlying `recv` system call.
+    ///
+    /// Do not use this function to implement busy waiting, instead use `libc::poll` to
+    /// synchronize IO events on one or more sockets.
+    ///
+    /// The [`connect`] method will connect this socket to a remote address. This
+    /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Errors
     ///
