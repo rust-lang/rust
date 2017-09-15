@@ -22,7 +22,7 @@ use hair::*;
 use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use syntax::ast;
 use syntax_pos::Span;
@@ -291,7 +291,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn build_binary_op(&mut self, mut block: BasicBlock,
-                           op: BinOp, span: Span, ty: ty::Ty<'tcx>,
+                           op: BinOp, span: Span, ty: Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
@@ -378,7 +378,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     // Helper to get a `-1` value of the appropriate type
-    fn neg_1_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+    fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyInt(ity) => {
                 let val = match ity {
@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     // Helper to get the minimum value of the appropriate type
-    fn minval_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+    fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyInt(ity) => {
                 let val = match ity {

@@ -282,7 +282,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 /// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
 fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
-                              self_ty: ty::Ty<'tcx>)
+                              self_ty: Ty<'tcx>)
                               -> Mir<'tcx>
 {
     debug!("build_clone_shim(def_id={:?})", def_id);
@@ -382,7 +382,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![ret_statement], TerminatorKind::Return, false);
     }
 
-    fn make_lvalue(&mut self, mutability: Mutability, ty: ty::Ty<'tcx>) -> Lvalue<'tcx> {
+    fn make_lvalue(&mut self, mutability: Mutability, ty: Ty<'tcx>) -> Lvalue<'tcx> {
         let span = self.span;
         Lvalue::Local(
             self.local_decls.push(temp_decl(mutability, ty, span))
@@ -391,7 +391,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
     fn make_clone_call(
         &mut self,
-        ty: ty::Ty<'tcx>,
+        ty: Ty<'tcx>,
         rcvr_field: Lvalue<'tcx>,
         next: BasicBlock,
         cleanup: BasicBlock
@@ -487,7 +487,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         }
     }
 
-    fn array_shim(&mut self, ty: ty::Ty<'tcx>, len: u64) {
+    fn array_shim(&mut self, ty: Ty<'tcx>, len: u64) {
         let tcx = self.tcx;
         let span = self.span;
         let rcvr = Lvalue::Local(Local::new(1+0)).deref();
@@ -613,7 +613,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![], TerminatorKind::Resume, true);
     }
 
-    fn tuple_shim(&mut self, tys: &ty::Slice<ty::Ty<'tcx>>) {
+    fn tuple_shim(&mut self, tys: &ty::Slice<Ty<'tcx>>) {
         let rcvr = Lvalue::Local(Local::new(1+0)).deref();
 
         let mut returns = Vec::new();

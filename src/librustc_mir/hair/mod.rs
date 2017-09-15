@@ -19,7 +19,7 @@ use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, AdtDef, ClosureSubsts, Region, Ty, GeneratorInterior};
+use rustc::ty::{AdtDef, ClosureSubsts, Region, Ty, GeneratorInterior};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -117,7 +117,7 @@ pub enum ExprKind<'tcx> {
         value: ExprRef<'tcx>,
     },
     Call {
-        ty: ty::Ty<'tcx>,
+        ty: Ty<'tcx>,
         fun: ExprRef<'tcx>,
         args: Vec<ExprRef<'tcx>>,
     },
