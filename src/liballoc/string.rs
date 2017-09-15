@@ -622,6 +622,13 @@ impl String {
     /// Decode a UTF-16 encoded slice `v` into a `String`, replacing
     /// invalid data with the replacement character (U+FFFD).
     ///
+    /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
+    /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
+    /// conversion requires a memory allocation.
+    ///
+    /// [`from_utf8_lossy`]: #method.from_utf8_lossy
+    /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
+    ///
     /// # Examples
     ///
     /// Basic usage:
