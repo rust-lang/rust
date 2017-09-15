@@ -22,11 +22,10 @@ impl DepGraphQuery {
     pub fn new(nodes: &[DepNode],
                edges: &[(DepNode, DepNode)])
                -> DepGraphQuery {
-        let mut graph = Graph::new();
+        let mut graph = Graph::with_capacity(nodes.len(), edges.len());
         let mut indices = FxHashMap();
         for node in nodes {
-            indices.insert(node.clone(), graph.next_node_index());
-            graph.add_node(node.clone());
+            indices.insert(node.clone(), graph.add_node(node.clone()));
         }
 
         for &(ref source, ref target) in edges {

@@ -197,7 +197,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, TypeFoldable, TyCtxt};
+use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::{self, Location};
 use rustc::mir::visit::Visitor as MirVisitor;
@@ -648,7 +648,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 }
 
 fn visit_drop_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                            ty: ty::Ty<'tcx>,
+                            ty: Ty<'tcx>,
                             is_direct_call: bool,
                             output: &mut Vec<TransItem<'tcx>>)
 {
@@ -657,7 +657,7 @@ fn visit_drop_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 }
 
 fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                          ty: ty::Ty<'tcx>,
+                          ty: Ty<'tcx>,
                           is_direct_call: bool,
                           output: &mut Vec<TransItem<'tcx>>)
 {
@@ -776,10 +776,10 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
 /// Finally, there is also the case of custom unsizing coercions, e.g. for
 /// smart pointers such as `Rc` and `Arc`.
 fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                            source_ty: ty::Ty<'tcx>,
-                                            target_ty: ty::Ty<'tcx>)
-                                            -> (ty::Ty<'tcx>, ty::Ty<'tcx>) {
-    let ptr_vtable = |inner_source: ty::Ty<'tcx>, inner_target: ty::Ty<'tcx>| {
+                                            source_ty: Ty<'tcx>,
+                                            target_ty: Ty<'tcx>)
+                                            -> (Ty<'tcx>, Ty<'tcx>) {
+    let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         if !scx.type_is_sized(inner_source) {
             (inner_source, inner_target)
         } else {
@@ -836,8 +836,8 @@ fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> TransItem<'tcx> {
 /// Creates a `TransItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
 fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                                   trait_ty: ty::Ty<'tcx>,
-                                                   impl_ty: ty::Ty<'tcx>,
+                                                   trait_ty: Ty<'tcx>,
+                                                   impl_ty: Ty<'tcx>,
                                                    output: &mut Vec<TransItem<'tcx>>) {
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());

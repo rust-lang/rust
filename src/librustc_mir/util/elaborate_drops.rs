@@ -13,7 +13,7 @@ use rustc::hir;
 use rustc::mir::*;
 use rustc::middle::const_val::{ConstInt, ConstVal};
 use rustc::middle::lang_items;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
@@ -84,7 +84,7 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn mir(&self) -> &'a Mir<'tcx>;
-    fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx>;
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 
     fn drop_style(&self, path: Self::Path, mode: DropFlagMode) -> DropStyle;
@@ -133,7 +133,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         lvalue.ty(self.elaborator.mir(), self.tcx()).to_ty(self.tcx())
     }
 
-    fn tcx(&self) -> ty::TyCtxt<'b, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.elaborator.tcx()
     }
 
