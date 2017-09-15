@@ -252,3 +252,14 @@ corresponding variadic function.
 Currently, Rust does not allow passing a closure to C code expecting a pointer
 to an `extern "C"` function. If this becomes possible in the future, then
 variadic closures would become useful, and we should add them at that time.
+
+This RFC only supports the platform's native `"C"` ABI, not any other ABI. Code
+may wish to define variadic functions for another ABI, and potentially more
+than one such ABI in the same program. However, such support should not
+complicate the common case. LLVM has extremely limited support for this, for
+only a specific pair of platforms (supporting the Windows ABI on platforms that
+use the System V ABI), with no generalized support in the underlying
+intrinsics. The LLVM intrinsics only support using the ABI of the containing
+function. Given the current state of the ecosystem, this RFC only proposes
+supporting the native `"C"` ABI for now. Doing so will not prevent the
+introduction of support for non-native ABIs in the future.
