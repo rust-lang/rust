@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-Make the `assert!` macro generic to all expressions, and extend the readability of debug dumps.
+Make the `assert!` macro recognize more expressions (utilizing the power of procedural macros), and extend the readability of debug dumps.
 
 # Motivation
 [motivation]: #motivation
@@ -118,7 +118,7 @@ With expansion: (a) == (b)'
 [drawbacks]: #drawbacks
 
 - This will generate a wave of deprecation warnings, which will be some cost for users to migrate. However, this doesn't mean that this is backward-incompatible, as long as the deprecated macros aren't removed.
-- This has a potential performance degradation on complex expressions, due to creating more temporaries on stack (or register).
+- This has a potential performance degradation on complex expressions, due to creating more temporaries on stack (or register). However, if this had clear impacts confirmed through benchmarks, we should use some kind of alternative implementation for release builds.
 
 # Alternatives
 [alternatives]: #alternatives
