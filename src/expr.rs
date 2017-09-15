@@ -294,7 +294,7 @@ pub fn format_expr(
                 Some(format!(
                     "{}{}",
                     "do catch ",
-                    try_opt!(block.rewrite(&context, Shape::legacy(budget, shape.indent)))
+                    try_opt!(block.rewrite(context, Shape::legacy(budget, shape.indent)))
                 ))
             }
         }
@@ -3004,17 +3004,17 @@ impl<'a> ToExpr for ast::StructField {
 
 impl<'a> ToExpr for MacroArg {
     fn to_expr(&self) -> Option<&ast::Expr> {
-        match self {
-            &MacroArg::Expr(ref expr) => Some(expr),
+        match *self {
+            MacroArg::Expr(ref expr) => Some(expr),
             _ => None,
         }
     }
 
     fn can_be_overflowed(&self, context: &RewriteContext, len: usize) -> bool {
-        match self {
-            &MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
-            &MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
-            &MacroArg::Pat(..) => false,
+        match *self {
+            MacroArg::Expr(ref expr) => can_be_overflowed_expr(context, expr, len),
+            MacroArg::Ty(ref ty) => can_be_overflowed_type(context, ty, len),
+            MacroArg::Pat(..) => false,
         }
     }
 }

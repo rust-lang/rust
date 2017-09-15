@@ -340,7 +340,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match item.node {
-            ast::ItemKind::Use(ref vp) => self.format_import(&item, vp),
+            ast::ItemKind::Use(ref vp) => self.format_import(item, vp),
             ast::ItemKind::Impl(..) => {
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
@@ -381,7 +381,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Mod(ref module) => {
                 self.format_missing_with_indent(source!(self, item.span).lo());
-                self.format_mod(module, &item.vis, item.span, item.ident, &attrs);
+                self.format_mod(module, &item.vis, item.span, item.ident, attrs);
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.visit_mac(mac, Some(item.ident), MacroPosition::Item);

@@ -114,7 +114,7 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn inner_as_ref(&self) -> &str {
-        self.item.as_ref().map_or("", |s| &*s)
+        self.item.as_ref().map_or("", |s| s)
     }
 
     pub fn is_different_group(&self) -> bool {
