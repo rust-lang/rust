@@ -1703,7 +1703,7 @@ pub fn fence(order: Ordering) {
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 #[inline]
-#[unstable(feature = "compiler_fences", issue = "41091")]
+#[stable(feature = "compiler_fences", since = "1.22.0")]
 pub fn compiler_fence(order: Ordering) {
     unsafe {
         match order {
