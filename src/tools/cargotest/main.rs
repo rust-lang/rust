@@ -67,6 +67,13 @@ const TEST_REPOS: &'static [Test] = &[
         // This takes much less time to build than all of Servo and supports stable Rust.
         packages: &["stylo_tests", "selectors"],
     },
+    Test {
+        name: "webrender",
+        repo: "https://github.com/servo/webrender",
+        sha: "57250b2b8fa63934f80e5376a29f7dcb3f759ad6",
+        lock: None,
+        packages: &[],
+    },
 ];
 
 fn main() {
