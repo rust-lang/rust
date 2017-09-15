@@ -14,7 +14,7 @@ use rustc::infer;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -36,7 +36,7 @@ pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
 
-fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        instance: ty::InstanceDef<'tcx>)
                        -> &'tcx Mir<'tcx>
 {
@@ -154,7 +154,7 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
         .collect()
 }
 
-fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              def_id: DefId,
                              ty: Option<Ty<'tcx>>)
                              -> Mir<'tcx>
@@ -235,7 +235,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 pub struct DropShimElaborator<'a, 'tcx: 'a> {
     pub mir: &'a Mir<'tcx>,
     pub patch: MirPatch<'tcx>,
-    pub tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -250,7 +250,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
     fn mir(&self) -> &'a Mir<'tcx> { self.mir }
-    fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
     fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
@@ -280,7 +280,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Build a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId,
                               self_ty: ty::Ty<'tcx>)
                               -> Mir<'tcx>
@@ -306,7 +306,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct CloneShimBuilder<'a, 'tcx: 'a> {
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -315,7 +315,7 @@ struct CloneShimBuilder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
-    fn new(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Self {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Self {
         let sig = tcx.fn_sig(def_id);
         let sig = tcx.erase_late_bound_regions(&sig);
         let span = tcx.def_span(def_id);
@@ -666,7 +666,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 ///
 /// If `untuple_args` is a vec of types, the second argument of the
 /// function will be untupled as these types.
-fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              def_id: DefId,
                              rcvr_adjustment: Adjustment,
                              call_kind: CallKind,

@@ -386,7 +386,7 @@ impl Integer {
         }
     }
 
-    pub fn to_ty<'a, 'tcx>(&self, tcx: &ty::TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn to_ty<'a, 'tcx>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>,
                            signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I1, false) => tcx.types.u8,

@@ -13,7 +13,7 @@ use hir::def_id::DefId;
 use hir::map::DefPathHash;
 use ich::{self, CachingCodemapView};
 use session::config::DebugInfoLevel::NoDebugInfo;
-use ty;
+use ty::TyCtxt;
 use util::nodemap::{NodeMap, ItemLocalMap};
 
 use std::hash as std_hash;
@@ -34,7 +34,7 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 /// a reference to the TyCtxt) and it holds a few caches for speeding up various
 /// things (e.g. each DefId/DefPath is only hashed once).
 pub struct StableHashingContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     codemap: CachingCodemapView<'gcx>,
     hash_spans: bool,
     hash_bodies: bool,
@@ -53,7 +53,7 @@ pub enum NodeIdHashingMode {
 
 impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
 
-    pub fn new(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         let hash_spans_initial = tcx.sess.opts.debuginfo != NoDebugInfo;
         let check_overflow_initial = tcx.sess.overflow_checks();
 
@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> StableHashingContext<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn tcx(&self) -> ty::TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 

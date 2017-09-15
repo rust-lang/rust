@@ -45,7 +45,7 @@ use super::FnCtxt;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
@@ -586,7 +586,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-fn var_name(tcx: ty::TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
+fn var_name(tcx: TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
     let var_node_id = tcx.hir.hir_to_node_id(var_hir_id);
     tcx.hir.name(var_node_id)
 }
