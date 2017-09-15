@@ -205,23 +205,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             return Ok(false);
         }
         if self.tcx.has_attr(def_id, "linkage") {
-            // FIXME: check that it's `#[linkage = "extern_weak"]`
-            trace!("Initializing an extern global with NULL");
-            let ptr_size = self.memory.pointer_size();
-            let ptr = self.memory.allocate(
-                ptr_size,
-                ptr_size,
-                MemoryKind::UninitializedStatic,
-            )?;
-            self.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
-            self.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
-            self.globals.insert(
-                cid,
-                PtrAndAlign {
-                    ptr: ptr.into(),
-                    aligned: true,
-                },
-            );
+            M::global_item_with_linkage(self, cid.instance, mutability)?;
             return Ok(false);
         }
         let mir = self.load_mir(instance.def)?;
