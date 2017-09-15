@@ -6,6 +6,7 @@ use super::{EvalResult, EvalContext, Lvalue, PrimVal, ValTy};
 
 use rustc::{mir, ty};
 use syntax::codemap::Span;
+use syntax::ast::Mutability;
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied
@@ -70,4 +71,11 @@ pub trait Machine<'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'tcx, Self>,
         ty: ty::Ty<'tcx>,
     ) -> EvalResult<'tcx, PrimVal>;
+
+    /// Called when trying to access a global declared with a `linkage` attribute
+    fn global_item_with_linkage<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        mutability: Mutability,
+    ) -> EvalResult<'tcx>;
 }

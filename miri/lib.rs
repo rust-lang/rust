@@ -239,4 +239,32 @@ impl<'tcx> Machine<'tcx> for Evaluator {
                 .map(PrimVal::Ptr)
         }
     }
+
+    fn global_item_with_linkage<'a>(
+        ecx: &mut EvalContext<'a, 'tcx, Self>,
+        instance: ty::Instance<'tcx>,
+        mutability: Mutability,
+    ) -> EvalResult<'tcx> {
+        // FIXME: check that it's `#[linkage = "extern_weak"]`
+        trace!("Initializing an extern global with NULL");
+        let ptr_size = ecx.memory.pointer_size();
+        let ptr = ecx.memory.allocate(
+            ptr_size,
+            ptr_size,
+            MemoryKind::UninitializedStatic,
+        )?;
+        ecx.memory.write_ptr_sized_unsigned(ptr, PrimVal::Bytes(0))?;
+        ecx.memory.mark_static_initalized(ptr.alloc_id, mutability)?;
+        ecx.globals.insert(
+            GlobalId {
+                instance,
+                promoted: None,
+            },
+            PtrAndAlign {
+                ptr: ptr.into(),
+                aligned: true,
+            },
+        );
+        Ok(())
+    }
 }

@@ -245,4 +245,14 @@ impl<'tcx> super::Machine<'tcx> for CompileTimeFunctionEvaluator {
             ConstEvalError::NeedsRfc("Heap allocations via `box` keyword".to_string()).into(),
         )
     }
+
+    fn global_item_with_linkage<'a>(
+        _ecx: &mut EvalContext<'a, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _mutability: Mutability,
+    ) -> EvalResult<'tcx> {
+        Err(
+            ConstEvalError::NotConst("statics with `linkage` attribute".to_string()).into(),
+        )
+    }
 }
