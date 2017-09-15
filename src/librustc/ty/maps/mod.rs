@@ -15,6 +15,7 @@ use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
+use middle::borrowck::BorrowCheckResult;
 use middle::const_val;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
                      ExternBodyNestedBodies};
@@ -183,7 +184,7 @@ define_maps! { <'tcx>
 
     [] fn coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    [] fn borrowck: BorrowCheck(DefId) -> (),
+    [] fn borrowck: BorrowCheck(DefId) -> Rc<BorrowCheckResult>,
     // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
     [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
 

@@ -38,7 +38,6 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate log;
-extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
 
@@ -129,7 +128,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  NonUpperCaseGlobals,
                  NonShorthandFieldPatterns,
                  UnsafeCode,
-                 UnusedMut,
                  UnusedAllocation,
                  MissingCopyImplementations,
                  UnstableFeatures,

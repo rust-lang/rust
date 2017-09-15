@@ -14,6 +14,20 @@ warning: use of deprecated attribute `no_debug`: the `#[no_debug]` attribute was
    |
    = note: #[warn(deprecated)] on by default
 
+warning: variable does not need to be mutable
+  --> $DIR/suggestions.rs:17:13
+   |
+17 |         let mut a = (1); // should suggest no `mut`, no parens
+   |             ---^^
+   |             |
+   |             help: remove this `mut`
+   |
+note: lint level defined here
+  --> $DIR/suggestions.rs:11:9
+   |
+11 | #![warn(unused_mut)] // UI tests pass `-A unused`—see Issue #43896
+   |         ^^^^^^^^^^
+
 warning: denote infinite loops with `loop { ... }`
   --> $DIR/suggestions.rs:16:5
    |
@@ -28,18 +42,4 @@ warning: denote infinite loops with `loop { ... }`
    | |_____^
    |
    = note: #[warn(while_true)] on by default
-
-warning: variable does not need to be mutable
-  --> $DIR/suggestions.rs:17:13
-   |
-17 |         let mut a = (1); // should suggest no `mut`, no parens
-   |             ---^^
-   |             |
-   |             help: remove this `mut`
-   |
-note: lint level defined here
-  --> $DIR/suggestions.rs:11:9
-   |
-11 | #![warn(unused_mut)] // UI tests pass `-A unused`—see Issue #43896
-   |         ^^^^^^^^^^
 
