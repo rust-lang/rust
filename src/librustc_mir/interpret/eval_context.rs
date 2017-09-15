@@ -488,10 +488,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // `Value` for that.
         let num_locals = mir.local_decls.len() - 1;
 
-        // FIXME: generators produce broken storage annotations (https://github.com/rust-lang/rust/issues/44179)
-        let locals = if mir.generator_layout.is_some() {
-            vec![Some(Value::ByVal(PrimVal::Undef)); num_locals]
-        } else {
+        let locals = {
             let annotated_locals = collect_storage_annotations(mir);
             let mut locals = vec![None; num_locals];
             for i in 0..num_locals {
