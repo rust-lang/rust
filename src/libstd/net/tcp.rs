@@ -167,7 +167,7 @@ impl TcpStream {
     /// connection request.
     ///
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    #[unstable(feature = "tcpstream_connect_timeout", issue = "43079")]
+    #[stable(feature = "tcpstream_connect_timeout", since = "1.22.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
     }
