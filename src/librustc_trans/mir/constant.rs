@@ -1070,15 +1070,7 @@ fn trans_const_adt<'a, 'tcx>(
         layout::Vector { .. } => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
-        layout::RawNullablePointer { nndiscr, .. } => {
-            if variant_index as u64 == nndiscr {
-                assert_eq!(vals.len(), 1);
-                Const::new(vals[0].llval, t)
-            } else {
-                Const::new(C_null(ccx.llvm_type_of(t)), t)
-            }
-        }
-        layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
+        layout::NullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 build_const_struct(ccx, l, &nonnull, vals, None)
             } else {

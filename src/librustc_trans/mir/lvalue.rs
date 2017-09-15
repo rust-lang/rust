@@ -18,7 +18,7 @@ use abi;
 use adt;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_usize, C_u8, C_u32, C_int, C_null, val_ty};
+use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, val_ty};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -210,17 +210,33 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let alignment = self.alignment | Alignment::from(&*l);
 
-        // Handle all the non-aggregate cases first.
+        // Unions and newtypes only use an offset of 0.
         match *l {
-            layout::UntaggedUnion { .. } => {
+            // FIXME(eddyb) The fields of a fat pointer aren't correct, especially
+            // to unsized structs, we can't represent their pointee types in `Ty`.
+            Layout::FatPointer { .. } => {}
+
+            _ if offset == 0 => {
                 let ty = ccx.llvm_type_of(field.ty);
-                return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty, alignment);
+                return LvalueRef {
+                    llval: bcx.pointercast(self.llval, ty.ptr_to()),
+                    llextra: if field.is_unsized() {
+                        self.llextra
+                    } else {
+                        ptr::null_mut()
+                    },
+                    ty: LvalueTy::from_ty(field.ty),
+                    alignment,
+                };
             }
-            // Discriminant field of enums.
+
+            _ => {}
+        }
+
+        // Discriminant field of enums.
+        match *l {
             layout::General { .. } |
-            layout::RawNullablePointer { .. } |
-            layout::StructWrappedNullablePointer { .. } if l.variant_index.is_none() => {
+            layout::NullablePointer { .. } if l.variant_index.is_none() => {
                 let ty = ccx.llvm_type_of(field.ty);
                 let size = field.size(ccx).bytes();
 
@@ -238,22 +254,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 return LvalueRef::new_sized(
                     bcx.inbounds_gep(discr_ptr, &[C_usize(ccx, offset / size)]),
                     field.ty, alignment);
-            }
-            layout::RawNullablePointer { nndiscr, .. } |
-            layout::StructWrappedNullablePointer { nndiscr,  .. }
-                if l.variant_index.unwrap() as u64 != nndiscr => {
-                // The unit-like case might have a nonzero number of unit-like fields.
-                // (e.d., Result of Either with (), as one side.)
-                let ty = ccx.llvm_type_of(field.ty);
-                assert_eq!(field.size(ccx).bytes(), 0);
-                return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty,
-                    Alignment::Packed(Align::from_bytes(1, 1).unwrap()));
-            }
-            layout::RawNullablePointer { .. } => {
-                let ty = ccx.llvm_type_of(field.ty);
-                return LvalueRef::new_sized(
-                    bcx.pointercast(self.llval, ty.ptr_to()), field.ty, alignment);
             }
             _ => {}
         }
@@ -274,7 +274,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         // Check whether the variant being used is packed, if applicable.
         let is_packed = match (&*l, l.variant_index) {
             (&layout::Univariant(ref variant), _) => variant.packed,
-            (&layout::StructWrappedNullablePointer { ref nonnull, .. }, _) => nonnull.packed,
+            (&layout::NullablePointer { ref nonnull, .. }, _) => nonnull.packed,
             (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
             _ => return simple()
         };
@@ -351,10 +351,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     /// Helper for cases where the discriminant is simply loaded.
-    fn load_discr(self, bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
-                  min: u64, max: u64) -> ValueRef {
-        let llty = Type::from_integer(bcx.ccx, ity);
-        assert_eq!(val_ty(ptr), llty.ptr_to());
+    fn load_discr(self, bcx: &Builder, ity: layout::Integer, min: u64, max: u64) -> ValueRef {
         let bits = ity.size().bits();
         assert!(bits <= 64);
         let bits = bits as usize;
@@ -366,11 +363,11 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             // rejected by the LLVM verifier (it would mean either an
             // empty set, which is impossible, or the entire range of the
             // type, which is pointless).
-            bcx.load(ptr, self.alignment.non_abi())
+            bcx.load(self.llval, self.alignment.non_abi())
         } else {
             // llvm::ConstantRange can deal with ranges that wrap around,
             // so an overflow on (max + 1) is fine.
-            bcx.load_range_assert(ptr, min, max.wrapping_add(1), /* signed: */ llvm::True,
+            bcx.load_range_assert(self.llval, min, max.wrapping_add(1), /* signed: */ llvm::True,
                                   self.alignment.non_abi())
         }
     }
@@ -379,17 +376,18 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn trans_get_discr(self, bcx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
         let l = bcx.ccx.layout_of(self.ty.to_ty(bcx.tcx()));
 
+        let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
         let val = match *l {
+            layout::Univariant { .. } |
+            layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
             layout::CEnum { discr, min, max, .. } => {
-                self.load_discr(bcx, discr, self.llval, min, max)
+                self.load_discr(bcx, discr, min, max)
             }
             layout::General { discr, ref variants, .. } => {
                 let ptr = self.project_field(bcx, 0);
-                self.load_discr(bcx, discr, ptr.llval, 0, variants.len() as u64 - 1)
+                ptr.load_discr(bcx, discr, 0, variants.len() as u64 - 1)
             }
-            layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
-            layout::RawNullablePointer { nndiscr, .. } |
-            layout::StructWrappedNullablePointer { nndiscr, .. } => {
+            layout::NullablePointer { nndiscr, .. } => {
                 let ptr = self.project_field(bcx, 0);
                 let lldiscr = bcx.load(ptr.llval, ptr.alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
@@ -397,7 +395,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             },
             _ => bug!("{} is not an enum", l.ty)
         };
-        let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
         bcx.intcast(val, cast_to, adt::is_discr_signed(&l))
     }
 
@@ -424,14 +421,11 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             | layout::Vector { .. } => {
                 assert_eq!(to, 0);
             }
-            layout::RawNullablePointer { nndiscr, .. } |
-            layout::StructWrappedNullablePointer { nndiscr, .. } => {
+            layout::NullablePointer { nndiscr, .. } => {
                 if to != nndiscr {
-                    let use_memset = match *l {
-                        layout::StructWrappedNullablePointer { .. } => {
-                            target_sets_discr_via_memset(bcx)
-                        }
-                        _ => false,
+                    let use_memset = match l.abi {
+                        layout::Abi::Scalar(_) => false,
+                        _ => target_sets_discr_via_memset(bcx)
                     };
                     if use_memset {
                         // Issue #34427: As workaround for LLVM bug on

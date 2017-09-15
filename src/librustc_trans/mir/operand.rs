@@ -115,8 +115,9 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     /// Immediate aggregate with the two values.
     pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
-            // Reconstruct the immediate aggregate.
             let llty = bcx.ccx.llvm_type_of(self.ty);
+            debug!("Operand::pack_if_pair: packing {:?} into {:?}", self, llty);
+            // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
             let elems = [a, b];
             let layout = bcx.ccx.layout_of(self.ty);

@@ -1113,7 +1113,6 @@ struct EnumMemberDescriptionFactory<'tcx> {
     type_rep: FullLayout<'tcx>,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
-    file_metadata: DIFile,
     span: Span,
 }
 
@@ -1189,76 +1188,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            layout::RawNullablePointer { nndiscr, .. } => {
-                // As far as debuginfo is concerned, the pointer this enum
-                // represents is still wrapped in a struct. This is to make the
-                // DWARF representation of enums uniform.
-
-                // First create a description of the artificial wrapper struct:
-                let non_null_variant = &adt.variants[nndiscr as usize];
-                let non_null_variant_name = non_null_variant.name.as_str();
-
-                // The llvm type and metadata of the pointer
-                let nnfield = self.type_rep.for_variant(nndiscr as usize).field(cx, 0);
-                let (size, align) = nnfield.size_and_align(cx);
-                let non_null_type_metadata = type_metadata(cx, nnfield.ty, self.span);
-
-                // For the metadata of the wrapper struct, we need to create a
-                // MemberDescription of the struct's single field.
-                let sole_struct_member_description = MemberDescription {
-                    name: match non_null_variant.ctor_kind {
-                        CtorKind::Fn => "__0".to_string(),
-                        CtorKind::Fictive => {
-                            non_null_variant.fields[0].name.to_string()
-                        }
-                        CtorKind::Const => bug!()
-                    },
-                    type_metadata: non_null_type_metadata,
-                    offset: Size::from_bytes(0),
-                    size,
-                    align,
-                    flags: DIFlags::FlagZero
-                };
-
-                let unique_type_id = debug_context(cx).type_map
-                                                      .borrow_mut()
-                                                      .get_unique_type_id_of_enum_variant(
-                                                          cx,
-                                                          self.enum_type,
-                                                          &non_null_variant_name);
-
-                // Now we can create the metadata of the artificial struct
-                let artificial_struct_metadata =
-                    composite_type_metadata(cx,
-                                            nnfield.ty,
-                                            &non_null_variant_name,
-                                            unique_type_id,
-                                            &[sole_struct_member_description],
-                                            self.containing_scope,
-                                            self.file_metadata,
-                                            syntax_pos::DUMMY_SP);
-
-                // Encode the information about the null variant in the union
-                // member's name.
-                let null_variant_name = adt.variants[(1 - nndiscr) as usize].name;
-                let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                0,
-                                                null_variant_name);
-
-                // Finally create the (singleton) list of descriptions of union
-                // members.
-                vec![
-                    MemberDescription {
-                        name: union_member_name,
-                        type_metadata: artificial_struct_metadata,
-                        offset: Size::from_bytes(0),
-                        size,
-                        align,
-                        flags: DIFlags::FlagZero
-                    }
-                ]
-            },
-            layout::StructWrappedNullablePointer {
+            layout::NullablePointer {
                 nonnull: ref struct_def,
                 nndiscr,
                 discr,
@@ -1537,9 +1467,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::CEnum { discr, signed, .. } => {
             return FinalMetadata(discriminant_type_metadata(discr, signed))
         },
-        layout::RawNullablePointer { .. }           |
-        layout::StructWrappedNullablePointer { .. } |
-        layout::Univariant { .. }                      => None,
+        layout::NullablePointer { .. } | layout::Univariant { .. } => None,
         layout::General { discr, .. } => Some(discriminant_type_metadata(discr, false)),
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
@@ -1575,7 +1503,6 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             type_rep,
             discriminant_type_metadata,
             containing_scope,
-            file_metadata,
             span,
         }),
     );
