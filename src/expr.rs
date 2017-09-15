@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp::{min, Ordering};
+use std::borrow::Cow;
 use std::fmt::Write;
 use std::iter::{repeat, ExactSizeIterator};
 
@@ -1364,10 +1365,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
     }
 }
 
-fn rewrite_label(label: Option<ast::SpannedIdent>) -> String {
+fn rewrite_label(label: Option<ast::SpannedIdent>) -> Cow<'static, str> {
     match label {
-        Some(ident) => format!("{}: ", ident.node),
-        None => "".to_owned(),
+        Some(ident) => Cow::from(format!("{}: ", ident.node)),
+        None => Cow::from(""),
     }
 }
 
@@ -1926,7 +1927,11 @@ fn rewrite_string_lit(context: &RewriteContext, span: Span, shape: Shape) -> Opt
                 string_lit
                     .lines()
                     .map(|line| {
-                        new_indent.to_string(context.config) + line.trim_left()
+                        format!(
+                            "{}{}",
+                            new_indent.to_string(context.config),
+                            line.trim_left()
+                        )
                     })
                     .collect::<Vec<_>>()
                     .join("\n")

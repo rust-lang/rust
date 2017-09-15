@@ -289,7 +289,7 @@ where
             inner_item.as_ref()
         };
         let mut item_last_line_width = item_last_line.len() + item_sep_len;
-        if item_last_line.starts_with(indent_str) {
+        if item_last_line.starts_with(&**indent_str) {
             item_last_line_width -= indent_str.len();
         }
 

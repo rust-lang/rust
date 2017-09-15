@@ -383,7 +383,7 @@ fn indent_macro_snippet(
                                 .checked_sub(min_prefix_space_width)
                                 .unwrap_or(0);
                         let new_indent = Indent::from_width(context.config, new_indent_width);
-                        new_indent.to_string(context.config) + line.trim()
+                        format!("{}{}", new_indent.to_string(context.config), line.trim())
                     }
                     None => String::new(),
                 })
