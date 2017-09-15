@@ -120,16 +120,16 @@ could take a cue from raw strings and allow repetition for internal `#`, like
 `r##my #1 ident##`.  That doesn't allow a leading `#` or `"` though.
 
 A different possibility is to use backticks for a string-like `` `ident` ``,
-like [Swift] and [Kotlin].  If it allows non-identifier chars, it could embrace
-escapes like `\u`, and have a raw-string-identifier `` r`slash\ident` `` and
-even `` r#`tick`ident`# ``.  However, backtick identifiers are annoying to
-write in markdown. (e.g. ``` `` `ident` `` ```)
+like [Kotlin], [Scala], and [Swift].  If it allows non-identifier chars, it
+could embrace escapes like `\u`, and have a raw-string-identifier ``
+r`slash\ident` `` and even `` r#`tick`ident`# ``.  However, backtick identifiers
+are annoying to write in markdown. (e.g. ``` `` `ident` `` ```)
 
 Backslashes could connote escaping identifiers, like `\ident`, perhaps
 surrounded like `\ident\`, `\{ident}`, etc.  However, the infix RFC #1579
 currently seems to be leaning towards `\op` syntax already.
 
-Alternatives which already start legal tokens, like C#'s `@ident`, or alternate
+Alternatives which already start legal tokens, like [C#]'s `@ident`, or alternate
 prefixes like `identifier#catch`, break Macros 1.0 as [@kennytm demonstrated]:
 
 ```
@@ -142,6 +142,10 @@ x!(@catch);
 x!(identifier#catch);
 x!(keyword#catch);
 ```
+
+C# allows Unicode escapes directly in identifiers, which also separates them
+from keywords, so both `@catch` and `cl\u0061ss` are valid `class` identifiers.
+Java also allows Unicode escapes, but they don't avoid keywords.
 
 For some new keywords, there may be contextual mitigations. In the case of
 `catch`, it couldn't be a fully contextual keyword because `catch { ... }` could
@@ -156,8 +160,10 @@ particular case is already served well enough by `do catch { ... }`, if we
 choose to stabilize it that way.  Perhaps `br#keyword` could be used for this,
 but that may not be a good intuitive relationship.
 
-[Swift]: https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/LexicalStructure.html
+[C#]: https://msdn.microsoft.com/en-us/library/aa664670(v=vs.71).aspx
 [Kotlin]: https://kotlinlang.org/docs/reference/grammar.html
+[Scala]: https://www.scala-lang.org/files/archive/spec/2.13/01-lexical-syntax.html#identifiers
+[Swift]: https://developer.apple.com/library/content/documentation/Swift/Conceptual/Swift_Programming_Language/LexicalStructure.html
 [@kennytm demonstrated]: https://internals.rust-lang.org/t/pre-rfc-raw-identifiers/5502/28
 
 # Unresolved questions
