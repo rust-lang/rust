@@ -245,7 +245,7 @@ A valid registry index meets the following criteria:
     - `name`: the name of the crate
     - `vers`: the version of the crate this row is describing
     - `deps`: a list of all dependencies of this crate
-    - `cksum`: a checksum of the tarball downloaded
+    - `cksum`: a SHA256 checksum of the tarball downloaded
     - `features`: a list of the features available from this crate
     - `yanked`: whether or not this version has been yanked
 
