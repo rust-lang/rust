@@ -308,6 +308,19 @@ In order to make working with multiple registries more convenient, we would also
 
 - Being able to use environment variables to specify values in `.cargo/credentials` in the same way
   that you can use environment variables to specify values in `.cargo/config`
+- For registries that don't require any authentication to access, such as public registries or
+  registries only accessible within a firewall, we could support a shorthand where the index
+  location (or API location when that is supported) is specified entirely within a crate dependency:
+
+  ```toml
+  [dependencies]
+  my-crate = { version = "1.0", registry = "http://crate-mirror.org/index" }
+  ```
+
+  In order to discourage/disallow credentials checked in to `Cargo.toml`, if the URL contains a
+  username or password, Cargo will deliberately remove it. If the registry is then inaccessible,
+  the error message will mention that usernames and passwords in URLs in `Cargo.toml` are not
+  allowed.
 
 # Drawbacks
 [drawbacks]: #drawbacks
