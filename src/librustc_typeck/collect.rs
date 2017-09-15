@@ -221,6 +221,10 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     fn set_tainted_by_errors(&self) {
         // no obvious place to track this, just let it go
     }
+
+    fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {
+        // no place to record types from signatures?
+    }
 }
 
 fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

@@ -207,6 +207,13 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }
+
+    fn visit_ty(&mut self, hir_ty: &'gcx hir::Ty) {
+        intravisit::walk_ty(self, hir_ty);
+        let ty = self.fcx.node_ty(hir_ty.hir_id);
+        let ty = self.resolve(&ty, &hir_ty.span);
+        self.write_ty_to_tables(hir_ty.hir_id, ty);
+    }
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
