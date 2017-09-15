@@ -184,7 +184,7 @@ A valid registry index meets the following criteria:
   {
     "dl": "https://my-crates-server.com/api/v1/crates",
     "api": "https://my-crates-server.com/",
-    "allowed-registries": ["https://crates.io", "https://my-other-crates-server.com"]
+    "allowed-registries": ["https://github.com/rust-lang/crates.io-index", "https://my-intranet:8080/index"]
   }
   ```
 
