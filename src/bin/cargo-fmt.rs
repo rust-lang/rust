@@ -248,7 +248,7 @@ fn get_targets(workspace_hitlist: &WorkspaceHitlist) -> Result<Vec<Target>, std:
                 hitlist.take(&member_name.to_string()).is_some()
             })
             .collect();
-        if hitlist.is_empty() {
+        if !hitlist.is_empty() {
             // Mimick cargo of only outputting one <package> spec.
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
