@@ -416,6 +416,7 @@ pub type CrateConfig = HirVec<P<MetaItem>>;
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
 ///
+/// For more details, see [the module-level README](README.md).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
@@ -935,9 +936,9 @@ pub struct BodyId {
 /// (which is an expression), but also the argument patterns, since
 /// those are something that the caller doesn't really care about.
 ///
-/// Example:
+/// # Examples
 ///
-/// ```rust
+/// ```
 /// fn foo((x, y): (u32, u32)) -> u32 {
 ///     x + y
 /// }

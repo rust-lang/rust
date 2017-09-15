@@ -45,10 +45,10 @@ The other reason to setup the representation this way is for better
 integration with incremental compilation. This way, if you gain access
 to a `&hir::Item` (e.g. for the mod `foo`), you do not immediately
 gain access to the contents of the function `bar()`. Instead, you only
-gain access to the **id** for `bar()`, and you must some function to
-lookup the contents of `bar()` given its id; this gives us a change to
-observe that you accessed the data for `bar()` and record the
-dependency.
+gain access to the **id** for `bar()`, and you must invoke some
+function to lookup the contents of `bar()` given its id; this gives us
+a chance to observe that you accessed the data for `bar()` and record
+the dependency.
 
 ### Identifiers in the HIR
 
@@ -117,7 +117,3 @@ associated with an **owner**, which is typically some kind of item
 (e.g., `|x, y| x + y`). You can use the HIR map to find find the body
 associated with a given def-id (`maybe_body_owned_by()`) or to find
 the owner of a body (`body_owner_def_id()`).
-
-
-
-

@@ -21,7 +21,7 @@ tcx: TyCtxt<'a, 'gcx, 'tcx>
 
 As you can see, the `TyCtxt` type takes three lifetime parameters.
 These lifetimes are perhaps the most complex thing to understand about
-the tcx. During rust compilation, we allocate most of our memory in
+the tcx. During Rust compilation, we allocate most of our memory in
 **arenas**, which are basically pools of memory that get freed all at
 once. When you see a reference with a lifetime like `'tcx` or `'gcx`,
 you know that it refers to arena-allocated data (or data that lives as
@@ -70,18 +70,24 @@ fn maybe_in_inference<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId
 
 ### Allocating and working with types
 
-Rust types are represented using the `ty::Ty<'tcx>` type. This is in fact a simple type alias
-for a reference with `'tcx` lifetime:
+Rust types are represented using the `Ty<'tcx>` defined in the `ty`
+module (not to be confused with the `Ty` struct from [the HIR]). This
+is in fact a simple type alias for a reference with `'tcx` lifetime:
 
 ```rust
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 ```
 
-The `TyS` struct defines the actual details of how a type is
-represented. The most interesting part of it is the `sty` field, which
-contains an enum that lets us test what sort of type this is. For
-example, it is very common to see code that tests what sort of type you have
-that looks roughly like so:
+[the HIR]: ../hir/README.md
+
+You can basically ignore the `TyS` struct -- you will basically never
+access it explicitly. We always pass it by reference using the
+`Ty<'tcx>` alias -- the only exception I think is to define inherent
+methods on types. Instances of `TyS` are only ever allocated in one of
+the rustc arenas (never e.g. on the stack).
+
+One common operation on types is to **match** and see what kinds of
+types they are. This is done by doing `match ty.sty`, sort of like this:
 
 ```rust
 fn test_type<'tcx>(ty: Ty<'tcx>) {
@@ -92,10 +98,14 @@ fn test_type<'tcx>(ty: Ty<'tcx>) {
 }
 ```
 
-(Note though that doing such low-level tests on types during inference
-can be risky, as there are may be inference variables and other things
-to consider, or sometimes types are not yet known that will become
-known later.).
+The `sty` field (the origin of this name is unclear to me; perhaps
+structural type?) is of type `TypeVariants<'tcx>`, which is an enum
+definined all of the different kinds of types in the compiler.
+
+> NB: inspecting the `sty` field on types during type inference can be
+> risky, as there are may be inference variables and other things to
+> consider, or sometimes types are not yet known that will become
+> known later.).
 
 To allocate a new type, you can use the various `mk_` methods defined
 on the `tcx`. These have names that correpond mostly to the various kinds
@@ -114,13 +124,13 @@ any inference variables or other "temporary" types, they will be
 allocated in the global arena). However, the lifetime `'tcx` is always
 a safe approximation, so that is what you get back.
 
-NB. Because types are interned, it is possible to compare them for
-equality efficiently using `==` -- however, this is almost never what
-you want to do unless you happen to be hashing and looking for
-duplicates. This is because often in Rust there are multiple ways to
-represent the same type, particularly once inference is involved. If
-you are going to be testing for type equality, you probably need to
-start looking into the inference code to do it right.
+> NB. Because types are interned, it is possible to compare them for
+> equality efficiently using `==` -- however, this is almost never what
+> you want to do unless you happen to be hashing and looking for
+> duplicates. This is because often in Rust there are multiple ways to
+> represent the same type, particularly once inference is involved. If
+> you are going to be testing for type equality, you probably need to
+> start looking into the inference code to do it right.
 
 You can also find various common types in the tcx itself by accessing
 `tcx.types.bool`, `tcx.types.char`, etc (see `CommonTypes` for more).
@@ -153,7 +163,3 @@ In particular, since they are so common, the `Ty` and `TyCtxt` types
 are imported directly. Other types are often referenced with an
 explicit `ty::` prefix (e.g., `ty::TraitRef<'tcx>`). But some modules
 choose to import a larger or smaller set of names explicitly.
-
-
-
-
