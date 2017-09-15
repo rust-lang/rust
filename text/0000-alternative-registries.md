@@ -306,6 +306,9 @@ In order to make working with multiple registries more convenient, we would also
   > use the `rand` crate but call it `random` instead can now write `random = { version = "0.3",
   > crate = "rand" }`.
 
+- Being able to use environment variables to specify values in `.cargo/credentials` in the same way
+  that you can use environment variables to specify values in `.cargo/config`
+
 # Drawbacks
 [drawbacks]: #drawbacks
 
