@@ -1580,7 +1580,7 @@ pub enum SizedByDefault { Yes, No, }
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        param_ty: ty::Ty<'tcx>,
+                                        param_ty: Ty<'tcx>,
                                         ast_bounds: &[hir::TyParamBound],
                                         sized_by_default: SizedByDefault,
                                         span: Span)
@@ -1673,7 +1673,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     // ABIs are handled at all correctly.
     if abi != abi::Abi::RustIntrinsic && abi != abi::Abi::PlatformIntrinsic
             && !tcx.sess.features.borrow().simd_ffi {
-        let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
+        let check = |ast_ty: &hir::Ty, ty: Ty| {
             if ty.is_simd() {
                 tcx.sess.struct_span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \

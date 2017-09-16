@@ -644,7 +644,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
+    pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
