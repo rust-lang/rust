@@ -738,5 +738,103 @@ error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec
     |
     = note: `-D iter-cloned-collect` implied by `-D warnings`
 
-error: aborting due to 107 previous errors
+error: you should use the `starts_with` method
+   --> $DIR/methods.rs:553:8
+    |
+553 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.starts_with('f')`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:553:8
+    |
+553 |     if s.chars().next().unwrap() == 'f' { // s.starts_with('f')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:556:8
+    |
+556 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
+    |
+    = note: `-D chars-last-cmp` implied by `-D warnings`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:556:8
+    |
+556 |     if s.chars().next_back().unwrap() == 'o' { // s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:559:8
+    |
+559 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `s.ends_with('o')`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:559:8
+    |
+559 |     if s.chars().last().unwrap() == 'o' { // s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `starts_with` method
+   --> $DIR/methods.rs:562:8
+    |
+562 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.starts_with('f')`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:562:8
+    |
+562 |     if s.chars().next().unwrap() != 'f' { // !s.starts_with('f')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:565:8
+    |
+565 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:565:8
+    |
+565 |     if s.chars().next_back().unwrap() != 'o' { // !s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:568:8
+    |
+568 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!s.ends_with('o')`
+
+error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
+   --> $DIR/methods.rs:568:8
+    |
+568 |     if s.chars().last().unwrap() != 'o' { // !s.ends_with('o')
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:575:5
+    |
+575 |     "".chars().last() == Some(' ');
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:576:5
+    |
+576 |     Some(' ') != "".chars().last();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:577:5
+    |
+577 |     "".chars().next_back() == Some(' ');
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `"".ends_with(' ')`
+
+error: you should use the `ends_with` method
+   --> $DIR/methods.rs:578:5
+    |
+578 |     Some(' ') != "".chars().next_back();
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: like this: `!"".ends_with(' ')`
+
+error: aborting due to 123 previous errors
 
