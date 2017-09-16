@@ -1575,6 +1575,7 @@ dependencies = [
  "rustc_resolve 0.0.0",
  "rustc_save_analysis 0.0.0",
  "rustc_trans 0.0.0",
+ "rustc_trans_traits 0.0.0",
  "rustc_trans_utils 0.0.0",
  "rustc_typeck 0.0.0",
  "serialize 0.0.0",
@@ -1769,10 +1770,21 @@ dependencies = [
  "rustc_incremental 0.0.0",
  "rustc_llvm 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
+ "rustc_trans_traits 0.0.0",
  "rustc_trans_utils 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_trans_traits"
+version = "0.0.0"
+dependencies = [
+ "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc 0.0.0",
+ "rustc_back 0.0.0",
+ "rustc_incremental 0.0.0",
 ]
 
 [[package]]

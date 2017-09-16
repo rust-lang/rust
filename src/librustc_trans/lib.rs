@@ -50,6 +50,7 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
+extern crate rustc_trans_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_demangle;
 extern crate jobserver;
@@ -137,6 +138,60 @@ mod tvec;
 mod type_;
 mod type_of;
 mod value;
+
+use rustc::ty::{self, TyCtxt, CrateAnalysis};
+use rustc::session::Session;
+use rustc::session::config::OutputFilenames;
+use rustc::middle::cstore::MetadataLoader;
+use rustc::dep_graph::DepGraph;
+use rustc_incremental::IncrementalHashesMap;
+
+pub struct LlvmTransCrate(());
+
+impl LlvmTransCrate {
+    pub fn new() -> Self {
+        LlvmTransCrate(())
+    }
+}
+
+impl rustc_trans_traits::TransCrate for LlvmTransCrate {
+    type MetadataLoader = metadata::LlvmMetadataLoader;
+    type OngoingCrateTranslation = back::write::OngoingCrateTranslation;
+    type TranslatedCrate = CrateTranslation;
+
+    fn metadata_loader() -> Box<MetadataLoader> {
+        box metadata::LlvmMetadataLoader
+    }
+
+    fn provide(providers: &mut ty::maps::Providers) {
+        back::symbol_names::provide(providers);
+    }
+
+    fn trans_crate<'a, 'tcx>(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        analysis: CrateAnalysis,
+        incr_hashes_map: IncrementalHashesMap,
+        output_filenames: &OutputFilenames
+    ) -> Self::OngoingCrateTranslation {
+        base::trans_crate(tcx, analysis, incr_hashes_map, output_filenames)
+    }
+
+    fn join_trans(
+        trans: Self::OngoingCrateTranslation,
+        sess: &Session,
+        dep_graph: &DepGraph
+    ) -> Self::TranslatedCrate {
+        trans.join(sess, dep_graph)
+    }
+
+    fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames) {
+        back::link::link_binary(sess, trans, outputs, &trans.crate_name.as_str());
+    }
+
+    fn dump_incremental_data(trans: &Self::TranslatedCrate) {
+        back::write::dump_incremental_data(trans);
+    }
+}
 
 pub struct ModuleTranslation {
     /// The name of the module. When the crate may be saved between
