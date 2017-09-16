@@ -28,7 +28,6 @@
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(generic_param_attrs)]
-#![feature(needs_drop)]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]
