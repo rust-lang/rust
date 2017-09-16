@@ -22,7 +22,7 @@ use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {adt, base};
+use base;
 use abi::{self, Abi};
 use callee;
 use builder::Builder;
@@ -682,11 +682,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                         let ll_t_out = self.ccx.immediate_llvm_type_of(cast_ty);
                         let llval = operand.llval;
-                        let signed = if let CastTy::Int(IntTy::CEnum) = r_t_in {
-                            let l = self.ccx.layout_of(operand.ty);
-                            adt::is_discr_signed(&l)
-                        } else {
-                            operand.ty.is_signed()
+                        let signed = match self.ccx.layout_of(operand.ty).abi {
+                            layout::Abi::Scalar(layout::Int(_, signed)) => signed,
+                            _ => false
                         };
 
                         unsafe {

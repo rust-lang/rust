@@ -498,7 +498,7 @@ impl<'a, 'tcx> Integer {
 
         let wanted = align.abi();
         for &candidate in &[I8, I16, I32, I64] {
-            let ty = Int(candidate);
+            let ty = Int(candidate, false);
             if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
                 return Some(candidate);
             }
@@ -577,7 +577,14 @@ impl<'a, 'tcx> Integer {
 /// Fundamental unit of memory access and layout.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Primitive {
-    Int(Integer),
+    /// The `bool` is the signedness of the `Integer` type.
+    ///
+    /// One would think we would not care about such details this low down,
+    /// but some ABIs are described in terms of C types and ISAs where the
+    /// integer arithmetic is done on {sign,zero}-extended registers, e.g.
+    /// a negative integer passed by zero-extension will appear positive in
+    /// the callee, and most operations on it will produce the wrong values.
+    Int(Integer, bool),
     F32,
     F64,
     Pointer
@@ -588,11 +595,9 @@ impl<'a, 'tcx> Primitive {
         let dl = cx.data_layout();
 
         match self {
-            Int(I1) | Int(I8) => Size::from_bits(8),
-            Int(I16) => Size::from_bits(16),
-            Int(I32) | F32 => Size::from_bits(32),
-            Int(I64) | F64 => Size::from_bits(64),
-            Int(I128) => Size::from_bits(128),
+            Int(i, _) => i.size(),
+            F32 => Size::from_bits(32),
+            F64 => Size::from_bits(64),
             Pointer => dl.pointer_size
         }
     }
@@ -601,12 +606,7 @@ impl<'a, 'tcx> Primitive {
         let dl = cx.data_layout();
 
         match self {
-            Int(I1) => dl.i1_align,
-            Int(I8) => dl.i8_align,
-            Int(I16) => dl.i16_align,
-            Int(I32) => dl.i32_align,
-            Int(I64) => dl.i64_align,
-            Int(I128) => dl.i128_align,
+            Int(i, _) => i.align(dl),
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             Pointer => dl.pointer_align
@@ -615,7 +615,7 @@ impl<'a, 'tcx> Primitive {
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
-            Int(i) => i.to_ty(tcx, false),
+            Int(i, signed) => i.to_ty(tcx, signed),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_nil()),
@@ -1098,7 +1098,6 @@ pub enum Layout {
     /// C-like enums; basically an integer.
     CEnum {
         discr: Primitive,
-        signed: bool,
         /// Inclusive discriminant range.
         /// If min > max, it represents min...u64::MAX followed by 0...max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
@@ -1287,7 +1286,7 @@ impl<'a, 'tcx> Layout {
                 let metadata = match unsized_part.sty {
                     ty::TyForeign(..) => return Ok(Scalar(Pointer)),
                     ty::TySlice(_) | ty::TyStr => {
-                        Int(dl.ptr_sized_integer())
+                        Int(dl.ptr_sized_integer(), false)
                     }
                     ty::TyDynamic(..) => Pointer,
                     _ => return Err(LayoutError::Unknown(unsized_part))
@@ -1298,13 +1297,13 @@ impl<'a, 'tcx> Layout {
 
         let layout = match ty.sty {
             // Basic scalars.
-            ty::TyBool => Scalar(Int(I1)),
-            ty::TyChar => Scalar(Int(I32)),
+            ty::TyBool => Scalar(Int(I1, false)),
+            ty::TyChar => Scalar(Int(I32, false)),
             ty::TyInt(ity) => {
-                Scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity))))
+                Scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity)), true))
             }
             ty::TyUint(ity) => {
-                Scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity))))
+                Scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity)), false))
             }
             ty::TyFloat(FloatTy::F32) => Scalar(F32),
             ty::TyFloat(FloatTy::F64) => Scalar(F64),
@@ -1453,8 +1452,7 @@ impl<'a, 'tcx> Layout {
                     // grok.
                     let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
                     return success(CEnum {
-                        discr: Int(discr),
-                        signed,
+                        discr: Int(discr, signed),
                         // FIXME: should be u128?
                         min: min as u64,
                         max: max as u64
@@ -1629,8 +1627,8 @@ impl<'a, 'tcx> Layout {
                     ity = min_ity;
                 } else {
                     // Patch up the variants' first few fields.
-                    let old_ity_size = Int(min_ity).size(dl);
-                    let new_ity_size = Int(ity).size(dl);
+                    let old_ity_size = min_ity.size();
+                    let new_ity_size = ity.size();
                     for variant in &mut variants {
                         for i in variant.offsets.iter_mut() {
                             if *i <= old_ity_size {
@@ -1646,7 +1644,7 @@ impl<'a, 'tcx> Layout {
                 }
 
                 General {
-                    discr: Int(ity),
+                    discr: Int(ity, false),
                     variants,
                     size,
                     align,
@@ -2417,9 +2415,8 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
             FatPointer(ref metadata) => {
                 metadata.hash_stable(hcx, hasher);
             }
-            CEnum { discr, signed, min, max } => {
+            CEnum { discr, min, max } => {
                 discr.hash_stable(hcx, hasher);
-                signed.hash_stable(hcx, hasher);
                 min.hash_stable(hcx, hasher);
                 max.hash_stable(hcx, hasher);
             }
@@ -2505,7 +2502,7 @@ impl_stable_hash_for!(enum ::ty::layout::Integer {
 });
 
 impl_stable_hash_for!(enum ::ty::layout::Primitive {
-    Int(integer),
+    Int(integer, signed),
     F32,
     F64,
     Pointer

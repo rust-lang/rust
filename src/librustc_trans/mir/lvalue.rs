@@ -352,7 +352,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     /// Helper for cases where the discriminant is simply loaded.
     fn load_discr(self, bcx: &Builder, discr: layout::Primitive, min: u64, max: u64) -> ValueRef {
-        if let layout::Int(ity) = discr {
+        if let layout::Int(ity, _) = discr {
             let bits = ity.size().bits();
             assert!(bits <= 64);
             let bits = bits as usize;
@@ -380,25 +380,30 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let l = bcx.ccx.layout_of(self.ty.to_ty(bcx.tcx()));
 
         let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
-        let val = match *l {
+        let (val, discr) = match *l {
             layout::Univariant { .. } |
             layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
             layout::CEnum { discr, min, max, .. } => {
-                self.load_discr(bcx, discr, min, max)
+                (self.load_discr(bcx, discr, min, max), discr)
             }
             layout::General { discr, ref variants, .. } => {
                 let ptr = self.project_field(bcx, 0);
-                ptr.load_discr(bcx, discr, 0, variants.len() as u64 - 1)
+                (ptr.load_discr(bcx, discr, 0, variants.len() as u64 - 1), discr)
             }
             layout::NullablePointer { nndiscr, .. } => {
                 let ptr = self.project_field(bcx, 0);
                 let lldiscr = bcx.load(ptr.llval, ptr.alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                bcx.icmp(cmp, lldiscr, C_null(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx()))))
+                (bcx.icmp(cmp, lldiscr, C_null(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())))),
+                 layout::Int(layout::I1, false))
             },
             _ => bug!("{} is not an enum", l.ty)
         };
-        bcx.intcast(val, cast_to, adt::is_discr_signed(&l))
+        let signed = match discr {
+            layout::Int(_, signed) => signed,
+            _ => false
+        };
+        bcx.intcast(val, cast_to, signed)
     }
 
     /// Set the discriminant for a new value of the given case of the given

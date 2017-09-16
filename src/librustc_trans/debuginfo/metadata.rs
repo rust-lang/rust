@@ -1422,7 +1422,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |discr: layout::Primitive, signed: bool| {
+    let discriminant_type_metadata = |discr: layout::Primitive| {
         let disr_type_key = (enum_def_id, discr);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
@@ -1433,12 +1433,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let (discriminant_size, discriminant_align) =
                     (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
-                    type_metadata(cx,
-                                  match discr {
-                                    layout::Int(i) => i.to_ty(cx.tcx(), signed),
-                                    _ => discr.to_ty(cx.tcx())
-                                  },
-                                  syntax_pos::DUMMY_SP);
+                    type_metadata(cx, discr.to_ty(cx.tcx()), syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
                 let name = CString::new(discriminant_name.as_bytes()).unwrap();
@@ -1467,11 +1462,11 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let type_rep = cx.layout_of(enum_type);
 
     let discriminant_type_metadata = match *type_rep {
-        layout::CEnum { discr, signed, .. } => {
-            return FinalMetadata(discriminant_type_metadata(discr, signed))
+        layout::CEnum { discr, .. } => {
+            return FinalMetadata(discriminant_type_metadata(discr))
         },
         layout::NullablePointer { .. } | layout::Univariant { .. } => None,
-        layout::General { discr, .. } => Some(discriminant_type_metadata(discr, false)),
+        layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
 

@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{Layout, LayoutOf};
+use rustc::ty::layout::{self, Layout, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
@@ -271,7 +271,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let ll_t_out = bcx.ccx.immediate_llvm_type_of(cast_ty);
                         let llval = operand.immediate();
                         let l = bcx.ccx.layout_of(operand.ty);
-                        let signed = if let Layout::CEnum { signed, min, max, .. } = *l {
+
+                        if let Layout::CEnum { min, max, .. } = *l {
                             if max > min {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
@@ -280,13 +281,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
                                     llval,
-                                    C_uint(common::val_ty(llval), max)
+                                    C_uint(ll_t_in, max)
                                 ));
                             }
+                        }
 
-                            signed
-                        } else {
-                            operand.ty.is_signed()
+                        let signed = match l.abi {
+                            layout::Abi::Scalar(layout::Int(_, signed)) => signed,
+                            _ => false
                         };
 
                         let newval = match (r_t_in, r_t_out) {
