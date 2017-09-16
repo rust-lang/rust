@@ -114,6 +114,13 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         }
     }
 
+    pub fn with_capacity(nodes: usize, edges: usize) -> Graph<N, E> {
+        Graph {
+            nodes: SnapshotVec::with_capacity(nodes),
+            edges: SnapshotVec::with_capacity(edges),
+        }
+    }
+
     // # Simple accessors
 
     #[inline]
