@@ -27,8 +27,8 @@ build: false
 
 test_script:
     - set RUST_BACKTRACE=1
-    - cargo build
-    - cargo test
+    - cargo build --locked --release
+    - cargo test --locked --release
 
 notifications:
     - provider: Email
