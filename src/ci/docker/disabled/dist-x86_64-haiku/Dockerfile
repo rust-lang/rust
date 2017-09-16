@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   zlib1g-dev
 
-COPY dist-x86_64-haiku/llvm-config /bin/llvm-config-haiku
+COPY dist-x86_64-haiku/llvm-config.sh /bin/llvm-config-haiku
 
 ENV ARCH=x86_64
 
