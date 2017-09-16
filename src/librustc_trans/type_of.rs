@@ -242,7 +242,6 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
         }
         match **self {
             Layout::Scalar { .. } |
-            Layout::CEnum { .. } |
             Layout::UntaggedUnion { .. } => {
                 bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
             }

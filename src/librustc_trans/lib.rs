@@ -25,6 +25,7 @@
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(i128)]
+#![feature(inclusive_range)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

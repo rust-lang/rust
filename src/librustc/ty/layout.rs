@@ -25,7 +25,7 @@ use std::fmt;
 use std::i64;
 use std::iter;
 use std::mem;
-use std::ops::{Deref, Add, Sub, Mul, AddAssign};
+use std::ops::{Deref, Add, Sub, Mul, AddAssign, RangeInclusive};
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -841,9 +841,9 @@ impl<'a, 'tcx> Struct {
             (&Scalar(Pointer), _) if !layout.ty.is_unsafe_ptr() => {
                 Ok(Some((Size::from_bytes(0), Pointer)))
             }
-            (&CEnum { discr, .. }, &ty::TyAdt(def, _)) => {
+            (&General { discr, .. }, &ty::TyAdt(def, _)) => {
                 if def.discriminants(tcx).all(|d| d.to_u128_unchecked() != 0) {
-                    Ok(Some((Size::from_bytes(0), discr)))
+                    Ok(Some((layout.fields.offset(0), discr)))
                 } else {
                     Ok(None)
                 }
@@ -1095,18 +1095,6 @@ pub enum Layout {
 
     // Remaining variants are all ADTs such as structs, enums or tuples.
 
-    /// C-like enums; basically an integer.
-    CEnum {
-        discr: Primitive,
-        /// Inclusive discriminant range.
-        /// If min > max, it represents min...u64::MAX followed by 0...max.
-        // FIXME(eddyb) always use the shortest range, e.g. by finding
-        // the largest space between two consecutive discriminants and
-        // taking everything else as the (shortest) discriminant range.
-        min: u64,
-        max: u64
-    },
-
     /// Single-case enums, and structs/tuples.
     Univariant(Struct),
 
@@ -1118,6 +1106,12 @@ pub enum Layout {
     /// at a non-0 offset, after where the discriminant would go.
     General {
         discr: Primitive,
+        /// Inclusive wrap-around range of discriminant values, that is,
+        /// if min > max, it represents min..=u64::MAX followed by 0..=max.
+        // FIXME(eddyb) always use the shortest range, e.g. by finding
+        // the largest space between two consecutive discriminants and
+        // taking everything else as the (shortest) discriminant range.
+        discr_range: RangeInclusive<u64>,
         variants: Vec<Struct>,
         size: Size,
         align: Align,
@@ -1240,7 +1234,6 @@ impl<'a, 'tcx> Layout {
                     FieldPlacement::union(def.struct_variant().fields.len())
                 }
 
-                CEnum { .. } |
                 General { .. } => FieldPlacement::union(1),
 
                 NullablePointer { ref discr_offset, .. } => {
@@ -1250,19 +1243,17 @@ impl<'a, 'tcx> Layout {
                 }
             };
             let abi = match *layout {
-                Scalar(value) |
-                CEnum { discr: value, .. } => Abi::Scalar(value),
-
+                Scalar(value) => Abi::Scalar(value),
                 Vector { .. } => Abi::Vector,
 
                 Array { .. } |
                 FatPointer { .. } |
                 Univariant(_) |
-                UntaggedUnion(_) |
-                General { .. } => Abi::Aggregate,
+                UntaggedUnion(_) => Abi::Aggregate,
 
-                NullablePointer { discr, discr_offset, .. } => {
-                    if discr_offset.bytes() == 0 && discr.size(cx) == layout.size(cx) {
+                General { discr, .. } |
+                NullablePointer { discr, .. } => {
+                    if fields.offset(0).bytes() == 0 && discr.size(cx) == layout.size(cx) {
                         Abi::Scalar(discr)
                     } else {
                         Abi::Aggregate
@@ -1431,7 +1422,14 @@ impl<'a, 'tcx> Layout {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                if def.variants.is_empty() {
+                // Cache the field layouts.
+                let variants = def.variants.iter().map(|v| {
+                    v.fields.iter().map(|field| {
+                        cx.layout_of(field.ty(tcx, substs))
+                    }).collect::<Result<Vec<_>, _>>()
+                }).collect::<Result<Vec<_>, _>>()?;
+
+                if variants.is_empty() {
                     // Uninhabitable; represent as unit
                     // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -1439,74 +1437,39 @@ impl<'a, 'tcx> Layout {
                           &def.repr, StructKind::AlwaysSizedUnivariant, ty)?));
                 }
 
-                if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
-                    // All bodies empty -> intlike
-                    let (mut min, mut max) = (i64::max_value(), i64::min_value());
-                    for discr in def.discriminants(tcx) {
-                        let x = discr.to_u128_unchecked() as i64;
-                        if x < min { min = x; }
-                        if x > max { max = x; }
-                    }
-
-                    // FIXME: should handle i128? signed-value based impl is weird and hard to
-                    // grok.
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
-                    return success(CEnum {
-                        discr: Int(discr, signed),
-                        // FIXME: should be u128?
-                        min: min as u64,
-                        max: max as u64
-                    });
-                }
-
-                if !def.is_enum() || (def.variants.len() == 1 &&
-                                      !def.repr.inhibit_enum_layout_opt()) {
+                if !def.is_enum() || (variants.len() == 1 &&
+                                      !def.repr.inhibit_enum_layout_opt() &&
+                                      !variants[0].is_empty()) {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
-                    let kind = if def.is_enum() || def.variants[0].fields.len() == 0{
+                    let kind = if def.is_enum() || variants[0].len() == 0 {
                         StructKind::AlwaysSizedUnivariant
                     } else {
                         let param_env = tcx.param_env(def.did);
-                        let fields = &def.variants[0].fields;
-                        let last_field = &fields[fields.len()-1];
+                        let last_field = def.variants[0].fields.last().unwrap();
                         let always_sized = tcx.type_of(last_field.did)
                           .is_sized(tcx, param_env, DUMMY_SP);
                         if !always_sized { StructKind::MaybeUnsizedUnivariant }
                         else { StructKind::AlwaysSizedUnivariant }
                     };
 
-                    let fields = def.variants[0].fields.iter().map(|field| {
-                        cx.layout_of(field.ty(tcx, substs))
-                    }).collect::<Result<Vec<_>, _>>()?;
                     let layout = if def.is_union() {
                         let mut un = Union::new(dl, &def.repr);
-                        un.extend(dl, fields.iter().map(|&f| Ok(f.layout)), ty)?;
+                        un.extend(dl, variants[0].iter().map(|&f| Ok(f.layout)), ty)?;
                         UntaggedUnion(un)
                     } else {
-                        Univariant(Struct::new(dl, &fields, &def.repr, kind, ty)?)
+                        Univariant(Struct::new(dl, &variants[0], &def.repr, kind, ty)?)
                     };
                     return success(layout);
                 }
 
-                // Since there's at least one
-                // non-empty body, explicit discriminants should have
-                // been rejected by a checker before this point.
-                for (i, v) in def.variants.iter().enumerate() {
-                    if v.discr != ty::VariantDiscr::Relative(i) {
-                        bug!("non-C-like enum {} with specified discriminants",
-                            tcx.item_path_str(def.did));
-                    }
-                }
+                let no_explicit_discriminants = def.variants.iter().enumerate()
+                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i));
 
-                // Cache the substituted and normalized variant field types.
-                let variants = def.variants.iter().map(|v| {
-                    v.fields.iter().map(|field| {
-                        cx.layout_of(field.ty(tcx, substs))
-                    }).collect::<Result<Vec<_>, _>>()
-                }).collect::<Result<Vec<_>, _>>()?;
-
-                if variants.len() == 2 && !def.repr.inhibit_enum_layout_opt() {
+                if variants.len() == 2 &&
+                   !def.repr.inhibit_enum_layout_opt() &&
+                   no_explicit_discriminants {
                     // Nullable pointer optimization
                     let st0 = Struct::new(dl, &variants[0],
                         &def.repr, StructKind::AlwaysSizedUnivariant, ty)?;
@@ -1554,16 +1517,23 @@ impl<'a, 'tcx> Layout {
                     }
                 }
 
-                // The general case.
-                let discr_max = (variants.len() - 1) as i64;
-                assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, ty, &def.repr, 0, discr_max);
+                let (mut min, mut max) = (i64::max_value(), i64::min_value());
+                for discr in def.discriminants(tcx) {
+                    let x = discr.to_u128_unchecked() as i64;
+                    if x < min { min = x; }
+                    if x > max { max = x; }
+                }
+                // FIXME: should handle i128? signed-value based impl is weird and hard to
+                // grok.
+                let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
+
                 let mut align = dl.aggregate_align;
                 let mut primitive_align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
                 // We're interested in the smallest alignment, so start large.
                 let mut start_align = Align::from_bytes(256, 256).unwrap();
+                assert_eq!(Integer::for_abi_align(dl, start_align), None);
 
                 // Create the set of structs that represent each variant.
                 let mut variants = variants.into_iter().map(|fields| {
@@ -1644,7 +1614,10 @@ impl<'a, 'tcx> Layout {
                 }
 
                 General {
-                    discr: Int(ity, false),
+                    discr: Int(ity, signed),
+
+                    // FIXME: should be u128?
+                    discr_range: (min as u64)..=(max as u64),
                     variants,
                     size,
                     align,
@@ -1680,7 +1653,7 @@ impl<'a, 'tcx> Layout {
     pub fn is_unsized(&self) -> bool {
         match *self {
             Scalar(_) | Vector {..} | FatPointer {..} |
-            CEnum {..} | UntaggedUnion {..} | General {..} |
+            UntaggedUnion {..} | General {..} |
             NullablePointer {..} => false,
 
             Array { sized, .. } |
@@ -1720,7 +1693,6 @@ impl<'a, 'tcx> Layout {
                  metadata.size(dl)).abi_align(self.align(dl))
             }
 
-            CEnum { discr, .. } => discr.size(dl),
             General { size, .. } => size,
             UntaggedUnion(ref un) => un.stride(),
 
@@ -1754,7 +1726,6 @@ impl<'a, 'tcx> Layout {
                 Pointer.align(dl).max(metadata.align(dl))
             }
 
-            CEnum { discr, .. } => discr.align(dl),
             Array { align, .. } | General { align, .. } => align,
             UntaggedUnion(ref un) => un.align,
 
@@ -1856,16 +1827,6 @@ impl<'a, 'tcx> Layout {
             }
         };
 
-        let build_primitive_info = |name: ast::Name, value: Primitive| {
-            session::VariantInfo {
-                name: Some(name.to_string()),
-                kind: session::SizeKind::Exact,
-                align: value.align(tcx).abi(),
-                size: value.size(tcx).bytes(),
-                fields: vec![],
-            }
-        };
-
         let build_variant_info = |n: Option<ast::Name>,
                                   flds: &[(ast::Name, Ty<'tcx>)],
                                   s: &Struct| {
@@ -1957,17 +1918,6 @@ impl<'a, 'tcx> Layout {
                 // layout does not currently store info about each
                 // variant...
                 record(adt_kind.into(), None, Vec::new());
-            }
-
-            Layout::CEnum { discr, .. } => {
-                debug!("print-type-size t: `{:?}` adt c-like enum", ty);
-                let variant_infos: Vec<_> =
-                    adt_def.variants.iter()
-                                    .map(|variant_def| {
-                                        build_primitive_info(variant_def.name, discr)
-                                    })
-                                    .collect();
-                record(adt_kind.into(), Some(discr.size(tcx)), variant_infos);
             }
 
             // other cases provide little interesting (i.e. adjustable
@@ -2284,6 +2234,7 @@ impl<'a, 'tcx> FullLayout<'tcx> {
         FullLayout {
             variant_index: Some(variant_index),
             fields,
+            abi: Abi::Aggregate,
             ..*self
         }
     }
@@ -2356,7 +2307,6 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                     match self.variant_index {
                         None => match *self.layout {
                             // Discriminant field for enums (where applicable).
-                            CEnum { discr, .. } |
                             General { discr, .. } |
                             NullablePointer { discr, .. } => {
                                 return [discr.to_ty(tcx)][i];
@@ -2416,19 +2366,23 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
             FatPointer(ref metadata) => {
                 metadata.hash_stable(hcx, hasher);
             }
-            CEnum { discr, min, max } => {
-                discr.hash_stable(hcx, hasher);
-                min.hash_stable(hcx, hasher);
-                max.hash_stable(hcx, hasher);
-            }
             Univariant(ref variant) => {
                 variant.hash_stable(hcx, hasher);
             }
             UntaggedUnion(ref un) => {
                 un.hash_stable(hcx, hasher);
             }
-            General { discr, ref variants, size, align, primitive_align } => {
+            General {
+                discr,
+                discr_range: RangeInclusive { start, end },
+                ref variants,
+                size,
+                align,
+                primitive_align
+            } => {
                 discr.hash_stable(hcx, hasher);
+                start.hash_stable(hcx, hasher);
+                end.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
                 size.hash_stable(hcx, hasher);
                 align.hash_stable(hcx, hasher);
