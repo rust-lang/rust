@@ -12,7 +12,7 @@
 //! anonymous regions.
 use hir;
 use infer::InferCtxt;
-use ty::{self, Region};
+use ty::{self, Region, Ty};
 use hir::def_id::DefId;
 use hir::map as hir_map;
 
@@ -35,7 +35,7 @@ pub struct AnonymousArgInfo<'tcx> {
     // the argument corresponding to the anonymous region
     pub arg: &'tcx hir::Arg,
     // the type corresponding to the anonymopus region argument
-    pub arg_ty: ty::Ty<'tcx>,
+    pub arg_ty: Ty<'tcx>,
     // the ty::BoundRegion corresponding to the anonymous region
     pub bound_region: ty::BoundRegion,
     // corresponds to id the argument is the first parameter

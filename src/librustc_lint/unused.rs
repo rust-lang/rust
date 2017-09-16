@@ -85,20 +85,12 @@ impl LintPass for UnusedMut {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprMatch(_, ref arms, _) = e.node {
-            for a in arms {
-                self.check_unused_mut_pat(cx, &a.pats)
-            }
-        }
+    fn check_arm(&mut self, cx: &LateContext, a: &hir::Arm) {
+        self.check_unused_mut_pat(cx, &a.pats)
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        if let hir::StmtDecl(ref d, _) = s.node {
-            if let hir::DeclLocal(ref l) = d.node {
-                self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
-            }
-        }
+    fn check_local(&mut self, cx: &LateContext, l: &hir::Local) {
+        self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
     }
 
     fn check_fn(&mut self,

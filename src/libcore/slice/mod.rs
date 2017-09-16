@@ -35,7 +35,6 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use borrow::Borrow;
 use cmp::Ordering::{self, Less, Equal, Greater};
 use cmp;
 use fmt;
@@ -122,19 +121,17 @@ pub trait SliceExt {
     fn as_ptr(&self) -> *const Self::Item;
 
     #[stable(feature = "core", since = "1.6.0")]
-    fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
-        where Self::Item: Borrow<Q>,
-              Q: Ord;
+    fn binary_search(&self, x: &Self::Item) -> Result<usize, usize>
+        where Self::Item: Ord;
 
     #[stable(feature = "core", since = "1.6.0")]
     fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
         where F: FnMut(&'a Self::Item) -> Ordering;
 
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
-    fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
+    fn binary_search_by_key<'a, B, F>(&'a self, b: &B, f: F) -> Result<usize, usize>
         where F: FnMut(&'a Self::Item) -> B,
-              B: Borrow<Q>,
-              Q: Ord;
+              B: Ord;
 
     #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
@@ -635,11 +632,10 @@ impl<T> SliceExt for [T] {
         m >= n && needle == &self[m-n..]
     }
 
-    fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
-        where T: Borrow<Q>,
-              Q: Ord
+    fn binary_search(&self, x: &T) -> Result<usize, usize>
+        where T: Ord
     {
-        self.binary_search_by(|p| p.borrow().cmp(x))
+        self.binary_search_by(|p| p.cmp(x))
     }
 
     fn rotate(&mut self, mid: usize) {
@@ -687,12 +683,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, mut f: F) -> Result<usize, usize>
+    fn binary_search_by_key<'a, B, F>(&'a self, b: &B, mut f: F) -> Result<usize, usize>
         where F: FnMut(&'a Self::Item) -> B,
-              B: Borrow<Q>,
-              Q: Ord
+              B: Ord
     {
-        self.binary_search_by(|k| f(k).borrow().cmp(b))
+        self.binary_search_by(|k| f(k).cmp(b))
     }
 
     #[inline]

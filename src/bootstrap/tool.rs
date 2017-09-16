@@ -94,20 +94,21 @@ impl Step for ToolBuild {
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, target, path);
+        let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         build.run(&mut cargo);
         build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
     }
 }
 
-fn prepare_tool_cargo(
+pub fn prepare_tool_cargo(
     builder: &Builder,
     compiler: Compiler,
     target: Interned<String>,
+    command: &'static str,
     path: &'static str,
 ) -> Command {
     let build = builder.build;
-    let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
+    let mut cargo = builder.cargo(compiler, Mode::Tool, target, command);
     let dir = build.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
@@ -148,13 +149,25 @@ macro_rules! tool {
 
         impl<'a> Builder<'a> {
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
+                let stage = self.tool_default_stage(tool);
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(0, self.build.build),
+                            compiler: self.compiler(stage, self.build.build),
                             target: self.build.build,
                         }),
                     )+
+                }
+            }
+
+            pub fn tool_default_stage(&self, tool: Tool) -> u32 {
+                // Compile the error-index in the top stage as it depends on
+                // rustdoc, so we want to avoid recompiling rustdoc twice if we
+                // can. Otherwise compile everything else in stage0 as there's
+                // no need to rebootstrap everything
+                match tool {
+                    Tool::ErrorIndex => self.top_stage,
+                    _ => 0,
                 }
             }
         }
@@ -283,6 +296,7 @@ impl Step for Rustdoc {
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
                                            target,
+                                           "build",
                                            "src/tools/rustdoc");
         build.run(&mut cargo);
         // Cargo adds a number of paths to the dylib search path on windows, which results in
@@ -436,7 +450,7 @@ impl<'a> Builder<'a> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
-        let compiler = self.compiler(0, self.build.build);
+        let compiler = self.compiler(self.tool_default_stage(tool), self.build.build);
         self.prepare_tool_cmd(compiler, &mut cmd);
         cmd
     }

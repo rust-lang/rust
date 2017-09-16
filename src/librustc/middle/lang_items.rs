@@ -315,7 +315,7 @@ language_item_table! {
     DebugTraitLangItem,              "debug_trait",             debug_trait;
 }
 
-impl<'a, 'tcx, 'gcx> ty::TyCtxt<'a, 'tcx, 'gcx> {
+impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
             self.sess.fatal(&msg)

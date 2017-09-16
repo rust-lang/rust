@@ -51,7 +51,7 @@ pub use intrinsics::write_bytes;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
-/// # Undefined Behavior
+/// # Safety
 ///
 /// This has all the same safety problems as `ptr::read` with respect to
 /// invalid pointers, types, and double drops.
@@ -525,15 +525,41 @@ impl<T: ?Sized> *const T {
         }
     }
 
-    /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
+    /// Calculates the offset from a pointer.
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
-    /// Both the starting and resulting pointer must be either in bounds or one
-    /// byte past the end of an allocated object. If either pointer is out of
-    /// bounds or arithmetic overflow occurs then
-    /// any further use of the returned value will result in undefined behavior.
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
     ///
     /// # Examples
     ///
@@ -555,6 +581,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
+    ///
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
@@ -630,6 +657,412 @@ impl<T: ?Sized> *const T {
             Some(diff / size as isize)
         }
     }
+
+    /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a `usize`.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let s: &str = "123";
+    /// let ptr: *const u8 = s.as_ptr();
+    ///
+    /// unsafe {
+    ///     println!("{}", *ptr.add(1) as char);
+    ///     println!("{}", *ptr.add(2) as char);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn add(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.offset(count as isize)
+    }
+
+    /// Calculates the offset from a pointer (convenience for
+    /// `.offset((count as isize).wrapping_neg())`).
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset cannot exceed `isize::MAX` **bytes**.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len()).sub(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let s: &str = "123";
+    ///
+    /// unsafe {
+    ///     let end: *const u8 = s.as_ptr().add(3);
+    ///     println!("{}", *end.sub(1) as char);
+    ///     println!("{}", *end.sub(2) as char);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn sub(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.offset((count as isize).wrapping_neg())
+    }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// (convenience for `.wrapping_offset(count as isize)`)
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.add(count)` instead when possible, because `add`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// // Iterate using a raw pointer in increments of two elements
+    /// let data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *const u8 = data.as_ptr();
+    /// let step = 2;
+    /// let end_rounded_up = ptr.wrapping_add(6);
+    ///
+    /// // This loop prints "1, 3, 5, "
+    /// while ptr != end_rounded_up {
+    ///     unsafe {
+    ///         print!("{}, ", *ptr);
+    ///     }
+    ///     ptr = ptr.wrapping_add(step);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub fn wrapping_add(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.wrapping_offset(count as isize)
+    }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.sub(count)` instead when possible, because `sub`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// // Iterate using a raw pointer in increments of two elements (backwards)
+    /// let data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *const u8 = data.as_ptr();
+    /// let start_rounded_down = ptr.wrapping_sub(2);
+    /// ptr = ptr.wrapping_add(4);
+    /// let step = 2;
+    /// // This loop prints "5, 3, 1, "
+    /// while ptr != start_rounded_down {
+    ///     unsafe {
+    ///         print!("{}, ", *ptr);
+    ///     }
+    ///     ptr = ptr.wrapping_sub(step);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub fn wrapping_sub(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.wrapping_offset((count as isize).wrapping_neg())
+    }
+
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// The pointer must be aligned; use `read_unaligned` if that is not the case.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read(self) -> T
+        where T: Sized,
+    {
+        read(self)
+    }
+
+    /// Performs a volatile read of the value from `self` without moving it. This
+    /// leaves the memory in `self` unchanged.
+    ///
+    /// Volatile operations are intended to act on I/O memory, and are guaranteed
+    /// to not be elided or reordered by the compiler across other volatile
+    /// operations.
+    ///
+    /// # Notes
+    ///
+    /// Rust does not currently have a rigorously and formally defined memory model,
+    /// so the precise semantics of what "volatile" means here is subject to change
+    /// over time. That being said, the semantics will almost always end up pretty
+    /// similar to [C11's definition of volatile][c11].
+    ///
+    /// The compiler shouldn't change the relative order or number of volatile
+    /// memory operations. However, volatile memory operations on zero-sized types
+    /// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
+    /// and may be ignored.
+    ///
+    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read_volatile(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read_volatile(self) -> T
+        where T: Sized,
+    {
+        read_volatile(self)
+    }
+
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// Unlike `read`, the pointer may be unaligned.
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read_unaligned(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read_unaligned(self) -> T
+        where T: Sized,
+    {
+        read_unaligned(self)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may overlap.
+    ///
+    /// NOTE: this has the *same* argument order as `ptr::copy`.
+    ///
+    /// This is semantically equivalent to C's `memmove`.
+    ///
+    /// # Safety
+    ///
+    /// Care must be taken with the ownership of `self` and `dest`.
+    /// This method semantically moves the values of `self` into `dest`.
+    /// However it does not drop the contents of `self`, or prevent the contents
+    /// of `dest` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     ptr.copy_to(dst.as_mut_ptr(), elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_to(self, dest: *mut T, count: usize)
+        where T: Sized,
+    {
+        copy(self, dest, count)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// NOTE: this has the *same* argument order as `ptr::copy_nonoverlapping`.
+    ///
+    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    ///
+    /// # Safety
+    ///
+    /// Beyond requiring that the program must be allowed to access both regions
+    /// of memory, it is Undefined Behavior for source and destination to
+    /// overlap. Care must also be taken with the ownership of `self` and
+    /// `self`. This method semantically moves the values of `self` into `dest`.
+    /// However it does not drop the contents of `dest`, or prevent the contents
+    /// of `self` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     ptr.copy_to_nonoverlapping(dst.as_mut_ptr(), elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
+        where T: Sized,
+    {
+        copy_nonoverlapping(self, dest, count)
+    }
+
+
 }
 
 #[lang = "mut_ptr"]
@@ -687,14 +1120,41 @@ impl<T: ?Sized> *mut T {
         }
     }
 
-    /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
+    /// Calculates the offset from a pointer.
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
-    /// The offset must be in-bounds of the object, or one-byte-past-the-end.
-    /// Otherwise `offset` invokes Undefined Behavior, regardless of whether
-    /// the pointer is used.
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().offset(vec.len() as isize)` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
     ///
     /// # Examples
     ///
@@ -820,6 +1280,708 @@ impl<T: ?Sized> *mut T {
             let diff = (other as isize).wrapping_sub(self as isize);
             Some(diff / size as isize)
         }
+    }
+
+
+    /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow or underflow an
+    ///   `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a `usize`.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let s: &str = "123";
+    /// let ptr: *const u8 = s.as_ptr();
+    ///
+    /// unsafe {
+    ///     println!("{}", *ptr.add(1) as char);
+    ///     println!("{}", *ptr.add(2) as char);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn add(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.offset(count as isize)
+    }
+
+    /// Calculates the offset from a pointer (convenience for
+    /// `.offset((count as isize).wrapping_neg())`).
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of an allocated object.
+    ///
+    /// * The computed offset cannot exceed `isize::MAX` **bytes**.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len()).sub(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2^63 bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using `wrapping_offset` instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let s: &str = "123";
+    ///
+    /// unsafe {
+    ///     let end: *const u8 = s.as_ptr().add(3);
+    ///     println!("{}", *end.sub(1) as char);
+    ///     println!("{}", *end.sub(2) as char);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn sub(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.offset((count as isize).wrapping_neg())
+    }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// (convenience for `.wrapping_offset(count as isize)`)
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.add(count)` instead when possible, because `add`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// // Iterate using a raw pointer in increments of two elements
+    /// let data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *const u8 = data.as_ptr();
+    /// let step = 2;
+    /// let end_rounded_up = ptr.wrapping_add(6);
+    ///
+    /// // This loop prints "1, 3, 5, "
+    /// while ptr != end_rounded_up {
+    ///     unsafe {
+    ///         print!("{}, ", *ptr);
+    ///     }
+    ///     ptr = ptr.wrapping_add(step);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub fn wrapping_add(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.wrapping_offset(count as isize)
+    }
+
+    /// Calculates the offset from a pointer using wrapping arithmetic.
+    /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
+    ///
+    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// The resulting pointer does not need to be in bounds, but it is
+    /// potentially hazardous to dereference (which requires `unsafe`).
+    ///
+    /// Always use `.sub(count)` instead when possible, because `sub`
+    /// allows the compiler to optimize better.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// // Iterate using a raw pointer in increments of two elements (backwards)
+    /// let data = [1u8, 2, 3, 4, 5];
+    /// let mut ptr: *const u8 = data.as_ptr();
+    /// let start_rounded_down = ptr.wrapping_sub(2);
+    /// ptr = ptr.wrapping_add(4);
+    /// let step = 2;
+    /// // This loop prints "5, 3, 1, "
+    /// while ptr != start_rounded_down {
+    ///     unsafe {
+    ///         print!("{}, ", *ptr);
+    ///     }
+    ///     ptr = ptr.wrapping_sub(step);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub fn wrapping_sub(self, count: usize) -> Self
+        where T: Sized,
+    {
+        self.wrapping_offset((count as isize).wrapping_neg())
+    }
+
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// The pointer must be aligned; use `read_unaligned` if that is not the case.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read(self) -> T
+        where T: Sized,
+    {
+        read(self)
+    }
+
+    /// Performs a volatile read of the value from `self` without moving it. This
+    /// leaves the memory in `self` unchanged.
+    ///
+    /// Volatile operations are intended to act on I/O memory, and are guaranteed
+    /// to not be elided or reordered by the compiler across other volatile
+    /// operations.
+    ///
+    /// # Notes
+    ///
+    /// Rust does not currently have a rigorously and formally defined memory model,
+    /// so the precise semantics of what "volatile" means here is subject to change
+    /// over time. That being said, the semantics will almost always end up pretty
+    /// similar to [C11's definition of volatile][c11].
+    ///
+    /// The compiler shouldn't change the relative order or number of volatile
+    /// memory operations. However, volatile memory operations on zero-sized types
+    /// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
+    /// and may be ignored.
+    ///
+    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `src` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read_volatile(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read_volatile(self) -> T
+        where T: Sized,
+    {
+        read_volatile(self)
+    }
+
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// Unlike `read`, the pointer may be unaligned.
+    ///
+    /// # Safety
+    ///
+    /// Beyond accepting a raw pointer, this is unsafe because it semantically
+    /// moves the value out of `self` without preventing further usage of `self`.
+    /// If `T` is not `Copy`, then care must be taken to ensure that the value at
+    /// `self` is not used before the data is overwritten again (e.g. with `write`,
+    /// `zero_memory`, or `copy_memory`). Note that `*self = foo` counts as a use
+    /// because it will attempt to drop the value previously at `*self`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let x = 12;
+    /// let y = &x as *const i32;
+    ///
+    /// unsafe {
+    ///     assert_eq!(y.read_unaligned(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn read_unaligned(self) -> T
+        where T: Sized,
+    {
+        read_unaligned(self)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may overlap.
+    ///
+    /// NOTE: this has the *same* argument order as `ptr::copy`.
+    ///
+    /// This is semantically equivalent to C's `memmove`.
+    ///
+    /// # Safety
+    ///
+    /// Care must be taken with the ownership of `self` and `dest`.
+    /// This method semantically moves the values of `self` into `dest`.
+    /// However it does not drop the contents of `self`, or prevent the contents
+    /// of `dest` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     ptr.copy_to(dst.as_mut_ptr(), elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_to(self, dest: *mut T, count: usize)
+        where T: Sized,
+    {
+        copy(self, dest, count)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// NOTE: this has the *same* argument order as `ptr::copy_nonoverlapping`.
+    ///
+    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    ///
+    /// # Safety
+    ///
+    /// Beyond requiring that the program must be allowed to access both regions
+    /// of memory, it is Undefined Behavior for source and destination to
+    /// overlap. Care must also be taken with the ownership of `self` and
+    /// `self`. This method semantically moves the values of `self` into `dest`.
+    /// However it does not drop the contents of `dest`, or prevent the contents
+    /// of `self` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     ptr.copy_to_nonoverlapping(dst.as_mut_ptr(), elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
+        where T: Sized,
+    {
+        copy_nonoverlapping(self, dest, count)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// and destination may overlap.
+    ///
+    /// NOTE: this has the *opposite* argument order of `ptr::copy`.
+    ///
+    /// This is semantically equivalent to C's `memmove`.
+    ///
+    /// # Safety
+    ///
+    /// Care must be taken with the ownership of `src` and `self`.
+    /// This method semantically moves the values of `src` into `self`.
+    /// However it does not drop the contents of `self`, or prevent the contents
+    /// of `src` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     dst.as_mut_ptr().copy_from(ptr, elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_from(self, src: *const T, count: usize)
+        where T: Sized,
+    {
+        copy(src, self, count)
+    }
+
+    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// NOTE: this has the *opposite* argument order of `ptr::copy_nonoverlapping`.
+    ///
+    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
+    ///
+    /// # Safety
+    ///
+    /// Beyond requiring that the program must be allowed to access both regions
+    /// of memory, it is Undefined Behavior for source and destination to
+    /// overlap. Care must also be taken with the ownership of `src` and
+    /// `self`. This method semantically moves the values of `src` into `self`.
+    /// However it does not drop the contents of `self`, or prevent the contents
+    /// of `src` from being dropped or used.
+    ///
+    /// # Examples
+    ///
+    /// Efficiently create a Rust vector from an unsafe buffer:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// # #[allow(dead_code)]
+    /// unsafe fn from_buf_raw<T: Copy>(ptr: *const T, elts: usize) -> Vec<T> {
+    ///     let mut dst = Vec::with_capacity(elts);
+    ///     dst.set_len(elts);
+    ///     dst.as_mut_ptr().copy_from_nonoverlapping(ptr, elts);
+    ///     dst
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
+        where T: Sized,
+    {
+        copy_nonoverlapping(src, self, count)
+    }
+
+    /// Executes the destructor (if any) of the pointed-to value.
+    ///
+    /// This has two use cases:
+    ///
+    /// * It is *required* to use `drop_in_place` to drop unsized types like
+    ///   trait objects, because they can't be read out onto the stack and
+    ///   dropped normally.
+    ///
+    /// * It is friendlier to the optimizer to do this over `ptr::read` when
+    ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
+    ///   as the compiler doesn't need to prove that it's sound to elide the
+    ///   copy.
+    ///
+    /// # Safety
+    ///
+    /// This has all the same safety problems as `ptr::read` with respect to
+    /// invalid pointers, types, and double drops.
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn drop_in_place(self) {
+        drop_in_place(self)
+    }
+
+    /// Overwrites a memory location with the given value without reading or
+    /// dropping the old value.
+    ///
+    /// # Safety
+    ///
+    /// This operation is marked unsafe because it writes through a raw pointer.
+    ///
+    /// It does not drop the contents of `self`. This is safe, but it could leak
+    /// allocations or resources, so care must be taken not to overwrite an object
+    /// that should be dropped.
+    ///
+    /// Additionally, it does not drop `val`. Semantically, `val` is moved into the
+    /// location pointed to by `self`.
+    ///
+    /// This is appropriate for initializing uninitialized memory, or overwriting
+    /// memory that has previously been `read` from.
+    ///
+    /// The pointer must be aligned; use `write_unaligned` if that is not the case.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let mut x = 0;
+    /// let y = &mut x as *mut i32;
+    /// let z = 12;
+    ///
+    /// unsafe {
+    ///     y.write(z);
+    ///     assert_eq!(y.read(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn write(self, val: T)
+        where T: Sized,
+    {
+        write(self, val)
+    }
+
+    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+    /// bytes of memory starting at `self` to `val`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let mut vec = vec![0; 4];
+    /// unsafe {
+    ///     let vec_ptr = vec.as_mut_ptr();
+    ///     vec_ptr.write_bytes(b'a', 2);
+    /// }
+    /// assert_eq!(vec, [b'a', b'a', 0, 0]);
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn write_bytes(self, val: u8, count: usize)
+        where T: Sized,
+    {
+        write_bytes(self, val, count)
+    }
+
+    /// Performs a volatile write of a memory location with the given value without
+    /// reading or dropping the old value.
+    ///
+    /// Volatile operations are intended to act on I/O memory, and are guaranteed
+    /// to not be elided or reordered by the compiler across other volatile
+    /// operations.
+    ///
+    /// # Notes
+    ///
+    /// Rust does not currently have a rigorously and formally defined memory model,
+    /// so the precise semantics of what "volatile" means here is subject to change
+    /// over time. That being said, the semantics will almost always end up pretty
+    /// similar to [C11's definition of volatile][c11].
+    ///
+    /// The compiler shouldn't change the relative order or number of volatile
+    /// memory operations. However, volatile memory operations on zero-sized types
+    /// (e.g. if a zero-sized type is passed to `write_volatile`) are no-ops
+    /// and may be ignored.
+    ///
+    /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
+    ///
+    /// # Safety
+    ///
+    /// This operation is marked unsafe because it accepts a raw pointer.
+    ///
+    /// It does not drop the contents of `self`. This is safe, but it could leak
+    /// allocations or resources, so care must be taken not to overwrite an object
+    /// that should be dropped.
+    ///
+    /// This is appropriate for initializing uninitialized memory, or overwriting
+    /// memory that has previously been `read` from.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let mut x = 0;
+    /// let y = &mut x as *mut i32;
+    /// let z = 12;
+    ///
+    /// unsafe {
+    ///     y.write_volatile(z);
+    ///     assert_eq!(y.read_volatile(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn write_volatile(self, val: T)
+        where T: Sized,
+    {
+        write_volatile(self, val)
+    }
+
+    /// Overwrites a memory location with the given value without reading or
+    /// dropping the old value.
+    ///
+    /// Unlike `write`, the pointer may be unaligned.
+    ///
+    /// # Safety
+    ///
+    /// This operation is marked unsafe because it writes through a raw pointer.
+    ///
+    /// It does not drop the contents of `self`. This is safe, but it could leak
+    /// allocations or resources, so care must be taken not to overwrite an object
+    /// that should be dropped.
+    ///
+    /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+    /// location pointed to by `dst`.
+    ///
+    /// This is appropriate for initializing uninitialized memory, or overwriting
+    /// memory that has previously been `read` from.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(pointer_methods)]
+    ///
+    /// let mut x = 0;
+    /// let y = &mut x as *mut i32;
+    /// let z = 12;
+    ///
+    /// unsafe {
+    ///     y.write_unaligned(z);
+    ///     assert_eq!(y.read_unaligned(), 12);
+    /// }
+    /// ```
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn write_unaligned(self, val: T)
+        where T: Sized,
+    {
+        write_unaligned(self, val)
+    }
+
+    /// Replaces the value at `self` with `src`, returning the old
+    /// value, without dropping either.
+    ///
+    /// # Safety
+    ///
+    /// This is only unsafe because it accepts a raw pointer.
+    /// Otherwise, this operation is identical to `mem::replace`.
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn replace(self, src: T) -> T
+        where T: Sized,
+    {
+        replace(self, src)
+    }
+
+    /// Swaps the values at two mutable locations of the same type, without
+    /// deinitializing either. They may overlap, unlike `mem::swap` which is
+    /// otherwise equivalent.
+    ///
+    /// # Safety
+    ///
+    /// This function copies the memory through the raw pointers passed to it
+    /// as arguments.
+    ///
+    /// Ensure that these pointers are valid before calling `swap`.
+    #[unstable(feature = "pointer_methods", issue = "43941")]
+    #[inline]
+    pub unsafe fn swap(self, with: *mut T)
+        where T: Sized,
+    {
+        swap(self, with)
     }
 }
 
