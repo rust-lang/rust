@@ -7,6 +7,7 @@ use rustc::ty::subst::Substs;
 use rustc_const_eval::ConstContext;
 use std::borrow::Cow;
 use std::fmt;
+use syntax::ast;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, is_copy, is_self, is_self_ty,
             iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method,
@@ -544,6 +545,24 @@ declare_lint! {
     "using `.cloned().collect()` on slice to create a `Vec`"
 }
 
+/// **What it does:** Checks for usage of `.chars().last()` or
+/// `.chars().next_back()` on a `str` to check if it ends with a given char.
+///
+/// **Why is this bad?** Readability, this can be written more concisely as
+/// `_.ends_with(_)`.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
+/// ```
+declare_lint! {
+    pub CHARS_LAST_CMP,
+    Warn,
+    "using `.chars().last()` or `.chars().next_back()` to check if a string ends with a char"
+}
+
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
@@ -557,6 +576,7 @@ impl LintPass for Pass {
             OPTION_MAP_UNWRAP_OR_ELSE,
             OR_FUN_CALL,
             CHARS_NEXT_CMP,
+            CHARS_LAST_CMP,
             CLONE_ON_COPY,
             CLONE_ON_REF_PTR,
             CLONE_DOUBLE_REF,
@@ -648,9 +668,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
             },
             hir::ExprBinary(op, ref lhs, ref rhs) if op.node == hir::BiEq || op.node == hir::BiNe => {
-                if !lint_chars_next(cx, expr, lhs, rhs, op.node == hir::BiEq) {
-                    lint_chars_next(cx, expr, rhs, lhs, op.node == hir::BiEq);
-                }
+                let mut info = BinaryExprInfo {
+                    expr: expr,
+                    chain: lhs,
+                    other: rhs,
+                    eq: op.node == hir::BiEq,
+                };
+                lint_binary_expr_with_method_call(cx, &mut info);
             },
             _ => (),
         }
@@ -1285,11 +1309,39 @@ fn lint_search_is_some<'a, 'tcx>(
     }
 }
 
-/// Checks for the `CHARS_NEXT_CMP` lint.
-fn lint_chars_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, chain: &'tcx hir::Expr, other: &'tcx hir::Expr, eq: bool) -> bool {
+/// Used for `lint_binary_expr_with_method_call`.
+#[derive(Copy, Clone)]
+struct BinaryExprInfo<'a> {
+    expr: &'a hir::Expr,
+    chain: &'a hir::Expr,
+    other: &'a hir::Expr,
+    eq: bool,
+}
+
+/// Checks for the `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
+fn lint_binary_expr_with_method_call<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, info: &mut BinaryExprInfo) {
+    macro_rules! lint_with_both_lhs_and_rhs {
+        ($func:ident, $cx:expr, $info:ident) => {
+            if !$func($cx, $info) {
+                ::std::mem::swap(&mut $info.chain, &mut $info.other);
+                if $func($cx, $info) {
+                    return;
+                }
+            }
+        }
+    }
+
+    lint_with_both_lhs_and_rhs!(lint_chars_next_cmp, cx, info);
+    lint_with_both_lhs_and_rhs!(lint_chars_last_cmp, cx, info);
+    lint_with_both_lhs_and_rhs!(lint_chars_next_cmp_with_unwrap, cx, info);
+    lint_with_both_lhs_and_rhs!(lint_chars_last_cmp_with_unwrap, cx, info);
+}
+
+/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_NEXT_CMP` lints.
+fn lint_chars_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo, chain_methods: &[&str], lint: &'static Lint, suggest: &str) -> bool {
     if_let_chain! {[
-        let Some(args) = method_chain_args(chain, &["chars", "next"]),
-        let hir::ExprCall(ref fun, ref arg_char) = other.node,
+        let Some(args) = method_chain_args(info.chain, chain_methods),
+        let hir::ExprCall(ref fun, ref arg_char) = info.other.node,
         arg_char.len() == 1,
         let hir::ExprPath(ref qpath) = fun.node,
         let Some(segment) = single_segment_path(qpath),
@@ -1302,19 +1354,74 @@ fn lint_chars_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, 
         }
 
         span_lint_and_sugg(cx,
-                           CHARS_NEXT_CMP,
-                           expr.span,
-                           "you should use the `starts_with` method",
+                           lint,
+                           info.expr.span,
+                           &format!("you should use the `{}` method", suggest),
                            "like this",
-                           format!("{}{}.starts_with({})",
-                                   if eq { "" } else { "!" },
+                           format!("{}{}.{}({})",
+                                   if info.eq { "" } else { "!" },
                                    snippet(cx, args[0][0].span, "_"),
+                                   suggest,
                                    snippet(cx, arg_char[0].span, "_")));
 
         return true;
     }}
 
     false
+}
+
+/// Checks for the `CHARS_NEXT_CMP` lint.
+fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+    lint_chars_cmp(cx, info, &["chars", "next"], CHARS_NEXT_CMP, "starts_with")
+}
+
+/// Checks for the `CHARS_LAST_CMP` lint.
+fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_NEXT_CMP, "ends_with") {
+        true
+    } else {
+        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_NEXT_CMP, "ends_with")
+    }
+}
+
+/// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
+fn lint_chars_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo, chain_methods: &[&str], lint: &'static Lint, suggest: &str) -> bool {
+    if_let_chain! {[
+        let Some(args) = method_chain_args(info.chain, chain_methods),
+        let hir::ExprLit(ref lit) = info.other.node,
+        let ast::LitKind::Char(c) = lit.node,
+    ], {
+        span_lint_and_sugg(
+            cx,
+            lint,
+            info.expr.span,
+            &format!("you should use the `{}` method", suggest),
+            "like this",
+            format!("{}{}.{}('{}')",
+                    if info.eq { "" } else { "!" },
+                    snippet(cx, args[0][0].span, "_"),
+                    suggest,
+                    c)
+        );
+
+        return true;
+    }}
+
+    false
+}
+
+/// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
+fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+    lint_chars_cmp_with_unwrap(cx, info, &["chars", "next", "unwrap"], CHARS_NEXT_CMP, "starts_with")
+}
+
+/// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
+fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo) -> bool {
+    if lint_chars_cmp_with_unwrap(cx, info, &["chars", "last", "unwrap"], CHARS_LAST_CMP, "ends_with") {
+        true
+    } else {
+        lint_chars_cmp_with_unwrap(cx, info, &["chars", "next_back", "unwrap"], CHARS_LAST_CMP, "ends_with")
+    }
 }
 
 /// lint for length-1 `str`s for methods in `PATTERN_METHODS`
