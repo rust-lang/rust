@@ -707,7 +707,7 @@ pub fn start_async_translation(sess: &Session,
         }
     }
 
-    if sess.opts.debugging_opts.profile {
+    if sess.opts.cg.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
