@@ -14,7 +14,7 @@
 use abi::{FnType, ArgType, LayoutExt, Reg};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, Layout, FullLayout};
+use rustc::ty::layout::{self, FullLayout};
 
 fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if !ret.layout.is_aggregate() && ret.layout.size(ccx).bits() <= 64 {
@@ -26,11 +26,11 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
 
 fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   layout: FullLayout<'tcx>) -> bool {
-    match *layout {
-        Layout::Scalar { value: layout::F32, .. } |
-        Layout::Scalar { value: layout::F64, .. } => true,
-        Layout::Univariant { .. } => {
-            if layout.fields.count() == 1 {
+    match layout.abi {
+        layout::Abi::Scalar(layout::F32) |
+        layout::Abi::Scalar(layout::F64) => true,
+        layout::Abi::Aggregate => {
+            if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(ccx, layout.field(ccx, 0))
             } else {
                 false

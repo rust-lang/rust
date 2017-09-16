@@ -838,14 +838,18 @@ impl<'a, 'tcx> Struct {
                               -> Result<Option<(Size, Primitive)>, LayoutError<'tcx>> {
         let cx = (tcx, param_env);
         match (layout.layout, &layout.ty.sty) {
-            (&Scalar { non_zero: true, value, .. }, _) => {
-                Ok(Some((Size::from_bytes(0), value)))
+            (&Scalar(Pointer), _) if !layout.ty.is_unsafe_ptr() => {
+                Ok(Some((Size::from_bytes(0), Pointer)))
             }
-            (&CEnum { non_zero: true, discr, .. }, _) => {
-                Ok(Some((Size::from_bytes(0), Int(discr))))
+            (&CEnum { discr, .. }, &ty::TyAdt(def, _)) => {
+                if def.discriminants(tcx).all(|d| d.to_u128_unchecked() != 0) {
+                    Ok(Some((Size::from_bytes(0), Int(discr))))
+                } else {
+                    Ok(None)
+                }
             }
 
-            (&FatPointer { non_zero: true, .. }, _) => {
+            (&FatPointer(_), _) if !layout.ty.is_unsafe_ptr() => {
                 Ok(Some((layout.fields.offset(FAT_PTR_ADDR), Pointer)))
             }
 
@@ -853,12 +857,10 @@ impl<'a, 'tcx> Struct {
             (_, &ty::TyAdt(def, _)) if Some(def.did) == tcx.lang_items().non_zero() => {
                 let field = layout.field(cx, 0)?;
                 match *field {
-                    // FIXME(eddyb) also allow floating-point types here.
-                    Scalar { value: value @ Int(_), non_zero: false } |
-                    Scalar { value: value @ Pointer, non_zero: false } => {
+                    Scalar(value) => {
                         Ok(Some((layout.fields.offset(0), value)))
                     }
-                    FatPointer { non_zero: false, .. } => {
+                    FatPointer(_) => {
                         Ok(Some((layout.fields.offset(0) +
                                  field.fields.offset(FAT_PTR_ADDR),
                                  Pointer)))
@@ -1070,11 +1072,7 @@ pub enum Abi {
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Layout {
     /// TyBool, TyChar, TyInt, TyUint, TyFloat, TyRawPtr, TyRef or TyFnPtr.
-    Scalar {
-        value: Primitive,
-        // If true, the value cannot represent a bit pattern of all zeroes.
-        non_zero: bool
-    },
+    Scalar(Primitive),
 
     /// SIMD vectors, from structs marked with #[repr(simd)].
     Vector {
@@ -1092,12 +1090,8 @@ pub enum Layout {
         count: u64
     },
 
-    /// TyRawPtr or TyRef with a !Sized pointee.
-    FatPointer {
-        metadata: Primitive,
-        /// If true, the pointer cannot be null.
-        non_zero: bool
-    },
+    /// TyRawPtr or TyRef with a !Sized pointee. The primitive is the metadata.
+    FatPointer(Primitive),
 
     // Remaining variants are all ADTs such as structs, enums or tuples.
 
@@ -1105,7 +1099,6 @@ pub enum Layout {
     CEnum {
         discr: Integer,
         signed: bool,
-        non_zero: bool,
         /// Inclusive discriminant range.
         /// If min > max, it represents min...u64::MAX followed by 0...max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
@@ -1211,7 +1204,7 @@ impl<'a, 'tcx> Layout {
         let success = |layout| {
             let layout = tcx.intern_layout(layout);
             let fields = match *layout {
-                Scalar { .. } |
+                Scalar(_) |
                 CEnum { .. } => {
                     FieldPlacement::union(0)
                 }
@@ -1258,7 +1251,7 @@ impl<'a, 'tcx> Layout {
                 }
             };
             let abi = match *layout {
-                Scalar { value, .. } => Abi::Scalar(value),
+                Scalar(value) => Abi::Scalar(value),
                 CEnum { discr, .. } => Abi::Scalar(Int(discr)),
 
                 Vector { .. } => Abi::Vector,
@@ -1286,43 +1279,36 @@ impl<'a, 'tcx> Layout {
         assert!(!ty.has_infer_types());
 
         let ptr_layout = |pointee: Ty<'tcx>| {
-            let non_zero = !ty.is_unsafe_ptr();
             let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
             if pointee.is_sized(tcx, param_env, DUMMY_SP) {
-                Ok(Scalar { value: Pointer, non_zero })
+                Ok(Scalar(Pointer))
             } else {
                 let unsized_part = tcx.struct_tail(pointee);
                 let metadata = match unsized_part.sty {
-                    ty::TyForeign(..) => return Ok(Scalar { value: Pointer, non_zero }),
+                    ty::TyForeign(..) => return Ok(Scalar(Pointer)),
                     ty::TySlice(_) | ty::TyStr => {
                         Int(dl.ptr_sized_integer())
                     }
                     ty::TyDynamic(..) => Pointer,
                     _ => return Err(LayoutError::Unknown(unsized_part))
                 };
-                Ok(FatPointer { metadata, non_zero })
+                Ok(FatPointer(metadata))
             }
         };
 
         let layout = match ty.sty {
             // Basic scalars.
-            ty::TyBool => Scalar { value: Int(I1), non_zero: false },
-            ty::TyChar => Scalar { value: Int(I32), non_zero: false },
+            ty::TyBool => Scalar(Int(I1)),
+            ty::TyChar => Scalar(Int(I32)),
             ty::TyInt(ity) => {
-                Scalar {
-                    value: Int(Integer::from_attr(dl, attr::SignedInt(ity))),
-                    non_zero: false
-                }
+                Scalar(Int(Integer::from_attr(dl, attr::SignedInt(ity))))
             }
             ty::TyUint(ity) => {
-                Scalar {
-                    value: Int(Integer::from_attr(dl, attr::UnsignedInt(ity))),
-                    non_zero: false
-                }
+                Scalar(Int(Integer::from_attr(dl, attr::UnsignedInt(ity))))
             }
-            ty::TyFloat(FloatTy::F32) => Scalar { value: F32, non_zero: false },
-            ty::TyFloat(FloatTy::F64) => Scalar { value: F64, non_zero: false },
-            ty::TyFnPtr(_) => Scalar { value: Pointer, non_zero: true },
+            ty::TyFloat(FloatTy::F32) => Scalar(F32),
+            ty::TyFloat(FloatTy::F64) => Scalar(F64),
+            ty::TyFnPtr(_) => Scalar(Pointer),
 
             // The never type.
             ty::TyNever => {
@@ -1430,7 +1416,7 @@ impl<'a, 'tcx> Layout {
             ty::TyAdt(def, ..) if def.repr.simd() => {
                 let element = ty.simd_type(tcx);
                 match *cx.layout_of(element)? {
-                    Scalar { value, .. } => {
+                    Scalar(value) => {
                         return success(Vector {
                             element: value,
                             count: ty.simd_size(tcx) as u64
@@ -1456,12 +1442,9 @@ impl<'a, 'tcx> Layout {
 
                 if def.is_enum() && def.variants.iter().all(|v| v.fields.is_empty()) {
                     // All bodies empty -> intlike
-                    let (mut min, mut max, mut non_zero) = (i64::max_value(),
-                                                            i64::min_value(),
-                                                            true);
+                    let (mut min, mut max) = (i64::max_value(), i64::min_value());
                     for discr in def.discriminants(tcx) {
                         let x = discr.to_u128_unchecked() as i64;
-                        if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
                     }
@@ -1472,7 +1455,6 @@ impl<'a, 'tcx> Layout {
                     return success(CEnum {
                         discr,
                         signed,
-                        non_zero,
                         // FIXME: should be u128?
                         min: min as u64,
                         max: max as u64
@@ -1699,7 +1681,7 @@ impl<'a, 'tcx> Layout {
     /// Returns true if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            Scalar {..} | Vector {..} | FatPointer {..} |
+            Scalar(_) | Vector {..} | FatPointer {..} |
             CEnum {..} | UntaggedUnion {..} | General {..} |
             NullablePointer {..} => false,
 
@@ -1712,7 +1694,7 @@ impl<'a, 'tcx> Layout {
         let dl = cx.data_layout();
 
         match *self {
-            Scalar { value, .. } => {
+            Scalar(value) => {
                 value.size(dl)
             }
 
@@ -1734,7 +1716,7 @@ impl<'a, 'tcx> Layout {
                 }
             }
 
-            FatPointer { metadata, .. } => {
+            FatPointer(metadata) => {
                 // Effectively a (ptr, meta) tuple.
                 (Pointer.size(dl).abi_align(metadata.align(dl)) +
                  metadata.size(dl)).abi_align(self.align(dl))
@@ -1755,7 +1737,7 @@ impl<'a, 'tcx> Layout {
         let dl = cx.data_layout();
 
         match *self {
-            Scalar { value, .. } => {
+            Scalar(value) => {
                 value.align(dl)
             }
 
@@ -1769,7 +1751,7 @@ impl<'a, 'tcx> Layout {
                 dl.vector_align(vec_size)
             }
 
-            FatPointer { metadata, .. } => {
+            FatPointer(metadata) => {
                 // Effectively a (ptr, meta) tuple.
                 Pointer.align(dl).max(metadata.align(dl))
             }
@@ -1993,7 +1975,7 @@ impl<'a, 'tcx> Layout {
 
             // other cases provide little interesting (i.e. adjustable
             // via representation tweaks) size info beyond total size.
-            Layout::Scalar { .. } |
+            Layout::Scalar(_) |
             Layout::Vector { .. } |
             Layout::Array { .. } |
             Layout::FatPointer { .. } => {
@@ -2421,9 +2403,8 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            Scalar { value, non_zero } => {
+            Scalar(ref value) => {
                 value.hash_stable(hcx, hasher);
-                non_zero.hash_stable(hcx, hasher);
             }
             Vector { element, count } => {
                 element.hash_stable(hcx, hasher);
@@ -2436,14 +2417,12 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
                 element_size.hash_stable(hcx, hasher);
                 count.hash_stable(hcx, hasher);
             }
-            FatPointer { ref metadata, non_zero } => {
+            FatPointer(ref metadata) => {
                 metadata.hash_stable(hcx, hasher);
-                non_zero.hash_stable(hcx, hasher);
             }
-            CEnum { discr, signed, non_zero, min, max } => {
+            CEnum { discr, signed, min, max } => {
                 discr.hash_stable(hcx, hasher);
                 signed.hash_stable(hcx, hasher);
-                non_zero.hash_stable(hcx, hasher);
                 min.hash_stable(hcx, hasher);
                 max.hash_stable(hcx, hasher);
             }
