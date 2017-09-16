@@ -69,7 +69,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let l = cx.layout_of(t);
     debug!("finish_type_of: {} with layout {:#?}", t, l);
     match *l {
-        layout::CEnum { .. } | layout::General { .. } | layout::UntaggedUnion { .. } => { }
+        layout::General { .. } | layout::UntaggedUnion { .. } => { }
         layout::Univariant { ..} | layout::NullablePointer { .. } => {
             if let layout::Abi::Scalar(_) = l.abi {
                 return;
@@ -101,13 +101,12 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              t: Ty<'tcx>,
                              name: Option<&str>) -> Type {
     let l = cx.layout_of(t);
-    debug!("adt::generic_type_of t: {:?} name: {:?}", t, name);
+    debug!("adt::generic_type_of {:#?} name: {:?}", l, name);
+    if let layout::Abi::Scalar(value) = l.abi {
+        return cx.llvm_type_of(value.to_ty(cx.tcx()));
+    }
     match *l {
-        layout::CEnum { discr, .. } => cx.llvm_type_of(discr.to_ty(cx.tcx())),
         layout::NullablePointer { nndiscr, ref nonnull, .. } => {
-            if let layout::Abi::Scalar(_) = l.abi {
-                return cx.llvm_type_of(l.field(cx, 0).ty);
-            }
             match name {
                 None => {
                     Type::struct_(cx, &struct_llfields(cx, l.for_variant(nndiscr as usize),

@@ -1253,7 +1253,6 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            layout::CEnum { .. } => span_bug!(self.span, "This should be unreachable."),
             ref l @ _ => bug!("Not an enum layout: {:#?}", l)
         }
     }
@@ -1462,13 +1461,15 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let type_rep = cx.layout_of(enum_type);
 
     let discriminant_type_metadata = match *type_rep {
-        layout::CEnum { discr, .. } => {
-            return FinalMetadata(discriminant_type_metadata(discr))
-        },
         layout::NullablePointer { .. } | layout::Univariant { .. } => None,
         layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
+
+    match (type_rep.abi, discriminant_type_metadata) {
+        (layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
+        _ => {}
+    }
 
     let (enum_type_size, enum_type_align) = type_rep.size_and_align(cx);
 

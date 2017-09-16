@@ -367,8 +367,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             _ => bug!("discriminant not scalar: {:#?}", discr_layout)
         };
         let (min, max) = match *l {
-            layout::CEnum { min, max, .. } => (min, max),
-            layout::General { ref variants, .. } => (0, variants.len() as u64 - 1),
+            layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
             _ => (0, u64::max_value()),
         };
         let max_next = max.wrapping_add(1);
@@ -394,7 +393,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             }
         };
         match *l {
-            layout::CEnum { .. } |
             layout::General { .. } => {
                 let signed = match discr_scalar {
                     layout::Int(_, signed) => signed,
@@ -419,7 +417,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
         match *l {
-            layout::CEnum { .. } |
             layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())), to as i64),

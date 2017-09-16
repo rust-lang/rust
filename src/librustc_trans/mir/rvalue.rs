@@ -272,8 +272,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let llval = operand.immediate();
                         let l = bcx.ccx.layout_of(operand.ty);
 
-                        if let Layout::CEnum { min, max, .. } = *l {
-                            if max > min {
+                        if let Layout::General { ref discr_range, .. } = *l {
+                            if discr_range.end > discr_range.start {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
                                 // convenient place to put the `assume`.
@@ -281,7 +281,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
                                     llval,
-                                    C_uint(ll_t_in, max)
+                                    C_uint(ll_t_in, discr_range.end)
                                 ));
                             }
                         }
