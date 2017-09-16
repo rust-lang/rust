@@ -22,8 +22,6 @@ use std::path::PathBuf;
 
 struct MiriCompilerCalls {
     default: RustcDefaultCalls,
-    /// whether we are building for the host
-    host_target: bool,
 }
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
@@ -80,8 +78,8 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let mut control = self.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
         control.after_analysis.callback = Box::new(after_analysis);
-        if !self.host_target {
-            // only fully compile targets on the host
+        if sess.target.target != sess.host {
+            // only fully compile targets on the host. linking will fail for cross-compilation.
             control.after_analysis.stop = Compilation::Stop;
         }
         control
@@ -258,18 +256,10 @@ fn main() {
         args.push(find_sysroot());
     }
 
-    // for auxilary builds in unit tests
+    // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
     args.push("-Zalways-encode-mir".to_owned());
-    let mut host_target = false;
-    args.retain(|arg| if arg == "--miri_host_target" {
-        host_target = true;
-        false // remove the flag, rustc doesn't know it
-    } else {
-        true
-    });
 
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
         default: RustcDefaultCalls,
-        host_target,
     }, None, None);
 }
