@@ -493,18 +493,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             match query.ty.sty {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                     if mode.acquiring() {
-                        // Make sure there is no undef
+                        // Make sure we can read this.
                         let val = self.read_lvalue(query.lval.1)?;
-                        // This is essentially value_to_primval with support for fat pointers
-                        let has_undef = match self.follow_by_ref_value(val, query.ty)? {
-                            Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
-                            Value::ByVal(primval) => primval.is_undef(),
-                            Value::ByValPair(primval1, primval2) =>
-                                primval1.is_undef() || primval2.is_undef()
-                        };
-                        if has_undef {
-                            return err!(ReadUndefBytes);
-                        }
+                        self.follow_by_ref_value(val, query.ty)?;
+                        // FIXME: It would be great to rule out Undef here, but that doesn't actually work.
+                        // Passing around undef data is a thing that e.g. Vec::extend_with does.
                     }
                     Ok(())
                 }
@@ -512,7 +505,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     if mode.acquiring() {
                         let val = self.read_lvalue(query.lval.1)?;
                         let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
-                        let _val = val.to_bytes()?;
+                        val.to_bytes()?;
                         // TODO: Check if these are valid bool/float/codepoint/UTF-8
                     }
                     Ok(())
