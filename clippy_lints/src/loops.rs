@@ -718,6 +718,23 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
     }
 }
 
+fn fetch_cloned_fixed_offset_var<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &Expr,
+    var: ast::NodeId,
+) -> Option<FixedOffsetVar> {
+    if_let_chain! {[
+        let ExprMethodCall(ref method, _, ref args) = expr.node,
+        method.name == "clone",
+        args.len() == 1,
+        let Some(arg) = args.get(0),
+    ], {
+        return get_fixed_offset_var(cx, arg, var);
+    }}
+
+    get_fixed_offset_var(cx, expr, var)
+}
+
 fn get_indexed_assignments<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     body: &Expr,
@@ -729,7 +746,7 @@ fn get_indexed_assignments<'a, 'tcx>(
         var: ast::NodeId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
         if let Expr_::ExprAssign(ref lhs, ref rhs) = e.node {
-            match (get_fixed_offset_var(cx, lhs, var), get_fixed_offset_var(cx, rhs, var)) {
+            match (get_fixed_offset_var(cx, lhs, var), fetch_cloned_fixed_offset_var(cx, rhs, var)) {
                 (Some(offset_left), Some(offset_right)) => Some((offset_left, offset_right)),
                 _ => None,
             }
