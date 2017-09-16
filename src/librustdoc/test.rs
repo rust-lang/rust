@@ -238,7 +238,8 @@ fn run_test(test: &str, cratename: &str, filename: &str, cfgs: Vec<String>, libs
     let data = Arc::new(Mutex::new(Vec::new()));
     let codemap = Rc::new(CodeMap::new(sessopts.file_path_mapping()));
     let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                      Some(codemap.clone()));
+                                                      Some(codemap.clone()),
+                                                      false);
     let old = io::set_panic(Some(box Sink(data.clone())));
     let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 

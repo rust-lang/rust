@@ -156,6 +156,7 @@ impl OutputType {
 pub enum ErrorOutputType {
     HumanReadable(ColorConfig),
     Json,
+    Short(ColorConfig),
 }
 
 impl Default for ErrorOutputType {
@@ -1362,7 +1363,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s("", "error-format",
                       "How errors and other messages are produced",
-                      "human|json"),
+                      "human|json|short"),
         opt::opt_s("", "color", "Configure coloring of output:
                                  auto   = colorize, if output goes to a tty (default);
                                  always = always colorize output;
@@ -1429,15 +1430,16 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     // opt_present because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            Some("human")   => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json,
+            Some("human") => ErrorOutputType::HumanReadable(color),
+            Some("json")  => ErrorOutputType::Json,
+            Some("short") => ErrorOutputType::Short(color),
 
             None => ErrorOutputType::HumanReadable(color),
 
             Some(arg) => {
                 early_error(ErrorOutputType::HumanReadable(color),
-                            &format!("argument for --error-format must be human or json (instead \
-                                      was `{}`)",
+                            &format!("argument for --error-format must be `human`, `json` or \
+                                      `short` (instead was `{}`)",
                                      arg))
             }
         }
