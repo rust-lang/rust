@@ -4176,8 +4176,6 @@ mod c {
                     &[
                         "i386/ashldi3.S",
                         "i386/ashrdi3.S",
-                        "i386/chkstk.S",
-                        "i386/chkstk2.S",
                         "i386/divdi3.S",
                         "i386/floatdidf.S",
                         "i386/floatdisf.S",

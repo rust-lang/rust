@@ -159,8 +159,8 @@ features = ["c"]
 - [x] floatunsisf.c
 - [ ] i386/ashldi3.S
 - [ ] i386/ashrdi3.S
-- [ ] i386/chkstk.S
-- [ ] i386/chkstk2.S
+- [x] i386/chkstk.S
+- [x] i386/chkstk2.S
 - [ ] i386/divdi3.S
 - [ ] i386/lshrdi3.S
 - [ ] i386/moddi3.S
