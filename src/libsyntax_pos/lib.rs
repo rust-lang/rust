@@ -25,11 +25,10 @@
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
-#![feature(staged_api)]
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::Hasher;
 use std::ops::{Add, Sub};
@@ -47,6 +46,9 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod hygiene;
 pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
+mod span_encoding;
+pub use span_encoding::{Span, DUMMY_SP};
+
 pub mod symbol;
 
 pub type FileName = String;
@@ -59,23 +61,33 @@ pub type FileName = String;
 /// able to use many of the functions on spans in codemap and you cannot assume
 /// that the length of the span = hi - lo; there may be space in the BytePos
 /// range between files.
+///
+/// `SpanData` is public because `Span` uses a thread-local interner and can't be
+/// sent to other threads, but some pieces of performance infra run in a separate thread.
+/// Using `Span` is generally preferred.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct Span {
-    #[unstable(feature = "rustc_private", issue = "27812")]
-    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
+pub struct SpanData {
     pub lo: BytePos,
-    #[unstable(feature = "rustc_private", issue = "27812")]
-    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    #[unstable(feature = "rustc_private", issue = "27812")]
-    #[rustc_deprecated(since = "1.21", reason = "use getters/setters instead")]
     pub ctxt: SyntaxContext,
 }
 
-#[allow(deprecated)]
-pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), ctxt: NO_EXPANSION };
+// The interner in thread-local, so `Span` shouldn't move between threads.
+impl !Send for Span {}
+impl !Sync for Span {}
+
+impl PartialOrd for Span {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        PartialOrd::partial_cmp(&self.data(), &rhs.data())
+    }
+}
+impl Ord for Span {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        Ord::cmp(&self.data(), &rhs.data())
+    }
+}
 
 /// A collection of spans. Spans have two orthogonal attributes:
 ///
@@ -90,38 +102,32 @@ pub struct MultiSpan {
 }
 
 impl Span {
-    #[allow(deprecated)]
-    #[inline]
-    pub fn new(lo: BytePos, hi: BytePos, ctxt: SyntaxContext) -> Self {
-        if lo <= hi { Span { lo, hi, ctxt } } else { Span { lo: hi, hi: lo, ctxt } }
-    }
-
-    #[allow(deprecated)]
     #[inline]
     pub fn lo(self) -> BytePos {
-        self.lo
+        self.data().lo
     }
     #[inline]
     pub fn with_lo(self, lo: BytePos) -> Span {
-        Span::new(lo, self.hi(), self.ctxt())
+        let base = self.data();
+        Span::new(lo, base.hi, base.ctxt)
     }
-    #[allow(deprecated)]
     #[inline]
     pub fn hi(self) -> BytePos {
-        self.hi
+        self.data().hi
     }
     #[inline]
     pub fn with_hi(self, hi: BytePos) -> Span {
-        Span::new(self.lo(), hi, self.ctxt())
+        let base = self.data();
+        Span::new(base.lo, hi, base.ctxt)
     }
-    #[allow(deprecated)]
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
-        self.ctxt
+        self.data().ctxt
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        Span::new(self.lo(), self.hi(), ctxt)
+        let base = self.data();
+        Span::new(base.lo, base.hi, ctxt)
     }
 
     /// Returns a new span representing just the end-point of this span
@@ -339,6 +345,12 @@ fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
+    }
+}
+
+impl fmt::Debug for SpanData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        SPAN_DEBUG.with(|span_debug| span_debug.get()(Span::new(self.lo, self.hi, self.ctxt), f))
     }
 }
 
