@@ -499,14 +499,17 @@ impl<T: ?Sized> Arc<T> {
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
         let ptr = self.ptr.as_ptr();
+        let layout = Layout::for_value(&*ptr);
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        ptr::drop_in_place(&mut self.ptr.as_mut().data);
+        ptr::drop_in_place(&mut (*ptr).data);
+        // We must not use or pass around our data field at type type &(mut) ArcInner from now on,
+        // because that type is actually no longer valid.
 
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
+        if (*ptr).weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+            Heap.dealloc(ptr as *mut u8, layout)
         }
     }
 
