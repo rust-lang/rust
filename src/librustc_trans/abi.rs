@@ -468,17 +468,8 @@ impl<'a, 'tcx> ArgType<'tcx> {
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         let (i, signed) = match *self.layout {
-            Layout::Scalar { value, .. } => {
-                match value {
-                    layout::Int(i) => {
-                        if self.layout.ty.is_integral() {
-                            (i, self.layout.ty.is_signed())
-                        } else {
-                            return;
-                        }
-                    }
-                    _ => return
-                }
+            Layout::Scalar(layout::Int(i)) if self.layout.ty.is_integral() => {
+                (i, self.layout.ty.is_signed())
             }
 
             // Rust enum types that map onto C enums also need to follow
