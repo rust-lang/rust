@@ -1483,6 +1483,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
 
             Value::ByVal(primval) => {
+                // TODO: Do we really want insta-UB here?
                 self.ensure_valid_value(primval, ty)?;
                 Ok(primval)
             }
@@ -1817,6 +1818,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let val = match val {
                     PrimVal::Bytes(0) => false,
                     PrimVal::Bytes(1) => true,
+                    // TODO: This seems a little overeager, should reading at bool type already be UB?
                     _ => return err!(InvalidBool),
                 };
                 PrimVal::from_bool(val)

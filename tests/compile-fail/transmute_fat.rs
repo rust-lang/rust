@@ -1,3 +1,5 @@
+// This should fail even without validation
+// compile-flags: -Zmir-emit-validate=0
 #![feature(i128_type)]
 
 fn main() {

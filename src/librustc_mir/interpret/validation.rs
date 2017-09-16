@@ -492,12 +492,22 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let res = do catch {
             match query.ty.sty {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
-                    // TODO: Make sure these are not undef.
-                    // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
+                    if mode.acquiring() {
+                        // Make sure we can read this.
+                        let val = self.read_lvalue(query.lval.1)?;
+                        self.follow_by_ref_value(val, query.ty)?;
+                        // FIXME: It would be great to rule out Undef here, but that doesn't actually work.
+                        // Passing around undef data is a thing that e.g. Vec::extend_with does.
+                    }
                     Ok(())
                 }
-                TyBool | TyFloat(_) | TyChar | TyStr => {
-                    // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
+                TyBool | TyFloat(_) | TyChar => {
+                    if mode.acquiring() {
+                        let val = self.read_lvalue(query.lval.1)?;
+                        let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
+                        val.to_bytes()?;
+                        // TODO: Check if these are valid bool/float/codepoint/UTF-8
+                    }
                     Ok(())
                 }
                 TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
@@ -542,6 +552,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
 
                 // Compound types
+                TyStr => {
+                    // TODO: Validate strings
+                    Ok(())
+                }
                 TySlice(elem_ty) => {
                     let len = match query.lval.1 {
                         Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
