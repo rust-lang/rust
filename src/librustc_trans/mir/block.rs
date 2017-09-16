@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
@@ -119,7 +119,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             fn_ty: FnType<'tcx>,
             fn_ptr: ValueRef,
             llargs: &[ValueRef],
-            destination: Option<(ReturnDest, ty::Ty<'tcx>, mir::BasicBlock)>,
+            destination: Option<(ReturnDest, Ty<'tcx>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
             if let Some(cleanup) = cleanup {

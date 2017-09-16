@@ -35,7 +35,7 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, AdtKind};
+use rustc::ty::{self, Ty, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
@@ -978,7 +978,7 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region<'tcx>, ty:
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Ty<'tcx>, ty::Region<'tcx>> {
+impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
@@ -1895,7 +1895,7 @@ impl Clean<Type> for hir::Ty {
     }
 }
 
-impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
+impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
             ty::TyNever => Never,

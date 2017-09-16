@@ -16,7 +16,7 @@
 use build::CFG;
 use rustc::middle::region;
 use rustc::mir::*;
-use rustc::ty;
+use rustc::ty::TyCtxt;
 
 impl<'tcx> CFG<'tcx> {
     pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -46,7 +46,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub fn push_end_region<'a, 'gcx:'a+'tcx>(&mut self,
-                                             tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+                                             tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                              block: BasicBlock,
                                              source_info: SourceInfo,
                                              region_scope: region::Scope) {
