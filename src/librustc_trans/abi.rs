@@ -288,7 +288,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
             // The primitive for this algorithm.
             layout::Abi::Scalar(value) => {
                 let kind = match value {
-                    layout::Int(_) |
+                    layout::Int(..) |
                     layout::Pointer => RegKind::Integer,
                     layout::F32 |
                     layout::F64 => RegKind::Float
@@ -467,24 +467,18 @@ impl<'a, 'tcx> ArgType<'tcx> {
 
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
-        let (i, signed) = match *self.layout {
-            Layout::Scalar(layout::Int(i)) if self.layout.ty.is_integral() => {
-                (i, self.layout.ty.is_signed())
+        match self.layout.abi {
+            layout::Abi::Scalar(layout::Int(i, signed)) => {
+                if i.size().bits() < bits {
+                    self.attrs.set(if signed {
+                        ArgAttribute::SExt
+                    } else {
+                        ArgAttribute::ZExt
+                    });
+                }
             }
 
-            // Rust enum types that map onto C enums also need to follow
-            // the target ABI zero-/sign-extension rules.
-            Layout::CEnum { discr: layout::Int(i), signed, .. } => (i, signed),
-
-            _ => return
-        };
-
-        if i.size().bits() < bits {
-            self.attrs.set(if signed {
-                ArgAttribute::SExt
-            } else {
-                ArgAttribute::ZExt
-            });
+            _ => {}
         }
     }
 

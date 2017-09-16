@@ -230,9 +230,3 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     result
 }
 
-pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
-    match *l {
-        layout::CEnum { signed, .. }=> signed,
-        _ => false,
-    }
-}
