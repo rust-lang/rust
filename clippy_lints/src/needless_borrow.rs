@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc::hir::{BindingAnnotation, Expr, ExprAddrOf, MutImmutable, Pat, PatKind};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
-use utils::{in_macro, span_lint};
+use utils::{in_macro, snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
 /// be dereferenced immediately by the compiler.
@@ -54,12 +54,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
                         ..
                     }] = *adj3
                     {
-                        span_lint(
+                        span_lint_and_then(
                             cx,
                             NEEDLESS_BORROW,
                             e.span,
-                            "this expression borrows a reference that is immediately dereferenced by the \
-                             compiler",
+                            "this expression borrows a reference that is immediately dereferenced \
+                             by the compiler",
+                            |db| {
+                                if let Some(snippet) = snippet_opt(cx, inner.span) {
+                                    db.span_suggestion(e.span, "change this to", snippet);
+                                }
+                            }
                         );
                     }
                 }
@@ -71,14 +76,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             return;
         }
         if_let_chain! {[
-            let PatKind::Binding(BindingAnnotation::Ref, _, _, _) = pat.node,
+            let PatKind::Binding(BindingAnnotation::Ref, _, name, _) = pat.node,
             let ty::TyRef(_, ref tam) = cx.tables.pat_ty(pat).sty,
             tam.mutbl == MutImmutable,
             let ty::TyRef(_, ref tam) = tam.ty.sty,
             // only lint immutable refs, because borrowed `&mut T` cannot be moved out
             tam.mutbl == MutImmutable,
         ], {
-            span_lint(cx, NEEDLESS_BORROW, pat.span, "this pattern creates a reference to a reference")
+            span_lint_and_then(
+                cx,
+                NEEDLESS_BORROW,
+                pat.span,
+                "this pattern creates a reference to a reference",
+                |db| {
+                    if let Some(snippet) = snippet_opt(cx, name.span) {
+                        db.span_suggestion(pat.span, "change this to", snippet);
+                    }
+                }
+            )
         }}
     }
 }
