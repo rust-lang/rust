@@ -259,17 +259,10 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
                 adt::memory_index_to_gep(variant.memory_index[index] as u64)
             }
 
+            Layout::NullablePointer { ref variants, .. } |
             Layout::General { ref variants, .. } => {
                 if let Some(v) = self.variant_index {
                     adt::memory_index_to_gep(variants[v].memory_index[index] as u64)
-                } else {
-                    bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
-                }
-            }
-
-            Layout::NullablePointer { nndiscr, ref nonnull, .. } => {
-                if self.variant_index == Some(nndiscr as usize) {
-                    adt::memory_index_to_gep(nonnull.memory_index[index] as u64)
                 } else {
                     bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
                 }

@@ -1189,11 +1189,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 }
             }
             layout::NullablePointer {
-                nonnull: ref struct_def,
                 nndiscr,
                 discr,
-                discr_offset
+                discr_offset,
+                ref variants,
+                ..
             } => {
+                let struct_def = &variants[nndiscr as usize];
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,

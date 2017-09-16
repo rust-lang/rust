@@ -1067,9 +1067,9 @@ fn trans_const_adt<'a, 'tcx>(
         layout::Vector { .. } => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
-        layout::NullablePointer { ref nonnull, nndiscr, .. } => {
+        layout::NullablePointer { ref variants, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
-                build_const_struct(ccx, l, &nonnull, vals, None)
+                build_const_struct(ccx, l, &variants[variant_index], vals, None)
             } else {
                 // Always use null even if it's not the `discrfield`th
                 // field; see #8506.

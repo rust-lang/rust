@@ -1128,9 +1128,12 @@ pub enum Layout {
     /// identity function.
     NullablePointer {
         nndiscr: u64,
-        nonnull: Struct,
         discr: Primitive,
         discr_offset: Size,
+        variants: Vec<Struct>,
+        size: Size,
+        align: Align,
+        primitive_align: Align,
     }
 }
 
@@ -1471,23 +1474,20 @@ impl<'a, 'tcx> Layout {
                    !def.repr.inhibit_enum_layout_opt() &&
                    no_explicit_discriminants {
                     // Nullable pointer optimization
-                    let st0 = Struct::new(dl, &variants[0],
-                        &def.repr, StructKind::AlwaysSizedUnivariant, ty)?;
-                    let st1 = Struct::new(dl, &variants[1],
-                        &def.repr, StructKind::AlwaysSizedUnivariant, ty)?;
+                    let mut st = vec![
+                        Struct::new(dl, &variants[0],
+                            &def.repr, StructKind::AlwaysSizedUnivariant, ty)?,
+                        Struct::new(dl, &variants[1],
+                            &def.repr, StructKind::AlwaysSizedUnivariant, ty)?
+                    ];
 
                     let mut choice = None;
                     for discr in 0..2 {
-                        let (st, other) = if discr == 0 {
-                            (&st0, &st1)
-                        } else {
-                            (&st1, &st0)
-                        };
-                        if other.stride().bytes() > 0 {
+                        if st[1 - discr].stride().bytes() > 0 {
                             continue;
                         }
 
-                        let field = st.non_zero_field(tcx, param_env,
+                        let field = st[discr].non_zero_field(tcx, param_env,
                             variants[discr].iter().map(|&f| Ok(f)))?;
                         if let Some((offset, primitive)) = field {
                             choice = Some((discr, offset, primitive));
@@ -1496,23 +1496,22 @@ impl<'a, 'tcx> Layout {
                     }
 
                     if let Some((discr, offset, primitive)) = choice {
-                        // HACK(eddyb) work around not being able to move
-                        // out of arrays with just the indexing operator.
-                        let mut st = if discr == 0 { st0 } else { st1 };
-
                         let mut discr_align = primitive.align(dl);
                         if offset.abi_align(discr_align) != offset {
-                            st.packed = true;
+                            st[discr].packed = true;
                             discr_align = dl.i8_align;
                         }
-                        st.align = st.align.max(discr_align);
-                        st.primitive_align = st.primitive_align.max(discr_align);
+                        let align = st[discr].align.max(discr_align);
+                        let primitive_align = st[discr].primitive_align.max(discr_align);
 
                         return success(NullablePointer {
                             nndiscr: discr as u64,
-                            nonnull: st,
                             discr: primitive,
                             discr_offset: offset,
+                            size: st[discr].stride(),
+                            align,
+                            primitive_align,
+                            variants: st,
                         });
                     }
                 }
@@ -1693,13 +1692,10 @@ impl<'a, 'tcx> Layout {
                  metadata.size(dl)).abi_align(self.align(dl))
             }
 
+            NullablePointer { size, .. } |
             General { size, .. } => size,
             UntaggedUnion(ref un) => un.stride(),
-
-            Univariant(ref variant) |
-            NullablePointer { nonnull: ref variant, .. } => {
-                variant.stride()
-            }
+            Univariant(ref variant) => variant.stride()
         }
     }
 
@@ -1726,13 +1722,11 @@ impl<'a, 'tcx> Layout {
                 Pointer.align(dl).max(metadata.align(dl))
             }
 
-            Array { align, .. } | General { align, .. } => align,
+            Array { align, .. } |
+            NullablePointer { align, .. } |
+            General { align, .. } => align,
             UntaggedUnion(ref un) => un.align,
-
-            Univariant(ref variant) |
-            NullablePointer { nonnull: ref variant, .. } => {
-                variant.align
-            }
+            Univariant(ref variant) => variant.align
         }
     }
 
@@ -1743,11 +1737,11 @@ impl<'a, 'tcx> Layout {
     /// Returns alignment before repr alignment is applied
     pub fn primitive_align<C: HasDataLayout>(&self, cx: C) -> Align {
         match *self {
-            Array { primitive_align, .. } | General { primitive_align, .. } => primitive_align,
-            Univariant(ref variant) |
-            NullablePointer { nonnull: ref variant, .. } => {
-                variant.primitive_align
-            },
+            Array { primitive_align, .. } |
+            NullablePointer { primitive_align, .. } |
+            General { primitive_align, .. } => primitive_align,
+
+            Univariant(ref variant) => variant.primitive_align,
 
             _ => self.align(cx.data_layout())
         }
@@ -1850,23 +1844,6 @@ impl<'a, 'tcx> Layout {
         };
 
         match *layout {
-            Layout::NullablePointer { nonnull: ref variant_layout,
-                                      nndiscr,
-                                      discr: _,
-                                      discr_offset: _ } => {
-                debug!("print-type-size t: `{:?}` adt nullable nndiscr {} is {:?}",
-                       ty, nndiscr, variant_layout);
-                let variant_def = &adt_def.variants[nndiscr as usize];
-                let fields: Vec<_> =
-                    variant_def.fields.iter()
-                                      .map(|field_def| (field_def.name, field_def.ty(tcx, substs)))
-                                      .collect();
-                record(adt_kind.into(),
-                       None,
-                       vec![build_variant_info(Some(variant_def.name),
-                                               &fields,
-                                               variant_layout)]);
-            }
             Layout::Univariant(ref variant_layout) => {
                 let variant_names = || {
                     adt_def.variants.iter().map(|v|format!("{}", v.name)).collect::<Vec<_>>()
@@ -1893,7 +1870,8 @@ impl<'a, 'tcx> Layout {
                 }
             }
 
-            Layout::General { ref variants, discr, .. } => {
+            Layout::NullablePointer { ref variants, .. } |
+            Layout::General { ref variants, .. } => {
                 debug!("print-type-size t: `{:?}` adt general variants def {} layouts {} {:?}",
                        ty, adt_def.variants.len(), variants.len(), variants);
                 let variant_infos: Vec<_> =
@@ -1910,7 +1888,10 @@ impl<'a, 'tcx> Layout {
                                                            variant_layout)
                                     })
                                     .collect();
-                record(adt_kind.into(), Some(discr.size(tcx)), variant_infos);
+                record(adt_kind.into(), match *layout {
+                    Layout::General { discr, .. } => Some(discr.size(tcx)),
+                    _ => None
+                }, variant_infos);
             }
 
             Layout::UntaggedUnion(ref un) => {
@@ -2215,16 +2196,10 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                 }
             }
 
+            NullablePointer { ref variants, .. } |
             General { ref variants, .. } => {
                 FieldPlacement::Arbitrary {
                     offsets: &variants[variant_index].offsets
-                }
-            }
-
-            NullablePointer { nndiscr, ref nonnull, .. }
-                    if nndiscr as usize == variant_index => {
-                FieldPlacement::Arbitrary {
-                    offsets: &nonnull.offsets
                 }
             }
 
@@ -2390,14 +2365,20 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
             }
             NullablePointer {
                 nndiscr,
-                ref nonnull,
+                ref variants,
                 ref discr,
                 discr_offset,
+                size,
+                align,
+                primitive_align
             } => {
                 nndiscr.hash_stable(hcx, hasher);
-                nonnull.hash_stable(hcx, hasher);
+                variants.hash_stable(hcx, hasher);
                 discr.hash_stable(hcx, hasher);
                 discr_offset.hash_stable(hcx, hasher);
+                size.hash_stable(hcx, hasher);
+                align.hash_stable(hcx, hasher);
+                primitive_align.hash_stable(hcx, hasher);
             }
         }
     }

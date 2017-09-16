@@ -273,7 +273,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         // Check whether the variant being used is packed, if applicable.
         let is_packed = match (&*l, l.variant_index) {
             (&layout::Univariant(ref variant), _) => variant.packed,
-            (&layout::NullablePointer { ref nonnull, .. }, _) => nonnull.packed,
+            (&layout::NullablePointer { ref variants, .. }, Some(v)) |
             (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
             _ => return simple()
         };
@@ -471,11 +471,15 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
             // If this is an enum, cast to the appropriate variant struct type.
             let layout = bcx.ccx.layout_of(ty).for_variant(variant_index);
-            if let layout::General { ref variants, .. } = *layout {
-                let st = &variants[variant_index];
-                let variant_ty = Type::struct_(bcx.ccx,
-                    &adt::struct_llfields(bcx.ccx, layout, st), st.packed);
-                downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
+            match *layout {
+                layout::NullablePointer { ref variants, .. } |
+                layout::General { ref variants, .. } => {
+                    let st = &variants[variant_index];
+                    let variant_ty = Type::struct_(bcx.ccx,
+                        &adt::struct_llfields(bcx.ccx, layout, st), st.packed);
+                    downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
+                }
+                _ => {}
             }
 
             downcast
