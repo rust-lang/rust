@@ -146,3 +146,41 @@ fn bench_for_each_chain_ref_fold(b: &mut Bencher) {
         acc
     });
 }
+
+#[bench]
+fn bench_flat_map_sum(b: &mut Bencher) {
+    b.iter(|| -> i64 {
+        (0i64..1000).flat_map(|x| x..x+1000)
+            .map(black_box)
+            .sum()
+    });
+}
+
+#[bench]
+fn bench_flat_map_ref_sum(b: &mut Bencher) {
+    b.iter(|| -> i64 {
+        (0i64..1000).flat_map(|x| x..x+1000)
+            .map(black_box)
+            .by_ref()
+            .sum()
+    });
+}
+
+#[bench]
+fn bench_flat_map_chain_sum(b: &mut Bencher) {
+    b.iter(|| -> i64 {
+        (0i64..1000000).flat_map(|x| once(x).chain(once(x)))
+            .map(black_box)
+            .sum()
+    });
+}
+
+#[bench]
+fn bench_flat_map_chain_ref_sum(b: &mut Bencher) {
+    b.iter(|| -> i64 {
+        (0i64..1000000).flat_map(|x| once(x).chain(once(x)))
+            .map(black_box)
+            .by_ref()
+            .sum()
+    });
+}
