@@ -541,3 +541,10 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
         dst_vec[i] = src[i];
     }
 }
+
+#[warn(needless_range_loop)]
+pub fn manual_clone(src: &[String], dst: &mut [String]) {
+    for i in 0..src.len() {
+        dst[i] = src[i].clone();
+    }
+}
