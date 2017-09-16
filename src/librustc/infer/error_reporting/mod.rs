@@ -399,262 +399,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populate `value`
-    /// highlighting `name` and every type argument that isn't at `pos` (which is `other_ty`), and
-    /// populate `other_value` with `other_ty`.
-    ///
-    /// ```text
-    /// Foo<Bar<Qux>>
-    /// ^^^^--------^ this is highlighted
-    /// |   |
-    /// |   this type argument is exactly the same as the other type, not highlighted
-    /// this is highlighted
-    /// Bar<Qux>
-    /// -------- this type is the same as a type argument in the other type, not highlighted
-    /// ```
-    fn highlight_outer(&self,
-                       value: &mut DiagnosticStyledString,
-                       other_value: &mut DiagnosticStyledString,
-                       name: String,
-                       sub: &ty::subst::Substs<'tcx>,
-                       pos: usize,
-                       other_ty: &Ty<'tcx>) {
-        // `value` and `other_value` hold two incomplete type representation for display.
-        // `name` is the path of both types being compared. `sub`
-        value.push_highlighted(name);
-        let len = sub.len();
-        if len > 0 {
-            value.push_highlighted("<");
-        }
-
-        // Output the lifetimes fot the first type
-        let lifetimes = sub.regions().map(|lifetime| {
-            let s = format!("{}", lifetime);
-            if s.is_empty() {
-                "'_".to_string()
-            } else {
-                s
-            }
-        }).collect::<Vec<_>>().join(", ");
-        if !lifetimes.is_empty() {
-            if sub.regions().count() < len {
-                value.push_normal(lifetimes + &", ");
-            } else {
-                value.push_normal(lifetimes);
-            }
-        }
-
-        // Highlight all the type arguments that aren't at `pos` and compare the type argument at
-        // `pos` and `other_ty`.
-        for (i, type_arg) in sub.types().enumerate() {
-            if i == pos {
-                let values = self.cmp(type_arg, other_ty);
-                value.0.extend((values.0).0);
-                other_value.0.extend((values.1).0);
-            } else {
-                value.push_highlighted(format!("{}", type_arg));
-            }
-
-            if len > 0 && i != len - 1 {
-                value.push_normal(", ");
-            }
-            //self.push_comma(&mut value, &mut other_value, len, i);
-        }
-        if len > 0 {
-            value.push_highlighted(">");
-        }
-    }
-
-    /// If `other_ty` is the same as a type argument present in `sub`, highlight `path` in `t1_out`,
-    /// as that is the difference to the other type.
-    ///
-    /// For the following code:
-    ///
-    /// ```norun
-    /// let x: Foo<Bar<Qux>> = foo::<Bar<Qux>>();
-    /// ```
-    ///
-    /// The type error output will behave in the following way:
-    ///
-    /// ```text
-    /// Foo<Bar<Qux>>
-    /// ^^^^--------^ this is highlighted
-    /// |   |
-    /// |   this type argument is exactly the same as the other type, not highlighted
-    /// this is highlighted
-    /// Bar<Qux>
-    /// -------- this type is the same as a type argument in the other type, not highlighted
-    /// ```
-    fn cmp_type_arg(&self,
-                    mut t1_out: &mut DiagnosticStyledString,
-                    mut t2_out: &mut DiagnosticStyledString,
-                    path: String,
-                    sub: &ty::subst::Substs<'tcx>,
-                    other_path: String,
-                    other_ty: &Ty<'tcx>) -> Option<()> {
-        for (i, ta) in sub.types().enumerate() {
-            if &ta == other_ty {
-                self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
-                return Some(());
-            }
-            if let &ty::TyAdt(def, _) = &ta.sty {
-                let path_ = self.tcx.item_path_str(def.did.clone());
-                if path_ == other_path {
-                    self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
-                    return Some(());
-                }
-            }
-        }
-        None
-    }
-
-    /// Add a `,` to the type representation only if it is appropriate.
-    fn push_comma(&self,
-                  value: &mut DiagnosticStyledString,
-                  other_value: &mut DiagnosticStyledString,
-                  len: usize,
-                  pos: usize) {
-        if len > 0 && pos != len - 1 {
-            value.push_normal(", ");
-            other_value.push_normal(", ");
-        }
-    }
-
-    /// Compare two given types, eliding parts that are the same between them and highlighting
-    /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>)
-        -> (DiagnosticStyledString, DiagnosticStyledString)
-    {
-        match (&t1.sty, &t2.sty) {
-            (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
-                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                let path1 = self.tcx.item_path_str(def1.did.clone());
-                let path2 = self.tcx.item_path_str(def2.did.clone());
-                if def1.did == def2.did {
-                    // Easy case. Replace same types with `_` to shorten the output and highlight
-                    // the differing ones.
-                    //     let x: Foo<Bar, Qux> = y::<Foo<Quz, Qux>>();
-                    //     Foo<Bar, _>
-                    //     Foo<Quz, _>
-                    //         ---  ^ type argument elided
-                    //         |
-                    //         highlighted in output
-                    values.0.push_normal(path1);
-                    values.1.push_normal(path2);
-
-                    // Only draw `<...>` if there're lifetime/type arguments.
-                    let len = sub1.len();
-                    if len > 0 {
-                        values.0.push_normal("<");
-                        values.1.push_normal("<");
-                    }
-
-                    fn lifetime_display(lifetime: Region) -> String {
-                        let s = format!("{}", lifetime);
-                        if s.is_empty() {
-                            "'_".to_string()
-                        } else {
-                            s
-                        }
-                    }
-                    // At one point we'd like to elide all lifetimes here, they are irrelevant for
-                    // all diagnostics that use this output
-                    //
-                    //     Foo<'x, '_, Bar>
-                    //     Foo<'y, '_, Qux>
-                    //         ^^  ^^  --- type arguments are not elided
-                    //         |   |
-                    //         |   elided as they were the same
-                    //         not elided, they were different, but irrelevant
-                    let lifetimes = sub1.regions().zip(sub2.regions());
-                    for (i, lifetimes) in lifetimes.enumerate() {
-                        let l1 = lifetime_display(lifetimes.0);
-                        let l2 = lifetime_display(lifetimes.1);
-                        if l1 == l2 {
-                            values.0.push_normal("'_");
-                            values.1.push_normal("'_");
-                        } else {
-                            values.0.push_highlighted(l1);
-                            values.1.push_highlighted(l2);
-                        }
-                        self.push_comma(&mut values.0, &mut values.1, len, i);
-                    }
-
-                    // We're comparing two types with the same path, so we compare the type
-                    // arguments for both. If they are the same, do not highlight and elide from the
-                    // output.
-                    //     Foo<_, Bar>
-                    //     Foo<_, Qux>
-                    //         ^ elided type as this type argument was the same in both sides
-                    let type_arguments = sub1.types().zip(sub2.types());
-                    let regions_len = sub1.regions().collect::<Vec<_>>().len();
-                    for (i, (ta1, ta2)) in type_arguments.enumerate() {
-                        let i = i + regions_len;
-                        if ta1 == ta2 {
-                            values.0.push_normal("_");
-                            values.1.push_normal("_");
-                        } else {
-                            let (x1, x2) = self.cmp(ta1, ta2);
-                            (values.0).0.extend(x1.0);
-                            (values.1).0.extend(x2.0);
-                        }
-                        self.push_comma(&mut values.0, &mut values.1, len, i);
-                    }
-
-                    // Close the type argument bracket.
-                    // Only draw `<...>` if there're lifetime/type arguments.
-                    if len > 0 {
-                        values.0.push_normal(">");
-                        values.1.push_normal(">");
-                    }
-                    values
-                } else {
-                    // Check for case:
-                    //     let x: Foo<Bar<Qux> = foo::<Bar<Qux>>();
-                    //     Foo<Bar<Qux>
-                    //         ------- this type argument is exactly the same as the other type
-                    //     Bar<Qux>
-                    if self.cmp_type_arg(&mut values.0,
-                                         &mut values.1,
-                                         path1.clone(),
-                                         sub1,
-                                         path2.clone(),
-                                         &t2).is_some() {
-                        return values;
-                    }
-                    // Check for case:
-                    //     let x: Bar<Qux> = y:<Foo<Bar<Qux>>>();
-                    //     Bar<Qux>
-                    //     Foo<Bar<Qux>>
-                    //         ------- this type argument is exactly the same as the other type
-                    if self.cmp_type_arg(&mut values.1,
-                                         &mut values.0,
-                                         path2,
-                                         sub2,
-                                         path1,
-                                         &t1).is_some() {
-                        return values;
-                    }
-
-                    // We couldn't find anything in common, highlight everything.
-                    //     let x: Bar<Qux> = y::<Foo<Zar>>();
-                    (DiagnosticStyledString::highlighted(format!("{}", t1)),
-                     DiagnosticStyledString::highlighted(format!("{}", t2)))
-                }
-            }
-            _ => {
-                if t1 == t2 {
-                    // The two types are the same, elide and don't highlight.
-                    (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
-                } else {
-                    // We couldn't find anything in common, highlight everything.
-                    (DiagnosticStyledString::highlighted(format!("{}", t1)),
-                     DiagnosticStyledString::highlighted(format!("{}", t2)))
-                }
-            }
-        }
-    }
-
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
                          cause: &ObligationCause<'tcx>,
@@ -749,8 +493,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if exp_found.references_error() {
             return None;
         }
-
-        Some(self.cmp(exp_found.expected, exp_found.found))
+        let printer = TyPrinter::new(self.tcx);
+        Some(printer.cmp(exp_found.expected, exp_found.found))
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".
@@ -963,6 +707,321 @@ impl<'tcx> ObligationCause<'tcx> {
             IntrinsicType => "intrinsic has the correct type",
             MethodReceiver => "method receiver has the correct type",
             _ => "types are compatible",
+        }
+    }
+}
+
+struct TyPrinter<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
+
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TyPrinter<'a, 'gcx, 'tcx> {
+        TyPrinter { tcx }
+    }
+
+    fn item_path_str(&self, did: DefId) -> String {
+        self.tcx.item_path_str(did)
+    }
+
+    fn lifetime_display(&self, lifetime: Region) -> String {
+        let s = format!("{}", lifetime);
+        if s.is_empty() {
+            "'_".to_string()
+        } else {
+            s
+        }
+    }
+
+    fn ty_str(&self, ty: Ty<'tcx>) -> String {
+        if let ty::TyAdt(def, sub) = ty.sty {
+            let mut path = self.item_path_str(def.did.clone());
+
+            // Only draw `<...>` if there're lifetime/type arguments.
+            let len = sub.len();
+            if len > 0 {
+                path.push_str("<");
+            }
+
+            let mut regions_len = 0;
+            for (i, lifetimes) in sub.regions().enumerate() {
+                let l = self.lifetime_display(lifetimes);
+                path.push_str(&l);
+                if len > 0 && i != len - 1 {
+                    path.push_str(", ");
+                }
+                regions_len = i;
+            }
+
+            for (i, type_arg) in sub.types().enumerate() {
+                let i = i + regions_len;
+                path.push_str(&self.ty_str(type_arg));
+                if len > 0 && i != len - 1 {
+                    path.push_str(", ");
+                }
+            }
+
+            // Close the type argument bracket.
+            // Only draw `<...>` if there're lifetime/type arguments.
+            if len > 0 {
+                path.push_str(">");
+            }
+            path
+        } else {
+            format!("{}", ty)
+        }
+    }
+
+    /// Given that `other_ty` is the same as a type argument for `name` in `sub`, populate `value`
+    /// highlighting `name` and every type argument that isn't at `pos` (which is `other_ty`), and
+    /// populate `other_value` with `other_ty`.
+    ///
+    /// ```text
+    /// Foo<Bar<Qux>>
+    /// ^^^^--------^ this is highlighted
+    /// |   |
+    /// |   this type argument is exactly the same as the other type, not highlighted
+    /// this is highlighted
+    /// Bar<Qux>
+    /// -------- this type is the same as a type argument in the other type, not highlighted
+    /// ```
+    fn highlight_outer(&self,
+                       value: &mut DiagnosticStyledString,
+                       other_value: &mut DiagnosticStyledString,
+                       name: String,
+                       sub: &ty::subst::Substs<'tcx>,
+                       pos: usize,
+                       other_ty: &Ty<'tcx>) {
+        // `value` and `other_value` hold two incomplete type representation for display.
+        // `name` is the path of both types being compared. `sub`
+        value.push_highlighted(name);
+        let len = sub.len();
+        if len > 0 {
+            value.push_highlighted("<");
+        }
+
+        // Output the lifetimes fot the first type
+        let lifetimes = sub.regions().map(|lifetime| {
+            let s = format!("{}", lifetime);
+            if s.is_empty() {
+                "'_".to_string()
+            } else {
+                s
+            }
+        }).collect::<Vec<_>>().join(", ");
+        if !lifetimes.is_empty() {
+            if sub.regions().count() < len {
+                value.push_normal(lifetimes + &", ");
+            } else {
+                value.push_normal(lifetimes);
+            }
+        }
+
+        // Highlight all the type arguments that aren't at `pos` and compare the type argument at
+        // `pos` and `other_ty`.
+        for (i, type_arg) in sub.types().enumerate() {
+            if i == pos {
+                let values = self.cmp(type_arg, other_ty);
+                value.0.extend((values.0).0);
+                other_value.0.extend((values.1).0);
+            } else {
+                value.push_highlighted(self.ty_str(type_arg));
+            }
+
+            if len > 0 && i != len - 1 {
+                value.push_normal(", ");
+            }
+            //self.push_comma(&mut value, &mut other_value, len, i);
+        }
+        if len > 0 {
+            value.push_highlighted(">");
+        }
+    }
+
+    /// If `other_ty` is the same as a type argument present in `sub`, highlight `path` in `t1_out`,
+    /// as that is the difference to the other type.
+    ///
+    /// For the following code:
+    ///
+    /// ```norun
+    /// let x: Foo<Bar<Qux>> = foo::<Bar<Qux>>();
+    /// ```
+    ///
+    /// The type error output will behave in the following way:
+    ///
+    /// ```text
+    /// Foo<Bar<Qux>>
+    /// ^^^^--------^ this is highlighted
+    /// |   |
+    /// |   this type argument is exactly the same as the other type, not highlighted
+    /// this is highlighted
+    /// Bar<Qux>
+    /// -------- this type is the same as a type argument in the other type, not highlighted
+    /// ```
+    fn cmp_type_arg(&self,
+                    mut t1_out: &mut DiagnosticStyledString,
+                    mut t2_out: &mut DiagnosticStyledString,
+                    path: String,
+                    sub: &ty::subst::Substs<'tcx>,
+                    other_path: String,
+                    other_ty: &Ty<'tcx>) -> Option<()> {
+        for (i, ta) in sub.types().enumerate() {
+            if &ta == other_ty {
+                self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
+                return Some(());
+            }
+            if let &ty::TyAdt(def, _) = &ta.sty {
+                let path_ = self.item_path_str(def.did.clone());
+                if path_ == other_path {
+                    self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
+                    return Some(());
+                }
+            }
+        }
+        None
+    }
+
+    /// Add a `,` to the type representation only if it is appropriate.
+    fn push_comma(&self,
+                  value: &mut DiagnosticStyledString,
+                  other_value: &mut DiagnosticStyledString,
+                  len: usize,
+                  pos: usize) {
+        if len > 0 && pos != len - 1 {
+            value.push_normal(", ");
+            other_value.push_normal(", ");
+        }
+    }
+
+    /// Compare two given types, eliding parts that are the same between them and highlighting
+    /// relevant differences, and return two representation of those types for highlighted printing.
+    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>)
+        -> (DiagnosticStyledString, DiagnosticStyledString)
+    {
+        match (&t1.sty, &t2.sty) {
+            (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
+                let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                let path1 = self.item_path_str(def1.did.clone());
+                let path2 = self.item_path_str(def2.did.clone());
+                debug!("\npath1: {}\npath2: {}", path1, path2);
+                if def1.did == def2.did {
+                    // Easy case. Replace same types with `_` to shorten the output and highlight
+                    // the differing ones.
+                    //     let x: Foo<Bar, Qux> = y::<Foo<Quz, Qux>>();
+                    //     Foo<Bar, _>
+                    //     Foo<Quz, _>
+                    //         ---  ^ type argument elided
+                    //         |
+                    //         highlighted in output
+                    values.0.push_normal(path1);
+                    values.1.push_normal(path2);
+
+                    // Only draw `<...>` if there're lifetime/type arguments.
+                    let len = sub1.len();
+                    if len > 0 {
+                        values.0.push_normal("<");
+                        values.1.push_normal("<");
+                    }
+
+                    // At one point we'd like to elide all lifetimes here, they are irrelevant for
+                    // all diagnostics that use this output
+                    //
+                    //     Foo<'x, '_, Bar>
+                    //     Foo<'y, '_, Qux>
+                    //         ^^  ^^  --- type arguments are not elided
+                    //         |   |
+                    //         |   elided as they were the same
+                    //         not elided, they were different, but irrelevant
+                    let lifetimes = sub1.regions().zip(sub2.regions());
+                    for (i, lifetimes) in lifetimes.enumerate() {
+                        let l1 = self.lifetime_display(lifetimes.0);
+                        let l2 = self.lifetime_display(lifetimes.1);
+                        if l1 == l2 {
+                            values.0.push_normal("'_");
+                            values.1.push_normal("'_");
+                        } else {
+                            values.0.push_highlighted(l1);
+                            values.1.push_highlighted(l2);
+                        }
+                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                    }
+
+                    // We're comparing two types with the same path, so we compare the type
+                    // arguments for both. If they are the same, do not highlight and elide from the
+                    // output.
+                    //     Foo<_, Bar>
+                    //     Foo<_, Qux>
+                    //         ^ elided type as this type argument was the same in both sides
+                    let type_arguments = sub1.types().zip(sub2.types());
+                    let regions_len = sub1.regions().collect::<Vec<_>>().len();
+                    for (i, (ta1, ta2)) in type_arguments.enumerate() {
+                        let i = i + regions_len;
+                        if ta1 == ta2 {
+                            values.0.push_normal("_");
+                            values.1.push_normal("_");
+                        } else {
+                            let (x1, x2) = self.cmp(ta1, ta2);
+                            (values.0).0.extend(x1.0);
+                            (values.1).0.extend(x2.0);
+                        }
+                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                    }
+
+                    // Close the type argument bracket.
+                    // Only draw `<...>` if there're lifetime/type arguments.
+                    if len > 0 {
+                        values.0.push_normal(">");
+                        values.1.push_normal(">");
+                    }
+                    values
+                } else {
+                    // Check for case:
+                    //     let x: Foo<Bar<Qux> = foo::<Bar<Qux>>();
+                    //     Foo<Bar<Qux>
+                    //         ------- this type argument is exactly the same as the other type
+                    //     Bar<Qux>
+                    if self.cmp_type_arg(&mut values.0,
+                                         &mut values.1,
+                                         path1.clone(),
+                                         sub1,
+                                         path2.clone(),
+                                         &t2).is_some() {
+                        return values;
+                    }
+                    // Check for case:
+                    //     let x: Bar<Qux> = y:<Foo<Bar<Qux>>>();
+                    //     Bar<Qux>
+                    //     Foo<Bar<Qux>>
+                    //         ------- this type argument is exactly the same as the other type
+                    if self.cmp_type_arg(&mut values.1,
+                                         &mut values.0,
+                                         path2,
+                                         sub2,
+                                         path1,
+                                         &t1).is_some() {
+                        return values;
+                    }
+
+                    // We couldn't find anything in common, highlight everything.
+                    //     let x: Bar<Qux> = y::<Foo<Zar>>();
+                    (DiagnosticStyledString::highlighted(format!("{}", self.ty_str(t1))),
+                     DiagnosticStyledString::highlighted(format!("{}", self.ty_str(t2))))
+                }
+            }
+            _ => {
+                if t1 == t2 {
+                    // The two types are the same, elide and don't highlight.
+                    (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
+                } else {
+                    // We couldn't find anything in common, highlight everything.
+                    let t1 = format!("{}", t1);
+                    let t2 = format!("{}", t2);
+                    debug!("\nt1: {}\nt2: {}", t1, t2);
+                    (DiagnosticStyledString::highlighted(t1),
+                     DiagnosticStyledString::highlighted(t2))
+                }
+            }
         }
     }
 }
