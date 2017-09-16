@@ -8,11 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(x: usize) -> usize {
-    x
-}
+// Test use of const fns in std using individual feature gates.
+
+use std::cell::Cell;
+
+const CELL: Cell<i32> = Cell::new(42); //~ERROR not yet stable as a const fn
+    //~^HELP #![feature(const_cell_new)]
 
 fn main() {
-    let _ = [0; f(2)];
-    //~^ ERROR calls in constants are limited to constant functions
+    let v = CELL.get();
+    CELL.set(v+1);
+
+    assert_eq!(CELL.get(), v);
 }
+

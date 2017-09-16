@@ -45,10 +45,13 @@
 #![deny(warnings)]
 #![forbid(unsafe_code)]
 
-#![feature(const_fn)]
 #![feature(i128_type)]
 #![feature(slice_patterns)]
 #![feature(try_from)]
+
+#![cfg_attr(stage0, feature(const_fn))]
+#![cfg_attr(not(stage0), feature(const_min_value))]
+#![cfg_attr(not(stage0), feature(const_max_value))]
 
 #[macro_use]
 extern crate rustc_bitflags;

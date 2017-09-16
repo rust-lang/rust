@@ -21,7 +21,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
@@ -30,6 +29,10 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
+
+#![cfg_attr(stage0, feature(const_fn))]
+#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
+#![cfg_attr(not(stage0), feature(const_once_new))]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;

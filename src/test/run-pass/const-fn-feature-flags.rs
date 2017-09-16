@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:const_fn_lib.rs
+// Test use of const fns in std using individual feature gates.
 
-// A very basic test of const fn functionality.
+#![feature(const_cell_new)]
 
-#![feature(const_fn)]
+use std::cell::Cell;
 
-extern crate const_fn_lib;
-
-use const_fn_lib::foo;
-
-const FOO: usize = foo();
+const CELL: Cell<i32> = Cell::new(42);
 
 fn main() {
-    assert_eq!(FOO, 22);
-    let _: [i32; foo()] = [42; 22];
+    let v = CELL.get();
+    CELL.set(v+1);
+
+    assert_eq!(CELL.get(), v);
 }
+

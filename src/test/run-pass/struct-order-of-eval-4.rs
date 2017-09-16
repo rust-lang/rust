@@ -11,7 +11,7 @@
 // Checks that struct-literal expression order-of-eval is as expected
 // even when no Drop-implementations are involved.
 
-#![feature(const_fn)]
+#![feature(const_atomic_usize_new)]
 
 use std::sync::atomic::{Ordering, AtomicUsize};
 

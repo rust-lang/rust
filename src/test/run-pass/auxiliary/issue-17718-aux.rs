@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![feature(const_atomic_usize_new)]
 
 use std::sync::atomic;
 

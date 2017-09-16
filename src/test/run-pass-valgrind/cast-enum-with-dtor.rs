@@ -11,7 +11,7 @@
 // no-prefer-dynamic
 
 #![allow(dead_code)]
-#![feature(const_fn)]
+#![feature(const_atomic_usize_new)]
 
 // check dtor calling order when casting enums.
 

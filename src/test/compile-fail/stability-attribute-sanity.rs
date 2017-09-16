@@ -10,7 +10,7 @@
 
 // Various checks that stability attributes are used correctly, per RFC 507
 
-#![feature(staged_api)]
+#![feature(const_fn, staged_api, rustc_const_unstable)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -88,8 +88,11 @@ fn multiple3() { }
 #[stable(feature = "a", since = "b")]
 #[rustc_deprecated(since = "b", reason = "text")]
 #[rustc_deprecated(since = "b", reason = "text")]
-fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
+#[rustc_const_unstable(feature = "a")]
+#[rustc_const_unstable(feature = "b")]
+pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
 //~^ ERROR Invalid stability or deprecation version found
+//~| ERROR multiple rustc_const_unstable attributes
 
 #[rustc_deprecated(since = "a", reason = "text")]
 fn deprecated_without_unstable_or_stable() { }

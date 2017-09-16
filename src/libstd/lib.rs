@@ -292,6 +292,7 @@
 #![feature(raw)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
+#![cfg_attr(not(stage0), feature(rustc_const_unstable))]
 #![feature(shared)]
 #![feature(sip_hash_13)]
 #![feature(slice_bytes)]
@@ -314,6 +315,17 @@
 #![feature(vec_push_all)]
 #![feature(doc_cfg)]
 #![cfg_attr(test, feature(update_panic_count))]
+
+#![cfg_attr(not(stage0), feature(const_max_value))]
+#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
+#![cfg_attr(not(stage0), feature(const_atomic_isize_new))]
+#![cfg_attr(not(stage0), feature(const_atomic_usize_new))]
+#![cfg_attr(all(not(stage0), windows), feature(const_atomic_ptr_new))]
+#![cfg_attr(not(stage0), feature(const_unsafe_cell_new))]
+#![cfg_attr(not(stage0), feature(const_cell_new))]
+#![cfg_attr(not(stage0), feature(const_once_new))]
+#![cfg_attr(not(stage0), feature(const_ptr_null))]
+#![cfg_attr(not(stage0), feature(const_ptr_null_mut))]
 
 #![default_lib_allocator]
 
