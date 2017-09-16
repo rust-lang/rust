@@ -660,12 +660,16 @@ pub fn build_session_with_codemap(sopts: config::Options,
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
-    let can_print_warnings = sopts.lint_opts
+    let warnings_allow = sopts.lint_opts
         .iter()
         .filter(|&&(ref key, _)| *key == "warnings")
-        .map(|&(_, ref level)| *level != lint::Allow)
+        .map(|&(_, ref level)| *level == lint::Allow)
         .last()
-        .unwrap_or(true);
+        .unwrap_or(false);
+    let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
+
+    let can_print_warnings = !(warnings_allow || cap_lints_allow);
+
     let treat_err_as_bug = sopts.debugging_opts.treat_err_as_bug;
 
     let emitter: Box<Emitter> = match (sopts.error_format, emitter_dest) {
