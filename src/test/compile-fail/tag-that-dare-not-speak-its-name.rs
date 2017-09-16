@@ -22,6 +22,6 @@ fn main() {
     let x : char = last(y);
     //~^ ERROR mismatched types
     //~| expected type `char`
-    //~| found type `std::option::Option<_>`
+    //~| found type `Option<_>`
     //~| expected char, found enum `std::option::Option`
 }

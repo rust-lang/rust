@@ -40,7 +40,7 @@ error[E0308]: mismatched types
    |             expected (), found enum `std::result::Result`
    |
    = note: expected type `()`
-              found type `std::result::Result<bool, std::io::Error>`
+              found type `Result<bool, Error>`
 
 error: aborting due to 5 previous errors
 

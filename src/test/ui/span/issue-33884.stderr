@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 16 |     stream.write_fmt(format!("message received"))
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `std::fmt::Arguments`, found struct `std::string::String`
    |
-   = note: expected type `std::fmt::Arguments<'_>`
-              found type `std::string::String`
+   = note: expected type `Arguments<'_>`
+              found type `String`
    = note: this error originates in a macro outside of the current crate
 
 error: aborting due to previous error

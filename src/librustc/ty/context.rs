@@ -1179,6 +1179,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
+    pub fn cstore(&self) -> &CrateStore {
+        self.cstore
+    }
+
     pub fn def_key(self, id: DefId) -> hir_map::DefKey {
         if id.is_local() {
             self.hir.def_key(id)

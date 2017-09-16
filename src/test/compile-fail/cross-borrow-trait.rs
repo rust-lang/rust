@@ -19,5 +19,5 @@ pub fn main() {
     let x: Box<Trait> = Box::new(Foo);
     let _y: &Trait = x; //~ ERROR E0308
                         //~| expected type `&Trait`
-                        //~| found type `std::boxed::Box<Trait>`
+                        //~| found type `Box<Trait>`
 }

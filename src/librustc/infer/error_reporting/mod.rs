@@ -64,6 +64,7 @@ use std::fmt;
 use hir;
 use hir::map as hir_map;
 use hir::def_id::DefId;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, Region, Ty, TyCtxt, TypeFoldable};
@@ -71,6 +72,7 @@ use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
+use util::nodemap::{FxHashMap, FxHashSet};
 
 mod note;
 
@@ -357,7 +359,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // for imported and non-imported crates
                 if exp_path == found_path
                 || exp_abs_path == found_abs_path {
-                    let crate_name = self.tcx.crate_name(did1.krate);
+                    let crate_name = self.tcx.cstore().crate_name_untracked(did1.krate);
                     err.span_note(sp, &format!("Perhaps two different versions \
                                                 of crate `{}` are being used?",
                                                crate_name));
@@ -711,18 +713,182 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
+/// Visitor that collects every `Item` imported into the current `TyCtxt`'s scope.
+struct ImportVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    /// All the `Item`s from other scopes visible from this `TyCtxt`, as well as their local name.
+    full_imports: FxHashMap<String, String>,
+}
+
+impl<'a, 'gcx, 'tcx> ImportVisitor<'a, 'gcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        ImportVisitor {
+            tcx,
+            full_imports: FxHashMap(),
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ImportVisitor<'a, 'gcx, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
+        NestedVisitorMap::All(&self.tcx.hir)
+    }
+
+    fn visit_item(&mut self, item: &'gcx hir::Item) {
+        use hir::def::Def;
+        use hir::def::Def::*;
+
+        fn handle_external_def(tcx: TyCtxt,
+                               // avoid inspecting the same crates twice
+                               external_mods: &mut FxHashSet<DefId>,
+                               // item to inspect
+                               def: Def,
+                               // the type alias table for imported tys
+                               full_imports: &mut FxHashMap<String, String>) {
+            match def {
+                Mod(def_id) => {
+                    if !external_mods.insert(def_id) {
+                        return;
+                    }
+                    for child in tcx.cstore().item_children_untracked(def_id, tcx.sess) {
+                        let def_id = child.def.def_id();
+                        if let ty::Visibility::Public = tcx.cstore().visibility_untracked(def_id) {
+                            let name = format!("{}", child.ident);
+                            let path = tcx.item_path_str(def_id);
+                            full_imports.insert(path, name);
+                            // We're only looking at exported children, so everything under this
+                            // will be visible when this module is imported, add all of them to the
+                            // alias map.
+                            handle_external_def(tcx, external_mods, child.def, full_imports)
+                        }
+                    }
+                }
+                Struct(def_id) |
+                Union(def_id) |
+                Enum(def_id) |
+                Variant(def_id) |
+                Trait(def_id) |
+                TyAlias(def_id) |
+                StructCtor(def_id, _) |
+                VariantCtor(def_id, _) => {
+                    if let (ty::Visibility::Public, Some(name)) = (
+                        tcx.cstore().visibility_untracked(def_id),
+                        tcx.cstore().def_key(def_id)
+                            .disambiguated_data.data
+                            .get_opt_name()) {
+                        let name = format!("{}", name);
+                        let path = tcx.item_path_str(def_id);
+                        full_imports.insert(path, name);
+                    }
+                }
+                _ => (),
+            }
+        }
+
+        let mut external_mods = FxHashSet();
+        match item.node {
+            // Importing a fully qualified path, add to type alias table.
+            hir::ItemUse(ref path, hir::UseKind::Single) => {
+                debug!("visit_item itemuse single {:?} {:?}", path, path.def);
+                let ty = self.tcx.item_path_str(path.def.def_id());
+                self.full_imports.insert(format!("{}", ty), format!("{}", item.name));
+            }
+            // Importing everything under a path, inspect recursively all the public exports from
+            // that module and add all of them to the type alias table.
+            hir::ItemUse(ref path, hir::UseKind::Glob) => {
+                debug!("visit_item itemuse glob {:?} {:?}", path, path.def);
+
+                if let Mod(def_id) = path.def {
+                    if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                        // Same crate import.
+
+                        // Inspect the module being imported for all visible items and add them to
+                        // the type alias table.
+                        if let hir::map::NodeItem(item) = self.tcx.hir.get(node_id) {
+                            if let hir::ItemMod(ref mod_) = item.node {
+                                // Look at all the items in the imported mod.
+                                for item_id in &mod_.item_ids {
+                                    if let hir::map::NodeItem(item) = self.tcx.hir.get(item_id.id) {
+                                        // We only want to add items that have been exported to the
+                                        // type alias table, check visibility.
+                                        match item.vis {
+                                            hir::Visibility::Public |
+                                            hir::Visibility::Crate => {
+                                                let ty = self.tcx.node_path_str(item.id);
+
+                                                self.full_imports.insert(format!("{}", ty),
+                                                                         format!("{}", item.name));
+                                            }
+                                            _ => (),  // item not visible, don't alias
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Importing from a different crate.
+                        for child in self.tcx.cstore().item_children_untracked(def_id,
+                                                                               self.tcx.sess) {
+                            handle_external_def(self.tcx,
+                                                &mut external_mods,
+                                                child.def,
+                                                &mut self.full_imports)
+                        }
+                    }
+                }
+                if let Err = path.def {  // external crate
+                    // Cross-crate:
+                    for cnum in self.tcx.cstore().crates_untracked() {
+                        let crate_name = self.tcx.cstore().crate_name_untracked(cnum);
+                        if Some(crate_name) == path.segments.first().map(|s| s.name) {
+                            let def_id = DefId {
+                                krate: cnum,
+                                index: hir::def_id::CRATE_DEF_INDEX,
+                            };
+                            debug!("visit_item crate cnum {:?} {}", cnum, crate_name);
+                            // Filter out crates not imported in this context.
+                            handle_external_def(self.tcx,
+                                                &mut external_mods,
+                                                Mod(def_id),
+                                                &mut self.full_imports);
+                        }
+                    }
+                }
+            }
+            _ => (), // Ignore non-import items
+        }
+    }
+}
+
+/// This struct knows how to print out a single type for human consumption, compare two types and
+/// elide type arguments that are the same, highlight differences for terminal output, and identify
+/// types that have been imported into this `TyCtxt` to refer to them with their local path,
+/// instead of their fully qualified path.
 struct TyPrinter<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    local_names: FxHashMap<String, String>,
 }
 
 impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
-
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TyPrinter<'a, 'gcx, 'tcx> {
-        TyPrinter { tcx }
+        let local_names = {
+            let mut visitor = ImportVisitor::new(tcx);
+
+            let krate = tcx.hir.krate();
+            intravisit::walk_crate(&mut visitor, krate);
+            debug!("full_imports {:?}", visitor.full_imports);
+            visitor.full_imports
+        };
+        TyPrinter { tcx, local_names }
     }
 
+    /// `did`'s item's path string relative to this `TyCtxt`, taking into account imports.
     fn item_path_str(&self, did: DefId) -> String {
-        self.tcx.item_path_str(did)
+        let full_path_str = self.tcx.item_path_str(did);
+        match self.local_names.get(&full_path_str) {
+            Some(path) => path.to_owned(),
+            None => full_path_str,
+        }
     }
 
     fn lifetime_display(&self, lifetime: Region) -> String {
@@ -735,41 +901,79 @@ impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
     }
 
     fn ty_str(&self, ty: Ty<'tcx>) -> String {
-        if let ty::TyAdt(def, sub) = ty.sty {
-            let mut path = self.item_path_str(def.did.clone());
+        match ty.sty {
+            ty::TyAdt(def, sub) => {
+                let mut path = self.item_path_str(def.did.clone());
 
-            // Only draw `<...>` if there're lifetime/type arguments.
-            let len = sub.len();
-            if len > 0 {
-                path.push_str("<");
-            }
+                // Only draw `<...>` if there're lifetime/type arguments.
+                let len = sub.len();
+                if len > 0 {
+                    path.push_str("<");
+                }
 
-            let mut regions_len = 0;
-            for (i, lifetimes) in sub.regions().enumerate() {
-                let l = self.lifetime_display(lifetimes);
-                path.push_str(&l);
-                if len > 0 && i != len - 1 {
+                let lifetimes = sub.regions()
+                    .map(|lifetime| self.lifetime_display(lifetime))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if lifetimes.len() > 0 {
+                    path.push_str(&lifetimes);
+                }
+                let type_args = sub.types()
+                    .map(|ty| self.ty_str(ty))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                if lifetimes.len() > 0 && type_args.len() > 0 {
                     path.push_str(", ");
                 }
-                regions_len = i;
-            }
+                if type_args.len() > 0 {
+                    path.push_str(&type_args);
+                }
 
-            for (i, type_arg) in sub.types().enumerate() {
-                let i = i + regions_len;
-                path.push_str(&self.ty_str(type_arg));
-                if len > 0 && i != len - 1 {
-                    path.push_str(", ");
+                // Close the type argument bracket.
+                // Only draw `<...>` if there're lifetime/type arguments.
+                if len > 0 {
+                    path.push_str(">");
+                }
+                path
+            }
+            ty::TyArray(ty, tyconst) => format!("[{}; {}]",
+                                                self.ty_str(ty),
+                                                tyconst.usize_val()),
+            ty::TySlice(ty) => format!("[{}]", self.ty_str(ty)),
+            ty::TyTuple(tys, _) => {
+                let tuple_tys = tys.iter().map(|ty| self.ty_str(ty)).collect::<Vec<_>>();
+                if tuple_tys.len() == 1 {
+                    format!("({},)", tuple_tys[0])
+                } else {
+                    format!("({})", tuple_tys.join(", "))
                 }
             }
-
-            // Close the type argument bracket.
-            // Only draw `<...>` if there're lifetime/type arguments.
-            if len > 0 {
-                path.push_str(">");
+            ty::TyRawPtr(ty_and_mut) => {
+                let mut s = String::new();
+                s.push_str("*");
+                if let hir::Mutability::MutMutable = ty_and_mut.mutbl {
+                    s.push_str("mut ")
+                } else {
+                    s.push_str("const ")
+                }
+                s.push_str(&self.ty_str(ty_and_mut.ty));
+                s
             }
-            path
-        } else {
-            format!("{}", ty)
+            ty::TyRef(region, ty_and_mut) => {
+                let mut s = String::new();
+                s.push_str("&");
+                let r = region.to_string();
+                s.push_str(&r);
+                if !r.is_empty() {
+                    s.push_str(" ");
+                }
+                if let hir::Mutability::MutMutable = ty_and_mut.mutbl {
+                    s.push_str("mut ")
+                }
+                s.push_str(&self.ty_str(ty_and_mut.ty));
+                s
+            }
+            _ => format!("{}", ty),
         }
     }
 
@@ -832,7 +1036,6 @@ impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
             if len > 0 && i != len - 1 {
                 value.push_normal(", ");
             }
-            //self.push_comma(&mut value, &mut other_value, len, i);
         }
         if len > 0 {
             value.push_highlighted(">");
@@ -904,7 +1107,6 @@ impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 let path1 = self.item_path_str(def1.did.clone());
                 let path2 = self.item_path_str(def2.did.clone());
-                debug!("\npath1: {}\npath2: {}", path1, path2);
                 if def1.did == def2.did {
                     // Easy case. Replace same types with `_` to shorten the output and highlight
                     // the differing ones.
@@ -1005,8 +1207,8 @@ impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
 
                     // We couldn't find anything in common, highlight everything.
                     //     let x: Bar<Qux> = y::<Foo<Zar>>();
-                    (DiagnosticStyledString::highlighted(format!("{}", self.ty_str(t1))),
-                     DiagnosticStyledString::highlighted(format!("{}", self.ty_str(t2))))
+                    (DiagnosticStyledString::highlighted(self.ty_str(t1)),
+                     DiagnosticStyledString::highlighted(self.ty_str(t2)))
                 }
             }
             _ => {
@@ -1015,11 +1217,8 @@ impl<'a, 'gcx, 'tcx> TyPrinter<'a, 'gcx, 'tcx> {
                     (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
                 } else {
                     // We couldn't find anything in common, highlight everything.
-                    let t1 = format!("{}", t1);
-                    let t2 = format!("{}", t2);
-                    debug!("\nt1: {}\nt2: {}", t1, t2);
-                    (DiagnosticStyledString::highlighted(t1),
-                     DiagnosticStyledString::highlighted(t2))
+                    (DiagnosticStyledString::highlighted(self.ty_str(t1)),
+                     DiagnosticStyledString::highlighted(self.ty_str(t2)))
                 }
             }
         }
