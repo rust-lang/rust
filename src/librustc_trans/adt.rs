@@ -103,7 +103,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let l = cx.layout_of(t);
     debug!("adt::generic_type_of t: {:?} name: {:?}", t, name);
     match *l {
-        layout::CEnum { discr, .. } => Type::from_integer(cx, discr),
+        layout::CEnum { discr, .. } => cx.llvm_type_of(discr.to_ty(cx.tcx())),
         layout::NullablePointer { nndiscr, ref nonnull, .. } => {
             if let layout::Abi::Scalar(_) = l.abi {
                 return cx.llvm_type_of(l.field(cx, 0).ty);
@@ -234,13 +234,5 @@ pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
     match *l {
         layout::CEnum { signed, .. }=> signed,
         _ => false,
-    }
-}
-
-pub fn assert_discr_in_range<D: PartialOrd>(min: D, max: D, discr: D) {
-    if min <= max {
-        assert!(min <= discr && discr <= max)
-    } else {
-        assert!(min <= discr || discr <= max)
     }
 }
