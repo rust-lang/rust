@@ -22,7 +22,7 @@ error: this expression borrows a reference that is immediately dereferenced by t
   --> $DIR/eta.rs:11:21
    |
 11 |     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
-   |                     ^^^
+   |                     ^^^ help: change this to: `&2`
    |
    = note: `-D needless-borrow` implied by `-D warnings`
 
