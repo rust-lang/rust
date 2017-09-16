@@ -1,3 +1,6 @@
+// This should fail even without validation
+// compile-flags: -Zmir-emit-validate=0
+
 #![allow(dead_code, unused_variables)]
 
 #[repr(packed)]
