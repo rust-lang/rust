@@ -219,7 +219,7 @@ impl Once {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
         // Fast path, just see if we've completed initialization.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
@@ -243,7 +243,7 @@ impl Once {
     #[unstable(feature = "once_poison", issue = "33577")]
     pub fn call_once_force<F>(&'static self, f: F) where F: FnOnce(&OnceState) {
         // same as above, just with a different parameter to `call_inner`.
-        if self.state.load(Ordering::SeqCst) == COMPLETE {
+        if self.state.load(Ordering::Acquire) == COMPLETE {
             return
         }
 
@@ -268,7 +268,7 @@ impl Once {
     fn call_inner(&'static self,
                   ignore_poisoning: bool,
                   init: &mut FnMut(bool)) {
-        let mut state = self.state.load(Ordering::SeqCst);
+        let mut state = self.state.load(Ordering::Acquire);
 
         'outer: loop {
             match state {
@@ -289,7 +289,7 @@ impl Once {
                 POISONED |
                 INCOMPLETE => {
                     let old = self.state.compare_and_swap(state, RUNNING,
-                                                          Ordering::SeqCst);
+                                                          Ordering::Acquire);
                     if old != state {
                         state = old;
                         continue
@@ -328,7 +328,7 @@ impl Once {
                         node.next = (state & !STATE_MASK) as *mut Waiter;
                         let old = self.state.compare_and_swap(state,
                                                               me | RUNNING,
-                                                              Ordering::SeqCst);
+                                                              Ordering::AcqRel);
                         if old != state {
                             state = old;
                             continue
@@ -337,10 +337,10 @@ impl Once {
                         // Once we've enqueued ourselves, wait in a loop.
                         // Afterwards reload the state and continue with what we
                         // were doing from before.
-                        while !node.signaled.load(Ordering::SeqCst) {
+                        while !node.signaled.load(Ordering::Acquire) {
                             thread::park();
                         }
-                        state = self.state.load(Ordering::SeqCst);
+                        state = self.state.load(Ordering::Acquire);
                         continue 'outer
                     }
                 }
@@ -361,9 +361,9 @@ impl Drop for Finish {
         // Swap out our state with however we finished. We should only ever see
         // an old state which was RUNNING.
         let queue = if self.panicked {
-            self.me.state.swap(POISONED, Ordering::SeqCst)
+            self.me.state.swap(POISONED, Ordering::Release)
         } else {
-            self.me.state.swap(COMPLETE, Ordering::SeqCst)
+            self.me.state.swap(COMPLETE, Ordering::Release)
         };
         assert_eq!(queue & STATE_MASK, RUNNING);
 
@@ -376,7 +376,7 @@ impl Drop for Finish {
             while !queue.is_null() {
                 let next = (*queue).next;
                 let thread = (*queue).thread.take().unwrap();
-                (*queue).signaled.store(true, Ordering::SeqCst);
+                (*queue).signaled.store(true, Ordering::Release);
                 thread.unpark();
                 queue = next;
             }
