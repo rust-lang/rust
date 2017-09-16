@@ -1679,10 +1679,14 @@ pub fn fence(order: Ordering) {
 
 /// A compiler memory fence.
 ///
-/// `compiler_fence` does not emit any machine code, but prevents the compiler from re-ordering
-/// memory operations across this point. Which reorderings are disallowed is dictated by the given
-/// [`Ordering`]. Note that `compiler_fence` does *not* introduce inter-thread memory
-/// synchronization; for that, a [`fence`] is needed.
+/// `compiler_fence` does not emit any machine code, but restricts the kinds
+/// of memory re-ordering the compiler is allowed to do. Specifically, depending on
+/// the given [`Ordering`] semantics, the compiler may be disallowed from moving reads
+/// or writes from before or after the call to the other side of the call to
+/// `compiler_fence`. Note that it does **not** prevent the *hardware*
+/// from doing such re-ordering. This is not a problem in a single-threaded,
+/// execution context, but when other threads may modify memory at the same
+/// time, stronger synchronization primitives such as [`fence`] are required.
 ///
 /// The re-ordering prevented by the different ordering semantics are:
 ///
@@ -1690,6 +1694,16 @@ pub fn fence(order: Ordering) {
 ///  - with [`Release`], preceding reads and writes cannot be moved past subsequent writes.
 ///  - with [`Acquire`], subsequent reads and writes cannot be moved ahead of preceding reads.
 ///  - with [`AcqRel`], both of the above rules are enforced.
+///
+/// `compiler_fence` is generally only useful for preventing a thread from
+/// racing *with itself*. That is, if a given thread is executing one piece
+/// of code, and is then interrupted, and starts executing code elsewhere
+/// (while still in the same thread, and conceptually still on the same
+/// core). In traditional programs, this can only occur when a signal
+/// handler is registered. In more low-level code, such situations can also
+/// arise when handling interrupts, when implementing green threads with
+/// pre-emption, etc. Curious readers are encouraged to read the Linux kernel's
+/// discussion of [memory barriers].
 ///
 /// # Panics
 ///
@@ -1736,6 +1750,7 @@ pub fn fence(order: Ordering) {
 /// [`Release`]: enum.Ordering.html#variant.Release
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+/// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
 #[stable(feature = "compiler_fences", since = "1.22.0")]
 pub fn compiler_fence(order: Ordering) {
