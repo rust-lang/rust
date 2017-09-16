@@ -340,7 +340,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                         Err(_) => -1,
                     }
                 } else {
-                    info!("Ignored output to FD {}", fd);
+                    warn!("Ignored output to FD {}", fd);
                     n as isize // pretend it all went well
                 }; // now result is the value we return back to the program
                 self.write_primval(
@@ -456,7 +456,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
 
             // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
-                warn!("ignoring C ABI call: {}", link_name);
+                info!("ignoring C ABI call: {}", link_name);
                 self.write_null(dest, dest_ty)?;
             }
 
@@ -616,7 +616,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
             // A Rust function is missing, which means we are running with MIR missing for libstd (or other dependencies).
             // Still, we can make many things mostly work by "emulating" or ignoring some functions.
             "std::io::_print" => {
-                trace!(
+                warn!(
                     "Ignoring output.  To run programs that print, make sure you have a libstd with full MIR."
                 );
             }
