@@ -15,7 +15,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::{self, Ty, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::subst::Subst;
 use rustc::infer::{self, InferOk};
 
@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn method_exists(&self,
                          span: Span,
                          method_name: ast::Name,
-                         self_ty: ty::Ty<'tcx>,
+                         self_ty: Ty<'tcx>,
                          call_expr_id: ast::NodeId,
                          allow_private: bool)
                          -> bool {
@@ -136,7 +136,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `supplied_method_types`: the explicit method type parameters, if any (`T1..Tn`)
     /// * `self_expr`:             the self expression (`foo`)
     pub fn lookup_method(&self,
-                         self_ty: ty::Ty<'tcx>,
+                         self_ty: Ty<'tcx>,
                          segment: &hir::PathSegment,
                          span: Span,
                          call_expr: &'gcx hir::Expr,
@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn lookup_probe(&self,
                     span: Span,
                     method_name: ast::Name,
-                    self_ty: ty::Ty<'tcx>,
+                    self_ty: Ty<'tcx>,
                     call_expr: &'gcx hir::Expr,
                     scope: ProbeScope)
                     -> probe::PickResult<'tcx> {
@@ -229,8 +229,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   m_name: ast::Name,
                                   trait_def_id: DefId,
-                                  self_ty: ty::Ty<'tcx>,
-                                  opt_input_types: Option<&[ty::Ty<'tcx>]>)
+                                  self_ty: Ty<'tcx>,
+                                  opt_input_types: Option<&[Ty<'tcx>]>)
                                   -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, \
                 m_name={}, trait_def_id={:?})",
@@ -347,7 +347,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_ufcs(&self,
                         span: Span,
                         method_name: ast::Name,
-                        self_ty: ty::Ty<'tcx>,
+                        self_ty: Ty<'tcx>,
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
         let mode = probe::Mode::Path;

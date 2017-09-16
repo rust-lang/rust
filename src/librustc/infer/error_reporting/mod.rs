@@ -66,7 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, Region, TyCtxt, TypeFoldable};
+use ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -418,7 +418,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        name: String,
                        sub: &ty::subst::Substs<'tcx>,
                        pos: usize,
-                       other_ty: &ty::Ty<'tcx>) {
+                       other_ty: &Ty<'tcx>) {
         // `value` and `other_value` hold two incomplete type representation for display.
         // `name` is the path of both types being compared. `sub`
         value.push_highlighted(name);
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     path: String,
                     sub: &ty::subst::Substs<'tcx>,
                     other_path: String,
-                    other_ty: &ty::Ty<'tcx>) -> Option<()> {
+                    other_ty: &Ty<'tcx>) -> Option<()> {
         for (i, ta) in sub.types().enumerate() {
             if &ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -522,7 +522,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Compare two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: ty::Ty<'tcx>, t2: ty::Ty<'tcx>)
+    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>)
         -> (DiagnosticStyledString, DiagnosticStyledString)
     {
         match (&t1.sty, &t2.sty) {
@@ -743,7 +743,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn expected_found_str_ty(&self,
-                             exp_found: &ty::error::ExpectedFound<ty::Ty<'tcx>>)
+                             exp_found: &ty::error::ExpectedFound<Ty<'tcx>>)
                              -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         let exp_found = self.resolve_type_vars_if_possible(exp_found);
         if exp_found.references_error() {
