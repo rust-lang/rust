@@ -129,7 +129,8 @@ matrix:
 
 env:
   global:
-    - SCCACHE_BUCKET=rust-lang-ci-sccache
+    - SCCACHE_BUCKET=rust-lang-ci-sccache2
+    - SCCACHE_REGION=us-west-1
     - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
