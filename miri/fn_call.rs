@@ -634,6 +634,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator> 
                 let bool = self.tcx.types.bool;
                 self.write_primval(dest, PrimVal::from_bool(false), bool)?;
             }
+            "std::sys::imp::c::::AddVectoredExceptionHandler" |
+            "std::sys::imp::c::::SetThreadStackGuarantee" => {
+                let usize = self.tcx.types.usize;
+                // any non zero value works for the stdlib. This is just used for stackoverflows anyway
+                self.write_primval(dest, PrimVal::Bytes(1), usize)?;
+            },
             _ => return err!(NoMirFor(path)),
         }
 

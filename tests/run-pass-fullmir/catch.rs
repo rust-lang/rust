@@ -1,3 +1,4 @@
+//ignore-msvc
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 fn main() {

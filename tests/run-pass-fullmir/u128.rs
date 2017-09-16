@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//ignore-msvc
+
 #![feature(i128_type)]
 
 fn b<T>(t: T) -> T { t }

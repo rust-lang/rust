@@ -1,3 +1,4 @@
+//ignore-msvc
 #![feature(box_syntax)]
 
 fn make_box() -> Box<(i16, i16)> {
