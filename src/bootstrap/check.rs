@@ -1118,10 +1118,11 @@ impl Step for Rustdoc {
         let compiler = builder.compiler(builder.top_stage, self.host);
         let target = compiler.host;
 
-        builder.ensure(RemoteCopyLibs { compiler, target });
-
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, test_kind.subcommand());
-        compile::rustc_cargo(build, &compiler, target, &mut cargo);
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 target,
+                                                 test_kind.subcommand(),
+                                                 "src/tools/rustdoc");
         let _folder = build.fold_output(|| {
             format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
         });
