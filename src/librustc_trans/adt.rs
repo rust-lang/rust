@@ -68,28 +68,24 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 t: Ty<'tcx>, llty: &mut Type) {
     let l = cx.layout_of(t);
     debug!("finish_type_of: {} with layout {:#?}", t, l);
+    if let layout::Abi::Scalar(_) = l.abi {
+        return;
+    }
     match *l {
-        layout::General { .. } | layout::UntaggedUnion { .. } => { }
-        layout::Univariant { ..} | layout::NullablePointer { .. } => {
-            if let layout::Abi::Scalar(_) = l.abi {
-                return;
-            }
-            let (variant_layout, variant) = match *l {
-                layout::Univariant(ref variant) => {
-                    let is_enum = if let ty::TyAdt(def, _) = t.sty {
-                        def.is_enum()
-                    } else {
-                        false
-                    };
-                    if is_enum {
-                        (l.for_variant(0), variant)
-                    } else {
-                        (l, variant)
-                    }
-                }
-                layout::NullablePointer { nndiscr, ref nonnull, .. } =>
-                    (l.for_variant(nndiscr as usize), nonnull),
-                _ => unreachable!()
+        layout::NullablePointer { .. } |
+        layout::General { .. } |
+        layout::UntaggedUnion { .. } => { }
+
+        layout::Univariant(ref variant) => {
+            let is_enum = if let ty::TyAdt(def, _) = t.sty {
+                def.is_enum()
+            } else {
+                false
+            };
+            let variant_layout = if is_enum {
+                l.for_variant(0)
+            } else {
+                l
             };
             llty.set_struct_body(&struct_llfields(cx, variant_layout, variant), variant.packed)
         },
@@ -106,18 +102,6 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return cx.llvm_type_of(value.to_ty(cx.tcx()));
     }
     match *l {
-        layout::NullablePointer { nndiscr, ref nonnull, .. } => {
-            match name {
-                None => {
-                    Type::struct_(cx, &struct_llfields(cx, l.for_variant(nndiscr as usize),
-                                                       nonnull),
-                                  nonnull.packed)
-                }
-                Some(name) => {
-                    Type::named_struct(cx, name)
-                }
-            }
-        }
         layout::Univariant(ref variant) => {
             match name {
                 None => {
@@ -143,6 +127,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
+        layout::NullablePointer { size, align, .. } |
         layout::General { size, align, .. } => {
             let fill = union_fill(cx, size, align);
             match name {
