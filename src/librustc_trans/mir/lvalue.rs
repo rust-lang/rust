@@ -235,7 +235,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         // Discriminant field of enums.
         match *l {
-            layout::General { .. } |
             layout::NullablePointer { .. } if l.variant_index.is_none() => {
                 let ty = ccx.llvm_type_of(field.ty);
                 let size = field.size(ccx).bytes();
@@ -350,60 +349,66 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    /// Helper for cases where the discriminant is simply loaded.
-    fn load_discr(self, bcx: &Builder, discr: layout::Primitive, min: u64, max: u64) -> ValueRef {
-        if let layout::Int(ity, _) = discr {
-            let bits = ity.size().bits();
-            assert!(bits <= 64);
-            let bits = bits as usize;
-            let mask = !0u64 >> (64 - bits);
-            // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
-            // However, that is fine here (it would still represent the full range),
-            if max.wrapping_add(1) & mask == min & mask {
-                // i.e., if the range is everything.  The lo==hi case would be
-                // rejected by the LLVM verifier (it would mean either an
-                // empty set, which is impossible, or the entire range of the
-                // type, which is pointless).
-            } else {
-                // llvm::ConstantRange can deal with ranges that wrap around,
-                // so an overflow on (max + 1) is fine.
-                return bcx.load_range_assert(self.llval, min, max.wrapping_add(1),
-                                             /* signed: */ llvm::True,
-                                             self.alignment.non_abi());
-            }
-        }
-        bcx.load(self.llval, self.alignment.non_abi())
-    }
-
     /// Obtain the actual discriminant of a value.
     pub fn trans_get_discr(self, bcx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
         let l = bcx.ccx.layout_of(self.ty.to_ty(bcx.tcx()));
 
         let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
-        let (val, discr) = match *l {
+        match *l {
             layout::Univariant { .. } |
             layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
-            layout::CEnum { discr, min, max, .. } => {
-                (self.load_discr(bcx, discr, min, max), discr)
+            _ => {}
+        }
+
+        let discr = self.project_field(bcx, 0);
+        let discr_layout = bcx.ccx.layout_of(discr.ty.to_ty(bcx.tcx()));
+        let discr_scalar = match discr_layout.abi {
+            layout::Abi::Scalar(discr) => discr,
+            _ => bug!("discriminant not scalar: {:#?}", discr_layout)
+        };
+        let (min, max) = match *l {
+            layout::CEnum { min, max, .. } => (min, max),
+            layout::General { ref variants, .. } => (0, variants.len() as u64 - 1),
+            _ => (0, u64::max_value()),
+        };
+        let max_next = max.wrapping_add(1);
+        let bits = discr_scalar.size(bcx.ccx).bits();
+        assert!(bits <= 64);
+        let mask = !0u64 >> (64 - bits);
+        let lldiscr = match discr_scalar {
+            // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
+            // However, that is fine here (it would still represent the full range),
+            layout::Int(..) if max_next & mask != min & mask => {
+                // llvm::ConstantRange can deal with ranges that wrap around,
+                // so an overflow on (max + 1) is fine.
+                bcx.load_range_assert(discr.llval, min, max_next,
+                                      /* signed: */ llvm::True,
+                                      discr.alignment.non_abi())
             }
-            layout::General { discr, ref variants, .. } => {
-                let ptr = self.project_field(bcx, 0);
-                (ptr.load_discr(bcx, discr, 0, variants.len() as u64 - 1), discr)
+            _ => {
+                // i.e., if the range is everything.  The lo==hi case would be
+                // rejected by the LLVM verifier (it would mean either an
+                // empty set, which is impossible, or the entire range of the
+                // type, which is pointless).
+                bcx.load(discr.llval, discr.alignment.non_abi())
+            }
+        };
+        match *l {
+            layout::CEnum { .. } |
+            layout::General { .. } => {
+                let signed = match discr_scalar {
+                    layout::Int(_, signed) => signed,
+                    _ => false
+                };
+                bcx.intcast(lldiscr, cast_to, signed)
             }
             layout::NullablePointer { nndiscr, .. } => {
-                let ptr = self.project_field(bcx, 0);
-                let lldiscr = bcx.load(ptr.llval, ptr.alignment.non_abi());
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                (bcx.icmp(cmp, lldiscr, C_null(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())))),
-                 layout::Int(layout::I1, false))
-            },
+                let zero = C_null(bcx.ccx.llvm_type_of(discr_layout.ty));
+                bcx.intcast(bcx.icmp(cmp, lldiscr, zero), cast_to, false)
+            }
             _ => bug!("{} is not an enum", l.ty)
-        };
-        let signed = match discr {
-            layout::Int(_, signed) => signed,
-            _ => false
-        };
-        bcx.intcast(val, cast_to, signed)
+        }
     }
 
     /// Set the discriminant for a new value of the given case of the given
@@ -414,19 +419,11 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
         match *l {
-            layout::CEnum { .. } => {
-                bcx.store(C_int(bcx.ccx.llvm_type_of(self.ty.to_ty(bcx.tcx())), to as i64),
-                    self.llval, self.alignment.non_abi());
-            }
+            layout::CEnum { .. } |
             layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
-            }
-            layout::Univariant { .. }
-            | layout::UntaggedUnion { .. }
-            | layout::Vector { .. } => {
-                assert_eq!(to, 0);
             }
             layout::NullablePointer { nndiscr, .. } => {
                 if to != nndiscr {
@@ -451,7 +448,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                     }
                 }
             }
-            _ => bug!("Cannot handle {} represented as {:#?}", l.ty, l)
+            _ => {
+                assert_eq!(to, 0);
+            }
         }
     }
 
