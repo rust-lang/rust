@@ -107,14 +107,32 @@ pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMet
 pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>) {
     let envs = vec![("PATH".into(), command_path(sess))];
 
+    // If our linker looks like a batch script on Windows then to execute this
+    // we'll need to spawn `cmd` explicitly. This is primarily done to handle
+    // emscripten where the linker is `emcc.bat` and needs to be spawned as
+    // `cmd /c emcc.bat ...`.
+    //
+    // This worked historically but is needed manually since #42436 (regression
+    // was tagged as #42791) and some more info can be found on #44443 for
+    // emscripten itself.
+    let cmd = |linker: &str| {
+        if cfg!(windows) && linker.ends_with(".bat") {
+            let mut cmd = Command::new("cmd");
+            cmd.arg("/c").arg(linker);
+            cmd
+        } else {
+            Command::new(linker)
+        }
+    };
+
     if let Some(ref linker) = sess.opts.cg.linker {
-        (linker.clone(), Command::new(linker), envs)
+        (linker.clone(), cmd(linker), envs)
     } else if sess.target.target.options.is_like_msvc {
         let (cmd, envs) = msvc_link_exe_cmd(sess);
         ("link.exe".to_string(), cmd, envs)
     } else {
         let linker = &sess.target.target.options.linker;
-        (linker.clone(), Command::new(&linker), envs)
+        (linker.clone(), cmd(linker), envs)
     }
 }
 
