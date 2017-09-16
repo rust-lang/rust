@@ -492,12 +492,29 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let res = do catch {
             match query.ty.sty {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
-                    // TODO: Make sure these are not undef.
-                    // We could do a bounds-check and other sanity checks on the lvalue, but it would be a bug in miri for this to ever fail.
+                    if mode.acquiring() {
+                        // Make sure there is no undef
+                        let val = self.read_lvalue(query.lval.1)?;
+                        // This is essentially value_to_primval with support for fat pointers
+                        let has_undef = match self.follow_by_ref_value(val, query.ty)? {
+                            Value::ByRef { .. } => bug!("follow_by_ref_value can't result in `ByRef`"),
+                            Value::ByVal(primval) => primval.is_undef(),
+                            Value::ByValPair(primval1, primval2) =>
+                                primval1.is_undef() || primval2.is_undef()
+                        };
+                        if has_undef {
+                            return err!(ReadUndefBytes);
+                        }
+                    }
                     Ok(())
                 }
-                TyBool | TyFloat(_) | TyChar | TyStr => {
-                    // TODO: Check if these are valid bool/float/codepoint/UTF-8, respectively (and in particular, not undef).
+                TyBool | TyFloat(_) | TyChar => {
+                    if mode.acquiring() {
+                        let val = self.read_lvalue(query.lval.1)?;
+                        let val = self.value_to_primval(ValTy { value: val, ty: query.ty })?;
+                        let _val = val.to_bytes()?;
+                        // TODO: Check if these are valid bool/float/codepoint/UTF-8
+                    }
                     Ok(())
                 }
                 TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
@@ -542,6 +559,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 }
 
                 // Compound types
+                TyStr => {
+                    // TODO: Validate strings
+                    Ok(())
+                }
                 TySlice(elem_ty) => {
                     let len = match query.lval.1 {
                         Lvalue::Ptr { extra: LvalueExtra::Length(len), .. } => len,
