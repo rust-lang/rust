@@ -423,8 +423,8 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         position: &str,
         span: Span,
-        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
-        expected: &'a intrinsics::Type, t: ty::Ty<'tcx>)
+        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, Ty<'tcx>>,
+        expected: &'a intrinsics::Type, t: Ty<'tcx>)
 {
     use intrinsics::Type::*;
 

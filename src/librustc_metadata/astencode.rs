@@ -14,7 +14,7 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::hir;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
@@ -59,7 +59,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
 }
 
 struct NestedBodyCollector<'a, 'tcx: 'a> {
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     bodies_found: Vec<&'tcx hir::Body>,
 }
 

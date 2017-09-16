@@ -18,7 +18,7 @@ use machine;
 use monomorphize;
 use type_::Type;
 use value::Value;
-use rustc::ty;
+use rustc::ty::{self, Ty};
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(usize);
@@ -63,7 +63,7 @@ impl<'a, 'tcx> VirtualIndex {
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
 pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            ty: ty::Ty<'tcx>,
+                            ty: Ty<'tcx>,
                             trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>)
                             -> ValueRef
 {

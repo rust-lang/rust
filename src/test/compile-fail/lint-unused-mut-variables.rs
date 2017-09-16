@@ -110,3 +110,11 @@ fn foo(mut a: isize) {
     let mut a = 3;
     let mut b = vec![2];
 }
+
+// make sure the lint attribute can be turned off on let statements
+#[deny(unused_mut)]
+fn bar() {
+    #[allow(unused_mut)]
+    let mut a = 3;
+    let mut b = vec![2]; //~ ERROR: variable does not need to be mutable
+}

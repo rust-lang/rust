@@ -268,7 +268,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 ///
 pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     span: Span,
     scope: region::Scope)
     -> Result<(), ErrorReported>

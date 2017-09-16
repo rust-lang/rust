@@ -381,7 +381,7 @@ pub struct VtableObjectData<'tcx, N> {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableFnPointerData<'tcx, N> {
-    pub fn_ty: ty::Ty<'tcx>,
+    pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
 }
 
