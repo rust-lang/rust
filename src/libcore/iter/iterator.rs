@@ -498,8 +498,6 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_for_each)]
-    ///
     /// use std::sync::mpsc::channel;
     ///
     /// let (tx, rx) = channel();
@@ -514,15 +512,13 @@ pub trait Iterator {
     /// might be preferable to keep a functional style with longer iterators:
     ///
     /// ```
-    /// #![feature(iterator_for_each)]
-    ///
     /// (0..5).flat_map(|x| x * 100 .. x * 110)
     ///       .enumerate()
     ///       .filter(|&(i, x)| (i + x) % 3 == 0)
     ///       .for_each(|(i, x)| println!("{}:{}", i, x));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_for_each", issue = "42986")]
+    #[stable(feature = "iterator_for_each", since = "1.22.0")]
     fn for_each<F>(self, mut f: F) where
         Self: Sized, F: FnMut(Self::Item),
     {
