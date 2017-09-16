@@ -153,8 +153,12 @@ impl fmt::Debug for Child {
 ///
 /// This struct is used in the [`stdin`] field on [`Child`].
 ///
+/// When an instance of `ChildStdin` is [dropped], the `ChildStdin`'s underlying
+/// file handle will be closed.
+///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe
@@ -196,8 +200,12 @@ impl fmt::Debug for ChildStdin {
 ///
 /// This struct is used in the [`stdout`] field on [`Child`].
 ///
+/// When an instance of `ChildStdout` is [dropped], the `ChildStdout`'s
+/// underlying file handle will be closed.
+///
 /// [`Child`]: struct.Child.html
 /// [`stdout`]: struct.Child.html#structfield.stdout
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe
@@ -239,8 +247,12 @@ impl fmt::Debug for ChildStdout {
 ///
 /// This struct is used in the [`stderr`] field on [`Child`].
 ///
+/// When an instance of `ChildStderr` is [dropped], the `ChildStderr`'s
+/// underlying file handle will be closed.
+///
 /// [`Child`]: struct.Child.html
 /// [`stderr`]: struct.Child.html#structfield.stderr
+/// [dropped]: ../ops/trait.Drop.html
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe
