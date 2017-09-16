@@ -5,6 +5,7 @@ extern crate compiletest_rs as compiletest;
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
 use std::io::Write;
+use std::env;
 
 macro_rules! eprintln {
     ($($arg:tt)*) => {
@@ -90,7 +91,7 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         opt_str
     );
     let mut config = compiletest::Config::default().tempdir();
-    config.mode = "mir-opt".parse().expect("Invalid mode");
+    config.mode = "ui".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
@@ -100,6 +101,9 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         config.compile_lib_path = rustc_lib_path();
     }
     let mut flags = Vec::new();
+    // Control miri logging. This is okay despite concurrent test execution as all tests
+    // will set this env var to the same value.
+    env::set_var("MIRI_LOG", "warn");
     // if we are building as part of the rustc test suite, we already have fullmir for everything
     if fullmir && rustc_test_suite().is_none() {
         if host != target {
@@ -122,9 +126,6 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         flags.push("--miri_host_target".to_owned());
     }
     config.target_rustcflags = Some(flags.join(" "));
-    // don't actually execute the final binary, it might be for other targets and we only care
-    // about running miri, not the binary.
-    config.runtool = Some("echo \"\" || ".to_owned());
     compiletest::run_tests(&config);
 }
 
