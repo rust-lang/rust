@@ -1036,7 +1036,7 @@ fn trans_const_adt<'a, 'tcx>(
         _ => 0,
     };
     match *l {
-        layout::CEnum { discr: d, min, max, .. } => {
+        layout::CEnum { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
                     adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
@@ -1045,14 +1045,14 @@ fn trans_const_adt<'a, 'tcx>(
                 _ => 0,
             };
             assert_eq!(vals.len(), 0);
-            adt::assert_discr_in_range(min, max, discr);
-            Const::new(C_int(Type::from_integer(ccx, d), discr as i64), t)
+            Const::new(C_int(ccx.llvm_type_of(t), discr as i64), t)
         }
-        layout::General { discr: d, ref variants, .. } => {
+        layout::General { ref variants, .. } => {
+            let discr_ty = l.field(ccx, 0).ty;
             let variant = &variants[variant_index];
-            let lldiscr = C_int(Type::from_integer(ccx, d), variant_index as i64);
+            let lldiscr = C_int(ccx.llvm_type_of(discr_ty), variant_index as i64);
             build_const_struct(ccx, l, &variant, vals,
-                Some(Const::new(lldiscr, d.to_ty(ccx.tcx(), false))))
+                Some(Const::new(lldiscr, discr_ty)))
         }
         layout::UntaggedUnion(ref un) => {
             assert_eq!(variant_index, 0);

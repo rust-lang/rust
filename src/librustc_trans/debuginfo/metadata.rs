@@ -1422,8 +1422,8 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |inttype: layout::Integer, signed: bool| {
-        let disr_type_key = (enum_def_id, inttype);
+    let discriminant_type_metadata = |discr: layout::Primitive, signed: bool| {
+        let disr_type_key = (enum_def_id, discr);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
                                                                  .get(&disr_type_key).cloned();
@@ -1431,10 +1431,13 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
                 let (discriminant_size, discriminant_align) =
-                    (inttype.size(), inttype.align(cx));
+                    (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
                     type_metadata(cx,
-                                  inttype.to_ty(cx.tcx(), signed),
+                                  match discr {
+                                    layout::Int(i) => i.to_ty(cx.tcx(), signed),
+                                    _ => discr.to_ty(cx.tcx())
+                                  },
                                   syntax_pos::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 

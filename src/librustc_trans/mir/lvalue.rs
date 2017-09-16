@@ -351,25 +351,28 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     /// Helper for cases where the discriminant is simply loaded.
-    fn load_discr(self, bcx: &Builder, ity: layout::Integer, min: u64, max: u64) -> ValueRef {
-        let bits = ity.size().bits();
-        assert!(bits <= 64);
-        let bits = bits as usize;
-        let mask = !0u64 >> (64 - bits);
-        // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
-        // However, that is fine here (it would still represent the full range),
-        if max.wrapping_add(1) & mask == min & mask {
-            // i.e., if the range is everything.  The lo==hi case would be
-            // rejected by the LLVM verifier (it would mean either an
-            // empty set, which is impossible, or the entire range of the
-            // type, which is pointless).
-            bcx.load(self.llval, self.alignment.non_abi())
-        } else {
-            // llvm::ConstantRange can deal with ranges that wrap around,
-            // so an overflow on (max + 1) is fine.
-            bcx.load_range_assert(self.llval, min, max.wrapping_add(1), /* signed: */ llvm::True,
-                                  self.alignment.non_abi())
+    fn load_discr(self, bcx: &Builder, discr: layout::Primitive, min: u64, max: u64) -> ValueRef {
+        if let layout::Int(ity) = discr {
+            let bits = ity.size().bits();
+            assert!(bits <= 64);
+            let bits = bits as usize;
+            let mask = !0u64 >> (64 - bits);
+            // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
+            // However, that is fine here (it would still represent the full range),
+            if max.wrapping_add(1) & mask == min & mask {
+                // i.e., if the range is everything.  The lo==hi case would be
+                // rejected by the LLVM verifier (it would mean either an
+                // empty set, which is impossible, or the entire range of the
+                // type, which is pointless).
+            } else {
+                // llvm::ConstantRange can deal with ranges that wrap around,
+                // so an overflow on (max + 1) is fine.
+                return bcx.load_range_assert(self.llval, min, max.wrapping_add(1),
+                                             /* signed: */ llvm::True,
+                                             self.alignment.non_abi());
+            }
         }
+        bcx.load(self.llval, self.alignment.non_abi())
     }
 
     /// Obtain the actual discriminant of a value.
@@ -406,14 +409,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
         match *l {
-            layout::CEnum { discr, min, max, .. } => {
-                adt::assert_discr_in_range(min, max, to);
-                bcx.store(C_int(Type::from_integer(bcx.ccx, discr), to as i64),
+            layout::CEnum { .. } => {
+                bcx.store(C_int(bcx.ccx.llvm_type_of(self.ty.to_ty(bcx.tcx())), to as i64),
                     self.llval, self.alignment.non_abi());
             }
-            layout::General { discr, .. } => {
+            layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
-                bcx.store(C_int(Type::from_integer(bcx.ccx, discr), to as i64),
+                bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
             layout::Univariant { .. }

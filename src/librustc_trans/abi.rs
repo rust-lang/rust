@@ -474,7 +474,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
 
             // Rust enum types that map onto C enums also need to follow
             // the target ABI zero-/sign-extension rules.
-            Layout::CEnum { discr, signed, .. } => (discr, signed),
+            Layout::CEnum { discr: layout::Int(i), signed, .. } => (i, signed),
 
             _ => return
         };
