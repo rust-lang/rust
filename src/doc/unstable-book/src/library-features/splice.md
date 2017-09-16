@@ -6,8 +6,8 @@ The tracking issue for this feature is: [#32310]
 
 ------------------------
 
-The `splice()` method on `Vec` and `String` allows you to replace a range
-of values in a vector or string with another range of values, and returns
+The `splice()` method on `String` allows you to replace a range
+of values in a string with another range of values, and returns
 the replaced values.
 
 A simple example:
