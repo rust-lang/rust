@@ -1902,6 +1902,16 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
             _ => (lo, None)
         }
     }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, mut fold: Fold) -> Acc
+        where Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.frontiter.into_iter()
+            .chain(self.iter.map(self.f).map(U::into_iter))
+            .chain(self.backiter)
+            .fold(init, |acc, iter| iter.fold(acc, &mut fold))
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
