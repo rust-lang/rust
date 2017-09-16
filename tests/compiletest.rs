@@ -123,9 +123,6 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
         // For now, only validate without optimizations.  Inlining breaks validation.
         flags.push("-Zmir-emit-validate=1".to_owned());
     }
-    if target == host {
-        flags.push("--miri_host_target".to_owned());
-    }
     config.target_rustcflags = Some(flags.join(" "));
     compiletest::run_tests(&config);
 }
