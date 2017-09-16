@@ -270,9 +270,8 @@ get the new behavior with just one recompile.
 
 ## Location type
 
-Let's enhance `my_unwrap` to also log a message to the log file before panicking. We would
-need to get the caller's location as a value. This is supported using the method
-`Location::caller()`:
+Let's enhance `my_unwrap` to also log a message to the log file before panicking. We would need to
+get the caller's location as a value. This is supported using the method `Location::caller()`:
 
 ```rust
 use std::panic::Location;
@@ -286,6 +285,37 @@ pub fn my_unwrap<T>(input: Option<T>) -> T {
             panic!("nothing to see here, move along")
         }
     }
+}
+```
+
+## Propagation of blame
+
+When your `#[blame_caller]` function calls another `#[blame_caller]` function, the caller location
+will be propagated downwards:
+
+```rust
+use std::panic::Location;
+#[blame_caller]
+pub fn my_get_index<T>(input: &[T], index: usize) -> &T {
+    my_unwrap(input.get(index))        // line 4
+}
+indirectly_unwrap(None);    // line 6
+```
+
+When you run this, the panic will refer to line 6, the original caller, instead of line 4 where
+`my_get_index` calls `my_unwrap`. When a library function is marked `#[blame_caller]`, it is
+expected the function is short, and does not have any logic errors. This allows us to always blame
+the caller on failure.
+
+If a panic that refers to the local location is actually needed, you may workaround by wrapping the
+code in a closure which cannot blame the caller:
+
+```rust
+#[blame_caller]
+pub fn my_get_index<T>(input: &[T], index: usize) -> &T {
+    (|| {
+        my_unwrap(input.get(index))
+    })()
 }
 ```
 
@@ -492,6 +522,10 @@ bloat the binary size.
 
 The intrinsic `caller_location()` is a placeholder which will be replaced by the actual caller
 location when one calls `foo::{{closure}}` directly.
+
+Currently the `foo::{{closure}}` cannot inherit attributes defined on the main function. To prevent
+problems regarding ABI, using `#[naked]` or `extern "ABI"` together with
+`#[rustc_implicit_caller_location]` should raise an error.
 
 ## Redirection (MIR inlining)
 
@@ -1128,8 +1162,11 @@ The same drawback exists if we base the solution on [RFC 2000]  (*const generics
 * Diverging functions should be supported.
 
 * The closure `foo::{{closure}}` should inherit most attributes applied to the function `foo`, in
-    particular `#[inline]`, `#[cold]` and `#[naked]`. Currently a procedural macro won't see any of
-    these, nor would there be anyway to apply these attributes to a closure.
+    particular `#[inline]`, `#[cold]`, `#[naked]` and also the ABI. Currently a procedural macro
+    won't see any of these, nor would there be anyway to apply these attributes to a closure.
+    Therefore, `#[rustc_implicit_caller_location]` currently will reject `#[naked]` and ABI, and
+    leaving `#[inline]` and `#[cold]` mean no-op. There is no semantic reason why these cannot be
+    used though.
 
 [RFC 1669]: https://github.com/rust-lang/rfcs/pull/1669
 [24346]: https://github.com/rust-lang/rust/issues/24346
