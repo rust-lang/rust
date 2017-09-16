@@ -18,5 +18,47 @@ error: writing `&Vec<_>` instead of `&[_]` involves one more reference and canno
 27 |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
-error: aborting due to 3 previous errors
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
+  --> $DIR/ptr_arg.rs:40:14
+   |
+40 | fn cloned(x: &Vec<u8>) -> Vec<u8> {
+   |              ^^^^^^^^
+   |
+help: change this to
+   |
+40 | fn cloned(x: &[u8]) -> Vec<u8> {
+   |              ^^^^^
+help: change the `.clone()` to
+   |
+41 |     let e = x.to_owned();
+   |             ^^^^^^^^^^^^
+help: change the `.clone()` to
+   |
+46 |     x.to_owned()
+   |     ^^^^^^^^^^^^
+
+error: writing `&String` instead of `&str` involves a new object where a slice will do.
+  --> $DIR/ptr_arg.rs:49:18
+   |
+49 | fn str_cloned(x: &String) -> String {
+   |                  ^^^^^^^
+   |
+help: change this to
+   |
+49 | fn str_cloned(x: &str) -> String {
+   |                  ^^^^
+help: change the `.clone` to 
+   |
+50 |     let a = x.to_string();
+   |             ^^^^^^^^^^^^^
+help: change the `.clone` to 
+   |
+51 |     let b = x.to_string();
+   |             ^^^^^^^^^^^^^
+help: change the `.clone` to 
+   |
+56 |     x.to_string()
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

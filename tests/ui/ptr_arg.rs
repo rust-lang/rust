@@ -1,6 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
-#![allow(unused)]
+#![allow(unused, many_single_char_names)]
 #![warn(ptr_arg)]
 
 fn do_vec(x: &Vec<i64>) {
@@ -34,5 +34,24 @@ struct Bar;
 impl Foo for Bar {
     type Item = Vec<u8>;
     fn do_vec(x: &Vec<i64>) {}
-    fn do_item(x: &Vec<u8>) {}  
+    fn do_item(x: &Vec<u8>) {}
+}
+
+fn cloned(x: &Vec<u8>) -> Vec<u8> {
+    let e = x.clone();
+    let f = e.clone(); // OK
+    let g = x;
+    let h = g.clone(); // Alas, we cannot reliably detect this without following data.
+    let i = (e).clone();
+    x.clone()
+}
+
+fn str_cloned(x: &String) -> String {
+    let a = x.clone();
+    let b = x.clone();
+    let c = b.clone();
+    let d = a.clone()
+             .clone()
+             .clone();
+    x.clone()
 }

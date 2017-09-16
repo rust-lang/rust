@@ -1,26 +1,42 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
 use rustc::hir::*;
+use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
-use syntax::ast::NodeId;
+use syntax::ast::{Name, NodeId};
 use syntax::codemap::Span;
 use syntax_pos::MultiSpan;
-use utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
-            span_lint_and_sugg, walk_ptrs_hir_ty};
+use utils::{get_pat_name, match_qpath, match_type, match_var, paths,
+            snippet, snippet_opt, span_lint, span_lint_and_then,
+            walk_ptrs_hir_ty};
 
 /// **What it does:** This lint checks for function arguments of type `&String`
-/// or `&Vec` unless
-/// the references are mutable.
+/// or `&Vec` unless the references are mutable. It will also suggest you
+/// replace `.clone()` calls with the appropriate `.to_owned()`/`to_string()`
+/// calls.
 ///
 /// **Why is this bad?** Requiring the argument to be of the specific size
-/// makes the function less
-/// useful for no benefit; slices in the form of `&[T]` or `&str` usually
-/// suffice and can be
-/// obtained from other types, too.
+/// makes the function less useful for no benefit; slices in the form of `&[T]`
+/// or `&str` usually suffice and can be obtained from other types, too.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The lint does not follow data. So if you have an
+/// argument `x` and write `let y = x; y.clone()` the lint will not suggest
+/// changing that `.clone()` to `.to_owned()`.
+///
+/// Other functions called from this function taking a `&String` or `&Vec`
+/// argument may also fail to compile if you change the argument. Applying
+/// this lint on them will fix the problem, but they may be in other crates.
+///
+/// Also there may be `fn(&Vec)`-typed references pointing to your function.
+/// If you have them, you will get a compiler error after applying this lint's
+/// suggestions. You then have the choice to undo your changes or change the
+/// type of the reference.
+///
+/// Note that if the function is part of your public interface, there may be
+/// other crates referencing it you may not be aware. Carefully deprecate the
+/// function before applying the lint suggestions in this case.
 ///
 /// **Example:**
 /// ```rust
@@ -87,25 +103,26 @@ impl LintPass for PointerPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let ItemFn(ref decl, _, _, _, _, _) = item.node {
-            check_fn(cx, decl, item.id);
+        if let ItemFn(ref decl, _, _, _, _, body_id) = item.node {
+            check_fn(cx, decl, item.id, Some(body_id));
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if let ImplItemKind::Method(ref sig, _) = item.node {
+        if let ImplItemKind::Method(ref sig, body_id) = item.node {
             if let Some(NodeItem(it)) = cx.tcx.hir.find(cx.tcx.hir.get_parent(item.id)) {
                 if let ItemImpl(_, _, _, _, Some(_), _, _) = it.node {
                     return; // ignore trait impls
                 }
             }
-            check_fn(cx, &sig.decl, item.id);
+            check_fn(cx, &sig.decl, item.id, Some(body_id));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if let TraitItemKind::Method(ref sig, _) = item.node {
-            check_fn(cx, &sig.decl, item.id);
+        if let TraitItemKind::Method(ref sig, ref trait_method) = item.node {
+            let body_id = if let TraitMethod::Provided(b) = *trait_method { Some(b) } else { None };
+            check_fn(cx, &sig.decl, item.id, body_id);
         }
     }
 
@@ -123,12 +140,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
     }
 }
 
-fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
+fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<BodyId>) {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_id);
     let sig = cx.tcx.fn_sig(fn_def_id);
     let fn_ty = sig.skip_binder();
 
-    for (arg, ty) in decl.inputs.iter().zip(fn_ty.inputs()) {
+    for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         if let ty::TyRef(
             _,
             ty::TypeAndMut {
@@ -146,7 +163,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
                 ], {
                     ty_snippet = snippet_opt(cx, parameters.types[0].span);
                 });
-                //TODO: Suggestion
+                let spans = get_spans(cx, opt_body_id, idx, "to_owned");
                 span_lint_and_then(
                     cx,
                     PTR_ARG,
@@ -159,16 +176,30 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
                                                "change this to",
                                                format!("&[{}]", snippet));
                         }
+                        for (clonespan, suggestion) in spans {
+                            db.span_suggestion(clonespan,
+                                               "change the `.clone()` to",
+                                               suggestion);
+                        }
                     }
                 );
             } else if match_type(cx, ty, &paths::STRING) {
-                span_lint_and_sugg(
+                let spans = get_spans(cx, opt_body_id, idx, "to_string");
+                span_lint_and_then(
                     cx,
                     PTR_ARG,
                     arg.span,
                     "writing `&String` instead of `&str` involves a new object where a slice will do.",
-                    "change this to",
-                    "&str".to_string()
+                    |db| {
+                        db.span_suggestion(arg.span,
+                                           "change this to",
+                                           "&str".into());
+                        for (clonespan, suggestion) in spans {
+                            db.span_suggestion_short(clonespan,
+                                               "change the `.clone` to ",
+                                               suggestion);
+                        }
+                    }
                 );
             }
         }
@@ -196,6 +227,54 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
             });
         }
     }
+}
+
+fn get_spans(cx: &LateContext, opt_body_id: Option<BodyId>, idx: usize, fn_name: &'static str) -> Vec<(Span, String)> {
+    if let Some(body) = opt_body_id.map(|id| cx.tcx.hir.body(id)) {
+        get_binding_name(&body.arguments[idx]).map_or_else(Vec::new,
+                                                |name| extract_clone_suggestions(cx, name, fn_name, body))
+    } else {
+        vec![]
+    }
+}
+
+fn extract_clone_suggestions<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, name: Name, fn_name: &'static str, body: &'tcx Body) -> Vec<(Span, String)> {
+    let mut visitor = PtrCloneVisitor {
+        cx,
+        name,
+        fn_name,
+        spans: vec![]
+    };
+    visitor.visit_body(body);
+    visitor.spans
+}
+
+struct PtrCloneVisitor<'a, 'tcx: 'a> {
+    cx: &'a LateContext<'a, 'tcx>,
+    name: Name,
+    fn_name: &'static str,
+    spans: Vec<(Span, String)>,
+}
+
+impl<'a, 'tcx: 'a> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
+        if let ExprMethodCall(ref seg, _, ref args) = expr.node {
+            if args.len() == 1 && match_var(&args[0], self.name) && seg.name == "clone" {
+                self.spans.push((expr.span, format!("{}.{}()", snippet(self.cx, args[0].span, "_"), self.fn_name)));
+            }
+            return;
+        }
+        walk_expr(self, expr);
+    }
+
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::None
+    }
+
+}
+
+fn get_binding_name(arg: &Arg) -> Option<Name> {
+    get_pat_name(&arg.pat)
 }
 
 fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {

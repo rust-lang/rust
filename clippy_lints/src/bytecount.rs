@@ -2,7 +2,8 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::{Name, UintTy};
-use utils::{contains_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use utils::{contains_name, get_pat_name, match_type, paths, single_segment_path,
+            snippet, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for naive byte counts
 ///
@@ -91,15 +92,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
 
 fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
     name == arg && !contains_name(name, needle)
-}
-
-fn get_pat_name(pat: &Pat) -> Option<Name> {
-    match pat.node {
-        PatKind::Binding(_, _, ref spname, _) => Some(spname.node),
-        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
-        PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
-        _ => None,
-    }
 }
 
 fn get_path_name(expr: &Expr) -> Option<Name> {
