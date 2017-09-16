@@ -1203,8 +1203,7 @@ impl<'a, 'tcx> Layout {
         let success = |layout| {
             let layout = tcx.intern_layout(layout);
             let fields = match *layout {
-                Scalar(_) |
-                CEnum { .. } => {
+                Scalar(_) => {
                     FieldPlacement::union(0)
                 }
 
@@ -1241,6 +1240,7 @@ impl<'a, 'tcx> Layout {
                     FieldPlacement::union(def.struct_variant().fields.len())
                 }
 
+                CEnum { .. } |
                 General { .. } => FieldPlacement::union(1),
 
                 NullablePointer { ref discr_offset, .. } => {
@@ -2356,6 +2356,7 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                     match self.variant_index {
                         None => match *self.layout {
                             // Discriminant field for enums (where applicable).
+                            CEnum { discr, .. } |
                             General { discr, .. } |
                             NullablePointer { discr, .. } => {
                                 return [discr.to_ty(tcx)][i];
