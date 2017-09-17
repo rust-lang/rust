@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, Layout, LayoutOf};
+use rustc::ty::layout::{self, Align, FullLayout, Layout, LayoutOf};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -55,14 +55,9 @@ impl ops::BitOr for Alignment {
     }
 }
 
-impl<'a> From<&'a Layout<'a>> for Alignment {
-    fn from(layout: &Layout) -> Self {
-        let (packed, align) = match *layout {
-            Layout::UntaggedUnion(ref un) => (un.packed, un.align),
-            Layout::Univariant(ref variant) => (variant.packed, variant.align),
-            _ => return Alignment::AbiAligned
-        };
-        if packed {
+impl<'a> From<FullLayout<'a>> for Alignment {
+    fn from(layout: FullLayout) -> Self {
+        if let layout::Abi::Aggregate { packed: true, align, .. } = layout.abi {
             Alignment::Packed(align)
         } else {
             Alignment::AbiAligned
@@ -208,7 +203,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let field = l.field(ccx, ix);
         let offset = l.fields.offset(ix).bytes();
 
-        let alignment = self.alignment | Alignment::from(l.layout);
+        let alignment = self.alignment | Alignment::from(l);
 
         // Unions and newtypes only use an offset of 0.
         match *l.layout {
@@ -267,16 +262,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             }
         };
 
-        // Check whether the variant being used is packed, if applicable.
-        let is_packed = match *l.layout {
-            layout::Univariant(ref variant) => variant.packed,
-            _ => return simple()
-        };
-
         // Simple case - we can just GEP the field
         //   * Packed struct - There is no alignment padding
         //   * Field is sized - pointer is properly aligned already
-        if is_packed || !field.is_unsized() {
+        if l.is_packed() || !field.is_unsized() {
             return simple();
         }
 
@@ -466,12 +455,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
             // If this is an enum, cast to the appropriate variant struct type.
             let layout = bcx.ccx.layout_of(ty);
-            let variant_layout = layout.for_variant(variant_index);
-            match (layout.layout, variant_layout.layout) {
-                (&layout::NullablePointer { .. }, &layout::Univariant(ref st)) |
-                (&layout::General { .. }, &layout::Univariant(ref st)) => {
+            match *layout.layout {
+                layout::NullablePointer { .. } |
+                layout::General { .. } => {
+                    let variant_layout = layout.for_variant(variant_index);
                     let variant_ty = Type::struct_(bcx.ccx,
-                        &adt::struct_llfields(bcx.ccx, variant_layout), st.packed);
+                        &adt::struct_llfields(bcx.ccx, variant_layout),
+                        variant_layout.is_packed());
                     downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
                 }
                 _ => {}

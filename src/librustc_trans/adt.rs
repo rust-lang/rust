@@ -42,7 +42,7 @@
 //!   taken to it, implementing them for Rust seems difficult.
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, HasDataLayout, LayoutOf, Size, FullLayout};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Size, FullLayout};
 
 use context::CrateContext;
 use type_::Type;
@@ -72,11 +72,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return;
     }
     match *l.layout {
-        layout::NullablePointer { .. } |
-        layout::General { .. } |
-        layout::UntaggedUnion { .. } => { }
-
-        layout::Univariant(ref variant) => {
+        layout::Univariant(_) => {
             let is_enum = if let ty::TyAdt(def, _) = t.sty {
                 def.is_enum()
             } else {
@@ -87,9 +83,11 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } else {
                 l
             };
-            llty.set_struct_body(&struct_llfields(cx, variant_layout), variant.packed)
-        },
-        _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
+            llty.set_struct_body(&struct_llfields(cx, variant_layout),
+                                 variant_layout.is_packed())
+        }
+
+        _ => {}
     }
 }
 
@@ -102,61 +100,42 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return cx.llvm_type_of(value.to_ty(cx.tcx()));
     }
     match *l.layout {
-        layout::Univariant(ref variant) => {
+        layout::Univariant(_) => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, l), variant.packed)
+                    Type::struct_(cx, &struct_llfields(cx, l), l.is_packed())
                 }
                 Some(name) => {
                     Type::named_struct(cx, name)
                 }
             }
         }
-        layout::UntaggedUnion(ref un) => {
-            // Use alignment-sized ints to fill all the union storage.
-            let fill = union_fill(cx, un.stride(), un.align);
+        _ => {
+            let align = l.align(cx);
+            let abi_align = align.abi();
+            let elem_ty = if let Some(ity) = layout::Integer::for_abi_align(cx, align) {
+                Type::from_integer(cx, ity)
+            } else {
+                let vec_align = cx.data_layout().vector_align(Size::from_bytes(abi_align));
+                assert_eq!(vec_align.abi(), abi_align);
+                Type::vector(&Type::i32(cx), abi_align / 4)
+            };
+
+            let size = l.size(cx).bytes();
+            assert_eq!(size % abi_align, 0);
+            let fill = Type::array(&elem_ty, size / abi_align);
             match name {
                 None => {
-                    Type::struct_(cx, &[fill], un.packed)
+                    Type::struct_(cx, &[fill], l.is_packed())
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(&[fill], un.packed);
+                    llty.set_struct_body(&[fill], l.is_packed());
                     llty
                 }
             }
         }
-        layout::NullablePointer { size, align, .. } |
-        layout::General { size, align, .. } => {
-            let fill = union_fill(cx, size, align);
-            match name {
-                None => {
-                    Type::struct_(cx, &[fill], false)
-                }
-                Some(name) => {
-                    let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(&[fill], false);
-                    llty
-                }
-            }
-        }
-        _ => bug!("Unsupported type {} represented as {:#?}", t, l)
     }
-}
-
-fn union_fill(cx: &CrateContext, size: Size, align: Align) -> Type {
-    let abi_align = align.abi();
-    let elem_ty = if let Some(ity) = layout::Integer::for_abi_align(cx, align) {
-        Type::from_integer(cx, ity)
-    } else {
-        let vec_align = cx.data_layout().vector_align(Size::from_bytes(abi_align));
-        assert_eq!(vec_align.abi(), abi_align);
-        Type::vector(&Type::i32(cx), abi_align / 4)
-    };
-
-    let size = size.bytes();
-    assert_eq!(size % abi_align, 0);
-    Type::array(&elem_ty, size / abi_align)
 }
 
 /// Double an index and add 1 to account for padding.
@@ -166,17 +145,20 @@ pub fn memory_index_to_gep(index: u64) -> u64 {
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  layout: FullLayout<'tcx>) -> Vec<Type> {
-    let variant = match *layout.layout {
-        layout::Univariant(ref variant) => variant,
-        _ => bug!("unexpected {:#?}", layout)
-    };
+    debug!("struct_llfields: {:#?}", layout);
+    let align = layout.align(cx);
+    let size = layout.size(cx);
     let field_count = layout.fields.count();
-    debug!("struct_llfields: variant: {:?}", variant);
+
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
-    for i in variant.field_index_by_increasing_offset() {
+    let field_index_by_increasing_offset = match *layout.layout {
+        layout::Univariant(ref variant) => variant.field_index_by_increasing_offset(),
+        _ => bug!("unexpected {:#?}", layout)
+    };
+    for i in field_index_by_increasing_offset {
         let field = layout.field(cx, i);
-        let target_offset = variant.offsets[i as usize];
+        let target_offset = layout.fields.offset(i as usize);
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
             i, field, offset, target_offset);
         assert!(target_offset >= offset);
@@ -187,30 +169,30 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let llty = cx.llvm_type_of(field.ty);
         result.push(llty);
 
-        if variant.packed {
+        if layout.is_packed() {
             assert_eq!(padding.bytes(), 0);
         } else {
             let field_align = field.align(cx);
-            assert!(field_align.abi() <= variant.align.abi(),
+            assert!(field_align.abi() <= align.abi(),
                     "non-packed type has field with larger align ({}): {:#?}",
-                    field_align.abi(), variant);
+                    field_align.abi(), layout);
         }
 
         offset = target_offset + field.size(cx);
     }
-    if variant.sized && field_count > 0 {
-        if offset > variant.stride() {
-            bug!("variant: {:?} stride: {:?} offset: {:?}",
-                variant, variant.stride(), offset);
+    if !layout.is_unsized() && field_count > 0 {
+        if offset > size {
+            bug!("layout: {:#?} stride: {:?} offset: {:?}",
+                 layout, size, offset);
         }
-        let padding = variant.stride() - offset;
-        debug!("struct_llfields: pad_bytes: {:?} offset: {:?} min_size: {:?} stride: {:?}",
-            padding, offset, variant.min_size, variant.stride());
+        let padding = size - offset;
+        debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
+               padding, offset, size);
         result.push(Type::array(&Type::i8(cx), padding.bytes()));
         assert!(result.len() == 1 + field_count * 2);
     } else {
-        debug!("struct_llfields: offset: {:?} min_size: {:?} stride: {:?}",
-               offset, variant.min_size, variant.stride());
+        debug!("struct_llfields: offset: {:?} stride: {:?}",
+               offset, size);
     }
 
     result

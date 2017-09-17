@@ -58,15 +58,9 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let layout = ccx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 
-            let (sized_size, sized_align) = match *layout.layout {
-                ty::layout::Layout::Univariant(ref variant) => {
-                    (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align.abi())
-                }
-                _ => {
-                    bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
-                         t, layout);
-                }
-            };
+            let i = layout.fields.count() - 1;
+            let sized_size = layout.fields.offset(i).bytes();
+            let sized_align = layout.align(ccx).abi();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
             let sized_size = C_usize(ccx, sized_size);
@@ -74,7 +68,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = layout.field(ccx, layout.fields.count() - 1).ty;
+            let field_ty = layout.field(ccx, i).ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
