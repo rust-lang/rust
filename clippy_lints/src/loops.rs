@@ -16,7 +16,7 @@ use utils::sugg;
 use utils::const_to_u64;
 
 use utils::{get_enclosing_block, get_parent_expr, higher, in_external_macro, is_integer_literal, is_refutable,
-            last_path_segment, match_trait_method, match_type, multispan_sugg, snippet, snippet_opt,
+            last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
             span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then};
 use utils::paths;
 
@@ -1308,15 +1308,6 @@ fn pat_is_wild<'tcx>(pat: &'tcx PatKind, body: &'tcx Expr) -> bool {
         },
         _ => false,
     }
-}
-
-fn match_var(expr: &Expr, var: Name) -> bool {
-    if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
-        if path.segments.len() == 1 && path.segments[0].name == var {
-            return true;
-        }
-    }
-    false
 }
 
 struct UsedVisitor {

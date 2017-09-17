@@ -218,6 +218,17 @@ pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool 
     }
 }
 
+/// Check if an expression references a variable of the given name.
+pub fn match_var(expr: &Expr, var: Name) -> bool {
+    if let ExprPath(QPath::Resolved(None, ref path)) = expr.node {
+        if path.segments.len() == 1 && path.segments[0].name == var {
+            return true;
+        }
+    }
+    false
+}
+
+
 pub fn last_path_segment(path: &QPath) -> &PathSegment {
     match *path {
         QPath::Resolved(_, ref path) => path.segments
@@ -389,6 +400,16 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
         Some(Node::NodeItem(&Item { ref name, .. })) |
         Some(Node::NodeTraitItem(&TraitItem { ref name, .. })) |
         Some(Node::NodeImplItem(&ImplItem { ref name, .. })) => Some(*name),
+        _ => None,
+    }
+}
+
+/// Get the name of a `Pat`, if any
+pub fn get_pat_name(pat: &Pat) -> Option<Name> {
+    match pat.node {
+        PatKind::Binding(_, _, ref spname, _) => Some(spname.node),
+        PatKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.name),
+        PatKind::Box(ref p) | PatKind::Ref(ref p, _) => get_pat_name(&*p),
         _ => None,
     }
 }
