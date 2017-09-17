@@ -35,7 +35,7 @@ cd netbsd
 
 mkdir -p /x-tools/x86_64-unknown-netbsd/sysroot
 
-URL=https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+URL=https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
 
 # Originally from ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-$BSD/source/sets/*.tgz
 curl $URL/2017-03-17-netbsd-src.tgz | tar xzf -

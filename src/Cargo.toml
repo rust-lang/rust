@@ -18,6 +18,7 @@ members = [
   "tools/cargo",
   "tools/rustdoc",
   "tools/rls",
+  "tools/rustfmt",
   # FIXME(https://github.com/rust-lang/cargo/issues/4089): move these to exclude
   "tools/rls/test_data/borrow_error",
   "tools/rls/test_data/completion",
@@ -56,5 +57,13 @@ debug-assertions = false
 debug = false
 debug-assertions = false
 
-[patch.'https://github.com/rust-lang/cargo']
+[patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
+
+# Override rustfmt dependencies both on the repo and the crate (the RLS
+# sometimes uses either).
+# FIXME should only need the crates.io patch, long term.
+[patch.'https://github.com/rust-lang-nursery/rustfmt']
+rustfmt-nightly = { path = "tools/rustfmt" }
+[patch.crates-io]
+rustfmt-nightly = { path = "tools/rustfmt" }
