@@ -1420,7 +1420,7 @@ impl String {
     /// assert_eq!(t, "α is alpha, ");
     /// assert_eq!(s, "Α is capital alpha; β is beta");
     /// ```
-    #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+    #[unstable(feature = "splice", reason = "recently added", issue = "44643")]
     pub fn splice<'a, 'b, R>(&'a mut self, range: R, replace_with: &'b str) -> Splice<'a, 'b>
         where R: RangeArgument<usize>
     {
