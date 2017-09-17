@@ -1,6 +1,11 @@
 This document is intended to be a guide for documenting the process of adding
 new vendor intrinsics to this crate.
 
+If you decide to implement a set of vendor intrinsics, please check the set of
+open issues to make sure somebody else isn't already working on them. If no
+such issue exists, then create a new issue and state the intrinsics you'd like
+to implement.
+
 At a high level, each vendor intrinsic should correspond to a single exported
 Rust function with an appropriate `target_feature` attribute. Here's an
 example for `_mm_adds_epi16`:
