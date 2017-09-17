@@ -1793,6 +1793,12 @@ impl Clean<Type> for hir::Ty {
                 let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
                 let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
                     n.to_string()
+                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
+                        print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
+                    } else {
+                        inline::print_inlined_const(cx, def_id)
+                    }
                 } else {
                     format!("{:?}", n)
                 };
@@ -1909,6 +1915,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::TyArray(ty, n) => {
                 let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
                     n.to_string()
+                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
+                        print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
+                    } else {
+                        inline::print_inlined_const(cx, def_id)
+                    }
                 } else {
                     format!("{:?}", n)
                 };
