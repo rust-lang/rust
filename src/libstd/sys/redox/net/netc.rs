@@ -14,8 +14,8 @@ pub type in_port_t = u16;
 pub type socklen_t = u32;
 pub type sa_family_t = u16;
 
-pub const AF_INET: sa_family_t = 1;
-pub const AF_INET6: sa_family_t = 2;
+pub const AF_INET: sa_family_t = 2;
+pub const AF_INET6: sa_family_t = 23;
 
 #[derive(Copy, Clone)]
 #[repr(C)]
