@@ -10,7 +10,6 @@
 
 use abi::Abi;
 use common::*;
-use glue;
 
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
@@ -189,7 +188,7 @@ pub fn resolve<'a, 'tcx>(
             _ => {
                 if Some(def_id) == scx.tcx().lang_items().drop_in_place_fn() {
                     let ty = substs.type_at(0);
-                    if glue::needs_drop_glue(scx, ty) {
+                    if scx.type_needs_drop(ty) {
                         debug!(" => nontrivial drop glue");
                         ty::InstanceDef::DropGlue(def_id, Some(ty))
                     } else {

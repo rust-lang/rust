@@ -105,22 +105,3 @@ macro_rules! vec {
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
 }
-
-// Private macro to get the offset of a struct field in bytes from the address of the struct.
-macro_rules! offset_of {
-    ($container:path, $field:ident) => {{
-        // Make sure the field actually exists. This line ensures that a compile-time error is
-        // generated if $field is accessed through a Deref impl.
-        let $container { $field : _, .. };
-
-        // Create an (invalid) instance of the container and calculate the offset to its
-        // field. Using a null pointer might be UB if `&(*(0 as *const T)).field` is interpreted to
-        // be nullptr deref.
-        let invalid: $container = ::core::mem::uninitialized();
-        let offset = &invalid.$field as *const _ as usize - &invalid as *const _ as usize;
-
-        // Do not run destructors on the made up invalid instance.
-        ::core::mem::forget(invalid);
-        offset as isize
-    }};
-}

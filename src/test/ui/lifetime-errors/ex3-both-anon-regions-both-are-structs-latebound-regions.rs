@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,12 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![deny(warnings)]
-
-// See comments in Cargo.toml for why this exists
-
-fn main() {
-    println!("cargo:rustc-cfg=stdbuild");
-    println!("cargo:rerun-if-changed=build.rs");
+struct Ref<'a> {
+    x: &'a u32,
 }
+
+fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>) {
+    x.push(y);
+}
+
+fn main() {}

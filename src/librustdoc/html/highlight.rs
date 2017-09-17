@@ -34,12 +34,18 @@ use syntax_pos::Span;
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
-                                extension: Option<&str>) -> String {
+                                extension: Option<&str>,
+                                tooltip: Option<(&str, &str)>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
+    if let Some((tooltip, class)) = tooltip {
+        write!(out, "<div class='information'><div class='tooltip {}'>⚠<span \
+                     class='tooltiptext'>{}</span></div></div>",
+               class, tooltip).unwrap();
+    }
     write_header(class, id, &mut out).unwrap();
 
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());

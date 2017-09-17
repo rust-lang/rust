@@ -276,7 +276,6 @@
 #![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
-#![feature(needs_drop)]
 #![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]

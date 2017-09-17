@@ -332,7 +332,6 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// Here's an example of how a collection might make use of needs_drop:
 ///
 /// ```
-/// #![feature(needs_drop)]
 /// use std::{mem, ptr};
 ///
 /// pub struct MyCollection<T> {
@@ -359,7 +358,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "needs_drop", issue = "41890")]
+#[stable(feature = "needs_drop", since = "1.22.0")]
 pub fn needs_drop<T>() -> bool {
     unsafe { intrinsics::needs_drop::<T>() }
 }
