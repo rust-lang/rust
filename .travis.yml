@@ -34,6 +34,7 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
       if: branch = auto
@@ -54,6 +55,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode8.2
       if: branch = auto
@@ -67,6 +69,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode8.2
       if: branch = auto
@@ -86,6 +89,7 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
       if: branch = auto
@@ -99,6 +103,7 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
       if: branch = auto
