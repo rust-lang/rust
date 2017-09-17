@@ -287,6 +287,8 @@ impl Builder {
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
     ///
+    /// The name must not contain null bytes (`\0`).
+    ///
     /// For more information about named threads, see
     /// [this module-level documentation][naming-threads].
     ///
@@ -354,6 +356,10 @@ impl Builder {
     /// [`spawn`]: ../../std/thread/fn.spawn.html
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+    ///
+    /// # Panics
+    ///
+    /// Panics if a thread name was set and it contained null bytes.
     ///
     /// # Examples
     ///
@@ -941,6 +947,7 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
+    // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
             CString::new(n).expect("thread name may not contain interior null bytes")
