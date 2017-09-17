@@ -4,3 +4,5 @@ error: unexpected end of macro invocation
 12 |     assert_ne!(1, 2,);
    |                    ^
 
+error: aborting due to previous error
+
