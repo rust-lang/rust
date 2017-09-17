@@ -912,7 +912,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         let layout = cx.layout_of(self.ty);
 
         let tmp;
-        let offsets = match *layout {
+        let offsets = match *layout.layout {
             layout::Univariant(ref variant) => &variant.offsets,
             layout::Vector { element, count } => {
                 let element_size = element.size(cx).bytes();
@@ -993,7 +993,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
-        let offsets = if let layout::Univariant(ref variant) = *layout {
+        let offsets = if let layout::Univariant(ref variant) = *layout.layout {
             &variant.offsets
         } else {
             bug!("{} is not a tuple", self.ty);
@@ -1310,7 +1310,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    span: Span)
                                    -> (DICompositeType, MemberDescriptionFactory<'tcx>) {
     let layout = cx.layout_of(enum_type);
-    let maybe_discr = match *layout {
+    let maybe_discr = match *layout.layout {
         layout::General { .. } => Some(layout.field(cx, 0).ty),
         _ => None,
     };
@@ -1462,7 +1462,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let type_rep = cx.layout_of(enum_type);
 
-    let discriminant_type_metadata = match *type_rep {
+    let discriminant_type_metadata = match *type_rep.layout {
         layout::NullablePointer { .. } | layout::Univariant { .. } => None,
         layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)

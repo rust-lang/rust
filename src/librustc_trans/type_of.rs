@@ -240,7 +240,7 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
         if let layout::Abi::Scalar(_) = self.abi {
             bug!("FullLayout::llvm_field_index({:?}): not applicable", self);
         }
-        match **self {
+        match *self.layout {
             Layout::Scalar { .. } |
             Layout::UntaggedUnion { .. } => {
                 bug!("FullLayout::llvm_field_index({:?}): not applicable", self)

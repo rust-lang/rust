@@ -71,7 +71,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     if let layout::Abi::Scalar(_) = l.abi {
         return;
     }
-    match *l {
+    match *l.layout {
         layout::NullablePointer { .. } |
         layout::General { .. } |
         layout::UntaggedUnion { .. } => { }
@@ -101,7 +101,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     if let layout::Abi::Scalar(value) = l.abi {
         return cx.llvm_type_of(value.to_ty(cx.tcx()));
     }
-    match *l {
+    match *l.layout {
         layout::Univariant(ref variant) => {
             match name {
                 None => {

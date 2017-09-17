@@ -278,8 +278,8 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
             layout::Abi::Scalar(_) |
-            layout::Abi::Vector => false,
-            layout::Abi::Aggregate => true
+            layout::Abi::Vector { .. } => false,
+            layout::Abi::Aggregate { .. } => true
         }
     }
 
@@ -299,14 +299,14 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 })
             }
 
-            layout::Abi::Vector => {
+            layout::Abi::Vector { .. } => {
                 Some(Reg {
                     kind: RegKind::Vector,
                     size: self.size(ccx)
                 })
             }
 
-            layout::Abi::Aggregate => {
+            layout::Abi::Aggregate { .. } => {
                 if let Layout::Array { count, .. } = *self.layout {
                     if count > 0 {
                         return self.field(ccx, 0).homogeneous_aggregate(ccx);
@@ -767,7 +767,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if let ty::layout::FatPointer { .. } = *arg.layout {
+            if let ty::layout::FatPointer { .. } = *arg.layout.layout {
                 let mut data = ArgType::new(arg.layout.field(ccx, 0));
                 let mut info = ArgType::new(arg.layout.field(ccx, 1));
 
@@ -809,7 +809,7 @@ impl<'a, 'tcx> FnType<'tcx> {
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType<'tcx>| {
                 match arg.layout.abi {
-                    layout::Abi::Aggregate => {}
+                    layout::Abi::Aggregate { .. } => {}
                     _ => return
                 }
 

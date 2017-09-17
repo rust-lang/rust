@@ -1033,7 +1033,7 @@ fn trans_const_adt<'a, 'tcx>(
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
     };
-    match *l {
+    match *l.layout {
         layout::General { ref variants, .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {

@@ -272,7 +272,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let llval = operand.immediate();
                         let l = bcx.ccx.layout_of(operand.ty);
 
-                        if let Layout::General { ref discr_range, .. } = *l {
+                        if let Layout::General { ref discr_range, .. } = *l.layout {
                             if discr_range.end > discr_range.start {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
