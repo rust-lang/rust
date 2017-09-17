@@ -1570,10 +1570,13 @@ mod tests {
 
     #[test]
     fn connect_timeout_unroutable() {
-        // this IP is unroutable, so connections should always time out.
+        // this IP is unroutable, so connections should always time out,
+        // provided the network is reachable to begin with.
         let addr = "10.255.255.1:80".parse().unwrap();
         let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
-        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+        assert!(e.kind() == io::ErrorKind::TimedOut ||
+                e.kind() == io::ErrorKind::Other,
+                "bad error: {} {:?}", e, e.kind());
     }
 
     #[test]

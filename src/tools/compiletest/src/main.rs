@@ -517,7 +517,7 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
     //
     //    run-pass/foo/bar/baz.rs
     let path =
-        PathBuf::from(config.mode.to_string())
+        PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
     test::DynTestName(format!("[{}] {}", config.mode, path.display()))

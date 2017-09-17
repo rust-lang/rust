@@ -64,6 +64,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/tools/rls",
         "src/tools/clippy",
         "src/tools/rust-installer",
+        "src/tools/rustfmt",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
