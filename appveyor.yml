@@ -7,6 +7,12 @@ environment:
         - TARGET: x86_64-pc-windows-msvc
           MSYS2_BITS: 64
 
+# branches to build
+branches:
+  # whitelist
+  only:
+    - master
+
 install:
     - set PATH=C:\Program Files\Git\mingw64\bin;%PATH%
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
