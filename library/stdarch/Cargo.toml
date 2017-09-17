@@ -1,5 +1,4 @@
 [package]
-publish = false
 name = "stdsimd"
 version = "0.0.1"  #:version
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
