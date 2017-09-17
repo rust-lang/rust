@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use {debuginfo, machine};
 use base;
-use trans_item::TransItem;
+use trans_item::{TransItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
@@ -109,7 +109,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = common::instance_ty(ccx.shared(), &instance);
+    let ty = common::instance_ty(ccx.tcx(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -130,7 +130,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
                 let g = declare::define_global(ccx, &sym[..], llty).unwrap();
 
-                if !ccx.exported_symbols().local_exports().contains(&id) {
+                if !ccx.tcx().is_exported_symbol(def_id) {
                     unsafe {
                         llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                     }
@@ -150,7 +150,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::llvm_linkage_by_name(&name.as_str()) {
+                    let linkage = match base::linkage_by_name(&name.as_str()) {
                         Some(linkage) => linkage,
                         None => {
                             ccx.sess().span_fatal(span, "invalid linkage specified");
@@ -165,7 +165,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::LLVMRustSetLinkage(g1, linkage);
+                        llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is
@@ -269,7 +269,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         };
 
         let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.shared(), &instance);
+        let ty = common::instance_ty(ccx.tcx(), &instance);
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g

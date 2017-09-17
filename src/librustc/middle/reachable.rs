@@ -233,8 +233,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 } else {
                     false
                 };
-                let is_extern = attr::contains_extern_indicator(&self.tcx.sess.diagnostic(),
-                                                                &item.attrs);
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                let is_extern = self.tcx.contains_extern_indicator(def_id);
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
@@ -367,10 +367,6 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
         // processed in visit_item above
     }
-}
-
-pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<NodeSet> {
-    tcx.reachable_set(LOCAL_CRATE)
 }
 
 fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> Rc<NodeSet> {

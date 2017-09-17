@@ -366,8 +366,9 @@ pub trait CrateLoader {
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
+pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
+    -> Vec<(CrateNum, LibSource)>
+{
     let mut libs = tcx.crates()
         .iter()
         .cloned()

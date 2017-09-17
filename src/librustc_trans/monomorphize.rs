@@ -85,27 +85,26 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
 }
 
 pub fn resolve_closure<'a, 'tcx> (
-    scx: &SharedCrateContext<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
     requested_kind: ty::ClosureKind)
     -> Instance<'tcx>
 {
-    let actual_kind = scx.tcx().closure_kind(def_id);
+    let actual_kind = tcx.closure_kind(def_id);
 
     match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
-        Ok(true) => fn_once_adapter_instance(scx.tcx(), def_id, substs),
+        Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
         _ => Instance::new(def_id, substs.substs)
     }
 }
 
 fn resolve_associated_item<'a, 'tcx>(
-    scx: &SharedCrateContext<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_item: &ty::AssociatedItem,
     trait_id: DefId,
     rcvr_substs: &'tcx Substs<'tcx>
 ) -> Instance<'tcx> {
-    let tcx = scx.tcx();
     let def_id = trait_item.def_id;
     debug!("resolve_associated_item(trait_item={:?}, \
                                     trait_id={:?}, \
@@ -132,7 +131,7 @@ fn resolve_associated_item<'a, 'tcx>(
         }
         traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
-            resolve_closure(scx, closure_data.closure_def_id, closure_data.substs,
+            resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
                             trait_closure_kind)
         }
         traits::VtableFnPointer(ref data) => {
@@ -163,21 +162,21 @@ fn resolve_associated_item<'a, 'tcx>(
 /// The point where linking happens. Resolve a (def_id, substs)
 /// pair to an instance.
 pub fn resolve<'a, 'tcx>(
-    scx: &SharedCrateContext<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
     substs: &'tcx Substs<'tcx>
 ) -> Instance<'tcx> {
     debug!("resolve(def_id={:?}, substs={:?})",
            def_id, substs);
-    let result = if let Some(trait_def_id) = scx.tcx().trait_of_item(def_id) {
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
         debug!(" => associated item, attempting to find impl");
-        let item = scx.tcx().associated_item(def_id);
-        resolve_associated_item(scx, &item, trait_def_id, substs)
+        let item = tcx.associated_item(def_id);
+        resolve_associated_item(tcx, &item, trait_def_id, substs)
     } else {
-        let item_type = def_ty(scx, def_id, substs);
+        let item_type = def_ty(tcx, def_id, substs);
         let def = match item_type.sty {
             ty::TyFnDef(..) if {
-                    let f = item_type.fn_sig(scx.tcx());
+                    let f = item_type.fn_sig(tcx);
                     f.abi() == Abi::RustIntrinsic ||
                     f.abi() == Abi::PlatformIntrinsic
                 } =>
@@ -186,9 +185,9 @@ pub fn resolve<'a, 'tcx>(
                 ty::InstanceDef::Intrinsic(def_id)
             }
             _ => {
-                if Some(def_id) == scx.tcx().lang_items().drop_in_place_fn() {
+                if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
                     let ty = substs.type_at(0);
-                    if scx.type_needs_drop(ty) {
+                    if type_needs_drop(tcx, ty) {
                         debug!(" => nontrivial drop glue");
                         ty::InstanceDef::DropGlue(def_id, Some(ty))
                     } else {
@@ -209,27 +208,27 @@ pub fn resolve<'a, 'tcx>(
 }
 
 pub fn resolve_drop_in_place<'a, 'tcx>(
-    scx: &SharedCrateContext<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>)
     -> ty::Instance<'tcx>
 {
-    let def_id = scx.tcx().require_lang_item(DropInPlaceFnLangItem);
-    let substs = scx.tcx().intern_substs(&[Kind::from(ty)]);
-    resolve(scx, def_id, substs)
+    let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
+    let substs = tcx.intern_substs(&[Kind::from(ty)]);
+    resolve(tcx, def_id, substs)
 }
 
-pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
-                                             source_ty: Ty<'tcx>,
-                                             target_ty: Ty<'tcx>)
-                                             -> CustomCoerceUnsized {
+pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                           source_ty: Ty<'tcx>,
+                                           target_ty: Ty<'tcx>)
+                                           -> CustomCoerceUnsized {
     let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: scx.tcx().lang_items().coerce_unsized_trait().unwrap(),
-        substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
+        def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
+        substs: tcx.mk_substs_trait(source_ty, &[target_ty])
     });
 
-    match scx.tcx().trans_fulfill_obligation(DUMMY_SP, trait_ref) {
+    match tcx.trans_fulfill_obligation(DUMMY_SP, trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            scx.tcx().coerce_unsized_info(impl_def_id).custom_kind.unwrap()
+            tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
         vtable => {
             bug!("invalid CoerceUnsized vtable: {:?}", vtable);

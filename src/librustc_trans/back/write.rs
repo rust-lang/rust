@@ -18,17 +18,20 @@ use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, OutputTypes, Passes, SomePasses,
                              AllPasses, Sanitizer};
 use rustc::session::Session;
+use rustc::util::nodemap::FxHashMap;
 use time_graph::{self, TimeGraph};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
 use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKind};
 use CrateInfo;
-use rustc::hir::def_id::CrateNum;
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc::ty::TyCtxt;
 use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
 use rustc::util::fs::{link_or_copy, rename_or_copy_remove};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError};
 use errors::emitter::{Emitter};
+use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
@@ -36,6 +39,7 @@ use context::{is_pie_binary, get_reloc_model};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
+use std::any::Any;
 use std::ffi::CString;
 use std::fmt;
 use std::fs;
@@ -199,8 +203,6 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
 /// Module-specific configuration for `optimize_and_codegen`.
 pub struct ModuleConfig {
-    /// LLVM TargetMachine to use for codegen.
-    tm: TargetMachineRef,
     /// Names of additional optimization passes to run.
     passes: Vec<String>,
     /// Some(level) to optimize at a certain level, or None to run
@@ -233,12 +235,9 @@ pub struct ModuleConfig {
     obj_is_bitcode: bool,
 }
 
-unsafe impl Send for ModuleConfig { }
-
 impl ModuleConfig {
-    fn new(sess: &Session, passes: Vec<String>) -> ModuleConfig {
+    fn new(passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
-            tm: create_target_machine(sess),
             passes,
             opt_level: None,
             opt_size: None,
@@ -286,40 +285,6 @@ impl ModuleConfig {
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
     }
-
-    fn clone(&self, sess: &Session) -> ModuleConfig {
-        ModuleConfig {
-            tm: create_target_machine(sess),
-            passes: self.passes.clone(),
-            opt_level: self.opt_level,
-            opt_size: self.opt_size,
-
-            emit_no_opt_bc: self.emit_no_opt_bc,
-            emit_bc: self.emit_bc,
-            emit_lto_bc: self.emit_lto_bc,
-            emit_ir: self.emit_ir,
-            emit_asm: self.emit_asm,
-            emit_obj: self.emit_obj,
-            obj_is_bitcode: self.obj_is_bitcode,
-
-            no_verify: self.no_verify,
-            no_prepopulate_passes: self.no_prepopulate_passes,
-            no_builtins: self.no_builtins,
-            time_passes: self.time_passes,
-            vectorize_loop: self.vectorize_loop,
-            vectorize_slp: self.vectorize_slp,
-            merge_functions: self.merge_functions,
-            inline_threshold: self.inline_threshold,
-        }
-    }
-}
-
-impl Drop for ModuleConfig {
-    fn drop(&mut self) {
-        unsafe {
-            llvm::LLVMRustDisposeTargetMachine(self.tm);
-        }
-    }
 }
 
 /// Additional resources used by optimize_and_codegen (not module specific)
@@ -333,6 +298,11 @@ pub struct CodegenContext {
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<config::CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
+    output_filenames: Arc<OutputFilenames>,
+    regular_module_config: Arc<ModuleConfig>,
+    metadata_module_config: Arc<ModuleConfig>,
+    allocator_module_config: Arc<ModuleConfig>,
+
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     // LLVM passes added by plugins.
@@ -345,7 +315,7 @@ pub struct CodegenContext {
     // compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
     // Channel back to the main control thread to send messages to
-    coordinator_send: Sender<Message>,
+    coordinator_send: Sender<Box<Any + Send>>,
     // A reference to the TimeGraph so we can register timings. None means that
     // measuring is disabled.
     time_graph: Option<TimeGraph>,
@@ -354,6 +324,14 @@ pub struct CodegenContext {
 impl CodegenContext {
     fn create_diag_handler(&self) -> Handler {
         Handler::with_emitter(true, false, Box::new(self.diag_emitter.clone()))
+    }
+
+    fn config(&self, kind: ModuleKind) -> &ModuleConfig {
+        match kind {
+            ModuleKind::Regular => &self.regular_module_config,
+            ModuleKind::Metadata => &self.metadata_module_config,
+            ModuleKind::Allocator => &self.allocator_module_config,
+        }
     }
 }
 
@@ -414,8 +392,8 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                diag_handler: &Handler,
                                mtrans: ModuleTranslation,
-                               config: ModuleConfig,
-                               output_names: OutputFilenames)
+                               tm: TargetMachineRef,
+                               config: &ModuleConfig)
     -> Result<CompiledModule, FatalError>
 {
     let (llmod, llcx) = match mtrans.source {
@@ -424,8 +402,6 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             bug!("optimize_and_codegen: called with ModuleSource::Preexisting")
         }
     };
-
-    let tm = config.tm;
 
     let fv = HandlerFreeVars {
         cgcx,
@@ -440,7 +416,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     let module_name = Some(&module_name[..]);
 
     if config.emit_no_opt_bc {
-        let out = output_names.temp_path_ext("no-opt.bc", module_name);
+        let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
         let out = path2cstr(&out);
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
@@ -513,7 +489,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if cgcx.lto {
             time(cgcx.time_passes, "all lto passes", || {
                 let temp_no_opt_bc_filename =
-                    output_names.temp_path_ext("no-opt.lto.bc", module_name);
+                    cgcx.output_filenames.temp_path_ext("no-opt.lto.bc", module_name);
                 lto::run(cgcx,
                          diag_handler,
                          llmod,
@@ -522,7 +498,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                          &temp_no_opt_bc_filename)
             })?;
             if config.emit_lto_bc {
-                let out = output_names.temp_path_ext("lto.bc", module_name);
+                let out = cgcx.output_filenames.temp_path_ext("lto.bc", module_name);
                 let out = path2cstr(&out);
                 llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
             }
@@ -558,8 +534,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     let write_obj = config.emit_obj && !config.obj_is_bitcode;
     let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
 
-    let bc_out = output_names.temp_path(OutputType::Bitcode, module_name);
-    let obj_out = output_names.temp_path(OutputType::Object, module_name);
+    let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
+    let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
     if write_bc {
         let bc_out_c = path2cstr(&bc_out);
@@ -569,7 +545,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
-            let out = output_names.temp_path(OutputType::LlvmAssembly, module_name);
+            let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
             let out = path2cstr(&out);
 
             extern "C" fn demangle_callback(input_ptr: *const c_char,
@@ -610,7 +586,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
 
         if config.emit_asm {
-            let path = output_names.temp_path(OutputType::Assembly, module_name);
+            let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
@@ -667,19 +643,34 @@ fn need_crate_bitcode_for_rlib(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::Exe)
 }
 
-pub fn start_async_translation(sess: &Session,
-                               crate_output: &OutputFilenames,
+pub fn start_async_translation(tcx: TyCtxt,
                                time_graph: Option<TimeGraph>,
-                               crate_name: Symbol,
                                link: LinkMeta,
                                metadata: EncodedMetadata,
-                               exported_symbols: Arc<ExportedSymbols>,
-                               no_builtins: bool,
-                               windows_subsystem: Option<String>,
-                               linker_info: LinkerInfo,
-                               crate_info: CrateInfo,
-                               no_integrated_as: bool)
+                               coordinator_receive: Receiver<Box<Any + Send>>)
                                -> OngoingCrateTranslation {
+    let sess = tcx.sess;
+    let crate_output = tcx.output_filenames(LOCAL_CRATE);
+    let crate_name = tcx.crate_name(LOCAL_CRATE);
+    let no_builtins = attr::contains_name(&tcx.hir.krate().attrs, "no_builtins");
+    let subsystem = attr::first_attr_value_str_by_name(&tcx.hir.krate().attrs,
+                                                       "windows_subsystem");
+    let windows_subsystem = subsystem.map(|subsystem| {
+        if subsystem != "windows" && subsystem != "console" {
+            tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                     `windows` and `console` are allowed",
+                                    subsystem));
+        }
+        subsystem.to_string()
+    });
+
+    let no_integrated_as = tcx.sess.opts.cg.no_integrated_as ||
+        (tcx.sess.target.target.options.no_integrated_as &&
+         (crate_output.outputs.contains_key(&OutputType::Object) ||
+          crate_output.outputs.contains_key(&OutputType::Exe)));
+    let linker_info = LinkerInfo::new(tcx);
+    let crate_info = CrateInfo::new(tcx);
+
     let output_types_override = if no_integrated_as {
         OutputTypes::new(&[(OutputType::Assembly, None)])
     } else {
@@ -687,9 +678,9 @@ pub fn start_async_translation(sess: &Session,
     };
 
     // Figure out what we actually need to build.
-    let mut modules_config = ModuleConfig::new(sess, sess.opts.cg.passes.clone());
-    let mut metadata_config = ModuleConfig::new(sess, vec![]);
-    let mut allocator_config = ModuleConfig::new(sess, vec![]);
+    let mut modules_config = ModuleConfig::new(sess.opts.cg.passes.clone());
+    let mut metadata_config = ModuleConfig::new(vec![]);
+    let mut allocator_config = ModuleConfig::new(vec![]);
 
     if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
         match *sanitizer {
@@ -774,17 +765,18 @@ pub fn start_async_translation(sess: &Session,
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (trans_worker_send, trans_worker_receive) = channel();
-    let (coordinator_send, coordinator_receive) = channel();
 
-    let coordinator_thread = start_executing_work(sess,
+    let coordinator_thread = start_executing_work(tcx,
                                                   &crate_info,
                                                   shared_emitter,
                                                   trans_worker_send,
-                                                  coordinator_send.clone(),
                                                   coordinator_receive,
                                                   client,
                                                   time_graph.clone(),
-                                                  exported_symbols.clone());
+                                                  Arc::new(modules_config),
+                                                  Arc::new(metadata_config),
+                                                  Arc::new(allocator_config));
+
     OngoingCrateTranslation {
         crate_name,
         link,
@@ -794,16 +786,12 @@ pub fn start_async_translation(sess: &Session,
         no_integrated_as,
         crate_info,
 
-        regular_module_config: modules_config,
-        metadata_module_config: metadata_config,
-        allocator_module_config: allocator_config,
-
         time_graph,
-        output_filenames: crate_output.clone(),
-        coordinator_send,
+        coordinator_send: tcx.tx_to_llvm_workers.clone(),
         trans_worker_receive,
         shared_emitter_main,
-        future: coordinator_thread
+        future: coordinator_thread,
+        output_filenames: tcx.output_filenames(LOCAL_CRATE),
     }
 }
 
@@ -1004,8 +992,7 @@ pub fn dump_incremental_data(trans: &CrateTranslation) {
 
 struct WorkItem {
     mtrans: ModuleTranslation,
-    config: ModuleConfig,
-    output_names: OutputFilenames
+    tm: TargetMachine,
 }
 
 impl fmt::Debug for WorkItem {
@@ -1014,15 +1001,15 @@ impl fmt::Debug for WorkItem {
     }
 }
 
-fn build_work_item(mtrans: ModuleTranslation,
-                   config: ModuleConfig,
-                   output_names: OutputFilenames)
-                   -> WorkItem
-{
-    WorkItem {
-        mtrans,
-        config,
-        output_names,
+struct TargetMachine(TargetMachineRef);
+
+unsafe impl Send for TargetMachine {}
+
+impl Drop for TargetMachine {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustDisposeTargetMachine(self.0);
+        }
     }
 }
 
@@ -1031,6 +1018,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
 {
     let diag_handler = cgcx.create_diag_handler();
     let module_name = work_item.mtrans.name.clone();
+    let config = cgcx.config(work_item.mtrans.kind);
 
     let pre_existing = match work_item.mtrans.source {
         ModuleSource::Translated(_) => None,
@@ -1043,7 +1031,7 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
                                         .unwrap();
         let name = &work_item.mtrans.name;
         for (kind, saved_file) in wp.saved_files {
-            let obj_out = work_item.output_names.temp_path(kind, Some(name));
+            let obj_out = cgcx.output_filenames.temp_path(kind, Some(name));
             let source_file = in_incr_comp_dir(&incr_comp_session_dir,
                                                &saved_file);
             debug!("copying pre-existing module `{}` from {:?} to {}",
@@ -1066,8 +1054,8 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
             kind: ModuleKind::Regular,
             pre_existing: true,
             symbol_name_hash: work_item.mtrans.symbol_name_hash,
-            emit_bc: work_item.config.emit_bc,
-            emit_obj: work_item.config.emit_obj,
+            emit_bc: config.emit_bc,
+            emit_obj: config.emit_obj,
         })
     } else {
         debug!("llvm-optimizing {:?}", module_name);
@@ -1076,8 +1064,8 @@ fn execute_work_item(cgcx: &CodegenContext, work_item: WorkItem)
             optimize_and_codegen(cgcx,
                                  &diag_handler,
                                  work_item.mtrans,
-                                 work_item.config,
-                                 work_item.output_names)
+                                 work_item.tm.0,
+                                 config)
         }
     }
 }
@@ -1092,8 +1080,8 @@ enum Message {
     TranslationDone {
         llvm_work_item: WorkItem,
         cost: u64,
-        is_last: bool,
     },
+    TranslationComplete,
     TranslateItem,
 }
 
@@ -1110,16 +1098,26 @@ enum MainThreadWorkerState {
     LLVMing,
 }
 
-fn start_executing_work(sess: &Session,
+fn start_executing_work(tcx: TyCtxt,
                         crate_info: &CrateInfo,
                         shared_emitter: SharedEmitter,
                         trans_worker_send: Sender<Message>,
-                        coordinator_send: Sender<Message>,
-                        coordinator_receive: Receiver<Message>,
+                        coordinator_receive: Receiver<Box<Any + Send>>,
                         jobserver: Client,
                         time_graph: Option<TimeGraph>,
-                        exported_symbols: Arc<ExportedSymbols>)
+                        modules_config: Arc<ModuleConfig>,
+                        metadata_config: Arc<ModuleConfig>,
+                        allocator_config: Arc<ModuleConfig>)
                         -> thread::JoinHandle<CompiledModules> {
+    let coordinator_send = tcx.tx_to_llvm_workers.clone();
+    let mut exported_symbols = FxHashMap();
+    exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
+    for &cnum in tcx.crates().iter() {
+        exported_symbols.insert(cnum, tcx.exported_symbols(cnum));
+    }
+    let exported_symbols = Arc::new(exported_symbols);
+    let sess = tcx.sess;
+
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such. Once we've got the helper
     // thread then request `n-1` tokens because all of our work items are ready
@@ -1132,7 +1130,7 @@ fn start_executing_work(sess: &Session,
     // tokens on `rx` above which will get managed in the main loop below.
     let coordinator_send2 = coordinator_send.clone();
     let helper = jobserver.into_helper_thread(move |token| {
-        drop(coordinator_send2.send(Message::Token(token)));
+        drop(coordinator_send2.send(Box::new(Message::Token(token))));
     }).expect("failed to spawn helper thread");
 
     let mut each_linked_rlib_for_lto = Vec::new();
@@ -1158,6 +1156,10 @@ fn start_executing_work(sess: &Session,
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
         time_graph,
+        output_filenames: tcx.output_filenames(LOCAL_CRATE),
+        regular_module_config: modules_config,
+        metadata_module_config: metadata_config,
+        allocator_module_config: allocator_config,
     };
 
     // This is the "main loop" of parallel work happening for parallel codegen.
@@ -1307,7 +1309,7 @@ fn start_executing_work(sess: &Session,
         let mut translation_done = false;
 
         // This is the queue of LLVM work items that still need processing.
-        let mut work_items = Vec::new();
+        let mut work_items = Vec::<(WorkItem, u64)>::new();
 
         // This are the Jobserver Tokens we currently hold. Does not include
         // the implicit Token the compiler process owns no matter what.
@@ -1346,7 +1348,8 @@ fn start_executing_work(sess: &Session,
                             worker: get_worker_id(&mut free_worker_ids),
                             .. cgcx.clone()
                         };
-                        maybe_start_llvm_timer(&item, &mut llvm_start_time);
+                        maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                                               &mut llvm_start_time);
                         main_thread_worker_state = MainThreadWorkerState::LLVMing;
                         spawn_work(cgcx, item);
                     }
@@ -1362,7 +1365,8 @@ fn start_executing_work(sess: &Session,
                                 worker: get_worker_id(&mut free_worker_ids),
                                 .. cgcx.clone()
                             };
-                            maybe_start_llvm_timer(&item, &mut llvm_start_time);
+                            maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                                                   &mut llvm_start_time);
                             main_thread_worker_state = MainThreadWorkerState::LLVMing;
                             spawn_work(cgcx, item);
                         } else {
@@ -1392,7 +1396,8 @@ fn start_executing_work(sess: &Session,
             while work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
-                maybe_start_llvm_timer(&item, &mut llvm_start_time);
+                maybe_start_llvm_timer(cgcx.config(item.mtrans.kind),
+                                       &mut llvm_start_time);
 
                 let cgcx = CodegenContext {
                     worker: get_worker_id(&mut free_worker_ids),
@@ -1406,7 +1411,8 @@ fn start_executing_work(sess: &Session,
             // Relinquish accidentally acquired extra tokens
             tokens.truncate(running);
 
-            match coordinator_receive.recv().unwrap() {
+            let msg = coordinator_receive.recv().unwrap();
+            match *msg.downcast::<Message>().ok().unwrap() {
                 // Save the token locally and the next turn of the loop will use
                 // this to spawn a new unit of work, or it may get dropped
                 // immediately if we have no more work to spawn.
@@ -1433,7 +1439,7 @@ fn start_executing_work(sess: &Session,
                     }
                 }
 
-                Message::TranslationDone { llvm_work_item, cost, is_last } => {
+                Message::TranslationDone { llvm_work_item, cost } => {
                     // We keep the queue sorted by estimated processing cost,
                     // so that more expensive items are processed earlier. This
                     // is good for throughput as it gives the main thread more
@@ -1449,15 +1455,14 @@ fn start_executing_work(sess: &Session,
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if is_last {
-                        // If this is the last, don't request a token because
-                        // the trans worker thread will be free to handle this
-                        // immediately.
-                        translation_done = true;
-                    } else {
-                        helper.request_token();
-                    }
+                    helper.request_token();
+                    assert_eq!(main_thread_worker_state,
+                               MainThreadWorkerState::Translating);
+                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                }
 
+                Message::TranslationComplete => {
+                    translation_done = true;
                     assert_eq!(main_thread_worker_state,
                                MainThreadWorkerState::Translating);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
@@ -1535,11 +1540,11 @@ fn start_executing_work(sess: &Session,
         items_in_queue >= max_workers.saturating_sub(workers_running / 2)
     }
 
-    fn maybe_start_llvm_timer(work_item: &WorkItem,
+    fn maybe_start_llvm_timer(config: &ModuleConfig,
                               llvm_start_time: &mut Option<Instant>) {
         // We keep track of the -Ztime-passes output manually,
         // since the closure-based interface does not fit well here.
-        if work_item.config.time_passes {
+        if config.time_passes {
             if llvm_start_time.is_none() {
                 *llvm_start_time = Some(Instant::now());
             }
@@ -1564,7 +1569,7 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
         // Set up a destructor which will fire off a message that we're done as
         // we exit.
         struct Bomb {
-            coordinator_send: Sender<Message>,
+            coordinator_send: Sender<Box<Any + Send>>,
             result: Option<CompiledModule>,
             worker_id: usize,
         }
@@ -1575,10 +1580,10 @@ fn spawn_work(cgcx: CodegenContext, work: WorkItem) {
                     None => Err(())
                 };
 
-                drop(self.coordinator_send.send(Message::Done {
+                drop(self.coordinator_send.send(Box::new(Message::Done {
                     result,
                     worker_id: self.worker_id,
-                }));
+                })));
             }
         }
 
@@ -1814,17 +1819,12 @@ pub struct OngoingCrateTranslation {
     linker_info: LinkerInfo,
     no_integrated_as: bool,
     crate_info: CrateInfo,
-
-    output_filenames: OutputFilenames,
-    regular_module_config: ModuleConfig,
-    metadata_module_config: ModuleConfig,
-    allocator_module_config: ModuleConfig,
-
     time_graph: Option<TimeGraph>,
-    coordinator_send: Sender<Message>,
+    coordinator_send: Sender<Box<Any + Send>>,
     trans_worker_receive: Receiver<Message>,
     shared_emitter_main: SharedEmitterMain,
     future: thread::JoinHandle<CompiledModules>,
+    output_filenames: Arc<OutputFilenames>,
 }
 
 impl OngoingCrateTranslation {
@@ -1892,38 +1892,21 @@ impl OngoingCrateTranslation {
         trans
     }
 
-    pub fn submit_translated_module_to_llvm(&self,
-                                            sess: &Session,
-                                            mtrans: ModuleTranslation,
-                                            cost: u64,
-                                            is_last: bool) {
-        let module_config = match mtrans.kind {
-            ModuleKind::Regular => self.regular_module_config.clone(sess),
-            ModuleKind::Metadata => self.metadata_module_config.clone(sess),
-            ModuleKind::Allocator => self.allocator_module_config.clone(sess),
-        };
-
-        let llvm_work_item = build_work_item(mtrans,
-                                             module_config,
-                                             self.output_filenames.clone());
-
-        drop(self.coordinator_send.send(Message::TranslationDone {
-            llvm_work_item,
-            cost,
-            is_last
-        }));
-    }
-
     pub fn submit_pre_translated_module_to_llvm(&self,
-                                                sess: &Session,
-                                                mtrans: ModuleTranslation,
-                                                is_last: bool) {
+                                                tcx: TyCtxt,
+                                                mtrans: ModuleTranslation) {
         self.wait_for_signal_to_translate_item();
-        self.check_for_errors(sess);
+        self.check_for_errors(tcx.sess);
 
         // These are generally cheap and won't through off scheduling.
         let cost = 0;
-        self.submit_translated_module_to_llvm(sess, mtrans, cost, is_last);
+        submit_translated_module_to_llvm(tcx, mtrans, cost);
+    }
+
+    pub fn translation_finished(&self, tcx: TyCtxt) {
+        self.wait_for_signal_to_translate_item();
+        self.check_for_errors(tcx.sess);
+        drop(self.coordinator_send.send(Box::new(Message::TranslationComplete)));
     }
 
     pub fn check_for_errors(&self, sess: &Session) {
@@ -1944,4 +1927,17 @@ impl OngoingCrateTranslation {
             }
         }
     }
+}
+
+pub fn submit_translated_module_to_llvm(tcx: TyCtxt,
+                                        mtrans: ModuleTranslation,
+                                        cost: u64) {
+    let llvm_work_item = WorkItem {
+        mtrans,
+        tm: TargetMachine(create_target_machine(tcx.sess)),
+    };
+    drop(tcx.tx_to_llvm_workers.send(Box::new(Message::TranslationDone {
+        llvm_work_item,
+        cost,
+    })));
 }

@@ -92,6 +92,7 @@ pub mod middle {
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
+    pub mod exported_symbols;
     pub mod free_region;
     pub mod intrinsicck;
     pub mod lang_items;
@@ -103,6 +104,7 @@ pub mod middle {
     pub mod recursion_limit;
     pub mod resolve_lifetime;
     pub mod stability;
+    pub mod trans;
     pub mod weak_lang_items;
 }
 

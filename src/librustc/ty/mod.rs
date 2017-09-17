@@ -121,7 +121,6 @@ mod sty;
 #[derive(Clone)]
 pub struct CrateAnalysis {
     pub access_levels: Rc<AccessLevels>,
-    pub reachable: Rc<NodeSet>,
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
 }

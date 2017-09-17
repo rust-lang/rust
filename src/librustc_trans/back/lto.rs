@@ -16,6 +16,7 @@ use errors::{FatalError, Handler};
 use llvm;
 use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
+use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::util::common::time;
 use rustc::util::common::path2cstr;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -67,8 +68,8 @@ pub fn run(cgcx: &CodegenContext,
     let export_threshold =
         symbol_export::crates_export_threshold(&cgcx.crate_types);
 
-    let symbol_filter = &|&(ref name, _, level): &(String, _, _)| {
-        if symbol_export::is_below_threshold(level, export_threshold) {
+    let symbol_filter = &|&(ref name, _, level): &(String, _, SymbolExportLevel)| {
+        if level.is_below_threshold(export_threshold) {
             let mut bytes = Vec::with_capacity(name.len() + 1);
             bytes.extend(name.bytes());
             Some(CString::new(bytes).unwrap())
@@ -77,8 +78,7 @@ pub fn run(cgcx: &CodegenContext,
         }
     };
 
-    let mut symbol_white_list: Vec<CString> = cgcx.exported_symbols
-        .exported_symbols(LOCAL_CRATE)
+    let mut symbol_white_list: Vec<CString> = cgcx.exported_symbols[&LOCAL_CRATE]
         .iter()
         .filter_map(symbol_filter)
         .collect();
@@ -88,9 +88,9 @@ pub fn run(cgcx: &CodegenContext,
     // module that we've got.
     for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
         symbol_white_list.extend(
-            cgcx.exported_symbols.exported_symbols(cnum)
-                                 .iter()
-                                 .filter_map(symbol_filter));
+            cgcx.exported_symbols[&cnum]
+                .iter()
+                .filter_map(symbol_filter));
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let bytecodes = archive.iter().filter_map(|child| {

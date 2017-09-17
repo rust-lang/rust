@@ -645,6 +645,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                                      ppm,
                                                      state.arena.unwrap(),
                                                      state.arenas.unwrap(),
+                                                     state.output_filenames.unwrap(),
                                                      opt_uii.clone(),
                                                      state.out_file);
                 };

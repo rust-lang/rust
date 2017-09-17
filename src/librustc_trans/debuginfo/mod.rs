@@ -428,7 +428,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
                 let impl_self_ty =
-                    common::def_ty(cx.shared(), impl_def_id, instance.substs);
+                    common::def_ty(cx.tcx(), impl_def_id, instance.substs);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).

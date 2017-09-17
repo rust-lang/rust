@@ -25,23 +25,19 @@ use llvm;
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::middle::trans::{Linkage, Visibility};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
-use syntax::ast::{self, NodeId};
+use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use type_of;
-use std::fmt::Write;
+use std::fmt::{self, Write};
 use std::iter;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
-pub enum TransItem<'tcx> {
-    Fn(Instance<'tcx>),
-    Static(NodeId),
-    GlobalAsm(NodeId),
-}
+pub use rustc::middle::trans::TransItem;
 
 /// Describes how a translation item will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
@@ -55,15 +51,16 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-impl<'a, 'tcx> TransItem<'tcx> {
+pub trait TransItemExt<'a, 'tcx>: fmt::Debug {
+    fn as_trans_item(&self) -> &TransItem<'tcx>;
 
-    pub fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
+    fn define(&self, ccx: &CrateContext<'a, 'tcx>) {
         debug!("BEGIN IMPLEMENTING '{} ({})' in cgu {}",
-                  self.to_string(ccx.tcx()),
-                  self.to_raw_string(),
-                  ccx.codegen_unit().name());
+               self.to_string(ccx.tcx()),
+               self.to_raw_string(),
+               ccx.codegen_unit().name());
 
-        match *self {
+        match *self.as_trans_item() {
             TransItem::Static(node_id) => {
                 let tcx = ccx.tcx();
                 let item = tcx.hir.expect_item(node_id);
@@ -97,10 +94,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
                ccx.codegen_unit().name());
     }
 
-    pub fn predefine(&self,
-                     ccx: &CrateContext<'a, 'tcx>,
-                     linkage: llvm::Linkage,
-                     visibility: llvm::Visibility) {
+    fn predefine(&self,
+                 ccx: &CrateContext<'a, 'tcx>,
+                 linkage: Linkage,
+                 visibility: Visibility) {
         debug!("BEGIN PREDEFINING '{} ({})' in cgu {}",
                self.to_string(ccx.tcx()),
                self.to_raw_string(),
@@ -110,12 +107,12 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         debug!("symbol {}", &symbol_name);
 
-        match *self {
+        match *self.as_trans_item() {
             TransItem::Static(node_id) => {
-                TransItem::predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
+                predefine_static(ccx, node_id, linkage, visibility, &symbol_name);
             }
             TransItem::Fn(instance) => {
-                TransItem::predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
+                predefine_fn(ccx, instance, linkage, visibility, &symbol_name);
             }
             TransItem::GlobalAsm(..) => {}
         }
@@ -126,75 +123,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                ccx.codegen_unit().name());
     }
 
-    fn predefine_static(ccx: &CrateContext<'a, 'tcx>,
-                        node_id: ast::NodeId,
-                        linkage: llvm::Linkage,
-                        visibility: llvm::Visibility,
-                        symbol_name: &str) {
-        let def_id = ccx.tcx().hir.local_def_id(node_id);
-        let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.shared(), &instance);
-        let llty = type_of::type_of(ccx, ty);
-
-        let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
-            ccx.sess().span_fatal(ccx.tcx().hir.span(node_id),
-                &format!("symbol `{}` is already defined", symbol_name))
-        });
-
-        unsafe {
-            llvm::LLVMRustSetLinkage(g, linkage);
-            llvm::LLVMRustSetVisibility(g, visibility);
-        }
-
-        ccx.instances().borrow_mut().insert(instance, g);
-        ccx.statics().borrow_mut().insert(g, def_id);
-    }
-
-    fn predefine_fn(ccx: &CrateContext<'a, 'tcx>,
-                    instance: Instance<'tcx>,
-                    linkage: llvm::Linkage,
-                    visibility: llvm::Visibility,
-                    symbol_name: &str) {
-        assert!(!instance.substs.needs_infer() &&
-                !instance.substs.has_param_types());
-
-        let mono_ty = common::instance_ty(ccx.shared(), &instance);
-        let attrs = instance.def.attrs(ccx.tcx());
-        let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
-        unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };
-        base::set_link_section(ccx, lldecl, &attrs);
-        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
-            linkage == llvm::Linkage::WeakODRLinkage {
-            llvm::SetUniqueComdat(ccx.llmod(), lldecl);
-        }
-
-        // If we're compiling the compiler-builtins crate, e.g. the equivalent of
-        // compiler-rt, then we want to implicitly compile everything with hidden
-        // visibility as we're going to link this object all over the place but
-        // don't want the symbols to get exported.
-        if linkage != llvm::Linkage::InternalLinkage &&
-           linkage != llvm::Linkage::PrivateLinkage &&
-           attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
-            unsafe {
-                llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
-            }
-        } else {
-            unsafe {
-                llvm::LLVMRustSetVisibility(lldecl, visibility);
-            }
-        }
-
-        debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-        if common::is_inline_instance(ccx.tcx(), &instance) {
-            attributes::inline(lldecl, attributes::InlineAttr::Hint);
-        }
-        attributes::from_fn_attrs(ccx, &attrs, lldecl);
-
-        ccx.instances().borrow_mut().insert(instance, lldecl);
-    }
-
-    pub fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
-        match *self {
+    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+        match *self.as_trans_item() {
             TransItem::Fn(instance) => tcx.symbol_name(instance),
             TransItem::Static(node_id) => {
                 let def_id = tcx.hir.local_def_id(node_id);
@@ -209,8 +139,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
-        match *self {
+    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self.as_trans_item() {
             TransItem::Fn(Instance { def, .. }) => {
                 tcx.hir.as_local_node_id(def.def_id())
             }
@@ -221,10 +151,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }.map(|node_id| tcx.hir.span(node_id))
     }
 
-    pub fn instantiation_mode(&self,
-                              tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> InstantiationMode {
-        match *self {
+    fn instantiation_mode(&self,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                          -> InstantiationMode {
+        match *self.as_trans_item() {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
                     common::requests_inline(tcx, instance)
@@ -239,8 +169,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_generic_fn(&self) -> bool {
-        match *self {
+    fn is_generic_fn(&self) -> bool {
+        match *self.as_trans_item() {
             TransItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
             }
@@ -249,8 +179,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
-        let def_id = match *self {
+    fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
+        let def_id = match *self.as_trans_item() {
             TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
             TransItem::GlobalAsm(..) => return None,
@@ -258,7 +188,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         let attributes = tcx.get_attrs(def_id);
         if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
-            if let Some(linkage) = base::llvm_linkage_by_name(&name.as_str()) {
+            if let Some(linkage) = base::linkage_by_name(&name.as_str()) {
                 Some(linkage)
             } else {
                 let span = tcx.hir.span_if_local(def_id);
@@ -298,9 +228,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
     /// Similarly, if a vtable method has such a signature, and therefore can't
     /// be used, we can just not emit it and have a placeholder (a null pointer,
     /// which will never be accessed) in its place.
-    pub fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+    fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
-        let (def_id, substs) = match *self {
+        let (def_id, substs) = match *self.as_trans_item() {
             TransItem::Fn(ref instance) => (instance.def_id(), instance.substs),
             TransItem::Static(node_id) => (tcx.hir.local_def_id(node_id), Substs::empty()),
             // global asm never has predicates
@@ -311,10 +241,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
         traits::normalize_and_test_predicates(tcx, predicates)
     }
 
-    pub fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         let hir_map = &tcx.hir;
 
-        return match *self {
+        return match *self.as_trans_item() {
             TransItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
@@ -340,8 +270,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn to_raw_string(&self) -> String {
-        match *self {
+    fn to_raw_string(&self) -> String {
+        match *self.as_trans_item() {
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,
@@ -357,6 +287,77 @@ impl<'a, 'tcx> TransItem<'tcx> {
     }
 }
 
+impl<'a, 'tcx> TransItemExt<'a, 'tcx> for TransItem<'tcx> {
+    fn as_trans_item(&self) -> &TransItem<'tcx> {
+        self
+    }
+}
+
+fn predefine_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              node_id: ast::NodeId,
+                              linkage: Linkage,
+                              visibility: Visibility,
+                              symbol_name: &str) {
+    let def_id = ccx.tcx().hir.local_def_id(node_id);
+    let instance = Instance::mono(ccx.tcx(), def_id);
+    let ty = common::instance_ty(ccx.tcx(), &instance);
+    let llty = type_of::type_of(ccx, ty);
+
+    let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
+        ccx.sess().span_fatal(ccx.tcx().hir.span(node_id),
+            &format!("symbol `{}` is already defined", symbol_name))
+    });
+
+    unsafe {
+        llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
+        llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
+    }
+
+    ccx.instances().borrow_mut().insert(instance, g);
+    ccx.statics().borrow_mut().insert(g, def_id);
+}
+
+fn predefine_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                          instance: Instance<'tcx>,
+                          linkage: Linkage,
+                          visibility: Visibility,
+                          symbol_name: &str) {
+    assert!(!instance.substs.needs_infer() &&
+            !instance.substs.has_param_types());
+
+    let mono_ty = common::instance_ty(ccx.tcx(), &instance);
+    let attrs = instance.def.attrs(ccx.tcx());
+    let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
+    unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
+    base::set_link_section(ccx, lldecl, &attrs);
+    if linkage == Linkage::LinkOnceODR ||
+        linkage == Linkage::WeakODR {
+        llvm::SetUniqueComdat(ccx.llmod(), lldecl);
+    }
+
+    // If we're compiling the compiler-builtins crate, e.g. the equivalent of
+    // compiler-rt, then we want to implicitly compile everything with hidden
+    // visibility as we're going to link this object all over the place but
+    // don't want the symbols to get exported.
+    if linkage != Linkage::Internal && linkage != Linkage::Private &&
+       attr::contains_name(ccx.tcx().hir.krate_attrs(), "compiler_builtins") {
+        unsafe {
+            llvm::LLVMRustSetVisibility(lldecl, llvm::Visibility::Hidden);
+        }
+    } else {
+        unsafe {
+            llvm::LLVMRustSetVisibility(lldecl, base::visibility_to_llvm(visibility));
+        }
+    }
+
+    debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
+    if common::is_inline_instance(ccx.tcx(), &instance) {
+        attributes::inline(lldecl, attributes::InlineAttr::Hint);
+    }
+    attributes::from_fn_attrs(ccx, &attrs, lldecl);
+
+    ccx.instances().borrow_mut().insert(instance, lldecl);
+}
 
 //=-----------------------------------------------------------------------------
 // TransItem String Keys

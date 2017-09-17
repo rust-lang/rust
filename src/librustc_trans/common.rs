@@ -26,6 +26,7 @@ use machine;
 use monomorphize;
 use type_::Type;
 use value::Value;
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -37,7 +38,7 @@ use std::iter;
 use syntax::abi::Abi;
 use syntax::attr;
 use syntax::symbol::InternedString;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::{CrateContext, SharedCrateContext};
 
@@ -138,6 +139,18 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     let layout = ccx.layout_of(ty);
     !layout.is_unsized() && layout.size(ccx).bytes() == 0
+}
+
+pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
+}
+
+pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+}
+
+pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_freeze(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
 }
 
 /*
@@ -573,20 +586,20 @@ pub fn is_inline_instance<'a, 'tcx>(
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+pub fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         def_id: DefId,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = shared.tcx().type_of(def_id);
-    shared.tcx().trans_apply_param_substs(substs, &ty)
+    let ty = tcx.type_of(def_id);
+    tcx.trans_apply_param_substs(substs, &ty)
 }
 
 /// Return the substituted type of an instance.
-pub fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+pub fn instance_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              instance: &ty::Instance<'tcx>)
                              -> Ty<'tcx>
 {
-    let ty = instance.def.def_ty(shared.tcx());
-    shared.tcx().trans_apply_param_substs(instance.substs, &ty)
+    let ty = instance.def.def_ty(tcx);
+    tcx.trans_apply_param_substs(instance.substs, &ty)
 }

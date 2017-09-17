@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common;
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe};
@@ -16,20 +17,19 @@ use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
 use callee;
-use back::symbol_export::ExportedSymbols;
 use base;
 use declare;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use trans_item::TransItem;
 use type_::Type;
 use rustc_data_structures::base_n;
-use rustc::session::config::{self, NoDebugInfo, OutputFilenames};
+use rustc::middle::trans::Stats;
 use rustc::session::Session;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::session::config::{self, NoDebugInfo};
 use rustc::ty::layout::{LayoutCx, LayoutError, LayoutTyper, TyLayout};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::util::nodemap::FxHashMap;
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -39,38 +39,7 @@ use std::str;
 use std::sync::Arc;
 use std::marker::PhantomData;
 use syntax::symbol::InternedString;
-use syntax_pos::DUMMY_SP;
 use abi::Abi;
-
-#[derive(Clone, Default)]
-pub struct Stats {
-    pub n_glues_created: Cell<usize>,
-    pub n_null_glues: Cell<usize>,
-    pub n_real_glues: Cell<usize>,
-    pub n_fns: Cell<usize>,
-    pub n_inlines: Cell<usize>,
-    pub n_closures: Cell<usize>,
-    pub n_llvm_insns: Cell<usize>,
-    pub llvm_insns: RefCell<FxHashMap<String, usize>>,
-    // (ident, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(String, usize)> >,
-}
-
-impl Stats {
-    pub fn extend(&mut self, stats: Stats) {
-        self.n_glues_created.set(self.n_glues_created.get() + stats.n_glues_created.get());
-        self.n_null_glues.set(self.n_null_glues.get() + stats.n_null_glues.get());
-        self.n_real_glues.set(self.n_real_glues.get() + stats.n_real_glues.get());
-        self.n_fns.set(self.n_fns.get() + stats.n_fns.get());
-        self.n_inlines.set(self.n_inlines.get() + stats.n_inlines.get());
-        self.n_closures.set(self.n_closures.get() + stats.n_closures.get());
-        self.n_llvm_insns.set(self.n_llvm_insns.get() + stats.n_llvm_insns.get());
-        self.llvm_insns.borrow_mut().extend(
-            stats.llvm_insns.borrow().iter()
-                                     .map(|(key, value)| (key.clone(), value.clone())));
-        self.fn_stats.borrow_mut().append(&mut *stats.fn_stats.borrow_mut());
-    }
-}
 
 /// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
 /// per crate.  The data here is shared between all compilation units of the
@@ -79,10 +48,7 @@ impl Stats {
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_overflow: bool,
-
     use_dll_storage_attrs: bool,
-
-    output_filenames: &'a OutputFilenames,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -92,14 +58,8 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    stats: Stats,
-    codegen_unit: CodegenUnit<'tcx>,
-
-    /// The translation items of the whole crate.
-    crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
-
-    /// Information about which symbols are exported from the crate.
-    exported_symbols: Arc<ExportedSymbols>,
+    stats: RefCell<Stats>,
+    codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
@@ -261,10 +221,7 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 }
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               check_overflow: bool,
-               output_filenames: &'b OutputFilenames)
-               -> SharedCrateContext<'b, 'tcx> {
+    pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>) -> SharedCrateContext<'b, 'tcx> {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -310,27 +267,28 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         // start) and then strongly recommending static linkage on MSVC!
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
+        let check_overflow = tcx.sess.overflow_checks();
+
         SharedCrateContext {
             tcx,
             check_overflow,
             use_dll_storage_attrs,
-            output_filenames,
         }
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        ty.needs_drop(self.tcx, ty::ParamEnv::empty(traits::Reveal::All))
+        common::type_needs_drop(self.tcx, ty)
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+        common::type_is_sized(self.tcx, ty)
     }
 
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+        common::type_is_freeze(self.tcx, ty)
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 
@@ -345,17 +303,11 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
     }
-
-    pub fn output_filenames(&self) -> &OutputFilenames {
-        self.output_filenames
-    }
 }
 
 impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>,
-               crate_trans_items: Arc<FxHashSet<TransItem<'tcx>>>,
-               exported_symbols: Arc<ExportedSymbols>,)
+               codegen_unit: Arc<CodegenUnit<'tcx>>)
                -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
@@ -385,10 +337,8 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod,
                 llcx,
-                stats: Stats::default(),
+                stats: RefCell::new(Stats::default()),
                 codegen_unit,
-                crate_trans_items,
-                exported_symbols,
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -452,7 +402,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
     }
 
     pub fn into_stats(self) -> Stats {
-        self.stats
+        self.stats.into_inner()
     }
 }
 
@@ -465,7 +415,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local_ccx
     }
 
-    pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.shared.tcx
     }
 
@@ -493,14 +443,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
         &self.local().codegen_unit
-    }
-
-    pub fn crate_trans_items(&self) -> &FxHashSet<TransItem<'tcx>> {
-        &self.local().crate_trans_items
-    }
-
-    pub fn exported_symbols(&self) -> &ExportedSymbols {
-        &self.local().exported_symbols
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {
@@ -545,7 +487,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local().lltypes
     }
 
-    pub fn stats<'a>(&'a self) -> &'a Stats {
+    pub fn stats<'a>(&'a self) -> &'a RefCell<Stats> {
         &self.local().stats
     }
 

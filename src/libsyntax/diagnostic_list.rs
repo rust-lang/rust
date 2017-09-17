@@ -219,29 +219,6 @@ Erroneous code example:
 Delete the offending feature attribute.
 "##,
 
-E0558: r##"
-The `export_name` attribute was malformed.
-
-Erroneous code example:
-
-```compile_fail,E0558
-#[export_name] // error: export_name attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-"##,
-
 E0565: r##"
 A literal was used in an attribute that doesn't support literals.
 

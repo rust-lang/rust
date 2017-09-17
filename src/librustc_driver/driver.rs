@@ -28,7 +28,6 @@ use rustc::mir::transform::{MIR_CONST, MIR_VALIDATED, MIR_OPTIMIZED, Passes};
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
-use rustc::util::nodemap::NodeSet;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
@@ -47,6 +46,7 @@ use super::Compilation;
 
 use serialize::json;
 
+use std::any::Any;
 use std::env;
 use std::ffi::{OsString, OsStr};
 use std::fs;
@@ -54,6 +54,7 @@ use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::mpsc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
@@ -192,6 +193,7 @@ pub fn compile_input(sess: &Session,
                                                                   &resolutions,
                                                                   &expanded_crate,
                                                                   &hir_map.krate(),
+                                                                  &outputs,
                                                                   &crate_name),
                                     Ok(()));
         }
@@ -215,7 +217,8 @@ pub fn compile_input(sess: &Session,
                                     &arena,
                                     &arenas,
                                     &crate_name,
-                                    |tcx, analysis, incremental_hashes_map, result| {
+                                    &outputs,
+                                    |tcx, analysis, incremental_hashes_map, rx, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -243,8 +246,9 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm(tcx, analysis, incremental_hashes_map,
-                                                  &outputs);
+            let trans = phase_4_translate_to_llvm(tcx,
+                                                  incremental_hashes_map,
+                                                  rx);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -258,7 +262,7 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            Ok((outputs, trans, tcx.dep_graph.clone()))
+            Ok((outputs.clone(), trans, tcx.dep_graph.clone()))
         })??
     };
 
@@ -483,6 +487,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 resolutions: &'a Resolutions,
                                 krate: &'a ast::Crate,
                                 hir_crate: &'a hir::Crate,
+                                output_filenames: &'a OutputFilenames,
                                 crate_name: &'a str)
                                 -> Self {
         CompileState {
@@ -495,6 +500,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             resolutions: Some(resolutions),
             expanded_crate: Some(krate),
             hir_crate: Some(hir_crate),
+            output_filenames: Some(output_filenames),
             out_file: out_file.as_ref().map(|s| &**s),
             ..CompileState::empty(input, session, out_dir)
         }
@@ -885,7 +891,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
             access_levels: Rc::new(AccessLevels::default()),
-            reachable: Rc::new(NodeSet()),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
@@ -911,19 +916,21 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
                                                name: &str,
+                                               output_filenames: &OutputFilenames,
                                                f: F)
                                                -> Result<R, CompileIncomplete>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             ty::CrateAnalysis,
                             IncrementalHashesMap,
+                            mpsc::Receiver<Box<Any + Send>>,
                             CompileResult) -> R
 {
     macro_rules! try_with_f {
-        ($e: expr, ($t: expr, $a: expr, $h: expr)) => {
+        ($e: expr, ($($t:tt)*)) => {
             match $e {
                 Ok(x) => x,
                 Err(x) => {
-                    f($t, $a, $h, Err(x));
+                    f($($t)*, Err(x));
                     return Err(x);
                 }
             }
@@ -958,7 +965,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
-    trans::provide(&mut local_providers);
+    trans::provide_local(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     traits::provide(&mut local_providers);
@@ -970,7 +977,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
-    trans::provide(&mut extern_providers);
+    trans::provide_extern(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     traits::provide_extern(&mut extern_providers);
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
@@ -1030,6 +1037,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     passes.push_pass(MIR_OPTIMIZED, mir::transform::add_call_guards::CriticalCallEdges);
     passes.push_pass(MIR_OPTIMIZED, mir::transform::dump_mir::Marker("PreTrans"));
 
+    let (tx, rx) = mpsc::channel();
+
     TyCtxt::create_and_enter(sess,
                              cstore,
                              local_providers,
@@ -1041,6 +1050,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              named_region_map,
                              hir_map,
                              name,
+                             tx,
+                             output_filenames,
                              |tcx| {
         let incremental_hashes_map =
             time(time_passes,
@@ -1056,7 +1067,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
+        try_with_f!(typeck::check_crate(tcx),
+                    (tcx, analysis, incremental_hashes_map, rx));
 
         time(time_passes,
              "const checking",
@@ -1100,13 +1112,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, sess.compile_status()));
+            return Ok(f(tcx, analysis, incremental_hashes_map, rx, sess.compile_status()));
         }
-
-        analysis.reachable =
-            time(time_passes,
-                 "reachability checking",
-                 || reachable::find_reachable(tcx));
 
         time(time_passes, "death checking", || middle::dead::check_crate(tcx));
 
@@ -1116,16 +1123,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes, "lint checking", || lint::check_crate(tcx));
 
-        return Ok(f(tcx, analysis, incremental_hashes_map, tcx.sess.compile_status()));
+        return Ok(f(tcx, analysis, incremental_hashes_map, rx, tcx.sess.compile_status()));
     })
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: IncrementalHashesMap,
-                                           output_filenames: &OutputFilenames)
+                                           rx: mpsc::Receiver<Box<Any + Send>>)
                                            -> write::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
@@ -1134,9 +1140,9 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          || ::rustc::middle::dependency_format::calculate(tcx));
 
     let translation =
-        time(time_passes,
-             "translation",
-             move || trans::trans_crate(tcx, analysis, incremental_hashes_map, output_filenames));
+        time(time_passes, "translation", move || {
+            trans::trans_crate(tcx, incremental_hashes_map, rx)
+        });
 
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())

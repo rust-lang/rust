@@ -14,15 +14,15 @@
 
 use std;
 
-use llvm;
-use llvm::{ValueRef};
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutTyper;
+use builder::Builder;
 use common::*;
+use llvm::{ValueRef};
+use llvm;
 use meth;
 use monomorphize;
+use rustc::ty::layout::LayoutTyper;
+use rustc::ty::{self, Ty};
 use value::Value;
-use builder::Builder;
 
 pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                        -> (ValueRef, ValueRef) {
