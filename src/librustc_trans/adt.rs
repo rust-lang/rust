@@ -87,7 +87,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } else {
                 l
             };
-            llty.set_struct_body(&struct_llfields(cx, variant_layout, variant), variant.packed)
+            llty.set_struct_body(&struct_llfields(cx, variant_layout), variant.packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
     }
@@ -105,8 +105,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         layout::Univariant(ref variant) => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, l, &variant),
-                                  variant.packed)
+                    Type::struct_(cx, &struct_llfields(cx, l), variant.packed)
                 }
                 Some(name) => {
                     Type::named_struct(cx, name)
@@ -166,8 +165,11 @@ pub fn memory_index_to_gep(index: u64) -> u64 {
 }
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 layout: FullLayout<'tcx>,
-                                 variant: &layout::Struct) -> Vec<Type> {
+                                 layout: FullLayout<'tcx>) -> Vec<Type> {
+    let variant = match *layout.layout {
+        layout::Univariant(ref variant) => variant,
+        _ => bug!("unexpected {:#?}", layout)
+    };
     let field_count = layout.fields.count();
     debug!("struct_llfields: variant: {:?}", variant);
     let mut offset = Size::from_bytes(0);

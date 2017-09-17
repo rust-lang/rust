@@ -764,7 +764,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                         .zip(variants)
                         .map(|(variant, variant_layout)| {
                             // Subtract the size of the enum discriminant
-                            let bytes = variant_layout.min_size
+                            let bytes = variant_layout.abi.size(cx.tcx)
                                 .bytes()
                                 .saturating_sub(discr_size);
 

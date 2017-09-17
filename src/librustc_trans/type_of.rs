@@ -242,7 +242,9 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
         }
         match *self.layout {
             Layout::Scalar { .. } |
-            Layout::UntaggedUnion { .. } => {
+            Layout::UntaggedUnion { .. } |
+            Layout::NullablePointer { .. } |
+            Layout::General { .. } => {
                 bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
             }
 
@@ -257,15 +259,6 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
 
             Layout::Univariant(ref variant) => {
                 adt::memory_index_to_gep(variant.memory_index[index] as u64)
-            }
-
-            Layout::NullablePointer { ref variants, .. } |
-            Layout::General { ref variants, .. } => {
-                if let Some(v) = self.variant_index {
-                    adt::memory_index_to_gep(variants[v].memory_index[index] as u64)
-                } else {
-                    bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
-                }
             }
         }
     }

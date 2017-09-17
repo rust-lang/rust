@@ -55,7 +55,7 @@ impl ops::BitOr for Alignment {
     }
 }
 
-impl<'a> From<&'a Layout> for Alignment {
+impl<'a> From<&'a Layout<'a>> for Alignment {
     fn from(layout: &Layout) -> Self {
         let (packed, align) = match *layout {
             Layout::UntaggedUnion(ref un) => (un.packed, un.align),
@@ -234,27 +234,24 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
 
         // Discriminant field of enums.
-        match *l.layout {
-            layout::NullablePointer { .. } if l.variant_index.is_none() => {
-                let ty = ccx.llvm_type_of(field.ty);
-                let size = field.size(ccx).bytes();
+        if let layout::NullablePointer { .. } = *l.layout {
+            let ty = ccx.llvm_type_of(field.ty);
+            let size = field.size(ccx).bytes();
 
-                // If the discriminant is not on a multiple of the primitive's size,
-                // we need to go through i8*. Also assume the worst alignment.
-                if offset % size != 0 {
-                    let byte_ptr = bcx.pointercast(self.llval, Type::i8p(ccx));
-                    let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(ccx, offset)]);
-                    let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
-                    return LvalueRef::new_sized(
-                        bcx.pointercast(byte_ptr, ty.ptr_to()), field.ty, byte_align);
-                }
-
-                let discr_ptr = bcx.pointercast(self.llval, ty.ptr_to());
+            // If the discriminant is not on a multiple of the primitive's size,
+            // we need to go through i8*. Also assume the worst alignment.
+            if offset % size != 0 {
+                let byte_ptr = bcx.pointercast(self.llval, Type::i8p(ccx));
+                let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(ccx, offset)]);
+                let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
                 return LvalueRef::new_sized(
-                    bcx.inbounds_gep(discr_ptr, &[C_usize(ccx, offset / size)]),
-                    field.ty, alignment);
+                    bcx.pointercast(byte_ptr, ty.ptr_to()), field.ty, byte_align);
             }
-            _ => {}
+
+            let discr_ptr = bcx.pointercast(self.llval, ty.ptr_to());
+            return LvalueRef::new_sized(
+                bcx.inbounds_gep(discr_ptr, &[C_usize(ccx, offset / size)]),
+                field.ty, alignment);
         }
 
         let simple = || {
@@ -271,10 +268,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         };
 
         // Check whether the variant being used is packed, if applicable.
-        let is_packed = match (l.layout, l.variant_index) {
-            (&layout::Univariant(ref variant), _) => variant.packed,
-            (&layout::NullablePointer { ref variants, .. }, Some(v)) |
-            (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
+        let is_packed = match *l.layout {
+            layout::Univariant(ref variant) => variant.packed,
             _ => return simple()
         };
 
@@ -470,13 +465,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             };
 
             // If this is an enum, cast to the appropriate variant struct type.
-            let layout = bcx.ccx.layout_of(ty).for_variant(variant_index);
-            match *layout.layout {
-                layout::NullablePointer { ref variants, .. } |
-                layout::General { ref variants, .. } => {
-                    let st = &variants[variant_index];
+            let layout = bcx.ccx.layout_of(ty);
+            let variant_layout = layout.for_variant(variant_index);
+            match (layout.layout, variant_layout.layout) {
+                (&layout::NullablePointer { .. }, &layout::Univariant(ref st)) |
+                (&layout::General { .. }, &layout::Univariant(ref st)) => {
                     let variant_ty = Type::struct_(bcx.ccx,
-                        &adt::struct_llfields(bcx.ccx, layout, st), st.packed);
+                        &adt::struct_llfields(bcx.ccx, variant_layout), st.packed);
                     downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
                 }
                 _ => {}
