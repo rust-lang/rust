@@ -612,7 +612,6 @@ pre.rust .question-mark {
 	font-weight: bold;
 }
 
-pre.rust { position: relative; }
 a.test-arrow {
 	display: inline-block;
 	position: absolute;
@@ -812,4 +811,45 @@ span.since {
 	nav.sub, .content .out-of-band, .collapse-toggle {
 		display: none;
 	}
+}
+
+.information {
+	position: absolute;
+	left: -1px;
+	margin-top: 7px;
+}
+
+.tooltip {
+	position: relative;
+	display: inline-block;
+	cursor: pointer;
+}
+
+.tooltip .tooltiptext {
+	width: 120px;
+	display: none;
+	background-color: black;
+	color: #fff;
+	text-align: center;
+	padding: 5px 3px;
+	border-radius: 6px;
+	margin-left: 5px;
+	top: -5px;
+	left: 105%;
+	z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+	display: inline;
+}
+
+.tooltip .tooltiptext::after {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	left: 11px;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: transparent black transparent transparent;
 }
