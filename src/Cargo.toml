@@ -56,5 +56,5 @@ debug-assertions = false
 debug = false
 debug-assertions = false
 
-[patch.'https://github.com/rust-lang/cargo']
+[patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "tools/cargo" }
