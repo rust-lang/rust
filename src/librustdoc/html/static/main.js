@@ -1296,6 +1296,24 @@
             collapseDocs(i_e.previousSibling.childNodes[0]);
         });
     });
+
+    onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {
+        if (hasClass(e, 'compile_fail')) {
+            e.addEventListener("mouseover", function(event) {
+                e.previousElementSibling.childNodes[0].style.color = '#f00';
+            });
+            e.addEventListener("mouseout", function(event) {
+                e.previousElementSibling.childNodes[0].style.color = '';
+            });
+        } else if (hasClass(e, 'ignore')) {
+            e.addEventListener("mouseover", function(event) {
+                e.previousElementSibling.childNodes[0].style.color = '#ff9200';
+            });
+            e.addEventListener("mouseout", function(event) {
+                e.previousElementSibling.childNodes[0].style.color = '';
+            });
+        }
+    });
 }());
 
 // Sets the focus on the search bar at the top of the page
