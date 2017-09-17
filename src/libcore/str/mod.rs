@@ -404,7 +404,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    mem::transmute(v)
+    &*(v as *const [u8] as *const str)
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -429,7 +429,7 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    mem::transmute(v)
+    &*(v as *mut [u8] as *mut str)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2447,12 +2447,12 @@ impl StrExt for str {
 
     #[inline]
     fn as_bytes(&self) -> &[u8] {
-        unsafe { mem::transmute(self) }
+        unsafe { &*(self as *const str as *const [u8]) }
     }
 
     #[inline]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        mem::transmute(self)
+        &mut *(self as *mut str as *mut [u8])
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
