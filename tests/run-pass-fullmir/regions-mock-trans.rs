@@ -11,6 +11,8 @@
 // FIXME: We handle uninitialzied storage here, which currently makes validation fail.
 // compile-flags: -Zmir-emit-validate=0
 
+//ignore-msvc
+
 #![feature(libc)]
 
 #![allow(dead_code)]

@@ -11,6 +11,7 @@
 // FIXME: remove -Zmir-opt-level once https://github.com/rust-lang/rust/issues/43359 is fixed
 // compile-flags: -Zmir-opt-level=0
 
+//ignore-msvc
 use std::i32;
 
 pub fn main() {

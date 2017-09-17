@@ -50,7 +50,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, fullmir: b
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = Path::new(&std::env::var("HOME").unwrap())
+        let sysroot = std::env::home_dir().unwrap()
             .join(".xargo")
             .join("HOST");
         config.target_rustcflags = Some(format!("--sysroot {}", sysroot.to_str().unwrap()));
@@ -110,9 +110,10 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
             // skip fullmir on nonhost
             return;
         }
-        let sysroot = Path::new(&std::env::var("HOME").unwrap())
+        let sysroot = std::env::home_dir().unwrap()
             .join(".xargo")
             .join("HOST");
+
         flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
     }
     if opt {
@@ -189,9 +190,9 @@ fn run_pass_miri_noopt() {
 }
 
 #[test]
+#[ignore] // FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
 fn run_pass_miri_opt() {
-    // FIXME: Disabled for now, as the optimizer is pretty broken and crashes...
-    //run_pass_miri(true);
+    run_pass_miri(true);
 }
 
 #[test]
