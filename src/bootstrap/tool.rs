@@ -94,20 +94,21 @@ impl Step for ToolBuild {
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
-        let mut cargo = prepare_tool_cargo(builder, compiler, target, path);
+        let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         build.run(&mut cargo);
         build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
     }
 }
 
-fn prepare_tool_cargo(
+pub fn prepare_tool_cargo(
     builder: &Builder,
     compiler: Compiler,
     target: Interned<String>,
+    command: &'static str,
     path: &'static str,
 ) -> Command {
     let build = builder.build;
-    let mut cargo = builder.cargo(compiler, Mode::Tool, target, "build");
+    let mut cargo = builder.cargo(compiler, Mode::Tool, target, command);
     let dir = build.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
@@ -295,6 +296,7 @@ impl Step for Rustdoc {
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
                                            target,
+                                           "build",
                                            "src/tools/rustdoc");
         build.run(&mut cargo);
         // Cargo adds a number of paths to the dylib search path on windows, which results in

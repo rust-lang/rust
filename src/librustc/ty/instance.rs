@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use ty::{self, Ty, TypeFoldable, Substs};
+use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
 use util::ppaux;
 
 use std::fmt;
@@ -57,12 +57,12 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn def_ty<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn def_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.def_id())
     }
 
     #[inline]
-    pub fn attrs<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
+    pub fn attrs<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 }
@@ -103,7 +103,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         Instance { def: InstanceDef::Item(def_id), substs: substs }
     }
 
-    pub fn mono(tcx: ty::TyCtxt<'a, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
+    pub fn mono(tcx: TyCtxt<'a, 'tcx, 'b>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, tcx.global_tcx().empty_substs_for_def_id(def_id))
     }
 

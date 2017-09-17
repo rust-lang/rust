@@ -26,7 +26,6 @@
 #![feature(inclusive_range_syntax)]
 #![feature(iter_rfind)]
 #![feature(nonzero)]
-#![feature(ord_max_min)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
