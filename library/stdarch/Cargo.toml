@@ -1,6 +1,6 @@
 [package]
 name = "stdsimd"
-version = "0.0.1"  #:version
+version = "0.0.2"  #:version
 authors = ["Andrew Gallant <jamslam@gmail.com>"]
 description = "Experiments for adding SIMD support to Rust's standard library."
 documentation = "https://docs.rs/stdsimd"
