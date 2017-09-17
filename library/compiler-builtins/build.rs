@@ -4112,7 +4112,9 @@ mod c {
             ]);
         }
 
-        if target_os != "ios" {
+        // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
+        // include them.
+        if target_os != "ios" && (target_vendor != "apple" || target_arch != "x86") {
             sources.extend(
                 &[
                     "absvti2.c",
