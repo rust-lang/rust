@@ -12,7 +12,7 @@ use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout::LayoutOf;
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
@@ -576,13 +576,8 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             };
 
             let layout = bcx.ccx.layout_of(closure_ty);
-            let offsets = match *layout.layout {
-                layout::Univariant(ref variant) => &variant.offsets[..],
-                _ => bug!("Closures are only supposed to be Univariant")
-            };
-
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
-                let byte_offset_of_var_in_env = offsets[i].bytes();
+                let byte_offset_of_var_in_env = layout.fields.offset(i).bytes();
 
                 let ops = unsafe {
                     [llvm::LLVMRustDIBuilderCreateOpDeref(),

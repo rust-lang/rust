@@ -910,20 +910,6 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
-
-        let tmp;
-        let offsets = match *layout.layout {
-            layout::Univariant(ref variant) => &variant.offsets,
-            layout::Vector { element, count } => {
-                let element_size = element.size(cx).bytes();
-                tmp = (0..count).
-                  map(|i| layout::Size::from_bytes(i*element_size))
-                  .collect::<Vec<layout::Size>>();
-                &tmp
-            }
-            _ => bug!("{} is not a struct", self.ty)
-        };
-
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let name = if self.variant.ctor_kind == CtorKind::Fn {
                 format!("__{}", i)
@@ -935,7 +921,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             MemberDescription {
                 name,
                 type_metadata: type_metadata(cx, field.ty, self.span),
-                offset: offsets[i],
+                offset: layout.fields.offset(i),
                 size,
                 align,
                 flags: DIFlags::FlagZero,
@@ -993,18 +979,12 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let layout = cx.layout_of(self.ty);
-        let offsets = if let layout::Univariant(ref variant) = *layout.layout {
-            &variant.offsets
-        } else {
-            bug!("{} is not a tuple", self.ty);
-        };
-
         self.component_types.iter().enumerate().map(|(i, &component_type)| {
             let (size, align) = cx.size_and_align_of(component_type);
             MemberDescription {
                 name: format!("__{}", i),
                 type_metadata: type_metadata(cx, component_type, self.span),
-                offset: offsets[i],
+                offset: layout.fields.offset(i),
                 size,
                 align,
                 flags: DIFlags::FlagZero,

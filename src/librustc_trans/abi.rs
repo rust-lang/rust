@@ -307,8 +307,8 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
             }
 
             layout::Abi::Aggregate { .. } => {
-                if let Layout::Array { count, .. } = *self.layout {
-                    if count > 0 {
+                if let Layout::Array { .. } = *self.layout {
+                    if self.fields.count() > 0 {
                         return self.field(ccx, 0).homogeneous_aggregate(ccx);
                     }
                 }

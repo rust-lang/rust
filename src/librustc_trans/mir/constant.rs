@@ -1051,14 +1051,14 @@ fn trans_const_adt<'a, 'tcx>(
                 build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
-        layout::UntaggedUnion(ref un) => {
+        layout::UntaggedUnion => {
             assert_eq!(variant_index, 0);
             let contents = [
                 vals[0].llval,
-                padding(ccx, un.stride() - ccx.size_of(vals[0].ty))
+                padding(ccx, l.size(ccx) - ccx.size_of(vals[0].ty))
             ];
 
-            Const::new(C_struct(ccx, &contents, un.packed), t)
+            Const::new(C_struct(ccx, &contents, l.is_packed()), t)
         }
         layout::Univariant(_) => {
             assert_eq!(variant_index, 0);
@@ -1105,11 +1105,11 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         offset = ccx.size_of(discr.ty);
     }
 
-    let st = match *layout.layout {
-        layout::Univariant(ref variant) => variant,
+    let field_index_by_increasing_offset = match *layout.layout {
+        layout::Univariant(ref variant) => variant.field_index_by_increasing_offset(),
         _ => bug!("unexpected {:#?}", layout)
     };
-    let parts = st.field_index_by_increasing_offset().map(|i| {
+    let parts = field_index_by_increasing_offset.map(|i| {
         (vals[i], layout.fields.offset(i))
     });
     for (val, target_offset) in parts {
@@ -1121,7 +1121,7 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Pad to the size of the whole type, not e.g. the variant.
     cfields.push(padding(ccx, ccx.size_of(layout.ty) - offset));
 
-    Const::new(C_struct(ccx, &cfields, st.packed), layout.ty)
+    Const::new(C_struct(ccx, &cfields, layout.is_packed()), layout.ty)
 }
 
 fn padding(ccx: &CrateContext, size: Size) -> ValueRef {
