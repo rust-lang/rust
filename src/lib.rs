@@ -881,6 +881,12 @@ pub fn format_input<T: Write>(
 ) -> Result<(Summary, FileMap, FormatReport), (io::Error, Summary)> {
     let mut summary = Summary::default();
     if config.disable_all_formatting() {
+        // When the input is from stdin, echo back the input.
+        if let Input::Text(ref buf) = input {
+            if let Err(e) = io::stdout().write_all(buf.as_bytes()) {
+                return Err((e, summary));
+            }
+        }
         return Ok((summary, FileMap::new(), FormatReport::new()));
     }
     let codemap = Rc::new(CodeMap::new(FilePathMapping::empty()));
