@@ -8,9 +8,11 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# ignore-tidy-linelength
+
 set -ex
 
 curl -fo /usr/local/bin/sccache \
-  https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl
+  https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-unknown-linux-musl
 
 chmod +x /usr/local/bin/sccache
