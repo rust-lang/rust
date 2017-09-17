@@ -2161,6 +2161,27 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
+    fn set_get_unix_permissions() {
+        use os::unix::fs::PermissionsExt;
+
+        let tmpdir = tmpdir();
+        let filename = &tmpdir.join("set_get_unix_permissions");
+        check!(fs::create_dir(filename));
+        let mask = 0o7777;
+
+        check!(fs::set_permissions(filename,
+                                   fs::Permissions::from_mode(0)));
+        let metadata0 = check!(fs::metadata(filename));
+        assert_eq!(mask & metadata0.permissions().mode(), 0);
+
+        check!(fs::set_permissions(filename,
+                                   fs::Permissions::from_mode(0o1777)));
+        let metadata1 = check!(fs::metadata(filename));
+        assert_eq!(mask & metadata1.permissions().mode(), 0o1777);
+    }
+
+    #[test]
     #[cfg(windows)]
     fn file_test_io_seek_read_write() {
         use os::windows::fs::FileExt;
