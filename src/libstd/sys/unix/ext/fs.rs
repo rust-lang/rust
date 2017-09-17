@@ -68,8 +68,8 @@ impl FileExt for fs::File {
 /// Unix-specific extensions to `Permissions`
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
-    /// Returns the 12 least significant bits of `st_mode` which are the
-    /// standard Unix permissions for this file.
+    /// Returns the underlying raw `st_mode` bits that contain the standard
+    /// Unix permissions for this file.
     ///
     /// # Examples
     ///
