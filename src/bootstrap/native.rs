@@ -350,7 +350,7 @@ impl Step for Openssl {
         if !tarball.exists() {
             let tmp = tarball.with_extension("tmp");
             // originally from https://www.openssl.org/source/...
-            let url = format!("https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/{}",
+            let url = format!("https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/{}",
                               name);
             let mut ok = false;
             for _ in 0..3 {
