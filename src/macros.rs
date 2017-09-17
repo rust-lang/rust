@@ -28,11 +28,11 @@ use syntax::symbol;
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 
-use {Indent, Shape};
 use codemap::SpanUtils;
 use comment::{contains_comment, FindUncommented};
 use expr::{rewrite_array, rewrite_call_inner};
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use utils::mk_sp;
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];

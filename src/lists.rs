@@ -13,10 +13,10 @@ use std::iter::Peekable;
 
 use syntax::codemap::{BytePos, CodeMap};
 
-use {Indent, Shape};
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
+use shape::{Indent, Shape};
 use utils::{first_line_width, last_line_width, mk_sp};
 
 /// Formatting tactic for lists. This will be cast down to a

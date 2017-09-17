@@ -17,7 +17,7 @@ use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 
-use {Shape, Spanned};
+use Spanned;
 use codemap::SpanUtils;
 use config::{IndentStyle, Style, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};
@@ -25,6 +25,7 @@ use items::{format_generics_item_list, generics_shape_from_config};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
             SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
+use shape::Shape;
 use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp, wrap_str};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

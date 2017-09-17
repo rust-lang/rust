@@ -10,10 +10,11 @@
 
 use std::borrow::Cow;
 
-use {Indent, Shape};
+use syntax::codemap::{BytePos, Pos, Span};
+
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
-use syntax::codemap::{BytePos, Pos, Span};
+use shape::{Indent, Shape};
 use utils::mk_sp;
 use visitor::FmtVisitor;
 

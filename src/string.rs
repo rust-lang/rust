@@ -13,8 +13,8 @@
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 
-use Shape;
 use config::Config;
+use shape::Shape;
 use utils::wrap_str;
 
 const MIN_STRING: usize = 10;
@@ -128,6 +128,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
 #[cfg(test)]
 mod test {
     use super::{rewrite_string, StringFormat};
+    use shape::{Indent, Shape};
 
     #[test]
     fn issue343() {
@@ -137,7 +138,7 @@ mod test {
             closer: "\"",
             line_start: " ",
             line_end: "\\",
-            shape: ::Shape::legacy(2, ::Indent::empty()),
+            shape: Shape::legacy(2, Indent::empty()),
             trim_end: false,
             config: &config,
         };

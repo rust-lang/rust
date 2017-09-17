@@ -16,7 +16,7 @@ use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
 
-use {Indent, Shape, Spanned};
+use Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
@@ -26,6 +26,7 @@ use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
             format_constness, format_defaultness, format_mutability, format_unsafety,

@@ -12,7 +12,7 @@ use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
 
-use {Shape, Spanned};
+use Spanned;
 use codemap::SpanUtils;
 use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,
@@ -20,6 +20,7 @@ use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_una
 use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
             struct_lit_tactic, write_list, DefinitiveListTactic, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
+use shape::Shape;
 use types::{rewrite_path, PathContext};
 use utils::{format_mutability, mk_sp, wrap_str};
 

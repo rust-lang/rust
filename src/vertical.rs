@@ -15,7 +15,7 @@ use std::cmp;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
-use {Indent, Shape, Spanned};
+use Spanned;
 use codemap::SpanUtils;
 use comment::{combine_strs_with_missing_comments, contains_comment};
 use expr::rewrite_field;
@@ -23,6 +23,7 @@ use items::{rewrite_struct_field, rewrite_struct_field_prefix};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTactic, Separator,
             SeparatorPlace};
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use utils::{contains_skip, is_attributes_extendable, mk_sp};
 
 pub trait AlignedItem {

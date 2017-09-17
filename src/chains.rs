@@ -76,7 +76,7 @@
 ///     .qux
 /// ```
 
-use Shape;
+use shape::Shape;
 use config::IndentStyle;
 use expr::rewrite_call;
 use macros::convert_try_mac;

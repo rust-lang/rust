@@ -16,7 +16,7 @@ use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
-use {Indent, Shape, Spanned};
+use Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
               FindUncommented};
@@ -30,6 +30,7 @@ use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, Sepa
 use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use utils::{self, contains_skip, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
 fn is_use_item(item: &ast::Item) -> bool {

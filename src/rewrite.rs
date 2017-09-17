@@ -13,8 +13,8 @@
 use syntax::codemap::{CodeMap, Span};
 use syntax::parse::ParseSess;
 
-use Shape;
 use config::{Config, IndentStyle};
+use shape::Shape;
 
 pub trait Rewrite {
     /// Rewrite self into shape.

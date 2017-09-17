@@ -17,7 +17,7 @@ use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::parse::classify;
 
-use {Indent, Shape, Spanned};
+use Spanned;
 use chains::rewrite_chain;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
@@ -30,6 +30,7 @@ use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_format
 use macros::{rewrite_macro, MacroArg, MacroPosition};
 use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,

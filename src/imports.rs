@@ -13,13 +13,14 @@ use std::cmp::Ordering;
 use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
-use {Shape, Spanned};
+use Spanned;
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
+use shape::Shape;
 use types::{rewrite_path, PathContext};
 use utils::{format_visibility, mk_sp};
 use visitor::{rewrite_extern_crate, FmtVisitor};
