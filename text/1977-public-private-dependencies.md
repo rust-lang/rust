@@ -1,7 +1,7 @@
 - Feature Name: `public_private_dependencies`
 - Start Date: 2017-04-03
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1977
+- Rust Issue: https://github.com/rust-lang/rust/issues/44663
 
 # Summary
 [summary]: #summary
