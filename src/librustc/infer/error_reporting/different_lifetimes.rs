@@ -287,6 +287,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                                           found_it: false,
                                           bound_region: self.bound_region,
                                           hir_map: self.hir_map,
+                                          depth: self.depth,
                                       };
                 intravisit::walk_ty(subvisitor, arg); // call walk_ty; as visit_ty is empty,
                 // this will visit only outermost type
@@ -313,6 +314,7 @@ struct TyPathVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     hir_map: &'a hir::map::Map<'gcx>,
     found_it: bool,
     bound_region: ty::BoundRegion,
+    depth: u32,
 }
 
 impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
@@ -321,24 +323,47 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        let br_index = match self.bound_region {
-            ty::BrAnon(index) => index,
-            _ => return,
-        };
 
         let hir_id = self.infcx.tcx.hir.node_to_hir_id(lifetime.id);
-        match self.infcx.tcx.named_region(hir_id) {
+        match (self.infcx.tcx.named_region(hir_id), self.bound_region) {
             // the lifetime of the TyPath!
-            Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)) => {
-                if debruijn_index.depth == 1 && anon_index == br_index {
+            (Some(rl::Region::LateBoundAnon(debruijn_index, anon_index)), ty::BrAnon(br_index)) => {
+                if debruijn_index.depth == self.depth && anon_index == br_index {
                     self.found_it = true;
+                    return;
                 }
             }
-            Some(rl::Region::Static) |
-            Some(rl::Region::EarlyBound(_, _)) |
-            Some(rl::Region::LateBound(_, _)) |
-            Some(rl::Region::Free(_, _)) |
-            None => {
+
+            (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
+                debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
+                                        def_id={:?}",
+                       self.infcx.tcx.hir.local_def_id(id),
+                       def_id);
+                if self.infcx.tcx.hir.local_def_id(id) == def_id {
+                    self.found_it = true;
+                    return; // we can stop visiting now
+                }
+            }
+
+            (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
+                debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
+                       debruijn_index.depth);
+                debug!("self.infcx.tcx.hir.local_def_id(id)={:?}",
+                       self.infcx.tcx.hir.local_def_id(id));
+                debug!("def_id={:?}", def_id);
+                if debruijn_index.depth == self.depth &&
+                   self.infcx.tcx.hir.local_def_id(id) == def_id {
+                    self.found_it = true;
+                    return; // we can stop visiting now
+                }
+            }
+
+            (Some(rl::Region::Static), _) |
+            (Some(rl::Region::EarlyBound(_, _)), _) |
+            (Some(rl::Region::LateBound(_, _)), _) |
+            (Some(rl::Region::LateBoundAnon(_, _)), _) |
+            (Some(rl::Region::Free(_, _)), _) |
+            (None, _) => {
                 debug!("no arg found");
             }
         }
