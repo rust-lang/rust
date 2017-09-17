@@ -17,7 +17,7 @@ use syntax::codemap::{self, BytePos, Span};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
 
-use Spanned;
+use spanned::Spanned;
 use codemap::SpanUtils;
 use config::{IndentStyle, Style, TypeDensity};
 use expr::{rewrite_pair, rewrite_tuple, rewrite_unary_prefix, wrap_args_with_parens};

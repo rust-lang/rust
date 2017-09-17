@@ -17,7 +17,7 @@ use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, CodeMap, Span};
 use syntax::parse::classify;
 
-use Spanned;
+use spanned::Spanned;
 use chains::rewrite_chain;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,

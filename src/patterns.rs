@@ -12,7 +12,7 @@ use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::ptr;
 
-use Spanned;
+use spanned::Spanned;
 use codemap::SpanUtils;
 use comment::FindUncommented;
 use expr::{can_be_overflowed_expr, rewrite_call_inner, rewrite_pair, rewrite_unary_prefix,

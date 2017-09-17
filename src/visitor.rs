@@ -16,7 +16,7 @@ use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
 
-use Spanned;
+use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{contains_comment, recover_missing_comment_in_span, CodeCharKind, CommentCodeSlices,
               FindUncommented};

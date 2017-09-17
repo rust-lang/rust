@@ -16,7 +16,7 @@ use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
 
-use Spanned;
+use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
