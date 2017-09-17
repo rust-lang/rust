@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "collections_range",
-            reason = "waiting for dust to settle on inclusive ranges",
-            issue = "30877")]
 
 //! Range syntax.
 
@@ -19,6 +16,7 @@ use Bound::{self, Excluded, Included, Unbounded};
 
 /// `RangeArgument` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b` or `c..d`.
+#[stable(feature = "collections_range", since = "1.22.0")]
 pub trait RangeArgument<T: ?Sized> {
     /// Start index bound.
     ///
@@ -28,7 +26,6 @@ pub trait RangeArgument<T: ?Sized> {
     ///
     /// ```
     /// #![feature(alloc)]
-    /// #![feature(collections_range)]
     ///
     /// extern crate alloc;
     ///
@@ -40,6 +37,7 @@ pub trait RangeArgument<T: ?Sized> {
     /// assert_eq!((3..10).start(), Included(&3));
     /// # }
     /// ```
+    #[stable(feature = "collections_range", since = "1.22.0")]
     fn start(&self) -> Bound<&T>;
 
     /// End index bound.
@@ -50,7 +48,6 @@ pub trait RangeArgument<T: ?Sized> {
     ///
     /// ```
     /// #![feature(alloc)]
-    /// #![feature(collections_range)]
     ///
     /// extern crate alloc;
     ///
@@ -62,11 +59,13 @@ pub trait RangeArgument<T: ?Sized> {
     /// assert_eq!((3..10).end(), Excluded(&10));
     /// # }
     /// ```
+    #[stable(feature = "collections_range", since = "1.22.0")]
     fn end(&self) -> Bound<&T>;
 }
 
 // FIXME add inclusive ranges to RangeArgument
 
+#[stable(feature = "collections_range", since = "1.22.0")]
 impl<T: ?Sized> RangeArgument<T> for RangeFull {
     fn start(&self) -> Bound<&T> {
         Unbounded
@@ -76,6 +75,7 @@ impl<T: ?Sized> RangeArgument<T> for RangeFull {
     }
 }
 
+#[stable(feature = "collections_range", since = "1.22.0")]
 impl<T> RangeArgument<T> for RangeFrom<T> {
     fn start(&self) -> Bound<&T> {
         Included(&self.start)
@@ -85,6 +85,7 @@ impl<T> RangeArgument<T> for RangeFrom<T> {
     }
 }
 
+#[stable(feature = "collections_range", since = "1.22.0")]
 impl<T> RangeArgument<T> for RangeTo<T> {
     fn start(&self) -> Bound<&T> {
         Unbounded
@@ -94,6 +95,7 @@ impl<T> RangeArgument<T> for RangeTo<T> {
     }
 }
 
+#[stable(feature = "collections_range", since = "1.22.0")]
 impl<T> RangeArgument<T> for Range<T> {
     fn start(&self) -> Bound<&T> {
         Included(&self.start)

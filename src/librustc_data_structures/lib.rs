@@ -22,7 +22,6 @@
 #![deny(warnings)]
 
 #![feature(shared)]
-#![feature(collections_range)]
 #![feature(nonzero)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
