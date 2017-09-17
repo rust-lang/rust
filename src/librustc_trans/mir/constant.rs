@@ -1034,7 +1034,7 @@ fn trans_const_adt<'a, 'tcx>(
         _ => 0,
     };
     match *l.layout {
-        layout::General { ref variants, .. } => {
+        layout::General { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
                     adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
@@ -1048,7 +1048,7 @@ fn trans_const_adt<'a, 'tcx>(
             if let layout::Abi::Scalar(_) = l.abi {
                 discr
             } else {
-                build_const_struct(ccx, l, &variants[variant_index], vals, Some(discr))
+                build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
         layout::UntaggedUnion(ref un) => {
@@ -1060,16 +1060,16 @@ fn trans_const_adt<'a, 'tcx>(
 
             Const::new(C_struct(ccx, &contents, un.packed), t)
         }
-        layout::Univariant(ref variant) => {
+        layout::Univariant(_) => {
             assert_eq!(variant_index, 0);
-            build_const_struct(ccx, l, &variant, vals, None)
+            build_const_struct(ccx, l, vals, None)
         }
         layout::Vector { .. } => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
-        layout::NullablePointer { ref variants, nndiscr, .. } => {
+        layout::NullablePointer { nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
-                build_const_struct(ccx, l, &variants[variant_index], vals, None)
+                build_const_struct(ccx, l.for_variant(variant_index), vals, None)
             } else {
                 // Always use null even if it's not the `discrfield`th
                 // field; see #8506.
@@ -1090,24 +1090,27 @@ fn trans_const_adt<'a, 'tcx>(
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 layout: layout::FullLayout<'tcx>,
-                                st: &layout::Struct,
                                 vals: &[Const<'tcx>],
                                 discr: Option<Const<'tcx>>)
                                 -> Const<'tcx> {
-    assert_eq!(vals.len(), st.offsets.len());
+    assert_eq!(vals.len(), layout.fields.count());
 
     // offset of current value
     let mut offset = Size::from_bytes(0);
     let mut cfields = Vec::new();
-    cfields.reserve(discr.is_some() as usize + 1 + st.offsets.len() * 2);
+    cfields.reserve(discr.is_some() as usize + 1 + layout.fields.count() * 2);
 
     if let Some(discr) = discr {
         cfields.push(discr.llval);
         offset = ccx.size_of(discr.ty);
     }
 
+    let st = match *layout.layout {
+        layout::Univariant(ref variant) => variant,
+        _ => bug!("unexpected {:#?}", layout)
+    };
     let parts = st.field_index_by_increasing_offset().map(|i| {
-        (vals[i], st.offsets[i])
+        (vals[i], layout.fields.offset(i))
     });
     for (val, target_offset) in parts {
         cfields.push(padding(ccx, target_offset - offset));
@@ -1115,8 +1118,8 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         offset = target_offset + ccx.size_of(val.ty);
     }
 
-    let size = layout.size(ccx);
-    cfields.push(padding(ccx, size - offset));
+    // Pad to the size of the whole type, not e.g. the variant.
+    cfields.push(padding(ccx, ccx.size_of(layout.ty) - offset));
 
     Const::new(C_struct(ccx, &cfields, st.packed), layout.ty)
 }

@@ -1004,7 +1004,7 @@ pub const FAT_PTR_ADDR: usize = 0;
 pub const FAT_PTR_EXTRA: usize = 1;
 
 /// Describes how the fields of a type are located in memory.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum FieldPlacement<'a> {
     /// Array-like placement. Can also express
     /// unions, by using a stride of zero bytes.
@@ -1058,7 +1058,7 @@ impl<'a> FieldPlacement<'a> {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Abi {
     Scalar(Primitive),
     Vector {
@@ -1141,8 +1141,8 @@ impl Abi {
 /// For ADTs, it also includes field placement and enum optimizations.
 /// NOTE: Because Layout is interned, redundant information should be
 /// kept to a minimum, e.g. it includes no sub-component Ty or Layout.
-#[derive(Debug, PartialEq, Eq, Hash)]
-pub enum Layout {
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub enum Layout<'a> {
     /// TyBool, TyChar, TyInt, TyUint, TyFloat, TyRawPtr, TyRef or TyFnPtr.
     Scalar(Primitive),
 
@@ -1184,7 +1184,7 @@ pub enum Layout {
         // the largest space between two consecutive discriminants and
         // taking everything else as the (shortest) discriminant range.
         discr_range: RangeInclusive<u64>,
-        variants: Vec<Struct>,
+        variants: Vec<CachedLayout<'a>>,
         size: Size,
         align: Align,
         primitive_align: Align,
@@ -1202,7 +1202,7 @@ pub enum Layout {
         nndiscr: u64,
         discr: Primitive,
         discr_offset: Size,
-        variants: Vec<Struct>,
+        variants: Vec<CachedLayout<'a>>,
         size: Size,
         align: Align,
         primitive_align: Align,
@@ -1228,9 +1228,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct CachedLayout<'tcx> {
-    pub layout: &'tcx Layout,
+    pub layout: &'tcx Layout<'tcx>,
     pub fields: FieldPlacement<'tcx>,
     pub abi: Abi,
 }
@@ -1262,7 +1262,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
 }
 
-impl<'a, 'tcx> Layout {
+impl<'a, 'tcx> Layout<'tcx> {
     fn compute_uncached(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         param_env: ty::ParamEnv<'tcx>,
                         ty: Ty<'tcx>)
@@ -1624,7 +1624,9 @@ impl<'a, 'tcx> Layout {
                             size: st[discr].stride(),
                             align,
                             primitive_align,
-                            variants: st,
+                            variants: st.into_iter().map(|variant| {
+                                success(Univariant(variant))
+                            }).collect::<Result<Vec<_>, _>>()?,
                         });
                     }
                 }
@@ -1730,7 +1732,9 @@ impl<'a, 'tcx> Layout {
 
                     // FIXME: should be u128?
                     discr_range: (min as u64)..=(max as u64),
-                    variants,
+                    variants: variants.into_iter().map(|variant| {
+                        success(Univariant(variant))
+                    }).collect::<Result<Vec<_>, _>>()?,
                     size,
                     align,
                     primitive_align,
@@ -1897,6 +1901,10 @@ impl<'a, 'tcx> Layout {
                                                        .iter()
                                                        .map(|f| (f.name, f.ty(tcx, substs)))
                                                        .collect();
+                                        let variant_layout = match *variant_layout.layout {
+                                            Univariant(ref variant) => variant,
+                                            _ => bug!()
+                                        };
                                         build_variant_info(Some(variant_def.name),
                                                            &fields,
                                                            variant_layout)
@@ -2084,7 +2092,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
 pub struct FullLayout<'tcx> {
     pub ty: Ty<'tcx>,
     pub variant_index: Option<usize>,
-    pub layout: &'tcx Layout,
+    pub layout: &'tcx Layout<'tcx>,
     pub fields: FieldPlacement<'tcx>,
     pub abi: Abi,
 }
@@ -2198,27 +2206,22 @@ impl<'a, 'tcx> FullLayout<'tcx> {
             variants[variant_index].fields.len()
         };
 
-        let (fields, abi) = match *self.layout {
-            Univariant(_) => (self.fields, self.abi),
+        let (layout, fields, abi) = match *self.layout {
+            Univariant(_) => (self.layout, self.fields, self.abi),
 
             NullablePointer { ref variants, .. } |
             General { ref variants, .. } => {
-                let variant = &variants[variant_index];
-                (FieldPlacement::Arbitrary {
-                    offsets: &variant.offsets
-                }, Abi::Aggregate {
-                    sized: true,
-                    align: variant.align,
-                    primitive_align: variant.primitive_align,
-                    size: variant.stride(),
-                })
+                let variant = variants[variant_index];
+                (variant.layout, variant.fields, variant.abi)
             }
 
-            _ => (FieldPlacement::union(count), self.abi)
+            _ => bug!()
         };
+        assert_eq!(fields.count(), count);
 
         FullLayout {
             variant_index: Some(variant_index),
+            layout,
             fields,
             abi,
             ..*self
@@ -2348,8 +2351,7 @@ impl<'a, 'tcx> FullLayout<'tcx> {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
-{
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {

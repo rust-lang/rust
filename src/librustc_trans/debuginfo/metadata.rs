@@ -1124,37 +1124,33 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
             layout::General { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
-                variants
-                    .iter()
-                    .enumerate()
-                    .map(|(i, struct_def)| {
-                        let (variant_type_metadata, member_desc_factory) =
-                            describe_enum_variant(cx,
-                                                  self.enum_type,
-                                                  struct_def,
-                                                  i,
-                                                  &adt.variants[i],
-                                                  discriminant_info,
-                                                  self.containing_scope,
-                                                  self.span);
+                (0..variants.len()).map(|i| {
+                    let variant = self.type_rep.for_variant(i);
+                    let (variant_type_metadata, member_desc_factory) =
+                        describe_enum_variant(cx,
+                                              variant,
+                                              &adt.variants[i],
+                                              discriminant_info,
+                                              self.containing_scope,
+                                              self.span);
 
-                        let member_descriptions = member_desc_factory
-                            .create_member_descriptions(cx);
+                    let member_descriptions = member_desc_factory
+                        .create_member_descriptions(cx);
 
-                        set_members_of_composite_type(cx,
-                                                      variant_type_metadata,
-                                                      &member_descriptions);
-                        MemberDescription {
-                            name: "".to_string(),
-                            type_metadata: variant_type_metadata,
-                            offset: Size::from_bytes(0),
-                            size: struct_def.stride(),
-                            align: struct_def.align,
-                            flags: DIFlags::FlagZero
-                        }
-                    }).collect()
+                    set_members_of_composite_type(cx,
+                                                  variant_type_metadata,
+                                                  &member_descriptions);
+                    MemberDescription {
+                        name: "".to_string(),
+                        type_metadata: variant_type_metadata,
+                        offset: Size::from_bytes(0),
+                        size: variant.size(cx),
+                        align: variant.align(cx),
+                        flags: DIFlags::FlagZero
+                    }
+                }).collect()
             },
-            layout::Univariant(ref variant) => {
+            layout::Univariant(_) => {
                 assert!(adt.variants.len() <= 1);
 
                 if adt.variants.is_empty() {
@@ -1162,9 +1158,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 } else {
                     let (variant_type_metadata, member_description_factory) =
                         describe_enum_variant(cx,
-                                              self.enum_type,
-                                              variant,
-                                              0,
+                                              self.type_rep,
                                               &adt.variants[0],
                                               NoDiscriminant,
                                               self.containing_scope,
@@ -1181,8 +1175,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             name: "".to_string(),
                             type_metadata: variant_type_metadata,
                             offset: Size::from_bytes(0),
-                            size: variant.stride(),
-                            align: variant.align,
+                            size: self.type_rep.size(cx),
+                            align: self.type_rep.align(cx),
                             flags: DIFlags::FlagZero
                         }
                     ]
@@ -1192,16 +1186,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 nndiscr,
                 discr,
                 discr_offset,
-                ref variants,
                 ..
             } => {
-                let struct_def = &variants[nndiscr as usize];
+                let variant = self.type_rep.for_variant(nndiscr as usize);
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,
-                                          self.enum_type,
-                                          struct_def,
-                                          nndiscr as usize,
+                                          variant,
                                           &adt.variants[nndiscr as usize],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
@@ -1249,8 +1240,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         name,
                         type_metadata: variant_type_metadata,
                         offset: Size::from_bytes(0),
-                        size: struct_def.stride(),
-                        align: struct_def.align,
+                        size: variant.size(cx),
+                        align: variant.align(cx),
                         flags: DIFlags::FlagZero
                     }
                 ]
@@ -1301,78 +1292,48 @@ enum EnumDiscriminantInfo {
 // descriptions of the fields of the variant. This is a rudimentary version of a
 // full RecursiveTypeDescription.
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                   enum_type: Ty<'tcx>,
-                                   struct_def: &'tcx layout::Struct,
-                                   variant_index: usize,
+                                   layout: layout::FullLayout<'tcx>,
                                    variant: &'tcx ty::VariantDef,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
                                    span: Span)
                                    -> (DICompositeType, MemberDescriptionFactory<'tcx>) {
-    let layout = cx.layout_of(enum_type);
-    let maybe_discr = match *layout.layout {
-        layout::General { .. } => Some(layout.field(cx, 0).ty),
-        _ => None,
-    };
-
-    let layout = layout.for_variant(variant_index);
-    let mut field_tys = (0..layout.fields.count()).map(|i| {
-        layout.field(cx, i).ty
-    }).collect::<Vec<_>>();
-
-    if let Some(discr) = maybe_discr {
-        field_tys.insert(0, discr);
-    }
-
-    // Could do some consistency checks here: size, align, field count, discr type
-
     let variant_name = variant.name.as_str();
     let unique_type_id = debug_context(cx).type_map
                                           .borrow_mut()
                                           .get_unique_type_id_of_enum_variant(
                                               cx,
-                                              enum_type,
+                                              layout.ty,
                                               &variant_name);
 
     let metadata_stub = create_struct_stub(cx,
-                                           enum_type,
+                                           layout.ty,
                                            &variant_name,
                                            unique_type_id,
                                            containing_scope);
 
-    // Get the argument names from the enum variant info
-    let mut arg_names: Vec<_> = match variant.ctor_kind {
-        CtorKind::Const => vec![],
-        CtorKind::Fn => {
-            variant.fields
-                   .iter()
-                   .enumerate()
-                   .map(|(i, _)| format!("__{}", i))
-                   .collect()
-        }
-        CtorKind::Fictive => {
-            variant.fields
-                   .iter()
-                   .map(|f| f.name.to_string())
-                   .collect()
-        }
-    };
-
     // If this is not a univariant enum, there is also the discriminant field.
-    let mut offsets = struct_def.offsets.clone();
-    match discriminant_info {
+    let (discr_offset, discr_arg) = match discriminant_info {
         RegularDiscriminant(_) => {
-            arg_names.insert(0, "RUST$ENUM$DISR".to_string());
-            offsets.insert(0, Size::from_bytes(0));
+            let enum_layout = cx.layout_of(layout.ty);
+            (Some(enum_layout.fields.offset(0)),
+             Some(("RUST$ENUM$DISR".to_string(), enum_layout.field(cx, 0).ty)))
         }
-        _ => { /* do nothing */ }
+        _ => (None, None),
     };
+    let offsets = discr_offset.into_iter().chain((0..layout.fields.count()).map(|i| {
+        layout.fields.offset(i)
+    })).collect();
 
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
-    let args: Vec<(String, Ty)> = arg_names.iter()
-        .zip(field_tys.iter())
-        .map(|(s, &t)| (s.to_string(), t))
-        .collect();
+    let args = discr_arg.into_iter().chain((0..layout.fields.count()).map(|i| {
+        let name = if variant.ctor_kind == CtorKind::Fn {
+            format!("__{}", i)
+        } else {
+            variant.fields[i].name.to_string()
+        };
+        (name, layout.field(cx, i).ty)
+    })).collect();
 
     let member_description_factory =
         VariantMDF(VariantMemberDescriptionFactory {
