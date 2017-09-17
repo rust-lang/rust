@@ -177,15 +177,59 @@ pub fn forget<T>(t: T) {
 
 /// Returns the size of a type in bytes.
 ///
-/// More specifically, this is the offset in bytes between successive
-/// items of the same type, including alignment padding.
+/// More specifically, this is the offset in bytes between successive elements
+/// in an array with that item type including alignment padding. Thus, for any
+/// type `T` and length `n`, `[T; n]` has a size of `n * size_of::<T>()`.
+///
+/// In general, the size of a type is not stable across compilations, but
+/// specific types such as primitives are.
+///
+/// The following table gives the size for primitives.
+///
+/// Type | size_of::\<Type>()
+/// ---- | ---------------
+/// () | 0
+/// u8 | 1
+/// u16 | 2
+/// u32 | 4
+/// u64 | 8
+/// i8 | 1
+/// i16 | 2
+/// i32 | 4
+/// i64 | 8
+/// f32 | 4
+/// f64 | 8
+/// char | 4
+///
+/// Furthermore, `usize` and `isize` have the same size.
+///
+/// The types `*const T`, `&T`, `Box<T>`, `Option<&T>`, and `Option<Box<T>>` all have
+/// the same size. If `T` is Sized, all of those types have the same size as `usize`.
+///
+/// The mutability of a pointer does not change its size. As such, `&T` and `&mut T`
+/// have the same size. Likewise for `*const T` and `*mut T`.
 ///
 /// # Examples
 ///
 /// ```
 /// use std::mem;
 ///
+/// // Some primitives
 /// assert_eq!(4, mem::size_of::<i32>());
+/// assert_eq!(8, mem::size_of::<f64>());
+/// assert_eq!(0, mem::size_of::<()>());
+///
+/// // Some arrays
+/// assert_eq!(8, mem::size_of::<[i32; 2]>());
+/// assert_eq!(12, mem::size_of::<[i32; 3]>());
+/// assert_eq!(0, mem::size_of::<[i32; 0]>());
+///
+///
+/// // Pointer size equality
+/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<*const i32>());
+/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Box<i32>>());
+/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Option<&i32>>());
+/// assert_eq!(mem::size_of::<Box<i32>>(), mem::size_of::<Option<Box<i32>>>());
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
