@@ -484,6 +484,7 @@ impl Step for Rustfmt {
             tool: "rustfmt",
             mode: Mode::Librustc,
             path: "src/tools/rustfmt",
+            expectation: BuildExpectation::None,
         })
     }
 }

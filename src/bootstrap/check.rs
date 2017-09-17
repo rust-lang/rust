@@ -298,6 +298,8 @@ impl Step for Rustfmt {
         try_run(build, &mut cargo);
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     host: Interned<String>,
 }
