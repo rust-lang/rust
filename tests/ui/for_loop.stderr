@@ -578,5 +578,13 @@ error: it looks like you're manually copying between slices
 522 | |     }
     | |_____^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
 
-error: aborting due to 58 previous errors
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:547:5
+    |
+547 | /     for i in 0..src.len() {
+548 | |         dst[i] = src[i].clone();
+549 | |     }
+    | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
+
+error: aborting due to 59 previous errors
 
