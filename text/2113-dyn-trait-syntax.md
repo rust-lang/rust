@@ -1,7 +1,7 @@
 - Feature Name: dyn-trait-syntax
 - Start Date: 2017-08-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2113
+- Rust Issue: https://github.com/rust-lang/rust/issues/44662
 
 # Summary
 [summary]: #summary
