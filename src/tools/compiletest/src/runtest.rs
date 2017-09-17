@@ -2174,8 +2174,6 @@ actual:\n\
     }
 
     fn run_ui_test(&self) {
-        println!("ui: {}", self.testpaths.file.display());
-
         let proc_res = self.compile_test();
 
         let expected_stderr_path = self.expected_output_path("stderr");
