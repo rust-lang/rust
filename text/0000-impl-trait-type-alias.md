@@ -1,25 +1,25 @@
-- Feature Name: impl-trait-type-alias
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
+- Feature Name: impl-trait-existential-types
+- Start Date: 2017-07-20
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
 
 # Summary
 [summary]: #summary
 
-Add the ability to create type aliases for `impl Trait` types,
-and support `impl Trait` in `let`, `const`, and `static` declarations.
+Add the ability to create named existential types and
+support `impl Trait` in `let`, `const`, and `static` declarations.
 
 ```rust
-// `impl Trait` type alias:
-type Adder = impl Fn(usize) -> usize;
+// existential types
+existential type Adder: Fn(usize) -> usize;
 fn adder(a: usize) -> Adder {
     |b| a + b
 }
 
-// `impl Trait` type aliases in associated type position:
+// existential type in associated type position:
 struct MyType;
 impl Iterator for MyType {
-    type Item = impl Debug;
+    existential type Item: Debug;
     fn next(&mut self) -> Option<Self::Item> {
         Some("Another item!")
     }
@@ -28,9 +28,7 @@ impl Iterator for MyType {
 // `impl Trait` in `let`, `const`, and `static`:
 
 const ADD_ONE: impl Fn(usize) -> usize = |x| x + 1;
-
 static MAYBE_PRINT: Option<impl Fn(usize)> = Some(|x| println!("{}", x));
-
 fn my_func() {
     let iter: impl Iterator<Item = i32> = (0..5).map(|x| x * 5);
     ...
@@ -53,9 +51,7 @@ a function, making it possible to change the return type later on.
 However, the current feature has some severe limitations.
 Right now, it isn't possible to return an `impl Trait` type from a trait
 implementation. This is a huge restriction which this RFC fixes by making
-it possible to create a type alias for an `impl Trait` type using the syntax
-`type Foo = impl Trait;`. The type alias syntax also makes it possible to
-guarantee that two `impl Trait` types are the same:
+it possible to create a named existential type:
 
 ```rust
 // `impl Trait` in traits:
@@ -66,7 +62,7 @@ impl Iterator for MyStruct {
     // to other modules.
     //
     // External users only know that `Item` implements the `Debug` trait.
-    type Item = impl Debug;
+    existential type Item: Debug;
 
     fn next(&mut self) -> Option<Self::Item> {
         Some("hello")
@@ -74,14 +70,14 @@ impl Iterator for MyStruct {
 }
 ```
 
-`impl Trait` type aliases allow us to declare multiple items which refer to
-the same `impl Trait` type:
+This syntax allows us to declare multiple items which refer to
+the same existential type:
 
 ```rust
 // Type `Foo` refers to a type that implements the `Debug` trait.
 // The concrete type to which `Foo` refers is inferred from this module,
 // and this concrete type is hidden from outer modules (but not submodules).
-pub type Foo = impl Debug;
+pub existential type Foo: Debug;
 
 const FOO: Foo = 5;
 
@@ -237,34 +233,36 @@ let x: impl Iterator<Item = i32> = (0..100).map(|x| x * 3).filter(|x| x % 5);
 x.bogus_missing_method();
 ```
 
-## Guide: `impl Trait` Type Aliases
-[guide-aliases]: #guide-aliases
+## Guide: Existential types
+[guide-existential]: #guide-existential
 
-`impl Trait` can also be used to create type aliases:
+Rust allows users to declare `existential type`s.
+An existential type allows you to give a name to a type without revealing
+exactly what type is being used.
 
 ```rust
 use std::fmt::Debug;
 
-type Foo = impl Debug;
+existential type Foo: Debug;
 
 fn foo() -> Foo {
     5i32
 }
 ```
 
-`impl Trait` type aliases, just like regular type aliases, create
-synonyms for a type.
-In the example above, `Foo` is a synonym for `i32`.
-The difference between `impl Trait` type aliases and regular type aliases is
-that `impl Trait` type aliases hide their concrete type from other modules
-(but not submodules).
-Only the `impl Trait` signature is exposed:
+In the example above, `Foo` refers to `i32`, similar to a type alias.
+However, unlike a normal type alias, the concrete type of `Foo` is
+hidden outside of the module. Outside the module, the only think that
+is known about `Foo` is that it implements the traits that appear in
+its declaration (e.g. `Debug` in `existential type Foo: Debug;`).
+If a user outside the module tries to use a `Foo` as an `i32`, they
+will see an error:
 
 ```rust
 use std::fmt::Debug;
 
 mod my_mod {
-  pub type Foo = impl Debug;
+  pub existential type Foo: Debug;
 
   pub fn foo() -> Foo {
       5i32
@@ -278,12 +276,14 @@ mod my_mod {
 }
 
 fn use_foo_outside_mod() {
-    // Creates a variable `x` of type `Foo`, which is equal to type `impl Debug`
+    // Creates a variable `x` of type `Foo`, which is only known to implement `Debug`
     let x = my_mod::foo();
 
-    // Because we're outside `my_mod`, using a value of type `Foo` as anything
-    // other than `impl Debug` is an error:
-    let y: i32 = my_mod::foo(); // ERROR: expected type `i32`, found type `Foo`
+    // Because we're outside `my_mod`, the user cannot determine the type of `Foo`.
+    let y: i32 = my_mod::foo(); // ERROR: expected type `i32`, found existential type `Foo`
+
+    // However, the user can use its `Debug` impl:
+    println!("{:?}", x);
 }
 ```
 
@@ -292,17 +292,17 @@ outside world, allowing them to change implementation details without affecting
 consumers of their API.
 
 Note that it is sometimes necessary to manually specify the concrete type of an
-`impl Trait`-aliased value, like in `let x: i32 = foo();` above.
-This aids the function's ability to locally infer the concrete type of `Foo`.
+existential type, like in `let x: i32 = foo();` above. This aids the function's
+ability to locally infer the concrete type of `Foo`.
 
-One particularly noteworthy use of `impl Trait` type aliases is in trait
+One particularly noteworthy use of existential types is in trait
 implementations.
-With this feature, we can declare `impl Trait` associated types:
+With this feature, we can declare associated types as follows:
 
 ```rust
 struct MyType;
 impl Iterator for MyType {
-    type Item = impl Debug;
+    existential type Item: Debug;
     fn next(&mut self) -> Option<Self::Item> {
         Some("Another item!")
     }
@@ -319,18 +319,18 @@ closures:
 ```rust
 struct MyType;
 impl Iterator for MyType {
-    type Item = impl Fn(i32) -> i32;
+    existential type Item: Fn(i32) -> i32;
     fn next(&mut self) -> Option<Self::Item> {
         Some(|x| x + 5)
     }
 }
 ```
 
-`impl Trait` aliases can also be used to reference unnameable types in a struct
+Existential types can also be used to reference unnameable types in a struct
 definition:
 
 ```rust
-type Foo = impl Debug;
+existential type Foo: Debug;
 fn foo() -> Foo { 5i32 }
 
 struct ContainsFoo {
@@ -339,25 +339,7 @@ struct ContainsFoo {
 ```
 
 
-`impl Trait` can also appear inside of another type in a type alias:
-
-```rust
-type Foo = Option<impl Debug>;
-fn foo() -> Foo {
-    Some("Debuggable")
-}
-```
-
-Or even multiple times within the same type alias:
-
-```rust
-type Foo = (impl Debug, impl Fn());
-fn foo() -> Foo {
-    ("Debuggable", || println!("Hello, world!"))
-}
-```
-
-It's also possible to write generic `impl Trait` aliases:
+It's also possible to write generic existential types:
 
 ```rust
 #[derive(Debug)]
@@ -365,7 +347,7 @@ struct MyStruct<T: Debug> {
     inner: T
 };
 
-type Foo<T> = impl Debug;
+existential type Foo<T>: Debug;
 
 fn get_foo<T: Debug>(x: T) -> Foo<T> {
     MyStruct {
@@ -374,11 +356,11 @@ fn get_foo<T: Debug>(x: T) -> Foo<T> {
 }
 ```
 
-As specified in
+Similarly to `impl Trait` under
 [RFC 1951](https://github.com/rust-lang/rfcs/blob/master/text/1951-expand-impl-trait.md),
-`impl Trait` implicitly captures all generic types parameters in scope.
-In practice, this means that `impl Trait` associated types may contain generic
-types from an impl:
+`existential type` implicitly captures all generic type parameters in scope. In
+practice, this means that existential associated types may contain generic
+parameters from their impl:
 
 ```rust
 struct MyStruct;
@@ -388,7 +370,7 @@ trait Foo<T> {
 }
 
 impl<T> Foo<T> for MyStruct {
-    type Bar = impl Trait;
+    existentail type Bar: Trait;
     fn bar() -> Self::Bar {
         ...
         // Returns some type MyBar<T>
@@ -396,8 +378,7 @@ impl<T> Foo<T> for MyStruct {
 }
 ```
 
-However, as in 1951, `impl Trait` lifetime parameters must be explicitly
-annotated.
+However, as in 1951, lifetime parameters must be explicitly annotated.
 
 # Reference-Level Explanation
 [reference]: #reference
@@ -417,17 +398,17 @@ inherit any lifetime parameters in scope. This is necessary in order for
 which last for anonymous scope-based lifetimes, and annotating these lifetimes
 manually would be impossible.
 
-## Reference: `impl Trait` Type Aliases
-[reference-aliases]: #reference-aliases
+## Reference: Existential Types
+[reference-existential]: #reference-existential
 
-`impl Trait` type aliases are similar to normal type aliases, except that their
+Existential types are similar to normal type aliases, except that their
 concrete type is determined from the scope in which they are defined
 (usually a module or a trait impl).
 For example, the following code has to examine the body of `foo` in order to
 determine that the concrete type of `Foo` is `i32`:
 
 ```rust
-type Foo = impl Debug;
+existential type Foo = impl Debug;
 
 fn foo() -> Foo {
     5i32
@@ -440,8 +421,8 @@ constraints upon `Foo` such that it *must* be `i32`:
 
 ```rust
 fn add_to_foo_1(x: Foo) {
-    x + 1 // ERROR: binary operation `+` cannot be applied to type `impl Debug`
-//  ^ `x` here is type `impl Debug`.
+    x + 1 // ERROR: binary operation `+` cannot be applied to existential type `Foo`
+//  ^ `x` here is type `Foo`.
 //    Type annotations needed to resolve the concrete type of `x`.
 //    (^ This particular error should only appear within the module in which
 //      `Foo` is defined)
@@ -460,45 +441,19 @@ fn return_foo(x: Foo) -> Foo {
 }
 ```
 
-Each instance of `impl Trait` in a type alias must be constrained by at least
+Each existential type declaration must be constrained by at least
 one function body or const/static initializer.
 A body or initializer must either fully constrain or place no constraints upon
-a given instance of `impl Trait` in a type alias.
+a given existential type.
 
-The following is an example of an `impl Trait` type alias which contains
-two instances of `impl Trait`. Each instance is determined by exactly one
-of the functions:
-
-```rust
-// The concrete type of `Baz` resolves to `(i32, &'static str)`
-type Baz = (impl Default + Debug, impl Default + Debug);
-
-// This function places no constraints on the `impl Trait` types
-fn new_baz() -> Baz {
-    (Default::default(), Default::default())
-}
-
-// This function fully constrains the first `impl Trait` type,
-// but places no constraints upon the second.
-fn add_to_first(baz: Baz) -> Baz {
-    let first: i32 = baz.0;
-    (first + 1, baz.1)
-}
-
-// This function fully constrains the second `impl Trait` type,
-// but places no constraints upon the first.
-fn make_second_hello(baz: Baz) -> Baz {
-    (baz.0, "Hello, world!")
-}
-```
-
-Outside of the module, `impl Trait` alias types behave the same way as
-other `impl Trait` types, except that it can be assumed that two values with
-the same `impl Trait` alias type are actually values of the same type:
+Outside of the module, existential types behave the same way as
+`impl Trait` types: their concrete type is hidden from the module.
+However, it can be assumed that two values of the same existential type
+are actually values of the same type:
 
 ```rust
 mod my_mod {
-    pub type Foo = impl Debug;
+    pub existential type Foo: Debug;
     pub fn foo() -> Foo {
         5i32
     }
@@ -520,12 +475,12 @@ fn outside_mod() -> Foo {
 }
 ```
 
-One last difference between `impl Trait` aliases and normal type aliases is
-that `impl Trait` aliases cannot be used in `impl` blocks:
+One last difference between existential type aliases and normal type aliases is
+that existential type aliases cannot be used in `impl` blocks:
 
 ```rust
-type Foo = impl Debug;
-impl Foo { // ERROR: `impl` cannot be used on `impl Trait` aliases
+existential type Foo: Debug;
+impl Foo { // ERROR: `impl` cannot be used on existential type aliases
     ...
 }
 impl MyTrait for Foo { // ERROR ^
@@ -539,8 +494,8 @@ of functions and traits on the underlying type? It seems like the answer
 should be "no" since doing so would give away the underlying type being
 hidden beneath the impl. Still, some version of this feature could be
 used eventually to implement traits or functions for closures, or
-to express conditional bounds in `impl Trait` signatures
-(e.g. `type Foo<T> = impl Debug; impl<T: Clone> Clone for Foo<T> { ... }`).
+to express conditional bounds in existential type signatures
+(e.g. `existentail type Foo<T> = impl Debug; impl<T: Clone> Clone for Foo<T> { ... }`).
 This is a complicated design space which has not yet been explored fully
 enough. In the future, such a feature could be added backwards-compatibly.
 
@@ -561,48 +516,64 @@ cannot, such as `impl` blocks and `struct` definitions
 (i.e. `struct Foo { x: impl Trait }`).
 This inconsistency may be surprising to users.
 
-Additionally, if Rust ever moves to a bare `Trait` (no `impl`) syntax,
-`type Foo = impl Trait;` would likely require a new syntax, as
-`type Foo = MyType;` and `type Foo = Trait;` have different-enough
-behavior that the syntactic similarity would cause confusion.
-
 # Alternatives
 [alternatives]: #alternatives
 
 We could instead expand `impl Trait` in a more focused but limited way,
 such as specifically extending `impl Trait` to work in traits without
-allowing full "`impl Trait` type alias".
+allowing full existential type aliases.
 A draft RFC for such a proposal can be seen
 [here](https://github.com/cramertj/impl-trait-goals/blob/impl-trait-in-traits/0000-impl-trait-in-traits.md).
 Any such feature could, in the future, be added as essentially syntax sugar on
 top of this RFC, which is strictly more expressive.
 The current RFC will also help us to gain experience with how people use
-`impl Trait` in practice, allowing us to resolve some remaining questions
+existential type aliases in practice, allowing us to resolve some remaining questions
 in the linked draft, specifically around how `impl Trait` associated types
 are used.
 
-There are a number of alternative syntaxes we could use for `impl Trait`
-aliases:
-- `abstype / abstract type Foo: Trait;`: Suggested in
-[RFC 1951](https://github.com/rust-lang/rfcs/blob/master/text/1951-expand-impl-trait.md),
-this syntax has the potential advantage of being able to specify constraints
-such as `abstract type Foo: Trait = MyType;`, which provides module-level
-abstraction without relying upon module-level inference.
-- `type Foo: Trait;`: This option also has the "abstraction without inference"
-advantage. However, it doesn't include an easily searchable keyword like
-`abstract/abstype/impl`, so it might be hard for users to discover what's going
-on when they first encounter this syntax.
-- `type Foo = impl Trait;`: This is the syntax option I've used in this RFC.
-It is the only option which doesn't allow for "abstraction without inference",
-but it is also the only option which allows for "composite" `impl Trait` types
-such as `type Foo = (impl Debug, impl Fn());`. It also bears a syntactic
-resemblance to the `impl Trait` feature, which should make it easy for new users
-to identify and understand.
+Throughout the process we have considered a number of alternative syntaxes for
+existential types. The syntax `existential type Foo: Trait;` is intended to be
+a placeholder for a more concise and accessible syntax, such as
+`abstract type Foo: Trait;`. A variety of variations on this theme have been
+considered:
+
+- Instead of `abstract type`, it could be some single keyword like `abstype`.
+- We could use a different keyword from `abstract`, like `opaque` or `exists`.
+- We could omit a keyword altogether and use `type Foo: Trait;` syntax
+(outside of trait definitions).
+
+A more divergent alternative is not to have an "existentail type" feature at all,
+but instead just have `impl Trait` be allowed in type alias position.
+Everything written `existential type $NAME: $BOUND;` in this RFC would instead be
+written `type $NAME = impl $BOUND;`.
+
+This RFC opted to avoid the `type Foo = impl Trait;` syntax because of its
+potential teaching difficulties.
+As a result of [RFC 1951][1951], `impl Trait` is sometimes
+universal quantiifcation and sometimes existential quantification. By providing
+a separate syntax for "explicit" existential quantification, `impl Trait` can
+be taught as a syntactic sugar for generics and existential types. By "just using
+`impl Trait`" for named existential type declarations,
+there would be no desugaring-based explanation for all forms of `impl Trait`.
+
+This choice has some disadvantages in comparison impl Trait in type aliases:
+
+- We introduce another new syntax on top of `impl Trait`, which inherently has
+some costs.
+- Users can't use it in a nested fashion without creating an addiitonal
+existential type.
+
+Because of these downsides, we are open to reconsidering this question with
+more practical experience, and the final syntax is left as an unresolved
+question for the RFC.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-The following extensions should be considered in the future:
+As discussed in the [alternatives][alternatives] section above, we will need to
+reconsider the optimal syntax before stabilizing this feature.
+
+Additionally, the following extensions should be considered in the future:
 
 - Conditional bounds. Even with this proposal, there's no way to specify
 the `impl Trait` bounds necessary to implement traits like `Iterator`, which
