@@ -41,7 +41,7 @@ use syntax_pos::{Span, DUMMY_SP};
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Layout::FatPointer { .. } = *ccx.layout_of(ty) {
+    if let Layout::FatPointer { .. } = *ccx.layout_of(ty).layout {
         true
     } else {
         false
@@ -51,9 +51,9 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     let layout = ccx.layout_of(ty);
     match layout.abi {
-        layout::Abi::Scalar(_) | layout::Abi::Vector => true,
+        layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
 
-        layout::Abi::Aggregate => {
+        layout::Abi::Aggregate { .. } => {
             !layout.is_unsized() && layout.size(ccx).bytes() == 0
         }
     }
@@ -63,7 +63,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
     let layout = ccx.layout_of(ty);
-    match *layout {
+    match *layout.layout {
         Layout::FatPointer { .. } => true,
         Layout::Univariant(ref variant) => {
             // There must be only 2 fields.

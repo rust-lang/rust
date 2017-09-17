@@ -75,22 +75,22 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 unify(cls, off, reg);
             }
 
-            layout::Abi::Vector => {
+            layout::Abi::Vector { element, count } => {
                 unify(cls, off, Class::Sse);
 
                 // everything after the first one is the upper
                 // half of a register.
-                let eltsz = layout.field(ccx, 0).size(ccx);
-                for i in 1..layout.fields.count() {
+                let eltsz = element.size(ccx);
+                for i in 1..count {
                     unify(cls, off + eltsz * (i as u64), Class::SseUp);
                 }
             }
 
-            layout::Abi::Aggregate => {
+            layout::Abi::Aggregate { .. } => {
                 // FIXME(eddyb) have to work around Rust enums for now.
                 // Fix is either guarantee no data where there is no field,
                 // by putting variants in fields, or be more clever.
-                match *layout {
+                match *layout.layout {
                     Layout::General { .. } |
                     Layout::NullablePointer { .. } => return Err(Memory),
                     _ => {}

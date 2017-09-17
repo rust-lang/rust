@@ -208,10 +208,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let field = l.field(ccx, ix);
         let offset = l.fields.offset(ix).bytes();
 
-        let alignment = self.alignment | Alignment::from(&*l);
+        let alignment = self.alignment | Alignment::from(l.layout);
 
         // Unions and newtypes only use an offset of 0.
-        match *l {
+        match *l.layout {
             // FIXME(eddyb) The fields of a fat pointer aren't correct, especially
             // to unsized structs, we can't represent their pointee types in `Ty`.
             Layout::FatPointer { .. } => {}
@@ -234,7 +234,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
 
         // Discriminant field of enums.
-        match *l {
+        match *l.layout {
             layout::NullablePointer { .. } if l.variant_index.is_none() => {
                 let ty = ccx.llvm_type_of(field.ty);
                 let size = field.size(ccx).bytes();
@@ -271,7 +271,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         };
 
         // Check whether the variant being used is packed, if applicable.
-        let is_packed = match (&*l, l.variant_index) {
+        let is_packed = match (l.layout, l.variant_index) {
             (&layout::Univariant(ref variant), _) => variant.packed,
             (&layout::NullablePointer { ref variants, .. }, Some(v)) |
             (&layout::General { ref variants, .. }, Some(v)) => variants[v].packed,
@@ -354,7 +354,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let l = bcx.ccx.layout_of(self.ty.to_ty(bcx.tcx()));
 
         let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
-        match *l {
+        match *l.layout {
             layout::Univariant { .. } |
             layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
             _ => {}
@@ -366,7 +366,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::Abi::Scalar(discr) => discr,
             _ => bug!("discriminant not scalar: {:#?}", discr_layout)
         };
-        let (min, max) = match *l {
+        let (min, max) = match *l.layout {
             layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
             _ => (0, u64::max_value()),
         };
@@ -392,7 +392,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 bcx.load(discr.llval, discr.alignment.non_abi())
             }
         };
-        match *l {
+        match *l.layout {
             layout::General { .. } => {
                 let signed = match discr_scalar {
                     layout::Int(_, signed) => signed,
@@ -416,7 +416,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let to = l.ty.ty_adt_def().unwrap()
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
-        match *l {
+        match *l.layout {
             layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())), to as i64),
@@ -471,7 +471,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
             // If this is an enum, cast to the appropriate variant struct type.
             let layout = bcx.ccx.layout_of(ty).for_variant(variant_index);
-            match *layout {
+            match *layout.layout {
                 layout::NullablePointer { ref variants, .. } |
                 layout::General { ref variants, .. } => {
                     let st = &variants[variant_index];
