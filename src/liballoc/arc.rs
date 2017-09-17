@@ -22,7 +22,7 @@ use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
 use core::intrinsics::abort;
-use core::mem::{self, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
@@ -324,7 +324,9 @@ impl<T> Arc<T> {
             Ok(elem)
         }
     }
+}
 
+impl<T: ?Sized> Arc<T> {
     /// Consumes the `Arc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
@@ -378,16 +380,21 @@ impl<T> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // To find the corresponding pointer to the `ArcInner` we need to subtract the offset of the
-        // `data` field from the pointer.
-        let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
+        // Align the unsized value to the end of the ArcInner.
+        // Because it is ?Sized, it will always be the last field in memory.
+        let align = align_of_val(&*ptr);
+        let layout = Layout::new::<ArcInner<()>>();
+        let offset = (layout.size() + layout.padding_needed_for(align)) as isize;
+
+        // Reverse the offset to find the original ArcInner.
+        let fake_ptr = ptr as *mut ArcInner<T>;
+        let arc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+
         Arc {
-            ptr: Shared::new_unchecked(ptr as *mut u8 as *mut _),
+            ptr: Shared::new_unchecked(arc_ptr),
         }
     }
-}
 
-impl<T: ?Sized> Arc<T> {
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
@@ -1489,6 +1496,28 @@ mod tests {
 
             assert_eq!(Arc::try_unwrap(x).map(|x| *x), Ok("hello"));
         }
+    }
+
+    #[test]
+    fn test_into_from_raw_unsized() {
+        use std::fmt::Display;
+        use std::string::ToString;
+
+        let arc: Arc<str> = Arc::from("foo");
+
+        let ptr = Arc::into_raw(arc.clone());
+        let arc2 = unsafe { Arc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }, "foo");
+        assert_eq!(arc, arc2);
+
+        let arc: Arc<Display> = Arc::new(123);
+
+        let ptr = Arc::into_raw(arc.clone());
+        let arc2 = unsafe { Arc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }.to_string(), "123");
+        assert_eq!(arc2.to_string(), "123");
     }
 
     #[test]
