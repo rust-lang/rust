@@ -16,50 +16,13 @@ use std;
 
 use llvm;
 use llvm::{ValueRef};
-use rustc::traits;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutTyper;
 use common::*;
 use meth;
 use monomorphize;
 use value::Value;
 use builder::Builder;
-
-pub fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>) -> bool {
-    assert!(t.is_normalized_for_trans());
-
-    let t = scx.tcx().erase_regions(&t);
-
-    // FIXME (#22815): note that type_needs_drop conservatively
-    // approximates in some cases and may say a type expression
-    // requires drop glue when it actually does not.
-    //
-    // (In this case it is not clear whether any harm is done, i.e.
-    // erroneously returning `true` in some cases where we could have
-    // returned `false` does not appear unsound. The impact on
-    // code quality is unknown at this time.)
-
-    if !scx.type_needs_drop(t) {
-        return false;
-    }
-    match t.sty {
-        ty::TyAdt(def, _) if def.is_box() => {
-            let typ = t.boxed_ty();
-            if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) {
-                let layout = t.layout(scx.tcx(), ty::ParamEnv::empty(traits::Reveal::All)).unwrap();
-                if layout.size(scx).bytes() == 0 {
-                    // `Box<ZeroSizeType>` does not allocate.
-                    false
-                } else {
-                    true
-                }
-            } else {
-                true
-            }
-        }
-        _ => true
-    }
-}
 
 pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, info: ValueRef)
                                        -> (ValueRef, ValueRef) {
