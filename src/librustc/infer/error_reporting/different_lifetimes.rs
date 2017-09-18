@@ -245,10 +245,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     // region at the right depth with the same index
                     (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
                         debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
-                                        def_id={:?}",
-                               self.infcx.tcx.hir.local_def_id(id),
-                               def_id);
-                        if self.infcx.tcx.hir.local_def_id(id) == def_id {
+                                        def_id={:?}", id, def_id);
+                        if id == def_id {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
@@ -260,11 +258,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for FindNestedTypeVisitor<'a, 'gcx, 'tcx> {
                     (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
                         debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                                debruijn_index.depth);
-                        debug!("self.infcx.tcx.hir.local_def_id(id)={:?}",
-                               self.infcx.tcx.hir.local_def_id(id));
+                        debug!("self.infcx.tcx.hir.local_def_id(id)={:?}", id);
                         debug!("def_id={:?}", def_id);
-                        if debruijn_index.depth == self.depth &&
-                           self.infcx.tcx.hir.local_def_id(id) == def_id {
+                        if debruijn_index.depth == self.depth && id == def_id {
                             self.found_type = Some(arg);
                             return; // we can stop visiting now
                         }
@@ -336,10 +332,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
 
             (Some(rl::Region::EarlyBound(_, id)), ty::BrNamed(def_id, _)) => {
                 debug!("EarlyBound self.infcx.tcx.hir.local_def_id(id)={:?} \
-                                        def_id={:?}",
-                       self.infcx.tcx.hir.local_def_id(id),
-                       def_id);
-                if self.infcx.tcx.hir.local_def_id(id) == def_id {
+                                        def_id={:?}", id, def_id);
+                if id == def_id {
                     self.found_it = true;
                     return; // we can stop visiting now
                 }
@@ -348,11 +342,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for TyPathVisitor<'a, 'gcx, 'tcx> {
             (Some(rl::Region::LateBound(debruijn_index, id)), ty::BrNamed(def_id, _)) => {
                 debug!("FindNestedTypeVisitor::visit_ty: LateBound depth = {:?}",
                        debruijn_index.depth);
-                debug!("self.infcx.tcx.hir.local_def_id(id)={:?}",
-                       self.infcx.tcx.hir.local_def_id(id));
+                debug!("id={:?}", id);
                 debug!("def_id={:?}", def_id);
-                if debruijn_index.depth == self.depth &&
-                   self.infcx.tcx.hir.local_def_id(id) == def_id {
+                if debruijn_index.depth == self.depth && id == def_id {
                     self.found_it = true;
                     return; // we can stop visiting now
                 }

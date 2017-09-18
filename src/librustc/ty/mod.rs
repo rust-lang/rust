@@ -500,9 +500,9 @@ impl<'tcx> TyS<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ty::TyS<'gcx> {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::TyS<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TyS {
             ref sty,
@@ -1334,9 +1334,9 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for AdtDef {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for AdtDef {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::AdtDef {
             did,
@@ -2574,6 +2574,10 @@ pub struct SymbolName {
     // this be a `&'tcx str`.
     pub name: InternedString
 }
+
+impl_stable_hash_for!(struct self::SymbolName {
+    name
+});
 
 impl Deref for SymbolName {
     type Target = str;

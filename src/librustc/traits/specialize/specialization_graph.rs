@@ -11,6 +11,9 @@
 use super::OverlapError;
 
 use hir::def_id::DefId;
+use ich::{self, StableHashingContext};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
@@ -365,3 +368,21 @@ pub fn ancestors(tcx: TyCtxt,
         current_source: Some(Node::Impl(start_from_impl)),
     }
 }
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Children {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let Children {
+            ref nonblanket_impls,
+            ref blanket_impls,
+        } = *self;
+
+        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
+    }
+}
+
+impl_stable_hash_for!(struct self::Graph {
+    parent,
+    children
+});

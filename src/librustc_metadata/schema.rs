@@ -229,9 +229,9 @@ pub struct TraitImpls {
     pub impls: LazySeq<DefIndex>,
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TraitImpls {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for TraitImpls {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let TraitImpls {
             trait_id: (krate, def_index),
@@ -312,9 +312,9 @@ pub enum EntryKind<'tcx> {
     AssociatedConst(AssociatedContainer, u8),
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for EntryKind<'tcx> {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for EntryKind<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {

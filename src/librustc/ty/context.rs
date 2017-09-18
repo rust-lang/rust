@@ -21,7 +21,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
-use ich::{self, StableHashingContext, NodeIdHashingMode};
+use ich::{StableHashingContext, NodeIdHashingMode};
 use middle::const_val::ConstVal;
 use middle::cstore::{CrateStore, LinkMeta, EncodedMetadataHashes};
 use middle::cstore::EncodedMetadata;
@@ -49,8 +49,8 @@ use ty::BindingMode;
 use util::nodemap::{NodeMap, NodeSet, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
+                                           StableHasher, StableHasherResult};
 
 use arena::{TypedArena, DroplessArena};
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -687,9 +687,9 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for TypeckTables<'gcx> {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for TypeckTables<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let ty::TypeckTables {
             local_id_root,
@@ -714,12 +714,12 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
         } = *self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            ich::hash_stable_itemlocalmap(hcx, hasher, type_dependent_defs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, node_types);
-            ich::hash_stable_itemlocalmap(hcx, hasher, node_substs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, adjustments);
-            ich::hash_stable_itemlocalmap(hcx, hasher, pat_binding_modes);
-            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
+            type_dependent_defs.hash_stable(hcx, hasher);
+            node_types.hash_stable(hcx, hasher);
+            node_substs.hash_stable(hcx, hasher);
+            adjustments.hash_stable(hcx, hasher);
+            pat_binding_modes.hash_stable(hcx, hasher);
+            hash_stable_hashmap(hcx, hasher, upvar_capture_map, |up_var_id, hcx| {
                 let ty::UpvarId {
                     var_id,
                     closure_expr_id
@@ -736,22 +736,19 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for Typeck
                     krate: local_id_root.krate,
                     index: closure_expr_id,
                 };
-                ((hcx.def_path_hash(var_owner_def_id), var_id.local_id),
+                (hcx.def_path_hash(var_owner_def_id),
+                 var_id.local_id,
                  hcx.def_path_hash(closure_def_id))
             });
 
-            ich::hash_stable_itemlocalmap(hcx, hasher, closure_tys);
-            ich::hash_stable_itemlocalmap(hcx, hasher, closure_kinds);
-            ich::hash_stable_itemlocalmap(hcx, hasher, liberated_fn_sigs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, fru_field_types);
-            ich::hash_stable_itemlocalmap(hcx, hasher, cast_kinds);
-            ich::hash_stable_itemlocalmap(hcx, hasher, generator_sigs);
-            ich::hash_stable_itemlocalmap(hcx, hasher, generator_interiors);
-
-            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
-                hcx.def_path_hash(*def_id)
-            });
-
+            closure_tys.hash_stable(hcx, hasher);
+            closure_kinds.hash_stable(hcx, hasher);
+            liberated_fn_sigs.hash_stable(hcx, hasher);
+            fru_field_types.hash_stable(hcx, hasher);
+            cast_kinds.hash_stable(hcx, hasher);
+            generator_sigs.hash_stable(hcx, hasher);
+            generator_interiors.hash_stable(hcx, hasher);
+            used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
         })
@@ -1083,6 +1080,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
+        // FIXME(mw): Each of the Vecs in the trait_map should be brought into
+        // a deterministic order here. Otherwise we might end up with
+        // unnecessarily unstable incr. comp. hashes.
         let mut trait_map = FxHashMap();
         for (k, v) in resolutions.trait_map {
             let hir_id = hir.node_to_hir_id(k);
@@ -1171,17 +1171,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn lang_items(self) -> Rc<middle::lang_items::LanguageItems> {
-        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
-        // graph here to ignore the fact that `get_lang_items` below depends on
-        // the entire crate.  For now this'll prevent false positives of
-        // recompiling too much when anything changes.
-        //
-        // Once red/green incremental compilation lands we should be able to
-        // remove this because while the crate changes often the lint level map
-        // will change rarely.
-        self.dep_graph.with_ignore(|| {
-            self.get_lang_items(LOCAL_CRATE)
-        })
+        self.get_lang_items(LOCAL_CRATE)
     }
 
     pub fn stability(self) -> Rc<stability::Index<'tcx>> {
@@ -1234,6 +1224,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // system if the result is otherwise tracked through queries
     pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Rc<Any> {
         self.cstore.crate_data_as_rc_any(cnum)
+    }
+
+    pub fn create_stable_hashing_context(self) -> StableHashingContext<'gcx> {
+        let krate = self.dep_graph.with_ignore(|| self.gcx.hir.krate());
+
+        StableHashingContext::new(self.sess,
+                                  krate,
+                                  self.hir.definitions(),
+                                  self.cstore)
     }
 }
 
@@ -2198,7 +2197,15 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Rc::new(middle::lang_items::collect(tcx))
+        // FIXME(#42293) Right now we insert a `with_ignore` node in the dep
+        // graph here to ignore the fact that `get_lang_items` below depends on
+        // the entire crate.  For now this'll prevent false positives of
+        // recompiling too much when anything changes.
+        //
+        // Once red/green incremental compilation lands we should be able to
+        // remove this because while the crate changes often the lint level map
+        // will change rarely.
+        tcx.dep_graph.with_ignore(|| Rc::new(middle::lang_items::collect(tcx)))
     };
     providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
     providers.maybe_unused_trait_import = |tcx, id| {

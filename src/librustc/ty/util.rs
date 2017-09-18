@@ -12,7 +12,7 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
-use ich::{StableHashingContext, NodeIdHashingMode};
+use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -214,7 +214,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
         let mut hasher = StableHasher::new();
-        let mut hcx = StableHashingContext::new(self);
+        let mut hcx = self.create_stable_hashing_context();
 
         // We want the type_id be independent of the types free regions, so we
         // erase them. The erase_regions() call will also anonymize bound

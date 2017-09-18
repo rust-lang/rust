@@ -23,7 +23,12 @@ use std::cmp;
 use std::fmt;
 use std::i64;
 use std::iter;
+use std::mem;
 use std::ops::Deref;
+
+use ich::StableHashingContext;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 
 /// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -2300,3 +2305,128 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         cx.layout_of(cx.normalize_projections(self.field_type(cx, i)))
     }
 }
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use ty::layout::Layout::*;
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Scalar { value, non_zero } => {
+                value.hash_stable(hcx, hasher);
+                non_zero.hash_stable(hcx, hasher);
+            }
+            Vector { element, count } => {
+                element.hash_stable(hcx, hasher);
+                count.hash_stable(hcx, hasher);
+            }
+            Array { sized, align, primitive_align, element_size, count } => {
+                sized.hash_stable(hcx, hasher);
+                align.hash_stable(hcx, hasher);
+                primitive_align.hash_stable(hcx, hasher);
+                element_size.hash_stable(hcx, hasher);
+                count.hash_stable(hcx, hasher);
+            }
+            FatPointer { ref metadata, non_zero } => {
+                metadata.hash_stable(hcx, hasher);
+                non_zero.hash_stable(hcx, hasher);
+            }
+            CEnum { discr, signed, non_zero, min, max } => {
+                discr.hash_stable(hcx, hasher);
+                signed.hash_stable(hcx, hasher);
+                non_zero.hash_stable(hcx, hasher);
+                min.hash_stable(hcx, hasher);
+                max.hash_stable(hcx, hasher);
+            }
+            Univariant { ref variant, non_zero } => {
+                variant.hash_stable(hcx, hasher);
+                non_zero.hash_stable(hcx, hasher);
+            }
+            UntaggedUnion { ref variants } => {
+                variants.hash_stable(hcx, hasher);
+            }
+            General { discr, ref variants, size, align, primitive_align } => {
+                discr.hash_stable(hcx, hasher);
+                variants.hash_stable(hcx, hasher);
+                size.hash_stable(hcx, hasher);
+                align.hash_stable(hcx, hasher);
+                primitive_align.hash_stable(hcx, hasher);
+            }
+            RawNullablePointer { nndiscr, ref value } => {
+                nndiscr.hash_stable(hcx, hasher);
+                value.hash_stable(hcx, hasher);
+            }
+            StructWrappedNullablePointer {
+                nndiscr,
+                ref nonnull,
+                ref discrfield,
+                ref discrfield_source
+            } => {
+                nndiscr.hash_stable(hcx, hasher);
+                nonnull.hash_stable(hcx, hasher);
+                discrfield.hash_stable(hcx, hasher);
+                discrfield_source.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(enum ::ty::layout::Integer {
+    I1,
+    I8,
+    I16,
+    I32,
+    I64,
+    I128
+});
+
+impl_stable_hash_for!(enum ::ty::layout::Primitive {
+    Int(integer),
+    F32,
+    F64,
+    Pointer
+});
+
+impl_stable_hash_for!(struct ::ty::layout::Align {
+    abi,
+    pref
+});
+
+impl_stable_hash_for!(struct ::ty::layout::Size {
+    raw
+});
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for LayoutError<'gcx>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use ty::layout::LayoutError::*;
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Unknown(t) |
+            SizeOverflow(t) => t.hash_stable(hcx, hasher)
+        }
+    }
+}
+
+impl_stable_hash_for!(struct ::ty::layout::Struct {
+    align,
+    primitive_align,
+    packed,
+    sized,
+    offsets,
+    memory_index,
+    min_size
+});
+
+impl_stable_hash_for!(struct ::ty::layout::Union {
+    align,
+    primitive_align,
+    min_size,
+    packed
+});

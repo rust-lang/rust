@@ -96,6 +96,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
+        let lifetime_name = |def_id| {
+            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap())
+        };
+
         let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
         let r = match tcx.named_region(hir_id) {
             Some(rl::Region::Static) => {
@@ -103,9 +107,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(rl::Region::LateBound(debruijn, id)) => {
-                let name = tcx.hir.name(id);
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
-                    ty::BrNamed(tcx.hir.local_def_id(id), name)))
+                    ty::BrNamed(id, name)))
             }
 
             Some(rl::Region::LateBoundAnon(debruijn, index)) => {
@@ -113,19 +117,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
 
             Some(rl::Region::EarlyBound(index, id)) => {
-                let name = tcx.hir.name(id);
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    def_id: tcx.hir.local_def_id(id),
+                    def_id: id,
                     index,
                     name,
                 }))
             }
 
             Some(rl::Region::Free(scope, id)) => {
-                let name = tcx.hir.name(id);
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
-                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name)
+                    bound_region: ty::BrNamed(id, name)
                 }))
 
                     // (*) -- not late-bound, won't change

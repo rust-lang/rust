@@ -9,10 +9,14 @@
 // except according to those terms.
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHashingContextProvider};
 use session::config::OutputType;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use util::common::{ProfileQueriesMsg, profq_msg};
+
+use ich::Fingerprint;
 
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
@@ -71,10 +75,6 @@ impl DepGraph {
         self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.edges))
     }
 
-    pub fn in_task<'graph>(&'graph self, key: DepNode) -> Option<raii::DepTask<'graph>> {
-        self.data.as_ref().map(|data| raii::DepTask::new(&data.edges, key))
-    }
-
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
         where OP: FnOnce() -> R
     {
@@ -109,24 +109,38 @@ impl DepGraph {
     ///   `arg` parameter.
     ///
     /// [README]: README.md
-    pub fn with_task<C, A, R>(&self,
-                              key: DepNode,
-                              cx: C,
-                              arg: A,
-                              task: fn(C, A) -> R)
-                              -> (R, DepNodeIndex)
-        where C: DepGraphSafe
+    pub fn with_task<C, A, R, HCX>(&self,
+                                   key: DepNode,
+                                   cx: C,
+                                   arg: A,
+                                   task: fn(C, A) -> R)
+                                   -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<ContextType=HCX>,
+              R: HashStable<HCX>,
     {
         if let Some(ref data) = self.data {
             data.edges.borrow_mut().push_task(key);
             if cfg!(debug_assertions) {
                 profq_msg(ProfileQueriesMsg::TaskBegin(key.clone()))
             };
+
+            // In incremental mode, hash the result of the task. We don't
+            // do anything with the hash yet, but we are computing it
+            // anyway so that
+            //  - we make sure that the infrastructure works and
+            //  - we can get an idea of the runtime cost.
+            let mut hcx = cx.create_stable_hashing_context();
+
             let result = task(cx, arg);
             if cfg!(debug_assertions) {
                 profq_msg(ProfileQueriesMsg::TaskEnd)
             };
             let dep_node_index = data.edges.borrow_mut().pop_task(key);
+
+            let mut stable_hasher = StableHasher::new();
+            result.hash_stable(&mut hcx, &mut stable_hasher);
+            let _: Fingerprint = stable_hasher.finish();
+
             (result, dep_node_index)
         } else {
             (task(cx, arg), DepNodeIndex::INVALID)
