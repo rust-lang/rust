@@ -19,6 +19,11 @@ pub enum SymbolExportLevel {
     Rust,
 }
 
+impl_stable_hash_for!(enum self::SymbolExportLevel {
+    C,
+    Rust
+});
+
 impl SymbolExportLevel {
     pub fn is_below_threshold(self, threshold: SymbolExportLevel) -> bool {
         if threshold == SymbolExportLevel::Rust {

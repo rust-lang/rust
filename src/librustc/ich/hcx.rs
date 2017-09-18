@@ -15,7 +15,7 @@ use hir::map::definitions::Definitions;
 use ich::{self, CachingCodemapView};
 use middle::cstore::CrateStore;
 use session::config::DebugInfoLevel::NoDebugInfo;
-use ty::{self, TyCtxt, fast_reject};
+use ty::{TyCtxt, fast_reject};
 use session::Session;
 
 use std::cmp::Ord;
@@ -252,7 +252,7 @@ impl<'gcx> StableHashingContext<'gcx> {
     }
 }
 
-impl<'a, 'gcx, 'lcx> StableHashingContextProvider for ty::TyCtxt<'a, 'gcx, 'lcx> {
+impl<'a, 'gcx, 'lcx> StableHashingContextProvider for TyCtxt<'a, 'gcx, 'lcx> {
     type ContextType = StableHashingContext<'gcx>;
     fn create_stable_hashing_context(&self) -> Self::ContextType {
         (*self).create_stable_hashing_context()

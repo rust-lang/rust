@@ -386,6 +386,14 @@ impl<CTX> HashStable<CTX> for String {
     }
 }
 
+impl<HCX> ToStableHashKey<HCX> for String {
+    type KeyType = String;
+    #[inline]
+    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+        self.clone()
+    }
+}
+
 impl<CTX> HashStable<CTX> for bool {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
