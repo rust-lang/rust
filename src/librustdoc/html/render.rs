@@ -2671,8 +2671,9 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 let ns_id = derive_id(format!("{}.{}",
                                               field.name.as_ref().unwrap(),
                                               ItemType::StructField.name_space()));
-                write!(w, "<span id='{id}' class=\"{item_type}\">
-                           <span id='{ns_id}' class='invisible'>
+                write!(w, "<span id=\"{id}\" class=\"{item_type} small-section-header\">
+                           <a href=\"#{id}\" class=\"anchor field\"></a>
+                           <span id=\"{ns_id}\" class='invisible'>
                            <code>{name}: {ty}</code>
                            </span></span>",
                        item_type = ItemType::StructField,
@@ -2793,7 +2794,8 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             let ns_id = derive_id(format!("{}.{}",
                                           variant.name.as_ref().unwrap(),
                                           ItemType::Variant.name_space()));
-            write!(w, "<span id='{id}' class='variant'>\
+            write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
+                       <a href=\"#{id}\" class=\"anchor field\"></a>\
                        <span id='{ns_id}' class='invisible'><code>{name}",
                    id = id,
                    ns_id = ns_id,
