@@ -1,5 +1,5 @@
-use rustc::mir;
-use rustc::ty::Ty;
+use mir;
+use ty::Ty;
 use rustc_const_math::ConstFloat;
 use syntax::ast::FloatTy;
 use std::cmp::Ordering;
@@ -116,7 +116,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         right: PrimVal,
         right_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, (PrimVal, bool)> {
-        use rustc::mir::BinOp::*;
+        use mir::BinOp::*;
         use super::PrimValKind::*;
 
         let left_kind = self.ty_to_primval_kind(left_ty)?;
@@ -229,7 +229,7 @@ pub fn unary_op<'tcx>(
     val: PrimVal,
     val_kind: PrimValKind,
 ) -> EvalResult<'tcx, PrimVal> {
-    use rustc::mir::UnOp::*;
+    use mir::UnOp::*;
     use super::PrimValKind::*;
 
     let bytes = val.to_bytes()?;

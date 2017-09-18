@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::{fmt, env};
 
-use rustc::mir;
-use rustc::ty::{FnSig, Ty, layout};
+use mir;
+use ty::{FnSig, Ty, layout};
 
 use super::{
     MemoryPointer, Lock, AccessKind

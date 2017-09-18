@@ -1,8 +1,8 @@
-use rustc::mir::BasicBlock;
-use rustc::ty::{self, Ty};
+use mir::BasicBlock;
+use ty::{self, Ty};
 use syntax::codemap::Span;
 
-use interpret::{EvalResult, EvalContext, Lvalue, LvalueExtra, PrimVal, Value,
+use mir::interpret::{EvalResult, EvalContext, Lvalue, LvalueExtra, PrimVal, Value,
                 Machine, ValTy};
 
 impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {

@@ -1,15 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
-use rustc::hir::def_id::DefId;
-use rustc::hir::map::definitions::DefPathData;
-use rustc::middle::const_val::ConstVal;
-use rustc::middle::region;
-use rustc::mir;
-use rustc::traits::Reveal;
-use rustc::ty::layout::{self, Layout, Size, Align, HasDataLayout};
-use rustc::ty::subst::{Subst, Substs, Kind};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use hir::def_id::DefId;
+use hir::map::definitions::DefPathData;
+use middle::const_val::ConstVal;
+use middle::region;
+use mir;
+use traits::Reveal;
+use ty::layout::{self, Layout, Size, Align, HasDataLayout};
+use ty::subst::{Subst, Substs, Kind};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 use syntax::ast::Mutability;
@@ -227,7 +227,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>) -> EvalResult<'tcx, Value> {
-        use rustc::middle::const_val::ConstVal::*;
+        use middle::const_val::ConstVal::*;
 
         let primval = match *const_val {
             Integral(const_int) => PrimVal::Bytes(const_int.to_u128_unchecked()),
@@ -467,7 +467,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
         /// Return the set of locals that have a storage annotation anywhere
         fn collect_storage_annotations<'tcx>(mir: &'tcx mir::Mir<'tcx>) -> HashSet<mir::Local> {
-            use rustc::mir::StatementKind::*;
+            use mir::StatementKind::*;
 
             let mut set = HashSet::new();
             for block in mir.basic_blocks() {
@@ -634,7 +634,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let dest_ty = self.lvalue_ty(lvalue);
         let dest_layout = self.type_layout(dest_ty)?;
 
-        use rustc::mir::Rvalue::*;
+        use mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 let value = self.eval_operand(operand)?.value;
@@ -692,7 +692,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Aggregate(ref kind, ref operands) => {
                 self.inc_step_counter_and_check_limit(operands.len() as u64)?;
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
                         self.write_maybe_aligned_mut(!variant.packed, |ecx| {
@@ -893,7 +893,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
             Cast(kind, ref operand, cast_ty) => {
                 debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest_ty);
-                use rustc::mir::CastKind::*;
+                use mir::CastKind::*;
                 match kind {
                     Unsize => {
                         let src = self.eval_operand(operand)?;
@@ -1122,7 +1122,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 packed: false,
             }),
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     RawNullablePointer { nndiscr, .. } => Ok(TyAndPacked {
                         ty: adt_def.variants[nndiscr as usize].fields[field_index].ty(
@@ -1161,7 +1161,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             }
             ty::TyAdt(adt_def, substs) => {
                 let variant_def = adt_def.struct_variant();
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     UntaggedUnion { ref variants } => Ok(TyAndPacked {
                         ty: variant_def.fields[field_index].ty(self.tcx, substs),
@@ -1214,7 +1214,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         // Also see lvalue_field in lvalue.rs, which handles more cases but needs an actual value at the given type
         let layout = self.type_layout(ty)?;
 
-        use rustc::ty::layout::Layout::*;
+        use ty::layout::Layout::*;
         match *layout {
             Univariant { ref variant, .. } => Ok(variant.offsets[field_index]),
             FatPointer { .. } => {
@@ -1239,7 +1239,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     pub fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, u64> {
         let layout = self.type_layout(ty)?;
 
-        use rustc::ty::layout::Layout::*;
+        use ty::layout::Layout::*;
         match *layout {
             Univariant { ref variant, .. } => Ok(variant.offsets.len() as u64),
             FatPointer { .. } => Ok(2),
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<'tcx, ValTy<'tcx>> {
-        use rustc::mir::Operand::*;
+        use mir::Operand::*;
         match *op {
             Consume(ref lvalue) => {
                 Ok(ValTy {
@@ -1287,7 +1287,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             },
 
             Constant(ref constant) => {
-                use rustc::mir::Literal;
+                use mir::Literal;
                 let mir::Constant { ref literal, .. } = **constant;
                 let value = match *literal {
                     Literal::Value { ref value } => self.const_to_value(&value.val)?,
@@ -1314,7 +1314,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         adt_ptr: MemoryPointer,
         adt_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, u128> {
-        use rustc::ty::layout::Layout::*;
+        use ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         //trace!("read_discriminant_value {:#?}", adt_layout);
 
@@ -1418,7 +1418,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn is_packed(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, bool> {
         let layout = self.type_layout(ty)?;
-        use rustc::ty::layout::Layout::*;
+        use ty::layout::Layout::*;
         Ok(match *layout {
             Univariant { ref variant, .. } => variant.packed,
 
@@ -1719,7 +1719,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             ty::TyAdt(def, _) if def.is_box() => PrimValKind::Ptr,
 
             ty::TyAdt(def, substs) => {
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     CEnum { discr, signed, .. } => {
                         let size = discr.size().bytes();
@@ -1731,7 +1731,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     }
 
                     RawNullablePointer { value, .. } => {
-                        use rustc::ty::layout::Primitive::*;
+                        use ty::layout::Primitive::*;
                         match value {
                             // TODO(solson): Does signedness matter here? What should the sign be?
                             Int(int) => PrimValKind::from_uint_size(int.size().bytes()),
@@ -1867,7 +1867,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if def.is_box() {
                     return self.read_ptr(ptr, ty.boxed_ty()).map(Some);
                 }
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 if let CEnum { discr, signed, .. } = *self.type_layout(ty)? {
                     let size = discr.size().bytes();
                     self.memory.read_primval(ptr, size, signed)?
@@ -2225,7 +2225,7 @@ pub(super) trait IntegerExt {
 
 impl IntegerExt for layout::Integer {
     fn size(self) -> Size {
-        use rustc::ty::layout::Integer::*;
+        use ty::layout::Integer::*;
         match self {
             I1 | I8 => Size::from_bits(8),
             I16 => Size::from_bits(16),
@@ -2416,19 +2416,19 @@ fn resolve_associated_item<'a, 'tcx>(
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
     match vtbl {
-        ::rustc::traits::VtableImpl(impl_data) => {
+        ::traits::VtableImpl(impl_data) => {
             let (def_id, substs) =
-                ::rustc::traits::find_associated_item(tcx, trait_item, rcvr_substs, &impl_data);
+                ::traits::find_associated_item(tcx, trait_item, rcvr_substs, &impl_data);
             let substs = tcx.erase_regions(&substs);
             ty::Instance::new(def_id, substs)
         }
-        ::rustc::traits::VtableGenerator(closure_data) => {
+        ::traits::VtableGenerator(closure_data) => {
             ty::Instance {
                 def: ty::InstanceDef::Item(closure_data.closure_def_id),
                 substs: closure_data.substs.substs
             }
         }
-        ::rustc::traits::VtableClosure(closure_data) => {
+        ::traits::VtableClosure(closure_data) => {
             let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
             resolve_closure(
                 tcx,
@@ -2437,20 +2437,20 @@ fn resolve_associated_item<'a, 'tcx>(
                 trait_closure_kind,
             )
         }
-        ::rustc::traits::VtableFnPointer(ref data) => {
+        ::traits::VtableFnPointer(ref data) => {
             ty::Instance {
                 def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
                 substs: rcvr_substs,
             }
         }
-        ::rustc::traits::VtableObject(ref data) => {
+        ::traits::VtableObject(ref data) => {
             let index = tcx.get_vtable_index_of_object_method(data, def_id);
             ty::Instance {
                 def: ty::InstanceDef::Virtual(def_id, index),
                 substs: rcvr_substs,
             }
         }
-        ::rustc::traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
+        ::traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
             ty::Instance {
                 def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
                 substs: rcvr_substs
@@ -2477,7 +2477,7 @@ pub fn apply_param_substs<'a, 'tcx, T>(
     value: &T,
 ) -> T
 where
-    T: ::rustc::infer::TransNormalize<'tcx>,
+    T: ::infer::TransNormalize<'tcx>,
 {
     debug!(
         "apply_param_substs(param_substs={:?}, value={:?})",
@@ -2504,7 +2504,7 @@ impl<'a, 'tcx> AssociatedTypeNormalizer<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ::rustc::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNormalizer<'a, 'tcx> {
+impl<'a, 'tcx> ::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNormalizer<'a, 'tcx> {
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
         self.tcx
     }
@@ -2528,7 +2528,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Instance<'tcx> {
-    let def_id = tcx.require_lang_item(::rustc::middle::lang_items::DropInPlaceFnLangItem);
+    let def_id = tcx.require_lang_item(::middle::lang_items::DropInPlaceFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(ty)]);
     resolve(tcx, def_id, substs)
 }

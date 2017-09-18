@@ -791,5 +791,76 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         tcx.extern_const_body(def_id).body
     };
-    ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
+
+    let instance = ty::Instance::new(def_id, substs);
+    let miri_result = ::rustc::interpret::eval_body_as_primval(tcx, instance);
+    let old_result = ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value);
+    match (miri_result, old_result) {
+        (Err(err), Ok(ok)) => {
+            warn!("miri fails to eval {:?} to {:?} with error {:?}", key, ok, err);
+            Ok(ok)
+        },
+        (Ok(ok), Err(err)) => {
+            info!("miri can eval {:?} to {:?}, while old ctfe fails with {:?}", key, ok, err);
+            Err(err)
+        },
+        (Err(_), Err(err)) => Err(err),
+        (Ok((miri_val, miri_ty)), Ok(ctfe)) => {
+            use rustc::ty::TypeVariants::*;
+            use rustc::interpret::PrimVal;
+            match (miri_val, &miri_ty.sty, ctfe.val) {
+                (PrimVal::Undef, _, _) => {
+                    warn!("miri produced an undef, while old ctfe produced {:?}", ctfe);
+                },
+                (PrimVal::Ptr(_), _, _) => {
+                    warn!("miri produced a pointer, which isn't implemented yet");
+                },
+                (PrimVal::Bytes(b), &TyInt(int_ty), ConstVal::Integral(ci)) => {
+                    let c = ConstInt::new_signed_truncating(b as i128,
+                                                            int_ty,
+                                                            tcx.sess.target.isize_ty);
+                    if c != ci {
+                        warn!("miri evaluated to {}, but ctfe yielded {}", b as i128, ci);
+                    }
+                }
+                (PrimVal::Bytes(b), &TyUint(int_ty), ConstVal::Integral(ci)) => {
+                    let c = ConstInt::new_unsigned_truncating(b, int_ty, tcx.sess.target.usize_ty);
+                    if c != ci {
+                        warn!("miri evaluated to {}, but ctfe yielded {}", b, ci);
+                    }
+                }
+                (PrimVal::Bytes(bits), &TyFloat(ty), ConstVal::Float(cf)) => {
+                    let f = ConstFloat { bits, ty };
+                    if f != cf {
+                        warn!("miri evaluated to {}, but ctfe yielded {}", f, cf);
+                    }
+                }
+                (PrimVal::Bytes(bits), &TyBool, ConstVal::Bool(b)) => {
+                    if bits == 0 && b {
+                        warn!("miri evaluated to {}, but ctfe yielded {}", bits == 0, b);
+                    } else if bits == 1 && !b {
+                        warn!("miri evaluated to {}, but ctfe yielded {}", bits == 1, b);
+                    } else {
+                        warn!("miri evaluated to {}, but expected a bool {}", bits, b);
+                    }
+                }
+                (PrimVal::Bytes(bits), &TyChar, ConstVal::Char(c)) => {
+                    if let Some(cm) = ::std::char::from_u32(bits as u32) {
+                        if cm != c {
+                            warn!("miri evaluated to {:?}, but expected {:?}", cm, c);
+                        }
+                    } else {
+                        warn!("miri evaluated to {}, but expected a char {:?}", bits, c);
+                    }
+                }
+                _ => {
+                    info!("can't check whether miri's {:?} ({}) makes sense when ctfe yields {:?}",
+                        miri_val,
+                        miri_ty,
+                        ctfe)
+                }
+            }
+            Ok(ctfe)
+        }
+    }
 }

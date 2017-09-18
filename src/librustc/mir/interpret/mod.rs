@@ -2,7 +2,7 @@
 
 #[macro_export]
 macro_rules! err {
-    ($($tt:tt)*) => { Err($crate::interpret::EvalErrorKind::$($tt)*.into()) };
+    ($($tt:tt)*) => { Err($crate::mir::interpret::EvalErrorKind::$($tt)*.into()) };
 }
 
 mod cast;

@@ -1,6 +1,6 @@
-use rustc::mir;
-use rustc::ty::layout::{Size, Align};
-use rustc::ty::{self, Ty};
+use mir;
+use ty::layout::{Size, Align};
+use ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{EvalResult, EvalContext, MemoryPointer, PrimVal, Value, Pointer, Machine, PtrAndAlign, ValTy};
@@ -101,7 +101,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         lvalue: &mir::Lvalue<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        use rustc::mir::Lvalue::*;
+        use mir::Lvalue::*;
         match *lvalue {
             // Might allow this in the future, right now there's no way to do this from Rust code anyway
             Local(mir::RETURN_POINTER) => err!(ReadFromReturnPointer),
@@ -126,7 +126,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         proj: &mir::LvalueProjection<'tcx>,
     ) -> EvalResult<'tcx, Option<Value>> {
-        use rustc::mir::ProjectionElem::*;
+        use mir::ProjectionElem::*;
         let base = match self.try_read_lvalue(&proj.base)? {
             Some(base) => base,
             None => return Ok(None),
@@ -181,7 +181,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub fn eval_lvalue(&mut self, mir_lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Lvalue> {
-        use rustc::mir::Lvalue::*;
+        use mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
             Local(local) => Lvalue::Local {
@@ -222,7 +222,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         base_ty: Ty<'tcx>,
         field_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Lvalue> {
-        use rustc::ty::layout::Layout::*;
+        use ty::layout::Layout::*;
 
         let base_layout = self.type_layout(base_ty)?;
         let field_index = field.index();
@@ -404,7 +404,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         base_ty: Ty<'tcx>,
         proj_elem: &mir::ProjectionElem<'tcx, mir::Local, Ty<'tcx>>,
     ) -> EvalResult<'tcx, Lvalue> {
-        use rustc::mir::ProjectionElem::*;
+        use mir::ProjectionElem::*;
         let (ptr, extra) = match *proj_elem {
             Field(field, field_ty) => {
                 return self.lvalue_field(base, field, base_ty, field_ty);
@@ -416,7 +416,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let base = self.force_allocation(base)?;
                 let (base_ptr, base_extra) = base.to_ptr_extra_aligned();
 
-                use rustc::ty::layout::Layout::*;
+                use ty::layout::Layout::*;
                 let extra = match *base_layout {
                     General { .. } => LvalueExtra::DowncastVariant(variant),
                     RawNullablePointer { .. } |

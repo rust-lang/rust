@@ -42,6 +42,7 @@ pub mod tcx;
 pub mod visit;
 pub mod transform;
 pub mod traversal;
+pub mod interpret;
 
 macro_rules! newtype_index {
     ($name:ident, $debug_name:expr) => (

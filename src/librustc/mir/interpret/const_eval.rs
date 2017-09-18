@@ -1,6 +1,6 @@
-use rustc::traits::Reveal;
-use rustc::ty::{self, TyCtxt, Ty, Instance, layout};
-use rustc::mir;
+use traits::Reveal;
+use ty::{self, TyCtxt, Ty, Instance, layout};
+use mir;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -83,7 +83,7 @@ pub fn eval_body_as_integer<'a, 'tcx>(
     let (prim, ty) = eval_body_as_primval(tcx, instance)?;
     let prim = prim.to_bytes()?;
     use syntax::ast::{IntTy, UintTy};
-    use rustc::ty::TypeVariants::*;
+    use ty::TypeVariants::*;
     use rustc_const_math::{ConstIsize, ConstUsize};
     Ok(match ty.sty {
         TyInt(IntTy::I8) => ConstInt::I8(prim as i128 as i8),

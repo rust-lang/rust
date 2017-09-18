@@ -1,12 +1,12 @@
-use rustc::hir::{self, Mutability};
-use rustc::hir::Mutability::*;
-use rustc::mir::{self, ValidationOp, ValidationOperand};
-use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
-use rustc::ty::subst::{Substs, Subst};
-use rustc::traits;
-use rustc::infer::InferCtxt;
-use rustc::traits::Reveal;
-use rustc::middle::region;
+use hir::{self, Mutability};
+use hir::Mutability::*;
+use mir::{self, ValidationOp, ValidationOperand};
+use ty::{self, Ty, TypeFoldable, TyCtxt};
+use ty::subst::{Substs, Subst};
+use traits;
+use infer::InferCtxt;
+use traits::Reveal;
+use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::{EvalError, EvalResult, EvalErrorKind, EvalContext, DynamicLifetime, AccessKind, Value,
@@ -383,9 +383,9 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         mut query: ValidationQuery<'tcx>,
         mode: ValidationMode,
     ) -> EvalResult<'tcx> {
-        use rustc::ty::TypeVariants::*;
-        use rustc::ty::RegionKind::*;
-        use rustc::ty::AdtKind;
+        use ty::TypeVariants::*;
+        use ty::RegionKind::*;
+        use ty::AdtKind;
 
         // No point releasing shared stuff.
         if !mode.acquiring() && query.mutbl == MutImmutable {

@@ -3,10 +3,10 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
 use std::{fmt, iter, ptr, mem, io};
 use std::cell::Cell;
 
-use rustc::ty::Instance;
-use rustc::ty::layout::{self, TargetDataLayout, HasDataLayout};
+use ty::Instance;
+use ty::layout::{self, TargetDataLayout, HasDataLayout};
 use syntax::ast::Mutability;
-use rustc::middle::region;
+use middle::region;
 
 use super::{EvalResult, EvalErrorKind, PrimVal, Pointer, EvalContext, DynamicLifetime, Machine,
             RangeMap, AbsLvalue};

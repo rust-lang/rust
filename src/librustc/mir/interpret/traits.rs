@@ -1,7 +1,7 @@
-use rustc::traits::{self, Reveal};
-use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty};
+use traits::{self, Reveal};
+use hir::def_id::DefId;
+use ty::subst::Substs;
+use ty::{self, Ty};
 use syntax::codemap::DUMMY_SP;
 use syntax::ast::{self, Mutability};
 
@@ -54,7 +54,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let align = self.type_align(trait_ref.self_ty())?;
 
         let ptr_size = self.memory.pointer_size();
-        let methods = ::rustc::traits::get_vtable_methods(self.tcx, trait_ref);
+        let methods = ::traits::get_vtable_methods(self.tcx, trait_ref);
         let vtable = self.memory.allocate(
             ptr_size * (3 + methods.count() as u64),
             ptr_size,
@@ -70,7 +70,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         let align_ptr = vtable.offset(ptr_size * 2, &self)?;
         self.memory.write_ptr_sized_unsigned(align_ptr, PrimVal::Bytes(align as u128))?;
 
-        for (i, method) in ::rustc::traits::get_vtable_methods(self.tcx, trait_ref).enumerate() {
+        for (i, method) in ::traits::get_vtable_methods(self.tcx, trait_ref).enumerate() {
             if let Some((def_id, substs)) = method {
                 let instance = eval_context::resolve(self.tcx, def_id, substs);
                 let fn_ptr = self.memory.create_fn_alloc(instance);

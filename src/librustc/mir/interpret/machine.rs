@@ -4,7 +4,7 @@
 
 use super::{EvalResult, EvalContext, Lvalue, PrimVal, ValTy};
 
-use rustc::{mir, ty};
+use {mir, ty};
 use syntax::codemap::Span;
 use syntax::ast::Mutability;
 

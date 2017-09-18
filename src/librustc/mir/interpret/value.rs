@@ -1,6 +1,6 @@
 #![allow(unknown_lints)]
 
-use rustc::ty::layout::HasDataLayout;
+use ty::layout::HasDataLayout;
 
 use super::{EvalResult, Memory, MemoryPointer, HasMemory, PointerArithmetic, Machine, PtrAndAlign};
 

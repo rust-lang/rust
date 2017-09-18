@@ -1,6 +1,6 @@
-use rustc::mir;
-use rustc::ty::{self, TypeVariants};
-use rustc::ty::layout::Layout;
+use mir;
+use ty::{self, TypeVariants};
+use ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::abi::Abi;
 
@@ -21,7 +21,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         &mut self,
         terminator: &mir::Terminator<'tcx>,
     ) -> EvalResult<'tcx> {
-        use rustc::mir::TerminatorKind::*;
+        use mir::TerminatorKind::*;
         match terminator.kind {
             Return => {
                 self.dump_local(self.frame().return_lvalue);
@@ -137,7 +137,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
-                    use rustc::mir::AssertMessage::*;
+                    use mir::AssertMessage::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
                             let span = terminator.source_info.span;

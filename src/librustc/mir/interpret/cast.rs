@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty};
+use ty::{self, Ty};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use super::{PrimVal, EvalContext, EvalResult, MemoryPointer, PointerArithmetic, Machine};
@@ -72,7 +72,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         negative: bool,
     ) -> EvalResult<'tcx, PrimVal> {
         trace!("cast_from_int: {}, {}, {}", v, ty, negative);
-        use rustc::ty::TypeVariants::*;
+        use ty::TypeVariants::*;
         match ty.sty {
             // Casts to bool are not permitted by rustc, no need to handle them here.
             TyInt(ty) => Ok(PrimVal::Bytes(self.int_to_int(v as i128, ty))),
@@ -94,7 +94,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     fn cast_from_float(&self, val: f64, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use rustc::ty::TypeVariants::*;
+        use ty::TypeVariants::*;
         match ty.sty {
             // Casting negative floats to unsigned integers yields zero.
             TyUint(_) if val < 0.0 => self.cast_from_int(0, ty, false),
@@ -109,7 +109,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     fn cast_from_ptr(&self, ptr: MemoryPointer, ty: Ty<'tcx>) -> EvalResult<'tcx, PrimVal> {
-        use rustc::ty::TypeVariants::*;
+        use ty::TypeVariants::*;
         match ty.sty {
             // Casting to a reference or fn pointer is not permitted by rustc, no need to support it here.
             TyRawPtr(_) |
