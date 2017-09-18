@@ -461,6 +461,12 @@ impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
     fn next_back(&mut self) -> Option<T> {
         self.it.next_back().cloned()
     }
+
+    fn rfold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.it.rfold(init, move |acc, elt| f(acc, elt.clone()))
+    }
 }
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
@@ -773,6 +779,26 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
             ChainState::Back => self.b.next_back(),
         }
     }
+
+    fn rfold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut accum = init;
+        match self.state {
+            ChainState::Both | ChainState::Back => {
+                accum = self.b.rfold(accum, &mut f);
+            }
+            _ => { }
+        }
+        match self.state {
+            ChainState::Both | ChainState::Front => {
+                accum = self.a.rfold(accum, &mut f);
+            }
+            _ => { }
+        }
+        accum
+    }
+
 }
 
 // Note: *both* must be fused to handle double-ended iterators.
@@ -1105,6 +1131,13 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         self.iter.next_back().map(&mut self.f)
+    }
+
+    fn rfold<Acc, G>(self, init: Acc, mut g: G) -> Acc
+        where G: FnMut(Acc, Self::Item) -> Acc,
+    {
+        let mut f = self.f;
+        self.iter.rfold(init, move |acc, elt| g(acc, f(elt)))
     }
 }
 
