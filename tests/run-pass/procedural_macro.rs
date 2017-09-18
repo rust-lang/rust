@@ -1,5 +1,5 @@
 #![feature(plugin)]
-#![plugin(clippy, clippy_mini_macro_test)]
+#![plugin(clippy_mini_macro_test)]
 
 #[deny(warnings)]
 fn main() {

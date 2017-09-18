@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(clippy)]
 #![allow(dead_code)]

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(collapsible_if)]
 fn main() {

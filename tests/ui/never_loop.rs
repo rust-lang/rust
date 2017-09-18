@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(single_match, unused_assignments, unused_variables)]
 
 fn test1() {

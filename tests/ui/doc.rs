@@ -1,7 +1,7 @@
 //! This file tests for the DOC_MARKDOWN lint
 
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(dead_code)]
 #![warn(doc_markdown)]
 

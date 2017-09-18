@@ -1,5 +1,5 @@
 #![feature(plugin, inclusive_range_syntax)]
-#![plugin(clippy)]
+
 
 use std::collections::*;
 use std::rc::Rc;

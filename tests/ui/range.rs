@@ -1,7 +1,7 @@
 #![feature(iterator_step_by)]
 #![feature(inclusive_range_syntax)]
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 struct NotARange;
 impl NotARange {

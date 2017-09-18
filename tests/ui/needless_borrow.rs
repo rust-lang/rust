@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 fn x(y: &i32) -> i32 {
     *y

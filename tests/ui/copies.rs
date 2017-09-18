@@ -1,5 +1,4 @@
-#![feature(plugin, dotdoteq_in_patterns, inclusive_range_syntax)]
-#![plugin(clippy)]
+#![feature(dotdoteq_in_patterns, inclusive_range_syntax)]
 
 #![allow(dead_code, no_effect, unnecessary_operation)]
 #![allow(let_and_return)]

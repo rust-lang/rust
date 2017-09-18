@@ -36,5 +36,3 @@ error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly e
 25 | |                                 .map(|x| x.checked_mul(2))
    | |__________________________________________________________^
 
-error: aborting due to 4 previous errors
-

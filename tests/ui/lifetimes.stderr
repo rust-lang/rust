@@ -86,5 +86,3 @@ error: explicit lifetimes given in parameter types where they could be elided
 120 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
-

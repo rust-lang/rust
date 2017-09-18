@@ -1,5 +1,5 @@
 #![feature(plugin, non_ascii_idents)]
-#![plugin(clippy)]
+
 #![warn(clippy, pub_enum_variant_names)]
 
 enum FakeCallType {

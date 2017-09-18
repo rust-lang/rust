@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(needless_update)]
 #![allow(no_effect)]

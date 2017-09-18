@@ -84,5 +84,3 @@ error: use of a blacklisted/placeholder name `baz`
 35 |     if let Some(ref mut baz) = Some(42) {}
    |                         ^^^
 
-error: aborting due to 14 previous errors
-

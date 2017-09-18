@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(let_unit_value)]
 #![allow(unused_variables)]

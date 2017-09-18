@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(useless_format)]
 
 fn main() {

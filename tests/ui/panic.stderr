@@ -18,5 +18,3 @@ error: you probably are missing some parameter in your format string
 12 |         assert!(true, "here be missing values: {}");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
-

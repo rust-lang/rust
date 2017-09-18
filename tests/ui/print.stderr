@@ -50,5 +50,3 @@ error: use of `Debug`-based formatting
 31 |     print!("Hello {:#?}", "#orld");
    |                           ^^^^^^^
 
-error: aborting due to 8 previous errors
-

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(precedence)]
 #[allow(identity_op)]

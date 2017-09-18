@@ -1,3 +1,5 @@
+warning: running cargo clippy on a crate that also imports the clippy plugin
+
 error: reference to zeroed memory
   --> $DIR/invalid_ref.rs:27:24
    |
@@ -46,6 +48,4 @@ error: reference to uninitialized memory
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: Creation of a null reference is undefined behavior; see https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-
-error: aborting due to 6 previous errors
 

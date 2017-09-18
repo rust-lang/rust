@@ -39,5 +39,3 @@ error: digits grouped inconsistently by underscores
   |
   = help: consider: 1.234_567_8_f32
 
-error: aborting due to 5 previous errors
-

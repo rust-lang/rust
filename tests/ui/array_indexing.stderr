@@ -116,5 +116,3 @@ error: range is out of bounds
 44 |     &empty[..4];
    |      ^^^^^^^^^^
 
-error: aborting due to 19 previous errors
-

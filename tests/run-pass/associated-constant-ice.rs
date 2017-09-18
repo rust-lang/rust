@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 pub trait Trait {
     const CONSTANT: u8;

@@ -270,5 +270,3 @@ error: missing documentation for a function
 202 | fn main() {}
     | ^^^^^^^^^^^^
 
-error: aborting due to 40 previous errors
-

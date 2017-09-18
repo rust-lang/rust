@@ -36,5 +36,3 @@ error: unnecessary structure name repetition
 24 |             Foo::new()
    |             ^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 6 previous errors
-

@@ -1,4 +1,4 @@
-#![feature(plugin)]
+
 #![plugin(clippy(conf_file="./tests/auxiliary/conf_french_blacklisted_name.toml"))]
 
 #![allow(dead_code)]

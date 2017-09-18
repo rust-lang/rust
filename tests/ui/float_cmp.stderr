@@ -95,5 +95,3 @@ note: std::f32::EPSILON and std::f64::EPSILON are available.
 57 |     twice(x) != twice(ONE as f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
-

@@ -460,5 +460,3 @@ error: casting to the same type is unnecessary (`bool` -> `bool`)
 88 |     false as bool;
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 75 previous errors
-

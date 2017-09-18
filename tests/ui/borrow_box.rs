@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![deny(borrowed_box)]
 #![allow(blacklisted_name)]

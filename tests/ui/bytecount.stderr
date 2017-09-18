@@ -22,5 +22,3 @@ error: You appear to be counting bytes the naive way
 22 |     let _ = x.iter().filter(|a| b + 1 == **a).count(); // naive byte count
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: Consider using the bytecount crate: `bytecount::count(x, b + 1)`
 
-error: aborting due to 3 previous errors
-

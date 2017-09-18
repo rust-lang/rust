@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(duplicate_underscore_argument)]
 #[allow(dead_code, unused)]

@@ -20,5 +20,3 @@ error: the since field must contain a semver-compliant version
 30 | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
-

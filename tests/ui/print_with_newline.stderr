@@ -24,5 +24,3 @@ error: using `print!()` with a format string that ends in a newline, consider us
 9 |     print!("{}/n", 1265);
   |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
-

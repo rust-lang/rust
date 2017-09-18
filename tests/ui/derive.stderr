@@ -106,5 +106,3 @@ note: consider deriving `Clone` or removing `Copy`
 87 | | }
    | |_^
 
-error: aborting due to 7 previous errors
-

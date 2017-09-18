@@ -42,5 +42,3 @@ error: this min/max combination leads to constant result
 30 |     max(min(s, "Apple"), "Zoo");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
-

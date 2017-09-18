@@ -96,5 +96,3 @@ error: possible infinite iteration detected
 30 |     (0..).all(|x| x == 24); // maybe infinite iter
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
-

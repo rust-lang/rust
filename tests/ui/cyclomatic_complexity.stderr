@@ -269,5 +269,3 @@ error: the function has a cyclomatic complexity of 8
     |
     = help: you could split it up into multiple smaller functions
 
-error: aborting due to 20 previous errors
-

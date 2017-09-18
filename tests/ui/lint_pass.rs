@@ -1,6 +1,6 @@
-#![feature(plugin)]
+
 #![feature(rustc_private)]
-#![plugin(clippy)]
+
 
 #![warn(lint_without_lint_pass)]
 

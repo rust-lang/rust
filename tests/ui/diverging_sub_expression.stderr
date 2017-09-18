@@ -36,5 +36,3 @@ error: sub-expression diverges
 37 |             _ => true || break,
    |                          ^^^^^
 
-error: aborting due to 6 previous errors
-

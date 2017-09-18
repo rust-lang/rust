@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(block_in_if_condition_expr)]
 #![warn(block_in_if_condition_stmt)]

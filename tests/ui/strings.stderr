@@ -72,5 +72,3 @@ error: manual implementation of an assign operation
 65 |     ; x = x + 1;
    |       ^^^^^^^^^ help: replace it with: `x += 1`
 
-error: aborting due to 11 previous errors
-

@@ -1,5 +1,5 @@
-#![plugin(clippy)]
-#![feature(plugin)]
+
+
 
 #![allow(dead_code, items_after_statements, never_loop)]
 #![warn(unused_label)]

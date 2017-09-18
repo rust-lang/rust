@@ -6,5 +6,3 @@ error: `darth` already exists, having another argument having almost the same na
   |
   = note: `-D duplicate-underscore-argument` implied by `-D warnings`
 
-error: aborting due to previous error
-

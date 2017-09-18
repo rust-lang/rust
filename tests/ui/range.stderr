@@ -38,5 +38,3 @@ error: Iterator::step_by(0) will panic at runtime
 33 |     let _ = v1.iter().step_by(2/3);
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
-

@@ -16,5 +16,3 @@ error: module has the same name as its containing module
 14 | |     }
    | |_____^
 
-error: aborting due to 2 previous errors
-

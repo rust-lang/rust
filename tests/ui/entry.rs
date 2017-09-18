@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![allow(unused, needless_pass_by_value)]
 
 #![warn(map_entry)]

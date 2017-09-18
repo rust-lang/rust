@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(clippy, clippy_pedantic)]
 #![allow(unused_imports, dead_code, missing_docs_in_private_items)]
 

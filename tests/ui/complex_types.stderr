@@ -90,5 +90,3 @@ error: very complex type used. Consider factoring parts into `type` definitions
 40 |     let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 15 previous errors
-

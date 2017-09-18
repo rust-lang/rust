@@ -31,5 +31,3 @@ error: long literal lacking separators
   |
   = help: consider: 1.234_56_f32
 
-error: aborting due to 4 previous errors
-

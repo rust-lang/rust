@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![warn(char_lit_as_u8)]
 #![allow(unused_variables)]

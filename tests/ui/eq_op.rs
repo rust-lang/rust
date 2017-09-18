@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(eq_op)]
 #[allow(identity_op, double_parens, many_single_char_names)]

@@ -12,5 +12,3 @@ error: Negation by multiplying with -1
 32 |     -1 * x;
    |     ^^^^^^
 
-error: aborting due to 2 previous errors
-

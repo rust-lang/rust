@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(dead_code)]
 #![warn(unused_io_amount)]

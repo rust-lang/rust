@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 const THREE_BITS : i64 = 7;
 const EVEN_MORE_REDIRECTION : i64 = THREE_BITS;

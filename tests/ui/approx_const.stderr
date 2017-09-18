@@ -114,5 +114,3 @@ error: approximate value of `f{32, 64}::consts::SQRT_2` found. Consider using it
 55 |     let my_sq2 = 1.4142;
    |                  ^^^^^^
 
-error: aborting due to 19 previous errors
-

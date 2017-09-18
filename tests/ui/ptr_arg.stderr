@@ -79,5 +79,3 @@ help: change `y.as_str()` to
 62 |     let c = y;
    |             ^
 
-error: aborting due to 6 previous errors
-

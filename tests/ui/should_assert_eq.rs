@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #![allow(needless_pass_by_value)]
 #![warn(should_assert_eq)]

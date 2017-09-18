@@ -12,5 +12,3 @@ error: this let-binding has unit value. Consider omitting `let _a =`
 18 |         let _a = ();
    |         ^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
-

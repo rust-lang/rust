@@ -1,5 +1,5 @@
 #![feature(plugin, box_syntax, inclusive_range_syntax)]
-#![plugin(clippy)]
+
 
 #![warn(no_effect, unnecessary_operation)]
 #![allow(dead_code)]

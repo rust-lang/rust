@@ -66,5 +66,3 @@ error: immediately dereferencing a reference
 53 |         let y = **&mut &mut x;
    |                  ^^^^^^^^^^^^ help: try this: `&mut x`
 
-error: aborting due to 11 previous errors
-

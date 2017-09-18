@@ -54,5 +54,3 @@ error: unary minus has lower precedence than method call
 16 |     -1f32.abs();
    |     ^^^^^^^^^^^ help: consider adding parentheses to clarify your intent: `-(1f32.abs())`
 
-error: aborting due to 9 previous errors
-

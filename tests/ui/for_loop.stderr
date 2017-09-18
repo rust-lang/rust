@@ -586,5 +586,3 @@ error: it looks like you're manually copying between slices
 549 | |     }
     | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
 
-error: aborting due to 59 previous errors
-

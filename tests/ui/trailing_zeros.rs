@@ -1,5 +1,5 @@
 #![feature(plugin, custom_attribute, stmt_expr_attributes)]
-#![plugin(clippy)]
+
 #![allow(unused_parens)]
 
 fn main() {

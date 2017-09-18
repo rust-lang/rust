@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[warn(string_add)]
 #[allow(string_add_assign)]

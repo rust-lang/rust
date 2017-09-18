@@ -1,5 +1,5 @@
 #![feature(plugin, const_fn)]
-#![plugin(clippy)]
+
 
 #![allow(dead_code)]
 #![warn(new_without_default, new_without_default_derive)]

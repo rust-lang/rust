@@ -134,5 +134,3 @@ error: manual implementation of an assign operation
 40 |     s = s + "bla";
    |     ^^^^^^^^^^^^^ help: replace it with: `s += "bla"`
 
-error: aborting due to 22 previous errors
-

@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 #![warn(print_stdout, use_debug)]
 
 use std::fmt::{Debug, Display, Formatter, Result};
