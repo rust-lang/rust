@@ -23,7 +23,7 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::{self, output};
+use build_helper::{self, output, BuildExpectation};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use cache::{INTERNER, Interned};
@@ -33,6 +33,7 @@ use native;
 use tool::{self, Tool};
 use util::{self, dylib_path, dylib_path_var};
 use {Build, Mode};
+use toolstate::ToolState;
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -64,15 +65,19 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run(build: &Build, cmd: &mut Command) {
+fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) {
     if !build.fail_fast {
-        if !build.try_run(cmd) {
+        if !build.try_run(cmd, expect) {
             let failures = build.delayed_failures.get();
             build.delayed_failures.set(failures + 1);
         }
     } else {
-        build.run(cmd);
+        build.run_expecting(cmd, expect);
     }
+}
+
+fn try_run(build: &Build, cmd: &mut Command) {
+    try_run_expecting(build, cmd, BuildExpectation::None)
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
@@ -293,6 +298,56 @@ impl Step for Rustfmt {
         try_run(build, &mut cargo);
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Miri {
+    host: Interned<String>,
+}
+
+impl Step for Miri {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let test_miri = run.builder.build.config.test_miri;
+        run.path("src/tools/miri").default_condition(test_miri)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Miri {
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for miri.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let host = self.host;
+        let compiler = builder.compiler(1, host);
+
+        let miri = builder.ensure(tool::Miri { compiler, target: self.host });
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+        cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
+
+        // Don't build tests dynamically, just a pain to work with
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+        // miri tests need to know about the stage sysroot
+        cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        cargo.env("MIRI_PATH", miri);
+
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.miri.passes(ToolState::Testing),
+        );
+    }
+}
+
 
 fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH

@@ -250,18 +250,18 @@ impl<'a> Builder<'a> {
                 tool::UnstableBookGen, tool::Tidy, tool::Linkchecker, tool::CargoTest,
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
-                native::Llvm, tool::Rustfmt),
+                native::Llvm, tool::Rustfmt, tool::Miri),
             Kind::Test => describe!(check::Tidy, check::Bootstrap, check::DefaultCompiletest,
                 check::HostCompiletest, check::Crate, check::CrateLibrustc, check::Rustdoc,
                 check::Linkcheck, check::Cargotest, check::Cargo, check::Rls, check::Docs,
-                check::ErrorIndex, check::Distcheck, check::Rustfmt),
+                check::ErrorIndex, check::Distcheck, check::Rustfmt, check::Miri),
             Kind::Bench => describe!(check::Crate, check::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
                 doc::Reference, doc::Rustdoc, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
                 dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Extended, dist::HashSign),
+                dist::Rls, dist::Extended, dist::HashSign, dist::DontDistWithMiriEnabled),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
                 install::Analysis, install::Src, install::Rustc),
         }
@@ -481,6 +481,7 @@ impl<'a> Builder<'a> {
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
              })
+             .env("TEST_MIRI", self.config.test_miri.to_string())
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
         if mode != Mode::Tool {

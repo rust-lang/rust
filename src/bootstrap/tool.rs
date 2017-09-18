@@ -21,6 +21,8 @@ use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
 use cache::Interned;
+use toolstate::ToolState;
+use build_helper::BuildExpectation;
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct CleanTools {
@@ -64,6 +66,7 @@ struct ToolBuild {
     tool: &'static str,
     path: &'static str,
     mode: Mode,
+    expectation: BuildExpectation,
 }
 
 impl Step for ToolBuild {
@@ -83,6 +86,7 @@ impl Step for ToolBuild {
         let target = self.target;
         let tool = self.tool;
         let path = self.path;
+        let expectation = self.expectation;
 
         match self.mode {
             Mode::Libstd => builder.ensure(compile::Std { compiler, target }),
@@ -95,7 +99,7 @@ impl Step for ToolBuild {
         println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
 
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
-        build.run(&mut cargo);
+        build.run_expecting(&mut cargo, expectation);
         build.cargo_out(compiler, Mode::Tool, target).join(exe(tool, &compiler.host))
     }
 }
@@ -200,6 +204,7 @@ macro_rules! tool {
                     tool: $tool_name,
                     mode: $mode,
                     path: $path,
+                    expectation: BuildExpectation::None,
                 })
             }
         }
@@ -247,6 +252,7 @@ impl Step for RemoteTestServer {
             tool: "remote-test-server",
             mode: Mode::Libstd,
             path: "src/tools/remote-test-server",
+            expectation: BuildExpectation::None,
         })
     }
 }
@@ -359,6 +365,7 @@ impl Step for Cargo {
             tool: "cargo",
             mode: Mode::Librustc,
             path: "src/tools/cargo",
+            expectation: BuildExpectation::None,
         })
     }
 }
@@ -398,6 +405,7 @@ impl Step for Clippy {
             tool: "clippy",
             mode: Mode::Librustc,
             path: "src/tools/clippy",
+            expectation: BuildExpectation::None,
         })
     }
 }
@@ -441,6 +449,7 @@ impl Step for Rls {
             tool: "rls",
             mode: Mode::Librustc,
             path: "src/tools/rls",
+            expectation: BuildExpectation::None,
         })
     }
 }
@@ -475,6 +484,43 @@ impl Step for Rustfmt {
             tool: "rustfmt",
             mode: Mode::Librustc,
             path: "src/tools/rustfmt",
+            expectation: BuildExpectation::None,
+        })
+    }
+}
+
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Miri {
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+}
+
+impl Step for Miri {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let build_miri = run.builder.build.config.test_miri;
+        run.path("src/tools/miri").default_condition(build_miri)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Miri {
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
+            target: run.target,
+        });
+    }
+
+    fn run(self, builder: &Builder) -> PathBuf {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "miri",
+            mode: Mode::Librustc,
+            path: "src/tools/miri",
+            expectation: builder.build.config.toolstate.miri.passes(ToolState::Compiling),
         })
     }
 }
