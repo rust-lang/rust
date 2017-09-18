@@ -5,13 +5,13 @@ Language
 --------
 - [Relaxed path syntax. You can now add type parameters to values][43540]
   Example:
-  ```
+  ```rust
   my_macro!(Vec<i32>::new); // Always worked
   my_macro!(Vec::<i32>::new); // Now works
   ```
 - [You can now use static references for literals.][43838]
   Example:
-  ```
+  ```rust
   fn main() {
       let x: &'static u32 = 0;
   }
