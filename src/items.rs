@@ -330,7 +330,7 @@ impl<'a> FmtVisitor<'a> {
                                 ""
                             };
 
-                            format_expr(&e, ExprType::Statement, &self.get_context(), self.shape())
+                            format_expr(e, ExprType::Statement, &self.get_context(), self.shape())
                                 .map(|s| s + suffix)
                                 .or_else(|| Some(self.snippet(e.span)))
                         }

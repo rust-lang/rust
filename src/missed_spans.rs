@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Cow;
+
 use {Indent, Shape};
 use comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
 use config::WriteMode;
@@ -118,18 +120,23 @@ impl<'a> FmtVisitor<'a> {
         let file_name = &char_pos.file.name;
         let mut cur_line = char_pos.line;
 
-        fn replace_chars(string: &str) -> String {
-            string
-                .chars()
-                .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
-                .collect()
+        fn replace_chars<'a>(string: &'a str) -> Cow<'a, str> {
+            if string.contains(char::is_whitespace) {
+                Cow::from(
+                    string
+                        .chars()
+                        .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
+                        .collect::<String>(),
+                )
+            } else {
+                Cow::from(string)
+            }
         }
 
-        let replaced = match self.config.write_mode() {
+        let snippet = &*match self.config.write_mode() {
             WriteMode::Coverage => replace_chars(old_snippet),
-            _ => old_snippet.to_owned(),
+            _ => Cow::from(old_snippet),
         };
-        let snippet = &*replaced;
 
         for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
             debug!("{:?}: {:?}", kind, subslice);
