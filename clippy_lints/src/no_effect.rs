@@ -40,12 +40,22 @@ declare_lint! {
     "outer expressions with no effect"
 }
 
+/// Check whether this type implements Drop.
+fn has_drop(cx: &LateContext, expr: &Expr) -> bool {
+    let struct_ty = cx.tables.expr_ty(expr);
+    match struct_ty.ty_adt_def() {
+        Some(def) => def.has_dtor(cx.tcx),
+        _ => false,
+    }
+}
+
 fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
     if in_macro(expr.span) {
         return false;
     }
     match expr.node {
-        Expr_::ExprLit(..) | Expr_::ExprClosure(.., _) | Expr_::ExprPath(..) => true,
+        Expr_::ExprLit(..) | Expr_::ExprClosure(.., _) => true,
+        Expr_::ExprPath(..) => !has_drop(cx, expr),
         Expr_::ExprIndex(ref a, ref b) | Expr_::ExprBinary(_, ref a, ref b) => {
             has_no_effect(cx, a) && has_no_effect(cx, b)
         },
@@ -59,7 +69,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => has_no_effect(cx, inner),
         Expr_::ExprStruct(_, ref fields, ref base) => {
-            fields.iter().all(|field| has_no_effect(cx, &field.expr)) && match *base {
+            !has_drop(cx, expr) && fields.iter().all(|field| has_no_effect(cx, &field.expr)) && match *base {
                 Some(ref base) => has_no_effect(cx, base),
                 None => true,
             }
@@ -68,7 +78,7 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             let def = cx.tables.qpath_def(qpath, callee.hir_id);
             match def {
                 Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
-                    args.iter().all(|arg| has_no_effect(cx, arg))
+                    !has_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
                 },
                 _ => false,
             }
@@ -145,18 +155,23 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprTupField(ref inner, _) |
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
-        Expr_::ExprStruct(_, ref fields, ref base) => Some(
-            fields
-                .iter()
-                .map(|f| &f.expr)
-                .chain(base)
-                .map(Deref::deref)
-                .collect(),
-        ),
+        Expr_::ExprStruct(_, ref fields, ref base) => {
+            if has_drop(cx, expr) {
+                None
+            } else {
+                Some(
+                    fields
+                        .iter()
+                        .map(|f| &f.expr)
+                        .chain(base)
+                        .map(Deref::deref)
+                        .collect())
+            }
+        },
         Expr_::ExprCall(ref callee, ref args) => if let Expr_::ExprPath(ref qpath) = callee.node {
             let def = cx.tables.qpath_def(qpath, callee.hir_id);
             match def {
-                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
+                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) if !has_drop(cx, expr) => {
                     Some(args.iter().collect())
                 },
                 _ => None,
