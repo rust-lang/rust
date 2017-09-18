@@ -91,121 +91,69 @@ better than others).
 The compiler process
 ====================
 
-The Rust compiler is comprised of six main compilation phases.
+The Rust compiler is in a bit of transition right now. It used to be a
+purely "pass-based" compiler, where we ran a number of passes over the
+entire program, and each did a particular check of transformation.
 
-1. Parsing input
-2. Configuration & expanding (cfg rules & syntax extension expansion)
-3. Running analysis passes
-4. Translation to LLVM
-5. LLVM passes
-6. Linking
+We are gradually replacing this pass-based code with an alternative
+setup based on on-demand **queries**. In the query-model, we work
+backwards, executing a *query* that expresses our ultimate goal (e.g.,
+"compiler this crate"). This query in turn may make other queries
+(e.g., "get me a list of all modules in the crate"). Those queries
+make other queries that ultimately bottom out in the base operations,
+like parsing the input, running the type-checker, and so forth. This
+on-demand model permits us to do exciting things like only do the
+minimal amount of work needed to type-check a single function. It also
+helps with incremental compilation. (For details on defining queries,
+check out `src/librustc/ty/maps/README.md`.)
 
-Phase one is responsible for parsing & lexing the input to the compiler. The
-output of this phase is an abstract syntax tree (AST). The AST at this point
-includes all macro uses & attributes. This means code which will be later
-expanded and/or removed due to `cfg` attributes is still present in this
-version of the AST. Parsing abstracts away details about individual files which
-have been read into the AST.
+Regardless of the general setup, the basic operations that the
+compiler must perform are the same. The only thing that changes is
+whether these operations are invoked front-to-back, or on demand.  In
+order to compile a Rust crate, these are the general steps that we
+take:
 
-Phase two handles configuration and macro expansion. You can think of this
-phase as a function acting on the AST from the previous phase. The input for
-this phase is the unexpanded AST from phase one, and the output is an expanded
-version of the same AST. This phase will expand all macros & syntax
-extensions and will evaluate all `cfg` attributes, potentially removing some
-code. The resulting AST will not contain any macros or `macro_use` statements.
-
-The code for these first two phases is in [`libsyntax`][libsyntax].
-
-After this phase, the compiler allocates IDs to each node in the AST
-(technically not every node, but most of them). If we are writing out
-dependencies, that happens now.
-
-The third phase is analysis. This is the most complex phase in the compiler,
-and makes up much of the code. This phase included name resolution, type
-checking, borrow checking, type & lifetime inference, trait selection, method
-selection, linting and so on. Most of the error detection in the compiler comes
-from this phase (with the exception of parse errors which arise during
-parsing). The "output" of this phase is a set of side tables containing
-semantic information about the source program. The analysis code is in
-[`librustc`][rustc] and some other crates with the `librustc_` prefix.
-
-The fourth phase is translation. This phase translates the AST (and the side
-tables from the previous phase) into LLVM IR (intermediate representation).
-This is achieved by calling into the LLVM libraries. The code for this is in
-[`librustc_trans`][trans].
-
-Phase five runs the LLVM backend. This runs LLVM's optimization passes on the
-generated IR and generates machine code resulting in object files. This phase
-is not really part of the Rust compiler, as LLVM carries out all the work.
-The interface between LLVM and Rust is in [`librustc_llvm`][llvm].
-
-The final phase, phase six, links the object files into an executable. This is
-again outsourced to other tools and not performed by the Rust compiler
-directly. The interface is in [`librustc_back`][back] (which also contains some
-things used primarily during translation).
-
-A module called the driver coordinates all these phases. It handles all the
-highest level coordination of compilation from parsing command line arguments
-all the way to invoking the linker to produce an executable.
-
-Modules in the librustc crate
-=============================
-
-The librustc crate itself consists of the following submodules
-(mostly, but not entirely, in their own directories):
-
-- session: options and data that pertain to the compilation session as
-  a whole
-- middle: middle-end: name resolution, typechecking, LLVM code
-  generation
-- metadata: encoder and decoder for data required by separate
-  compilation
-- plugin: infrastructure for compiler plugins
-- lint: infrastructure for compiler warnings
-- util: ubiquitous types and helper functions
-- lib: bindings to LLVM
-
-The entry-point for the compiler is main() in the [`librustc_driver`][driver]
-crate.
-
-The 3 central data structures:
-------------------------------
-
-1. `./../libsyntax/ast.rs` defines the AST. The AST is treated as
-   immutable after parsing, but it depends on mutable context data
-   structures (mainly hash maps) to give it meaning.
-
-   - Many – though not all – nodes within this data structure are
-     wrapped in the type `spanned<T>`, meaning that the front-end has
-     marked the input coordinates of that node. The member `node` is
-     the data itself, the member `span` is the input location (file,
-     line, column; both low and high).
-
-   - Many other nodes within this data structure carry a
-     `def_id`. These nodes represent the 'target' of some name
-     reference elsewhere in the tree. When the AST is resolved, by
-     `middle/resolve.rs`, all names wind up acquiring a def that they
-     point to. So anything that can be pointed-to by a name winds
-     up with a `def_id`.
-
-2. `middle/ty.rs` defines the datatype `sty`. This is the type that
-   represents types after they have been resolved and normalized by
-   the middle-end. The typeck phase converts every ast type to a
-   `ty::sty`, and the latter is used to drive later phases of
-   compilation. Most variants in the `ast::ty` tag have a
-   corresponding variant in the `ty::sty` tag.
-
-3. `./../librustc_llvm/lib.rs` defines the exported types
-   `ValueRef`, `TypeRef`, `BasicBlockRef`, and several others.
-   Each of these is an opaque pointer to an LLVM type,
-   manipulated through the `lib::llvm` interface.
-
-[libsyntax]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/
-[trans]: https://github.com/rust-lang/rust/tree/master/src/librustc_trans/
-[llvm]: https://github.com/rust-lang/rust/tree/master/src/librustc_llvm/
-[back]: https://github.com/rust-lang/rust/tree/master/src/librustc_back/
-[rustc]: https://github.com/rust-lang/rust/tree/master/src/librustc/
-[driver]: https://github.com/rust-lang/rust/tree/master/src/librustc_driver
+1. **Parsing input**
+    - this processes the `.rs` files and produces the AST ("abstract syntax tree")
+    - the AST is defined in `syntax/ast.rs`. It is intended to match the lexical
+      syntax of the Rust language quite closely.
+2. **Name resolution, macro expansion, and configuration**
+    - once parsing is complete, we process the AST recursively, resolving paths
+      and expanding macros. This same process also processes `#[cfg]` nodes, and hence
+      may strip things out of the AST as well.
+3. **Lowering to HIR**
+    - Once name resolution completes, we convert the AST into the HIR,
+      or "high-level IR". The HIR is defined in `src/librustc/hir/`; that module also includes
+      the lowering code.
+    - The HIR is a lightly desugared variant of the AST. It is more processed than the
+      AST and more suitable for the analyses that follow. It is **not** required to match
+      the syntax of the Rust language.
+    - As a simple example, in the **AST**, we preserve the parentheses
+      that the user wrote, so `((1 + 2) + 3)` and `1 + 2 + 3` parse
+      into distinct trees, even though they are equivalent. In the
+      HIR, however, parentheses nodes are removed, and those two
+      expressions are represented in the same way.
+3. **Type-checking and subsequent analyses**
+    - An important step in processing the HIR is to perform type
+      checking. This process assigns types to every HIR expression,
+      for example, and also is responsible for resolving some
+      "type-dependent" paths, such as field accesses (`x.f` -- we
+      can't know what field `f` is being accessed until we know the
+      type of `x`) and associated type references (`T::Item` -- we
+      can't know what type `Item` is until we know what `T` is).
+    - Type checking creates "side-tables" (`TypeckTables`) that include
+      the types of expressions, the way to resolve methods, and so forth.
+    - After type-checking, we can do other analyses, such as privacy checking.
+4. **Lowering to MIR and post-processing**
+    - Once type-checking is done, we can lower the HIR into MIR ("middle IR"), which
+      is a **very** desugared version of Rust, well suited to the borrowck but also
+      certain high-level optimizations. 
+5. **Translation to LLVM and LLVM optimizations**
+    - From MIR, we can produce LLVM IR.
+    - LLVM then runs its various optimizations, which produces a number of `.o` files
+      (one for each "codegen unit").
+6. **Linking**
+    - Finally, those `.o` files are linke together.
 
 Glossary
 ========
@@ -215,9 +163,15 @@ things. This glossary attempts to list them and give you a few
 pointers for understanding them better.
 
 - AST -- the **abstract syntax tree** produced the `syntax` crate; reflects user syntax
-  very closely.
+  very closely. 
+- codegen unit -- when we produce LLVM IR, we group the Rust code into a number of codegen
+  units. Each of these units is processed by LLVM independently from one another,
+  enabling parallelism. They are also the unit of incremental re-use. 
 - cx -- we tend to use "cx" as an abbrevation for context. See also tcx, infcx, etc.
+- `DefId` -- an index identifying a **definition** (see `librustc/hir/def_id.rs`).
 - HIR -- the **High-level IR**, created by lowering and desugaring the AST. See `librustc/hir`.
+- `HirId` -- identifies a particular node in the HIR by combining a
+  def-id with an "intra-definition offset".
 - `'gcx` -- the lifetime of the global arena (see `librustc/ty`).
 - generics -- the set of generic type parameters defined on a type or item
 - infcx -- the inference context (see `librustc/infer`)
@@ -226,9 +180,13 @@ pointers for understanding them better.
   found in `src/librustc_mir`.
 - obligation -- something that must be proven by the trait system; see `librustc/traits`.
 - local crate -- the crate currently being compiled.
+- node-id or `NodeId` -- an index identifying a particular node in the
+  AST or HIR; gradually being phased out.
 - query -- perhaps some sub-computation during compilation; see `librustc/maps`.
 - provider -- the function that executes a query; see `librustc/maps`.
 - sess -- the **compiler session**, which stores global data used throughout compilation
+- side tables -- because the AST and HIR are immutable once created, we often carry extra
+  information about them in the form of hashtables, indexed by the id of a particular node.
 - substs -- the **substitutions** for a given generic type or item
   (e.g., the `i32, u32` in `HashMap<i32, u32>`)
 - tcx -- the "typing context", main data structure of the compiler (see `librustc/ty`).
