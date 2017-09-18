@@ -826,7 +826,7 @@ pub fn recover_comment_removed(
     shape: Shape,
 ) -> Option<String> {
     let snippet = context.snippet(span);
-    if changed_comment_content(&snippet, &new) {
+    if snippet != new && changed_comment_content(&snippet, &new) {
         // We missed some comments
         // Keep previous formatting if it satisfies the constrains
         wrap_str(snippet, context.config.max_width(), shape)
