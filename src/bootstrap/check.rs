@@ -348,6 +348,50 @@ impl Step for Miri {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Clippy {
+    host: Interned<String>,
+}
+
+impl Step for Clippy {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = false;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/clippy")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Clippy {
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for clippy.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let host = self.host;
+        let compiler = builder.compiler(1, host);
+
+        let _clippy = builder.ensure(tool::Clippy { compiler, target: self.host });
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+        cargo.arg("--manifest-path").arg(build.src.join("src/tools/clippy/Cargo.toml"));
+
+        // Don't build tests dynamically, just a pain to work with
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+        // clippy tests need to know about the stage sysroot
+        cargo.env("SYSROOT", builder.sysroot(compiler));
+
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.clippy.passes(ToolState::Testing),
+        );
+    }
+}
 
 fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
