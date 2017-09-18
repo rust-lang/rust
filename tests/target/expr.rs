@@ -13,17 +13,17 @@ fn foo() -> bool {
     let is_internalxxxx =
         self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
 
-    let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb /
-        (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
+    let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb
+        / (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
 
     some_ridiculously_loooooooooooooooooooooong_function(
         10000 * 30000000000 + 40000 / 1002200000000 - 50000 * sqrt(-1),
         trivial_value,
     );
-    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        a +
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        aaaaa)))))))));
+    (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + a
+        + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + aaaaa)))))))));
 
     {
         for _ in 0..10 {}
@@ -78,8 +78,8 @@ fn foo() -> bool {
         something_else();
     } else {
         // Check subformatting
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     }
 }
 
@@ -249,18 +249,18 @@ fn arrays() {
 }
 
 fn returns() {
-    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
-        return;
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        && return;
 
-    return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+    return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 }
 
 fn addrof() {
-    &mut (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
-    &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+    &mut (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+    &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
 }
 
 fn casts() {

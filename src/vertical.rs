@@ -53,8 +53,8 @@ impl AlignedItem for ast::StructField {
         } else {
             mk_sp(self.attrs.last().unwrap().span.hi(), self.span.lo())
         };
-        let attrs_extendable = context.config.attributes_on_same_line_as_field() &&
-            is_attributes_extendable(&attrs_str);
+        let attrs_extendable = context.config.attributes_on_same_line_as_field()
+            && is_attributes_extendable(&attrs_str);
         rewrite_struct_field_prefix(context, self).and_then(|field_str| {
             combine_strs_with_missing_comments(
                 context,
@@ -184,8 +184,8 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
             one_line_width,
         ));
         Some(
-            result + spaces + "\n" +
-                &shape
+            result + spaces + "\n"
+                + &shape
                     .indent
                     .block_indent(context.config)
                     .to_string(context.config) + &rest_str,

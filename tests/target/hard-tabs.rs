@@ -32,8 +32,8 @@ fn main() {
 	} else if different_cond() {
 		something_else();
 	} else {
-		aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-			aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+		aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+			+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 	}
 
 	unsafe /* very looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong

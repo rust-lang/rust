@@ -160,6 +160,43 @@ enum Lorem {
 }
 ```
 
+## `binop_separator`
+
+Where to put a binary operator when a binary expression goes multiline.
+
+- **Default value**: `"Front"`
+- **Possible values**: `"Front"`, `"Back"`
+
+#### `"Front"`
+
+```rust
+let or = foo
+    || bar
+    || foobar;
+
+let sum = 1234
+    + 5678
+    + 910;
+
+let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    ..bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+```
+
+#### `"Back"`
+
+```rust
+let or = foo ||
+    bar ||
+    foobar;
+
+let sum = 1234 +
+    5678 +
+    910;
+
+let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..
+    bbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+```
+
 ## `chain_indent`
 
 Indentation of chain

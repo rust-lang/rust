@@ -132,8 +132,8 @@ fn rewrite_view_path_prefix(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
-        path.segments.len() > 1
+    let path_str = if path.segments.last().unwrap().identifier.to_string() == "self"
+        && path.segments.len() > 1
     {
         let path = &ast::Path {
             span: path.span,
@@ -503,8 +503,8 @@ fn rewrite_use_list(
         IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
     };
 
-    let ends_with_newline = context.config.imports_indent() == IndentStyle::Block &&
-        tactic != DefinitiveListTactic::Horizontal;
+    let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
+        && tactic != DefinitiveListTactic::Horizontal;
 
     let fmt = ListFormatting {
         tactic: tactic,

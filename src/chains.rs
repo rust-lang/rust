@@ -183,9 +183,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     } else {
         min(shape.width, context.config.chain_one_line_max())
     };
-    let all_in_one_line = !parent_rewrite_contains_newline &&
-        rewrites.iter().all(|s| !s.contains('\n')) &&
-        almost_total < one_line_budget;
+    let all_in_one_line = !parent_rewrite_contains_newline
+        && rewrites.iter().all(|s| !s.contains('\n'))
+        && almost_total < one_line_budget;
     let rewrite_last = || rewrite_chain_subexpr(last_subexpr, total_span, context, nested_shape);
     let (last_subexpr_str, fits_single_line) = try_opt!(if all_in_one_line || extend_last_subexr {
         parent_shape.offset_left(almost_total).map(|shape| {
@@ -224,9 +224,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
-    let first_connector = if is_small_parent || fits_single_line ||
-        last_line_extendable(&parent_rewrite) ||
-        context.config.chain_indent() == IndentStyle::Visual
+    let first_connector = if is_small_parent || fits_single_line
+        || last_line_extendable(&parent_rewrite)
+        || context.config.chain_indent() == IndentStyle::Visual
     {
         ""
     } else {
@@ -445,12 +445,12 @@ fn choose_first_connector<'a>(
 ) -> &'a str {
     if subexpr_list.is_empty() {
         ""
-    } else if extend || subexpr_list.last().map_or(false, is_try) ||
-        is_extendable_parent(context, parent_str)
+    } else if extend || subexpr_list.last().map_or(false, is_try)
+        || is_extendable_parent(context, parent_str)
     {
         // 1 = ";", being conservative here.
-        if last_line_width(parent_str) + first_line_width(first_child_str) + 1 <=
-            context.config.max_width()
+        if last_line_width(parent_str) + first_line_width(first_child_str) + 1
+            <= context.config.max_width()
         {
             ""
         } else {

@@ -208,8 +208,8 @@ fn rewrite_segment(
     let params = if let Some(ref params) = segment.parameters {
         match **params {
             ast::PathParameters::AngleBracketed(ref data)
-                if !data.lifetimes.is_empty() || !data.types.is_empty() ||
-                    !data.bindings.is_empty() =>
+                if !data.lifetimes.is_empty() || !data.types.is_empty()
+                    || !data.bindings.is_empty() =>
             {
                 let param_list = data.lifetimes
                     .iter()
@@ -738,7 +738,16 @@ impl Rewrite for ast::Ty {
                 let use_spaces = context.config.spaces_within_square_brackets();
                 let lbr = if use_spaces { "[ " } else { "[" };
                 let rbr = if use_spaces { " ]" } else { "]" };
-                rewrite_pair(&**ty, &**repeats, lbr, "; ", rbr, context, shape)
+                rewrite_pair(
+                    &**ty,
+                    &**repeats,
+                    lbr,
+                    "; ",
+                    rbr,
+                    context,
+                    shape,
+                    SeparatorPlace::Back,
+                )
             }
             ast::TyKind::Infer => if shape.width >= 1 {
                 Some("_".to_owned())

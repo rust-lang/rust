@@ -228,8 +228,8 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
 
         let block_snippet = self.snippet(mk_sp(block.span.lo(), block.span.hi()));
-        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
-            !context.config.fn_empty_single_line();
+        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty()
+            || !context.config.fn_empty_single_line();
         let mut newline_brace = newline_for_brace(self.config, &generics.where_clause, has_body);
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(
@@ -251,8 +251,8 @@ impl<'a> FmtVisitor<'a> {
 
         if force_newline_brace {
             newline_brace = true;
-        } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine &&
-            !result.contains('\n')
+        } else if self.config.fn_brace_style() != BraceStyle::AlwaysNextLine
+            && !result.contains('\n')
         {
             newline_brace = false;
         }
@@ -313,8 +313,8 @@ impl<'a> FmtVisitor<'a> {
 
         let codemap = self.get_context().codemap;
 
-        if self.config.fn_empty_single_line() && is_empty_block(block, codemap) &&
-            self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
+        if self.config.fn_empty_single_line() && is_empty_block(block, codemap)
+            && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
         {
             return Some(format!("{}{{}}", fn_str));
         }
@@ -503,9 +503,9 @@ impl<'a> FmtVisitor<'a> {
             },
         };
 
-        let attrs_extendable = attrs_str.is_empty() ||
-            (context.config.attributes_on_same_line_as_variant() &&
-                is_attributes_extendable(&attrs_str));
+        let attrs_extendable = attrs_str.is_empty()
+            || (context.config.attributes_on_same_line_as_variant()
+                && is_attributes_extendable(&attrs_str));
         combine_strs_with_missing_comments(
             &context,
             &attrs_str,
@@ -650,9 +650,9 @@ fn is_impl_single_line(
     let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
     Some(
-        context.config.impl_empty_single_line() && items.is_empty() && !result.contains('\n') &&
-            result.len() + where_clause_str.len() <= context.config.max_width() &&
-            !contains_comment(&snippet[open_pos..]),
+        context.config.impl_empty_single_line() && items.is_empty() && !result.contains('\n')
+            && result.len() + where_clause_str.len() <= context.config.max_width()
+            && !contains_comment(&snippet[open_pos..]),
     )
 }
 
@@ -895,8 +895,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         ));
         // If the trait, generics, and trait bound cannot fit on the same line,
         // put the trait bounds on an indented new line
-        if offset.width() + last_line_width(&result) + trait_bound_str.len() >
-            context.config.comment_width()
+        if offset.width() + last_line_width(&result) + trait_bound_str.len()
+            > context.config.comment_width()
         {
             result.push('\n');
             let trait_indent = offset.block_only().block_indent(context.config);
@@ -906,11 +906,11 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let has_body = !trait_items.is_empty();
 
-        let where_density = if (context.config.where_density() == Density::Compressed &&
-            (!result.contains('\n') || context.config.fn_args_layout() == IndentStyle::Block)) ||
-            (context.config.fn_args_layout() == IndentStyle::Block && result.is_empty()) ||
-            (context.config.where_density() == Density::CompressedIfEmpty && !has_body &&
-                !result.contains('\n'))
+        let where_density = if (context.config.where_density() == Density::Compressed
+            && (!result.contains('\n') || context.config.fn_args_layout() == IndentStyle::Block))
+            || (context.config.fn_args_layout() == IndentStyle::Block && result.is_empty())
+            || (context.config.where_density() == Density::CompressedIfEmpty && !has_body
+                && !result.contains('\n'))
         {
             Density::Compressed
         } else {
@@ -937,9 +937,9 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         ));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
-        if !where_clause_str.contains('\n') &&
-            last_line_width(&result) + where_clause_str.len() + offset.width() >
-                context.config.comment_width()
+        if !where_clause_str.contains('\n')
+            && last_line_width(&result) + where_clause_str.len() + offset.width()
+                > context.config.comment_width()
         {
             result.push('\n');
             let width = offset.block_indent + context.config.tab_spaces() - 1;
@@ -980,8 +980,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 result.push_str(&offset.to_string(context.config));
             }
             BraceStyle::PreferSameLine => result.push(' '),
-            BraceStyle::SameLineWhere => if !where_clause_str.is_empty() &&
-                (!trait_items.is_empty() || result.contains('\n'))
+            BraceStyle::SameLineWhere => if !where_clause_str.is_empty()
+                && (!trait_items.is_empty() || result.contains('\n'))
             {
                 result.push('\n');
                 result.push_str(&offset.to_string(context.config));
@@ -1061,9 +1061,9 @@ pub fn format_struct_struct(
         None => {
             // 3 = ` {}`, 2 = ` {`.
             let overhead = if fields.is_empty() { 3 } else { 2 };
-            if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine &&
-                !fields.is_empty()) ||
-                context.config.max_width() < overhead + result.len()
+            if (context.config.item_brace_style() == BraceStyle::AlwaysNextLine
+                && !fields.is_empty())
+                || context.config.max_width() < overhead + result.len()
             {
                 format!("\n{}{{", offset.block_only().to_string(context.config))
             } else {
@@ -1074,8 +1074,8 @@ pub fn format_struct_struct(
     // 1 = `}`
     let overhead = if fields.is_empty() { 1 } else { 0 };
     let total_width = result.len() + generics_str.len() + overhead;
-    if !generics_str.is_empty() && !generics_str.contains('\n') &&
-        total_width > context.config.max_width()
+    if !generics_str.is_empty() && !generics_str.contains('\n')
+        && total_width > context.config.max_width()
     {
         result.push('\n');
         result.push_str(&offset.to_string(context.config));
@@ -1224,10 +1224,10 @@ fn format_tuple_struct(
         result.push_str(&body);
     }
 
-    if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
-        (result.contains('\n') ||
-            offset.block_indent + result.len() + where_clause_str.len() + 1 >
-                context.config.max_width())
+    if !where_clause_str.is_empty() && !where_clause_str.contains('\n')
+        && (result.contains('\n')
+            || offset.block_indent + result.len() + where_clause_str.len() + 1
+                > context.config.max_width())
     {
         // We need to put the where clause on a new line, but we didn't
         // know that earlier, so the where clause will not be indented properly.
@@ -1368,8 +1368,9 @@ pub fn rewrite_struct_field(
     let prefix = try_opt!(rewrite_struct_field_prefix(context, field));
 
     let attrs_str = try_opt!(field.attrs.rewrite(context, shape));
-    let attrs_extendable = attrs_str.is_empty() ||
-        (context.config.attributes_on_same_line_as_field() && is_attributes_extendable(&attrs_str));
+    let attrs_extendable = attrs_str.is_empty()
+        || (context.config.attributes_on_same_line_as_field()
+            && is_attributes_extendable(&attrs_str));
     let missing_span = if field.attrs.is_empty() {
         mk_sp(field.span.lo(), field.span.lo())
     } else {
@@ -2154,8 +2155,9 @@ fn rewrite_args(
         arg_items.extend(more_items);
     }
 
-    let fits_in_one_line = !generics_str_contains_newline &&
-        (arg_items.is_empty() || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
+    let fits_in_one_line = !generics_str_contains_newline
+        && (arg_items.is_empty()
+            || arg_items.len() == 1 && arg_item_strs[0].len() <= one_line_budget);
 
     for (item, arg) in arg_items.iter_mut().zip(arg_item_strs) {
         item.item = Some(arg);
@@ -2419,8 +2421,8 @@ pub fn wrap_generics_with_angle_brackets(
     list_str: &str,
     list_offset: Indent,
 ) -> String {
-    if context.config.generics_indent() == IndentStyle::Block &&
-        (list_str.contains('\n') || list_str.ends_with(','))
+    if context.config.generics_indent() == IndentStyle::Block
+        && (list_str.contains('\n') || list_str.ends_with(','))
     {
         format!(
             "<\n{}{}\n{}>",
@@ -2528,9 +2530,9 @@ fn rewrite_where_clause_rfc_style(
     let newline_after_where = comment_separator(&comment_after, clause_shape);
 
     // 6 = `where `
-    let clause_sep = if where_clause_option.compress_where && comment_before.is_empty() &&
-        comment_after.is_empty() && !preds_str.contains('\n') &&
-        6 + preds_str.len() <= shape.width
+    let clause_sep = if where_clause_option.compress_where && comment_before.is_empty()
+        && comment_after.is_empty() && !preds_str.contains('\n')
+        && 6 + preds_str.len() <= shape.width
     {
         String::from(" ")
     } else {
@@ -2643,8 +2645,8 @@ fn rewrite_where_clause(
     } else {
         terminator.len()
     };
-    if density == Density::Tall || preds_str.contains('\n') ||
-        shape.indent.width() + " where ".len() + preds_str.len() + end_length > shape.width
+    if density == Density::Tall || preds_str.contains('\n')
+        || shape.indent.width() + " where ".len() + preds_str.len() + end_length > shape.width
     {
         Some(format!(
             "\n{}where {}",
@@ -2715,11 +2717,12 @@ fn format_generics(
             option,
         ));
         result.push_str(&where_clause_str);
-        force_same_line_brace || brace_style == BraceStyle::PreferSameLine ||
-            (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1)
+        force_same_line_brace || brace_style == BraceStyle::PreferSameLine
+            || (generics.where_clause.predicates.is_empty()
+                && trimmed_last_line_width(&result) == 1)
     } else {
-        force_same_line_brace || trimmed_last_line_width(&result) == 1 ||
-            brace_style != BraceStyle::AlwaysNextLine
+        force_same_line_brace || trimmed_last_line_width(&result) == 1
+            || brace_style != BraceStyle::AlwaysNextLine
     };
     let total_used_width = last_line_used_width(&result, used_width);
     let remaining_budget = context.budget(total_used_width);

@@ -324,9 +324,9 @@ fn guards() {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if foooooooooooooo && barrrrrrrrrrrr => {}
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-            if fooooooooooooooooooooo &&
-                (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ||
-                    cccccccccccccccccccccccccccccccccccccccc) => {}
+            if fooooooooooooooooooooo
+                && (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+                    || cccccccccccccccccccccccccccccccccccccccc) => {}
     }
 }
 

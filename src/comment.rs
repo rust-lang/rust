@@ -91,13 +91,13 @@ impl<'a> CommentStyle<'a> {
     pub fn line_with_same_comment_style(&self, line: &str, normalize_comments: bool) -> bool {
         match *self {
             CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
-                line.trim_left().starts_with(self.line_start().trim_left()) ||
-                    comment_style(line, normalize_comments) == *self
+                line.trim_left().starts_with(self.line_start().trim_left())
+                    || comment_style(line, normalize_comments) == *self
             }
             CommentStyle::DoubleBullet | CommentStyle::SingleBullet | CommentStyle::Exclamation => {
-                line.trim_left().starts_with(self.closer().trim_left()) ||
-                    line.trim_left().starts_with(self.line_start().trim_left()) ||
-                    comment_style(line, normalize_comments) == *self
+                line.trim_left().starts_with(self.closer().trim_left())
+                    || line.trim_left().starts_with(self.line_start().trim_left())
+                    || comment_style(line, normalize_comments) == *self
             }
             CommentStyle::Custom(opener) => line.trim_left().starts_with(opener.trim_right()),
         }
@@ -121,8 +121,8 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle {
         } else {
             CommentStyle::DoubleSlash
         }
-    } else if (orig.starts_with("///") && orig.chars().nth(3).map_or(true, |c| c != '/')) ||
-        (orig.starts_with("/**") && !orig.starts_with("/**/"))
+    } else if (orig.starts_with("///") && orig.chars().nth(3).map_or(true, |c| c != '/'))
+        || (orig.starts_with("/**") && !orig.starts_with("/**/"))
     {
         CommentStyle::TripleSlash
     } else if orig.starts_with("//!") || orig.starts_with("/*!") {
@@ -424,8 +424,8 @@ fn light_rewrite_comment(orig: &str, offset: Indent, config: &Config) -> Option<
 /// Trims comment characters and possibly a single space from the left of a string.
 /// Does not trim all whitespace.
 fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
-    if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ") ||
-        line.starts_with("/** ")
+    if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ")
+        || line.starts_with("/** ")
     {
         &line[4..]
     } else if let CommentStyle::Custom(opener) = *style {
@@ -434,14 +434,14 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> &'a str {
         } else {
             &line[opener.trim_right().len()..]
         }
-    } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!") ||
-        line.starts_with("///") || line.starts_with("** ") ||
-        line.starts_with("/*!") ||
-        (line.starts_with("/**") && !line.starts_with("/**/"))
+    } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!")
+        || line.starts_with("///") || line.starts_with("** ")
+        || line.starts_with("/*!")
+        || (line.starts_with("/**") && !line.starts_with("/**/"))
     {
         &line[3..]
-    } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") ||
-        line.starts_with("**")
+    } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//")
+        || line.starts_with("**")
     {
         &line[2..]
     } else if line.starts_with('*') {
@@ -771,9 +771,9 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
         let mut iter = CharClasses::new(subslice.char_indices());
 
         for (kind, (i, c)) in &mut iter {
-            let is_comment_connector = self.last_slice_kind == CodeCharKind::Normal &&
-                &subslice[..2] == "//" &&
-                [' ', '\t'].contains(&c);
+            let is_comment_connector = self.last_slice_kind == CodeCharKind::Normal
+                && &subslice[..2] == "//"
+                && [' ', '\t'].contains(&c);
 
             if is_comment_connector && first_whitespace.is_none() {
                 first_whitespace = Some(i);
@@ -913,8 +913,8 @@ fn remove_comment_header(comment: &str) -> &str {
         &comment[3..]
     } else if comment.starts_with("//") {
         &comment[2..]
-    } else if (comment.starts_with("/**") && !comment.starts_with("/**/")) ||
-        comment.starts_with("/*!")
+    } else if (comment.starts_with("/**") && !comment.starts_with("/**/"))
+        || comment.starts_with("/*!")
     {
         &comment[3..comment.len() - 2]
     } else {
