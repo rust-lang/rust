@@ -1417,7 +1417,7 @@ define_maps! { <'tcx>
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
-        -> Arc<Vec<(String, DefId, SymbolExportLevel)>>,
+        -> Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),

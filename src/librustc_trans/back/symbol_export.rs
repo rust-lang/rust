@@ -14,7 +14,7 @@ use std::sync::Arc;
 use base;
 use monomorphize::Instance;
 use rustc::hir::def_id::CrateNum;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE, INVALID_CRATE, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config;
 use rustc::ty::TyCtxt;
@@ -24,7 +24,7 @@ use rustc_allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
-    Arc<Vec<(String, DefId, SymbolExportLevel)>>,
+    Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
 >;
 
 pub fn threshold(tcx: TyCtxt) -> SymbolExportLevel {
@@ -65,11 +65,13 @@ pub fn provide_local(providers: &mut Providers) {
         Rc::new(tcx.exported_symbols(cnum)
             .iter()
             .filter_map(|&(_, id, level)| {
-                if level.is_below_threshold(export_threshold) {
-                    Some(id)
-                } else {
-                    None
-                }
+                id.and_then(|id| {
+                    if level.is_below_threshold(export_threshold) {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                })
             })
             .collect())
     };
@@ -95,25 +97,20 @@ pub fn provide_local(providers: &mut Providers) {
                 let name = tcx.symbol_name(Instance::mono(tcx, def_id));
                 let export_level = export_level(tcx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-                (str::to_owned(&name), def_id, export_level)
+                (str::to_owned(&name), Some(def_id), export_level)
             })
             .collect();
 
-        const INVALID_DEF_ID: DefId = DefId {
-            krate: INVALID_CRATE,
-            index: CRATE_DEF_INDEX,
-        };
-
         if let Some(_) = *tcx.sess.entry_fn.borrow() {
             local_crate.push(("main".to_string(),
-                              INVALID_DEF_ID,
+                              None,
                               SymbolExportLevel::C));
         }
 
         if tcx.sess.allocator_kind.get().is_some() {
             for method in ALLOCATOR_METHODS {
                 local_crate.push((format!("__rust_{}", method.name),
-                                  INVALID_DEF_ID,
+                                  None,
                                   SymbolExportLevel::Rust));
             }
         }
@@ -123,12 +120,12 @@ pub fn provide_local(providers: &mut Providers) {
             let idx = def_id.index;
             let disambiguator = tcx.sess.local_crate_disambiguator();
             let registrar = tcx.sess.generate_derive_registrar_symbol(disambiguator, idx);
-            local_crate.push((registrar, def_id, SymbolExportLevel::C));
+            local_crate.push((registrar, Some(def_id), SymbolExportLevel::C));
         }
 
         if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
             local_crate.push((metadata_symbol_name(tcx),
-                              INVALID_DEF_ID,
+                              None,
                               SymbolExportLevel::Rust));
         }
         Arc::new(local_crate)
@@ -178,7 +175,7 @@ pub fn provide_extern(providers: &mut Providers) {
                     export_level(tcx, def_id)
                 };
                 debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
-                (str::to_owned(&name), def_id, export_level)
+                (str::to_owned(&name), Some(def_id), export_level)
             })
             .collect();
 
