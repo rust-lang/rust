@@ -24,7 +24,6 @@
 #![deny(warnings)]
 
 #![feature(alloc)]
-#![feature(collections_range)]
 #![feature(macro_reexport)]
 #![feature(staged_api)]
 
@@ -36,13 +35,16 @@
 #[macro_reexport(vec, format)]
 extern crate alloc;
 
+#[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
+#[unstable(feature = "range_argument", issue = "30877")]
+pub mod range { }
+
 pub use alloc::Bound;
 
 pub use alloc::binary_heap;
 pub use alloc::borrow;
 pub use alloc::fmt;
 pub use alloc::linked_list;
-pub use alloc::range;
 pub use alloc::slice;
 pub use alloc::str;
 pub use alloc::string;

@@ -106,6 +106,7 @@
 #![feature(pattern)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
+#![feature(range_argument)]
 #![feature(rustc_attrs)]
 #![feature(shared)]
 #![feature(slice_get_slice)]
@@ -171,7 +172,6 @@ mod btree;
 pub mod borrow;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;
@@ -197,63 +197,16 @@ mod std {
     pub use core::ops;      // RangeFull
 }
 
-/// An endpoint of a range of keys.
-///
-/// # Examples
-///
-/// `Bound`s are range endpoints:
-///
-/// ```
-/// #![feature(collections_range)]
-///
-/// use std::collections::range::RangeArgument;
-/// use std::collections::Bound::*;
-///
-/// assert_eq!((..100).start(), Unbounded);
-/// assert_eq!((1..12).start(), Included(&1));
-/// assert_eq!((1..12).end(), Excluded(&12));
-/// ```
-///
-/// Using a tuple of `Bound`s as an argument to [`BTreeMap::range`].
-/// Note that in most cases, it's better to use range syntax (`1..5`) instead.
-///
-/// ```
-/// use std::collections::BTreeMap;
-/// use std::collections::Bound::{Excluded, Included, Unbounded};
-///
-/// let mut map = BTreeMap::new();
-/// map.insert(3, "a");
-/// map.insert(5, "b");
-/// map.insert(8, "c");
-///
-/// for (key, value) in map.range((Excluded(3), Included(8))) {
-///     println!("{}: {}", key, value);
-/// }
-///
-/// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
-/// ```
-///
-/// [`BTreeMap::range`]: btree_map/struct.BTreeMap.html#method.range
-#[stable(feature = "collections_bound", since = "1.17.0")]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum Bound<T> {
-    /// An inclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Included(#[stable(feature = "collections_bound", since = "1.17.0")] T),
-    /// An exclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Excluded(#[stable(feature = "collections_bound", since = "1.17.0")] T),
-    /// An infinite endpoint. Indicates that there is no bound in this direction.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Unbounded,
-}
-
 /// An intermediate trait for specialization of `Extend`.
 #[doc(hidden)]
 trait SpecExtend<I: IntoIterator> {
     /// Extends `self` with the contents of the given iterator.
     fn spec_extend(&mut self, iter: I);
 }
+
+#[rustc_deprecated(reason = "moved to core::ops", since = "1.22.0")]
+#[unstable(feature = "range_argument", issue = "30877")]
+pub use core::ops::Bound;
 
 #[doc(no_inline)]
 pub use binary_heap::BinaryHeap;

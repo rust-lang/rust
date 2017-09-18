@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use std::collections::BTreeMap;
-use std::collections::Bound::{self, Excluded, Included, Unbounded};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
+use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::rc::Rc;
 
 use std::iter::FromIterator;
@@ -262,7 +262,7 @@ fn test_range_1000() {
     let size = 1000;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-    fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
+    fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<u32>, max: Bound<u32>) {
         let mut kvs = map.range((min, max)).map(|(&k, &v)| (k, v));
         let mut pairs = (0..size).map(|i| (i, i));
 
@@ -272,11 +272,11 @@ fn test_range_1000() {
         assert_eq!(kvs.next(), None);
         assert_eq!(pairs.next(), None);
     }
-    test(&map, size, Included(&0), Excluded(&size));
-    test(&map, size, Unbounded, Excluded(&size));
-    test(&map, size, Included(&0), Included(&(size - 1)));
-    test(&map, size, Unbounded, Included(&(size - 1)));
-    test(&map, size, Included(&0), Unbounded);
+    test(&map, size, Included(0), Excluded(size));
+    test(&map, size, Unbounded, Excluded(size));
+    test(&map, size, Included(0), Included(size - 1));
+    test(&map, size, Unbounded, Included(size - 1));
+    test(&map, size, Included(0), Unbounded);
     test(&map, size, Unbounded, Unbounded);
 }
 
@@ -288,7 +288,7 @@ fn test_range_borrowed_key() {
     map.insert("coyote".to_string(), 3);
     map.insert("dingo".to_string(), 4);
     // NOTE: would like to use simply "b".."d" here...
-    let mut iter = map.range::<str, _>((Included("b"),Excluded("d")));
+    let mut iter = map.range::<String, _>((Included("b".to_string()),Excluded("d".to_string())));
     assert_eq!(iter.next(), Some((&"baboon".to_string(), &2)));
     assert_eq!(iter.next(), Some((&"coyote".to_string(), &3)));
     assert_eq!(iter.next(), None);
@@ -301,7 +301,7 @@ fn test_range() {
 
     for i in 0..size {
         for j in i..size {
-            let mut kvs = map.range((Included(&i), Included(&j))).map(|(&k, &v)| (k, v));
+            let mut kvs = map.range((Included(i), Included(j))).map(|(&k, &v)| (k, v));
             let mut pairs = (i..j + 1).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
@@ -320,7 +320,7 @@ fn test_range_mut() {
 
     for i in 0..size {
         for j in i..size {
-            let mut kvs = map.range_mut((Included(&i), Included(&j))).map(|(&k, &mut v)| (k, v));
+            let mut kvs = map.range_mut((Included(i), Included(j))).map(|(&k, &mut v)| (k, v));
             let mut pairs = (i..j + 1).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {

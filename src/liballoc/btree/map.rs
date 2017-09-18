@@ -13,12 +13,11 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
-use core::ops::Index;
+use core::ops::{Index, RangeBounds};
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{Excluded, Included, Unbounded};
-use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -783,18 +782,18 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// map.insert(3, "a");
     /// map.insert(5, "b");
     /// map.insert(8, "c");
-    /// for (&key, &value) in map.range((Included(&4), Included(&8))) {
+    /// for (&key, &value) in map.range((Included(4), Included(8))) {
     ///     println!("{}: {}", key, value);
     /// }
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+    pub fn range<T, R>(&self, range: R) -> Range<K, V>
+        where T: Ord, K: Borrow<T>, R: Into<RangeBounds<T>>
     {
         let root1 = self.root.as_ref();
         let root2 = self.root.as_ref();
-        let (f, b) = range_search(root1, root2, range);
+        let (f, b) = range_search(root1, root2, range.into());
 
         Range { front: f, back: b}
     }
@@ -829,12 +828,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
-    pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+    pub fn range_mut<T, R>(&mut self, range: R) -> RangeMut<K, V>
+        where T: Ord, K: Borrow<T>, R: Into<RangeBounds<T>>
     {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
-        let (f, b) = range_search(root1, root2, range);
+        let (f, b) = range_search(root1, root2, range.into());
 
         RangeMut {
             front: f,
@@ -1780,21 +1779,21 @@ fn last_leaf_edge<BorrowType, K, V>
     }
 }
 
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+fn range_search<BorrowType, K, V, Q>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
-    range: R
+    range: RangeBounds<Q>
 )-> (Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>,
      Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
         where Q: Ord, K: Borrow<Q>
 {
-    match (range.start(), range.end()) {
-        (Excluded(s), Excluded(e)) if s==e =>
+    match (&range.start, &range.end) {
+        (&Excluded(ref s), &Excluded(ref e)) if *s == *e =>
             panic!("range start and end are equal and excluded in BTreeMap"),
-        (Included(s), Included(e)) |
-        (Included(s), Excluded(e)) |
-        (Excluded(s), Included(e)) |
-        (Excluded(s), Excluded(e)) if s>e =>
+        (&Included(ref s), &Included(ref e)) |
+        (&Included(ref s), &Excluded(ref e)) |
+        (&Excluded(ref s), &Included(ref e)) |
+        (&Excluded(ref s), &Excluded(ref e)) if *s > *e =>
             panic!("range start is greater than range end in BTreeMap"),
         _ => {},
     };
@@ -1806,32 +1805,32 @@ fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
     let mut diverged = false;
 
     loop {
-        let min_edge = match (min_found, range.start()) {
-            (false, Included(key)) => match search::search_linear(&min_node, key) {
+        let min_edge = match (min_found, &range.start) {
+            (false, &Included(ref key)) => match search::search_linear(&min_node, key) {
                 (i, true) => { min_found = true; i },
                 (i, false) => i,
             },
-            (false, Excluded(key)) => match search::search_linear(&min_node, key) {
+            (false, &Excluded(ref key)) => match search::search_linear(&min_node, &key) {
                 (i, true) => { min_found = true; i+1 },
                 (i, false) => i,
             },
-            (_, Unbounded) => 0,
-            (true, Included(_)) => min_node.keys().len(),
-            (true, Excluded(_)) => 0,
+            (_, &Unbounded) => 0,
+            (true, &Included(_)) => min_node.keys().len(),
+            (true, &Excluded(_)) => 0,
         };
 
-        let max_edge = match (max_found, range.end()) {
-            (false, Included(key)) => match search::search_linear(&max_node, key) {
+        let max_edge = match (max_found, &range.end) {
+            (false, &Included(ref key)) => match search::search_linear(&max_node, key) {
                 (i, true) => { max_found = true; i+1 },
                 (i, false) => i,
             },
-            (false, Excluded(key)) => match search::search_linear(&max_node, key) {
+            (false, &Excluded(ref key)) => match search::search_linear(&max_node, key) {
                 (i, true) => { max_found = true; i },
                 (i, false) => i,
             },
-            (_, Unbounded) => max_node.keys().len(),
-            (true, Included(_)) => 0,
-            (true, Excluded(_)) => max_node.keys().len(),
+            (_, &Unbounded) => max_node.keys().len(),
+            (true, &Included(_)) => 0,
+            (true, &Excluded(_)) => max_node.keys().len(),
         };
 
         if !diverged {

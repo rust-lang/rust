@@ -22,7 +22,6 @@
 #![deny(warnings)]
 
 #![feature(shared)]
-#![feature(collections_range)]
 #![feature(nonzero)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
@@ -30,6 +29,7 @@
 #![feature(i128_type)]
 #![feature(conservative_impl_trait)]
 #![feature(specialization)]
+#![feature(range_argument)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
