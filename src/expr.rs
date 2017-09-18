@@ -328,7 +328,7 @@ pub fn format_expr(
 
     expr_rw
         .and_then(|expr_str| {
-            recover_comment_removed(expr_str, expr.span, context, shape)
+            recover_comment_removed(expr_str, expr.span, context)
         })
         .and_then(|expr_str| {
             let attrs = outer_attributes(&expr.attrs);
@@ -920,9 +920,7 @@ impl Rewrite for ast::Stmt {
             }
             ast::StmtKind::Mac(..) | ast::StmtKind::Item(..) => None,
         };
-        result.and_then(|res| {
-            recover_comment_removed(res, self.span(), context, shape)
-        })
+        result.and_then(|res| recover_comment_removed(res, self.span(), context))
     }
 }
 

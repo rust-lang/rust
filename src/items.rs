@@ -1488,9 +1488,7 @@ pub fn rewrite_static(
             lhs,
             expr,
             Shape::legacy(remaining_width, offset.block_only()),
-        ).and_then(|res| {
-            recover_comment_removed(res, span, context, Shape::indented(offset, context.config))
-        })
+        ).and_then(|res| recover_comment_removed(res, span, context))
             .map(|s| if s.ends_with(';') { s } else { s + ";" })
     } else {
         Some(format!("{}{};", prefix, ty_str))

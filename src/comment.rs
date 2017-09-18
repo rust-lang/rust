@@ -18,7 +18,7 @@ use {Indent, Shape};
 use config::Config;
 use rewrite::RewriteContext;
 use string::{rewrite_string, StringFormat};
-use utils::{first_line_width, last_line_width, wrap_str};
+use utils::{first_line_width, last_line_width};
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -823,13 +823,11 @@ pub fn recover_comment_removed(
     new: String,
     span: Span,
     context: &RewriteContext,
-    shape: Shape,
 ) -> Option<String> {
     let snippet = context.snippet(span);
     if snippet != new && changed_comment_content(&snippet, &new) {
-        // We missed some comments
-        // Keep previous formatting if it satisfies the constrains
-        wrap_str(snippet, context.config.max_width(), shape)
+        // We missed some comments. Keep the original text.
+        Some(snippet)
     } else {
         Some(new)
     }
