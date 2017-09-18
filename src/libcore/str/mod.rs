@@ -23,7 +23,6 @@ use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use slice::{self, SliceIndex};
 use mem;
-use intrinsics::align_offset;
 
 pub mod pattern;
 
@@ -404,7 +403,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    mem::transmute(v)
+    &*(v as *const [u8] as *const str)
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -429,7 +428,7 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    mem::transmute(v)
+    &mut *(v as *mut [u8] as *mut str)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1515,7 +1514,7 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             let ptr = v.as_ptr();
             let align = unsafe {
                 // the offset is safe, because `index` is guaranteed inbounds
-                align_offset(ptr.offset(index as isize) as *const (), usize_bytes)
+                ptr.offset(index as isize).align_offset(usize_bytes)
             };
             if align == 0 {
                 while index < blocks_end {
@@ -2447,12 +2446,12 @@ impl StrExt for str {
 
     #[inline]
     fn as_bytes(&self) -> &[u8] {
-        unsafe { mem::transmute(self) }
+        unsafe { &*(self as *const str as *const [u8]) }
     }
 
     #[inline]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        mem::transmute(self)
+        &mut *(self as *mut str as *mut [u8])
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {

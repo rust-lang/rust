@@ -49,6 +49,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         match dep_node.kind {
             DepKind::Krate |
             DepKind::Hir |
+            DepKind::InScopeTraits |
             DepKind::HirBody =>
                 true,
             DepKind::MetaData => {
@@ -66,6 +67,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             }
 
             // HIR nodes (which always come from our crate) are an input:
+            DepKind::InScopeTraits |
             DepKind::Hir |
             DepKind::HirBody => {
                 Some(self.incremental_hashes_map[dep_node])

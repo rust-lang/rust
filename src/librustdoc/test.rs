@@ -124,7 +124,7 @@ pub fn run(input: &str,
                                        render_type);
 
     {
-        let map = hir::map::map_crate(&mut hir_forest, defs);
+        let map = hir::map::map_crate(&mut hir_forest, &defs);
         let krate = map.krate();
         let mut hir_collector = HirCollector {
             sess: &sess,

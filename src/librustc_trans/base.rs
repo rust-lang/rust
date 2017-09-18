@@ -41,7 +41,6 @@ use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
@@ -894,7 +893,7 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
 pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
-    tcx.reachable_set(LOCAL_CRATE).iter().cloned().filter(|&id| {
+    tcx.reachable_set(LOCAL_CRATE).0.iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -1070,7 +1069,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let start_time = Instant::now();
         all_stats.extend(tcx.compile_codegen_unit(*cgu.name()));
         total_trans_time += start_time.elapsed();
-
         ongoing_translation.check_for_errors(tcx.sess);
     }
 
@@ -1371,8 +1369,8 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let dep_node = cgu.work_product_dep_node();
     let ((stats, module), _) =
         tcx.dep_graph.with_task(dep_node,
-                                AssertDepGraphSafe(tcx),
-                                AssertDepGraphSafe(cgu),
+                                tcx,
+                                cgu,
                                 module_translation);
     let time_to_translate = start_time.elapsed();
 
@@ -1393,14 +1391,10 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     return stats;
 
     fn module_translation<'a, 'tcx>(
-        tcx: AssertDepGraphSafe<TyCtxt<'a, 'tcx, 'tcx>>,
-        args: AssertDepGraphSafe<Arc<CodegenUnit<'tcx>>>)
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        cgu: Arc<CodegenUnit<'tcx>>)
         -> (Stats, ModuleTranslation)
     {
-        // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
-        let AssertDepGraphSafe(tcx) = tcx;
-        let AssertDepGraphSafe(cgu) = args;
-
         let cgu_name = cgu.name().to_string();
         let cgu_id = cgu.work_product_id();
         let symbol_name_hash = cgu.compute_symbol_name_hash(tcx);
@@ -1565,5 +1559,27 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Default => llvm::Visibility::Default,
         Visibility::Hidden => llvm::Visibility::Hidden,
         Visibility::Protected => llvm::Visibility::Protected,
+    }
+}
+
+// FIXME(mw): Anything that is produced via DepGraph::with_task() must implement
+//            the HashStable trait. Normally DepGraph::with_task() calls are
+//            hidden behind queries, but CGU creation is a special case in two
+//            ways: (1) it's not a query and (2) CGU are output nodes, so their
+//            Fingerprints are not actually needed. It remains to be clarified
+//            how exactly this case will be handled in the red/green system but
+//            for now we content ourselves with providing a no-op HashStable
+//            implementation for CGUs.
+mod temp_stable_hash_impls {
+    use rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher,
+                                               HashStable};
+    use ModuleTranslation;
+
+    impl<HCX> HashStable<HCX> for ModuleTranslation {
+        fn hash_stable<W: StableHasherResult>(&self,
+                                              _: &mut HCX,
+                                              _: &mut StableHasher<W>) {
+            // do nothing
+        }
     }
 }

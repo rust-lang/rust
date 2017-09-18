@@ -16,9 +16,11 @@ use hir::{self, TraitCandidate, ItemLocalId};
 use hir::svh::Svh;
 use lint;
 use middle::const_val;
-use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary};
-use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
+use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
+                     ExternBodyNestedBodies};
+use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
 use middle::privacy::AccessLevels;
+use middle::reachable::ReachableSet;
 use middle::region;
 use middle::resolve_lifetime::{Region, ObjectLifetimeDefault};
 use middle::stability::{self, DeprecationEntry};
@@ -36,7 +38,7 @@ use ty::item_path;
 use ty::steal::Steal;
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
-use util::nodemap::{DefIdSet, NodeSet, DefIdMap};
+use util::nodemap::{DefIdSet, DefIdMap};
 use util::common::{profq_msg, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -44,11 +46,11 @@ use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::cell::{RefCell, RefMut, Cell};
+
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::mem;
-use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -925,9 +927,8 @@ macro_rules! define_maps {
                     span = key.default_span(tcx)
                 }
 
+                let dep_node = Self::to_dep_node(tcx, &key);
                 let res = tcx.cycle_check(span, Query::$name(key), || {
-                    let dep_node = Self::to_dep_node(tcx, &key);
-
                     tcx.sess.diagnostic().track_diagnostics(|| {
                         if dep_node.kind.is_anon() {
                             tcx.dep_graph.with_anon_task(dep_node.kind, || {
@@ -1300,7 +1301,7 @@ define_maps! { <'tcx>
     /// Performs the privacy check and computes "access levels".
     [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    [] fn reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
+    [] fn reachable_set: reachability_dep_node(CrateNum) -> ReachableSet,
 
     /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-id for the body;
     /// in the case of closures, this will be redirected to the enclosing function.
@@ -1320,8 +1321,7 @@ define_maps! { <'tcx>
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
     [] fn is_exported_symbol: IsExportedSymbol(DefId) -> bool,
-    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId)
-        -> Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
 
@@ -1399,9 +1399,9 @@ define_maps! { <'tcx>
     [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Rc<LanguageItems>,
-    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefIndex, usize)>>,
+    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Rc<Vec<(DefId, usize)>>,
     [] fn missing_lang_items: MissingLangItems(CrateNum) -> Rc<Vec<LangItem>>,
-    [] fn extern_const_body: ExternConstBody(DefId) -> &'tcx hir::Body,
+    [] fn extern_const_body: ExternConstBody(DefId) -> ExternConstBody<'tcx>,
     [] fn visible_parent_map: visible_parent_map_node(CrateNum)
         -> Rc<DefIdMap<DefId>>,
     [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
@@ -1417,7 +1417,7 @@ define_maps! { <'tcx>
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Rc<Vec<CrateNum>>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
-        -> Arc<Vec<(String, DefId, SymbolExportLevel)>>,
+        -> Arc<Vec<(String, Option<DefId>, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),

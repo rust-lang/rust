@@ -14,6 +14,7 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
+use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
@@ -31,6 +32,8 @@ use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
 use mir::transform::MirSource;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 
 /// Scope represents a statically-describable scope that can be
 /// used to bound the lifetime/region for values.
@@ -1234,4 +1237,33 @@ pub fn provide(providers: &mut Providers) {
         region_scope_tree,
         ..*providers
     };
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ScopeTree {
+            root_body,
+            root_parent,
+            ref parent_map,
+            ref var_map,
+            ref destruction_scopes,
+            ref rvalue_scopes,
+            ref closure_tree,
+            ref yield_in_scope,
+        } = *self;
+
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            root_body.hash_stable(hcx, hasher);
+            root_parent.hash_stable(hcx, hasher);
+        });
+
+        parent_map.hash_stable(hcx, hasher);
+        var_map.hash_stable(hcx, hasher);
+        destruction_scopes.hash_stable(hcx, hasher);
+        rvalue_scopes.hash_stable(hcx, hasher);
+        closure_tree.hash_stable(hcx, hasher);
+        yield_in_scope.hash_stable(hcx, hasher);
+    }
 }

@@ -175,7 +175,7 @@ pub fn compile_input(sess: &Session,
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
                            "indexing hir",
-                           || hir_map::map_crate(&mut hir_forest, defs));
+                           || hir_map::map_crate(&mut hir_forest, &defs));
 
         {
             let _ignore = hir_map.dep_graph.in_ignore();

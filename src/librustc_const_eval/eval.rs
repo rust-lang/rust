@@ -34,7 +34,6 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 
 use rustc_const_math::*;
-
 macro_rules! signal {
     ($e:expr, $exn:expr) => {
         return Err(ConstEvalErr { span: $e.span, kind: $exn })
@@ -366,7 +365,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             }
           } else {
             if tcx.is_const_fn(def_id) {
-                tcx.extern_const_body(def_id)
+                tcx.extern_const_body(def_id).body
             } else {
                 signal!(e, TypeckError)
             }
@@ -790,7 +789,7 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
-        tcx.extern_const_body(def_id)
+        tcx.extern_const_body(def_id).body
     };
     ConstContext::new(tcx, key.param_env.and(substs), tables).eval(&body.value)
 }

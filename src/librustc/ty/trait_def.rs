@@ -11,13 +11,15 @@
 use hir;
 use hir::def_id::DefId;
 use hir::map::DefPathHash;
+use ich::{self, StableHashingContext};
 use traits::specialization_graph;
 use ty::fast_reject;
 use ty::fold::TypeFoldable;
 use ty::{Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashMap;
-
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
+                                           StableHasherResult};
 use std::rc::Rc;
 
 /// A trait's definition with type information.
@@ -182,4 +184,17 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         blanket_impls: blanket_impls,
         non_blanket_impls: non_blanket_impls,
     })
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for TraitImpls {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let TraitImpls {
+            ref blanket_impls,
+            ref non_blanket_impls,
+        } = *self;
+
+        ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, non_blanket_impls);
+    }
 }

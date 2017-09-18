@@ -305,6 +305,10 @@ impl LintId {
         }
     }
 
+    pub fn lint_name_raw(&self) -> &'static str {
+        self.lint.name
+    }
+
     /// Get the name of the lint.
     pub fn to_string(&self) -> String {
         self.lint.name_lower()
@@ -316,6 +320,13 @@ impl LintId {
 pub enum Level {
     Allow, Warn, Deny, Forbid
 }
+
+impl_stable_hash_for!(enum self::Level {
+    Allow,
+    Warn,
+    Deny,
+    Forbid
+});
 
 impl Level {
     /// Convert a level to a lower-case string.
@@ -353,6 +364,12 @@ pub enum LintSource {
     /// Lint level was set by a command-line flag.
     CommandLine(Symbol),
 }
+
+impl_stable_hash_for!(enum self::LintSource {
+    Default,
+    Node(name, span),
+    CommandLine(text)
+});
 
 pub type LevelSource = (Level, LintSource);
 

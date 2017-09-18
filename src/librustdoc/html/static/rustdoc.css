@@ -288,6 +288,7 @@ nav.sub {
 
 .docblock {
 	margin-left: 24px;
+	position: relative;
 }
 
 .content .out-of-band {
@@ -456,8 +457,13 @@ a {
 }
 .anchor {
 	display: none;
+	position: absolute;
+	left: -25px;
 }
-.anchor:after {
+.anchor.field {
+	left: -20px;
+}
+.anchor:before {
 	content: '\2002\00a7\2002';
 }
 
@@ -625,7 +631,9 @@ a.test-arrow:hover{
 	text-decoration: none;
 }
 
-.section-header:hover a:after {
+.section-header:hover a:before {
+	position: absolute;
+	left: -25px;
 	content: '\2002\00a7\2002';
 }
 
@@ -817,6 +825,7 @@ span.since {
 	position: absolute;
 	left: -1px;
 	margin-top: 7px;
+	z-index: 1;
 }
 
 .tooltip {
@@ -852,4 +861,8 @@ span.since {
 	border-width: 5px;
 	border-style: solid;
 	border-color: transparent black transparent transparent;
+}
+
+pre.rust {
+	position: relative;
 }

@@ -12,6 +12,7 @@
 // scope.
 
 // revisions: rpass1 rpass2
+// compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
 
@@ -47,13 +48,15 @@ mod mod3 {
     use Trait2;
 
     #[rustc_clean(label="Hir", cfg="rpass2")]
-    #[rustc_dirty(label="HirBody", cfg="rpass2")]
+    #[rustc_clean(label="HirBody", cfg="rpass2")]
+    #[rustc_dirty(label="TypeckTables", cfg="rpass2")]
     fn bar() {
         ().method();
     }
 
     #[rustc_clean(label="Hir", cfg="rpass2")]
     #[rustc_clean(label="HirBody", cfg="rpass2")]
+    #[rustc_clean(label="TypeckTables", cfg="rpass2")]
     fn baz() {
         22; // no method call, traits in scope don't matter
     }

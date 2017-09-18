@@ -247,7 +247,7 @@ pub struct Map<'hir> {
     /// plain old integers.
     map: Vec<MapEntry<'hir>>,
 
-    definitions: Definitions,
+    definitions: &'hir Definitions,
 
     /// Bodies inlined from other crates are cached here.
     inlined_bodies: RefCell<DefIdMap<&'hir Body>>,
@@ -304,8 +304,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn definitions(&self) -> &Definitions {
-        &self.definitions
+    pub fn definitions(&self) -> &'hir Definitions {
+        self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
@@ -1013,7 +1013,7 @@ impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
 pub fn map_crate<'hir>(forest: &'hir mut Forest,
-                       definitions: Definitions)
+                       definitions: &'hir Definitions)
                        -> Map<'hir> {
     let map = {
         let mut collector = NodeCollector::root(&forest.krate,

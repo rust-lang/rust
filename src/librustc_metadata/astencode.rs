@@ -16,26 +16,46 @@ use schema::*;
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 
+use rustc::ich::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Ast<'tcx> {
     pub body: Lazy<hir::Body>,
     pub tables: Lazy<ty::TypeckTables<'tcx>>,
     pub nested_bodies: LazySeq<hir::Body>,
     pub rvalue_promotable_to_static: bool,
+    pub stable_bodies_hash: Fingerprint,
 }
 
 impl_stable_hash_for!(struct Ast<'tcx> {
     body,
     tables,
     nested_bodies,
-    rvalue_promotable_to_static
+    rvalue_promotable_to_static,
+    stable_bodies_hash
 });
 
 impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
     pub fn encode_body(&mut self, body_id: hir::BodyId) -> Lazy<Ast<'tcx>> {
         let body = self.tcx.hir.body(body_id);
-        let lazy_body = self.lazy(body);
 
+        // In order to avoid having to hash hir::Bodies from extern crates, we
+        // hash them here, during export, and store the hash with metadata.
+        let stable_bodies_hash = {
+            let mut hcx = self.tcx.create_stable_hashing_context();
+            let mut hasher = StableHasher::new();
+
+            hcx.while_hashing_hir_bodies(true, |hcx| {
+                hcx.while_hashing_spans(false, |hcx| {
+                    body.hash_stable(hcx, &mut hasher);
+                });
+            });
+
+            hasher.finish()
+        };
+
+        let lazy_body = self.lazy(body);
         let tables = self.tcx.body_tables(body_id);
         let lazy_tables = self.lazy(tables);
 
@@ -54,6 +74,7 @@ impl<'a, 'b, 'tcx> IsolatedEncoder<'a, 'b, 'tcx> {
             tables: lazy_tables,
             nested_bodies: lazy_nested_bodies,
             rvalue_promotable_to_static,
+            stable_bodies_hash,
         })
     }
 }
