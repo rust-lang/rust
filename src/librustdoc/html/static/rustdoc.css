@@ -825,6 +825,7 @@ span.since {
 	position: absolute;
 	left: -1px;
 	margin-top: 7px;
+	z-index: 1;
 }
 
 .tooltip {
@@ -860,4 +861,8 @@ span.since {
 	border-width: 5px;
 	border-style: solid;
 	border-color: transparent black transparent transparent;
+}
+
+pre.rust {
+	position: relative;
 }
