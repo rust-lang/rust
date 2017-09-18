@@ -1226,6 +1226,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     {
         self.cstore.encode_metadata(self, link_meta, reachable)
     }
+
+    pub fn type_needs_drop(self, ty: Ty<'tcx>) -> bool {
+        ty.needs_drop(self, ty::ParamEnv::empty(traits::Reveal::All))
+    }
 }
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
