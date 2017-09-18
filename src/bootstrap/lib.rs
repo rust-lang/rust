@@ -134,13 +134,13 @@ extern crate toml;
 #[cfg(unix)]
 extern crate libc;
 
-use std::cell::Cell;
+use std::cell::RefCell;
 use std::collections::{HashSet, HashMap};
 use std::env;
 use std::fs::{self, File};
 use std::io::Read;
 use std::path::{PathBuf, Path};
-use std::process::Command;
+use std::process::{self, Command};
 use std::slice;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime,
@@ -247,7 +247,7 @@ pub struct Build {
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
-    delayed_failures: Cell<usize>,
+    delayed_failures: RefCell<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -329,7 +329,7 @@ impl Build {
             lldb_python_dir: None,
             is_sudo,
             ci_env: CiEnv::current(),
-            delayed_failures: Cell::new(0),
+            delayed_failures: RefCell::new(Vec::new()),
         }
     }
 
@@ -368,6 +368,16 @@ impl Build {
         metadata::build(self);
 
         builder::Builder::run(&self);
+
+        // Check for postponed failures from `test --no-fail-fast`.
+        let failures = self.delayed_failures.borrow();
+        if failures.len() > 0 {
+            println!("\n{} command(s) did not execute successfully:\n", failures.len());
+            for failure in failures.iter() {
+                println!("  - {}\n", failure);
+            }
+            process::exit(1);
+        }
     }
 
     /// Clear out `dir` if `input` is newer.
