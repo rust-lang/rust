@@ -14,8 +14,9 @@ extern crate term;
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 use rustfmt::*;
 use rustfmt::filemap::{write_system_newlines, FileMap};
@@ -155,6 +156,28 @@ fn stdin_formatting_smoke_test() {
         }
     }
     panic!("no stdin");
+}
+
+#[test]
+fn stdin_disable_all_formatting_test() {
+    let input = String::from("fn main() { println!(\"This should not be formatted.\"); }");
+    let mut child = Command::new("./target/debug/rustfmt")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .arg("--config-path=./tests/config/disable_all_formatting.toml")
+        .spawn()
+        .expect("failed to execute child");
+
+    {
+        let stdin = child.stdin.as_mut().expect("failed to get stdin");
+        stdin
+            .write_all(input.as_bytes())
+            .expect("failed to write stdin");
+    }
+    let output = child.wait_with_output().expect("failed to wait on child");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    assert_eq!(input, String::from_utf8(output.stdout).unwrap());
 }
 
 #[test]
