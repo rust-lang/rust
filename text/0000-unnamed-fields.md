@@ -213,6 +213,10 @@ This syntax would also support an obvious translation of inline-declared
 structures with names, by moving the declaration out-of-line; a macro could
 easily perform such a translation.
 
+Note that the intermediate type name in the declaration must resolve to a
+concrete type, and cannot involve a generic type parameter of the containing
+structure.
+
 ## Mental model
 
 In the memory layout of a structure, the alternating uses of `struct { ... }`
