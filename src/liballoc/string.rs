@@ -1451,7 +1451,7 @@ impl String {
     /// s.splice(..beta_offset, "Α is capital alpha; ");
     /// assert_eq!(s, "Α is capital alpha; β is beta");
     /// ```
-    #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+    #[unstable(feature = "splice", reason = "recently added", issue = "44643")]
     pub fn splice<R>(&mut self, range: R, replace_with: &str)
         where R: RangeArgument<usize>
     {
