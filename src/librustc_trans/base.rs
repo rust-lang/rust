@@ -41,12 +41,13 @@ use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
+use rustc::dep_graph::{DepNode, DepKind};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
 use rustc::hir::map as hir_map;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
-use rustc_incremental::{self, IncrementalHashesMap};
+use rustc_incremental;
 use abi;
 use allocator;
 use mir::lvalue::LvalueRef;
@@ -935,12 +936,15 @@ pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
 }
 
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             incremental_hashes_map: IncrementalHashesMap,
                              rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCrateTranslation {
     check_for_rustc_errors_attr(tcx);
 
-    let link_meta = link::build_link_meta(&incremental_hashes_map);
+
+    let crate_hash = tcx.dep_graph
+                        .fingerprint_of(&DepNode::new_no_params(DepKind::Krate))
+                        .unwrap();
+    let link_meta = link::build_link_meta(crate_hash);
     let exported_symbol_node_ids = find_exported_symbols(tcx);
 
     let shared_ccx = SharedCrateContext::new(tcx);
@@ -980,7 +984,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ongoing_translation.translation_finished(tcx);
 
         assert_and_save_dep_graph(tcx,
-                                  incremental_hashes_map,
                                   metadata_incr_hashes,
                                   link_meta);
 
@@ -1113,7 +1116,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ongoing_translation.check_for_errors(tcx.sess);
 
     assert_and_save_dep_graph(tcx,
-                              incremental_hashes_map,
                               metadata_incr_hashes,
                               link_meta);
     ongoing_translation
@@ -1124,7 +1126,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 thread_local!(static DISPOSITIONS: RefCell<Vec<(String, Disposition)>> = Default::default());
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       incremental_hashes_map: IncrementalHashesMap,
                                        metadata_incr_hashes: EncodedMetadataHashes,
                                        link_meta: LinkMeta) {
     time(tcx.sess.time_passes(),
@@ -1134,7 +1135,6 @@ fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(tcx.sess.time_passes(),
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx,
-                                              incremental_hashes_map,
                                               &metadata_incr_hashes,
                                               link_meta.crate_hash));
 }
