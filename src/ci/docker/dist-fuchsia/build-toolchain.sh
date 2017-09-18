@@ -17,14 +17,14 @@ source shared.sh
 # Download sources
 SRCS=(
   "https://fuchsia.googlesource.com/zircon zircon e9a26dbc70d631029f8ee9763103910b7e3a2fe1"
-  "https://llvm.googlesource.com/llvm llvm 3f58a16d8eec385e2b3ebdfbb84ff9d3bf27e025"
-  "https://llvm.googlesource.com/clang llvm/tools/clang 727ea63e6e82677f6e10e05e08bc7d6bdbae3111"
-  "https://llvm.googlesource.com/lld llvm/tools/lld a31286c1366e5e89b8872803fded13805a1a084b"
-  "https://llvm.googlesource.com/lldb llvm/tools/lldb 0b2384abec4cb99ad66687712e07dee4dd9d187e"
-  "https://llvm.googlesource.com/compiler-rt llvm/runtimes/compiler-rt 9093a35c599fe41278606a20b51095ea8bd5a081"
-  "https://llvm.googlesource.com/libcxx llvm/runtimes/libcxx 607e0c71ec4f7fd377ad3f6c47b08dbe89f66eaa"
-  "https://llvm.googlesource.com/libcxxabi llvm/runtimes/libcxxabi 0a3a1a8a5ca5ef69e0f6b7d5b9d13e63e6fd2c19"
-  "https://llvm.googlesource.com/libunwind llvm/runtimes/libunwind e128003563d99d9ee62247c4cee40f07d21c03e3"
+  "https://llvm.googlesource.com/llvm llvm 65bdf0ae4a87e6992c24f06e2612909952468710"
+  "https://llvm.googlesource.com/clang llvm/tools/clang 914987de45cf83636537909ce09156aa7a37d6ec"
+  "https://llvm.googlesource.com/lld llvm/tools/lld f8ed4483c589b390daafac92e28f4680ad052643"
+  "https://llvm.googlesource.com/lldb llvm/tools/lldb 55cf8753321782668cb7e2d879457ee1ad57a2b9"
+  "https://llvm.googlesource.com/compiler-rt llvm/runtimes/compiler-rt a8682fdf74d3cb93769b7394f2cdffc5cefb8bd8"
+  "https://llvm.googlesource.com/libcxx llvm/runtimes/libcxx 5f919fe349450b3da0e29611ae37f6a940179290"
+  "https://llvm.googlesource.com/libcxxabi llvm/runtimes/libcxxabi caa78daf9285dada17e3e6b8aebcf7d128427f83"
+  "https://llvm.googlesource.com/libunwind llvm/runtimes/libunwind 469bacd2ea64679c15bb4d86adf000f2f2c27328"
 )
 
 fetch() {
@@ -41,27 +41,7 @@ for i in "${SRCS[@]}"; do
   fetch $i
 done
 
-# Remove this once https://reviews.llvm.org/D28791 is resolved
-cd llvm/runtimes/compiler-rt
-patch -Np1 < /tmp/compiler-rt-dso-handle.patch
-cd ../../..
-
-# Build toolchain
-cd llvm
-mkdir build
-cd build
-hide_output cmake -GNinja \
-  -DFUCHSIA_SYSROOT=${PWD}/../../zircon/third_party/ulib/musl \
-  -DLLVM_ENABLE_LTO=OFF \
-  -DCLANG_BOOTSTRAP_PASSTHROUGH=LLVM_ENABLE_LTO \
-  -C ../tools/clang/cmake/caches/Fuchsia.cmake \
-  ..
-hide_output ninja stage2-distribution
-hide_output ninja stage2-install-distribution
-cd ../..
-
 # Build sysroot
-rm -rf llvm/runtimes/compiler-rt
 ./zircon/scripts/download-toolchain
 
 build_sysroot() {
@@ -77,40 +57,26 @@ build_sysroot() {
   mkdir -p $dst
   cp -r zircon/build-${tgt}/sysroot/include $dst/
   cp -r zircon/build-${tgt}/sysroot/lib $dst/
-
-  cd llvm
-  mkdir build-runtimes-${arch}
-  cd build-runtimes-${arch}
-  hide_output cmake -GNinja \
-    -DCMAKE_C_COMPILER=clang \
-    -DCMAKE_CXX_COMPILER=clang++ \
-    -DCMAKE_AR=/usr/local/bin/llvm-ar \
-    -DCMAKE_RANLIB=/usr/local/bin/llvm-ranlib \
-    -DCMAKE_INSTALL_PREFIX= \
-    -DLLVM_MAIN_SRC_DIR=${PWD}/.. \
-    -DLLVM_BINARY_DIR=${PWD}/../build \
-    -DLLVM_ENABLE_WERROR=OFF \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLLVM_INCLUDE_TESTS=ON \
-    -DCMAKE_SYSTEM_NAME=Fuchsia \
-    -DCMAKE_C_COMPILER_TARGET=${arch}-fuchsia \
-    -DCMAKE_CXX_COMPILER_TARGET=${arch}-fuchsia \
-    -DUNIX=1 \
-    -DLIBCXX_HAS_MUSL_LIBC=ON \
-    -DLIBCXXABI_USE_LLVM_UNWINDER=ON \
-    -DCMAKE_SYSROOT=${dst} \
-    -DCMAKE_C_COMPILER_FORCED=TRUE \
-    -DCMAKE_CXX_COMPILER_FORCED=TRUE \
-    -DLLVM_ENABLE_LIBCXX=ON \
-    -DCMAKE_EXE_LINKER_FLAGS="-nodefaultlibs -lc" \
-    -DCMAKE_SHARED_LINKER_FLAGS="$(clang --target=${arch}-fuchsia -print-libgcc-file-name)" \
-    ../runtimes
-  hide_output env DESTDIR="${dst}" ninja install
-  cd ../..
 }
 
-build_sysroot "x86_64"
-build_sysroot "aarch64"
+for arch in x86_64 aarch64; do
+  build_sysroot ${arch}
+done
+
+# Build toolchain
+cd llvm
+mkdir build
+cd build
+hide_output cmake -GNinja \
+  -DFUCHSIA_x86_64_SYSROOT=/usr/local/x86_64-unknown-fuchsia \
+  -DFUCHSIA_aarch64_SYSROOT=/usr/local/aarch64-unknown-fuchsia \
+  -DLLVM_ENABLE_LTO=OFF \
+  -DCLANG_BOOTSTRAP_PASSTHROUGH=LLVM_ENABLE_LTO \
+  -C ../tools/clang/cmake/caches/Fuchsia.cmake \
+  ..
+hide_output ninja stage2-distribution
+hide_output ninja stage2-install-distribution
+cd ../..
 
 rm -rf zircon llvm
 
