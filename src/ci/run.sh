@@ -52,6 +52,10 @@ if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   fi
 else
+  # Let's try to take advantage of some of those sweet sweet parallelism wins by
+  # using multiple codegen units during the bootstrap
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-units=16"
+
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
   if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
