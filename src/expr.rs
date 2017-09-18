@@ -32,9 +32,9 @@ use patterns::{can_be_overflowed_pat, TuplePatField};
 use rewrite::{Rewrite, RewriteContext};
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
-use utils::{binary_search, colon_spaces, contains_skip, extra_offset, first_line_width,
-            inner_attributes, last_line_extendable, last_line_width, left_most_sub_expr, mk_sp,
-            outer_attributes, paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
+use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,
+            last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, outer_attributes,
+            paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
             trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -83,13 +83,8 @@ pub fn format_expr(
         },
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
-            rewrite_call_with_binary_search(
-                context,
-                &**callee,
-                &ptr_vec_to_ref_vec(&args),
-                inner_span,
-                shape,
-            )
+            let callee_str = try_opt!(callee.rewrite(context, shape));
+            rewrite_call(context, &callee_str, &args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
@@ -2034,46 +2029,6 @@ fn string_requires_rewrite(
     }
 
     false
-}
-
-pub fn rewrite_call_with_binary_search<R>(
-    context: &RewriteContext,
-    callee: &R,
-    args: &[&ast::Expr],
-    span: Span,
-    shape: Shape,
-) -> Option<String>
-where
-    R: Rewrite,
-{
-    let force_trailing_comma = if context.inside_macro {
-        span_ends_with_comma(context, span)
-    } else {
-        false
-    };
-    let closure = |callee_max_width| {
-        // FIXME using byte lens instead of char lens (and probably all over the
-        // place too)
-        let callee_shape = Shape {
-            width: callee_max_width,
-            ..shape
-        };
-        let callee_str = callee
-            .rewrite(context, callee_shape)
-            .ok_or(Ordering::Greater)?;
-
-        rewrite_call_inner(
-            context,
-            &callee_str,
-            args,
-            span,
-            shape,
-            context.config.fn_call_width(),
-            force_trailing_comma,
-        )
-    };
-
-    binary_search(1, shape.width, closure)
 }
 
 pub fn rewrite_call(

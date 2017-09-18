@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::borrow::Cow;
-use std::cmp::Ordering;
 
 use syntax::{abi, ptr};
 use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
@@ -439,33 +438,6 @@ impl Rewrite for String {
     }
 }
 
-// Binary search in integer range. Returns the first Ok value returned by the
-// callback.
-// The callback takes an integer and returns either an Ok, or an Err indicating
-// whether the `guess' was too high (Ordering::Less), or too low.
-// This function is guaranteed to try to the hi value first.
-pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<T>
-where
-    C: Fn(usize) -> Result<T, Ordering>,
-{
-    let mut middle = hi;
-
-    while lo <= hi {
-        match callback(middle) {
-            Ok(val) => return Some(val),
-            Err(Ordering::Less) => {
-                hi = middle - 1;
-            }
-            Err(..) => {
-                lo = middle + 1;
-            }
-        }
-        middle = (hi + lo) / 2;
-    }
-
-    None
-}
-
 #[inline]
 pub fn colon_spaces(before: bool, after: bool) -> &'static str {
     match (before, after) {
@@ -483,22 +455,6 @@ pub fn paren_overhead(context: &RewriteContext) -> usize {
     } else {
         2
     }
-}
-
-#[test]
-fn bin_search_test() {
-    let closure = |i| match i {
-        4 => Ok(()),
-        j if j > 4 => Err(Ordering::Less),
-        j if j < 4 => Err(Ordering::Greater),
-        _ => unreachable!(),
-    };
-
-    assert_eq!(Some(()), binary_search(1, 10, &closure));
-    assert_eq!(None, binary_search(1, 3, &closure));
-    assert_eq!(Some(()), binary_search(0, 44, &closure));
-    assert_eq!(Some(()), binary_search(4, 125, &closure));
-    assert_eq!(None, binary_search(6, 100, &closure));
 }
 
 pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
