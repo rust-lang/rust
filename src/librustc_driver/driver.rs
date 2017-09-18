@@ -33,7 +33,7 @@ use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_trans as trans;
-use rustc_trans_traits::TransCrate;
+use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;

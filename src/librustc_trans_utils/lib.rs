@@ -29,9 +29,15 @@
 
 #![cfg_attr(stage0, feature(const_fn))]
 
+extern crate ar;
+extern crate flate2;
+extern crate owning_ref;
 #[macro_use]
 extern crate log;
+
+#[macro_use]
 extern crate rustc;
+extern crate rustc_back;
 extern crate rustc_incremental;
 extern crate syntax;
 extern crate syntax_pos;
@@ -44,6 +50,7 @@ use rustc::util::nodemap::NodeSet;
 use syntax::attr;
 
 pub mod link;
+pub mod trans_crate;
 
 /// The context provided lists a set of reachable ids as calculated by
 /// middle::reachable, but this contains far more ids and symbols than we're

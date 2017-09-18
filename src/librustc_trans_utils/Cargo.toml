@@ -10,8 +10,13 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+ar = "0.3.0"
+flate2 = "0.2"
+owning_ref = "0.3.3"
 log = "0.3"
-rustc = { path = "../librustc" }
-rustc_incremental = { path = "../librustc_incremental" }
+
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+rustc = { path = "../librustc" }
+rustc_back = { path = "../librustc_back" }
+rustc_incremental = { path = "../librustc_incremental" }

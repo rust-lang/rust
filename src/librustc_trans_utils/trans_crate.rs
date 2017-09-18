@@ -21,17 +21,6 @@
 
 #![feature(box_syntax)]
 
-extern crate ar;
-extern crate flate2;
-extern crate owning_ref;
-
-extern crate syntax;
-#[macro_use]
-extern crate rustc;
-extern crate rustc_back;
-extern crate rustc_incremental;
-extern crate rustc_trans_utils;
-
 use std::io::prelude::*;
 use std::io::{self, Cursor};
 use std::fs::File;
@@ -53,8 +42,7 @@ use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
 use rustc_incremental::IncrementalHashesMap;
-use rustc_trans_utils::find_exported_symbols;
-use rustc_trans_utils::link::{build_link_meta, out_filename};
+use link::{build_link_meta, out_filename};
 
 pub trait TransCrate {
     type MetadataLoader: MetadataLoaderTrait;
@@ -197,7 +185,7 @@ impl TransCrate for MetadataOnlyTransCrate {
         _output_filenames: &OutputFilenames,
     ) -> Self::OngoingCrateTranslation {
         let link_meta = build_link_meta(&incr_hashes_map);
-        let exported_symbols = find_exported_symbols(tcx, &analysis.reachable);
+        let exported_symbols = ::find_exported_symbols(tcx, &analysis.reachable);
         let (metadata, _hashes) = tcx.encode_metadata(&link_meta, &exported_symbols);
 
         OngoingCrateTranslation {

@@ -50,7 +50,6 @@ extern crate rustc_save_analysis;
 #[cfg(feature="llvm")]
 extern crate rustc_trans;
 extern crate rustc_trans_utils;
-extern crate rustc_trans_traits;
 extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use]
@@ -76,7 +75,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
-use rustc_trans_traits::TransCrate;
+use rustc_trans_utils::trans_crate::TransCrate;
 
 use serialize::json::ToJson;
 
@@ -153,7 +152,7 @@ pub fn run<F>(run_compiler: F) -> isize
 }
 
 #[cfg(not(feature="llvm"))]
-pub use rustc_trans_traits::MetadataOnlyTransCrate as DefaultTransCrate;
+pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as DefaultTransCrate;
 #[cfg(feature="llvm")]
 pub use rustc_trans::LlvmTransCrate as DefaultTransCrate;
 
@@ -162,8 +161,8 @@ mod rustc_trans {
     use syntax_pos::symbol::Symbol;
     use rustc::session::Session;
     use rustc::session::config::PrintRequest;
-    pub use rustc_trans_traits::MetadataOnlyTransCrate as LlvmTransCrate;
-    pub use rustc_trans_traits::TranslatedCrate as CrateTranslation;
+    pub use rustc_trans_utils::trans_crate::MetadataOnlyTransCrate as LlvmTransCrate;
+    pub use rustc_trans_utils::trans_crate::TranslatedCrate as CrateTranslation;
 
     pub fn init(_sess: &Session) {}
     pub fn enable_llvm_debug() {}

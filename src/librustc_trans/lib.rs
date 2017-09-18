@@ -50,7 +50,6 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
-extern crate rustc_trans_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_demangle;
 extern crate jobserver;
@@ -154,7 +153,7 @@ impl LlvmTransCrate {
     }
 }
 
-impl rustc_trans_traits::TransCrate for LlvmTransCrate {
+impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
     type MetadataLoader = metadata::LlvmMetadataLoader;
     type OngoingCrateTranslation = back::write::OngoingCrateTranslation;
     type TranslatedCrate = CrateTranslation;
