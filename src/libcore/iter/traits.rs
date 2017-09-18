@@ -426,6 +426,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(iter_rfold)]
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of a
@@ -439,6 +440,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// and continuing with each element from the back until the front:
     ///
     /// ```
+    /// #![feature(iter_rfold)]
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
