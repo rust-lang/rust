@@ -301,7 +301,10 @@ impl<'a> CrateLoader<'a> {
             .decode(&cmeta)
             .filter(|lib| relevant_lib(self.sess, lib) &&
                           lib.kind == cstore::NativeLibraryKind::NativeUnknown)
-            .flat_map(|lib| lib.foreign_items.into_iter())
+            .flat_map(|lib| {
+                assert!(lib.foreign_items.iter().all(|def_id| def_id.krate == cnum));
+                lib.foreign_items.into_iter().map(|def_id| def_id.index)
+            })
             .collect();
 
         cmeta.dllimport_foreign_items = dllimports;

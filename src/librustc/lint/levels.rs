@@ -12,9 +12,12 @@ use std::cmp;
 
 use errors::DiagnosticBuilder;
 use hir::HirId;
+use ich::StableHashingContext;
 use lint::builtin;
 use lint::context::CheckLintNameResult;
 use lint::{self, Lint, LintId, Level, LintSource};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use session::Session;
 use syntax::ast;
 use syntax::attr;
@@ -380,5 +383,64 @@ impl LintLevelMap {
         self.id_to_set.get(&id).map(|idx| {
             self.sets.get_lint_level(lint, *idx, None)
         })
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for LintLevelMap {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let LintLevelMap {
+            ref sets,
+            ref id_to_set,
+        } = *self;
+
+        id_to_set.hash_stable(hcx, hasher);
+
+        let LintLevelSets {
+            ref list,
+            lint_cap,
+        } = *sets;
+
+        lint_cap.hash_stable(hcx, hasher);
+
+        hcx.while_hashing_spans(true, |hcx| {
+            list.len().hash_stable(hcx, hasher);
+
+            // We are working under the assumption here that the list of
+            // lint-sets is built in a deterministic order.
+            for lint_set in list {
+                ::std::mem::discriminant(lint_set).hash_stable(hcx, hasher);
+
+                match *lint_set {
+                    LintSet::CommandLine { ref specs } => {
+                        specs.hash_stable(hcx, hasher);
+                    }
+                    LintSet::Node { ref specs, parent } => {
+                        specs.hash_stable(hcx, hasher);
+                        parent.hash_stable(hcx, hasher);
+                    }
+                }
+            }
+        })
+    }
+}
+
+impl<HCX> HashStable<HCX> for LintId {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut HCX,
+                                          hasher: &mut StableHasher<W>) {
+        self.lint_name_raw().hash_stable(hcx, hasher);
+    }
+}
+
+impl<HCX> ToStableHashKey<HCX> for LintId {
+    type KeyType = &'static str;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
+        self.lint_name_raw()
     }
 }

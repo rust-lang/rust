@@ -133,7 +133,7 @@ fn test_env<F>(source_string: &str,
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
+    let hir_map = hir_map::map_crate(&mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
     let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);

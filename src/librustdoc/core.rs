@@ -24,7 +24,7 @@ use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
-use syntax::{ast, codemap};
+use syntax::codemap;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::fold::Folder;
 use errors;
@@ -65,7 +65,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     /// Table type parameter definition -> substituted type
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
-    pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
+    pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
 }
 
 impl<'a, 'tcx> DocContext<'a, 'tcx> {
@@ -77,7 +77,7 @@ impl<'a, 'tcx> DocContext<'a, 'tcx> {
     /// the substitutions for a type alias' RHS.
     pub fn enter_alias<F, R>(&self,
                              ty_substs: FxHashMap<Def, clean::Type>,
-                             lt_substs: FxHashMap<ast::NodeId, clean::Lifetime>,
+                             lt_substs: FxHashMap<DefId, clean::Lifetime>,
                              f: F) -> R
     where F: FnOnce() -> R {
         let (old_tys, old_lts) =
@@ -175,7 +175,7 @@ pub fn run_core(search_paths: SearchPaths,
 
     let arena = DroplessArena::new();
     let arenas = GlobalArenas::new();
-    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
+    let hir_map = hir_map::map_crate(&mut hir_forest, &defs);
     let output_filenames = driver::build_output_filenames(&input,
                                                           &None,
                                                           &None,

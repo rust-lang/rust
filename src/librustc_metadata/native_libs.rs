@@ -96,7 +96,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                 list[0].meta_item().unwrap().clone()
             });
             let foreign_items = fm.items.iter()
-                .map(|it| self.tcx.hir.local_def_id(it.id).index)
+                .map(|it| self.tcx.hir.local_def_id(it.id))
                 .collect();
             let lib = NativeLibrary {
                 name: n,

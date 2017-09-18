@@ -17,9 +17,11 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
 
 use rustc::middle::const_val::ByteArray;
-use rustc::middle::cstore::LinkagePreference;
+use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
+                            ExternBodyNestedBodies};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -659,10 +661,11 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(&self) -> Vec<(DefIndex, usize)> {
+    pub fn get_lang_items(&self) -> Vec<(DefId, usize)> {
         self.root
             .lang_items
             .decode(self)
+            .map(|(def_index, index)| (self.local_def_id(def_index), index))
             .collect()
     }
 
@@ -774,12 +777,16 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn extern_const_body(&self,
                              tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              id: DefIndex)
-                             -> &'tcx hir::Body {
+                             -> ExternConstBody<'tcx> {
         assert!(!self.is_proc_macro(id));
         let ast = self.entry(id).ast.unwrap();
         let def_id = self.local_def_id(id);
-        let body = ast.decode((self, tcx)).body.decode((self, tcx));
-        tcx.hir.intern_inlined_body(def_id, body)
+        let ast = ast.decode((self, tcx));
+        let body = ast.body.decode((self, tcx));
+        ExternConstBody {
+            body: tcx.hir.intern_inlined_body(def_id, body),
+            fingerprint: ast.stable_bodies_hash,
+        }
     }
 
     pub fn item_body_tables(&self,
@@ -790,10 +797,23 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
 
-    pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {
-        self.entry(id).ast.into_iter().flat_map(|ast| {
-            ast.decode(self).nested_bodies.decode(self).map(|body| (body.id(), body))
-        }).collect()
+    pub fn item_body_nested_bodies(&self, id: DefIndex) -> ExternBodyNestedBodies {
+        if let Some(ref ast) = self.entry(id).ast {
+            let ast = ast.decode(self);
+            let nested_bodies: BTreeMap<_, _> = ast.nested_bodies
+                                                   .decode(self)
+                                                   .map(|body| (body.id(), body))
+                                                   .collect();
+            ExternBodyNestedBodies {
+                nested_bodies: Rc::new(nested_bodies),
+                fingerprint: ast.stable_bodies_hash,
+            }
+        } else {
+            ExternBodyNestedBodies {
+                nested_bodies: Rc::new(BTreeMap::new()),
+                fingerprint: Fingerprint::zero(),
+            }
+        }
     }
 
     pub fn const_is_rvalue_promotable_to_static(&self, id: DefIndex) -> bool {
