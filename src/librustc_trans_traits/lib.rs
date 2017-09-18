@@ -21,24 +21,40 @@
 
 #![feature(box_syntax)]
 
+extern crate ar;
+extern crate flate2;
 extern crate owning_ref;
 
+extern crate syntax;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_incremental;
+extern crate rustc_trans_utils;
 
+use std::io::prelude::*;
+use std::io::{self, Cursor};
+use std::fs::File;
 use std::path::Path;
-use owning_ref::ErasedBoxRef;
 
+use owning_ref::{ErasedBoxRef, OwningRef};
+use ar::{Archive, Builder, Header};
+use flate2::Compression;
+use flate2::write::DeflateEncoder;
+
+use syntax::symbol::Symbol;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::Session;
-use rustc::session::config::OutputFilenames;
-use rustc::ty::{TyCtxt, CrateAnalysis};
+use rustc::session::config::{CrateType, OutputFilenames};
+use rustc::ty::{CrateAnalysis, TyCtxt};
 use rustc::ty::maps::Providers;
+use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
 use rustc::dep_graph::DepGraph;
 use rustc_back::target::Target;
 use rustc_incremental::IncrementalHashesMap;
+use rustc_trans_utils::find_exported_symbols;
+use rustc_trans_utils::link::{build_link_meta, out_filename};
 
 pub trait TransCrate {
     type MetadataLoader: MetadataLoaderTrait;
@@ -113,4 +129,118 @@ impl MetadataLoaderTrait for DummyMetadataLoader {
     fn get_dylib_metadata(&self, _target: &Target, _filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
         bug!("DummyMetadataLoader::get_dylib_metadata");
     }
+}
+
+pub struct NoLlvmMetadataLoader;
+
+impl MetadataLoaderTrait for NoLlvmMetadataLoader {
+    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+        let file = File::open(filename)
+            .map_err(|e| format!("metadata file open err: {:?}", e))?;
+        let mut archive = Archive::new(file);
+
+        while let Some(entry_result) = archive.next_entry() {
+            let mut entry = entry_result
+                .map_err(|e| format!("metadata section read err: {:?}", e))?;
+            if entry.header().identifier() == "rust.metadata.bin" {
+                let mut buf = Vec::new();
+                io::copy(&mut entry, &mut buf).unwrap();
+                let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
+                return Ok(buf.map_owner_box().erase_owner());
+            }
+        }
+
+        Err("Couldnt find metadata section".to_string())
+    }
+
+    fn get_dylib_metadata(
+        &self,
+        _target: &Target,
+        _filename: &Path,
+    ) -> Result<ErasedBoxRef<[u8]>, String> {
+        // FIXME: Support reading dylibs from llvm enabled rustc
+        self.get_rlib_metadata(_target, _filename)
+    }
+}
+
+#[allow(dead_code)]
+pub struct MetadataOnlyTransCrate;
+pub struct OngoingCrateTranslation {
+    metadata: EncodedMetadata,
+    metadata_version: Vec<u8>,
+    crate_name: Symbol,
+}
+pub struct TranslatedCrate(OngoingCrateTranslation);
+
+impl MetadataOnlyTransCrate {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        MetadataOnlyTransCrate
+    }
+}
+
+impl TransCrate for MetadataOnlyTransCrate {
+    type MetadataLoader = NoLlvmMetadataLoader;
+    type OngoingCrateTranslation = OngoingCrateTranslation;
+    type TranslatedCrate = TranslatedCrate;
+
+    fn metadata_loader() -> Box<MetadataLoaderTrait> {
+        box NoLlvmMetadataLoader
+    }
+
+    fn provide(_providers: &mut Providers) {}
+
+    fn trans_crate<'a, 'tcx>(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        analysis: CrateAnalysis,
+        incr_hashes_map: IncrementalHashesMap,
+        _output_filenames: &OutputFilenames,
+    ) -> Self::OngoingCrateTranslation {
+        let link_meta = build_link_meta(&incr_hashes_map);
+        let exported_symbols = find_exported_symbols(tcx, &analysis.reachable);
+        let (metadata, _hashes) = tcx.encode_metadata(&link_meta, &exported_symbols);
+
+        OngoingCrateTranslation {
+            metadata: metadata,
+            metadata_version: tcx.metadata_encoding_version().to_vec(),
+            crate_name: tcx.crate_name(LOCAL_CRATE),
+        }
+    }
+
+    fn join_trans(
+        trans: Self::OngoingCrateTranslation,
+        _sess: &Session,
+        _dep_graph: &DepGraph,
+    ) -> Self::TranslatedCrate {
+        TranslatedCrate(trans)
+    }
+
+    fn link_binary(sess: &Session, trans: &Self::TranslatedCrate, outputs: &OutputFilenames) {
+        for &crate_type in sess.opts.crate_types.iter() {
+            if crate_type != CrateType::CrateTypeRlib && crate_type != CrateType::CrateTypeDylib {
+                continue;
+            }
+            let output_name =
+                out_filename(sess, crate_type, &outputs, &trans.0.crate_name.as_str());
+            let mut compressed = trans.0.metadata_version.clone();
+            let metadata = if crate_type == CrateType::CrateTypeDylib {
+                DeflateEncoder::new(&mut compressed, Compression::Fast)
+                    .write_all(&trans.0.metadata.raw_data)
+                    .unwrap();
+                &compressed
+            } else {
+                &trans.0.metadata.raw_data
+            };
+            let mut builder = Builder::new(File::create(&output_name).unwrap());
+            let header = Header::new("rust.metadata.bin".to_string(), metadata.len() as u64);
+            builder.append(&header, Cursor::new(metadata)).unwrap();
+        }
+
+        if !sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
+            && !sess.opts.crate_types.contains(&CrateType::CrateTypeDylib) {
+            sess.fatal("Executables are not supported by the metadata-only backend.");
+        }
+    }
+
+    fn dump_incremental_data(_trans: &Self::TranslatedCrate) {}
 }

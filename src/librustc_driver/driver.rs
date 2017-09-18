@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(not(feature="llvm"), allow(dead_code))]
-
 use rustc::dep_graph::DepGraph;
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
@@ -96,10 +94,6 @@ pub fn compile_input(sess: &Session,
     }
 
     if cfg!(not(feature="llvm")) {
-        if !sess.opts.debugging_opts.no_trans && sess.opts.output_types.should_trans() {
-            sess.err("LLVM is not supported by this rustc. Please use -Z no-trans to compile")
-        }
-
         for cty in sess.opts.crate_types.iter() {
             match *cty {
                 CrateType::CrateTypeRlib | CrateType::CrateTypeDylib |
@@ -269,47 +263,35 @@ pub fn compile_input(sess: &Session,
         })??
     };
 
-    if cfg!(not(feature="llvm")) {
-        let (_, _) = (outputs, trans);
-
-        if sess.opts.crate_types.contains(&CrateType::CrateTypeRlib)
-            || sess.opts.crate_types.contains(&CrateType::CrateTypeDylib) {
-            return Ok(())
-        }
-        sess.fatal("LLVM is not supported by this rustc");
+    if sess.opts.debugging_opts.print_type_sizes {
+        sess.code_stats.borrow().print_type_sizes();
     }
 
+    let (phase5_result, trans) = phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
+
+    controller_entry_point!(after_llvm,
+                            sess,
+                            CompileState::state_after_llvm(input, sess, outdir, output, &trans),
+                            phase5_result);
+    phase5_result?;
+
+    phase_6_link_output::<DefaultTransCrate>(sess, &trans, &outputs);
+
+    // Now that we won't touch anything in the incremental compilation directory
+    // any more, we can finalize it (which involves renaming it)
     #[cfg(feature="llvm")]
-    {
-        if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.borrow().print_type_sizes();
-        }
+    rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
 
-        let (phase5_result, trans) = phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
-
-        controller_entry_point!(after_llvm,
-                                sess,
-                                CompileState::state_after_llvm(input, sess, outdir, output, &trans),
-                                phase5_result);
-        phase5_result?;
-
-        phase_6_link_output::<DefaultTransCrate>(sess, &trans, &outputs);
-
-        // Now that we won't touch anything in the incremental compilation directory
-        // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, trans.link.crate_hash);
-
-        if sess.opts.debugging_opts.perf_stats {
-            sess.print_perf_stats();
-        }
-
-        controller_entry_point!(
-            compilation_done,
-            sess,
-            CompileState::state_when_compilation_done(input, sess, outdir, output),
-            Ok(())
-        );
+    if sess.opts.debugging_opts.perf_stats {
+        sess.print_perf_stats();
     }
+
+    controller_entry_point!(
+        compilation_done,
+        sess,
+        CompileState::state_when_compilation_done(input, sess, outdir, output),
+        Ok(())
+    );
 
     Ok(())
 }
@@ -1171,7 +1153,6 @@ pub fn phase_5_run_llvm_passes<T: TransCrate>(sess: &Session,
 
 /// Run the linker on any artifacts that resulted from the LLVM run.
 /// This should produce either a finished executable or library.
-#[cfg(feature="llvm")]
 pub fn phase_6_link_output<T: TransCrate>(sess: &Session,
                            trans: &<T as TransCrate>::TranslatedCrate,
                            outputs: &OutputFilenames) {

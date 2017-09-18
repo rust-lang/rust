@@ -25,8 +25,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 
-extern crate ar;
-extern crate flate2;
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
@@ -155,173 +153,17 @@ pub fn run<F>(run_compiler: F) -> isize
 }
 
 #[cfg(not(feature="llvm"))]
-pub use trans_metadata_only::MetadataOnlyTransCrate as DefaultTransCrate;
+pub use rustc_trans_traits::MetadataOnlyTransCrate as DefaultTransCrate;
 #[cfg(feature="llvm")]
 pub use rustc_trans::LlvmTransCrate as DefaultTransCrate;
-
-mod no_llvm_metadata_loader {
-    extern crate owning_ref;
-
-    use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
-    use rustc_back::target::Target;
-    use std::io;
-    use std::fs::File;
-    use std::path::Path;
-
-    use ar::Archive;
-    use self::owning_ref::{OwningRef, ErasedBoxRef};
-
-    pub struct NoLlvmMetadataLoader;
-
-    impl MetadataLoaderTrait for NoLlvmMetadataLoader {
-        fn get_rlib_metadata(
-            &self,
-            _: &Target,
-            filename: &Path
-        ) -> Result<ErasedBoxRef<[u8]>, String> {
-            let file = File::open(filename).map_err(|e| {
-                format!("metadata file open err: {:?}", e)
-            })?;
-            let mut archive = Archive::new(file);
-
-            while let Some(entry_result) = archive.next_entry() {
-                let mut entry = entry_result.map_err(|e| {
-                    format!("metadata section read err: {:?}", e)
-                })?;
-                if entry.header().identifier() == "rust.metadata.bin" {
-                    let mut buf = Vec::new();
-                    io::copy(&mut entry, &mut buf).unwrap();
-                    let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
-                    return Ok(buf.map_owner_box().erase_owner());
-                }
-            }
-
-            Err("Couldnt find metadata section".to_string())
-        }
-
-        fn get_dylib_metadata(&self,
-                            _target: &Target,
-                            _filename: &Path)
-                            -> Result<ErasedBoxRef<[u8]>, String> {
-            // FIXME: Support reading dylibs from llvm enabled rustc
-            self.get_rlib_metadata(_target, _filename)
-        }
-    }
-}
-
-mod trans_metadata_only {
-    use std::io::prelude::*;
-    use std::io::Cursor;
-    use std::fs::File;
-
-    use ar::{Builder, Header};
-    use flate2::Compression;
-    use flate2::write::DeflateEncoder;
-
-    use syntax::symbol::Symbol;
-    use rustc::hir::def_id::LOCAL_CRATE;
-    use rustc::session::Session;
-    use rustc::session::config::{OutputFilenames, CrateType};
-    use rustc::ty::{TyCtxt, CrateAnalysis};
-    use rustc::ty::maps::Providers;
-    use rustc::middle::cstore::{MetadataLoader, EncodedMetadata};
-    use rustc::dep_graph::DepGraph;
-    use rustc_incremental::IncrementalHashesMap;
-    use rustc_trans_utils::find_exported_symbols;
-    use rustc_trans_utils::link::{out_filename, build_link_meta};
-    use rustc_trans_traits::TransCrate;
-
-    #[allow(dead_code)]
-    pub struct MetadataOnlyTransCrate;
-    pub struct OngoingCrateTranslation {
-        metadata: EncodedMetadata,
-        metadata_version: Vec<u8>,
-        crate_name: Symbol,
-    }
-    pub struct TranslatedCrate(OngoingCrateTranslation);
-
-    impl MetadataOnlyTransCrate {
-        #[allow(dead_code)]
-        pub fn new(/*_sess: &Session*/) -> Self {
-            MetadataOnlyTransCrate
-        }
-    }
-
-    impl TransCrate for MetadataOnlyTransCrate {
-        type MetadataLoader = ::no_llvm_metadata_loader::NoLlvmMetadataLoader;
-        type OngoingCrateTranslation = OngoingCrateTranslation;
-        type TranslatedCrate = TranslatedCrate;
-
-        fn metadata_loader() -> Box<MetadataLoader> {
-            box ::no_llvm_metadata_loader::NoLlvmMetadataLoader
-        }
-
-        fn provide(_providers: &mut Providers) {}
-
-        fn trans_crate<'a, 'tcx>(
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-            analysis: CrateAnalysis,
-            incr_hashes_map: IncrementalHashesMap,
-            _output_filenames: &OutputFilenames
-        ) -> Self::OngoingCrateTranslation {
-            let link_meta = build_link_meta(&incr_hashes_map);
-            let exported_symbols = find_exported_symbols(tcx, &analysis.reachable);
-            let (metadata, _hashes) = tcx.encode_metadata(&link_meta, &exported_symbols);
-
-            OngoingCrateTranslation {
-                metadata: metadata,
-                metadata_version: tcx.metadata_encoding_version().to_vec(),
-                crate_name: tcx.crate_name(LOCAL_CRATE),
-            }
-        }
-
-        fn join_trans(
-            trans: Self::OngoingCrateTranslation,
-            _sess: &Session,
-            _dep_graph: &DepGraph,
-        ) -> Self::TranslatedCrate {
-            TranslatedCrate(trans)
-        }
-
-        fn link_binary(sess: &Session,
-                       trans: &Self::TranslatedCrate,
-                       outputs: &OutputFilenames) {
-            for &crate_type in sess.opts.crate_types.iter() {
-                if crate_type != CrateType::CrateTypeRlib &&
-                   crate_type != CrateType::CrateTypeDylib {
-                    continue;
-                }
-                let output_name =
-                    out_filename(sess, crate_type, &outputs, &trans.0.crate_name.as_str());
-                let mut compressed = trans.0.metadata_version.clone();
-                let metadata = if crate_type == CrateType::CrateTypeDylib {
-                    DeflateEncoder::new(&mut compressed, Compression::Fast)
-                        .write_all(&trans.0.metadata.raw_data).unwrap();
-                    &compressed
-                } else {
-                    &trans.0.metadata.raw_data
-                };
-                let mut builder = Builder::new(File::create(&output_name).unwrap());
-                let header = Header::new(
-                    "rust.metadata.bin".to_string(),
-                    metadata.len() as u64
-                );
-                builder
-                    .append(&header, Cursor::new(metadata))
-                    .unwrap();
-            }
-        }
-
-        fn dump_incremental_data(_trans: &Self::TranslatedCrate) {}
-    }
-}
 
 #[cfg(not(feature="llvm"))]
 mod rustc_trans {
     use syntax_pos::symbol::Symbol;
     use rustc::session::Session;
     use rustc::session::config::PrintRequest;
-    pub use trans_metadata_only::MetadataOnlyTransCrate as LlvmTransCrate;
+    pub use rustc_trans_traits::MetadataOnlyTransCrate as LlvmTransCrate;
+    pub use rustc_trans_traits::TranslatedCrate as CrateTranslation;
 
     pub fn init(_sess: &Session) {}
     pub fn enable_llvm_debug() {}
@@ -329,8 +171,6 @@ mod rustc_trans {
     pub fn print_passes() {}
     pub fn print(_req: PrintRequest, _sess: &Session) {}
     pub fn target_features(_sess: &Session) -> Vec<Symbol> { vec![] }
-
-    pub struct CrateTranslation(());
 
     pub mod back {
         pub mod write {
