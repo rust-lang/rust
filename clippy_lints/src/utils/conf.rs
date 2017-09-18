@@ -157,7 +157,7 @@ define_Conf! {
         "OpenGL", "OpenSSH", "OpenSSL",
         "TrueType",
         "iOS", "macOS",
-        "TeX", "LaTeX", "BibTex", "BibLaTex",
+        "TeX", "LaTeX", "BibTeX", "BibLaTeX",
         "MinGW",
     ] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
