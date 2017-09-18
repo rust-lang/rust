@@ -63,7 +63,7 @@ cargo = { path = "tools/cargo" }
 # Override rustfmt dependencies both on the repo and the crate (the RLS
 # sometimes uses either).
 # FIXME should only need the crates.io patch, long term.
-[patch.'https://github.com/rust-lang-nursery/rustfmt']
+[patch."https://github.com/rust-lang-nursery/rustfmt"]
 rustfmt-nightly = { path = "tools/rustfmt" }
 [patch.crates-io]
 rustfmt-nightly = { path = "tools/rustfmt" }

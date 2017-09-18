@@ -65,17 +65,17 @@ pub use self::attr_impl::ArgAttribute;
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags! {
-        #[derive(Default, Debug)]
-        flags ArgAttribute : u16 {
-            const ByVal     = 1 << 0,
-            const NoAlias   = 1 << 1,
-            const NoCapture = 1 << 2,
-            const NonNull   = 1 << 3,
-            const ReadOnly  = 1 << 4,
-            const SExt      = 1 << 5,
-            const StructRet = 1 << 6,
-            const ZExt      = 1 << 7,
-            const InReg     = 1 << 8,
+        #[derive(Default)]
+        pub struct ArgAttribute: u16 {
+            const ByVal     = 1 << 0;
+            const NoAlias   = 1 << 1;
+            const NoCapture = 1 << 2;
+            const NonNull   = 1 << 3;
+            const ReadOnly  = 1 << 4;
+            const SExt      = 1 << 5;
+            const StructRet = 1 << 6;
+            const ZExt      = 1 << 7;
+            const InReg     = 1 << 8;
         }
     }
 }

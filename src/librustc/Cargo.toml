@@ -10,13 +10,13 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
+bitflags = "1.0"
 fmt_macros = { path = "../libfmt_macros" }
 graphviz = { path = "../libgraphviz" }
 jobserver = "0.1"
 log = "0.3"
 owning_ref = "0.3.3"
 rustc_back = { path = "../librustc_back" }
-rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

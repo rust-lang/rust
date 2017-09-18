@@ -41,38 +41,38 @@ use std::usize;
 use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {
-    flags Qualif: u8 {
+    struct Qualif: u8 {
         // Constant containing interior mutability (UnsafeCell).
-        const MUTABLE_INTERIOR  = 1 << 0,
+        const MUTABLE_INTERIOR  = 1 << 0;
 
         // Constant containing an ADT that implements Drop.
-        const NEEDS_DROP        = 1 << 1,
+        const NEEDS_DROP        = 1 << 1;
 
         // Function argument.
-        const FN_ARGUMENT       = 1 << 2,
+        const FN_ARGUMENT       = 1 << 2;
 
         // Static lvalue or move from a static.
-        const STATIC            = 1 << 3,
+        const STATIC            = 1 << 3;
 
         // Reference to a static.
-        const STATIC_REF        = 1 << 4,
+        const STATIC_REF        = 1 << 4;
 
         // Not constant at all - non-`const fn` calls, asm!,
         // pointer comparisons, ptr-to-int casts, etc.
-        const NOT_CONST         = 1 << 5,
+        const NOT_CONST         = 1 << 5;
 
         // Refers to temporaries which cannot be promoted as
         // promote_consts decided they weren't simple enough.
-        const NOT_PROMOTABLE    = 1 << 6,
+        const NOT_PROMOTABLE    = 1 << 6;
 
         // Borrows of temporaries can be promoted only
         // if they have none of the above qualifications.
-        const NEVER_PROMOTE     = 0b111_1111,
+        const NEVER_PROMOTE     = 0b111_1111;
 
         // Const items can only have MUTABLE_INTERIOR
         // and NOT_PROMOTABLE without producing an error.
         const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits &
-                                  !Qualif::NOT_PROMOTABLE.bits
+                                  !Qualif::NOT_PROMOTABLE.bits;
     }
 }
 

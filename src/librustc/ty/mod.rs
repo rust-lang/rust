@@ -398,35 +398,35 @@ pub struct CReaderCacheKey {
 // check whether the type has various kinds of types in it without
 // recursing over the type itself.
 bitflags! {
-    flags TypeFlags: u32 {
-        const HAS_PARAMS         = 1 << 0,
-        const HAS_SELF           = 1 << 1,
-        const HAS_TY_INFER       = 1 << 2,
-        const HAS_RE_INFER       = 1 << 3,
-        const HAS_RE_SKOL        = 1 << 4,
-        const HAS_RE_EARLY_BOUND = 1 << 5,
-        const HAS_FREE_REGIONS   = 1 << 6,
-        const HAS_TY_ERR         = 1 << 7,
-        const HAS_PROJECTION     = 1 << 8,
+    pub struct TypeFlags: u32 {
+        const HAS_PARAMS         = 1 << 0;
+        const HAS_SELF           = 1 << 1;
+        const HAS_TY_INFER       = 1 << 2;
+        const HAS_RE_INFER       = 1 << 3;
+        const HAS_RE_SKOL        = 1 << 4;
+        const HAS_RE_EARLY_BOUND = 1 << 5;
+        const HAS_FREE_REGIONS   = 1 << 6;
+        const HAS_TY_ERR         = 1 << 7;
+        const HAS_PROJECTION     = 1 << 8;
 
         // FIXME: Rename this to the actual property since it's used for generators too
-        const HAS_TY_CLOSURE     = 1 << 9,
+        const HAS_TY_CLOSURE     = 1 << 9;
 
         // true if there are "names" of types and regions and so forth
         // that are local to a particular fn
-        const HAS_LOCAL_NAMES    = 1 << 10,
+        const HAS_LOCAL_NAMES    = 1 << 10;
 
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
-        const KEEP_IN_LOCAL_TCX  = 1 << 11,
+        const KEEP_IN_LOCAL_TCX  = 1 << 11;
 
         // Is there a projection that does not involve a bound region?
         // Currently we can't normalize projections w/ bound regions.
-        const HAS_NORMALIZABLE_PROJECTION = 1 << 12,
+        const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
-                                   TypeFlags::HAS_RE_EARLY_BOUND.bits,
+                                   TypeFlags::HAS_RE_EARLY_BOUND.bits;
 
         // Flags representing the nominal content of a type,
         // computed by FlagsComputation. If you add a new nominal
@@ -442,7 +442,7 @@ bitflags! {
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_LOCAL_NAMES.bits |
-                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits,
+                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits;
     }
 }
 
@@ -1258,13 +1258,13 @@ pub struct Destructor {
 }
 
 bitflags! {
-    flags AdtFlags: u32 {
-        const NO_ADT_FLAGS        = 0,
-        const IS_ENUM             = 1 << 0,
-        const IS_PHANTOM_DATA     = 1 << 1,
-        const IS_FUNDAMENTAL      = 1 << 2,
-        const IS_UNION            = 1 << 3,
-        const IS_BOX              = 1 << 4,
+    pub struct AdtFlags: u32 {
+        const NO_ADT_FLAGS        = 0;
+        const IS_ENUM             = 1 << 0;
+        const IS_PHANTOM_DATA     = 1 << 1;
+        const IS_FUNDAMENTAL      = 1 << 2;
+        const IS_UNION            = 1 << 3;
+        const IS_BOX              = 1 << 4;
     }
 }
 
@@ -1357,18 +1357,18 @@ pub enum AdtKind { Struct, Union, Enum }
 
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable, Default)]
-    flags ReprFlags: u8 {
-        const IS_C               = 1 << 0,
-        const IS_PACKED          = 1 << 1,
-        const IS_SIMD            = 1 << 2,
+    pub struct ReprFlags: u8 {
+        const IS_C               = 1 << 0;
+        const IS_PACKED          = 1 << 1;
+        const IS_SIMD            = 1 << 2;
         // Internal only for now. If true, don't reorder fields.
-        const IS_LINEAR          = 1 << 3,
+        const IS_LINEAR          = 1 << 3;
 
         // Any of these flags being set prevent field reordering optimisation.
         const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
                                    ReprFlags::IS_PACKED.bits |
                                    ReprFlags::IS_SIMD.bits |
-                                   ReprFlags::IS_LINEAR.bits,
+                                   ReprFlags::IS_LINEAR.bits;
     }
 }
 

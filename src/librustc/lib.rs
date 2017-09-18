@@ -41,6 +41,7 @@
 #![recursion_limit="256"]
 
 extern crate arena;
+#[macro_use] extern crate bitflags;
 extern crate core;
 extern crate fmt_macros;
 extern crate getopts;
@@ -56,7 +57,6 @@ extern crate rustc_errors as errors;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
-#[macro_use] #[no_link] extern crate rustc_bitflags;
 extern crate jobserver;
 
 extern crate serialize as rustc_serialize; // used by deriving

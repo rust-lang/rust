@@ -24,9 +24,13 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(i128_type)]
 
+// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
+#[allow(unused_extern_crates)]
+extern crate rustc_cratesio_shim;
+
+#[macro_use] extern crate bitflags;
 extern crate serialize;
 #[macro_use] extern crate log;
-#[macro_use] extern crate bitflags;
 extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;

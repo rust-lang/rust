@@ -53,13 +53,17 @@
 #![cfg_attr(not(stage0), feature(const_min_value))]
 #![cfg_attr(not(stage0), feature(const_max_value))]
 
+// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
+#[allow(unused_extern_crates)]
+extern crate rustc_cratesio_shim;
+
 #[macro_use]
-extern crate rustc_bitflags;
+extern crate bitflags;
 
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::{Neg, Add, Sub, Mul, Div, Rem};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, BitOrAssign};
+use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 use std::str::FromStr;
 
 bitflags! {
@@ -67,20 +71,13 @@ bitflags! {
     ///
     /// UNDERFLOW or OVERFLOW are always returned or-ed with INEXACT.
     #[must_use]
-    #[derive(Debug)]
-    flags Status: u8 {
-        const OK = 0x00,
-        const INVALID_OP = 0x01,
-        const DIV_BY_ZERO = 0x02,
-        const OVERFLOW = 0x04,
-        const UNDERFLOW = 0x08,
-        const INEXACT = 0x10
-    }
-}
-
-impl BitOrAssign for Status {
-    fn bitor_assign(&mut self, rhs: Self) {
-        *self = *self | rhs;
+    pub struct Status: u8 {
+        const OK = 0x00;
+        const INVALID_OP = 0x01;
+        const DIV_BY_ZERO = 0x02;
+        const OVERFLOW = 0x04;
+        const UNDERFLOW = 0x08;
+        const INEXACT = 0x10;
     }
 }
 
