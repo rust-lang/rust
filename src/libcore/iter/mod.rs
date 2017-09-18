@@ -359,6 +359,12 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 
+    fn fold<Acc, F>(self, init: Acc, f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.iter.rfold(init, f)
+    }
+
     #[inline]
     fn find<P>(&mut self, predicate: P) -> Option<Self::Item>
         where P: FnMut(&Self::Item) -> bool
@@ -378,6 +384,12 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
 impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
+
+    fn rfold<Acc, F>(self, init: Acc, f: F) -> Acc
+        where F: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.iter.fold(init, f)
+    }
 
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item>
         where P: FnMut(&Self::Item) -> bool
