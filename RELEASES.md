@@ -9,6 +9,13 @@ Language
   my_macro!(Vec<i32>::new); // Always worked
   my_macro!(Vec::<i32>::new); // Now works
   ```
+- [You can now use static references for literals.][43838]
+  Example:
+  ```
+  fn main() {
+      let x: &'static u32 = 0;
+  }
+  ```
 
 Compiler
 --------
@@ -18,8 +25,8 @@ Compiler
 
 Libraries
 ---------
-- [Generate builtin impls for `Clone` for `[T; N]` where `N` is between 0
-  and 32][43690]
+- [Generate builtin impls for `Clone` for all arrays and tuples that
+  are `T: Clone`][43690]
 - [`Stdin`, `Stdout`, and `Stderr` now implement `AsRawFd`.][43459]
 - [`Rc` and `Arc` now implement `From<&[T]> where T: Clone`, `From<str>`,
   `From<String>`, `From<Box<T>> where T: ?Sized`, and `From<Vec<T>>`.][42565]
@@ -38,7 +45,7 @@ Cargo
   like patterns][cargo/4270]
 - [Added the `--all-targets` option][cargo/4400]
 - [Using required dependencies as a feature is now deprecated and emits
-  a warning][cargo/]
+  a warning][cargo/4364]
 
 
 Misc
@@ -50,11 +57,12 @@ Misc
 
 Compatibility Notes
 -------------------
-- [Remove the trait selection impl in method::probe][43880] This may cause
-  breakage in subtyping corner cases.
+- [Changes in method matching against higher-ranked types][43880] This may cause
+  breakage in subtyping corner cases. [A more in-depth explanation is available.][info/43880]
 - [rustc's JSON error output's byte position start at top of file.][42973]
   Was previously relative to the rustc's internal `CodeMap` struct which
   required the unstable library `libsyntax` to correctly use.
+- [`unused_results` lint no longer ignores booleans][43728]
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
 [42588]: https://github.com/rust-lang/rust/pull/42588
@@ -62,6 +70,8 @@ Compatibility Notes
 [43459]: https://github.com/rust-lang/rust/pull/43459
 [43540]: https://github.com/rust-lang/rust/pull/43540
 [43690]: https://github.com/rust-lang/rust/pull/43690
+[43728]: https://github.com/rust-lang/rust/pull/43728
+[43838]: https://github.com/rust-lang/rust/pull/43838
 [43863]: https://github.com/rust-lang/rust/pull/43863
 [43880]: https://github.com/rust-lang/rust/pull/43880
 [43911]: https://github.com/rust-lang/rust/pull/43911
@@ -74,7 +84,7 @@ Compatibility Notes
 [cargo/4364]: https://github.com/rust-lang/cargo/pull/4364
 [cargo/4400]: https://github.com/rust-lang/cargo/pull/4400
 [RFC 1969]: https://github.com/rust-lang/rfcs/pull/1969
-
+[info/43880]: https://github.com/rust-lang/rust/issues/44224#issuecomment-330058902
 
 Version 1.20.0 (2017-08-31)
 ===========================
