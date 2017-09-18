@@ -187,6 +187,12 @@ pointers for understanding them better.
 - sess -- the **compiler session**, which stores global data used throughout compilation
 - side tables -- because the AST and HIR are immutable once created, we often carry extra
   information about them in the form of hashtables, indexed by the id of a particular node.
+- span -- a location in the user's source code, used for error
+  reporting primarily.  These are like a file-name/line-number/column
+  tuple on steroids: they carry a start/end point, and also track
+  macro expansions and compiler desugaring. All while being packed
+  into a few bytes (really, it's an index into a table). See the
+  `Span` datatype for more.
 - substs -- the **substitutions** for a given generic type or item
   (e.g., the `i32, u32` in `HashMap<i32, u32>`)
 - tcx -- the "typing context", main data structure of the compiler (see `librustc/ty`).
