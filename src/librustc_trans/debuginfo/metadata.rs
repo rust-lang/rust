@@ -816,7 +816,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
             0,
             split_name.as_ptr() as *const _);
 
-        if sess.opts.debugging_opts.profile {
+        if sess.opts.cg.profile {
             let cu_desc_metadata = llvm::LLVMRustMetadataAsValue(debug_context.llcontext,
                                                                  unit_metadata);
 

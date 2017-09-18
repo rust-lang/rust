@@ -698,7 +698,7 @@ pub fn start_async_translation(tcx: TyCtxt,
         }
     }
 
-    if sess.opts.debugging_opts.profile {
+    if sess.opts.cg.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
