@@ -196,6 +196,23 @@ pub trait FromIterator<A>: Sized {
 ///     assert_eq!(i as i32, n);
 /// }
 /// ```
+///
+/// It is common to use `IntoIterator` as a trait bound. This allows
+/// the input collection type to change, so long as it is still an
+/// iterator. Additional bounds can be specified by restricting on
+/// `Item`:
+///
+/// ```rust
+/// fn collect_as_strings<T>(collection: T) -> Vec<String>
+///     where T: IntoIterator,
+///           T::Item : std::fmt::Debug,
+/// {
+///     collection
+///         .into_iter()
+///         .map(|item| format!("{:?}", item))
+///         .collect()
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
