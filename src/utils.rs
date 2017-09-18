@@ -11,7 +11,7 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
 
-use syntax::abi;
+use syntax::{abi, ptr};
 use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
                   Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
@@ -95,6 +95,12 @@ pub fn format_abi(abi: abi::Abi, explicit_abi: bool) -> Cow<'static, str> {
     } else {
         Cow::from(format!("extern {} ", abi))
     }
+}
+
+#[inline]
+// Transform `Vec<syntax::ptr::P<T>>` into `Vec<&T>`
+pub fn ptr_vec_to_ref_vec<T>(vec: &[ptr::P<T>]) -> Vec<&T> {
+    vec.iter().map(|x| &**x).collect::<Vec<_>>()
 }
 
 #[inline]

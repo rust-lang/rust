@@ -11,7 +11,7 @@
 use std::cmp;
 
 use strings::string_buffer::StringBuffer;
-use syntax::{ast, ptr, visit};
+use syntax::{ast, visit};
 use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
@@ -30,7 +30,7 @@ use lists::{itemize_list, write_list, DefinitiveListTactic, ListFormatting, Sepa
 use macros::{rewrite_macro, MacroPosition};
 use regex::Regex;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{self, contains_skip, inner_attributes, mk_sp};
+use utils::{self, contains_skip, inner_attributes, mk_sp, ptr_vec_to_ref_vec};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -152,9 +152,7 @@ impl<'a> FmtVisitor<'a> {
             self.visit_attrs(attrs, ast::AttrStyle::Inner);
         }
 
-        for stmt in &b.stmts {
-            self.visit_stmt(stmt)
-        }
+        self.walk_block_stmts(b);
 
         if !b.stmts.is_empty() {
             if let Some(expr) = utils::stmt_expr(&b.stmts[b.stmts.len() - 1]) {
@@ -641,12 +639,7 @@ impl<'a> FmtVisitor<'a> {
         false
     }
 
-    fn reorder_items<F>(
-        &mut self,
-        items_left: &[ptr::P<ast::Item>],
-        is_item: &F,
-        in_group: bool,
-    ) -> usize
+    fn reorder_items<F>(&mut self, items_left: &[&ast::Item], is_item: &F, in_group: bool) -> usize
     where
         F: Fn(&ast::Item) -> bool,
     {
@@ -679,8 +672,7 @@ impl<'a> FmtVisitor<'a> {
         item_length
     }
 
-    fn walk_mod_items(&mut self, m: &ast::Mod) {
-        let mut items_left: &[ptr::P<ast::Item>] = &m.items;
+    fn walk_items(&mut self, mut items_left: &[&ast::Item]) {
         while !items_left.is_empty() {
             // If the next item is a `use` declaration, then extract it and any subsequent `use`s
             // to be potentially reordered within `format_imports`. Otherwise, just format the
@@ -709,6 +701,43 @@ impl<'a> FmtVisitor<'a> {
                 items_left = rest;
             }
         }
+    }
+
+    fn walk_mod_items(&mut self, m: &ast::Mod) {
+        self.walk_items(&ptr_vec_to_ref_vec(&m.items));
+    }
+
+    fn walk_stmts(&mut self, stmts: &[ast::Stmt]) {
+        fn to_stmt_item(stmt: &ast::Stmt) -> Option<&ast::Item> {
+            match stmt.node {
+                ast::StmtKind::Item(ref item) => Some(&**item),
+                _ => None,
+            }
+        }
+
+        if stmts.is_empty() {
+            return;
+        }
+
+        // Extract leading `use ...;`.
+        let items: Vec<_> = stmts
+            .iter()
+            .take_while(|stmt| to_stmt_item(stmt).is_some())
+            .filter_map(|stmt| to_stmt_item(stmt))
+            .take_while(|item| is_use_item(item))
+            .collect();
+
+        if items.is_empty() {
+            self.visit_stmt(&stmts[0]);
+            self.walk_stmts(&stmts[1..]);
+        } else {
+            self.walk_items(&items);
+            self.walk_stmts(&stmts[items.len()..]);
+        }
+    }
+
+    fn walk_block_stmts(&mut self, b: &ast::Block) {
+        self.walk_stmts(&b.stmts)
     }
 
     fn format_mod(

@@ -34,7 +34,7 @@ use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{binary_search, colon_spaces, contains_skip, extra_offset, first_line_width,
             inner_attributes, last_line_extendable, last_line_width, left_most_sub_expr, mk_sp,
-            outer_attributes, paren_overhead, semicolon_for_stmt, stmt_expr,
+            outer_attributes, paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
             trimmed_last_line_width, wrap_str};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
@@ -86,7 +86,7 @@ pub fn format_expr(
             rewrite_call_with_binary_search(
                 context,
                 &**callee,
-                &args.iter().map(|x| &**x).collect::<Vec<_>>()[..],
+                &ptr_vec_to_ref_vec(&args),
                 inner_span,
                 shape,
             )
@@ -114,12 +114,9 @@ pub fn format_expr(
             expr.span,
             shape,
         ),
-        ast::ExprKind::Tup(ref items) => rewrite_tuple(
-            context,
-            &items.iter().map(|x| &**x).collect::<Vec<_>>()[..],
-            expr.span,
-            shape,
-        ),
+        ast::ExprKind::Tup(ref items) => {
+            rewrite_tuple(context, &ptr_vec_to_ref_vec(&items), expr.span, shape)
+        }
         ast::ExprKind::If(..) |
         ast::ExprKind::IfLet(..) |
         ast::ExprKind::ForLoop(..) |
@@ -2094,7 +2091,7 @@ pub fn rewrite_call(
     rewrite_call_inner(
         context,
         callee,
-        &args.iter().map(|x| &**x).collect::<Vec<_>>(),
+        &ptr_vec_to_ref_vec(&args),
         span,
         shape,
         context.config.fn_call_width(),

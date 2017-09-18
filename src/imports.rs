@@ -10,7 +10,7 @@
 
 use std::cmp::Ordering;
 
-use syntax::{ast, ptr};
+use syntax::ast;
 use syntax::codemap::{BytePos, Span};
 
 use {Shape, Spanned};
@@ -216,7 +216,7 @@ fn rewrite_import(
 
 fn rewrite_imports(
     context: &RewriteContext,
-    use_items: &[ptr::P<ast::Item>],
+    use_items: &[&ast::Item],
     shape: Shape,
     span: Span,
 ) -> Option<String> {
@@ -275,7 +275,7 @@ fn rewrite_imports(
 }
 
 impl<'a> FmtVisitor<'a> {
-    pub fn format_imports(&mut self, use_items: &[ptr::P<ast::Item>]) {
+    pub fn format_imports(&mut self, use_items: &[&ast::Item]) {
         if use_items.is_empty() {
             return;
         }
