@@ -621,7 +621,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = common::def_ty(scx, impl_def_id, instance.substs);
+                let impl_self_ty = common::def_ty(&tcx, impl_def_id, instance.substs);
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }

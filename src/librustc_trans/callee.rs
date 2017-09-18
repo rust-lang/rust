@@ -148,5 +148,5 @@ pub fn resolve_and_get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     substs: &'tcx Substs<'tcx>)
                                     -> ValueRef
 {
-    get_fn(ccx, monomorphize::resolve(ccx.shared(), def_id, substs))
+    get_fn(ccx, monomorphize::resolve(&ccx.shared().tcx(), def_id, substs))
 }

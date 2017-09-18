@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 match source_ty.sty {
                     ty::TyClosure(def_id, substs) => {
                         let instance = monomorphize::resolve_closure(
-                            self.scx, def_id, substs, ty::ClosureKind::FnOnce);
+                            &self.scx.tcx(), def_id, substs, ty::ClosureKind::FnOnce);
                         self.output.push(create_fn_trans_item(instance));
                     }
                     _ => bug!(),
@@ -571,7 +571,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         if let ConstVal::Unevaluated(def_id, substs) = constant.val {
             let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
                                                                  &substs);
-            let instance = monomorphize::resolve(self.scx, def_id, substs);
+            let instance = monomorphize::resolve(&self.scx.tcx(), def_id, substs);
             collect_neighbours(self.scx, instance, true, self.output);
         }
 
@@ -592,7 +592,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
                 let constness = match (self.const_context, &callee_ty.sty) {
                     (true, &ty::TyFnDef(def_id, substs)) if self.scx.tcx().is_const_fn(def_id) => {
-                        let instance = monomorphize::resolve(self.scx, def_id, substs);
+                        let instance = monomorphize::resolve(&self.scx.tcx(), def_id, substs);
                         Some(instance)
                     }
                     _ => None
@@ -652,7 +652,7 @@ fn visit_drop_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                             is_direct_call: bool,
                             output: &mut Vec<TransItem<'tcx>>)
 {
-    let instance = monomorphize::resolve_drop_in_place(scx, ty);
+    let instance = monomorphize::resolve_drop_in_place(&scx.tcx(), ty);
     visit_instance_use(scx, instance, is_direct_call, output);
 }
 
@@ -662,7 +662,7 @@ fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                           output: &mut Vec<TransItem<'tcx>>)
 {
     if let ty::TyFnDef(def_id, substs) = ty.sty {
-        let instance = monomorphize::resolve(scx, def_id, substs);
+        let instance = monomorphize::resolve(&scx.tcx(), def_id, substs);
         visit_instance_use(scx, instance, is_direct_call, output);
     }
 }
@@ -804,7 +804,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             assert_eq!(source_adt_def, target_adt_def);
 
             let kind =
-                monomorphize::custom_coerce_unsize_info(scx, source_ty, target_ty);
+                monomorphize::custom_coerce_unsize_info(&scx.tcx(), source_ty, target_ty);
 
             let coerce_index = match kind {
                 CustomCoerceUnsized::Struct(i) => i
@@ -850,7 +850,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
             // Walk all methods of the trait, including those of its supertraits
             let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
             let methods = methods.filter_map(|method| method)
-                .map(|(def_id, substs)| monomorphize::resolve(scx, def_id, substs))
+                .map(|(def_id, substs)| monomorphize::resolve(&scx.tcx(), def_id, substs))
                 .filter(|&instance| should_trans_locally(scx.tcx(), &instance))
                 .map(|instance| create_fn_trans_item(instance));
             output.extend(methods);
@@ -901,7 +901,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.scx.tcx(), def_id));
 
-                        let ty = def_ty(self.scx, def_id, Substs::empty());
+                        let ty = def_ty(&self.scx.tcx(), def_id, Substs::empty());
                         visit_drop_use(self.scx, ty, true, self.output);
                     }
                 }
@@ -1009,7 +1009,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                     }
 
                     let instance =
-                        monomorphize::resolve(scx, method.def_id, callee_substs);
+                        monomorphize::resolve(&scx.tcx(), method.def_id, callee_substs);
 
                     let trans_item = create_fn_trans_item(instance);
                     if trans_item.is_instantiable(tcx) && should_trans_locally(tcx, &instance) {

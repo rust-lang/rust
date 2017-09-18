@@ -573,13 +573,13 @@ pub fn is_inline_instance<'a, 'tcx>(
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+pub fn def_ty<'a, 'tcx>(tcx: &TyCtxt<'a, 'tcx, 'tcx>,
                         def_id: DefId,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = shared.tcx().type_of(def_id);
-    shared.tcx().trans_apply_param_substs(substs, &ty)
+    let ty = tcx.type_of(def_id);
+    tcx.trans_apply_param_substs(substs, &ty)
 }
 
 /// Return the substituted type of an instance.
