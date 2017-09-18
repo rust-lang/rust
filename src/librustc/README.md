@@ -224,7 +224,10 @@ pointers for understanding them better.
 - MIR -- the **Mid-level IR** that is created after type-checking for use by borrowck and trans.
   Defined in the `src/librustc/mir/` module, but much of the code that manipulates it is
   found in `src/librustc_mir`.
-- obligation -- something that must be proven by the trait system.
+- obligation -- something that must be proven by the trait system; see `librustc/traits`.
+- local crate -- the crate currently being compiled.
+- query -- perhaps some sub-computation during compilation; see `librustc/maps`.
+- provider -- the function that executes a query; see `librustc/maps`.
 - sess -- the **compiler session**, which stores global data used throughout compilation
 - substs -- the **substitutions** for a given generic type or item
   (e.g., the `i32, u32` in `HashMap<i32, u32>`)
