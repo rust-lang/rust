@@ -316,7 +316,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 let mut total = Size::from_bytes(0);
                 let mut result = None;
 
-                let is_union = match self.fields {
+                let is_union = match *self.fields {
                     layout::FieldPlacement::Linear { stride, .. } => {
                         stride.bytes() == 0
                     }

@@ -1117,11 +1117,11 @@ fn trans_const_adt<'a, 'tcx>(
 
             Const::new(C_struct(ccx, &contents, l.is_packed()), t)
         }
-        layout::Univariant(_) => {
+        layout::Univariant => {
             assert_eq!(variant_index, 0);
             build_const_struct(ccx, l, vals, None)
         }
-        layout::Vector { .. } => {
+        layout::Vector => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
         layout::NullablePointer { nndiscr, .. } => {
@@ -1162,11 +1162,7 @@ fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         offset = ccx.size_of(discr.ty);
     }
 
-    let field_index_by_increasing_offset = match *layout.layout {
-        layout::Univariant(ref variant) => variant.field_index_by_increasing_offset(),
-        _ => bug!("unexpected {:#?}", layout)
-    };
-    let parts = field_index_by_increasing_offset.map(|i| {
+    let parts = layout.fields.index_by_increasing_offset().map(|i| {
         (vals[i], layout.fields.offset(i))
     });
     for (val, target_offset) in parts {

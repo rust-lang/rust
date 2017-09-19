@@ -240,25 +240,18 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
         if let layout::Abi::Scalar(_) = self.abi {
             bug!("FullLayout::llvm_field_index({:?}): not applicable", self);
         }
+        let index = self.fields.memory_index(index);
         match *self.layout {
-            Layout::Scalar { .. } |
-            Layout::UntaggedUnion { .. } |
-            Layout::NullablePointer { .. } |
-            Layout::General { .. } => {
-                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
-            }
-
-            Layout::Vector { .. } |
-            Layout::Array { .. } => {
+            Layout::Vector | Layout::Array => {
                 index as u64
             }
 
-            Layout::FatPointer { .. } => {
+            Layout::FatPointer | Layout::Univariant => {
                 adt::memory_index_to_gep(index as u64)
             }
 
-            Layout::Univariant(ref variant) => {
-                adt::memory_index_to_gep(variant.memory_index[index] as u64)
+            _ => {
+                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
             }
         }
     }
