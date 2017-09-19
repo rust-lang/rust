@@ -876,7 +876,7 @@ impl Clean<Lifetime> for hir::Lifetime {
             }
             _ => {}
         }
-        Lifetime(self.name.to_string())
+        Lifetime(self.name.name().to_string())
     }
 }
 
@@ -884,14 +884,14 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
         if self.bounds.len() > 0 {
             let mut s = format!("{}: {}",
-                                self.lifetime.name.to_string(),
-                                self.bounds[0].name.to_string());
+                                self.lifetime.name.name(),
+                                self.bounds[0].name.name());
             for bound in self.bounds.iter().skip(1) {
-                s.push_str(&format!(" + {}", bound.name.to_string()));
+                s.push_str(&format!(" + {}", bound.name.name()));
             }
             Lifetime(s)
         } else {
-            Lifetime(self.lifetime.name.to_string())
+            Lifetime(self.lifetime.name.name().to_string())
         }
     }
 }

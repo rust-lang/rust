@@ -422,7 +422,12 @@ pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
 
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
     visitor.visit_id(lifetime.id);
-    visitor.visit_name(lifetime.span, lifetime.name);
+    match lifetime.name {
+        LifetimeName::Name(name) => {
+            visitor.visit_name(lifetime.span, name);
+        }
+        LifetimeName::Static | LifetimeName::Implicit | LifetimeName::Underscore => {}
+    }
 }
 
 pub fn walk_lifetime_def<'v, V: Visitor<'v>>(visitor: &mut V, lifetime_def: &'v LifetimeDef) {

@@ -278,7 +278,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_lifetime_def(&mut self, cx: &LateContext, t: &hir::LifetimeDef) {
         self.check_snake_case(cx,
                               "lifetime",
-                              &t.lifetime.name.as_str(),
+                              &t.lifetime.name.name().as_str(),
                               Some(t.lifetime.span));
     }
 

@@ -1121,7 +1121,11 @@ impl<'a> LoweringContext<'a> {
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         hir::Lifetime {
             id: self.lower_node_id(l.id).node_id,
-            name: self.lower_ident(l.ident),
+            name: match self.lower_ident(l.ident) {
+                x if x == "'_" => hir::LifetimeName::Underscore,
+                x if x == "'static" => hir::LifetimeName::Static,
+                name => hir::LifetimeName::Name(name),
+            },
             span: l.span,
         }
     }
@@ -3005,7 +3009,7 @@ impl<'a> LoweringContext<'a> {
         hir::Lifetime {
             id: self.next_id().node_id,
             span,
-            name: keywords::Invalid.name()
+            name: hir::LifetimeName::Implicit,
         }
     }
 }
