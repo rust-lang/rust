@@ -76,7 +76,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     // Not in the cache. Build it.
-    let nullptr = C_null(Type::nil(ccx).ptr_to());
+    let nullptr = C_null(Type::i8p(ccx));
 
     let (size, align) = ccx.size_and_align_of(ty);
     let mut components: Vec<_> = [

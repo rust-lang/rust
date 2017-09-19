@@ -9,10 +9,9 @@
 // except according to those terms.
 
 use abi::FnType;
-use adt;
 use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, Layout, LayoutOf, Size, FullLayout};
+use rustc::ty::layout::{self, HasDataLayout, Align, LayoutOf, Size, FullLayout};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -43,30 +42,10 @@ pub fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     }
 }
 
-fn compute_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    // Check the cache.
-    if let Some(&llty) = cx.lltypes().borrow().get(&t) {
-        return llty;
-    }
-
-    debug!("type_of {:?}", t);
-
-    assert!(!t.has_escaping_regions(), "{:?} has escaping regions", t);
-
-    // Replace any typedef'd types with their equivalent non-typedef
-    // type. This ensures that all LLVM nominal types that contain
-    // Rust types are defined as the same LLVM types.  If we don't do
-    // this then, e.g. `Option<{myfield: bool}>` would be a different
-    // type than `Option<myrec>`.
-    let t_norm = cx.tcx().erase_regions(&t);
-
-    if t != t_norm {
-        let llty = cx.llvm_type_of(t_norm);
-        debug!("--> normalized {:?} to {:?} llty={:?}", t, t_norm, llty);
-        cx.lltypes().borrow_mut().insert(t, llty);
-        return llty;
-    }
-
+fn uncached_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                ty: Ty<'tcx>,
+                                defer: &mut Option<(Type, FullLayout<'tcx>)>)
+                                -> Type {
     let ptr_ty = |ty: Ty<'tcx>| {
         if cx.shared().type_has_metadata(ty) {
             if let ty::TyStr = ty.sty {
@@ -88,97 +67,130 @@ fn compute_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type
             cx.llvm_type_of(ty).ptr_to()
         }
     };
-
-    let mut llty = match t.sty {
-      ty::TyBool => Type::bool(cx),
-      ty::TyChar => Type::char(cx),
-      ty::TyInt(t) => Type::int_from_ty(cx, t),
-      ty::TyUint(t) => Type::uint_from_ty(cx, t),
-      ty::TyFloat(t) => Type::float_from_ty(cx, t),
-      ty::TyNever => Type::nil(cx),
-      ty::TyClosure(..) => {
-          // Only create the named struct, but don't fill it in. We
-          // fill it in *after* placing it into the type cache.
-          adt::incomplete_type_of(cx, t, "closure")
-      }
-      ty::TyGenerator(..) => {
-          // Only create the named struct, but don't fill it in. We
-          // fill it in *after* placing it into the type cache.
-          adt::incomplete_type_of(cx, t, "generator")
-      }
-
-      ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-      ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-          ptr_ty(ty)
-      }
-      ty::TyAdt(def, _) if def.is_box() => {
-          ptr_ty(t.boxed_ty())
-      }
-
-      ty::TyArray(ty, size) => {
-          let llty = cx.llvm_type_of(ty);
-          let size = size.val.to_const_int().unwrap().to_u64().unwrap();
-          Type::array(&llty, size)
-      }
-
-      ty::TySlice(ty) => {
-          Type::array(&cx.llvm_type_of(ty), 0)
-      }
-      ty::TyStr => {
-          Type::array(&Type::i8(cx), 0)
-      }
-      ty::TyDynamic(..) |
-      ty::TyForeign(..) => adt::type_of(cx, t),
-
-      ty::TyFnDef(..) => Type::nil(cx),
-      ty::TyFnPtr(sig) => {
-        let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
-        FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
-      }
-      ty::TyTuple(ref tys, _) if tys.is_empty() => Type::nil(cx),
-      ty::TyTuple(..) => {
-          adt::type_of(cx, t)
-      }
-      ty::TyAdt(..) if t.is_simd() => {
-          let e = t.simd_type(cx.tcx());
-          if !e.is_machine() {
-              cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
-                                        a non-machine element type `{}`",
-                                       t, e))
-          }
-          let llet = cx.llvm_type_of(e);
-          let n = t.simd_size(cx.tcx()) as u64;
-          Type::vector(&llet, n)
-      }
-      ty::TyAdt(..) => {
-          // Only create the named struct, but don't fill it in. We
-          // fill it in *after* placing it into the type cache. This
-          // avoids creating more than one copy of the enum when one
-          // of the enum's variants refers to the enum itself.
-          let name = llvm_type_name(cx, t);
-          adt::incomplete_type_of(cx, t, &name[..])
-      }
-
-      ty::TyInfer(..) |
-      ty::TyProjection(..) |
-      ty::TyParam(..) |
-      ty::TyAnon(..) |
-      ty::TyError => bug!("type_of with {:?}", t),
-    };
-
-    debug!("--> mapped t={:?} to llty={:?}", t, llty);
-
-    cx.lltypes().borrow_mut().insert(t, llty);
-
-    // If this was an enum or struct, fill in the type now.
-    match t.sty {
-        ty::TyAdt(..) | ty::TyClosure(..) | ty::TyGenerator(..) if !t.is_simd() && !t.is_box() => {
-            adt::finish_type_of(cx, t, &mut llty);
+    match ty.sty {
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
+            return ptr_ty(ty);
         }
-        _ => ()
+        ty::TyAdt(def, _) if def.is_box() => {
+            return ptr_ty(ty.boxed_ty());
+        }
+        ty::TyFnPtr(sig) => {
+            let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
+            return FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to();
+        }
+        _ => {}
     }
 
-    llty
+    let layout = cx.layout_of(ty);
+    if let layout::Abi::Scalar(value) = layout.abi {
+        let llty = match value {
+            layout::Int(layout::I1, _) => Type::i8(cx),
+            layout::Int(i, _) => Type::from_integer(cx, i),
+            layout::F32 => Type::f32(cx),
+            layout::F64 => Type::f64(cx),
+            layout::Pointer => cx.llvm_type_of(layout::Pointer.to_ty(cx.tcx()))
+        };
+        return llty;
+    }
+
+    if let layout::Abi::Vector { .. } = layout.abi {
+        return Type::vector(&cx.llvm_type_of(layout.field(cx, 0).ty),
+                            layout.fields.count() as u64);
+    }
+
+    let name = match ty.sty {
+        ty::TyClosure(..) | ty::TyGenerator(..) | ty::TyAdt(..) => {
+            let mut name = String::with_capacity(32);
+            let printer = DefPathBasedNames::new(cx.tcx(), true, true);
+            printer.push_type_name(ty, &mut name);
+            Some(name)
+        }
+        _ => None
+    };
+
+    match *layout.fields {
+        layout::FieldPlacement::Union(_) => {
+            let size = layout.size(cx).bytes();
+            let fill = Type::array(&Type::i8(cx), size);
+            match name {
+                None => {
+                    Type::struct_(cx, &[fill], layout.is_packed())
+                }
+                Some(ref name) => {
+                    let mut llty = Type::named_struct(cx, name);
+                    llty.set_struct_body(&[fill], layout.is_packed());
+                    llty
+                }
+            }
+        }
+        layout::FieldPlacement::Array { count, .. } => {
+            Type::array(&cx.llvm_type_of(layout.field(cx, 0).ty), count)
+        }
+        layout::FieldPlacement::Arbitrary { .. } => {
+            match name {
+                None => {
+                    Type::struct_(cx, &struct_llfields(cx, layout), layout.is_packed())
+                }
+                Some(ref name) => {
+                    let llty = Type::named_struct(cx, name);
+                    *defer = Some((llty, layout));
+                    llty
+                }
+            }
+        }
+    }
+}
+
+pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                 layout: FullLayout<'tcx>) -> Vec<Type> {
+    debug!("struct_llfields: {:#?}", layout);
+    let align = layout.align(cx);
+    let size = layout.size(cx);
+    let field_count = layout.fields.count();
+
+    let mut offset = Size::from_bytes(0);
+    let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
+    for i in layout.fields.index_by_increasing_offset() {
+        let field = layout.field(cx, i);
+        let target_offset = layout.fields.offset(i as usize);
+        debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
+            i, field, offset, target_offset);
+        assert!(target_offset >= offset);
+        let padding = target_offset - offset;
+        result.push(Type::array(&Type::i8(cx), padding.bytes()));
+        debug!("    padding before: {:?}", padding);
+
+        let llty = cx.llvm_type_of(field.ty);
+        result.push(llty);
+
+        if layout.is_packed() {
+            assert_eq!(padding.bytes(), 0);
+        } else {
+            let field_align = field.align(cx);
+            assert!(field_align.abi() <= align.abi(),
+                    "non-packed type has field with larger align ({}): {:#?}",
+                    field_align.abi(), layout);
+        }
+
+        offset = target_offset + field.size(cx);
+    }
+    if !layout.is_unsized() && field_count > 0 {
+        if offset > size {
+            bug!("layout: {:#?} stride: {:?} offset: {:?}",
+                 layout, size, offset);
+        }
+        let padding = size - offset;
+        debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
+               padding, offset, size);
+        result.push(Type::array(&Type::i8(cx), padding.bytes()));
+        assert!(result.len() == 1 + field_count * 2);
+    } else {
+        debug!("struct_llfields: offset: {:?} stride: {:?}",
+               offset, size);
+    }
+
+    result
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
@@ -219,7 +231,38 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     pub fn llvm_type_of(&self, ty: Ty<'tcx>) -> Type {
-        compute_llvm_type(self, ty)
+        // Check the cache.
+        if let Some(&llty) = self.lltypes().borrow().get(&ty) {
+            return llty;
+        }
+
+        debug!("type_of {:?}", ty);
+
+        assert!(!ty.has_escaping_regions(), "{:?} has escaping regions", ty);
+
+        // Make sure lifetimes are erased, to avoid generating distinct LLVM
+        // types for Rust types that only differ in the choice of lifetimes.
+        let normal_ty = self.tcx().erase_regions(&ty);
+
+        if ty != normal_ty {
+            let llty = self.llvm_type_of(normal_ty);
+            debug!("--> normalized {:?} to {:?} llty={:?}", ty, normal_ty, llty);
+            self.lltypes().borrow_mut().insert(ty, llty);
+            return llty;
+        }
+
+        let mut defer = None;
+        let llty = uncached_llvm_type(self, ty, &mut defer);
+
+        debug!("--> mapped ty={:?} to llty={:?}", ty, llty);
+
+        self.lltypes().borrow_mut().insert(ty, llty);
+
+        if let Some((mut llty, layout)) = defer {
+            llty.set_struct_body(&struct_llfields(self, layout), layout.is_packed())
+        }
+
+        llty
     }
 
     pub fn immediate_llvm_type_of(&self, ty: Ty<'tcx>) -> Type {
@@ -240,26 +283,18 @@ impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
         if let layout::Abi::Scalar(_) = self.abi {
             bug!("FullLayout::llvm_field_index({:?}): not applicable", self);
         }
-        let index = self.fields.memory_index(index);
-        match *self.layout {
-            Layout::Vector | Layout::Array => {
+        match *self.fields {
+            layout::FieldPlacement::Union(_) => {
+                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
+            }
+
+            layout::FieldPlacement::Array { .. } => {
                 index as u64
             }
 
-            Layout::FatPointer | Layout::Univariant => {
-                adt::memory_index_to_gep(index as u64)
-            }
-
-            _ => {
-                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
+            layout::FieldPlacement::Arbitrary { .. } => {
+                1 + (self.fields.memory_index(index) as u64) * 2
             }
         }
     }
-}
-
-fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> String {
-    let mut name = String::with_capacity(32);
-    let printer = DefPathBasedNames::new(cx.tcx(), true, true);
-    printer.push_type_name(ty, &mut name);
-    name
 }
