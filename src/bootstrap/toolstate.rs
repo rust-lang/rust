@@ -31,6 +31,13 @@ impl ToolState {
             BuildExpectation::Failing
         }
     }
+
+    pub fn testing(&self) -> bool {
+        match *self {
+            ToolState::Testing => true,
+            _ => false,
+        }
+    }
 }
 
 impl Default for ToolState {
