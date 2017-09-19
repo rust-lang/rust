@@ -47,7 +47,7 @@ pub use core::char::CharTryFromError;
 #[unstable(feature = "decode_utf8", issue = "33906")]
 pub use core::char::{DecodeUtf8, decode_utf8};
 #[unstable(feature = "unicode", issue = "27783")]
-pub use tables::UNICODE_VERSION;
+pub use tables::{UnicodeVersion, UNICODE_VERSION};
 
 /// Returns an iterator that yields the lowercase equivalent of a `char`.
 ///
