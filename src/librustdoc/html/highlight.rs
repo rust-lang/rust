@@ -249,8 +249,8 @@ impl<'a> Classifier<'a> {
                 token::BinOpEq(..) | token::FatArrow => Class::Op,
 
             // Miscellaneous, no highlighting.
-            token::Dot | token::DotDot | token::DotDotDot | token::Comma | token::Semi |
-                token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
+            token::Dot | token::DotDot | token::DotDotDot | token::DotDotEq | token::Comma |
+                token::Semi | token::Colon | token::ModSep | token::LArrow | token::OpenDelim(_) |
                 token::CloseDelim(token::Brace) | token::CloseDelim(token::Paren) |
                 token::CloseDelim(token::NoDelim) => Class::None,
 
@@ -353,7 +353,7 @@ impl<'a> Classifier<'a> {
             token::Lifetime(..) => Class::Lifetime,
 
             token::Underscore | token::Eof | token::Interpolated(..) |
-            token::Tilde | token::At => Class::None,
+            token::Tilde | token::At | token::DotEq => Class::None,
         };
 
         // Anything that didn't return above is the simple case where we the

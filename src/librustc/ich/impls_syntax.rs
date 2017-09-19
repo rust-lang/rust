@@ -272,6 +272,8 @@ fn hash_token<'gcx, W: StableHasherResult>(token: &token::Token,
         token::Token::Dot |
         token::Token::DotDot |
         token::Token::DotDotDot |
+        token::Token::DotDotEq |
+        token::Token::DotEq |
         token::Token::Comma |
         token::Token::Semi |
         token::Token::Colon |

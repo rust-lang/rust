@@ -16,6 +16,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// FIXME: replace remaining ... by ..= after next stage0
+// Silence warning: "... is being replaced by ..="
+#![cfg_attr(not(stage0), allow(warnings))]
+
 // How this module is organized.
 //
 // The library infrastructure for slices is fairly messy. There's

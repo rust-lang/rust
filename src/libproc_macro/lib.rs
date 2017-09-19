@@ -509,6 +509,7 @@ impl TokenTree {
             Dot => op!('.'),
             DotDot => joint!('.', Dot),
             DotDotDot => joint!('.', DotDot),
+            DotDotEq => joint!('.', DotEq),
             Comma => op!(','),
             Semi => op!(';'),
             Colon => op!(':'),
@@ -531,6 +532,7 @@ impl TokenTree {
                 })
             }
 
+            DotEq => unreachable!(),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         };
