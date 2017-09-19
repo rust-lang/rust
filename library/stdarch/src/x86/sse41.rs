@@ -16,13 +16,13 @@ extern {
     fn pblendvb(a: __m128i, b: __m128i, mask: __m128i) -> __m128i;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse4.1", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v128::*;
     use x86::sse41;
 
     #[test]
-    #[target_feature = "+sse4.2"]
+    #[target_feature = "+sse4.1"]
     fn _mm_blendv_epi8() {
         let a = i8x16::new(
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);

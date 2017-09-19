@@ -304,7 +304,7 @@ extern {
     fn pcmpestri128(a: __m128i, la: i32, b: __m128i, lb: i32, imm8: i8) -> i32;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse4.2", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v128::*;
     use x86::{__m128i, sse42};

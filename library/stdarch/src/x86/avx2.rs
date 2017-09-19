@@ -1044,7 +1044,7 @@ extern "C" {
 }
 
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "avx2", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v256::*;
     use v128::*;

@@ -50,7 +50,7 @@ extern {
     fn pshufb128(a: u8x16, b: u8x16) -> u8x16;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "ssse3", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v128::*;
     use x86::ssse3 as ssse3;

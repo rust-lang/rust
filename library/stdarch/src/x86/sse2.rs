@@ -1716,7 +1716,7 @@ extern {
     fn movmskpd(a: f64x2) -> i32;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse2", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use std::os::raw::c_void;
 

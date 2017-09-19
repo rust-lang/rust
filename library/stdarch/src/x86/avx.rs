@@ -31,7 +31,7 @@ extern "C" {
 }
 
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "avx", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v256::*;
     use x86::avx;
@@ -65,7 +65,4 @@ mod tests {
         let e = f64x4::new(-4.0,8.0,-4.0,12.0);
         assert_eq!(r, e);
     }
-
-
-
 }

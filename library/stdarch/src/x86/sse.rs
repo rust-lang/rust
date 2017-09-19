@@ -66,7 +66,7 @@ extern {
     fn movmskps(a: f32x4) -> i32;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v128::*;
     use x86::sse;

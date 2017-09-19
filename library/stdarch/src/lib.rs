@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![feature(
     const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
-    target_feature,
+    target_feature, cfg_target_feature
 )]
 
 /// Platform independent SIMD vector types and operations.
