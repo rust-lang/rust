@@ -793,9 +793,10 @@ impl<'tcx> CommonTypes<'tcx> {
     }
 }
 
-/// The data structure to keep track of all the information that typechecker
-/// generates so that so that it can be reused and doesn't have to be redone
-/// later on.
+/// The central data structure of the compiler. It stores references
+/// to the various **arenas** and also houses the results of the
+/// various **compiler queries** that have been performed. See [the
+/// README](README.md) for more deatils.
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'gcx>,

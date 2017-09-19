@@ -413,6 +413,10 @@ pub struct WhereEqPredicate {
 
 pub type CrateConfig = HirVec<P<MetaItem>>;
 
+/// The top-level data structure that stores the entire contents of
+/// the crate currently being compiled.
+///
+/// For more details, see [the module-level README](README.md).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
@@ -927,7 +931,27 @@ pub struct BodyId {
     pub node_id: NodeId,
 }
 
-/// The body of a function or constant value.
+/// The body of a function, closure, or constant value. In the case of
+/// a function, the body contains not only the function body itself
+/// (which is an expression), but also the argument patterns, since
+/// those are something that the caller doesn't really care about.
+///
+/// # Examples
+///
+/// ```
+/// fn foo((x, y): (u32, u32)) -> u32 {
+///     x + y
+/// }
+/// ```
+///
+/// Here, the `Body` associated with `foo()` would contain:
+///
+/// - an `arguments` array containing the `(x, y)` pattern
+/// - a `value` containing the `x + y` expression (maybe wrapped in a block)
+/// - `is_generator` would be false
+///
+/// All bodies have an **owner**, which can be accessed via the HIR
+/// map using `body_owner_def_id()`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
