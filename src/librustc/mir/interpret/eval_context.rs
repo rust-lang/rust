@@ -1895,7 +1895,11 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
     }
 
     pub(super) fn substs(&self) -> &'tcx Substs<'tcx> {
-        self.frame().instance.substs
+        if let Some(frame) = self.stack.last() {
+            frame.instance.substs
+        } else {
+            Substs::empty()
+        }
     }
 
     fn unsize_into_ptr(

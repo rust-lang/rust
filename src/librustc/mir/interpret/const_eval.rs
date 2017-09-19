@@ -13,10 +13,10 @@ use rustc_const_math::ConstInt;
 use std::fmt;
 use std::error::Error;
 
-pub fn eval_body_as_primval<'a, 'tcx>(
+pub fn eval_body<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
-) -> EvalResult<'tcx, (PrimVal, Ty<'tcx>)> {
+) -> EvalResult<'tcx, (Value, Ty<'tcx>)> {
     let limits = super::ResourceLimits::default();
     let mut ecx = EvalContext::<CompileTimeFunctionEvaluator>::new(tcx, limits, (), ());
     let cid = GlobalId {
@@ -73,7 +73,8 @@ pub fn eval_body_as_primval<'a, 'tcx>(
         value,
         ty: mir.return_ty,
     };
-    Ok((ecx.value_to_primval(valty)?, mir.return_ty))
+    // FIXME: store cached value in TyCtxt
+    Ok(value, mir.return_ty))
 }
 
 pub fn eval_body_as_integer<'a, 'tcx>(
