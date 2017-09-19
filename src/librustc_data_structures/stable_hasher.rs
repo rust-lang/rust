@@ -558,10 +558,12 @@ pub fn hash_stable_hashmap<HCX, K, V, R, SK, F, W>(
     entries.hash_stable(hcx, hasher);
 }
 
+
+/// A vector container that makes sure that its items are hashed in a stable
+/// order.
 pub struct StableVec<T>(Vec<T>);
 
 impl<T> StableVec<T> {
-
     pub fn new(v: Vec<T>) -> Self {
         StableVec(v)
     }

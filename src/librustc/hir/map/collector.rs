@@ -28,6 +28,8 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The parent of this node
     parent_node: NodeId,
 
+    // These fields keep track of the currently relevant DepNodes during
+    // the visitor's traversal.
     current_dep_node_owner: DefIndex,
     current_signature_dep_index: DepNodeIndex,
     current_full_dep_index: DepNodeIndex,
@@ -38,6 +40,8 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     hcx: StableHashingContext<'a>,
 
+    // We are collecting DepNode::HirBody hashes here so we can compute the
+    // crate hash from then later on.
     hir_body_nodes: Vec<DefPathHash>,
 }
 
@@ -463,11 +467,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 }
 
-
+// We use this with DepGraph::with_task(). Since we are handling only input
+// values here, the "task" computing them just passes them through.
 fn identity_fn<T>(_: &StableHashingContext, item_like: T) -> T {
     item_like
 }
 
+// This is a wrapper structure that allows determining if span values within
+// the wrapped item should be hashed or not.
 struct HirItemLike<T> {
     item_like: T,
     hash_bodies: bool,

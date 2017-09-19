@@ -27,6 +27,14 @@ use super::edges::{DepGraphEdges, DepNodeIndex};
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Rc<DepGraphData>>,
+
+    // At the moment we are using DepNode as key here. In the future it might
+    // be possible to use an IndexVec<DepNodeIndex, _> here. At the moment there
+    // are a few problems with that:
+    // - Some fingerprints are needed even if incr. comp. is disabled -- yet
+    //   we need to have a dep-graph to generate DepNodeIndices.
+    // - The architecture is still in flux and it's not clear what how to best
+    //   implement things.
     fingerprints: Rc<RefCell<FxHashMap<DepNode, Fingerprint>>>
 }
 
