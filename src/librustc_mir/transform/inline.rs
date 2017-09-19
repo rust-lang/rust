@@ -87,32 +87,17 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let terminator = bb_data.terminator();
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
-                    if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                        match self.tcx.trait_of_item(callee_def_id) {
-                            Some(_) => {
-                                match Instance::new(callee_def_id, substs).resolve(self.tcx) {
-                                    Some(instance) => {
-                                        callsites.push_back(CallSite {
-                                            callee: instance.def_id(),
-                                            substs: instance.substs,
-                                            bb,
-                                            location: terminator.source_info
-                                        });
-                                    },
-                                    None => {}
-                                }
-                            }
-                            None => {
+                        if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
+                            if let Some(instance) = Instance::new(callee_def_id, substs).resolve(self.tcx) {
                                 callsites.push_back(CallSite {
-                                    callee: callee_def_id,
-                                    substs,
+                                    callee: instance.def_id(),
+                                    substs: instance.substs,
                                     bb,
                                     location: terminator.source_info
                                 });
                             }
                         }
                     }
-                }
             }
         }
 
