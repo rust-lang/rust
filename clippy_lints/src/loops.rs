@@ -7,8 +7,9 @@ use rustc::hir::map::Node::{NodeBlock, NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
-use rustc::middle::region::CodeExtent;
+// use rustc::middle::region::CodeExtent;
 use rustc::middle::expr_use_visitor::*;
+use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::cmt;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::{Subst, Substs};
@@ -1308,31 +1309,35 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
     }
 }
 
-// TODO: clippy builds, but the `mutate` method of `Delegate` is never called when compiling `tests/run-pass/mut_range_bound_tmp.rs`. what's wrong? 
-
 struct MutateDelegate<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    node_id: NodeId,
-    was_mutated: bool
+    node_id_low: Option<NodeId>,
+    node_id_high: Option<NodeId>,
+    span_low: Option<Span>,
+    span_high: Option<Span>,
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
-    fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {
     }
   
-    fn matched_pat(&mut self, matched_pat: &Pat, cmt: cmt<'tcx>, mode: MatchMode) {
+    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {
     }
 
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, mode: ConsumeMode) {
+    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {
     }
 
     fn borrow(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: LoanCause) {        
     }
 
-    fn mutate(&mut self, assignment_id: NodeId, sp: Span, _: cmt<'tcx>, _: MutateMode) {
-        self.cx.sess().span_note_without_error(sp, "mutates!");
-        if assignment_id == self.node_id {
-            self.was_mutated = true;
+    fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
+        if let Categorization::Local(id) = cmt.cat {
+            if Some(id) == self.node_id_low {
+                self.span_low = Some(sp)
+            }
+            if Some(id) == self.node_id_high {
+                self.span_high = Some(sp)
+            }
         }
     }
 
@@ -1341,31 +1346,34 @@ impl<'a, 'tcx> Delegate<'tcx> for MutateDelegate<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MutateDelegate<'a, 'tcx> {
-    fn bound_was_mutated(&self) -> bool {
-        self.was_mutated
+    fn mutation_span(&self) -> (Option<Span>, Option<Span>) {
+        (self.span_low, self.span_high)
     }
 }
 
 fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr,  expr: &Expr) {
     if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
-        let bounds = vec![start, end];
-        for bound in &bounds {
-            if check_for_mutation(cx, body, bound) {
-                span_lint(cx, MUT_RANGE_BOUND, expr.span, "you are looping over a range where at least one bound was defined as a mutable variable. keep in mind that mutating this variable inside the loop will not affect the range");   
-                return;
-            }
+        let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
+        if mut_ids[0].is_some() || mut_ids[1].is_some() {
+            let (span_low, span_high) = check_for_mutation(cx, body, mut_ids);
+            mut_warn_with_span(cx, span_low);
+            mut_warn_with_span(cx, span_high);
         }
     }
 }
 
-fn check_for_mutation(cx: &LateContext, body: &Expr, bound: &Expr) -> bool {
+fn mut_warn_with_span(cx: &LateContext, span: Option<Span>) {
+    if let Some(sp) = span {
+        span_lint(cx, MUT_RANGE_BOUND, sp, "attempt to mutate range bound within loop; note that the range of the loop is unchanged");
+    }
+}
+
+fn check_for_mutability(cx: &LateContext, bound: &Expr) -> Option<NodeId> {
     if_let_chain! {[
         let ExprPath(ref qpath) = bound.node,
         let QPath::Resolved(None, ref path) = *qpath,
     ], {
         let def = cx.tables.qpath_def(qpath, bound.hir_id);
-
-                    cx.sess().span_note_without_error(body.span, "loop");
         match def {
             Def::Local(..) | Def::Upvar(..) => {
                 let def_id = def.def_id();
@@ -1375,18 +1383,35 @@ fn check_for_mutation(cx: &LateContext, body: &Expr, bound: &Expr) -> bool {
                     let map::Node::NodeBinding(pat) = node_str,
                     let PatKind::Binding(bind_ann, _, _, _) = pat.node,
                     let BindingAnnotation::Mutable = bind_ann,
-                    
-                ], {
-                    let mut delegate = MutateDelegate { cx: cx, node_id: node_id, was_mutated: false };
-                    let region_maps = &cx.tcx.region_maps(def_id); // is this the correct argument?
-                    ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_maps, cx.tables).walk_expr(body);
-                    return delegate.bound_was_mutated();
+                ], { 
+                    return Some(node_id); 
                 }}
-            },
-            _ => (),
-        }}
+            }
+            _ => ()
+        }
+    }}
+    return None;
+}
+
+fn check_for_mutation(cx: &LateContext, body: &Expr, bound_ids: Vec<Option<NodeId>>) -> (Option<Span>, Option<Span>) {
+    let mut delegate = MutateDelegate { cx: cx, node_id_low: bound_ids[0], node_id_high: bound_ids[1], span_low: None, span_high: None };
+    if let Some(id) = get_id_if_some(&bound_ids) {
+        let def_id = cx.tcx.hir.local_def_id(id);
+        let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
+        ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables).walk_expr(body);
+        return delegate.mutation_span();
+    } else {
+        return (None, None);
     }
-    return false;
+}
+
+fn get_id_if_some(bound_ids: &Vec<Option<NodeId>>) -> Option<NodeId> {
+    for id in bound_ids.into_iter() {
+        if id.is_some() {
+            return *id;
+        }
+    }
+    return None;
 }
 
 /// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.

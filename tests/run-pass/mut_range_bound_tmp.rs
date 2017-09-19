@@ -7,27 +7,39 @@ fn main() {
     mut_range_bound_upper();
     mut_range_bound_lower();
     mut_range_bound_both();
+    mut_range_bound_no_mutation();
     immut_range_bound();
 }
 
 fn mut_range_bound_upper() {
     let mut m = 4;
-    for i in 0..m { 
-
-        m = 5;
-        continue; } // WARNING the range upper bound is mutable
+    for i in 0..m { m = 5; } // warning    
 }
 
 fn mut_range_bound_lower() {
     let mut m = 4;
-    for i in m..10 { continue; } // WARNING the range lower bound is mutable
+    for i in m..10 { m *= 2; } // warning
 }
 
 fn mut_range_bound_both() {
     let mut m = 4;
     let mut n = 6;
-    for i in m..n { continue; } // WARNING both bounds are mutable (should get just one warning for this)
+    for i in m..n { m = 5; n = 7; } // warning (1 for each mutated bound)
 }
+
+fn mut_range_bound_no_mutation() {
+    let mut m = 4;
+    for i in 0..m { continue; } // no warning
+}
+
+fn mut_borrow_range_bound() {
+    let mut m = 4;
+    for i in 0..m {
+        let n = &mut m;
+        *n += 1;
+    }
+}
+
 
 fn immut_range_bound() {
     let m = 4;
