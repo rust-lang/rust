@@ -7,10 +7,13 @@
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#TBM_.28Trailing_Bit_Manipulation.29)
 //! provides a quick overview of the available instructions.
 
-/* // TODO: LLVM-CODEGEN ERROR
+// TODO: LLVM-CODEGEN ERROR: LLVM ERROR: Cannot select: intrinsic %llvm.x86.tbm.bextri.u32
+/*
 #[allow(dead_code)]
-extern "platform-intrinsic" {
+extern "C" {
+    #[link_name="llvm.x86.tbm.bextri.u32"]
     fn x86_tbm_bextri_u32(a: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.tbm.bextri.u64"]
     fn x86_tbm_bextri_u64(x: u64, y: u64) -> u64;
 }
 

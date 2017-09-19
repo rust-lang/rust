@@ -8,8 +8,10 @@
 //! provides a quick overview of the available instructions.
 
 #[allow(dead_code)]
-extern "platform-intrinsic" {
+extern "C" {
+    #[link_name="llvm.x86.bmi.bextr.32"]
     fn x86_bmi_bextr_32(x: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.bmi.bextr.64"]
     fn x86_bmi_bextr_64(x: u64, y: u64) -> u64;
 }
 

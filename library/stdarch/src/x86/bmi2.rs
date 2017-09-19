@@ -32,12 +32,18 @@ pub fn _mulx_u64(a: u64, b: u64) -> (u64, u64) {
 }
 
 #[allow(dead_code)]
-extern "platform-intrinsic" {
+extern "C" {
+    #[link_name="llvm.x86.bmi.bzhi.32"]
     fn x86_bmi2_bzhi_32(x: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.bmi.bzhi.64"]
     fn x86_bmi2_bzhi_64(x: u64, y: u64) -> u64;
+    #[link_name="llvm.x86.bmi.pdep.32"]
     fn x86_bmi2_pdep_32(x: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.bmi.pdep.64"]
     fn x86_bmi2_pdep_64(x: u64, y: u64) -> u64;
+    #[link_name="llvm.x86.bmi.pext.32"]
     fn x86_bmi2_pext_32(x: u32, y: u32) -> u32;
+    #[link_name="llvm.x86.bmi.pext.64"]
     fn x86_bmi2_pext_64(x: u64, y: u64) -> u64;
 }
 
