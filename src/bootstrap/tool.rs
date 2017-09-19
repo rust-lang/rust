@@ -378,7 +378,7 @@ pub struct Clippy {
 
 impl Step for Clippy {
     type Output = PathBuf;
-    const DEFAULT: bool = true;
+    const DEFAULT: bool = false;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
