@@ -7,6 +7,7 @@ fn a() {
         "this is a long string that goes past the maximum line length causing rustfmt to insert a comma here:"
     );
     foo(
+        a,
         oooptoptoptoptptooptoptoptoptptooptoptoptoptptoptoptoptoptpt(),
     );
 }

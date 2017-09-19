@@ -15,8 +15,8 @@ use syntax::ast::{self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, Neste
                   Path, Visibility};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
 
-use Shape;
 use rewrite::{Rewrite, RewriteContext};
+use shape::Shape;
 
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";

@@ -16,7 +16,7 @@ use syntax::{abi, ast, ptr, symbol};
 use syntax::ast::ImplItem;
 use syntax::codemap::{BytePos, Span};
 
-use {Indent, Shape, Spanned};
+use spanned::Spanned;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
               recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
@@ -26,12 +26,13 @@ use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs
 use lists::{definitive_tactic, itemize_list, write_list, DefinitiveListTactic, ListFormatting,
             ListItem, ListTactic, Separator, SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
+use shape::{Indent, Shape};
 use types::join_bounds;
 use utils::{colon_spaces, contains_skip, end_typaram, first_line_width, format_abi,
             format_constness, format_defaultness, format_mutability, format_unsafety,
             format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
             last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, stmt_expr,
-            trim_newlines, trimmed_last_line_width, wrap_str};
+            trim_newlines, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -1360,8 +1361,7 @@ pub fn rewrite_struct_field(
     lhs_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        let span = context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi()));
-        return wrap_str(span, context.config.max_width(), shape);
+        return Some(context.snippet(mk_sp(field.attrs[0].span.lo(), field.span.hi())));
     }
 
     let type_annotation_spacing = type_annotation_spacing(context.config);

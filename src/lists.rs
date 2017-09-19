@@ -13,10 +13,10 @@ use std::iter::Peekable;
 
 use syntax::codemap::{BytePos, CodeMap};
 
-use {Indent, Shape};
 use comment::{find_comment_end, rewrite_comment, FindUncommented};
 use config::{Config, IndentStyle};
 use rewrite::RewriteContext;
+use shape::{Indent, Shape};
 use utils::{first_line_width, last_line_width, mk_sp};
 
 /// Formatting tactic for lists. This will be cast down to a
@@ -713,7 +713,7 @@ where
         .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
 }
 
-fn total_item_width(item: &ListItem) -> usize {
+pub fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
         + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
         + item.item.as_ref().map_or(0, |str| str.len())

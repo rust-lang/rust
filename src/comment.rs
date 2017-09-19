@@ -14,9 +14,9 @@ use std::{self, iter};
 
 use syntax::codemap::Span;
 
-use {Indent, Shape};
 use config::Config;
 use rewrite::RewriteContext;
+use shape::{Indent, Shape};
 use string::{rewrite_string, StringFormat};
 use utils::{first_line_width, last_line_width};
 
@@ -928,7 +928,7 @@ fn remove_comment_header(comment: &str) -> &str {
 mod test {
     use super::{contains_comment, rewrite_comment, CharClasses, CodeCharKind, CommentCodeSlices,
                 FindUncommented, FullCodeCharKind};
-    use {Indent, Shape};
+    use shape::{Indent, Shape};
 
     #[test]
     fn char_classes() {
