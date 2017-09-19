@@ -493,65 +493,47 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     ReturnDest::Nothing
                 };
 
-                // Split the rust-call tupled arguments off.
-                let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
-                    let (tup, args) = args.split_last().unwrap();
-                    (args, Some(tup))
-                } else {
-                    (&args[..], None)
-                };
-
-                let is_shuffle = intrinsic.map_or(false, |name| {
-                    name.starts_with("simd_shuffle")
-                });
-                let mut idx = 0;
-                for arg in first_args {
-                    // The indices passed to simd_shuffle* in the
-                    // third argument must be constant. This is
-                    // checked by const-qualification, which also
-                    // promotes any complex rvalues to constants.
-                    if is_shuffle && idx == 2 {
-                        match *arg {
-                            mir::Operand::Consume(_) => {
-                                span_bug!(span, "shuffle indices must be constant");
-                            }
-                            mir::Operand::Constant(ref constant) => {
-                                let val = self.trans_constant(&bcx, constant);
-                                llargs.push(val.llval);
-                                idx += 1;
-                                continue;
-                            }
-                        }
-                    }
-
-                    let op = self.trans_operand(&bcx, arg);
-                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
-                                        &mut idx, &mut llfn, &def);
-                }
-                if let Some(tup) = untuple {
-                    self.trans_arguments_untupled(&bcx, tup, &mut llargs, &fn_ty,
-                                                  &mut idx, &mut llfn, &def)
-                }
-
                 if intrinsic.is_some() && intrinsic != Some("drop_in_place") {
                     use intrinsic::trans_intrinsic_call;
 
-                    let (dest, llargs) = match ret_dest {
-                        _ if fn_ty.ret.is_indirect() => {
-                            (llargs[0], &llargs[1..])
-                        }
+                    let dest = match ret_dest {
+                        _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            (C_undef(fn_ty.ret.memory_ty(bcx.ccx).ptr_to()), &llargs[..])
+                            C_undef(fn_ty.ret.memory_ty(bcx.ccx).ptr_to())
                         }
                         ReturnDest::IndirectOperand(dst, _) |
-                        ReturnDest::Store(dst) => (dst.llval, &llargs[..]),
+                        ReturnDest::Store(dst) => dst.llval,
                         ReturnDest::DirectOperand(_) =>
                             bug!("Cannot use direct operand with an intrinsic call")
                     };
 
+                    let args: Vec<_> = args.iter().enumerate().map(|(i, arg)| {
+                        // The indices passed to simd_shuffle* in the
+                        // third argument must be constant. This is
+                        // checked by const-qualification, which also
+                        // promotes any complex rvalues to constants.
+                        if i == 2 && intrinsic.unwrap().starts_with("simd_shuffle") {
+                            match *arg {
+                                mir::Operand::Consume(_) => {
+                                    span_bug!(span, "shuffle indices must be constant");
+                                }
+                                mir::Operand::Constant(ref constant) => {
+                                    let val = self.trans_constant(&bcx, constant);
+                                    return OperandRef {
+                                        val: Immediate(val.llval),
+                                        ty: val.ty
+                                    };
+                                }
+                            }
+                        }
+
+                        self.trans_operand(&bcx, arg)
+                    }).collect();
+
+
                     let callee_ty = common::instance_ty(
                         bcx.ccx.tcx(), instance.as_ref().unwrap());
-                    trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &llargs, dest,
+                    trans_intrinsic_call(&bcx, callee_ty, &fn_ty, &args, dest,
                                          terminator.source_info.span);
 
                     if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -570,6 +552,25 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     }
 
                     return;
+                }
+
+                // Split the rust-call tupled arguments off.
+                let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
+                    let (tup, args) = args.split_last().unwrap();
+                    (args, Some(tup))
+                } else {
+                    (&args[..], None)
+                };
+
+                let mut idx = 0;
+                for arg in first_args {
+                    let op = self.trans_operand(&bcx, arg);
+                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
+                                        &mut idx, &mut llfn, &def);
+                }
+                if let Some(tup) = untuple {
+                    self.trans_arguments_untupled(&bcx, tup, &mut llargs, &fn_ty,
+                                                  &mut idx, &mut llfn, &def)
                 }
 
                 let fn_ptr = match (llfn, instance) {
