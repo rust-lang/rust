@@ -1082,10 +1082,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || middle::intrinsicck::check_crate(tcx));
 
         time(time_passes,
-             "effect checking",
-             || middle::effect::check_crate(tcx));
-
-        time(time_passes,
              "match checking",
              || check_match::check_crate(tcx));
 
@@ -1105,6 +1101,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "MIR borrow checking",
              || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
 
+        time(time_passes,
+             "MIR effect checking",
+             || for def_id in tcx.body_owners() {
+                 mir::transform::check_unsafety::check_unsafety(tcx, def_id)
+             });
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids
         // a

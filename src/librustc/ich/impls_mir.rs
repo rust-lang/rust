@@ -33,6 +33,7 @@ impl_stable_hash_for!(struct mir::LocalDecl<'tcx> {
 });
 impl_stable_hash_for!(struct mir::UpvarDecl { debug_name, by_ref });
 impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator, is_cleanup });
+impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, lint_node_id });
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for mir::Terminator<'gcx> {
@@ -364,7 +365,26 @@ for mir::ProjectionElem<'gcx, V, T>
 }
 
 impl_stable_hash_for!(struct mir::VisibilityScopeData { span, parent_scope });
-impl_stable_hash_for!(struct mir::VisibilityScopeInfo { lint_root });
+impl_stable_hash_for!(struct mir::VisibilityScopeInfo {
+    lint_root, safety
+});
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Safety {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            mir::Safety::Safe |
+            mir::Safety::BuiltinUnsafe |
+            mir::Safety::FnUnsafe => {}
+            mir::Safety::ExplicitUnsafe(node_id) => {
+                node_id.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
 
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for mir::Operand<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,

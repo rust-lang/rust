@@ -52,6 +52,15 @@ pub struct Block<'tcx> {
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
     pub expr: Option<ExprRef<'tcx>>,
+    pub safety_mode: BlockSafety,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlockSafety {
+    Safe,
+    ExplicitUnsafe(ast::NodeId),
+    PushUnsafe,
+    PopUnsafe
 }
 
 #[derive(Clone, Debug)]

@@ -479,40 +479,6 @@ fn main() {
 ```
 "##,
 
-E0133: r##"
-Unsafe code was used outside of an unsafe function or block.
-
-Erroneous code example:
-
-```compile_fail,E0133
-unsafe fn f() { return; } // This is the unsafe code
-
-fn main() {
-    f(); // error: call to unsafe function requires unsafe function or block
-}
-```
-
-Using unsafe functionality is potentially dangerous and disallowed by safety
-checks. Examples:
-
-* Dereferencing raw pointers
-* Calling functions via FFI
-* Calling functions marked unsafe
-
-These safety checks can be relaxed for a section of the code by wrapping the
-unsafe instructions with an `unsafe` block. For instance:
-
-```
-unsafe fn f() { return; }
-
-fn main() {
-    unsafe { f(); } // ok!
-}
-```
-
-See also https://doc.rust-lang.org/book/first-edition/unsafe.html
-"##,
-
 // This shouldn't really ever trigger since the repeated value error comes first
 E0136: r##"
 A binary can only have one entry point, and by default that entry point is the

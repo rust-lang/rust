@@ -330,7 +330,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             if !same_lint_scopes {
                 self.visibility_scope =
-                    self.new_visibility_scope(region_scope.1.span, lint_level);
+                    self.new_visibility_scope(region_scope.1.span, lint_level,
+                                              None);
             }
         }
         self.push_scope(region_scope);
@@ -500,19 +501,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Creates a new visibility scope, nested in the current one.
     pub fn new_visibility_scope(&mut self,
                                 span: Span,
-                                lint_level: LintLevel) -> VisibilityScope {
-        debug!("new_visibility_scope({:?}, {:?})", span, lint_level);
+                                lint_level: LintLevel,
+                                safety: Option<Safety>) -> VisibilityScope {
         let parent = self.visibility_scope;
-        let info = if let LintLevel::Explicit(lint_level) = lint_level {
-            VisibilityScopeInfo { lint_root: lint_level }
-        } else {
-            self.visibility_scope_info[parent].clone()
-        };
+        debug!("new_visibility_scope({:?}, {:?}, {:?}) - parent({:?})={:?}",
+               span, lint_level, safety,
+               parent, self.visibility_scope_info.get(parent));
         let scope = self.visibility_scopes.push(VisibilityScopeData {
             span,
             parent_scope: Some(parent),
         });
-        self.visibility_scope_info.push(info);
+        let scope_info = VisibilityScopeInfo {
+            lint_root: if let LintLevel::Explicit(lint_root) = lint_level {
+                lint_root
+            } else {
+                self.visibility_scope_info[parent].lint_root
+            },
+            safety: safety.unwrap_or_else(|| {
+                self.visibility_scope_info[parent].safety
+            })
+        };
+        self.visibility_scope_info.push(scope_info);
         scope
     }
 

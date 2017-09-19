@@ -290,6 +290,19 @@ impl<'tcx> Mir<'tcx> {
 pub struct VisibilityScopeInfo {
     /// A NodeId with lint levels equivalent to this scope's lint levels.
     pub lint_root: ast::NodeId,
+    /// The unsafe block that contains this node.
+    pub safety: Safety,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Safety {
+    Safe,
+    /// Unsafe because of a PushUnsafeBlock
+    BuiltinUnsafe,
+    /// Unsafe because of an unsafe fn
+    FnUnsafe,
+    /// Unsafe because of an `unsafe` block
+    ExplicitUnsafe(ast::NodeId)
 }
 
 impl_stable_hash_for!(struct Mir<'tcx> {
@@ -346,7 +359,7 @@ impl<T> serialize::Decodable for ClearOnDecode<T> {
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
 /// Most passes can work with it as a whole, within a single function.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct SourceInfo {
     /// Source span for the AST pertaining to this MIR entity.
     pub span: Span,
@@ -447,13 +460,16 @@ pub struct LocalDecl<'tcx> {
     /// True if this is an internal local
     ///
     /// These locals are not based on types in the source code and are only used
-    /// for drop flags at the moment.
+    /// for a few desugarings at the moment.
     ///
     /// The generator transformation will sanity check the locals which are live
     /// across a suspension point against the type components of the generator
     /// which type checking knows are live across a suspension point. We need to
     /// flag drop flags to avoid triggering this check as they are introduced
     /// after typeck.
+    ///
+    /// Unsafety checking will also ignore dereferences of these locals,
+    /// so they can be used for raw pointers only used in a desugaring.
     ///
     /// This should be sound because the drop flags are fully algebraic, and
     /// therefore don't affect the OIBIT or outlives properties of the
@@ -1632,6 +1648,13 @@ impl Location {
             dominators.is_dominated_by(other.block, self.block)
         }
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UnsafetyViolation {
+    pub source_info: SourceInfo,
+    pub description: &'static str,
+    pub lint_node_id: Option<ast::NodeId>,
 }
 
 /// The layout of generator state

@@ -42,8 +42,8 @@ fn main() {
     let mut u1 = U1 { a: 10 }; // OK
     let a = u1.a; //~ ERROR access to union field requires unsafe
     u1.a = 11; // OK
-    let U1 { a } = u1; //~ ERROR matching on union field requires unsafe
-    if let U1 { a: 12 } = u1 {} //~ ERROR matching on union field requires unsafe
+    let U1 { a } = u1; //~ ERROR access to union field requires unsafe
+    if let U1 { a: 12 } = u1 {} //~ ERROR access to union field requires unsafe
     // let U1 { .. } = u1; // OK
 
     let mut u2 = U2 { a: String::from("old") }; // OK

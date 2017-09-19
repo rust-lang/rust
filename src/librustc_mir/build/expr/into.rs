@@ -228,9 +228,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let val = args.next().expect("1 argument to `move_val_init`");
                     assert!(args.next().is_none(), ">2 arguments to `move_val_init`");
 
-                    let topmost_scope = this.topmost_scope();
-                    let ptr = unpack!(block = this.as_temp(block, Some(topmost_scope), ptr));
-                    this.into(&Lvalue::Local(ptr).deref(), block, val)
+                    let ptr = this.hir.mirror(ptr);
+                    let ptr_ty = ptr.ty;
+                    // Create an *internal* temp for the pointer, so that unsafety
+                    // checking won't complain about the raw pointer assignment.
+                    let ptr_temp = this.local_decls.push(LocalDecl {
+                        mutability: Mutability::Mut,
+                        ty: ptr_ty,
+                        name: None,
+                        source_info,
+                        lexical_scope: source_info.scope,
+                        internal: true,
+                        is_user_variable: false
+                    });
+                    let ptr_temp = Lvalue::Local(ptr_temp);
+                    let block = unpack!(this.into(&ptr_temp, block, ptr));
+                    this.into(&ptr_temp.deref(), block, val)
                 } else {
                     let args: Vec<_> =
                         args.into_iter()

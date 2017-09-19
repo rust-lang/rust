@@ -182,11 +182,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         self.visit_bindings(pattern, &mut |this, mutability, name, var, span, ty| {
             if var_scope.is_none() {
                 var_scope = Some(this.new_visibility_scope(scope_span,
-                                                           LintLevel::Inherited));
+                                                           LintLevel::Inherited,
+                                                           None));
                 // If we have lints, create a new visibility scope
                 // that marks the lints for the locals.
                 if lint_level.is_explicit() {
-                    this.new_visibility_scope(scope_span, lint_level);
+                    this.visibility_scope =
+                        this.new_visibility_scope(scope_span, lint_level, None);
                 }
             }
             let source_info = SourceInfo {
