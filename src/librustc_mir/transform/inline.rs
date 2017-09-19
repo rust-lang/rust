@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
 use rustc::mir::visit::*;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
@@ -88,13 +88,28 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                     if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                        if self.tcx.trait_of_item(callee_def_id).is_none() {
-                            callsites.push_back(CallSite {
-                                callee: callee_def_id,
-                                substs,
-                                bb,
-                                location: terminator.source_info
-                            });
+                        match self.tcx.trait_of_item(callee_def_id) {
+                            Some(_) => {
+                                match Instance::new(callee_def_id, substs).resolve(self.tcx) {
+                                    Some(instance) => {
+                                        callsites.push_back(CallSite {
+                                            callee: instance.def_id(),
+                                            substs: instance.substs,
+                                            bb,
+                                            location: terminator.source_info
+                                        });
+                                    },
+                                    None => {}
+                                }
+                            }
+                            None => {
+                                callsites.push_back(CallSite {
+                                    callee: callee_def_id,
+                                    substs,
+                                    bb,
+                                    location: terminator.source_info
+                                });
+                            }
                         }
                     }
                 }
