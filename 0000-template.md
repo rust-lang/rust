@@ -42,7 +42,7 @@ The section should return to the examples given in the previous section, and exp
 
 Why should we *not* do this?
 
-# Rationale and Alternatives
+# Rationale and alternatives
 [alternatives]: #alternatives
 
 - Why is this design the best in the space of possible designs?
