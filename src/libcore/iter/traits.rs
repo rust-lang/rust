@@ -452,7 +452,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfold", issue = "0")]
+    #[unstable(feature = "iter_rfold", issue = "44705")]
     fn rfold<B, F>(mut self, mut accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
