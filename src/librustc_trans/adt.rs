@@ -72,7 +72,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return;
     }
     match *l.layout {
-        layout::Univariant(_) => {
+        layout::Univariant => {
             let is_enum = if let ty::TyAdt(def, _) = t.sty {
                 def.is_enum()
             } else {
@@ -100,7 +100,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return cx.llvm_type_of(value.to_ty(cx.tcx()));
     }
     match *l.layout {
-        layout::Univariant(_) => {
+        layout::Univariant => {
             match name {
                 None => {
                     Type::struct_(cx, &struct_llfields(cx, l), l.is_packed())
@@ -152,11 +152,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
-    let field_index_by_increasing_offset = match *layout.layout {
-        layout::Univariant(ref variant) => variant.field_index_by_increasing_offset(),
-        _ => bug!("unexpected {:#?}", layout)
-    };
-    for i in field_index_by_increasing_offset {
+    for i in layout.fields.index_by_increasing_offset() {
         let field = layout.field(cx, i);
         let target_offset = layout.fields.offset(i as usize);
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
