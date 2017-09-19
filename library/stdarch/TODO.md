@@ -422,7 +422,7 @@ ssse3
 * [ ] `_mm_abs_epi16`
 * [ ] `_mm_abs_pi32`
 * [ ] `_mm_abs_epi32`
-* [ ] `_mm_shuffle_epi8`
+* [x] `_mm_shuffle_epi8`
 * [ ] `_mm_shuffle_pi8`
 * [ ] `_mm_alignr_epi8`
 * [ ] `_mm_alignr_pi8`
