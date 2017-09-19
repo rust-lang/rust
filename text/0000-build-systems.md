@@ -261,12 +261,22 @@ during the planning stage.
 
 Many organization want to employ their own strategy for maintaining and
 versioning code and for resolving dependencies, *in addition* to build
-execution. In this case, they may wish to entirely forgo producing a meaningful
-Cargo.toml for the code the write, instead having one that just forwards to a
-plugin (as in the example plugin above). The description of dependencies is then
-written in the external build system's rule format. Here, Cargo acts primarily
-as a *workflow and tool orchestrator*, since it is not involved in either
-planning or executing the build. Let's dig into that.
+execution.
+
+In this case, the big question is: how can we arrange things such that the Rust
+tooling ecosystem can understand what the external build system is doing, to
+gather the information needed for the tools to operate.
+
+The possibility we'll examine here is using Cargo **purely as a conduit for
+information from the external build system to Rust tools** (see Alternatives for
+more discussion). That is, tools will be able to call into Cargo in a uniform
+way, with Cargo subsequently just forwarding those calls along to custom user
+code hooking into an external build system. In this approach, Cargo.toml will
+generally consist of a single entry forwarding to a plugin (as in the example
+plugin above). The description of dependencies is then written in the external
+build system's rule format. Thus, Cargo acts primarily as a *workflow and tool
+orchestrator*, since it is not involved in either planning or executing the
+build. Let's dig into it.
 
 #### Workflow and interop story
 
@@ -496,6 +506,13 @@ include:
   would, however, be a non-starter for many organizations who want a
   single-version, mono-repo world internally, and it's not clear what the gains
   would be.
+
+One key open question is: what, exactly, do Rust tools need to do their work?
+Tool interop is a major goal for this effort, but ideally we'd support it with a
+minimum of fuss. It may be that the needs are simple enough that we can get away
+with a separate interchange format, which both Cargo and other build tools can
+create. As part of the "experimental" part of this RFC, the Cargo team will work
+with the Dev Tools team to fully enumerate their needs.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
