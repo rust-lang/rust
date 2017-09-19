@@ -5,7 +5,11 @@ pub use self::sse41::*;
 pub use self::sse42::*;
 pub use self::avx::*;
 pub use self::avx2::*;
+
+pub use self::abm::*;
 pub use self::bmi::*;
+pub use self::bmi2::*;
+pub use self::tbm::*;
 
 #[allow(non_camel_case_types)]
 pub type __m128i = ::v128::i8x16;
