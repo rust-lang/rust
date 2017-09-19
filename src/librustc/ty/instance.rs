@@ -10,6 +10,10 @@
 
 use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
+use ty::subst::{Kind, Subst};
+use traits;
+use syntax::abi::Abi;
+use syntax::codemap::DUMMY_SP;
 use util::ppaux;
 
 use std::fmt;
@@ -111,4 +115,191 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.def.def_id()
     }
+
+    /// The point where linking happens. Resolve a (def_id, substs)
+    /// pair to an instance.
+    pub fn resolve(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Instance<'tcx>> {
+        let def_id = self.def_id();
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, self.substs);
+        let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+            debug!(" => associated item, attempting to find impl");
+            let item = tcx.associated_item(def_id);
+            resolve_associated_item(tcx, &item, trait_def_id, self.substs)
+        } else {
+            let ty = tcx.type_of(def_id);
+            let item_type = tcx.trans_apply_param_substs(self.substs, &ty);
+
+            let def = match item_type.sty {
+                ty::TyFnDef(..) if {
+                    let f = item_type.fn_sig(tcx);
+                    f.abi() == Abi::RustIntrinsic ||
+                        f.abi() == Abi::PlatformIntrinsic
+                } =>
+                {
+                    debug!(" => intrinsic");
+                    ty::InstanceDef::Intrinsic(def_id)
+                }
+                _ => {
+                    if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
+                        let ty = self.substs.type_at(0);
+                        if ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All)) {
+                            debug!(" => nontrivial drop glue");
+                            ty::InstanceDef::DropGlue(def_id, Some(ty))
+                        } else {
+                            debug!(" => trivial drop glue");
+                            ty::InstanceDef::DropGlue(def_id, None)
+                        }
+                    } else {
+                        debug!(" => free item");
+                        ty::InstanceDef::Item(def_id)
+                    }
+                }
+            };
+            Some(Instance { 
+                def: def,
+                substs: self.substs 
+            })
+        };
+        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, self.substs, result);
+        result
+    }
+
+
+}
+
+fn resolve_closure<'a, 'tcx>(
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                   def_id: DefId,
+                   substs: ty::ClosureSubsts<'tcx>,
+                   requested_kind: ty::ClosureKind)
+-> Instance<'tcx>
+{
+    let actual_kind = tcx.closure_kind(def_id);
+
+    match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
+        Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
+        _ => Instance::new(def_id, substs.substs)
+    }
+}
+
+fn resolve_associated_item<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_item: &ty::AssociatedItem,
+    trait_id: DefId,
+    rcvr_substs: &'tcx Substs<'tcx>
+    ) -> Option<Instance<'tcx>> {
+    let def_id = trait_item.def_id;
+    debug!("resolve_associated_item(trait_item={:?}, \
+                                    trait_id={:?}, \
+           rcvr_substs={:?})",
+           def_id, trait_id, rcvr_substs);
+
+    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
+    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
+
+    // Now that we know which impl is being used, we can dispatch to
+    // the actual function:
+    match vtbl {
+        traits::VtableImpl(impl_data) => {
+            let (def_id, substs) = traits::find_associated_item(
+                tcx, trait_item, rcvr_substs, &impl_data);
+            let substs = tcx.erase_regions(&substs);
+            Some(ty::Instance::new(def_id, substs))
+        }
+        traits::VtableGenerator(closure_data) => {
+            Some(Instance {
+                def: ty::InstanceDef::Item(closure_data.closure_def_id),
+                substs: closure_data.substs.substs
+            })
+        }
+        traits::VtableClosure(closure_data) => {
+            let trait_closure_kind = tcx.lang_items().fn_trait_kind(trait_id).unwrap();
+            Some(resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
+                                 trait_closure_kind))
+        }
+        traits::VtableFnPointer(ref data) => {
+            Some(Instance {
+                def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
+                substs: rcvr_substs
+            })
+        }
+        traits::VtableObject(ref data) => {
+            let index = tcx.get_vtable_index_of_object_method(data, def_id);
+            Some(Instance {
+                def: ty::InstanceDef::Virtual(def_id, index),
+                substs: rcvr_substs
+            })
+        }
+        traits::VtableBuiltin(..) if Some(trait_id) == tcx.lang_items().clone_trait() => {
+            Some(Instance {
+                def: ty::InstanceDef::CloneShim(def_id, trait_ref.self_ty()),
+                substs: rcvr_substs
+            })
+        }
+        _ => {
+            None
+        }
+    }
+}
+
+fn needs_fn_once_adapter_shim<'a, 'tcx>(actual_closure_kind: ty::ClosureKind,
+                              trait_closure_kind: ty::ClosureKind)
+    -> Result<bool, ()>
+{
+    match (actual_closure_kind, trait_closure_kind) {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+            (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+            (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
+                // No adapter needed.
+                Ok(false)
+            }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
+            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // `fn(&mut self, ...)`. In fact, at trans time, these are
+            // basically the same thing, so we can just return llfn.
+            Ok(false)
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+            (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+                // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
+                // self, ...)`.  We want a `fn(self, ...)`. We can produce
+                // this by doing something like:
+                //
+                //     fn call_once(self, ...) { call_mut(&self, ...) }
+                //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+                //
+                // These are both the same at trans time.
+                Ok(true)
+            }
+        _ => Err(()),
+    }
+}
+
+fn fn_once_adapter_instance<'a, 'tcx>(
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            closure_did: DefId,
+                            substs: ty::ClosureSubsts<'tcx>,
+                            ) -> Instance<'tcx> {
+    debug!("fn_once_adapter_shim({:?}, {:?})",
+    closure_did,
+    substs);
+    let fn_once = tcx.lang_items().fn_once_trait().unwrap();
+    let call_once = tcx.associated_items(fn_once)
+        .find(|it| it.kind == ty::AssociatedKind::Method)
+        .unwrap().def_id;
+    let def = ty::InstanceDef::ClosureOnceShim { call_once };
+
+    let self_ty = tcx.mk_closure_from_closure_substs(
+        closure_did, substs);
+
+    let sig = tcx.fn_sig(closure_did).subst(tcx, substs.substs);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.inputs().len(), 1);
+    let substs = tcx.mk_substs([
+                               Kind::from(self_ty),
+                               Kind::from(sig.inputs()[0]),
+    ].iter().cloned());
+
+    debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
+    Instance { def, substs }
 }
