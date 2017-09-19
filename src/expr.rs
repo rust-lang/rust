@@ -36,7 +36,7 @@ use types::{can_be_overflowed_type, rewrite_path, PathContext};
 use utils::{colon_spaces, contains_skip, extra_offset, first_line_width, inner_attributes,
             last_line_extendable, last_line_width, left_most_sub_expr, mk_sp, outer_attributes,
             paren_overhead, ptr_vec_to_ref_vec, semicolon_for_stmt, stmt_expr,
-            trimmed_last_line_width, wrap_str};
+            trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -76,11 +76,7 @@ pub fn format_expr(
             ast::LitKind::Str(_, ast::StrStyle::Cooked) => {
                 rewrite_string_lit(context, l.span, shape)
             }
-            _ => wrap_str(
-                context.snippet(expr.span),
-                context.config.max_width(),
-                shape,
-            ),
+            _ => Some(context.snippet(expr.span)),
         },
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi(), expr.span.hi());
@@ -153,11 +149,7 @@ pub fn format_expr(
                 Some(ident) => format!(" {}", ident.node),
                 None => String::new(),
             };
-            wrap_str(
-                format!("continue{}", id_str),
-                context.config.max_width(),
-                shape,
-            )
+            Some(format!("continue{}", id_str))
         }
         ast::ExprKind::Break(ref opt_ident, ref opt_expr) => {
             let id_str = match *opt_ident {
@@ -168,17 +160,13 @@ pub fn format_expr(
             if let Some(ref expr) = *opt_expr {
                 rewrite_unary_prefix(context, &format!("break{} ", id_str), &**expr, shape)
             } else {
-                wrap_str(
-                    format!("break{}", id_str),
-                    context.config.max_width(),
-                    shape,
-                )
+                Some(format!("break{}", id_str))
             }
         }
         ast::ExprKind::Yield(ref opt_expr) => if let Some(ref expr) = *opt_expr {
             rewrite_unary_prefix(context, "yield ", &**expr, shape)
         } else {
-            wrap_str("yield".to_string(), context.config.max_width(), shape)
+            Some("yield".to_string())
         },
         ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
             rewrite_closure(capture, fn_decl, body, expr.span, context, shape)
@@ -190,17 +178,10 @@ pub fn format_expr(
         ast::ExprKind::Mac(ref mac) => {
             // Failure to rewrite a marco should not imply failure to
             // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
-                wrap_str(
-                    context.snippet(expr.span),
-                    context.config.max_width(),
-                    shape,
-                )
-            })
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+                .or_else(|| Some(context.snippet(expr.span)))
         }
-        ast::ExprKind::Ret(None) => {
-            wrap_str("return".to_owned(), context.config.max_width(), shape)
-        }
+        ast::ExprKind::Ret(None) => Some("return".to_owned()),
         ast::ExprKind::Ret(Some(ref expr)) => {
             rewrite_unary_prefix(context, "return ", &**expr, shape)
         }
@@ -302,16 +283,14 @@ pub fn format_expr(
                     };
                     rewrite_unary_suffix(context, &sp_delim, &*lhs, shape)
                 }
-                (None, None) => wrap_str(delim.into(), context.config.max_width(), shape),
+                (None, None) => Some(delim.into()),
             }
         }
         // We do not format these expressions yet, but they should still
         // satisfy our width restrictions.
-        ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => wrap_str(
-            context.snippet(expr.span),
-            context.config.max_width(),
-            shape,
-        ),
+        ast::ExprKind::InPlace(..) | ast::ExprKind::InlineAsm(..) => {
+            Some(context.snippet(expr.span))
+        }
         ast::ExprKind::Catch(ref block) => {
             if let rw @ Some(_) = rewrite_single_line_block(context, "do catch ", block, shape) {
                 rw
@@ -383,7 +362,11 @@ where
             .map(|first_line| first_line.ends_with('{'))
             .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            return Some(format!("{}{}{}{}", lhs_result, infix, rhs_result, suffix));
+            let one_line_width = last_line_width(&lhs_result) + infix.len()
+                + first_line_width(&rhs_result) + suffix.len();
+            if one_line_width <= shape.width {
+                return Some(format!("{}{}{}{}", lhs_result, infix, rhs_result, suffix));
+            }
         }
     }
 
@@ -2665,11 +2648,7 @@ pub fn rewrite_field(
     prefix_max_width: usize,
 ) -> Option<String> {
     if contains_skip(&field.attrs) {
-        return wrap_str(
-            context.snippet(field.span()),
-            context.config.max_width(),
-            shape,
-        );
+        return Some(context.snippet(field.span()));
     }
     let name = &field.ident.node.to_string();
     if field.is_shorthand {

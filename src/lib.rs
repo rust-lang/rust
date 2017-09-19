@@ -24,7 +24,6 @@ extern crate syntax;
 extern crate term;
 extern crate unicode_segmentation;
 
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, Write};

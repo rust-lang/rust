@@ -22,7 +22,7 @@ use lists::{itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_sh
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use types::{rewrite_path, PathContext};
-use utils::{format_mutability, mk_sp, wrap_str};
+use utils::{format_mutability, mk_sp};
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
@@ -51,8 +51,7 @@ impl Rewrite for Pat {
                     None => "".to_owned(),
                 };
 
-                let result = format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat);
-                wrap_str(result, context.config.max_width(), shape)
+                Some(format!("{}{}{}{}", prefix, mut_infix, id_str, sub_pat))
             }
             PatKind::Wild => if 1 <= shape.width {
                 Some("_".to_owned())
@@ -125,17 +124,13 @@ impl Rewrite for Pat {
                 } else {
                     format!("[{}]", pats.join(", "))
                 };
-                wrap_str(result, context.config.max_width(), shape)
+                Some(result)
             }
             PatKind::Struct(ref path, ref fields, elipses) => {
                 rewrite_struct_pat(path, fields, elipses, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
-            PatKind::Mac(..) => wrap_str(
-                context.snippet(self.span),
-                context.config.max_width(),
-                shape,
-            ),
+            PatKind::Mac(..) => Some(context.snippet(self.span)),
         }
     }
 }
@@ -225,11 +220,21 @@ impl Rewrite for FieldPat {
         if self.is_shorthand {
             pat
         } else {
-            wrap_str(
-                format!("{}: {}", self.ident.to_string(), try_opt!(pat)),
-                context.config.max_width(),
-                shape,
-            )
+            let pat_str = try_opt!(pat);
+            let id_str = self.ident.to_string();
+            let one_line_width = id_str.len() + 2 + pat_str.len();
+            if one_line_width <= shape.width {
+                Some(format!("{}: {}", id_str, pat_str))
+            } else {
+                let nested_shape = shape.block_indent(context.config.tab_spaces());
+                let pat_str = try_opt!(self.pat.rewrite(context, nested_shape));
+                Some(format!(
+                    "{}:\n{}{}",
+                    id_str,
+                    nested_shape.indent.to_string(context.config),
+                    pat_str,
+                ))
+            }
         }
     }
 }

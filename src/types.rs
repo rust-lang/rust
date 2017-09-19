@@ -26,7 +26,7 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListTac
             SeparatorPlace, SeparatorTactic};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp, wrap_str};
+use utils::{colon_spaces, extra_offset, format_mutability, last_line_width, mk_sp};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {
@@ -504,7 +504,7 @@ impl Rewrite for ast::WherePredicate {
             }
         };
 
-        wrap_str(result, context.config.max_width(), shape)
+        Some(result)
     }
 }
 
@@ -542,7 +542,7 @@ where
             colon,
             join_bounds(context, try_opt!(shape.sub_width(overhead)), &appendix)
         );
-        wrap_str(result, context.config.max_width(), shape)
+        Some(result)
     }
 }
 
@@ -565,12 +565,8 @@ impl Rewrite for ast::TyParamBound {
 }
 
 impl Rewrite for ast::Lifetime {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        wrap_str(
-            pprust::lifetime_to_string(self),
-            context.config.max_width(),
-            shape,
-        )
+    fn rewrite(&self, _: &RewriteContext, _: Shape) -> Option<String> {
+        Some(pprust::lifetime_to_string(self))
     }
 }
 
@@ -612,7 +608,7 @@ impl Rewrite for ast::TyParam {
             result.push_str(&rewrite);
         }
 
-        wrap_str(result, context.config.max_width(), shape)
+        Some(result)
     }
 }
 
