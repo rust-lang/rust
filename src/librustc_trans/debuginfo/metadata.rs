@@ -1130,7 +1130,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
         match *self.type_rep.layout {
-            layout::General { ref variants, .. } => {
+            layout::Layout::General { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
                 (0..variants.len()).map(|i| {
@@ -1159,7 +1159,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 }).collect()
             },
-            layout::Univariant => {
+            layout::Layout::Univariant => {
                 assert!(adt.variants.len() <= 1);
 
                 if adt.variants.is_empty() {
@@ -1191,7 +1191,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     ]
                 }
             }
-            layout::NullablePointer {
+            layout::Layout::NullablePointer {
                 nndiscr,
                 discr,
                 ..
@@ -1432,8 +1432,9 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let type_rep = cx.layout_of(enum_type);
 
     let discriminant_type_metadata = match *type_rep.layout {
-        layout::NullablePointer { .. } | layout::Univariant { .. } => None,
-        layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
+        layout::Layout::NullablePointer { .. } |
+        layout::Layout::Univariant { .. } => None,
+        layout::Layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
         ref l @ _ => bug!("Not an enum layout: {:#?}", l)
     };
 

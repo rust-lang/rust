@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Integer::*;
-pub use self::Layout::*;
 pub use self::Primitive::*;
 
 use session::{self, DataTypeKind, Session};
@@ -2015,10 +2014,10 @@ impl<'a, 'tcx> FullLayout<'tcx> {
         };
 
         let (layout, fields, abi) = match *self.layout {
-            Univariant => (self.layout, self.fields, self.abi),
+            Layout::Univariant => (self.layout, self.fields, self.abi),
 
-            NullablePointer { ref variants, .. } |
-            General { ref variants, .. } => {
+            Layout::NullablePointer { ref variants, .. } |
+            Layout::General { ref variants, .. } => {
                 let variant = &variants[variant_index];
                 (&variant.layout, &variant.fields, variant.abi)
             }
@@ -2104,8 +2103,8 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                     match self.variant_index {
                         None => match *self.layout {
                             // Discriminant field for enums (where applicable).
-                            General { discr, .. } |
-                            NullablePointer { discr, .. } => {
+                            Layout::General { discr, .. } |
+                            Layout::NullablePointer { discr, .. } => {
                                 return [discr.to_ty(tcx)][i];
                             }
                             _ if def.variants.len() > 1 => return [][i],
@@ -2174,10 +2173,10 @@ impl<'a, 'tcx> FullLayout<'tcx> {
     {
         let tcx = cx.tcx();
         match (self.layout, self.abi, &self.ty.sty) {
-            (&Scalar, Abi::Scalar(Pointer), _) if !self.ty.is_unsafe_ptr() => {
+            (&Layout::Scalar, Abi::Scalar(Pointer), _) if !self.ty.is_unsafe_ptr() => {
                 Ok(Some((Size::from_bytes(0), Pointer)))
             }
-            (&General { discr, .. }, _, &ty::TyAdt(def, _)) => {
+            (&Layout::General { discr, .. }, _, &ty::TyAdt(def, _)) => {
                 if def.discriminants(tcx).all(|d| d.to_u128_unchecked() != 0) {
                     Ok(Some((self.fields.offset(0), discr)))
                 } else {
@@ -2185,7 +2184,7 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                 }
             }
 
-            (&FatPointer, _, _) if !self.ty.is_unsafe_ptr() => {
+            (&Layout::FatPointer, _, _) if !self.ty.is_unsafe_ptr() => {
                 Ok(Some((self.fields.offset(FAT_PTR_ADDR), Pointer)))
             }
 
@@ -2193,10 +2192,10 @@ impl<'a, 'tcx> FullLayout<'tcx> {
             (_, _, &ty::TyAdt(def, _)) if Some(def.did) == tcx.lang_items().non_zero() => {
                 let field = self.field(cx, 0)?;
                 match (field.layout, field.abi) {
-                    (&Scalar, Abi::Scalar(value)) => {
+                    (&Layout::Scalar, Abi::Scalar(value)) => {
                         Ok(Some((self.fields.offset(0), value)))
                     }
-                    (&FatPointer, _) => {
+                    (&Layout::FatPointer, _) => {
                         Ok(Some((self.fields.offset(0) +
                                  field.fields.offset(FAT_PTR_ADDR),
                                  Pointer)))
@@ -2206,7 +2205,7 @@ impl<'a, 'tcx> FullLayout<'tcx> {
             }
 
             // Perhaps one of the fields is non-zero, let's recurse and find out.
-            (&Univariant, _, _) => {
+            (&Layout::Univariant, _, _) => {
                 for i in 0..self.fields.count() {
                     let r = self.field(cx, i)?.non_zero_field(cx)?;
                     if let Some((offset, primitive)) = r {
