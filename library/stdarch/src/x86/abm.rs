@@ -67,5 +67,3 @@ mod tests {
         assert_eq!(abm::_popcnt64(0b0101_1010u64), 4);
     }
 }
-
-

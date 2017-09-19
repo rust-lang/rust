@@ -16,7 +16,6 @@ def arm_triplet(arch) :
                 'armv8' : 'aarch64-unknown-linux-gnu' }
     return triples[arch]
 
-
 class File(object):
     def __init__(self, path_rs):
         self.path_rs = path_rs
@@ -51,7 +50,6 @@ def call(args):
         print >>sys.stdout, lines
         print >>sys.stderr, "ERROR: %s" % error
 
-
 def compile_file(file):
     if verbose:
         print "Checking: " + str(file) + "..."
@@ -72,8 +70,6 @@ def compile_file(file):
     call(rustc_args_asm)
     rustc_args_ll = rustc_args + ' --emit llvm-ir {} -o {}'.format(file.path_rs, file.path_llvmir_output)
     call(rustc_args_ll)
-
-
 
     if verbose:
         print "...done!"

@@ -95,7 +95,6 @@ pub fn _pext_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pext_64(a, mask) }
 }
 
-
 #[cfg(all(test, target_feature = "bmi2", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use x86::bmi2;
@@ -145,7 +144,6 @@ mod tests {
         assert_eq!(bmi2::_pdep_u32(n, m1), s1);
     }
 
-
     #[test]
     #[target_feature = "+bmi2"]
     fn _pdep_u64() {
@@ -160,7 +158,6 @@ mod tests {
         assert_eq!(bmi2::_pdep_u64(n, m0), s0);
         assert_eq!(bmi2::_pdep_u64(n, m1), s1);
     }
-
 
     #[test]
     #[target_feature = "+bmi2"]
@@ -177,7 +174,6 @@ mod tests {
         let s = 0b0001_0010u64;
         assert_eq!(bmi2::_bzhi_u64(n, 5), s);
     }
-
 
     #[test]
     #[target_feature = "+bmi2"]
@@ -204,5 +200,4 @@ mod tests {
         assert_eq!(lo, 0b11111111_11111111_11111111_11111111_11111111_11111111_11111100_11100000u64);
         assert_eq!(hi, 0b00110001u64);
     }
-
 }

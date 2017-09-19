@@ -5,8 +5,8 @@ _pdep_u32:
   popq	%rbp
   retq
 _pdep_u64:
-	pushq	%rbp
-	movq	%rsp, %rbp
-	pdepq	%rsi, %rdi, %rax
-	popq	%rbp
-	retq
+  pushq	%rbp
+  movq	%rsp, %rbp
+  pdepq	%rsi, %rdi, %rax
+  popq	%rbp
+  retq
