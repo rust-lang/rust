@@ -2215,12 +2215,23 @@ where
         _ if args.len() >= 1 => {
             item_vec[args.len() - 1].item = args.last()
                 .and_then(|last_arg| last_arg.rewrite(context, shape));
-            tactic = definitive_tactic(
-                &*item_vec,
-                ListTactic::LimitedHorizontalVertical(args_max_width),
-                Separator::Comma,
-                one_line_width,
-            );
+            // Use horizontal layout for a function with a single argument as long as
+            // everything fits in a single line.
+            if args.len() == 1
+                && args_max_width != 0 // Vertical layout is forced.
+                && !item_vec[0].has_comment()
+                && !item_vec[0].inner_as_ref().contains('\n')
+                && ::lists::total_item_width(&item_vec[0]) <= one_line_width
+            {
+                tactic = DefinitiveListTactic::Horizontal;
+            } else {
+                tactic = definitive_tactic(
+                    &*item_vec,
+                    ListTactic::LimitedHorizontalVertical(args_max_width),
+                    Separator::Comma,
+                    one_line_width,
+                );
+            }
         }
         _ => (),
     }

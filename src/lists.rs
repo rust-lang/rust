@@ -713,7 +713,7 @@ where
         .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
 }
 
-fn total_item_width(item: &ListItem) -> usize {
+pub fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
         + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
         + item.item.as_ref().map_or(0, |str| str.len())
