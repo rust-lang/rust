@@ -298,7 +298,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                         self.tcx.mir_const_qualif(def_id);
                         self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
                     } else {
-                        self.tcx.extern_const_body(def_id)
+                        self.tcx.extern_const_body(def_id).body
                     };
                     let ret = cx.expr(&body.value);
                     if ret.is_some() {
