@@ -88,7 +88,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 if let TerminatorKind::Call {
                     func: Operand::Constant(ref f), .. } = terminator.kind {
                         if let ty::TyFnDef(callee_def_id, substs) = f.ty.sty {
-                            if let Some(instance) = Instance::new(callee_def_id, substs).resolve(self.tcx) {
+                            if let Some(instance) = Instance::resolve(self.tcx, callee_def_id, substs) {
                                 callsites.push_back(CallSite {
                                     callee: instance.def_id(),
                                     substs: instance.substs,

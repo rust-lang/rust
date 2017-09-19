@@ -118,16 +118,15 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
 
     /// The point where linking happens. Resolve a (def_id, substs)
     /// pair to an instance.
-    pub fn resolve(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Instance<'tcx>> {
-        let def_id = self.def_id();
-        debug!("resolve(def_id={:?}, substs={:?})", def_id, self.substs);
+    pub fn resolve(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
             debug!(" => associated item, attempting to find impl");
             let item = tcx.associated_item(def_id);
-            resolve_associated_item(tcx, &item, trait_def_id, self.substs)
+            resolve_associated_item(tcx, &item, trait_def_id, substs)
         } else {
             let ty = tcx.type_of(def_id);
-            let item_type = tcx.trans_apply_param_substs(self.substs, &ty);
+            let item_type = tcx.trans_apply_param_substs(substs, &ty);
 
             let def = match item_type.sty {
                 ty::TyFnDef(..) if {
@@ -141,7 +140,7 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
                 }
                 _ => {
                     if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
-                        let ty = self.substs.type_at(0);
+                        let ty = substs.type_at(0);
                         if ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All)) {
                             debug!(" => nontrivial drop glue");
                             ty::InstanceDef::DropGlue(def_id, Some(ty))
@@ -157,10 +156,10 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
             };
             Some(Instance { 
                 def: def,
-                substs: self.substs 
+                substs: substs
             })
         };
-        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, self.substs, result);
+        debug!("resolve(def_id={:?}, substs={:?}) = {:?}", def_id, substs, result);
         result
     }
 
