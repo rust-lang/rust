@@ -766,7 +766,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if let ty::layout::FatPointer { .. } = *arg.layout.layout {
+            if let ty::layout::Layout::FatPointer { .. } = *arg.layout.layout {
                 let mut data = ArgType::new(arg.layout.field(ccx, 0));
                 let mut info = ArgType::new(arg.layout.field(ccx, 1));
 

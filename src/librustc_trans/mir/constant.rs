@@ -1034,7 +1034,7 @@ fn trans_const_adt<'a, 'tcx>(
         _ => 0,
     };
     match *l.layout {
-        layout::General { .. } => {
+        layout::Layout::General { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
                     adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
@@ -1051,7 +1051,7 @@ fn trans_const_adt<'a, 'tcx>(
                 build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
-        layout::UntaggedUnion => {
+        layout::Layout::UntaggedUnion => {
             assert_eq!(variant_index, 0);
             let contents = [
                 vals[0].llval,
@@ -1060,14 +1060,14 @@ fn trans_const_adt<'a, 'tcx>(
 
             Const::new(C_struct(ccx, &contents, l.is_packed()), t)
         }
-        layout::Univariant => {
+        layout::Layout::Univariant => {
             assert_eq!(variant_index, 0);
             build_const_struct(ccx, l, vals, None)
         }
-        layout::Vector => {
+        layout::Layout::Vector => {
             Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
         }
-        layout::NullablePointer { nndiscr, .. } => {
+        layout::Layout::NullablePointer { nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 build_const_struct(ccx, l.for_variant(variant_index), vals, None)
             } else {

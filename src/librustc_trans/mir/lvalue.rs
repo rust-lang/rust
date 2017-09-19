@@ -312,8 +312,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
         match *l.layout {
-            layout::Univariant { .. } |
-            layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
+            layout::Layout::Univariant { .. } |
+            layout::Layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
             _ => {}
         }
 
@@ -324,7 +324,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             _ => bug!("discriminant not scalar: {:#?}", discr_layout)
         };
         let (min, max) = match *l.layout {
-            layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
+            layout::Layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
             _ => (0, u64::max_value()),
         };
         let max_next = max.wrapping_add(1);
@@ -350,14 +350,14 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             }
         };
         match *l.layout {
-            layout::General { .. } => {
+            layout::Layout::General { .. } => {
                 let signed = match discr_scalar {
                     layout::Int(_, signed) => signed,
                     _ => false
                 };
                 bcx.intcast(lldiscr, cast_to, signed)
             }
-            layout::NullablePointer { nndiscr, .. } => {
+            layout::Layout::NullablePointer { nndiscr, .. } => {
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
                 let zero = C_null(bcx.ccx.llvm_type_of(discr_layout.ty));
                 bcx.intcast(bcx.icmp(cmp, lldiscr, zero), cast_to, false)
@@ -374,12 +374,12 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
         match *l.layout {
-            layout::General { .. } => {
+            layout::Layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.ty.to_ty(bcx.tcx())), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
-            layout::NullablePointer { nndiscr, .. } => {
+            layout::Layout::NullablePointer { nndiscr, .. } => {
                 if to != nndiscr {
                     let use_memset = match l.abi {
                         layout::Abi::Scalar(_) => false,
@@ -429,8 +429,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             // If this is an enum, cast to the appropriate variant struct type.
             let layout = bcx.ccx.layout_of(ty);
             match *layout.layout {
-                layout::NullablePointer { .. } |
-                layout::General { .. } => {
+                layout::Layout::NullablePointer { .. } |
+                layout::Layout::General { .. } => {
                     let variant_layout = layout.for_variant(variant_index);
                     let variant_ty = Type::struct_(bcx.ccx,
                         &type_of::struct_llfields(bcx.ccx, variant_layout),
