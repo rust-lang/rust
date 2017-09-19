@@ -1,7 +1,7 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::hir::def::Def;
 use rustc::hir::{BiAnd, BiOr, BlockCheckMode, Expr, Expr_, Stmt, StmtSemi, UnsafeSource};
-use utils::{in_macro, snippet_opt, span_lint, span_lint_and_sugg};
+use utils::{in_macro, snippet_opt, span_lint, span_lint_and_sugg, has_drop};
 use std::ops::Deref;
 
 /// **What it does:** Checks for statements which have no effect.
@@ -38,15 +38,6 @@ declare_lint! {
     pub UNNECESSARY_OPERATION,
     Warn,
     "outer expressions with no effect"
-}
-
-/// Check whether this type implements Drop.
-fn has_drop(cx: &LateContext, expr: &Expr) -> bool {
-    let struct_ty = cx.tables.expr_ty(expr);
-    match struct_ty.ty_adt_def() {
-        Some(def) => def.has_dtor(cx.tcx),
-        _ => false,
-    }
 }
 
 fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
