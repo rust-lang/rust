@@ -19,6 +19,7 @@ SRCS=(
   "https://fuchsia.googlesource.com/zircon zircon e9a26dbc70d631029f8ee9763103910b7e3a2fe1"
   "https://llvm.googlesource.com/llvm llvm 65bdf0ae4a87e6992c24f06e2612909952468710"
   "https://llvm.googlesource.com/clang llvm/tools/clang 914987de45cf83636537909ce09156aa7a37d6ec"
+  "https://llvm.googlesource.com/clang-tools-extra llvm/tools/clang/tools/extra 83de24124250a7cdc7a0fdc61b7e3c3d64b80225"
   "https://llvm.googlesource.com/lld llvm/tools/lld f8ed4483c589b390daafac92e28f4680ad052643"
   "https://llvm.googlesource.com/lldb llvm/tools/lldb 55cf8753321782668cb7e2d879457ee1ad57a2b9"
   "https://llvm.googlesource.com/compiler-rt llvm/runtimes/compiler-rt a8682fdf74d3cb93769b7394f2cdffc5cefb8bd8"
