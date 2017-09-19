@@ -66,10 +66,6 @@ impl Type {
         ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
     }
 
-    pub fn nil(ccx: &CrateContext) -> Type {
-        Type::empty_struct(ccx)
-    }
-
     pub fn metadata(ccx: &CrateContext) -> Type {
         ty!(llvm::LLVMRustMetadataTypeInContext(ccx.llcx()))
     }
@@ -202,9 +198,6 @@ impl Type {
         ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
     }
 
-    pub fn empty_struct(ccx: &CrateContext) -> Type {
-        Type::struct_(ccx, &[], false)
-    }
 
     pub fn array(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMRustArrayType(ty.to_ref(), len))

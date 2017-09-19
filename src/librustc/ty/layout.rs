@@ -1541,10 +1541,10 @@ impl<'a, 'tcx> Layout {
                         discr_range: (min as u64)..=(max as u64),
                         variants
                     },
-                    fields: FieldPlacement::Arbitrary {
-                        offsets: vec![Size::from_bytes(0)],
-                        memory_index: vec![0]
-                    },
+                    // FIXME(eddyb): using `FieldPlacement::Arbitrary` here results
+                    // in lost optimizations, specifically around allocations, see
+                    // `test/codegen/{alloc-optimisation,vec-optimizes-away}.rs`.
+                    fields: FieldPlacement::Union(1),
                     abi: if discr.size(dl) == size {
                         Abi::Scalar(discr)
                     } else {

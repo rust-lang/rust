@@ -10,17 +10,16 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, FullLayout, Layout, LayoutOf};
+use rustc::ty::layout::{self, Align, FullLayout, LayoutOf};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 use abi;
-use adt;
 use base;
 use builder::Builder;
 use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, val_ty};
 use consts;
-use type_of::LayoutLlvmExt;
+use type_of::{self, LayoutLlvmExt};
 use type_::Type;
 use value::Value;
 use glue;
@@ -206,52 +205,26 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let alignment = self.alignment | Alignment::from(l);
 
         // Unions and newtypes only use an offset of 0.
-        match *l.layout {
-            // FIXME(eddyb) The fields of a fat pointer aren't correct, especially
-            // to unsized structs, we can't represent their pointee types in `Ty`.
-            Layout::FatPointer { .. } => {}
-
-            _ if offset == 0 => {
-                let ty = ccx.llvm_type_of(field.ty);
-                return LvalueRef {
-                    llval: bcx.pointercast(self.llval, ty.ptr_to()),
-                    llextra: if field.is_unsized() {
-                        self.llextra
-                    } else {
-                        ptr::null_mut()
-                    },
-                    ty: LvalueTy::from_ty(field.ty),
-                    alignment,
-                };
+        let has_llvm_fields = match *l.fields {
+            layout::FieldPlacement::Union(_) => false,
+            layout::FieldPlacement::Array { .. } => true,
+            layout::FieldPlacement::Arbitrary { .. } => {
+                match l.abi {
+                    layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => false,
+                    layout::Abi::Aggregate { .. } => true
+                }
             }
-
-            _ => {}
-        }
-
-        // Discriminant field of enums.
-        if let layout::NullablePointer { .. } = *l.layout {
-            let ty = ccx.llvm_type_of(field.ty);
-            let size = field.size(ccx).bytes();
-
-            // If the discriminant is not on a multiple of the primitive's size,
-            // we need to go through i8*. Also assume the worst alignment.
-            if offset % size != 0 {
-                let byte_ptr = bcx.pointercast(self.llval, Type::i8p(ccx));
-                let byte_ptr = bcx.inbounds_gep(byte_ptr, &[C_usize(ccx, offset)]);
-                let byte_align = Alignment::Packed(Align::from_bytes(1, 1).unwrap());
-                return LvalueRef::new_sized(
-                    bcx.pointercast(byte_ptr, ty.ptr_to()), field.ty, byte_align);
-            }
-
-            let discr_ptr = bcx.pointercast(self.llval, ty.ptr_to());
-            return LvalueRef::new_sized(
-                bcx.inbounds_gep(discr_ptr, &[C_usize(ccx, offset / size)]),
-                field.ty, alignment);
-        }
+        };
 
         let simple = || {
             LvalueRef {
-                llval: bcx.struct_gep(self.llval, l.llvm_field_index(ix)),
+                llval: if has_llvm_fields {
+                    bcx.struct_gep(self.llval, l.llvm_field_index(ix))
+                } else {
+                    assert_eq!(offset, 0);
+                    let ty = ccx.llvm_type_of(field.ty);
+                    bcx.pointercast(self.llval, ty.ptr_to())
+                },
                 llextra: if ccx.shared().type_has_metadata(field.ty) {
                     self.llextra
                 } else {
@@ -460,7 +433,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 layout::General { .. } => {
                     let variant_layout = layout.for_variant(variant_index);
                     let variant_ty = Type::struct_(bcx.ccx,
-                        &adt::struct_llfields(bcx.ccx, variant_layout),
+                        &type_of::struct_llfields(bcx.ccx, variant_layout),
                         variant_layout.is_packed());
                     downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
                 }
