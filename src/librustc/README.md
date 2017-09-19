@@ -168,12 +168,14 @@ pointers for understanding them better.
   units. Each of these units is processed by LLVM independently from one another,
   enabling parallelism. They are also the unit of incremental re-use. 
 - cx -- we tend to use "cx" as an abbrevation for context. See also tcx, infcx, etc.
-- `DefId` -- an index identifying a **definition** (see `librustc/hir/def_id.rs`).
+- `DefId` -- an index identifying a **definition** (see `librustc/hir/def_id.rs`). Uniquely
+  identifies a `DefPath`.
 - HIR -- the **High-level IR**, created by lowering and desugaring the AST. See `librustc/hir`.
 - `HirId` -- identifies a particular node in the HIR by combining a
   def-id with an "intra-definition offset".
 - `'gcx` -- the lifetime of the global arena (see `librustc/ty`).
 - generics -- the set of generic type parameters defined on a type or item
+- ICE -- internal compiler error. When the compiler crashes.
 - infcx -- the inference context (see `librustc/infer`)
 - MIR -- the **Mid-level IR** that is created after type-checking for use by borrowck and trans.
   Defined in the `src/librustc/mir/` module, but much of the code that manipulates it is
@@ -181,7 +183,7 @@ pointers for understanding them better.
 - obligation -- something that must be proven by the trait system; see `librustc/traits`.
 - local crate -- the crate currently being compiled.
 - node-id or `NodeId` -- an index identifying a particular node in the
-  AST or HIR; gradually being phased out.
+  AST or HIR; gradually being phased out and replaced with `HirId`.
 - query -- perhaps some sub-computation during compilation; see `librustc/maps`.
 - provider -- the function that executes a query; see `librustc/maps`.
 - sess -- the **compiler session**, which stores global data used throughout compilation
