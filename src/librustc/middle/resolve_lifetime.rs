@@ -1422,7 +1422,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let lifetime_i = &lifetimes[i];
 
             for lifetime in lifetimes {
-                if lifetime.lifetime.is_static() {
+                if lifetime.lifetime.is_static() || lifetime.lifetime.name == "'_"  {
                     let lifetime = lifetime.lifetime;
                     let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
                                   "invalid lifetime parameter name: `{}`", lifetime.name);
@@ -1452,7 +1452,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
 
             for bound in &lifetime_i.bounds {
-                if !bound.is_static() {
+                if bound.name == "'_" {
+                    let mut err = struct_span_err!(self.sess, bound.span, E0637,
+                        "invalid lifetime bound name: `{}`", bound.name);
+                    err.span_label(bound.span,
+                                   format!("{} is a reserved lifetime name", bound.name));
+                    err.emit();
+                } else if !bound.is_static() {
                     self.resolve_lifetime_ref(bound);
                 } else {
                     self.insert_lifetime(bound, Region::Static);

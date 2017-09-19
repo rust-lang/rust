@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn _f<'_>() //~ ERROR invalid lifetime name `'_`
-    -> &'_ u8 //~ ERROR invalid lifetime name `'_`
-{
-    panic!();
-}
-
 fn main() {
     '_: loop { //~ ERROR invalid label name `'_`
         break '_ //~ ERROR invalid label name `'_`

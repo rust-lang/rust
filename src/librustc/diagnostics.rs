@@ -2086,4 +2086,5 @@ register_diagnostics! {
     E0566, // conflicting representation hints
     E0623, // lifetime mismatch where both parameters are anonymous regions
     E0628, // generators cannot have explicit arguments
+    E0637, // "'_" is not a valid lifetime bound
 }

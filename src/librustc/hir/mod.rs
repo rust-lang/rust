@@ -159,7 +159,8 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name == keywords::Invalid.name()
+        self.name == keywords::Invalid.name() ||
+        self.name == "'_"
     }
 
     pub fn is_static(&self) -> bool {
