@@ -20,5 +20,6 @@ mod sse42;
 mod avx;
 mod avx2;
 
+mod abm;
 mod bmi;
 mod bmi2;
