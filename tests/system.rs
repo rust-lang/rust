@@ -201,8 +201,6 @@ where
     let mut reports = vec![];
 
     for file_name in files.filter(|f| f.ends_with(".rs")) {
-        println!("Testing '{}'...", file_name);
-
         match idempotent_check(file_name) {
             Ok(ref report) if report.has_warnings() => {
                 print!("{}", report);
