@@ -21,3 +21,4 @@ mod avx;
 mod avx2;
 
 mod bmi;
+mod bmi2;
