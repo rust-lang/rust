@@ -15,10 +15,15 @@ pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast::{self};
+use parse::ParseSess;
+use print::pprust;
 use ptr::P;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
+use syntax::parse::parse_stream_from_source_str;
+use syntax_pos::{self, Span};
 use tokenstream::{TokenStream, TokenTree};
+use tokenstream;
 
 use std::cell::Cell;
 use std::{cmp, fmt};
@@ -421,6 +426,59 @@ impl Token {
     pub fn is_reserved_ident(&self) -> bool {
         self.is_special_ident() || self.is_used_keyword() || self.is_unused_keyword()
     }
+
+    pub fn interpolated_to_tokenstream(&self, sess: &ParseSess, span: Span)
+        -> TokenStream
+    {
+        let nt = match *self {
+            Token::Interpolated(ref nt) => nt,
+            _ => panic!("only works on interpolated tokens"),
+        };
+
+        // An `Interpolated` token means that we have a `Nonterminal`
+        // which is often a parsed AST item. At this point we now need
+        // to convert the parsed AST to an actual token stream, e.g.
+        // un-parse it basically.
+        //
+        // Unfortunately there's not really a great way to do that in a
+        // guaranteed lossless fashion right now. The fallback here is
+        // to just stringify the AST node and reparse it, but this loses
+        // all span information.
+        //
+        // As a result, some AST nodes are annotated with the token
+        // stream they came from. Attempt to extract these lossless
+        // token streams before we fall back to the stringification.
+        let mut tokens = None;
+
+        match nt.0 {
+            Nonterminal::NtItem(ref item) => {
+                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+            }
+            Nonterminal::NtTraitItem(ref item) => {
+                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+            }
+            Nonterminal::NtImplItem(ref item) => {
+                tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
+            }
+            Nonterminal::NtIdent(ident) => {
+                let token = Token::Ident(ident.node);
+                tokens = Some(TokenTree::Token(ident.span, token).into());
+            }
+            Nonterminal::NtTT(ref tt) => {
+                tokens = Some(tt.clone().into());
+            }
+            _ => {}
+        }
+
+        tokens.unwrap_or_else(|| {
+            nt.1.force(|| {
+                // FIXME(jseyfried): Avoid this pretty-print + reparse hack
+                let name = "<macro expansion>".to_owned();
+                let source = pprust::token_to_string(self);
+                parse_stream_from_source_str(name, source, sess, Some(span))
+            })
+        })
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
@@ -532,4 +590,31 @@ impl Decodable for LazyTokenStream {
 
 impl ::std::hash::Hash for LazyTokenStream {
     fn hash<H: ::std::hash::Hasher>(&self, _hasher: &mut H) {}
+}
+
+fn prepend_attrs(sess: &ParseSess,
+                 attrs: &[ast::Attribute],
+                 tokens: Option<&tokenstream::TokenStream>,
+                 span: syntax_pos::Span)
+    -> Option<tokenstream::TokenStream>
+{
+    let tokens = match tokens {
+        Some(tokens) => tokens,
+        None => return None,
+    };
+    if attrs.len() == 0 {
+        return Some(tokens.clone())
+    }
+    let mut builder = tokenstream::TokenStreamBuilder::new();
+    for attr in attrs {
+        assert_eq!(attr.style, ast::AttrStyle::Outer,
+                   "inner attributes should prevent cached tokens from existing");
+        // FIXME: Avoid this pretty-print + reparse hack as bove
+        let name = "<macro expansion>".to_owned();
+        let source = pprust::attr_to_string(attr);
+        let stream = parse_stream_from_source_str(name, source, sess, Some(span));
+        builder.push(stream);
+    }
+    builder.push(tokens.clone());
+    Some(builder.build())
 }

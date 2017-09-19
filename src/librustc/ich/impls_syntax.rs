@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::parse::token;
 use syntax::symbol::InternedString;
 use syntax::tokenstream;
-use syntax_pos::{Span, FileMap};
+use syntax_pos::FileMap;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
@@ -228,7 +228,7 @@ for tokenstream::TokenTree {
         match *self {
             tokenstream::TokenTree::Token(span, ref token) => {
                 span.hash_stable(hcx, hasher);
-                hash_token(token, hcx, hasher, span);
+                hash_token(token, hcx, hasher);
             }
             tokenstream::TokenTree::Delimited(span, ref delimited) => {
                 span.hash_stable(hcx, hasher);
@@ -254,8 +254,7 @@ for tokenstream::TokenStream {
 
 fn hash_token<'gcx, W: StableHasherResult>(token: &token::Token,
                                            hcx: &mut StableHashingContext<'gcx>,
-                                           hasher: &mut StableHasher<W>,
-                                           error_reporting_span: Span) {
+                                           hasher: &mut StableHasher<W>) {
     mem::discriminant(token).hash_stable(hcx, hasher);
     match *token {
         token::Token::Eq |
@@ -318,20 +317,8 @@ fn hash_token<'gcx, W: StableHasherResult>(token: &token::Token,
         token::Token::Ident(ident) |
         token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
 
-        token::Token::Interpolated(ref non_terminal) => {
-            // FIXME(mw): This could be implemented properly. It's just a
-            //            lot of work, since we would need to hash the AST
-            //            in a stable way, in addition to the HIR.
-            //            Since this is hardly used anywhere, just emit a
-            //            warning for now.
-            if hcx.sess().opts.debugging_opts.incremental.is_some() {
-                let msg = format!("Quasi-quoting might make incremental \
-                                   compilation very inefficient: {:?}",
-                                  non_terminal);
-                hcx.sess().span_warn(error_reporting_span, &msg[..]);
-            }
-
-            std_hash::Hash::hash(non_terminal, hasher);
+        token::Token::Interpolated(_) => {
+            bug!("interpolated tokens should not be present in the HIR")
         }
 
         token::Token::DocComment(val) |

@@ -64,6 +64,8 @@ use syntax::ptr::P;
 use syntax::codemap::{self, respan, Spanned, CompilerDesugaringKind};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
+use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
+use syntax::parse::token::{Token, DelimToken};
 use syntax::util::small_vector::SmallVector;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -589,7 +591,50 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
-        attrs.clone().into()
+        attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
+    }
+
+    fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
+        Attribute {
+            id: attr.id,
+            style: attr.style,
+            path: attr.path.clone(),
+            tokens: self.lower_token_stream(attr.tokens.clone()),
+            is_sugared_doc: attr.is_sugared_doc,
+            span: attr.span,
+        }
+    }
+
+    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
+        tokens.into_trees().map(|tree| self.lower_token_tree(tree)).collect()
+    }
+
+    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenTree {
+        match tree {
+            TokenTree::Token(span, token) => {
+                self.lower_token(token, span)
+            }
+            TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, Delimited {
+                    delim: delimited.delim,
+                    tts: self.lower_token_stream(delimited.tts.into()).into(),
+                })
+            }
+        }
+    }
+
+    fn lower_token(&mut self, token: Token, span: Span) -> TokenTree {
+        match token {
+            Token::Interpolated(_) => {}
+            other => return TokenTree::Token(span, other),
+        }
+
+        let tts = token.interpolated_to_tokenstream(&self.sess.parse_sess, span);
+        let tts = self.lower_token_stream(tts);
+        TokenTree::Delimited(span, Delimited {
+            delim: DelimToken::NoDelim,
+            tts: tts.into(),
+        })
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
@@ -1625,13 +1670,14 @@ impl<'a> LoweringContext<'a> {
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
+                let body = self.lower_token_stream(def.stream());
                 self.exported_macros.push(hir::MacroDef {
                     name,
                     vis,
                     attrs,
                     id: i.id,
                     span: i.span,
-                    body: def.stream(),
+                    body,
                     legacy: def.legacy,
                 });
             }
