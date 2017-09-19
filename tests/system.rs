@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_use]
+extern crate log;
 extern crate regex;
 extern crate rustfmt_nightly as rustfmt;
 extern crate term;
@@ -201,6 +203,8 @@ where
     let mut reports = vec![];
 
     for file_name in files.filter(|f| f.ends_with(".rs")) {
+        debug!("Testing '{}'...", file_name);
+
         match idempotent_check(file_name) {
             Ok(ref report) if report.has_warnings() => {
                 print!("{}", report);
