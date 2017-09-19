@@ -35,7 +35,7 @@ use type_::Type;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, Layout, Size, FullLayout};
+use rustc::ty::layout::{self, Align, Size, FullLayout};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc_back::PanicStrategy;
 
@@ -307,19 +307,18 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
             }
 
             layout::Abi::Aggregate { .. } => {
-                if let Layout::Array { .. } = *self.layout {
-                    if self.fields.count() > 0 {
-                        return self.field(ccx, 0).homogeneous_aggregate(ccx);
-                    }
-                }
-
                 let mut total = Size::from_bytes(0);
                 let mut result = None;
 
                 let is_union = match *self.fields {
-                    layout::FieldPlacement::Linear { stride, .. } => {
-                        stride.bytes() == 0
+                    layout::FieldPlacement::Array { count, .. } => {
+                        if count > 0 {
+                            return self.field(ccx, 0).homogeneous_aggregate(ccx);
+                        } else {
+                            return None;
+                        }
                     }
+                    layout::FieldPlacement::Union(_) => true,
                     layout::FieldPlacement::Arbitrary { .. } => false
                 };
 

@@ -635,9 +635,11 @@ pub const FAT_PTR_EXTRA: usize = 1;
 /// Describes how the fields of a type are located in memory.
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum FieldPlacement {
-    /// Array-like placement. Can also express
-    /// unions, by using a stride of zero bytes.
-    Linear {
+    /// All fields start at no offset. The `usize` is the field count.
+    Union(usize),
+
+    /// Array/vector-like placement, with all fields of identical types.
+    Array {
         stride: Size,
         count: u64
     },
@@ -664,16 +666,10 @@ pub enum FieldPlacement {
 }
 
 impl FieldPlacement {
-    pub fn union(count: usize) -> Self {
-        FieldPlacement::Linear {
-            stride: Size::from_bytes(0),
-            count: count as u64
-        }
-    }
-
     pub fn count(&self) -> usize {
         match *self {
-            FieldPlacement::Linear { count, .. } => {
+            FieldPlacement::Union(count) => count,
+            FieldPlacement::Array { count, .. } => {
                 let usize_count = count as usize;
                 assert_eq!(usize_count as u64, count);
                 usize_count
@@ -684,7 +680,8 @@ impl FieldPlacement {
 
     pub fn offset(&self, i: usize) -> Size {
         match *self {
-            FieldPlacement::Linear { stride, count } => {
+            FieldPlacement::Union(_) => Size::from_bytes(0),
+            FieldPlacement::Array { stride, count } => {
                 let i = i as u64;
                 assert!(i < count);
                 stride * i
@@ -695,7 +692,8 @@ impl FieldPlacement {
 
     pub fn memory_index(&self, i: usize) -> usize {
         match *self {
-            FieldPlacement::Linear { .. } => i,
+            FieldPlacement::Union(_) |
+            FieldPlacement::Array { .. } => i,
             FieldPlacement::Arbitrary { ref memory_index, .. } => {
                 let r = memory_index[i];
                 assert_eq!(r as usize as u32, r);
@@ -727,7 +725,8 @@ impl FieldPlacement {
 
         (0..self.count()).map(move |i| {
             match *self {
-                FieldPlacement::Linear { .. } => i,
+                FieldPlacement::Union(_) |
+                FieldPlacement::Array { .. } => i,
                 FieldPlacement::Arbitrary { .. } => {
                     if use_small { inverse_small[i] as usize }
                     else { inverse_big[i] as usize }
@@ -945,7 +944,7 @@ impl<'a, 'tcx> Layout {
         let scalar = |value| {
             tcx.intern_layout(CachedLayout {
                 layout: Layout::Scalar,
-                fields: FieldPlacement::union(0),
+                fields: FieldPlacement::Union(0),
                 abi: Abi::Scalar(value)
             })
         };
@@ -1118,12 +1117,12 @@ impl<'a, 'tcx> Layout {
 
             // Effectively a (ptr, meta) tuple.
             let align = Pointer.align(dl).max(metadata.align(dl));
-            let fields = FieldPlacement::Linear {
-                stride: Pointer.size(dl),
-                count: 2
-            };
-            let meta_offset = fields.offset(1);
+            let meta_offset = Pointer.size(dl);
             assert_eq!(meta_offset, meta_offset.abi_align(metadata.align(dl)));
+            let fields = FieldPlacement::Arbitrary {
+                offsets: vec![Size::from_bytes(0), meta_offset],
+                memory_index: vec![0, 1]
+            };
             Ok(tcx.intern_layout(CachedLayout {
                 layout: Layout::FatPointer,
                 fields,
@@ -1182,7 +1181,7 @@ impl<'a, 'tcx> Layout {
 
                 tcx.intern_layout(CachedLayout {
                     layout: Layout::Array,
-                    fields: FieldPlacement::Linear {
+                    fields: FieldPlacement::Array {
                         stride: element_size,
                         count
                     },
@@ -1199,7 +1198,7 @@ impl<'a, 'tcx> Layout {
                 let element = cx.layout_of(element)?;
                 tcx.intern_layout(CachedLayout {
                     layout: Layout::Array,
-                    fields: FieldPlacement::Linear {
+                    fields: FieldPlacement::Array {
                         stride: element.size(dl),
                         count: 0
                     },
@@ -1215,7 +1214,7 @@ impl<'a, 'tcx> Layout {
             ty::TyStr => {
                 tcx.intern_layout(CachedLayout {
                     layout: Layout::Array,
-                    fields: FieldPlacement::Linear {
+                    fields: FieldPlacement::Array {
                         stride: Size::from_bytes(1),
                         count: 0
                     },
@@ -1283,7 +1282,7 @@ impl<'a, 'tcx> Layout {
                 };
                 tcx.intern_layout(CachedLayout {
                     layout: Layout::Vector,
-                    fields: FieldPlacement::Linear {
+                    fields: FieldPlacement::Array {
                         stride: element.size(tcx),
                         count
                     },
@@ -1340,7 +1339,7 @@ impl<'a, 'tcx> Layout {
 
                     return Ok(tcx.intern_layout(CachedLayout {
                         layout: Layout::UntaggedUnion,
-                        fields: FieldPlacement::union(variants[0].len()),
+                        fields: FieldPlacement::Union(variants[0].len()),
                         abi: Abi::Aggregate {
                             sized: true,
                             packed,
@@ -2282,7 +2281,10 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for FieldPlacement {
         mem::discriminant(self).hash_stable(hcx, hasher);
 
         match *self {
-            Linear { count, stride } => {
+            Union(count) => {
+                count.hash_stable(hcx, hasher);
+            }
+            Array { count, stride } => {
                 count.hash_stable(hcx, hasher);
                 stride.hash_stable(hcx, hasher);
             }
