@@ -1,7 +1,7 @@
 - Feature Name: tool_attributes, tool_lints
 - Start Date: 2016-09-22
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2103
+- Rust Issue: https://github.com/rust-lang/rust/issues/44690
 
 
 # Summary
@@ -145,11 +145,11 @@ to base paths).
 
 Unscoped attributes will be reserved for the language and can't be used by tools.
 
-During macro expansion, when faced with an attribute, the compiler first checks
-if the attribute matches any of the declared or built-in attributes. If not, it
-tries to find a macro using the [macro name resolution rules](https://github.com/rust-lang/rfcs/blob/master/text/1561-macro-naming.md).
-If this fails, then it reports a macro not found error. The compiler *may*
-suggest mis-typed attributes (declared or built-in).
+During macro expansion, when faced with an attribute, the compiler first tries
+to find a macro using the [macro name resolution rules](https://github.com/rust-lang/rfcs/blob/master/text/1561-macro-naming.md).
+The compiler then checks if the attribute matches any of the declared or built-
+in attributes. If this fails, then it reports a macro not found error. The
+compiler *may* suggest mis-typed attributes (declared or built-in).
 
 A similar opt-in mechanism will exist for lints.
 
@@ -181,7 +181,7 @@ Tool-scoped attributes should be preserved by the compiler for as long as
 possible through compilation. This allows tools which plug into the compiler
 (like Clippy) to observe these attributes on items during type checking, etc.
 
-Likewise, white-listed tools may be used a prefix for lints. So for example,
+Likewise, white-listed tools may be used as a prefix for lints. So for example,
 `rustfmt::foo` and `clippy::bar` are both valid lint names, from the compiler's
 perspective.
 
@@ -191,8 +191,8 @@ perspective.
 For each name on the whitelist, it is indicated if the name is active for
 attributes or lints. A name is only activated if required. So for example,
 `rustdoc` will not be activated at all until it takes advantage of this feature.
-I expect `clippy` will be activated only for lints, and `rustfmt` only for
-attributes.
+I expect `clippy` will be activated only for lints and attributes, and `rustfmt`
+only for attributes.
 
 A tool that has an active name *must* check for unused lints/attibutes. For
 example, if `rustfmt` becomes active for attributes, and only recognises
@@ -260,3 +260,7 @@ Should we try and move some top-level attributes that are compiler-specific
 (rather than language-specific) to use `#[rustc::]`? (E.g., `crate_type`).
 
 How should the compiler expose path lints to lint plugins/lint tools?
+
+[RFC 2126](https://github.com/rust-lang/rfcs/blob/master/text/2126-path-clarity.md)
+may change how paths are written, the paths used in attributes in this RFC should
+be adjusted accordingly.
