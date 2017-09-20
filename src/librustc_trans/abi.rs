@@ -697,7 +697,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             if ty.is_bool() {
                 arg.attrs.set(ArgAttribute::ZExt);
             } else {
-                if arg.layout.size(ccx).bytes() == 0 {
+                if arg.layout.is_zst() {
                     // For some forsaken reason, x86_64-pc-windows-gnu
                     // doesn't ignore zero-sized struct arguments.
                     // The same is true for s390x-unknown-linux-gnu.

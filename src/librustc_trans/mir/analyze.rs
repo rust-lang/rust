@@ -18,6 +18,7 @@ use rustc::mir::{self, Location, TerminatorKind, Literal};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use rustc::ty;
+use rustc::ty::layout::LayoutOf;
 use common;
 use super::MirContext;
 
@@ -34,7 +35,7 @@ pub fn lvalue_locals<'a, 'tcx>(mircx: &MirContext<'a, 'tcx>) -> BitVector {
             ty.is_box() ||
             ty.is_region_ptr() ||
             ty.is_simd() ||
-            common::type_is_zero_size(mircx.ccx, ty)
+            mircx.ccx.layout_of(ty).is_zst()
         {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.

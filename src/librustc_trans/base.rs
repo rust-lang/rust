@@ -40,7 +40,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::Align;
+use rustc::ty::layout::{Align, FullLayout};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
@@ -55,10 +55,7 @@ use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_array};
-use common::CrateContext;
-use common::{type_is_zero_size, val_ty};
-use common;
+use common::{self, C_struct_in_context, C_array, CrateContext, val_ty};
 use consts;
 use context::{self, LocalCrateContext, SharedCrateContext};
 use debuginfo;
@@ -88,7 +85,7 @@ use syntax::attr;
 use rustc::hir;
 use syntax::ast;
 
-use mir::operand::{OperandRef, OperandValue};
+use mir::operand::OperandValue;
 
 pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 pub use rustc_trans_utils::trans_item::linkage_by_name;
@@ -249,8 +246,8 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                      src: LvalueRef<'tcx>,
                                      dst: LvalueRef<'tcx>) {
-    let src_ty = src.ty.to_ty(bcx.tcx());
-    let dst_ty = dst.ty.to_ty(bcx.tcx());
+    let src_ty = src.layout.ty;
+    let dst_ty = dst.layout.ty;
     let coerce_ptr = || {
         let (base, info) = match src.load(bcx).val {
             OperandValue::Pair(base, info) => {
@@ -266,10 +263,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             }
             OperandValue::Ref(..) => bug!()
         };
-        OperandRef {
-            val: OperandValue::Pair(base, info),
-            ty: dst_ty
-        }.store(bcx, dst);
+        OperandValue::Pair(base, info).store(bcx, dst);
     };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(..), &ty::TyRef(..)) |
@@ -288,15 +282,12 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let src_f = src.project_field(bcx, i);
                 let dst_f = dst.project_field(bcx, i);
 
-                let src_f_ty = src_f.ty.to_ty(bcx.tcx());
-                let dst_f_ty = dst_f.ty.to_ty(bcx.tcx());
-
-                if type_is_zero_size(bcx.ccx, dst_f_ty) {
+                if dst_f.layout.is_zst() {
                     continue;
                 }
 
-                if src_f_ty == dst_f_ty {
-                    memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f_ty,
+                if src_f.layout.ty == dst_f.layout.ty {
+                    memcpy_ty(bcx, dst_f.llval, src_f.llval, src_f.layout,
                         (src_f.alignment | dst_f.alignment).non_abi());
                 } else {
                     coerce_unsized_into(bcx, src_f, dst_f);
@@ -409,17 +400,17 @@ pub fn memcpy_ty<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     dst: ValueRef,
     src: ValueRef,
-    t: Ty<'tcx>,
+    layout: FullLayout<'tcx>,
     align: Option<Align>,
 ) {
     let ccx = bcx.ccx;
 
-    let size = ccx.size_of(t).bytes();
+    let size = layout.size(ccx).bytes();
     if size == 0 {
         return;
     }
 
-    let align = align.unwrap_or_else(|| ccx.align_of(t));
+    let align = align.unwrap_or_else(|| layout.align(ccx));
     call_memcpy(bcx, dst, src, C_usize(ccx, size), align);
 }
 

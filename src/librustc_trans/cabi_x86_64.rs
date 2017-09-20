@@ -58,7 +58,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                           off: Size)
                           -> Result<(), Memory> {
         if !off.is_abi_aligned(layout.align(ccx)) {
-            if layout.size(ccx).bytes() > 0 {
+            if !layout.is_zst() {
                 return Err(Memory);
             }
             return Ok(());

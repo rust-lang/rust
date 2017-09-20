@@ -11,7 +11,6 @@
 use rustc::mir;
 
 use asm;
-use common;
 use builder::Builder;
 
 use super::MirContext;
@@ -37,18 +36,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             self.locals[index] = LocalRef::Operand(Some(operand));
                             bcx
                         }
-                        LocalRef::Operand(Some(_)) => {
-                            let ty = self.monomorphized_lvalue_ty(lvalue);
-
-                            if !common::type_is_zero_size(bcx.ccx, ty) {
+                        LocalRef::Operand(Some(op)) => {
+                            if !op.layout.is_zst() {
                                 span_bug!(statement.source_info.span,
                                           "operand {:?} already assigned",
                                           rvalue);
-                            } else {
-                                // If the type is zero-sized, it's already been set here,
-                                // but we still need to make sure we translate the operand
-                                self.trans_rvalue_operand(bcx, rvalue).0
                             }
+
+                            // If the type is zero-sized, it's already been set here,
+                            // but we still need to make sure we translate the operand
+                            self.trans_rvalue_operand(bcx, rvalue).0
                         }
                     }
                 } else {
@@ -75,8 +72,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
-                    let lvalue = self.trans_lvalue(&bcx, output);
-                    (lvalue.llval, lvalue.ty.to_ty(bcx.tcx()))
+                    self.trans_lvalue(&bcx, output)
                 }).collect();
 
                 let input_vals = inputs.iter().map(|input| {

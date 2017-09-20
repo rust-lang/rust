@@ -58,9 +58,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     match layout.abi {
         layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
 
-        layout::Abi::Aggregate { .. } => {
-            !layout.is_unsized() && layout.size(ccx).bytes() == 0
-        }
+        layout::Abi::Aggregate { .. } => layout.is_zst()
     }
 }
 
@@ -81,12 +79,6 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
         }
         _ => false
     }
-}
-
-/// Identify types which have size zero at runtime.
-pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    let layout = ccx.layout_of(ty);
-    !layout.is_unsized() && layout.size(ccx).bytes() == 0
 }
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
