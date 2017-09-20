@@ -54,6 +54,8 @@ Misc
   to [doc.rust-lang.org/cargo](https://doc.rust-lang.org/cargo)
 - [The rustdoc book is now available][43863]
   at [doc.rust-lang.org/rustdoc](https://doc.rust-lang.org/rustdoc)
+- [Added a preview of RLS has been made available through rustup][44204]
+  Install with `rustup component add rls-preview`
 
 Compatibility Notes
 -------------------
@@ -63,8 +65,6 @@ Compatibility Notes
   Was previously relative to the rustc's internal `CodeMap` struct which
   required the unstable library `libsyntax` to correctly use.
 - [`unused_results` lint no longer ignores booleans][43728]
-- [Added a preview of RLS has been made available through rustup][44204]
-  Install with `rustup component add rls-preview`
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
 [42588]: https://github.com/rust-lang/rust/pull/42588
