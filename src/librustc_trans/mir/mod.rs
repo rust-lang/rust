@@ -23,7 +23,7 @@ use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{ArgAttribute, FnType};
-use type_of;
+use type_of::{self, LayoutLlvmExt};
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -465,7 +465,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     ty::TyAdt(def, _) if def.is_box() => arg.layout.ty.boxed_ty(),
                     _ => bug!()
                 };
-                let data_llty = bcx.ccx.llvm_type_of(pointee);
+                let data_llty = bcx.ccx.layout_of(pointee).llvm_type(bcx.ccx);
                 let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
 
                 a = bcx.pointercast(a, data_llty.ptr_to());

@@ -109,7 +109,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                   -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bcx.alloca(
-            bcx.ccx.llvm_type_of(layout.ty), name, layout.over_align(bcx.ccx));
+            layout.llvm_type(bcx.ccx), name, layout.over_align(bcx.ccx));
         Self::new_sized(tmp, layout, Alignment::AbiAligned)
     }
 
@@ -189,7 +189,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             } else {
                 bcx.load(self.llval, self.alignment.non_abi())
             };
-            OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout.ty))
+            OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout))
         } else {
             OperandValue::Ref(self.llval, self.alignment)
         };
@@ -223,8 +223,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                     bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
                 } else {
                     assert_eq!(offset, 0);
-                    let ty = ccx.llvm_type_of(field.ty);
-                    bcx.pointercast(self.llval, ty.ptr_to())
+                    bcx.pointercast(self.llval, field.llvm_type(ccx).ptr_to())
                 },
                 llextra: if ccx.shared().type_has_metadata(field.ty) {
                     self.llextra
@@ -296,7 +295,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
         // Finally, cast back to the type expected
-        let ll_fty = ccx.llvm_type_of(field.ty);
+        let ll_fty = field.llvm_type(ccx);
         debug!("struct_field_ptr: Field type is {:?}", ll_fty);
 
         LvalueRef {
@@ -309,7 +308,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     /// Obtain the actual discriminant of a value.
     pub fn trans_get_discr(self, bcx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
-        let cast_to = bcx.ccx.immediate_llvm_type_of(cast_to);
+        let cast_to = bcx.ccx.layout_of(cast_to).immediate_llvm_type(bcx.ccx);
         match *self.layout.layout {
             layout::Layout::Univariant { .. } |
             layout::Layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
@@ -357,7 +356,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             }
             layout::Layout::NullablePointer { nndiscr, .. } => {
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
-                let zero = C_null(bcx.ccx.llvm_type_of(discr.layout.ty));
+                let zero = C_null(discr.layout.llvm_type(bcx.ccx));
                 bcx.intcast(bcx.icmp(cmp, lldiscr, zero), cast_to, false)
             }
             _ => bug!("{} is not an enum", self.layout.ty)
@@ -373,7 +372,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         match *self.layout.layout {
             layout::Layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
-                bcx.store(C_int(bcx.ccx.llvm_type_of(ptr.layout.ty), to as i64),
+                bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
             layout::Layout::NullablePointer { nndiscr, .. } => {
@@ -394,7 +393,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
                     } else {
                         let ptr = self.project_field(bcx, 0);
-                        bcx.store(C_null(bcx.ccx.llvm_type_of(ptr.layout.ty)),
+                        bcx.store(C_null(ptr.layout.llvm_type(bcx.ccx)),
                             ptr.llval, ptr.alignment.non_abi());
                     }
                 }
@@ -523,7 +522,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // Cast the lvalue pointer type to the new
                         // array or slice type (*[%_; new_len]).
                         subslice.llval = bcx.pointercast(subslice.llval,
-                            bcx.ccx.llvm_type_of(subslice.layout.ty).ptr_to());
+                            subslice.layout.llvm_type(bcx.ccx).ptr_to());
 
                         subslice
                     }

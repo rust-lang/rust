@@ -24,6 +24,7 @@ use builder::Builder;
 use consts;
 use declare;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -254,7 +255,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
-        cx.llvm_type_of(cx.tcx().mk_str()).ptr_to());
+        cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
     let empty = C_array(Type::i8(cx), &[]);
     assert_eq!(abi::FAT_PTR_ADDR, 0);
     assert_eq!(abi::FAT_PTR_EXTRA, 1);

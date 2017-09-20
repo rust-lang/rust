@@ -21,7 +21,7 @@ use callee;
 use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint};
 use monomorphize;
 use type_::Type;
-use type_of;
+use type_of::{self, LayoutLlvmExt};
 use value::Value;
 
 use super::{MirContext, LocalRef};
@@ -254,7 +254,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = bcx.ccx.immediate_llvm_type_of(cast.ty);
+                                let llcast_ty = cast.immediate_llvm_type(bcx.ccx);
                                 let llval = bcx.pointercast(data_ptr, llcast_ty);
                                 OperandValue::Immediate(llval)
                             }
@@ -267,8 +267,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let r_t_in = CastTy::from_ty(operand.layout.ty)
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
-                        let ll_t_in = bcx.ccx.immediate_llvm_type_of(operand.layout.ty);
-                        let ll_t_out = bcx.ccx.immediate_llvm_type_of(cast.ty);
+                        let ll_t_in = operand.layout.immediate_llvm_type(bcx.ccx);
+                        let ll_t_out = cast.immediate_llvm_type(bcx.ccx);
                         let llval = operand.immediate();
 
                         if let Layout::General { ref discr_range, .. } = *operand.layout.layout {
@@ -450,7 +450,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let llsize = C_usize(bcx.ccx, size.bytes());
                 let llalign = C_usize(bcx.ccx, align.abi());
                 let box_layout = bcx.ccx.layout_of(bcx.tcx().mk_box(content_ty));
-                let llty_ptr = bcx.ccx.llvm_type_of(box_layout.ty);
+                let llty_ptr = box_layout.llvm_type(bcx.ccx);
 
                 // Allocate space:
                 let def_id = match bcx.tcx().lang_items().require(ExchangeMallocFnLangItem) {

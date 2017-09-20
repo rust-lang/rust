@@ -86,7 +86,7 @@ impl<'a, 'tcx> Const<'tcx> {
                          cv: &ConstVal,
                          ty: Ty<'tcx>)
                          -> Const<'tcx> {
-        let llty = ccx.llvm_type_of(ty);
+        let llty = ccx.layout_of(ty).llvm_type(ccx);
         let val = match *cv {
             ConstVal::Float(v) => {
                 let bits = match v.ty {
@@ -138,7 +138,7 @@ impl<'a, 'tcx> Const<'tcx> {
     }
 
     pub fn to_operand(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
-        let llty = ccx.immediate_llvm_type_of(self.ty);
+        let llty = ccx.layout_of(self.ty).immediate_llvm_type(ccx);
         let llvalty = val_ty(self.llval);
 
         let val = if llty == llvalty && common::type_is_imm_pair(ccx, self.ty) {
@@ -488,7 +488,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         let llelem = if iv < len as u128 {
                             const_get_elt(base.llval, iv as u64)
                         } else {
-                            C_undef(self.ccx.llvm_type_of(projected_ty))
+                            C_undef(self.ccx.layout_of(projected_ty).llvm_type(self.ccx))
                         };
 
                         (Base::Value(llelem), ptr::null_mut())
@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let elem_ty = array_ty.builtin_index().unwrap_or_else(|| {
             bug!("bad array type {:?}", array_ty)
         });
-        let llunitty = self.ccx.llvm_type_of(elem_ty);
+        let llunitty = self.ccx.layout_of(elem_ty).llvm_type(self.ccx);
         // If the array contains enums, an LLVM array won't work.
         let val = if fields.iter().all(|&f| val_ty(f) == llunitty) {
             C_array(llunitty, fields)
@@ -664,7 +664,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                         let unsized_ty = cast_ty.builtin_deref(true, ty::NoPreference)
                             .expect("consts: unsizing got non-pointer target type").ty;
-                        let ptr_ty = self.ccx.llvm_type_of(unsized_ty).ptr_to();
+                        let ptr_ty = self.ccx.layout_of(unsized_ty).llvm_type(self.ccx).ptr_to();
                         let base = consts::ptrcast(base, ptr_ty);
                         let info = base::unsized_info(self.ccx, pointee_ty,
                                                       unsized_ty, old_info);
@@ -680,7 +680,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         debug_assert!(common::type_is_immediate(self.ccx, cast_ty));
                         let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                        let ll_t_out = self.ccx.immediate_llvm_type_of(cast_ty);
+                        let ll_t_out = self.ccx.layout_of(cast_ty).immediate_llvm_type(self.ccx);
                         let llval = operand.llval;
                         let signed = match self.ccx.layout_of(operand.ty).abi {
                             layout::Abi::Scalar(layout::Int(_, signed)) => signed,
@@ -735,7 +735,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = self.ccx.immediate_llvm_type_of(cast_ty);
+                                let llcast_ty = self.ccx.layout_of(cast_ty)
+                                    .immediate_llvm_type(self.ccx);
                                 consts::ptrcast(data_ptr, llcast_ty)
                             }
                         } else {
@@ -984,7 +985,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let result = result.unwrap_or_else(|_| {
             // We've errored, so we don't have to produce working code.
-            let llty = bcx.ccx.llvm_type_of(ty);
+            let llty = bcx.ccx.layout_of(ty).llvm_type(bcx.ccx);
             Const::new(C_undef(llty), ty)
         });
 
@@ -1043,7 +1044,7 @@ fn trans_const_adt<'a, 'tcx>(
                 _ => 0,
             };
             let discr_ty = l.field(ccx, 0).ty;
-            let discr = C_int(ccx.llvm_type_of(discr_ty), discr as i64);
+            let discr = C_int(ccx.layout_of(discr_ty).llvm_type(ccx), discr as i64);
             if let layout::Abi::Scalar(_) = l.abi {
                 Const::new(discr, t)
             } else {
@@ -1073,7 +1074,7 @@ fn trans_const_adt<'a, 'tcx>(
             } else {
                 // Always use null even if it's not the `discrfield`th
                 // field; see #8506.
-                Const::new(C_null(ccx.llvm_type_of(t)), t)
+                Const::new(C_null(ccx.layout_of(t).llvm_type(ccx)), t)
             }
         }
         _ => bug!("trans_const_adt: cannot handle type {} repreented as {:#?}", t, l)

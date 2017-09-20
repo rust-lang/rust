@@ -21,6 +21,7 @@ use common::*;
 use declare;
 use glue;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
@@ -104,7 +105,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id);
 
-    let llret_ty = ccx.llvm_type_of(ret_ty);
+    let llret_ty = ccx.layout_of(ret_ty).llvm_type(ccx);
     let result = LvalueRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
 
     let simple = get_simple_intrinsic(ccx, name);
@@ -243,7 +244,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             unsafe {
                 llvm::LLVMSetAlignment(load, ccx.align_of(tp_ty).abi() as u32);
             }
-            to_immediate(bcx, load, tp_ty)
+            to_immediate(bcx, load, ccx.layout_of(tp_ty))
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);

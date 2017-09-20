@@ -13,6 +13,7 @@
 use llvm::{self, ValueRef};
 use common::*;
 use type_::Type;
+use type_of::LayoutLlvmExt;
 use builder::Builder;
 
 use rustc::hir;
@@ -44,7 +45,7 @@ pub fn trans_inline_asm<'a, 'tcx>(
         if out.is_indirect {
             indirect_outputs.push(lvalue.load(bcx).immediate());
         } else {
-            output_types.push(bcx.ccx.llvm_type_of(lvalue.layout.ty));
+            output_types.push(lvalue.layout.llvm_type(bcx.ccx));
         }
     }
     if !indirect_outputs.is_empty() {

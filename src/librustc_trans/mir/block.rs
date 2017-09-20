@@ -652,7 +652,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             if arg.layout.ty == bcx.tcx().types.bool {
                 llval = bcx.load_range_assert(llval, 0, 2, llvm::False, None);
                 // We store bools as i8 so we need to truncate to i1.
-                llval = base::to_immediate(bcx, llval, arg.layout.ty);
+                llval = base::to_immediate(bcx, llval, arg.layout);
             } else if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
                                  (align | Alignment::Packed(arg.layout.align(bcx.ccx)))
@@ -672,45 +672,37 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 args: &[ArgType<'tcx>]) {
         let tuple = self.trans_operand(bcx, operand);
 
-        let arg_types = match tuple.layout.ty.sty {
-            ty::TyTuple(ref tys, _) => tys,
-            _ => span_bug!(self.mir.span,
-                           "bad final argument to \"rust-call\" fn {:?}", tuple.layout.ty)
-        };
-
         // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval, align) => {
                 let tuple_ptr = LvalueRef::new_sized(llval, tuple.layout, align);
-                for n in 0..arg_types.len() {
-                    let field_ptr = tuple_ptr.project_field(bcx, n);
-                    self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[n]);
+                for i in 0..tuple.layout.fields.count() {
+                    let field_ptr = tuple_ptr.project_field(bcx, i);
+                    self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[i]);
                 }
 
             }
             Immediate(llval) => {
-                for (n, &ty) in arg_types.iter().enumerate() {
-                    let mut elem = bcx.extract_value(llval, tuple.layout.llvm_field_index(n));
-                    // Truncate bools to i1, if needed
-                    elem = base::to_immediate(bcx, elem, ty);
+                for i in 0..tuple.layout.fields.count() {
+                    let field = tuple.layout.field(bcx.ccx, i);
+                    let elem = bcx.extract_value(llval, tuple.layout.llvm_field_index(i));
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
-                        val: Immediate(elem),
-                        layout: bcx.ccx.layout_of(ty),
+                        val: Immediate(base::to_immediate(bcx, elem, field)),
+                        layout: field,
                     };
-                    self.trans_argument(bcx, op, llargs, &args[n]);
+                    self.trans_argument(bcx, op, llargs, &args[i]);
                 }
             }
             Pair(a, b) => {
                 let elems = [a, b];
-                for (n, &ty) in arg_types.iter().enumerate() {
-                    let elem = base::to_immediate(bcx, elems[n], ty);
+                for i in 0..tuple.layout.fields.count() {
                     // Pair is always made up of immediates
                     let op = OperandRef {
-                        val: Immediate(elem),
-                        layout: bcx.ccx.layout_of(ty),
+                        val: Immediate(elems[i]),
+                        layout: tuple.layout.field(bcx.ccx, i),
                     };
-                    self.trans_argument(bcx, op, llargs, &args[n]);
+                    self.trans_argument(bcx, op, llargs, &args[i]);
                 }
             }
         }
@@ -881,7 +873,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             src: &mir::Operand<'tcx>,
                             dst: LvalueRef<'tcx>) {
         let src = self.trans_operand(bcx, src);
-        let llty = bcx.ccx.llvm_type_of(src.layout.ty);
+        let llty = src.layout.llvm_type(bcx.ccx);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let align = src.layout.align(bcx.ccx).min(dst.layout.align(bcx.ccx));
         src.val.store(bcx,
