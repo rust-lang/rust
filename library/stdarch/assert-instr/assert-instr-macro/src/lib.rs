@@ -1,3 +1,13 @@
+//! Implementation of the `#[assert_instr]` macro
+//!
+//! This macro is used when testing the `stdsimd` crate and is used to generate
+//! test cases to assert that functions do indeed contain the instructions that
+//! we're expecting them to contain.
+//!
+//! The procedural macro here is relatively simple, it simply appends a
+//! `#[test]` function to the original token stream which asserts that the
+//! function itself contains the relevant instruction.
+
 #![feature(proc_macro)]
 
 extern crate proc_macro;

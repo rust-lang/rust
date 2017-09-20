@@ -1,5 +1,5 @@
 //! Advanced Bit Manipulation (ABM) instructions
-//! 
+//!
 //! The POPCNT and LZCNT have their own CPUID bits to indicate support.
 //!
 //! The references are:
@@ -10,12 +10,15 @@
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#ABM_.28Advanced_Bit_Manipulation.29)
 //! provides a quick overview of the instructions available.
 
+#[cfg(test)]
+use assert_instr::assert_instr;
 
 /// Counts the leading most significant zero bits.
 ///
 /// When the operand is zero, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+lzcnt"]
+#[cfg_attr(test, assert_instr(lzcnt))]
 pub fn _lzcnt_u32(x: u32) -> u32 { x.leading_zeros() }
 
 /// Counts the leading most significant zero bits.
@@ -23,16 +26,19 @@ pub fn _lzcnt_u32(x: u32) -> u32 { x.leading_zeros() }
 /// When the operand is zero, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+lzcnt"]
+#[cfg_attr(test, assert_instr(lzcnt))]
 pub fn _lzcnt_u64(x: u64) -> u64 { x.leading_zeros() as u64 }
 
 /// Counts the bits that are set.
 #[inline(always)]
 #[target_feature = "+popcnt"]
+#[cfg_attr(test, assert_instr(popcnt))]
 pub fn _popcnt32(x: u32) -> u32 { x.count_ones() }
 
 /// Counts the bits that are set.
 #[inline(always)]
 #[target_feature = "+popcnt"]
+#[cfg_attr(test, assert_instr(popcnt))]
 pub fn _popcnt64(x: u64) -> u64 { x.count_ones() as u64 }
 
 #[cfg(all(test, target_feature = "bmi", any(target_arch = "x86", target_arch = "x86_64")))]

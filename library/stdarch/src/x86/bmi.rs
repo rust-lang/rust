@@ -7,6 +7,9 @@
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#BMI1_.28Bit_Manipulation_Instruction_Set_1.29)
 //! provides a quick overview of the available instructions.
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 #[allow(dead_code)]
 extern "C" {
     #[link_name="llvm.x86.bmi.bextr.32"]
@@ -19,6 +22,7 @@ extern "C" {
 /// the least significant bits of the result.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(bextr))]
 pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(a, (start & 0xffu32) | ((len & 0xffu32) << 8u32))
 }
@@ -27,6 +31,7 @@ pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 /// the least significant bits of the result.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(bextr))]
 pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
     _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
 }
@@ -38,6 +43,7 @@ pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
 /// extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(bextr))]
 pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
     unsafe { x86_bmi_bextr_32(a, control) }
 }
@@ -49,6 +55,7 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 /// extracted, and bits [15,8] specify the length of the range.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(bextr))]
 pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
     unsafe { x86_bmi_bextr_64(a, control) }
 }
@@ -56,6 +63,7 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 /// Bitwise logical `AND` of inverted `a` with `b`.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(andn))]
 pub fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
 }
@@ -63,6 +71,7 @@ pub fn _andn_u32(a: u32, b: u32) -> u32 {
 /// Bitwise logical `AND` of inverted `a` with `b`.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(andn))]
 pub fn _andn_u64(a: u64, b: u64) -> u64 {
     !a & b
 }
@@ -70,6 +79,7 @@ pub fn _andn_u64(a: u64, b: u64) -> u64 {
 /// Extract lowest set isolated bit.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsi))]
 pub fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
 }
@@ -77,6 +87,7 @@ pub fn _blsi_u32(x: u32) -> u32 {
 /// Extract lowest set isolated bit.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsi))]
 pub fn _blsi_u64(x: u64) -> u64 {
     x & x.wrapping_neg()
 }
@@ -84,6 +95,7 @@ pub fn _blsi_u64(x: u64) -> u64 {
 /// Get mask up to lowest set bit.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsmsk))]
 pub fn _blsmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_sub(1u32))
 }
@@ -91,6 +103,7 @@ pub fn _blsmsk_u32(x: u32) -> u32 {
 /// Get mask up to lowest set bit.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsmsk))]
 pub fn _blsmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_sub(1u64))
 }
@@ -100,6 +113,7 @@ pub fn _blsmsk_u64(x: u64) -> u64 {
 /// If `x` is sets CF.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsr))]
 pub fn _blsr_u32(x: u32) -> u32 {
     x & (x.wrapping_sub(1))
 }
@@ -109,6 +123,7 @@ pub fn _blsr_u32(x: u32) -> u32 {
 /// If `x` is sets CF.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(blsr))]
 pub fn _blsr_u64(x: u64) -> u64 {
     x & (x.wrapping_sub(1))
 }
@@ -118,6 +133,7 @@ pub fn _blsr_u64(x: u64) -> u64 {
 /// When the source operand is 0, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(tzcnt))]
 pub fn _tzcnt_u16(x: u16) -> u16 {
     x.trailing_zeros() as u16
 }
@@ -127,6 +143,7 @@ pub fn _tzcnt_u16(x: u16) -> u16 {
 /// When the source operand is 0, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(tzcnt))]
 pub fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
@@ -136,6 +153,7 @@ pub fn _tzcnt_u32(x: u32) -> u32 {
 /// When the source operand is 0, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(tzcnt))]
 pub fn _tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
@@ -145,6 +163,7 @@ pub fn _tzcnt_u64(x: u64) -> u64 {
 /// When the source operand is 0, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(tzcnt))]
 pub fn _mm_tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
@@ -154,6 +173,7 @@ pub fn _mm_tzcnt_u32(x: u32) -> u32 {
 /// When the source operand is 0, it returns its size in bits.
 #[inline(always)]
 #[target_feature = "+bmi"]
+#[cfg_attr(test, assert_instr(tzcnt))]
 pub fn _mm_tzcnt_u64(x: u64) -> u64 {
     x.trailing_zeros() as u64
 }
