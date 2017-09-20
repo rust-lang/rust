@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
 use rustc::traits;
 use rustc::mir;
@@ -116,11 +116,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             fn_ty: FnType<'tcx>,
             fn_ptr: ValueRef,
             llargs: &[ValueRef],
-            destination: Option<(ReturnDest<'tcx>, Ty<'tcx>, mir::BasicBlock)>,
+            destination: Option<(ReturnDest<'tcx>, mir::BasicBlock)>,
             cleanup: Option<mir::BasicBlock>
         | {
             if let Some(cleanup) = cleanup {
-                let ret_bcx = if let Some((_, _, target)) = destination {
+                let ret_bcx = if let Some((_, target)) = destination {
                     this.blocks[target]
                 } else {
                     this.unreachable_block()
@@ -132,12 +132,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                            cleanup_bundle);
                 fn_ty.apply_attrs_callsite(invokeret);
 
-                if let Some((ret_dest, ret_ty, target)) = destination {
+                if let Some((ret_dest, target)) = destination {
                     let ret_bcx = this.get_builder(target);
                     this.set_debug_loc(&ret_bcx, terminator.source_info);
                     let op = OperandRef {
                         val: Immediate(invokeret),
-                        ty: ret_ty,
+                        layout: fn_ty.ret.layout,
                     };
                     this.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
                 }
@@ -152,10 +152,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
                 }
 
-                if let Some((ret_dest, ret_ty, target)) = destination {
+                if let Some((ret_dest, target)) = destination {
                     let op = OperandRef {
                         val: Immediate(llret),
-                        ty: ret_ty,
+                        layout: fn_ty.ret.layout,
                     };
                     this.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                     funclet_br(this, bcx, target);
@@ -227,14 +227,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         LocalRef::Lvalue(tr_lvalue) => {
                             OperandRef {
                                 val: Ref(tr_lvalue.llval, tr_lvalue.alignment),
-                                ty: tr_lvalue.ty.to_ty(bcx.tcx())
+                                layout: tr_lvalue.layout
                             }
                         }
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let scratch = LvalueRef::alloca(&bcx, self.fn_ty.ret.layout.ty, "ret");
-                            op.store(&bcx, scratch);
+                            let scratch = LvalueRef::alloca(&bcx, self.fn_ty.ret.layout, "ret");
+                            op.val.store(&bcx, scratch);
                             scratch.llval
                         }
                         Ref(llval, align) => {
@@ -282,7 +282,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
                 do_call(self, bcx, fn_ty, drop_fn, args,
-                        Some((ReturnDest::Nothing, tcx.mk_nil(), target)),
+                        Some((ReturnDest::Nothing, target)),
                         unwind);
             }
 
@@ -427,7 +427,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
-                let (instance, mut llfn) = match callee.ty.sty {
+                let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
                         (Some(ty::Instance::resolve(bcx.ccx.tcx(),
                                                     ty::ParamEnv::empty(traits::Reveal::All),
@@ -438,10 +438,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     ty::TyFnPtr(_) => {
                         (None, Some(callee.immediate()))
                     }
-                    _ => bug!("{} is not callable", callee.ty)
+                    _ => bug!("{} is not callable", callee.layout.ty)
                 };
                 let def = instance.map(|i| i.def);
-                let sig = callee.ty.fn_sig(bcx.tcx());
+                let sig = callee.layout.ty.fn_sig(bcx.tcx());
                 let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
                 let abi = sig.abi;
 
@@ -520,7 +520,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     let val = self.trans_constant(&bcx, constant);
                                     return OperandRef {
                                         val: Immediate(val.llval),
-                                        ty: val.ty
+                                        layout: bcx.ccx.layout_of(val.ty)
                                     };
                                 }
                             }
@@ -539,7 +539,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // Make a fake operand for store_return
                         let op = OperandRef {
                             val: Ref(dst.llval, Alignment::AbiAligned),
-                            ty: sig.output(),
+                            layout: fn_ty.ret.layout,
                         };
                         self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                     }
@@ -587,7 +587,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
 
                 do_call(self, bcx, fn_ty, fn_ptr, &llargs,
-                        destination.as_ref().map(|&(_, target)| (ret_dest, sig.output(), target)),
+                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
                         cleanup);
             }
             mir::TerminatorKind::GeneratorDrop |
@@ -607,7 +607,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let imm_op = |x| OperandRef {
                     val: Immediate(x),
                     // We won't be checking the type again.
-                    ty: bcx.tcx().types.err
+                    layout: bcx.ccx.layout_of(bcx.tcx().types.never)
                 };
                 self.trans_argument(bcx, imm_op(a), llargs, &arg.nested[0]);
                 self.trans_argument(bcx, imm_op(b), llargs, &arg.nested[1]);
@@ -628,8 +628,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let scratch = LvalueRef::alloca(bcx, arg.layout.ty, "arg");
-                    op.store(bcx, scratch);
+                    let scratch = LvalueRef::alloca(bcx, arg.layout, "arg");
+                    op.val.store(bcx, scratch);
                     (scratch.llval, Alignment::AbiAligned, true)
                 } else {
                     (op.pack_if_pair(bcx).immediate(), Alignment::AbiAligned, false)
@@ -640,8 +640,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                 // have scary latent bugs around.
 
-                let scratch = LvalueRef::alloca(bcx, arg.layout.ty, "arg");
-                base::memcpy_ty(bcx, scratch.llval, llval, op.ty, align.non_abi());
+                let scratch = LvalueRef::alloca(bcx, arg.layout, "arg");
+                base::memcpy_ty(bcx, scratch.llval, llval, op.layout, align.non_abi());
                 (scratch.llval, Alignment::AbiAligned, true)
             }
             Ref(llval, align) => (llval, align, true)
@@ -672,16 +672,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 args: &[ArgType<'tcx>]) {
         let tuple = self.trans_operand(bcx, operand);
 
-        let arg_types = match tuple.ty.sty {
+        let arg_types = match tuple.layout.ty.sty {
             ty::TyTuple(ref tys, _) => tys,
             _ => span_bug!(self.mir.span,
-                           "bad final argument to \"rust-call\" fn {:?}", tuple.ty)
+                           "bad final argument to \"rust-call\" fn {:?}", tuple.layout.ty)
         };
 
         // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval, align) => {
-                let tuple_ptr = LvalueRef::new_sized(llval, tuple.ty, align);
+                let tuple_ptr = LvalueRef::new_sized(llval, tuple.layout, align);
                 for n in 0..arg_types.len() {
                     let field_ptr = tuple_ptr.project_field(bcx, n);
                     self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[n]);
@@ -689,15 +689,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             }
             Immediate(llval) => {
-                let layout = bcx.ccx.layout_of(tuple.ty);
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let mut elem = bcx.extract_value(llval, layout.llvm_field_index(n));
+                    let mut elem = bcx.extract_value(llval, tuple.layout.llvm_field_index(n));
                     // Truncate bools to i1, if needed
                     elem = base::to_immediate(bcx, elem, ty);
                     // If the tuple is immediate, the elements are as well
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty,
+                        layout: bcx.ccx.layout_of(ty),
                     };
                     self.trans_argument(bcx, op, llargs, &args[n]);
                 }
@@ -709,7 +708,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // Pair is always made up of immediates
                     let op = OperandRef {
                         val: Immediate(elem),
-                        ty,
+                        layout: bcx.ccx.layout_of(ty),
                     };
                     self.trans_argument(bcx, op, llargs, &args[n]);
                 }
@@ -723,11 +722,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let ty = ccx.tcx().intern_tup(&[
+            let layout = ccx.layout_of(ccx.tcx().intern_tup(&[
                 ccx.tcx().mk_mut_ptr(ccx.tcx().types.u8),
                 ccx.tcx().types.i32
-            ], false);
-            let slot = LvalueRef::alloca(bcx, ty, "personalityslot");
+            ], false));
+            let slot = LvalueRef::alloca(bcx, layout, "personalityslot");
             self.personality_slot = Some(slot);
             slot
         }
@@ -754,7 +753,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let bcx = self.new_block("cleanup");
 
-        let ccx = bcx.ccx;
         let llpersonality = self.ccx.eh_personality();
         let llretty = self.landing_pad_type();
         let lp = bcx.landing_pad(llretty, llpersonality, 1, self.llfn);
@@ -762,10 +760,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let slot = self.get_personality_slot(&bcx);
         slot.storage_live(&bcx);
-        OperandRef {
-            val: Pair(bcx.extract_value(lp, 0), bcx.extract_value(lp, 1)),
-            ty: slot.ty.to_ty(ccx.tcx())
-        }.store(&bcx, slot);
+        Pair(bcx.extract_value(lp, 0), bcx.extract_value(lp, 1)).store(&bcx, slot);
 
         bcx.br(target_bb);
         bcx.llbb()
@@ -796,24 +791,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn make_return_dest(&mut self, bcx: &Builder<'a, 'tcx>,
-                        dest: &mir::Lvalue<'tcx>, fn_ret_ty: &ArgType,
+                        dest: &mir::Lvalue<'tcx>, fn_ret: &ArgType<'tcx>,
                         llargs: &mut Vec<ValueRef>, is_intrinsic: bool)
                         -> ReturnDest<'tcx> {
         // If the return is ignored, we can just return a do-nothing ReturnDest
-        if fn_ret_ty.is_ignore() {
+        if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
         let dest = if let mir::Lvalue::Local(index) = *dest {
-            let ret_ty = self.monomorphized_lvalue_ty(dest);
             match self.locals[index] {
                 LocalRef::Lvalue(dest) => dest,
                 LocalRef::Operand(None) => {
                     // Handle temporary lvalues, specifically Operand ones, as
                     // they don't have allocas
-                    return if fn_ret_ty.is_indirect() {
+                    return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        let tmp = LvalueRef::alloca(bcx, ret_ty, "tmp_ret");
+                        let tmp = LvalueRef::alloca(bcx, fn_ret.layout, "tmp_ret");
                         tmp.storage_live(bcx);
                         llargs.push(tmp.llval);
                         ReturnDest::IndirectOperand(tmp, index)
@@ -821,7 +815,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         // Currently, intrinsics always need a location to store
                         // the result. so we create a temporary alloca for the
                         // result
-                        let tmp = LvalueRef::alloca(bcx, ret_ty, "tmp_ret");
+                        let tmp = LvalueRef::alloca(bcx, fn_ret.layout, "tmp_ret");
                         tmp.storage_live(bcx);
                         ReturnDest::IndirectOperand(tmp, index)
                     } else {
@@ -835,7 +829,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         } else {
             self.trans_lvalue(bcx, dest)
         };
-        if fn_ret_ty.is_indirect() {
+        if fn_ret.is_indirect() {
             match dest.alignment {
                 Alignment::AbiAligned => {
                     llargs.push(dest.llval);
@@ -863,18 +857,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             match self.locals[index] {
                 LocalRef::Lvalue(lvalue) => self.trans_transmute_into(bcx, src, lvalue),
                 LocalRef::Operand(None) => {
-                    let lvalue_ty = self.monomorphized_lvalue_ty(dst);
-                    assert!(!lvalue_ty.has_erasable_regions());
-                    let lvalue = LvalueRef::alloca(bcx, lvalue_ty, "transmute_temp");
+                    let dst_layout = bcx.ccx.layout_of(self.monomorphized_lvalue_ty(dst));
+                    assert!(!dst_layout.ty.has_erasable_regions());
+                    let lvalue = LvalueRef::alloca(bcx, dst_layout, "transmute_temp");
                     lvalue.storage_live(bcx);
                     self.trans_transmute_into(bcx, src, lvalue);
                     let op = lvalue.load(bcx);
                     lvalue.storage_dead(bcx);
                     self.locals[index] = LocalRef::Operand(Some(op));
                 }
-                LocalRef::Operand(Some(_)) => {
-                    let ty = self.monomorphized_lvalue_ty(dst);
-                    assert!(common::type_is_zero_size(bcx.ccx, ty),
+                LocalRef::Operand(Some(op)) => {
+                    assert!(op.layout.is_zst(),
                             "assigning to initialized SSAtemp");
                 }
             }
@@ -887,14 +880,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     fn trans_transmute_into(&mut self, bcx: &Builder<'a, 'tcx>,
                             src: &mir::Operand<'tcx>,
                             dst: LvalueRef<'tcx>) {
-        let val = self.trans_operand(bcx, src);
-        let llty = bcx.ccx.llvm_type_of(val.ty);
+        let src = self.trans_operand(bcx, src);
+        let llty = bcx.ccx.llvm_type_of(src.layout.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
-        let in_type = val.ty;
-        let out_type = dst.ty.to_ty(bcx.tcx());
-        let align = bcx.ccx.align_of(in_type).min(bcx.ccx.align_of(out_type));
-        val.store(bcx,
-            LvalueRef::new_sized(cast_ptr, val.ty, Alignment::Packed(align)));
+        let align = src.layout.align(bcx.ccx).min(dst.layout.align(bcx.ccx));
+        src.val.store(bcx,
+            LvalueRef::new_sized(cast_ptr, src.layout, Alignment::Packed(align)));
     }
 
 
@@ -917,7 +908,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if ret_ty.cast.is_some() {
-                    let tmp = LvalueRef::alloca(bcx, op.ty, "tmp_ret");
+                    let tmp = LvalueRef::alloca(bcx, op.layout, "tmp_ret");
                     tmp.storage_live(bcx);
                     ret_ty.store(bcx, op.immediate(), tmp);
                     let op = tmp.load(bcx);

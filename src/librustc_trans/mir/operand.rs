@@ -9,10 +9,9 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty;
+use rustc::ty::layout::{LayoutOf, FullLayout};
 use rustc::mir;
-use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
@@ -42,6 +41,22 @@ pub enum OperandValue {
     Pair(ValueRef, ValueRef)
 }
 
+impl fmt::Debug for OperandValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            OperandValue::Ref(r, align) => {
+                write!(f, "Ref({:?}, {:?})", Value(r), align)
+            }
+            OperandValue::Immediate(i) => {
+                write!(f, "Immediate({:?})", Value(i))
+            }
+            OperandValue::Pair(a, b) => {
+                write!(f, "Pair({:?}, {:?})", Value(a), Value(b))
+            }
+        }
+    }
+}
+
 /// An `OperandRef` is an "SSA" reference to a Rust value, along with
 /// its type.
 ///
@@ -55,35 +70,24 @@ pub struct OperandRef<'tcx> {
     // The value.
     pub val: OperandValue,
 
-    // The type of value being returned.
-    pub ty: Ty<'tcx>
+    // The layout of value, based on its Rust type.
+    pub layout: FullLayout<'tcx>,
 }
 
 impl<'tcx> fmt::Debug for OperandRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.val {
-            OperandValue::Ref(r, align) => {
-                write!(f, "OperandRef(Ref({:?}, {:?}) @ {:?})",
-                       Value(r), align, self.ty)
-            }
-            OperandValue::Immediate(i) => {
-                write!(f, "OperandRef(Immediate({:?}) @ {:?})",
-                       Value(i), self.ty)
-            }
-            OperandValue::Pair(a, b) => {
-                write!(f, "OperandRef(Pair({:?}, {:?}) @ {:?})",
-                       Value(a), Value(b), self.ty)
-            }
-        }
+        write!(f, "OperandRef({:?} @ {:?})", self.val, self.layout)
     }
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
-                   ty: Ty<'tcx>) -> OperandRef<'tcx> {
-        assert!(common::type_is_zero_size(ccx, ty));
-        let llty = ccx.llvm_type_of(ty);
-        Const::new(C_undef(llty), ty).to_operand(ccx)
+                   layout: FullLayout<'tcx>) -> OperandRef<'tcx> {
+        assert!(layout.is_zst());
+        let llty = ccx.llvm_type_of(layout.ty);
+        // FIXME(eddyb) ZSTs should always be immediate, not pairs.
+        // This hack only exists to unpack a constant undef pair.
+        Const::new(C_undef(llty), layout.ty).to_operand(ccx)
     }
 
     /// Asserts that this operand refers to a scalar and returns
@@ -95,8 +99,8 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         }
     }
 
-    pub fn deref(self) -> LvalueRef<'tcx> {
-        let projected_ty = self.ty.builtin_deref(true, ty::NoPreference)
+    pub fn deref(self, ccx: &CrateContext<'a, 'tcx>) -> LvalueRef<'tcx> {
+        let projected_ty = self.layout.ty.builtin_deref(true, ty::NoPreference)
             .unwrap_or_else(|| bug!("deref of non-pointer {:?}", self)).ty;
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
@@ -106,7 +110,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         LvalueRef {
             llval: llptr,
             llextra,
-            ty: LvalueTy::from_ty(projected_ty),
+            layout: ccx.layout_of(projected_ty),
             alignment: Alignment::AbiAligned,
         }
     }
@@ -115,15 +119,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     /// Immediate aggregate with the two values.
     pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = bcx.ccx.llvm_type_of(self.ty);
+            let llty = bcx.ccx.llvm_type_of(self.layout.ty);
             debug!("Operand::pack_if_pair: packing {:?} into {:?}", self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
             let elems = [a, b];
-            let layout = bcx.ccx.layout_of(self.ty);
             for i in 0..2 {
                 let elem = base::from_immediate(bcx, elems[i]);
-                llpair = bcx.insert_value(llpair, elem, layout.llvm_field_index(i));
+                llpair = bcx.insert_value(llpair, elem, self.layout.llvm_field_index(i));
             }
             self.val = OperandValue::Immediate(llpair);
         }
@@ -135,33 +138,33 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn unpack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Immediate(llval) = self.val {
             // Deconstruct the immediate aggregate.
-            if common::type_is_imm_pair(bcx.ccx, self.ty) {
+            if common::type_is_imm_pair(bcx.ccx, self.layout.ty) {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
-                let layout = bcx.ccx.layout_of(self.ty);
+                let a = bcx.extract_value(llval, self.layout.llvm_field_index(0));
+                let a = base::to_immediate(bcx, a, self.layout.field(bcx.ccx, 0).ty);
 
-                let a = bcx.extract_value(llval, layout.llvm_field_index(0));
-                let a = base::to_immediate(bcx, a, layout.field(bcx.ccx, 0).ty);
-
-                let b = bcx.extract_value(llval, layout.llvm_field_index(1));
-                let b = base::to_immediate(bcx, b, layout.field(bcx.ccx, 1).ty);
+                let b = bcx.extract_value(llval, self.layout.llvm_field_index(1));
+                let b = base::to_immediate(bcx, b, self.layout.field(bcx.ccx, 1).ty);
 
                 self.val = OperandValue::Pair(a, b);
             }
         }
         self
     }
+}
 
+impl<'a, 'tcx> OperandValue {
     pub fn store(self, bcx: &Builder<'a, 'tcx>, dest: LvalueRef<'tcx>) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
-        if common::type_is_zero_size(bcx.ccx, self.ty) {
+        if dest.layout.is_zst() {
             return;
         }
-        match self.val {
+        match self {
             OperandValue::Ref(r, source_align) =>
-                base::memcpy_ty(bcx, dest.llval, r, self.ty,
+                base::memcpy_ty(bcx, dest.llval, r, dest.layout,
                                 (source_align | dest.alignment).non_abi()),
             OperandValue::Immediate(s) => {
                 bcx.store(base::from_immediate(bcx, s), dest.llval, dest.alignment.non_abi());
@@ -169,12 +172,12 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             OperandValue::Pair(a, b) => {
                 // See comment above about zero-sized values.
                 let dest_a = dest.project_field(bcx, 0);
-                if !common::type_is_zero_size(bcx.ccx, dest_a.ty.to_ty(bcx.tcx())) {
+                if !dest_a.layout.is_zst() {
                     let a = base::from_immediate(bcx, a);
                     bcx.store(a, dest_a.llval, dest_a.alignment.non_abi());
                 }
                 let dest_b = dest.project_field(bcx, 1);
-                if !common::type_is_zero_size(bcx.ccx, dest_b.ty.to_ty(bcx.tcx())) {
+                if !dest_b.layout.is_zst() {
                     let b = base::from_immediate(bcx, b);
                     bcx.store(b, dest_b.llval, dest_b.alignment.non_abi());
                 }
@@ -217,7 +220,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             let llval = [a, b][f.index()];
                             let op = OperandRef {
                                 val: OperandValue::Immediate(llval),
-                                ty: self.monomorphize(&ty)
+                                layout: bcx.ccx.layout_of(self.monomorphize(&ty))
                             };
 
                             // Handle nested pairs.
@@ -251,7 +254,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let operand = val.to_operand(bcx.ccx);
                 if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.
-                    LvalueRef::new_sized(ptr, operand.ty, align).load(bcx)
+                    LvalueRef::new_sized(ptr, operand.layout, align).load(bcx)
                 } else {
                     operand
                 }

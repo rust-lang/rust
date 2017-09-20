@@ -22,7 +22,7 @@ use declare;
 use glue;
 use type_::Type;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::HasDataLayout;
+use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -86,7 +86,7 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                       callee_ty: Ty<'tcx>,
-                                      fn_ty: &FnType,
+                                      fn_ty: &FnType<'tcx>,
                                       args: &[OperandRef<'tcx>],
                                       llresult: ValueRef,
                                       span: Span) {
@@ -105,7 +105,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let name = &*tcx.item_name(def_id);
 
     let llret_ty = ccx.llvm_type_of(ret_ty);
-    let result = LvalueRef::new_sized(llresult, ret_ty, Alignment::AbiAligned);
+    let result = LvalueRef::new_sized(llresult, fn_ty.ret.layout, Alignment::AbiAligned);
 
     let simple = get_simple_intrinsic(ccx, name);
     let llval = match name {
@@ -179,7 +179,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         }
         "init" => {
             let ty = substs.type_at(0);
-            if !type_is_zero_size(ccx, ty) {
+            if !ccx.layout_of(ty).is_zst() {
                 // Just zero out the stack slot.
                 // If we store a zero constant, LLVM will drown in vreg allocation for large data
                 // structures, and the generated code will be awful. (A telltale sign of this is
@@ -247,7 +247,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
-            let dst = LvalueRef::new_sized(args[0].immediate(), tp_ty, Alignment::AbiAligned);
+            let dst = args[0].deref(bcx.ccx);
             if let OperandValue::Pair(a, b) = args[1].val {
                 bcx.volatile_store(a, dst.project_field(bcx, 0).llval);
                 bcx.volatile_store(b, dst.project_field(bcx, 1).llval);
@@ -255,7 +255,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let val = if let OperandValue::Ref(ptr, align) = args[1].val {
                     bcx.load(ptr, align.non_abi())
                 } else {
-                    if type_is_zero_size(ccx, tp_ty) {
+                    if dst.layout.is_zst() {
                         return;
                     }
                     from_immediate(bcx, args[1].immediate())
@@ -393,13 +393,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
 
         "discriminant_value" => {
-            let val_ty = substs.type_at(0);
-            let adt_val = LvalueRef::new_sized(args[0].immediate(),
-                                               val_ty,
-                                               Alignment::AbiAligned);
-            match val_ty.sty {
+            match substs.type_at(0).sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    adt_val.trans_get_discr(bcx, ret_ty)
+                    args[0].deref(bcx.ccx).trans_get_discr(bcx, ret_ty)
                 }
                 _ => C_null(llret_ty)
             }
@@ -612,12 +608,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // This assumes the type is "simple", i.e. no
                         // destructors, and the contents are SIMD
                         // etc.
-                        assert!(!bcx.ccx.shared().type_needs_drop(arg.ty));
+                        assert!(!bcx.ccx.shared().type_needs_drop(arg.layout.ty));
                         let (ptr, align) = match arg.val {
                             OperandValue::Ref(ptr, align) => (ptr, align),
                             _ => bug!()
                         };
-                        let arg = LvalueRef::new_sized(ptr, arg.ty, align);
+                        let arg = LvalueRef::new_sized(ptr, arg.layout, align);
                         (0..contents.len()).map(|i| {
                             arg.project_field(bcx, i).load(bcx).immediate()
                         }).collect()
@@ -685,8 +681,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         } else {
             OperandRef {
                 val: OperandValue::Immediate(llval),
-                ty: ret_ty
-            }.unpack_if_pair(bcx).store(bcx, result);
+                layout: result.layout
+            }.unpack_if_pair(bcx).val.store(bcx, result);
         }
     }
 }

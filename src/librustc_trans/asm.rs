@@ -16,10 +16,9 @@ use type_::Type;
 use builder::Builder;
 
 use rustc::hir;
-use rustc::ty::Ty;
-use rustc::ty::layout::Align;
 
-use mir::lvalue::{LvalueRef, Alignment};
+use mir::lvalue::LvalueRef;
+use mir::operand::OperandValue;
 
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
@@ -29,7 +28,7 @@ use libc::{c_uint, c_char};
 pub fn trans_inline_asm<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     ia: &hir::InlineAsm,
-    outputs: Vec<(ValueRef, Ty<'tcx>)>,
+    outputs: Vec<LvalueRef<'tcx>>,
     mut inputs: Vec<ValueRef>
 ) {
     let mut ext_constraints = vec![];
@@ -37,21 +36,15 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Prepare the output operands
     let mut indirect_outputs = vec![];
-    for (i, (out, &(val, ty))) in ia.outputs.iter().zip(&outputs).enumerate() {
-        let val = if out.is_rw || out.is_indirect {
-            Some(LvalueRef::new_sized(val, ty,
-                Alignment::Packed(Align::from_bytes(1, 1).unwrap())).load(bcx))
-        } else {
-            None
-        };
+    for (i, (out, lvalue)) in ia.outputs.iter().zip(&outputs).enumerate() {
         if out.is_rw {
-            inputs.push(val.unwrap().immediate());
+            inputs.push(lvalue.load(bcx).immediate());
             ext_constraints.push(i.to_string());
         }
         if out.is_indirect {
-            indirect_outputs.push(val.unwrap().immediate());
+            indirect_outputs.push(lvalue.load(bcx).immediate());
         } else {
-            output_types.push(bcx.ccx.llvm_type_of(ty));
+            output_types.push(bcx.ccx.llvm_type_of(lvalue.layout.ty));
         }
     }
     if !indirect_outputs.is_empty() {
@@ -106,9 +99,9 @@ pub fn trans_inline_asm<'a, 'tcx>(
 
     // Again, based on how many outputs we have
     let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
-    for (i, (_, &(val, _))) in outputs.enumerate() {
+    for (i, (_, &lvalue)) in outputs.enumerate() {
         let v = if num_outputs == 1 { r } else { bcx.extract_value(r, i as u64) };
-        bcx.store(v, val, None);
+        OperandValue::Immediate(v).store(bcx, lvalue);
     }
 
     // Store mark in a metadata node so we can map LLVM errors

@@ -334,8 +334,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.extend(inputs.iter().map(|&t| {
                 let t = match t.sty {
                     ty::TyArray(ct, _)
-                        if (ct == cx.tcx().types.u8) ||
-                           (cx.layout_of(ct).size(cx).bytes() == 0) => {
+                        if (ct == cx.tcx().types.u8) || cx.layout_of(ct).is_zst() => {
                         cx.tcx().mk_imm_ptr(ct)
                     }
                     _ => t

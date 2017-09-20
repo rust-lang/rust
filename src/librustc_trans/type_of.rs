@@ -209,14 +209,7 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 
     /// Returns alignment if it is different than the primitive alignment.
     pub fn over_align_of(&self, ty: Ty<'tcx>) -> Option<Align> {
-        let layout = self.layout_of(ty);
-        let align = layout.align(self);
-        let primitive_align = layout.primitive_align(self);
-        if align != primitive_align {
-            Some(align)
-        } else {
-            None
-        }
+        self.layout_of(ty).over_align(self)
     }
 
     /// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
@@ -275,10 +268,21 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 }
 
 pub trait LayoutLlvmExt {
+    fn over_align(&self, ccx: &CrateContext) -> Option<Align>;
     fn llvm_field_index(&self, index: usize) -> u64;
 }
 
 impl<'tcx> LayoutLlvmExt for FullLayout<'tcx> {
+    fn over_align(&self, ccx: &CrateContext) -> Option<Align> {
+        let align = self.align(ccx);
+        let primitive_align = self.primitive_align(ccx);
+        if align != primitive_align {
+            Some(align)
+        } else {
+            None
+        }
+    }
+
     fn llvm_field_index(&self, index: usize) -> u64 {
         if let layout::Abi::Scalar(_) = self.abi {
             bug!("FullLayout::llvm_field_index({:?}): not applicable", self);

@@ -157,7 +157,7 @@ impl<'a, 'tcx> Const<'tcx> {
 
         OperandRef {
             val,
-            ty: self.ty
+            layout: ccx.layout_of(self.ty)
         }
     }
 }
@@ -1043,11 +1043,11 @@ fn trans_const_adt<'a, 'tcx>(
                 _ => 0,
             };
             let discr_ty = l.field(ccx, 0).ty;
-            let discr = Const::new(C_int(ccx.llvm_type_of(discr_ty), discr as i64),
-                                   discr_ty);
+            let discr = C_int(ccx.llvm_type_of(discr_ty), discr as i64);
             if let layout::Abi::Scalar(_) = l.abi {
-                discr
+                Const::new(discr, t)
             } else {
+                let discr = Const::new(discr, discr_ty);
                 build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
