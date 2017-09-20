@@ -490,3 +490,15 @@ impl<'tcx> QueryDescription for queries::output_filenames<'tcx> {
         format!("output_filenames")
     }
 }
+
+impl<'tcx> QueryDescription for queries::has_clone_closures<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("seeing if the crate has enabled `Clone` closures")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::has_copy_closures<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("seeing if the crate has enabled `Copy` closures")
+    }
+}

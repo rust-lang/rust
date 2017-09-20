@@ -570,6 +570,8 @@ define_dep_nodes!( <'tcx>
     [] MissingExternCrateItem(CrateNum),
     [] UsedCrateSource(CrateNum),
     [] PostorderCnums,
+    [] HasCloneClosures(CrateNum),
+    [] HasCopyClosures(CrateNum),
 
     [] Freevars(DefId),
     [] MaybeUnusedTraitImport(DefId),

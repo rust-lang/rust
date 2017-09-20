@@ -2247,4 +2247,12 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.output_filenames.clone()
     };
+    providers.has_copy_closures = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        tcx.sess.features.borrow().copy_closures
+    };
+    providers.has_clone_closures = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        tcx.sess.features.borrow().clone_closures
+    };
 }

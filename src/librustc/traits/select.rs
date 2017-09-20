@@ -2087,10 +2087,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let trait_id = obligation.predicate.def_id();
                 let copy_closures =
                     Some(trait_id) == self.tcx().lang_items().copy_trait() &&
-                    self.tcx().sess.features.borrow().copy_closures;
+                    self.tcx().has_copy_closures(def_id.krate);
                 let clone_closures =
                     Some(trait_id) == self.tcx().lang_items().clone_trait() &&
-                    self.tcx().sess.features.borrow().clone_closures;
+                    self.tcx().has_clone_closures(def_id.krate);
 
                 if copy_closures || clone_closures {
                     Where(ty::Binder(substs.upvar_tys(def_id, self.tcx()).collect()))

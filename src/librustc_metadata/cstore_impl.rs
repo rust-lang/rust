@@ -231,6 +231,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     used_crate_source => { Rc::new(cdata.source.clone()) }
+
+    has_copy_closures => { cdata.has_copy_closures() }
+    has_clone_closures => { cdata.has_clone_closures() }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
