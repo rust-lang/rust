@@ -259,8 +259,37 @@ pub struct ScopeTree {
     /// lower than theirs, and therefore don't need to be suspended
     /// at yield-points at these indexes.
     ///
-    /// Let's show that: let `D` be our binding/temporary and `U` be our
-    /// other HIR node, with `HIR-postorder(U) < HIR-postorder(D)`.
+    /// For an example, suppose we have some code such as:
+    /// ```rust,ignore (example)
+    ///     foo(f(), yield y, bar(g()))
+    /// ```
+    ///
+    /// With the HIR tree (calls numbered for expository purposes)
+    /// ```
+    ///     Call#0(foo, [Call#1(f), Yield(y), Call#2(bar, Call#3(g))])
+    /// ```
+    ///
+    /// Obviously, the result of `f()` was created before the yield
+    /// (and therefore needs to be kept valid over the yield) while
+    /// the result of `g()` occurs after the yield (and therefore
+    /// doesn't). If we want to infer that, we can look at the
+    /// postorder traversal:
+    /// ```
+    /// `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
+    /// ```
+    ///
+    /// In which we can easily see that `Call#1` occurs before the yield,
+    /// and `Call#3` after it.
+    ///
+    /// To see that this method works, consider:
+    ///
+    /// Let `D` be our binding/temporary and `U` be our other HIR node, with
+    /// `HIR-postorder(U) < HIR-postorder(D)` (in our example, U would be
+    /// the yield and D would be one of the calls). Let's show that
+    /// `D` is storage-dead at `U`.
+    ///
+    /// Remember that storage-live/storage-dead refers to the state of
+    /// the *storage*, and does not consider moves/drop flags.
     ///
     /// Then:
     ///     1. From the ordering guarantee of HIR visitors (see
@@ -272,17 +301,26 @@ pub struct ScopeTree {
     ///     or always storage-dead. This is what is being guaranteed
     ///     by `terminating_scopes` including all blocks where the
     ///     count of executions is not guaranteed.
-    ///     4. By `2.` and `3.`, `D` is *statically* dead at `U`,
+    ///     4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
     ///     QED.
     ///
     /// I don't think this property relies on `3.` in an essential way - it
     /// is probably still correct even if we have "unrestricted" terminating
     /// scopes. However, why use the complicated proof when a simple one
     /// works?
+    ///
+    /// A subtle thing: `box` expressions, such as `box (&x, yield 2, &y)`. It
+    /// might seem that a `box` expression creates a `Box<T>` temporary
+    /// when it *starts* executing, at `HIR-preorder(BOX-EXPR)`. That might
+    /// be true in the MIR desugaring, but it is not important in the semantics.
+    ///
+    /// The reason is that semantically, until the `box` expression returns,
+    /// the values are still owned by their containing expressions. So
+    /// we'll see that `&x`.
     yield_in_scope: FxHashMap<Scope, (Span, usize)>,
 
-    /// The number of visit_expr calls done in the body.
-    /// Used to sanity check visit_expr call count when
+    /// The number of visit_expr and visit_pat calls done in the body.
+    /// Used to sanity check visit_expr/visit_pat call count when
     /// calculating geneartor interiors.
     body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
@@ -307,8 +345,8 @@ pub struct Context {
 struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
-    // The number of expressions visited in the current body
-    expr_count: usize,
+    // The number of expressions and patterns visited in the current body
+    expr_and_pat_count: usize,
 
     // Generated scope tree:
     scope_tree: ScopeTree,
@@ -758,6 +796,8 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
     }
 
     intravisit::walk_pat(visitor, pat);
+
+    visitor.expr_and_pat_count += 1;
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
@@ -863,14 +903,14 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
         _ => intravisit::walk_expr(visitor, expr)
     }
 
-    visitor.expr_count += 1;
+    visitor.expr_and_pat_count += 1;
 
     if let hir::ExprYield(..) = expr.node {
         // Mark this expr's scope and all parent scopes as containing `yield`.
         let mut scope = Scope::Node(expr.hir_id.local_id);
         loop {
             visitor.scope_tree.yield_in_scope.insert(scope,
-                (expr.span, visitor.expr_count));
+                (expr.span, visitor.expr_and_pat_count));
 
             // Keep traversing up while we can.
             match visitor.scope_tree.parent_map.get(&scope) {
@@ -1160,7 +1200,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
                body_id,
                self.cx.parent);
 
-        let outer_ec = mem::replace(&mut self.expr_count, 0);
+        let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
         let outer_cx = self.cx;
         let outer_ts = mem::replace(&mut self.terminating_scopes, FxHashSet());
         self.terminating_scopes.insert(body.value.hir_id.local_id);
@@ -1207,11 +1247,11 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
         }
 
         if body.is_generator {
-            self.scope_tree.body_expr_count.insert(body_id, self.expr_count);
+            self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
         }
 
         // Restore context we had at the start.
-        self.expr_count = outer_ec;
+        self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
     }
@@ -1246,7 +1286,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
-            expr_count: 0,
+            expr_and_pat_count: 0,
             cx: Context {
                 root_id: None,
                 parent: None,

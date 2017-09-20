@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that a borrow that occurs after a yield in the same
-// argument list is not treated as live across the yield by
-// type-checking.
+// Test that box-statements with yields in them work.
 
-#![feature(generators)]
+#![feature(generators, box_syntax)]
 
-fn foo(_a: (), _b: &bool) {}
-
-fn bar() {
+fn main() {
+    let x = 0i32;
     || {
-        let b = true;
-        foo(yield, &b);
+        let y = 2u32;
+        {
+            let _t = box (&x, yield 0, &y);
+        }
+        match box (&x, yield 0, &y) {
+            _t => {}
+        }
     };
 }
-
-fn main() { }

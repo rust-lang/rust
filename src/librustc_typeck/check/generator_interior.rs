@@ -41,7 +41,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
                 // be storage-live (and therefore live) at any of the yields.
                 //
                 // See the mega-comment at `yield_in_scope` for a proof.
-                if expr.is_none() || expr_count >= self.expr_count {
+                if expr_count >= self.expr_count {
                     Some(span)
                 } else {
                     None
@@ -114,6 +114,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
             let ty = self.fcx.tables.borrow().pat_ty(pat);
             self.record(ty, Some(scope), None);
         }
+
+        self.expr_count += 1;
 
         intravisit::walk_pat(self, pat);
     }
