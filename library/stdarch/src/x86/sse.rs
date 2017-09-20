@@ -1,10 +1,14 @@
 use simd_llvm::simd_shuffle4;
 use v128::*;
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 /// Return the square root of packed single-precision (32-bit) floating-point
 /// elements in `a`.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(sqrtps))]
 pub fn _mm_sqrt_ps(a: f32x4) -> f32x4 {
     unsafe { sqrtps(a) }
 }
@@ -13,6 +17,7 @@ pub fn _mm_sqrt_ps(a: f32x4) -> f32x4 {
 /// floating-point elements in `a`.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(rcpps))]
 pub fn _mm_rcp_ps(a: f32x4) -> f32x4 {
     unsafe { rcpps(a) }
 }
@@ -21,6 +26,7 @@ pub fn _mm_rcp_ps(a: f32x4) -> f32x4 {
 /// (32-bit) floating-point elements in `a`.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(rsqrtps))]
 pub fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
     unsafe { rsqrtps(a) }
 }
@@ -29,6 +35,7 @@ pub fn _mm_rsqrt_ps(a: f32x4) -> f32x4 {
 /// `b`, and return the corresponding minimum values.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(minps))]
 pub fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
     unsafe { minps(a, b) }
 }
@@ -37,6 +44,7 @@ pub fn _mm_min_ps(a: f32x4, b: f32x4) -> f32x4 {
 /// `b`, and return the corresponding maximum values.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(maxps))]
 pub fn _mm_max_ps(a: f32x4, b: f32x4) -> f32x4 {
     unsafe { maxps(a, b) }
 }
@@ -55,6 +63,7 @@ pub fn _mm_unpackhi_ps(a: f32x4, b: f32x4) -> f32x4 {
 /// All other bits are set to `0`.
 #[inline(always)]
 #[target_feature = "+sse"]
+#[cfg_attr(test, assert_instr(movmskps))]
 pub fn _mm_movemask_ps(a: f32x4) -> i32 {
     unsafe { movmskps(a) }
 }

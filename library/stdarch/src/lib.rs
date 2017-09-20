@@ -3,6 +3,10 @@
     const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
     target_feature, cfg_target_feature, i128_type
 )]
+#![cfg_attr(test, feature(proc_macro))]
+
+#[cfg(test)]
+extern crate assert_instr;
 
 /// Platform independent SIMD vector types and operations.
 pub mod simd {

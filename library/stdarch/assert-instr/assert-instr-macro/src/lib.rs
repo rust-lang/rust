@@ -1,0 +1,59 @@
+#![feature(proc_macro)]
+
+extern crate proc_macro;
+
+use proc_macro::{TokenStream, Term, TokenNode, Delimiter};
+
+#[proc_macro_attribute]
+pub fn assert_instr(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let name = find_name(item.clone());
+    let tokens = attr.into_iter().collect::<Vec<_>>();
+    if tokens.len() != 1 {
+        panic!("expected #[assert_instr(foo)]");
+    }
+    let tokens = match tokens[0].kind {
+        TokenNode::Group(Delimiter::Parenthesis, ref rest) => rest.clone(),
+        _ => panic!("expected #[assert_instr(foo)]"),
+    };
+    let tokens = tokens.into_iter().collect::<Vec<_>>();
+    if tokens.len() != 1 {
+        panic!("expected #[assert_instr(foo)]");
+    }
+    let instr = match tokens[0].kind {
+        TokenNode::Term(term) => term,
+        _ => panic!("expected #[assert_instr(foo)]"),
+    };
+
+    let ignore = if cfg!(optimized) {
+        ""
+    } else {
+        "#[ignore]"
+    };
+    let test = format!("
+        #[test]
+        #[allow(non_snake_case)]
+        {ignore}
+        fn assert_instr_{name}() {{
+            ::assert_instr::assert({name} as usize, \"{instr}\");
+        }}
+    ", name = name.as_str(), instr = instr.as_str(), ignore = ignore);
+    let test: TokenStream = test.parse().unwrap();
+
+    item.into_iter().chain(test.into_iter()).collect()
+}
+
+fn find_name(item: TokenStream) -> Term {
+    let mut tokens = item.into_iter();
+    while let Some(tok) = tokens.next() {
+        if let TokenNode::Term(word) = tok.kind {
+            if word.as_str() == "fn" {
+                break
+            }
+        }
+    }
+
+    match tokens.next().map(|t| t.kind) {
+        Some(TokenNode::Term(word)) => word,
+        _ => panic!("failed to find function name"),
+    }
+}
