@@ -53,33 +53,33 @@ macro_rules! __unstable_detect_feature {
 #[repr(u8)]
 pub enum __Feature {
     /// SSE (Streaming SIMD Extensions)
-    sse = 0,
+    sse,
     /// SSE2 (Streaming SIMD Extensions 2)
-    sse2 = 1,
+    sse2,
     /// SSE3 (Streaming SIMD Extensions 3)
-    sse3 = 2,
+    sse3,
     /// SSSE3 (Supplemental Streaming SIMD Extensions 3)
-    ssse3 = 3,
+    ssse3,
     /// SSE4.1 (Streaming SIMD Extensions 4.1)
-    sse4_1 = 4,
+    sse4_1,
     /// SSE4.2 (Streaming SIMD Extensions 4.2)
-    sse4_2 = 5,
+    sse4_2,
     /// AVX (Advanced Vector Extensions)
-    avx = 6,
+    avx,
     /// AVX2 (Advanced Vector Extensions 2)
-    avx2 = 7,
+    avx2,
     /// FMA (Fused Multiply Add)
-    fma = 8,
+    fma,
     /// BMI1 (Bit Manipulation Instructions 1)
-    bmi = 9,
+    bmi,
     /// BMI1 (Bit Manipulation Instructions 2)
-    bmi2 = 10,
+    bmi2,
     /// ABM (Advanced Bit Manipulation) on AMD / LZCNT (Leading Zero Count) on Intel
-    abm = 11,
+    abm,
     /// TBM (Trailing Bit Manipulation)
-    tbm = 12,
+    tbm,
     /// POPCNT (Population Count)
-    popcnt = 13,
+    popcnt,
 
     #[doc(hidden)]
     __NonExhaustive
