@@ -124,7 +124,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             else if args.len() == 2 && match_def_path(cx.tcx, fun_id, &paths::FMT_ARGUMENTV1_NEW) {
                 if let ExprPath(ref qpath) = args[1].node {
                     if let Some(def_id) = opt_def_id(cx.tables.qpath_def(qpath, args[1].hir_id)) {
-                        if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) && is_expn_of(expr.span, "panic").is_none() {
+                        if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD)
+                                && !is_in_debug_impl(cx, expr) && is_expn_of(expr.span, "panic").is_none() {
                             span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                         }
                     }

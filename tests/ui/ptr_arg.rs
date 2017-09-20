@@ -55,3 +55,15 @@ fn str_cloned(x: &String) -> String {
              .clone();
     x.clone()
 }
+
+fn false_positive_capacity(x: &Vec<u8>, y: &String) {
+    let a = x.capacity();
+    let b = y.clone();
+    let c = y.as_str();
+}
+
+fn false_positive_capacity_too(x: &String) -> String {
+    if x.capacity() > 1024 { panic!("Too large!"); }
+    x.clone()
+}
+
