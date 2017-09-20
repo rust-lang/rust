@@ -24,6 +24,8 @@ use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
 use type_::Type;
+use type_of::LayoutLlvmExt;
+
 use rustc_data_structures::base_n;
 use rustc::middle::trans::Stats;
 use rustc_data_structures::stable_hasher::StableHashingContextProvider;
@@ -397,7 +399,7 @@ impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
                     let mut str_slice_ty = Type::named_struct(&dummy_ccx, "str_slice");
                     str_slice_ty.set_struct_body(&[
                         Type::array(&Type::i8(&dummy_ccx), 0),
-                        dummy_ccx.llvm_type_of(shared.tcx.mk_str()).ptr_to(),
+                        dummy_ccx.layout_of(shared.tcx.mk_str()).llvm_type(&dummy_ccx).ptr_to(),
                         Type::array(&Type::i8(&dummy_ccx), 0),
                         Type::isize(&dummy_ccx),
                         Type::array(&Type::i8(&dummy_ccx), 0)

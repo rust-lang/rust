@@ -84,7 +84,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
                    layout: FullLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
-        let llty = ccx.llvm_type_of(layout.ty);
+        let llty = layout.llvm_type(ccx);
         // FIXME(eddyb) ZSTs should always be immediate, not pairs.
         // This hack only exists to unpack a constant undef pair.
         Const::new(C_undef(llty), layout.ty).to_operand(ccx)
@@ -119,7 +119,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
     /// Immediate aggregate with the two values.
     pub fn pack_if_pair(mut self, bcx: &Builder<'a, 'tcx>) -> OperandRef<'tcx> {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = bcx.ccx.llvm_type_of(self.layout.ty);
+            let llty = self.layout.llvm_type(bcx.ccx);
             debug!("Operand::pack_if_pair: packing {:?} into {:?}", self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = C_undef(llty);
@@ -142,10 +142,10 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                 debug!("Operand::unpack_if_pair: unpacking {:?}", self);
 
                 let a = bcx.extract_value(llval, self.layout.llvm_field_index(0));
-                let a = base::to_immediate(bcx, a, self.layout.field(bcx.ccx, 0).ty);
+                let a = base::to_immediate(bcx, a, self.layout.field(bcx.ccx, 0));
 
                 let b = bcx.extract_value(llval, self.layout.llvm_field_index(1));
-                let b = base::to_immediate(bcx, b, self.layout.field(bcx.ccx, 1).ty);
+                let b = base::to_immediate(bcx, b, self.layout.field(bcx.ccx, 1));
 
                 self.val = OperandValue::Pair(a, b);
             }

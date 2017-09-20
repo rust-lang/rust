@@ -40,7 +40,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{Align, FullLayout};
+use rustc::ty::layout::{self, Align, FullLayout, LayoutOf};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
@@ -68,7 +68,7 @@ use symbol_names_test;
 use time_graph;
 use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
-use type_of;
+use type_of::{self, LayoutLlvmExt};
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
@@ -228,13 +228,13 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert!(bcx.ccx.shared().type_is_sized(a));
-            let ptr_ty = bcx.ccx.llvm_type_of(b).ptr_to();
+            let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
             assert!(bcx.ccx.shared().type_is_sized(a));
-            let ptr_ty = bcx.ccx.llvm_type_of(b).ptr_to();
+            let ptr_ty = bcx.ccx.layout_of(b).llvm_type(bcx.ccx).ptr_to();
             (bcx.pointercast(src, ptr_ty), unsized_info(bcx.ccx, a, b, None))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
@@ -371,8 +371,8 @@ pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bcx: &Builder, val: ValueRef, ty: Ty) -> ValueRef {
-    if ty.is_bool() {
+pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::FullLayout) -> ValueRef {
+    if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = layout.abi {
         bcx.trunc(val, Type::i1(bcx.ccx))
     } else {
         val
