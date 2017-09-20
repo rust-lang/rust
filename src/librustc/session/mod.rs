@@ -411,7 +411,8 @@ impl Session {
     }
     pub fn emit_end_regions(&self) -> bool {
         self.opts.debugging_opts.emit_end_regions ||
-            (self.opts.debugging_opts.mir_emit_validate > 0)
+            (self.opts.debugging_opts.mir_emit_validate > 0) ||
+            self.opts.debugging_opts.borrowck_mir
     }
     pub fn lto(&self) -> bool {
         self.opts.cg.lto
