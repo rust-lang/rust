@@ -2694,7 +2694,13 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
                     self.del += 1;
                     return Some(ptr::read(&v[i]));
                 } else if self.del > 0 {
-                    v.swap(i - self.del, i);
+                    let del = self.del;
+                    let src: *const T = &v[i];
+                    let dst: *mut T = &mut v[i - del];
+                    // This is safe because self.vec has length 0
+                    // thus its elements will not have Drop::drop
+                    // called on them in the event of a panic.
+                    ptr::copy_nonoverlapping(src, dst, 1);
                 }
             }
             None
