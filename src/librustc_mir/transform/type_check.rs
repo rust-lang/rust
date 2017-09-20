@@ -487,16 +487,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 if self.is_box_free(func) {
                     self.check_box_free_inputs(mir, term, &sig, args);
-                    // THIS IS A TEST. TEST TEST.
-                    if let ClearOnDecode::Set(ref data) = mir.visibility_scope_info {
-                        let lint_node_id = data[term.source_info.scope].lint_root;
-                        tcx.struct_span_lint_node(
-                            ::rustc::lint::builtin::TRIVIAL_NUMERIC_CASTS,
-                                                  lint_node_id,
-                                                  term.source_info.span,
-                                                  "hi I'm a lint")
-                            .emit();
-                    }
                 } else {
                     self.check_call_inputs(mir, term, &sig, args);
                 }
