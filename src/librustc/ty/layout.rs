@@ -849,9 +849,6 @@ pub enum Layout {
     /// TyArray, TySlice or TyStr.
     Array,
 
-    /// TyRawPtr or TyRef with a !Sized pointee. The primitive is the metadata.
-    FatPointer,
-
     // Remaining variants are all ADTs such as structs, enums or tuples.
 
     /// Single-case enums, and structs/tuples.
@@ -1132,7 +1129,7 @@ impl<'a, 'tcx> Layout {
                 memory_index: vec![0, 1]
             };
             Ok(tcx.intern_layout(CachedLayout {
-                layout: Layout::FatPointer,
+                layout: Layout::Univariant,
                 fields,
                 abi: Abi::Aggregate {
                     sized: true,
@@ -1743,8 +1740,7 @@ impl<'a, 'tcx> Layout {
             // via representation tweaks) size info beyond total size.
             Layout::Scalar |
             Layout::Vector |
-            Layout::Array |
-            Layout::FatPointer { .. } => {
+            Layout::Array => {
                 debug!("print-type-size t: `{:?}` adt other", ty);
                 record(adt_kind.into(), None, Vec::new())
             }
@@ -2047,9 +2043,23 @@ impl<'a, 'tcx> FullLayout<'tcx> {
     fn field_type_unnormalized(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, i: usize) -> Ty<'tcx> {
         let ptr_field_type = |pointee: Ty<'tcx>| {
             assert!(i < 2);
+            let mk_ptr = |ty: Ty<'tcx>| {
+                match self.ty.sty {
+                    ty::TyRef(r, ty::TypeAndMut { mutbl, .. }) => {
+                        tcx.mk_ref(r, ty::TypeAndMut { ty, mutbl })
+                    }
+                    ty::TyRawPtr(ty::TypeAndMut { mutbl, .. }) => {
+                        tcx.mk_ptr(ty::TypeAndMut { ty, mutbl })
+                    }
+                    ty::TyAdt(def, _) if def.is_box() => {
+                        tcx.mk_box(ty)
+                    }
+                    _ => bug!()
+                }
+            };
             let slice = |element: Ty<'tcx>| {
                 if i == 0 {
-                    tcx.mk_mut_ptr(element)
+                    mk_ptr(element)
                 } else {
                     tcx.types.usize
                 }
@@ -2057,7 +2067,13 @@ impl<'a, 'tcx> FullLayout<'tcx> {
             match tcx.struct_tail(pointee).sty {
                 ty::TySlice(element) => slice(element),
                 ty::TyStr => slice(tcx.types.u8),
-                ty::TyDynamic(..) => Pointer.to_ty(tcx),
+                ty::TyDynamic(..) => {
+                    if i == 0 {
+                        mk_ptr(tcx.mk_nil())
+                    } else {
+                        Pointer.to_ty(tcx)
+                    }
+                }
                 _ => bug!("FullLayout::field_type({:?}): not applicable", self)
             }
         };
@@ -2187,9 +2203,16 @@ impl<'a, 'tcx> FullLayout<'tcx> {
     {
         let tcx = cx.tcx();
         match (self.layout, self.abi, &self.ty.sty) {
-            (&Layout::Scalar, Abi::Scalar(Pointer), _) if !self.ty.is_unsafe_ptr() => {
+            // FIXME(eddyb) check this via value ranges on scalars.
+            (&Layout::Scalar, Abi::Scalar(Pointer), &ty::TyRef(..)) |
+            (&Layout::Scalar, Abi::Scalar(Pointer), &ty::TyFnPtr(..)) => {
                 Ok(Some((Size::from_bytes(0), Pointer)))
             }
+            (&Layout::Scalar, Abi::Scalar(Pointer), &ty::TyAdt(def, _)) if def.is_box() => {
+                Ok(Some((Size::from_bytes(0), Pointer)))
+            }
+
+            // FIXME(eddyb) check this via value ranges on scalars.
             (&Layout::General { discr, .. }, _, &ty::TyAdt(def, _)) => {
                 if def.discriminants(tcx).all(|d| d.to_u128_unchecked() != 0) {
                     Ok(Some((self.fields.offset(0), discr)))
@@ -2198,28 +2221,28 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                 }
             }
 
-            (&Layout::FatPointer, _, _) if !self.ty.is_unsafe_ptr() => {
-                Ok(Some((self.fields.offset(FAT_PTR_ADDR), Pointer)))
-            }
-
             // Is this the NonZero lang item wrapping a pointer or integer type?
             (_, _, &ty::TyAdt(def, _)) if Some(def.did) == tcx.lang_items().non_zero() => {
                 let field = self.field(cx, 0)?;
-                match (field.layout, field.abi) {
-                    (&Layout::Scalar, Abi::Scalar(value)) => {
-                        Ok(Some((self.fields.offset(0), value)))
-                    }
-                    (&Layout::FatPointer, _) => {
-                        Ok(Some((self.fields.offset(0) +
-                                 field.fields.offset(FAT_PTR_ADDR),
-                                 Pointer)))
-                    }
-                    _ => Ok(None)
+                let offset = self.fields.offset(0);
+                if let Abi::Scalar(value) = field.abi {
+                    Ok(Some((offset, value)))
+                } else if let ty::TyRawPtr(_) = field.ty.sty {
+                    // If `NonZero` contains a non-scalar `*T`, it's
+                    // a fat pointer, which starts with a thin pointer.
+                    Ok(Some((offset, Pointer)))
+                } else {
+                    Ok(None)
                 }
             }
 
             // Perhaps one of the fields is non-zero, let's recurse and find out.
-            (&Layout::Univariant, _, _) => {
+            _ => {
+                if let FieldPlacement::Array { count, .. } = *self.fields {
+                    if count > 0 {
+                        return self.field(cx, 0)?.non_zero_field(cx);
+                    }
+                }
                 for i in 0..self.fields.count() {
                     let r = self.field(cx, i)?.non_zero_field(cx)?;
                     if let Some((offset, primitive)) = r {
@@ -2228,23 +2251,6 @@ impl<'a, 'tcx> FullLayout<'tcx> {
                 }
                 Ok(None)
             }
-
-            // Is this a fixed-size array of something non-zero
-            // with at least one element?
-            (_, _, &ty::TyArray(ety, _)) => {
-                if self.fields.count() != 0 {
-                    cx.layout_of(ety)?.non_zero_field(cx)
-                } else {
-                    Ok(None)
-                }
-            }
-
-            (_, _, &ty::TyProjection(_)) | (_, _, &ty::TyAnon(..)) => {
-                bug!("FullLayout::non_zero_field: {:#?} not normalized", self);
-            }
-
-            // Anything else is not a non-zero type.
-            _ => Ok(None)
         }
     }
 }
@@ -2260,7 +2266,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for Layout {
             Scalar => {}
             Vector => {}
             Array => {}
-            FatPointer => {}
             Univariant => {}
             UntaggedUnion => {}
             General {
