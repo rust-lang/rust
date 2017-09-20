@@ -56,7 +56,7 @@ These are just a few reasons as to why we should do this, but the expected
 outcome of this feature is expected to be positive with little to no downside
 for a user.
 
-# Detailed design
+# Detailed Design
 [design]: #detailed-design
 
 All files included through the attribute will be relative paths from the crate
@@ -66,11 +66,10 @@ root directory. Given a file like this stored in `docs/example.md`:
 # I'm an example
 This is a markdown file that gets imported to Rust as a Doc comment.
 ```
-
-And code like this:
+where `src` is in the same directory as `docs`. Given code like this:
 
 ```rust
-#[doc(include = "docs/example.md")]
+#[doc(include = "../docs/example.md")]
 fn my_func() {
   // Hidden implementation
 }
@@ -79,8 +78,7 @@ fn my_func() {
 It should expand to this at compile time:
 
 ```rust
-/// # I'm an example
-/// This is a markdown file that gets imported to Rust as a doc comment.
+#[doc("# I'm an example\nThis is a markdown file that gets imported to Rust as a doc comment.")]
 fn my_func() {
   // Hidden implementation
 }
@@ -91,7 +89,7 @@ Which `rustdoc` should be able to figure out and use for documentation.
 If the code is written like this:
 
 ```rust
-#![doc(include = "docs/example.md")]
+#![doc(include = "../docs/example.md")]
 fn my_func() {
   // Hidden implementation
 }
@@ -100,8 +98,7 @@ fn my_func() {
 It should expand out to this at compile time:
 
 ```rust
-//! # I'm an example
-//! This is a markdown file that gets imported to Rust as a doc comment.
+#![doc("# I'm an example\nThis is a markdown file that gets imported to Rust as a doc comment.")]
 fn my_func() {
   // Hidden implementation
 }
@@ -111,7 +108,7 @@ In the case of this code:
 
 ```rust
 mod example {
-    #![doc(include = "docs/example.md")]
+    #![doc(include = "../docs/example.md")]
     fn my_func() {
       // Hidden implementation
     }
@@ -122,15 +119,26 @@ It should expand out to:
 
 ```rust
 mod example {
-    //! # I'm an example
-    //! This is a markdown file that gets imported to Rust as a doc comment.
+    #![doc("# I'm an example\nThis is a markdown file that gets imported to Rust as a doc comment.")]
     fn my_func() {
       // Hidden implementation
     }
 }
 ```
 
-## Line numbers when errors occur
+## Acceptable Paths
+
+If you've noticed the path given `../docs/example.md` is a relative path to
+`src`. This was decided upon as a good first implementation and further RFCs
+could be written to expand on what syntax is acceptable for paths. For instance
+not being relative to `src`.
+
+## Missing Files or Incorrect Paths
+If a file given to `include` is missing then this should trigger a compilation
+as the given file was supposed to put into the code but for some reason or other
+it is not there.
+
+## Line Numbers When Errors Occur
 As with all macros being expanded this brings up the question of line numbers
 and for documentation tests especially so, to keep things simple for the user
 the documentation should be treated separately from the code. Since the
@@ -140,10 +148,10 @@ ignored by the compiler except for having the proper lines for error messages.
 For example if we have this:
 
 ```rust
-#[doc(include = "docs/example.md")] // Line 1
-f my_func() {                       // Line 2
-  // Hidden implementation          // Line 3
-}                                   // Line 4
+#[doc(include = "../docs/example.md")] // Line 1
+f my_func() {                          // Line 2
+  // Hidden implementation             // Line 3
+}                                      // Line 4
 ```
 
 Then we would have a syntax error on line 2, however the doc comment comes
@@ -209,9 +217,4 @@ comes to docs.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- Should we include multiple items in one file or should each type/field be
-  allowed one file? If so how do we delimit it for the parser?
-- Are there corner cases not covered in the current design? If there are what
-  would be a good design to solve them?
-- Is this the syntax we want to use for the attribute? Do we want to use
-  something else?
+- What would be best practices for adding docs to crates?
