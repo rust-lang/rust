@@ -345,8 +345,8 @@ impl Build {
             job::setup(self);
         }
 
-        if let Subcommand::Clean = self.config.cmd {
-            return clean::clean(self);
+        if let Subcommand::Clean { all } = self.config.cmd {
+            return clean::clean(self, all);
         }
 
         self.verbose("finding compilers");

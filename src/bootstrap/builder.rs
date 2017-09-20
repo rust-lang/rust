@@ -306,7 +306,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
-            Subcommand::Clean => panic!(),
+            Subcommand::Clean { .. } => panic!(),
         };
 
         let builder = Builder {

@@ -60,7 +60,9 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
     },
-    Clean,
+    Clean {
+        all: bool,
+    },
     Dist {
         paths: Vec<PathBuf>,
     },
@@ -147,6 +149,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
+            "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
             _ => { },
         };
 
@@ -293,7 +296,10 @@ Arguments:
                     println!("\nclean takes no arguments\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
                 }
-                Subcommand::Clean
+
+                Subcommand::Clean {
+                    all: matches.opt_present("all"),
+                }
             }
             "dist" => {
                 Subcommand::Dist {
