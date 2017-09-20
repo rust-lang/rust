@@ -420,7 +420,7 @@ impl CastTarget {
 /// should be passed to or returned from a function
 ///
 /// This is borrowed from clang's ABIInfo.h
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct ArgType<'tcx> {
     kind: ArgKind,
     pub layout: FullLayout<'tcx>,
@@ -429,7 +429,8 @@ pub struct ArgType<'tcx> {
     /// Dummy argument, which is emitted before the real argument.
     pub pad: Option<Reg>,
     /// Attributes of argument.
-    pub attrs: ArgAttributes
+    pub attrs: ArgAttributes,
+    pub nested: Vec<ArgType<'tcx>>
 }
 
 impl<'a, 'tcx> ArgType<'tcx> {
@@ -439,11 +440,13 @@ impl<'a, 'tcx> ArgType<'tcx> {
             layout,
             cast: None,
             pad: None,
-            attrs: ArgAttributes::default()
+            attrs: ArgAttributes::default(),
+            nested: vec![]
         }
     }
 
     pub fn make_indirect(&mut self, ccx: &CrateContext<'a, 'tcx>) {
+        assert!(self.nested.is_empty());
         assert_eq!(self.kind, ArgKind::Direct);
 
         // Wipe old attributes, likely not valid through indirection.
@@ -460,6 +463,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
     }
 
     pub fn ignore(&mut self) {
+        assert!(self.nested.is_empty());
         assert_eq!(self.kind, ArgKind::Direct);
         self.kind = ArgKind::Ignore;
     }
@@ -482,10 +486,12 @@ impl<'a, 'tcx> ArgType<'tcx> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
+        assert!(self.nested.is_empty());
         self.cast = Some(target.into());
     }
 
     pub fn pad_with(&mut self, reg: Reg) {
+        assert!(self.nested.is_empty());
         self.pad = Some(reg);
     }
 
@@ -561,6 +567,12 @@ impl<'a, 'tcx> ArgType<'tcx> {
     }
 
     pub fn store_fn_arg(&self, bcx: &Builder<'a, 'tcx>, idx: &mut usize, dst: LvalueRef<'tcx>) {
+        if !self.nested.is_empty() {
+            for (i, arg) in self.nested.iter().enumerate() {
+                arg.store_fn_arg(bcx, idx, dst.project_field(bcx, i));
+            }
+            return;
+        }
         if self.pad.is_some() {
             *idx += 1;
         }
@@ -578,7 +590,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FnType<'tcx> {
     /// The LLVM types of each argument.
     pub args: Vec<ArgType<'tcx>>,
@@ -613,7 +625,8 @@ impl<'a, 'tcx> FnType<'tcx> {
                       extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         // Don't pass the vtable, it's not an argument of the virtual fn.
-        fn_ty.args[1].ignore();
+        assert_eq!(fn_ty.args[0].nested.len(), 2);
+        fn_ty.args[0].nested[1].ignore();
         fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
@@ -766,7 +779,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         for ty in inputs.iter().chain(extra_args.iter()) {
             let mut arg = arg_of(ty, false);
 
-            if let ty::layout::Layout::FatPointer { .. } = *arg.layout.layout {
+            if type_is_fat_ptr(ccx, ty) {
                 let mut data = ArgType::new(arg.layout.field(ccx, 0));
                 let mut info = ArgType::new(arg.layout.field(ccx, 1));
 
@@ -780,14 +793,16 @@ impl<'a, 'tcx> FnType<'tcx> {
                         info.attrs.set(ArgAttribute::NoAlias);
                     }
                 }
-                args.push(data);
-                args.push(info);
+                // FIXME(eddyb) other ABIs don't have logic for nested.
+                if rust_abi {
+                    arg.nested = vec![data, info];
+                }
             } else {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
                     arg.attrs.set_dereferenceable(ccx.size_of(inner));
                 }
-                args.push(arg);
             }
+            args.push(arg);
         }
 
         FnType {
@@ -854,6 +869,13 @@ impl<'a, 'tcx> FnType<'tcx> {
             }
             for arg in &mut self.args {
                 if arg.is_ignore() { continue; }
+                if !arg.nested.is_empty() {
+                    for arg in &mut arg.nested {
+                        assert!(arg.nested.is_empty());
+                        fixup(arg);
+                    }
+                    continue;
+                }
                 fixup(arg);
             }
             if self.ret.is_indirect() {
@@ -915,24 +937,36 @@ impl<'a, 'tcx> FnType<'tcx> {
             ccx.immediate_llvm_type_of(self.ret.layout.ty)
         };
 
-        for arg in &self.args {
-            if arg.is_ignore() {
-                continue;
-            }
-            // add padding
-            if let Some(ty) = arg.pad {
-                llargument_tys.push(ty.llvm_type(ccx));
-            }
+        {
+            let mut push = |arg: &ArgType<'tcx>| {
+                if arg.is_ignore() {
+                    return;
+                }
+                // add padding
+                if let Some(ty) = arg.pad {
+                    llargument_tys.push(ty.llvm_type(ccx));
+                }
 
-            let llarg_ty = if arg.is_indirect() {
-                arg.memory_ty(ccx).ptr_to()
-            } else if let Some(cast) = arg.cast {
-                cast.llvm_type(ccx)
-            } else {
-                ccx.immediate_llvm_type_of(arg.layout.ty)
+                let llarg_ty = if arg.is_indirect() {
+                    arg.memory_ty(ccx).ptr_to()
+                } else if let Some(cast) = arg.cast {
+                    cast.llvm_type(ccx)
+                } else {
+                    ccx.immediate_llvm_type_of(arg.layout.ty)
+                };
+
+                llargument_tys.push(llarg_ty);
             };
-
-            llargument_tys.push(llarg_ty);
+            for arg in &self.args {
+                if !arg.nested.is_empty() {
+                    for arg in &arg.nested {
+                        assert!(arg.nested.is_empty());
+                        push(arg);
+                    }
+                    continue;
+                }
+                push(arg);
+            }
         }
 
         if self.variadic {
@@ -948,12 +982,22 @@ impl<'a, 'tcx> FnType<'tcx> {
             self.ret.attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
         }
         i += 1;
-        for arg in &self.args {
+        let mut apply = |arg: &ArgType| {
             if !arg.is_ignore() {
                 if arg.pad.is_some() { i += 1; }
                 arg.attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn);
                 i += 1;
             }
+        };
+        for arg in &self.args {
+            if !arg.nested.is_empty() {
+                for arg in &arg.nested {
+                    assert!(arg.nested.is_empty());
+                    apply(arg);
+                }
+                continue;
+            }
+            apply(arg);
         }
     }
 
@@ -963,12 +1007,22 @@ impl<'a, 'tcx> FnType<'tcx> {
             self.ret.attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
         }
         i += 1;
-        for arg in &self.args {
+        let mut apply = |arg: &ArgType| {
             if !arg.is_ignore() {
                 if arg.pad.is_some() { i += 1; }
                 arg.attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
                 i += 1;
             }
+        };
+        for arg in &self.args {
+            if !arg.nested.is_empty() {
+                for arg in &arg.nested {
+                    assert!(arg.nested.is_empty());
+                    apply(arg);
+                }
+                continue;
+            }
+            apply(arg);
         }
 
         if self.cconv != llvm::CCallConv {

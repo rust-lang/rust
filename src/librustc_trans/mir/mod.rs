@@ -22,7 +22,7 @@ use builder::Builder;
 use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::{self, ArgAttribute, FnType};
+use abi::{ArgAttribute, FnType};
 use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
@@ -401,22 +401,10 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             };
 
             let lvalue = LvalueRef::alloca(bcx, arg_ty, &name);
-            for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let dst = lvalue.project_field(bcx, i);
+            for i in 0..tupled_arg_tys.len() {
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
-                if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
-                    // We pass fat pointers as two words, but inside the tuple
-                    // they are the two sub-fields of a single aggregate field.
-                    let meta = &mircx.fn_ty.args[idx];
-                    idx += 1;
-                    arg.store_fn_arg(bcx, &mut llarg_idx,
-                        dst.project_field(bcx, abi::FAT_PTR_ADDR));
-                    meta.store_fn_arg(bcx, &mut llarg_idx,
-                        dst.project_field(bcx, abi::FAT_PTR_EXTRA));
-                } else {
-                    arg.store_fn_arg(bcx, &mut llarg_idx, dst);
-                }
+                arg.store_fn_arg(bcx, &mut llarg_idx, lvalue.project_field(bcx, i));
             }
 
             // Now that we have one alloca that contains the aggregate value,
@@ -453,26 +441,19 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             llarg_idx += 1;
             LvalueRef::new_sized(llarg, arg_ty, Alignment::AbiAligned)
         } else if !lvalue_locals.contains(local.index()) &&
-                  arg.cast.is_none() && arg_scope.is_none() {
-            if arg.is_ignore() {
-                return LocalRef::new_operand(bcx.ccx, arg_ty);
-            }
+                  !arg.nested.is_empty() {
+            assert_eq!(arg.nested.len(), 2);
+            let (a, b) = (&arg.nested[0], &arg.nested[1]);
+            assert!(!a.is_ignore() && a.cast.is_none() && a.pad.is_none());
+            assert!(!b.is_ignore() && b.cast.is_none() && b.pad.is_none());
 
-            // We don't have to cast or keep the argument in the alloca.
-            // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
-            // of putting everything in allocas just so we can use llvm.dbg.declare.
-            if arg.pad.is_some() {
-                llarg_idx += 1;
-            }
-            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            let mut a = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
-            let val = if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &mircx.fn_ty.args[idx];
-                idx += 1;
-                assert!(meta.cast.is_none() && meta.pad.is_none());
-                let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
-                llarg_idx += 1;
 
+            let mut b = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            llarg_idx += 1;
+
+            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 // FIXME(eddyb) As we can't perfectly represent the data and/or
                 // vtable pointer in a fat pointers in Rust's typesystem, and
                 // because we split fat pointers into two ArgType's, they're
@@ -486,36 +467,40 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 let data_llty = bcx.ccx.llvm_type_of(pointee);
                 let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
 
-                let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
-                bcx.set_value_name(llarg, &(name.clone() + ".ptr"));
-                let llmeta = bcx.pointercast(llmeta, meta_llty);
-                bcx.set_value_name(llmeta, &(name + ".meta"));
+                a = bcx.pointercast(a, data_llty.ptr_to());
+                bcx.set_value_name(a, &(name.clone() + ".ptr"));
+                b = bcx.pointercast(b, meta_llty);
+                bcx.set_value_name(b, &(name + ".meta"));
+            }
 
-                OperandValue::Pair(llarg, llmeta)
-            } else {
-                bcx.set_value_name(llarg, &name);
-                OperandValue::Immediate(llarg)
-            };
+            return LocalRef::Operand(Some(OperandRef {
+                val: OperandValue::Pair(a, b),
+                ty: arg_ty
+            }));
+        } else if !lvalue_locals.contains(local.index()) &&
+                  !arg.is_indirect() && arg.cast.is_none() &&
+                  arg_scope.is_none() {
+            if arg.is_ignore() {
+                return LocalRef::new_operand(bcx.ccx, arg_ty);
+            }
+
+            // We don't have to cast or keep the argument in the alloca.
+            // FIXME(eddyb): We should figure out how to use llvm.dbg.value instead
+            // of putting everything in allocas just so we can use llvm.dbg.declare.
+            if arg.pad.is_some() {
+                llarg_idx += 1;
+            }
+            let llarg = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            bcx.set_value_name(llarg, &name);
+            llarg_idx += 1;
             let operand = OperandRef {
-                val,
+                val: OperandValue::Immediate(llarg),
                 ty: arg_ty
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
             let tmp = LvalueRef::alloca(bcx, arg_ty, &name);
-            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                // we pass fat pointers as two words, but we want to
-                // represent them internally as a pointer to two words,
-                // so make an alloca to store them in.
-                let meta = &mircx.fn_ty.args[idx];
-                idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx, tmp.project_field(bcx, abi::FAT_PTR_ADDR));
-                meta.store_fn_arg(bcx, &mut llarg_idx, tmp.project_field(bcx, abi::FAT_PTR_EXTRA));
-            } else  {
-                // otherwise, arg is passed by value, so make a
-                // temporary and store it there
-                arg.store_fn_arg(bcx, &mut llarg_idx, tmp);
-            }
+            arg.store_fn_arg(bcx, &mut llarg_idx, tmp);
             tmp
         };
         arg_scope.map(|scope| {
