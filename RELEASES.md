@@ -63,6 +63,8 @@ Compatibility Notes
   Was previously relative to the rustc's internal `CodeMap` struct which
   required the unstable library `libsyntax` to correctly use.
 - [`unused_results` lint no longer ignores booleans][43728]
+- [Added a preview of RLS has been made available through rustup][44204]
+  Install with `rustup component add rls-preview`
 
 [42565]: https://github.com/rust-lang/rust/pull/42565
 [42588]: https://github.com/rust-lang/rust/pull/42588
@@ -77,6 +79,7 @@ Compatibility Notes
 [43911]: https://github.com/rust-lang/rust/pull/43911
 [43916]: https://github.com/rust-lang/rust/pull/43916
 [43917]: https://github.com/rust-lang/rust/pull/43917
+[44204]: https://github.com/rust-lang/rust/pull/44204
 [cargo/4123]: https://github.com/rust-lang/cargo/pull/4123
 [cargo/4216]: https://github.com/rust-lang/cargo/pull/4216
 [cargo/4270]: https://github.com/rust-lang/cargo/pull/4270
