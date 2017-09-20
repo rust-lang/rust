@@ -8,17 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators)]
+// Test that box-statements with yields in them work.
 
-fn foo(_a: (), _b: &bool) {}
+#![feature(generators, box_syntax)]
 
-// Some examples that probably *could* be accepted, but which we reject for now.
-
-fn bar() {
+fn main() {
+    let x = 0i32;
     || {
-        let b = true;
-        foo(yield, &b); //~ ERROR
+        let y = 2u32;
+        {
+            let _t = box (&x, yield 0, &y);
+        }
+        match box (&x, yield 0, &y) {
+            _t => {}
+        }
     };
 }
-
-fn main() { }

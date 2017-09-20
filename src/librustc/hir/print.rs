@@ -1495,7 +1495,7 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::ExprYield(ref expr) => {
-                self.s.word("yield")?;
+                self.word_space("yield")?;
                 self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }
         }

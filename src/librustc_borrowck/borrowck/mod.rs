@@ -857,7 +857,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     None
                 };
 
-                if let Some(yield_span) = maybe_borrow_across_yield {
+                if let Some((yield_span, _)) = maybe_borrow_across_yield {
                     debug!("err_out_of_scope: opt_yield_span = {:?}", yield_span);
                     struct_span_err!(self.tcx.sess,
                                      error_span,

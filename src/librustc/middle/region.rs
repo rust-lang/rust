@@ -18,7 +18,6 @@ use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
 use ty;
 
-use std::collections::hash_map::Entry;
 use std::mem;
 use std::rc::Rc;
 use syntax::codemap;
@@ -250,8 +249,80 @@ pub struct ScopeTree {
     closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
 
     /// If there are any `yield` nested within a scope, this map
-    /// stores the `Span` of the first one.
-    yield_in_scope: FxHashMap<Scope, Span>,
+    /// stores the `Span` of the last one and its index in the
+    /// postorder of the Visitor traversal on the HIR.
+    ///
+    /// HIR Visitor postorder indexes might seem like a peculiar
+    /// thing to care about. but it turns out that HIR bindings
+    /// and the temporary results of HIR expressions are never
+    /// storage-live at the end of HIR nodes with postorder indexes
+    /// lower than theirs, and therefore don't need to be suspended
+    /// at yield-points at these indexes.
+    ///
+    /// For an example, suppose we have some code such as:
+    /// ```rust,ignore (example)
+    ///     foo(f(), yield y, bar(g()))
+    /// ```
+    ///
+    /// With the HIR tree (calls numbered for expository purposes)
+    /// ```
+    ///     Call#0(foo, [Call#1(f), Yield(y), Call#2(bar, Call#3(g))])
+    /// ```
+    ///
+    /// Obviously, the result of `f()` was created before the yield
+    /// (and therefore needs to be kept valid over the yield) while
+    /// the result of `g()` occurs after the yield (and therefore
+    /// doesn't). If we want to infer that, we can look at the
+    /// postorder traversal:
+    /// ```
+    /// `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
+    /// ```
+    ///
+    /// In which we can easily see that `Call#1` occurs before the yield,
+    /// and `Call#3` after it.
+    ///
+    /// To see that this method works, consider:
+    ///
+    /// Let `D` be our binding/temporary and `U` be our other HIR node, with
+    /// `HIR-postorder(U) < HIR-postorder(D)` (in our example, U would be
+    /// the yield and D would be one of the calls). Let's show that
+    /// `D` is storage-dead at `U`.
+    ///
+    /// Remember that storage-live/storage-dead refers to the state of
+    /// the *storage*, and does not consider moves/drop flags.
+    ///
+    /// Then:
+    ///     1. From the ordering guarantee of HIR visitors (see
+    ///     `rustc::hir::intravisit`), `D` does not dominate `U`.
+    ///     2. Therefore, `D` is *potentially* storage-dead at `U` (because
+    ///     we might visit `U` without ever getting to `D`).
+    ///     3. However, we guarantee that at each HIR point, each
+    ///     binding/temporary is always either always storage-live
+    ///     or always storage-dead. This is what is being guaranteed
+    ///     by `terminating_scopes` including all blocks where the
+    ///     count of executions is not guaranteed.
+    ///     4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
+    ///     QED.
+    ///
+    /// I don't think this property relies on `3.` in an essential way - it
+    /// is probably still correct even if we have "unrestricted" terminating
+    /// scopes. However, why use the complicated proof when a simple one
+    /// works?
+    ///
+    /// A subtle thing: `box` expressions, such as `box (&x, yield 2, &y)`. It
+    /// might seem that a `box` expression creates a `Box<T>` temporary
+    /// when it *starts* executing, at `HIR-preorder(BOX-EXPR)`. That might
+    /// be true in the MIR desugaring, but it is not important in the semantics.
+    ///
+    /// The reason is that semantically, until the `box` expression returns,
+    /// the values are still owned by their containing expressions. So
+    /// we'll see that `&x`.
+    yield_in_scope: FxHashMap<Scope, (Span, usize)>,
+
+    /// The number of visit_expr and visit_pat calls done in the body.
+    /// Used to sanity check visit_expr/visit_pat call count when
+    /// calculating geneartor interiors.
+    body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -273,6 +344,9 @@ pub struct Context {
 
 struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+
+    // The number of expressions and patterns visited in the current body
+    expr_and_pat_count: usize,
 
     // Generated scope tree:
     scope_tree: ScopeTree,
@@ -611,9 +685,17 @@ impl<'tcx> ScopeTree {
     }
 
     /// Checks whether the given scope contains a `yield`. If so,
-    /// returns `Some(span)` with the span of a yield we found.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<Span> {
+    /// returns `Some((span, expr_count))` with the span of a yield we found and
+    /// the number of expressions appearing before the `yield` in the body.
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<(Span, usize)> {
         self.yield_in_scope.get(&scope).cloned()
+    }
+
+    /// Gives the number of expressions visited in a body.
+    /// Used to sanity check visit_expr call count when
+    /// calculating geneartor interiors.
+    pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
+        self.body_expr_count.get(&body_id).map(|r| *r)
     }
 }
 
@@ -714,6 +796,8 @@ fn resolve_pat<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, pat: &
     }
 
     intravisit::walk_pat(visitor, pat);
+
+    visitor.expr_and_pat_count += 1;
 }
 
 fn resolve_stmt<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, stmt: &'tcx hir::Stmt) {
@@ -804,29 +888,6 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 // record_superlifetime(new_cx, expr.callee_id);
             }
 
-            hir::ExprYield(..) => {
-                // Mark this expr's scope and all parent scopes as containing `yield`.
-                let mut scope = Scope::Node(expr.hir_id.local_id);
-                loop {
-                    match visitor.scope_tree.yield_in_scope.entry(scope) {
-                        // Another `yield` has already been found.
-                        Entry::Occupied(_) => break,
-
-                        Entry::Vacant(entry) => {
-                            entry.insert(expr.span);
-                        }
-                    }
-
-                    // Keep traversing up while we can.
-                    match visitor.scope_tree.parent_map.get(&scope) {
-                        // Don't cross from closure bodies to their parent.
-                        Some(&Scope::CallSite(_)) => break,
-                        Some(&superscope) => scope = superscope,
-                        None => break
-                    }
-                }
-            }
-
             _ => {}
         }
     }
@@ -840,6 +901,25 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
         }
 
         _ => intravisit::walk_expr(visitor, expr)
+    }
+
+    visitor.expr_and_pat_count += 1;
+
+    if let hir::ExprYield(..) = expr.node {
+        // Mark this expr's scope and all parent scopes as containing `yield`.
+        let mut scope = Scope::Node(expr.hir_id.local_id);
+        loop {
+            visitor.scope_tree.yield_in_scope.insert(scope,
+                (expr.span, visitor.expr_and_pat_count));
+
+            // Keep traversing up while we can.
+            match visitor.scope_tree.parent_map.get(&scope) {
+                // Don't cross from closure bodies to their parent.
+                Some(&Scope::CallSite(_)) => break,
+                Some(&superscope) => scope = superscope,
+                None => break
+            }
+        }
     }
 
     visitor.cx = prev_cx;
@@ -1120,6 +1200,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
                body_id,
                self.cx.parent);
 
+        let outer_ec = mem::replace(&mut self.expr_and_pat_count, 0);
         let outer_cx = self.cx;
         let outer_ts = mem::replace(&mut self.terminating_scopes, FxHashSet());
         self.terminating_scopes.insert(body.value.hir_id.local_id);
@@ -1165,7 +1246,12 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
             resolve_local(self, None, Some(&body.value));
         }
 
+        if body.is_generator {
+            self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
+        }
+
         // Restore context we had at the start.
+        self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;
         self.terminating_scopes = outer_ts;
     }
@@ -1200,6 +1286,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
+            expr_and_pat_count: 0,
             cx: Context {
                 root_id: None,
                 parent: None,
@@ -1246,6 +1333,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
         let ScopeTree {
             root_body,
             root_parent,
+            ref body_expr_count,
             ref parent_map,
             ref var_map,
             ref destruction_scopes,
@@ -1259,6 +1347,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
             root_parent.hash_stable(hcx, hasher);
         });
 
+        body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);

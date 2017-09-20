@@ -96,7 +96,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
-                let result = this.local_decls.push(LocalDecl::new_temp(expr.ty, expr_span));
+                // The `Box<T>` temporary created here is not a part of the HIR,
+                // and therefore is not considered during generator OIBIT
+                // determination. See the comment about `box` at `yield_in_scope`.
+                let result = this.local_decls.push(
+                    LocalDecl::new_internal(expr.ty, expr_span));
                 this.cfg.push(block, Statement {
                     source_info,
                     kind: StatementKind::StorageLive(result)

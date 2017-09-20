@@ -15,7 +15,7 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Body, Pat, PatKind, Expr};
+use rustc::hir::{self, Pat, PatKind, Expr};
 use rustc::middle::region;
 use rustc::ty::Ty;
 use std::rc::Rc;
@@ -26,6 +26,7 @@ struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
     region_scope_tree: Rc<region::ScopeTree>,
+    expr_count: usize,
 }
 
 impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
@@ -33,7 +34,19 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
         use syntax_pos::DUMMY_SP;
 
         let live_across_yield = scope.map_or(Some(DUMMY_SP), |s| {
-            self.region_scope_tree.yield_in_scope(s)
+            self.region_scope_tree.yield_in_scope(s).and_then(|(span, expr_count)| {
+                // If we are recording an expression that is the last yield
+                // in the scope, or that has a postorder CFG index larger
+                // than the one of all of the yields, then its value can't
+                // be storage-live (and therefore live) at any of the yields.
+                //
+                // See the mega-comment at `yield_in_scope` for a proof.
+                if expr_count >= self.expr_count {
+                    Some(span)
+                } else {
+                    None
+                }
+            })
         });
 
         if let Some(span) = live_across_yield {
@@ -60,8 +73,13 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
         fcx,
         types: FxHashMap(),
         region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+        expr_count: 0,
     };
     intravisit::walk_body(&mut visitor, body);
+
+    // Check that we visited the same amount of expressions and the RegionResolutionVisitor
+    let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
+    assert_eq!(region_expr_count, visitor.expr_count);
 
     let mut types: Vec<_> = visitor.types.drain().collect();
 
@@ -82,13 +100,12 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
    }
 }
 
+// This visitor has to have the same visit_expr calls as RegionResolutionVisitor in
+// librustc/middle/region.rs since `expr_count` is compared against the results
+// there.
 impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
-    }
-
-    fn visit_body(&mut self, _body: &'tcx Body) {
-        // Closures inside are not considered part of the generator interior
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat) {
@@ -98,14 +115,19 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'gcx, 'tcx> {
             self.record(ty, Some(scope), None);
         }
 
+        self.expr_count += 1;
+
         intravisit::walk_pat(self, pat);
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
+        intravisit::walk_expr(self, expr);
+
+        self.expr_count += 1;
+
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+
         let ty = self.fcx.tables.borrow().expr_ty_adjusted(expr);
         self.record(ty, scope, Some(expr));
-
-        intravisit::walk_expr(self, expr);
     }
 }

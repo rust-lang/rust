@@ -27,11 +27,19 @@
 //! for more details.
 //!
 //! Note: it is an important invariant that the default visitor walks
-//! the body of a function in "execution order" (more concretely,
-//! reverse post-order with respect to the CFG implied by the AST),
-//! meaning that if AST node A may execute before AST node B, then A
-//! is visited first.  The borrow checker in particular relies on this
-//! property.
+//! the body of a function in "execution order" - more concretely, if
+//! we consider the reverse post-order (RPO) of the CFG implied by the HIR,
+//! then a pre-order traversal of the HIR is consistent with the CFG RPO
+//! on the *initial CFG point* of each HIR node, while a post-order traversal
+//! of the HIR is consistent with the CFG RPO on each *final CFG point* of
+//! each CFG node.
+//!
+//! One thing that follows is that if HIR node A always starts/ends executing
+//! before HIR node B, then A appears in traversal pre/postorder before B,
+//! respectively. (This follows from RPO respecting CFG domination).
+//!
+//! This order consistency is required in a few places in rustc, for
+//! example generator inference, and possibly also HIR borrowck.
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
@@ -403,10 +411,13 @@ pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body) {
 }
 
 pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
+    // Intentionally visiting the expr first - the initialization expr
+    // dominates the local's definition.
+    walk_list!(visitor, visit_expr, &local.init);
+
     visitor.visit_id(local.id);
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
-    walk_list!(visitor, visit_expr, &local.init);
 }
 
 pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime) {
