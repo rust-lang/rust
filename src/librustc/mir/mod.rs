@@ -491,7 +491,7 @@ pub struct LocalDecl<'tcx> {
     /// The *lexical* visibility scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
-    /// of iit.
+    /// of it.
     pub lexical_scope: VisibilityScope,
 }
 

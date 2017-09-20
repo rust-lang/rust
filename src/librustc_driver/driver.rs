@@ -1005,10 +1005,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     // What we need to run borrowck etc.
 
     passes.push_pass(MIR_VALIDATED, mir::transform::qualify_consts::QualifyAndPromoteConstants);
-
-    // FIXME: ariel points SimplifyBranches should run after
-    // mir-borrowck; otherwise code within `if false { ... }` would
-    // not be checked.
     passes.push_pass(MIR_VALIDATED, mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
     passes.push_pass(MIR_VALIDATED, mir::transform::nll::NLL);
 
