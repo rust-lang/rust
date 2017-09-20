@@ -135,8 +135,8 @@ not being relative to `src`.
 
 ## Missing Files or Incorrect Paths
 If a file given to `include` is missing then this should trigger a compilation
-as the given file was supposed to put into the code but for some reason or other
-it is not there.
+error as the given file was supposed to be put into the code but for some reason
+or other it is not there.
 
 ## Line Numbers When Errors Occur
 As with all macros being expanded this brings up the question of line numbers
