@@ -11,6 +11,11 @@
 #![feature(underscore_lifetimes)]
 
 struct Foo<'a>(&'a u8);
+struct Baz<'a>(&'_ &'a u8); //~ ERROR missing lifetime specifier
+
+impl Foo<'_> { //~ ERROR missing lifetime specifier
+    fn x() {}
+}
 
 fn foo<'_> //~ ERROR invalid lifetime parameter name: `'_`
 (_: Foo<'_>) {}
