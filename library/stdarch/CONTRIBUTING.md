@@ -14,6 +14,7 @@ example for `_mm_adds_epi16`:
 /// Add packed 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(paddsw))]
 pub fn _mm_adds_epi16(a: i16x8, b: i16x8) -> i16x8 {
     unsafe { paddsw(a, b) }
 }
@@ -32,6 +33,10 @@ Let's break this down:
   support `sse2`, the compiler will still generate code for `_mm_adds_epi16`
   *as if* `sse2` support existed. Without this attribute, the compiler might
   not generate the intended CPU instruction.
+* The `#[cfg_attr(test, assert_instr(paddsw))]` attribute indicates that when
+  we're testing the crate we'll assert that the `paddsw` instruction is
+  generated inside this function, ensuring that the SIMD intrinsic truly is an
+  intrinsic for the instruction!
 * The types of the vectors given to the intrinsic should generally match the
   types as provided in the vendor interface. We'll talk about this more below.
 * The implementation of the vendor intrinsic is generally very simple.
@@ -40,7 +45,7 @@ Let's break this down:
   compiler intrinsic (in this case, `paddsw`) when one is available. More on
   this below as well.
 
-Once a function has been added, you should add at least one test for basic
+Once a function has been added, you should also add at least one test for basic
 functionality. Here's an example for `_mm_adds_epi16`:
 
 ```rust

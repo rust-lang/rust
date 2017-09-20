@@ -7,6 +7,9 @@
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#TBM_.28Trailing_Bit_Manipulation.29)
 //! provides a quick overview of the available instructions.
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 // TODO: LLVM-CODEGEN ERROR: LLVM ERROR: Cannot select: intrinsic %llvm.x86.tbm.bextri.u32
 /*
 #[allow(dead_code)]
@@ -20,7 +23,7 @@ extern "C" {
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline(always)]
-#[target_feature = "+tbm"] 
+#[target_feature = "+tbm"]
 pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(a, (start & 0xffu32) | ((len & 0xffu32) << 8u32))
 }
@@ -28,7 +31,7 @@ pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
 #[inline(always)]
-#[target_feature = "+tbm"] 
+#[target_feature = "+tbm"]
 pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
     _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
 }
@@ -61,6 +64,7 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcfill))]
 pub fn _blcfill_u32(x: u32) -> u32 {
     x & (x.wrapping_add(1))
 }
@@ -70,6 +74,7 @@ pub fn _blcfill_u32(x: u32) -> u32 {
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcfill))]
 pub fn _blcfill_u64(x: u64) -> u64 {
     x & (x.wrapping_add(1))
 }
@@ -79,6 +84,7 @@ pub fn _blcfill_u64(x: u64) -> u64 {
 /// If there is no zero bit in `x`, it sets all bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blci))]
 pub fn _blci_u32(x: u32) -> u32 {
     x | !(x.wrapping_add(1))
 }
@@ -88,6 +94,7 @@ pub fn _blci_u32(x: u32) -> u32 {
 /// If there is no zero bit in `x`, it sets all bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blci))]
 pub fn _blci_u64(x: u64) -> u64 {
     x | !(x.wrapping_add(1))
 }
@@ -97,6 +104,7 @@ pub fn _blci_u64(x: u64) -> u64 {
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcic))]
 pub fn _blcic_u32(x: u32) -> u32 {
     !x & (x.wrapping_add(1))
 }
@@ -106,6 +114,7 @@ pub fn _blcic_u32(x: u32) -> u32 {
 /// If there is no zero bit in `x`, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcic))]
 pub fn _blcic_u64(x: u64) -> u64 {
     !x & (x.wrapping_add(1))
 }
@@ -115,6 +124,7 @@ pub fn _blcic_u64(x: u64) -> u64 {
 /// If there is no zero bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcmsk))]
 pub fn _blcmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_add(1))
 }
@@ -124,6 +134,7 @@ pub fn _blcmsk_u32(x: u32) -> u32 {
 /// If there is no zero bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcmsk))]
 pub fn _blcmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_add(1))
 }
@@ -133,6 +144,7 @@ pub fn _blcmsk_u64(x: u64) -> u64 {
 /// If there is no zero bit in `x`, it returns `x`.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcs))]
 pub fn _blcs_u32(x: u32) -> u32 {
     x | (x.wrapping_add(1))
 }
@@ -142,6 +154,7 @@ pub fn _blcs_u32(x: u32) -> u32 {
 /// If there is no zero bit in `x`, it returns `x`.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blcs))]
 pub fn _blcs_u64(x: u64) -> u64 {
     x | x.wrapping_add(1)
 }
@@ -151,6 +164,7 @@ pub fn _blcs_u64(x: u64) -> u64 {
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blsfill))]
 pub fn _blsfill_u32(x: u32) -> u32 {
     x | (x.wrapping_sub(1))
 }
@@ -160,6 +174,7 @@ pub fn _blsfill_u32(x: u32) -> u32 {
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blsfill))]
 pub fn _blsfill_u64(x: u64) -> u64 {
     x | (x.wrapping_sub(1))
 }
@@ -169,6 +184,7 @@ pub fn _blsfill_u64(x: u64) -> u64 {
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blsic))]
 pub fn _blsic_u32(x: u32) -> u32 {
     !x | (x.wrapping_sub(1))
 }
@@ -178,6 +194,7 @@ pub fn _blsic_u32(x: u32) -> u32 {
 /// If there is no set bit in `x`, it sets all the bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(blsic))]
 pub fn _blsic_u64(x: u64) -> u64 {
     !x | (x.wrapping_sub(1))
 }
@@ -188,6 +205,7 @@ pub fn _blsic_u64(x: u64) -> u64 {
 /// If the least significant bit of `x` is 0, it sets all bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(t1mskc))]
 pub fn _t1mskc_u32(x: u32) -> u32 {
     !x | (x.wrapping_add(1))
 }
@@ -198,6 +216,7 @@ pub fn _t1mskc_u32(x: u32) -> u32 {
 /// If the least significant bit of `x` is 0, it sets all bits.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(t1mskc))]
 pub fn _t1mskc_u64(x: u64) -> u64 {
     !x | (x.wrapping_add(1))
 }
@@ -208,6 +227,7 @@ pub fn _t1mskc_u64(x: u64) -> u64 {
 /// If the least significant bit of `x` is 1, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(tzmsk))]
 pub fn _tzmsk_u32(x: u32) -> u32 {
     !x & (x.wrapping_sub(1))
 }
@@ -218,6 +238,7 @@ pub fn _tzmsk_u32(x: u32) -> u32 {
 /// If the least significant bit of `x` is 1, it returns zero.
 #[inline(always)]
 #[target_feature = "+tbm"]
+#[cfg_attr(test, assert_instr(tzmsk))]
 pub fn _tzmsk_u64(x: u64) -> u64 {
     !x & (x.wrapping_sub(1))
 }

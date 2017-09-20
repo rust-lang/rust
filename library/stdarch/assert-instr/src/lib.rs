@@ -1,3 +1,9 @@
+//! Runtime support needed for the `#![assert_instr]` macro
+//!
+//! This basically just disassembles the current executable and then parses the
+//! output once globally and then provides the `assert` function which makes
+//! assertions about the disassembly of a function.
+
 #![feature(proc_macro)]
 
 extern crate assert_instr_macro;
@@ -211,21 +217,30 @@ fn normalize(symbol: &str) -> String {
     }
 }
 
+/// Main entry point for this crate, called by the `#[assert_instr]` macro.
+///
+/// This asserts that the function at `fnptr` contains the instruction
+/// `expected` provided.
 pub fn assert(fnptr: usize, expected: &str) {
+    // Translate this function pointer to a symbolic name that we'd have found
+    // in the disassembly.
     let mut sym = None;
     backtrace::resolve(fnptr as *mut _, |name| {
         sym = name.name().and_then(|s| s.as_str()).map(normalize);
     });
-
     let sym = match sym {
         Some(s) => s,
         None => panic!("failed to get symbol of function pointer: {}", fnptr),
     };
 
+    // Find our function in the list of all disassembled functions
     let functions = &DISASSEMBLY.get(&sym)
         .expect(&format!("failed to find disassembly of {}", sym));
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
+
+    // Look for `expected` as the first part of any instruction in this
+    // function, returning if we do indeed find it.
     for instr in function.instrs.iter() {
         if let Some(part) = instr.parts.get(0) {
             if part == expected {
@@ -234,6 +249,8 @@ pub fn assert(fnptr: usize, expected: &str) {
         }
     }
 
+    // Help debug by printing out the found disassembly, and then panic as we
+    // didn't find the instruction.
     println!("disassembly for {}: ", sym);
     for (i, instr) in function.instrs.iter().enumerate() {
         print!("\t{:2}: ", i);
