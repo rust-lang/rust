@@ -1333,6 +1333,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
         let ScopeTree {
             root_body,
             root_parent,
+            ref body_expr_count,
             ref parent_map,
             ref var_map,
             ref destruction_scopes,
@@ -1346,6 +1347,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ScopeTree {
             root_parent.hash_stable(hcx, hasher);
         });
 
+        body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);
