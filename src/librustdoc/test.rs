@@ -348,7 +348,21 @@ pub fn make_test(s: &str,
             }
         }
     }
-    if dont_insert_main || s.contains("fn main") {
+
+    // FIXME (#21299): prefer libsyntax or some other actual parser over this
+    // best-effort ad hoc approach
+    let already_has_main = s.lines()
+        .map(|line| {
+            let comment = line.find("//");
+            if let Some(comment_begins) = comment {
+                &line[0..comment_begins]
+            } else {
+                line
+            }
+        })
+        .any(|code| code.contains("fn main"));
+
+    if dont_insert_main || already_has_main {
         prog.push_str(&everything_else);
     } else {
         prog.push_str("fn main() {\n");
