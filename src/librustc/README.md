@@ -37,7 +37,7 @@ incremental improves that may change.)
 
 The dependency structure of these crates is roughly a diamond:
 
-````
+```
                   rustc_driver
                 /      |       \
               /        |         \
