@@ -27,7 +27,7 @@ use type_::Type;
 use value::Value;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, HasDataLayout, Layout, LayoutOf};
+use rustc::ty::layout::{self, HasDataLayout, LayoutOf};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::hir;
 
@@ -41,10 +41,15 @@ use syntax_pos::{Span, DUMMY_SP};
 pub use context::{CrateContext, SharedCrateContext};
 
 pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Layout::FatPointer { .. } = *ccx.layout_of(ty).layout {
-        true
-    } else {
-        false
+    match ty.sty {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+            !ccx.shared().type_is_sized(ty)
+        }
+        ty::TyAdt(def, _) if def.is_box() => {
+            !ccx.shared().type_is_sized(ty.boxed_ty())
+        }
+        _ => false
     }
 }
 
@@ -63,9 +68,8 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
     let layout = ccx.layout_of(ty);
-    match *layout.layout {
-        Layout::FatPointer => true,
-        Layout::Univariant => {
+    match *layout.fields {
+        layout::FieldPlacement::Arbitrary { .. } => {
             // There must be only 2 fields.
             if layout.fields.count() != 2 {
                 return false;

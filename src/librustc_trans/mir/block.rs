@@ -215,13 +215,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Return => {
-                let ret = self.fn_ty.ret;
-                if ret.is_ignore() || ret.is_indirect() {
+                if self.fn_ty.ret.is_ignore() || self.fn_ty.ret.is_indirect() {
                     bcx.ret_void();
                     return;
                 }
 
-                let llval = if let Some(cast_ty) = ret.cast {
+                let llval = if let Some(cast_ty) = self.fn_ty.ret.cast {
                     let op = match self.locals[mir::RETURN_POINTER] {
                         LocalRef::Operand(Some(op)) => op,
                         LocalRef::Operand(None) => bug!("use of return before def"),
@@ -234,7 +233,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let scratch = LvalueRef::alloca(&bcx, ret.layout.ty, "ret");
+                            let scratch = LvalueRef::alloca(&bcx, self.fn_ty.ret.layout.ty, "ret");
                             op.store(&bcx, scratch);
                             scratch.llval
                         }
@@ -246,7 +245,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let load = bcx.load(
                         bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
-                        Some(ret.layout.align(bcx.ccx)));
+                        Some(self.fn_ty.ret.layout.align(bcx.ccx)));
                     load
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
@@ -562,15 +561,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     (&args[..], None)
                 };
 
-                let mut idx = 0;
-                for arg in first_args {
+                for (idx, arg) in first_args.iter().enumerate() {
                     let op = self.trans_operand(&bcx, arg);
-                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty,
-                                        &mut idx, &mut llfn, &def);
+                    if idx == 0 {
+                        if let Pair(_, meta) = op.val {
+                            if let Some(ty::InstanceDef::Virtual(_, idx)) = def {
+                                let llmeth = meth::VirtualIndex::from_index(idx)
+                                    .get_fn(&bcx, meta);
+                                let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
+                                llfn = Some(bcx.pointercast(llmeth, llty));
+                            }
+                        }
+                    }
+                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty.args[idx]);
                 }
                 if let Some(tup) = untuple {
-                    self.trans_arguments_untupled(&bcx, tup, &mut llargs, &fn_ty,
-                                                  &mut idx, &mut llfn, &def)
+                    self.trans_arguments_untupled(&bcx, tup, &mut llargs,
+                        &fn_ty.args[first_args.len()..])
                 }
 
                 let fn_ptr = match (llfn, instance) {
@@ -592,35 +599,21 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       bcx: &Builder<'a, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
-                      fn_ty: &FnType<'tcx>,
-                      next_idx: &mut usize,
-                      llfn: &mut Option<ValueRef>,
-                      def: &Option<ty::InstanceDef<'tcx>>) {
+                      arg: &ArgType<'tcx>) {
         if let Pair(a, b) = op.val {
             // Treat the values in a fat pointer separately.
-            if common::type_is_fat_ptr(bcx.ccx, op.ty) {
-                let (ptr, meta) = (a, b);
-                if *next_idx == 0 {
-                    if let Some(ty::InstanceDef::Virtual(_, idx)) = *def {
-                        let llmeth = meth::VirtualIndex::from_index(idx).get_fn(bcx, meta);
-                        let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
-                        *llfn = Some(bcx.pointercast(llmeth, llty));
-                    }
-                }
-
+            if !arg.nested.is_empty() {
+                assert_eq!(arg.nested.len(), 2);
                 let imm_op = |x| OperandRef {
                     val: Immediate(x),
                     // We won't be checking the type again.
                     ty: bcx.tcx().types.err
                 };
-                self.trans_argument(bcx, imm_op(ptr), llargs, fn_ty, next_idx, llfn, def);
-                self.trans_argument(bcx, imm_op(meta), llargs, fn_ty, next_idx, llfn, def);
+                self.trans_argument(bcx, imm_op(a), llargs, &arg.nested[0]);
+                self.trans_argument(bcx, imm_op(b), llargs, &arg.nested[1]);
                 return;
             }
         }
-
-        let arg = &fn_ty.args[*next_idx];
-        *next_idx += 1;
 
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
@@ -676,10 +669,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bcx: &Builder<'a, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
-                                fn_ty: &FnType<'tcx>,
-                                next_idx: &mut usize,
-                                llfn: &mut Option<ValueRef>,
-                                def: &Option<ty::InstanceDef<'tcx>>) {
+                                args: &[ArgType<'tcx>]) {
         let tuple = self.trans_operand(bcx, operand);
 
         let arg_types = match tuple.ty.sty {
@@ -692,18 +682,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         match tuple.val {
             Ref(llval, align) => {
                 let tuple_ptr = LvalueRef::new_sized(llval, tuple.ty, align);
-                for (n, &ty) in arg_types.iter().enumerate() {
+                for n in 0..arg_types.len() {
                     let field_ptr = tuple_ptr.project_field(bcx, n);
-                    let op = if common::type_is_fat_ptr(bcx.ccx, ty) {
-                        field_ptr.load(bcx)
-                    } else {
-                        // trans_argument will load this if it needs to
-                        OperandRef {
-                            val: Ref(field_ptr.llval, field_ptr.alignment),
-                            ty
-                        }
-                    };
-                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
+                    self.trans_argument(bcx, field_ptr.load(bcx), llargs, &args[n]);
                 }
 
             }
@@ -718,7 +699,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         val: Immediate(elem),
                         ty,
                     };
-                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
+                    self.trans_argument(bcx, op, llargs, &args[n]);
                 }
             }
             Pair(a, b) => {
@@ -730,7 +711,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         val: Immediate(elem),
                         ty,
                     };
-                    self.trans_argument(bcx, op, llargs, fn_ty, next_idx, llfn, def);
+                    self.trans_argument(bcx, op, llargs, &args[n]);
                 }
             }
         }
