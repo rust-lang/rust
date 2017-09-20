@@ -1133,6 +1133,8 @@ For Rust, however:
 These drawbacks are the main reason why restriction 3 "debug-info independence" is added to the
 motivation.
 
+(A debuginfo-based stack trace proposal can be found at [RFC 2154].)
+
 ### `SourceContext` generic parameter
 
 Introduced as an [alternative in RFC 1669][source_context], inspired by GHC's implicit parameter:
@@ -1178,6 +1180,7 @@ The same drawback exists if we base the solution on [RFC 2000]  (*const generics
 [RFC 2000]: https://github.com/rust-lang/rfcs/pull/2000
 [40264]: https://github.com/rust-lang/rust/issues/40264
 [RFC 1417]: https://github.com/rust-lang/rfcs/issues/1417
+[RFC 2154]: https://github.com/rust-lang/rfcs/pull/2154
 
 [a]: https://internals.rust-lang.org/t/rfrfc-better-option-result-error-messages/2904
 [b]: https://internals.rust-lang.org/t/line-info-for-unwrap-expect/3753
