@@ -1332,7 +1332,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                                print on stdout",
                      "[crate-name|file-names|sysroot|cfg|target-list|\
                        target-cpus|target-features|relocation-models|\
-                       code-models|target-spec-json|native-static-deps]"),
+                       code-models|target-spec-json|native-static-libs]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),

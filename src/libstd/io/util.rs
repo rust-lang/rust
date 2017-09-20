@@ -69,16 +69,18 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
 
 /// A reader which is always at EOF.
 ///
-/// This struct is generally created by calling [`empty`][empty]. Please see
-/// the documentation of `empty()` for more details.
+/// This struct is generally created by calling [`empty`]. Please see
+/// the documentation of [`empty()`][`empty`] for more details.
 ///
-/// [empty]: fn.empty.html
+/// [`empty`]: fn.empty.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty { _priv: () }
 
 /// Constructs a new handle to an empty reader.
 ///
-/// All reads from the returned reader will return `Ok(0)`.
+/// All reads from the returned reader will return [`Ok`]`(0)`.
+///
+/// [`Ok`]: ../result/enum.Result.html#variant.Ok
 ///
 /// # Examples
 ///
