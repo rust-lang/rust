@@ -40,9 +40,10 @@ use mem;
 ///
 /// io::copy(&mut reader, &mut writer)?;
 ///
-/// assert_eq!(reader, &writer[..]);
+/// assert_eq!(&b"hello"[..], &writer[..]);
 /// # Ok(())
 /// # }
+/// # foo().unwrap();
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
