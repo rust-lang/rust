@@ -242,9 +242,14 @@ pub fn assert(fnptr: usize, expected: &str) {
     // Look for `expected` as the first part of any instruction in this
     // function, returning if we do indeed find it.
     for instr in function.instrs.iter() {
+        // Gets the first instruction, e.g. tzcntl in tzcntl %rax,%rax
         if let Some(part) = instr.parts.get(0) {
-            if part == expected {
-                return
+            // Truncates the instruction with the length of the expected
+            // instruction: tzcntl => tzcnt and compares that.
+            if let Some(part) = part.get(0..expected.len()) {
+                if part == expected {
+                    return
+                }
             }
         }
     }
