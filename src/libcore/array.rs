@@ -21,6 +21,7 @@
 
 use borrow::{Borrow, BorrowMut};
 use cmp::Ordering;
+use convert::TryFrom;
 use fmt;
 use hash::{Hash, self};
 use marker::Unsize;
@@ -56,6 +57,11 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
         self
     }
 }
+
+/// The error type returned when a conversion from a slice to an array fails.
+#[unstable(feature = "try_from", issue = "33417")]
+#[derive(Debug, Copy, Clone)]
+pub struct TryFromSliceError(());
 
 macro_rules! __impl_slice_eq1 {
     ($Lhs: ty, $Rhs: ty) => {
@@ -120,6 +126,34 @@ macro_rules! array_impls {
             impl<T> BorrowMut<[T]> for [T; $N] {
                 fn borrow_mut(&mut self) -> &mut [T] {
                     self
+                }
+            }
+
+            #[unstable(feature = "try_from", issue = "33417")]
+            impl<'a, T> TryFrom<&'a [T]> for &'a [T; $N] {
+                type Error = TryFromSliceError;
+
+                fn try_from(slice: &[T]) -> Result<&[T; $N], TryFromSliceError> {
+                    if slice.len() == $N {
+                        let ptr = slice.as_ptr() as *const [T; $N];
+                        unsafe { Ok(&*ptr) }
+                    } else {
+                        Err(TryFromSliceError(()))
+                    }
+                }
+            }
+
+            #[unstable(feature = "try_from", issue = "33417")]
+            impl<'a, T> TryFrom<&'a mut [T]> for &'a mut [T; $N] {
+                type Error = TryFromSliceError;
+
+                fn try_from(slice: &mut [T]) -> Result<&mut [T; $N], TryFromSliceError> {
+                    if slice.len() == $N {
+                        let ptr = slice.as_mut_ptr() as *mut [T; $N];
+                        unsafe { Ok(&mut *ptr) }
+                    } else {
+                        Err(TryFromSliceError(()))
+                    }
                 }
             }
 
