@@ -1,4 +1,4 @@
-- Feature Name: `target_feature` / `cfg_target_feature`
+- Feature Name: `target_feature` / `cfg_target_feature` / `cfg_feature_enabled`
 - Start Date: 2017-06-26
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -17,7 +17,7 @@ such that the programs can use different algorithms depending on the features av
 The objective of this RFC is to extend the Rust language to solve these three problems, and it does so by adding the following three language features:
 
 - **compile-time feature detection**: using configuration macros `cfg!(target_feature = "avx2")` to detect whether a feature is enabled or disabled in a context (`#![cfg(target_feature = "avx2")]`, ...), 
-- **run-time feature detection**: using the `std::target_feature("avx2")` API to detect whether the current host supports the feature, and
+- **run-time feature detection**: using the `cfg_feature_enabled!("avx2")` API to detect whether the current host supports the feature, and
 - **unconditional code generation**: using the function attribute `#[target_feature(enable = "avx2")]` to allow the compiler to generate code under the assumption that this code will only be reached in hosts that support the feature. 
 
 # Detailed design
@@ -35,7 +35,7 @@ specifies the process for adding target features. Each target feature must:
 - Be proposed in its own mini-RFC, RFC, or rustc-issue and follow a FCP period,
 - Be behind its own feature gate macro of the form `target_feature_feature_name`
   (where `feature_name` should be replaced by the name of the feature ).
-- When possible, be detectable at run-time via the `std::target_feature` API.
+- When possible, be detectable at run-time via the `cfg_feature_enabled!("name")` API.
 - Include whether some backend-specific compilation options should enable the
   feature.
   
@@ -69,7 +69,7 @@ names and semantics than the ones provided by the LLVM backend.
 
 The effect of `--enable-features=feature-list` is to enable all features implicitly 
 for all functions of a crate. That is, anywhere within the crate the values of the macro 
-`cfg!(target_feature = "feature")` and `std::target_feature("feature")` are `true`.
+`cfg!(target_feature = "feature")` and `cfg_feature_enabled!("feature")` are `true`.
 
 Whether the backend compilation options `-C --target-feature/--target-cpu` also enable
 some stabilized features or not should be resolved by the RFCs suggesting the stabilization
@@ -87,7 +87,7 @@ This RFC introduces a function attribute that only applies to unsafe functions: 
 - This attribute _extends_ the feature set of a function beyond its default feature set, which _allows_ the compiler to generate code under the assumption that the function's code will only be reached on hardware that supports its feature set.
 - Calling a function on a target that does not support its features is _undefined behavior_ (see the "On the unsafety of `#[target_feature]`" section).
 - The compiler will not inline functions in contexts that do not support all the functions features.
-- In `#[target_feature(enable = "feature")]` functions the value of `cfg!(target_feature = "feature")` and `std::target_feature("feature")` is always `true` (otherwise undefined behavior did already happen). 
+- In `#[target_feature(enable = "feature")]` functions the value of `cfg!(target_feature = "feature")` and `cfg_feature_enabled!("feature")` is always `true` (otherwise undefined behavior did already happen). 
 
 Note 0: the current RFC does not introduce any ABI issues in stable Rust. ABI issues with some unstable language features are explored in the "Unresolved Questions" section. 
 
@@ -116,9 +116,9 @@ function implementations depending on the features supported by the CPU at run-t
 // This function returns the best implementation of `foo` depending
 // on which target features the host CPU does support at run-time: 
 fn initialize_global_foo_ptr() -> fn () -> () {
-    if std::target_feature("avx") {
+    if cfg_feature_enabled!("avx") {
       unsafe { foo_avx }
-    } else if std::target_feature("sse4") {
+    } else if cfg_feature_enabled!("sse4") {
       unsafe { foo_sse4 }
     } else {
       foo_impl // use the default version
@@ -128,7 +128,11 @@ fn initialize_global_foo_ptr() -> fn () -> () {
 // During binary initialization we can set a global function pointer 
 // to the best implementation of foo depending on the features that
 // the CPU where the binary is running does support: 
-static global_foo_ptr: fn() -> () = initialize_foo();
+lazy_static! {
+    static ref GLOBAL_FOO_PTR: fn() -> () = {
+        initialize_foo()
+    };
+}
 // ^^ note: the ABI of this function pointer is independent of the target features
 
 
@@ -136,7 +140,6 @@ fn main() {
   // Finally, we can use the function pointer to dispatch to the best implementation:
   global_foo_ptr();
 }
-
 ```
 
 **Example 1 (inlining):**
@@ -149,7 +152,7 @@ fn main() {
 #[target_feature(enable = "sse3")]
 unsafe fn moo() {
   // This function supports SSE3 but not AVX
-  if std::target_feature("avx") {
+  if cfg_feature_enabled!("avx") {
       foo(); // OK: foo is not inlined into moo
       baz(); // OK: baz is not inlined into moo
       bar(); 
@@ -224,19 +227,25 @@ unsafe fn foo() {
 
 Writing safe wrappers around `unsafe` functions annotated with
 `#[target_feature]` requires run-time feature detection. This RFC adds the following
-stable intrinsic to the standard library:
+macro to the standard library:
 
-- `std::target_feature("feature") -> bool`
+- `cfg_feature_enabled!("feature") -> bool-expr`
 
 with the following semantics: "if the host hardware on which the current code is running
-supports the `"feature"`, `std::target_feature` expands/returns `true`, and `false`
-otherwise.
+supports the `"feature"`, the `bool-expr` that `cfg_feature_enabled!` expands to has 
+value `true`, and `false` otherwise.
+
+If the result is known at compile-time, the macro approach allows expanding the result
+without performing any run-time detection at all. This RFC does not guarantee that this
+is the case, but [the current implementation](https://github.com/rust-lang-nursery/stdsimd) 
+does this.
 
 Examples of using run-time feature detection have been shown throughout this RFC, there
 isn't really more to it.
 
-The logic users (or procedural macros) will write for performing run-time
-feature detection looks like this:
+If the API of run-time feature detection turns out to be controversial before 
+stabilization, a follow-up RFC that focus on run-time feature detection will need
+to be merged, blocking the stabilization of this RFC.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -277,9 +286,9 @@ static foo_ptr: fn() -> () = initialize_foo();
 
 fn initialize_foo() -> typeof(foo) {
     // run-time feature detection:
-    if std::target_feature("avx2")  { return unsafe { foo_avx2 } }
-    if std::target_feature("avx")  { return unsafe { foo_avx } }
-    if std::target_feature("sse4")  { return unsafe { foo_sse4 } }
+    if cfg_feature_enabled!("avx2")  { return unsafe { foo_avx2 } }
+    if cfg_feature_enabled!("avx")  { return unsafe { foo_avx } }
+    if cfg_feature_enabled!("sse4")  { return unsafe { foo_sse4 } }
     foo_default
 }
 
@@ -333,7 +342,7 @@ fn my_intrinsic_rt(a: f64, b: f64) -> f64 { my_intrinsic(a, b) }
 Due to the low-level and high-level nature of these feature we will need two
 kinds of documentation. For the low level part:
 
-- document how to do compile-time and run-time feature detection using `cfg!(target_feature)` and `std::target_feature`,
+- document how to do compile-time and run-time feature detection using `cfg!(target_feature)` and `cfg_feature_enabled!`,
 - document how to use `#[target_feature]`,
 - document how to use all of these together to solve problems like in the examples of this RFC.
 
@@ -408,7 +417,7 @@ This RFC adds an API for run-time feature detection to the
 standard library.  
 
 The alternative would be to implement similar functionality as a third-party crate that
-might eventually be moved into the nursery. [Such crates already exist](https://docs.rs/cpuid/)
+might eventually be moved into the nursery. [Such crates already exist](https://docs.rs/cupid/)
 
 In particular, the API proposed in this RFC is "stringly-typed" (to make it uniform with the other features being proposed), but arguably a third party crate might want to use an `enum` to allow pattern-matching on features. These APIs have not been sufficiently explored in the ecosystem yet. 
 
@@ -427,6 +436,20 @@ is worth it.
 It might turn out that the people from the future are able to come up with a better
 API. But in that case we can always deprecate the current API and include the new
 one in the standard library. 
+
+## Adding full cpuid support to the standard library
+
+The `cfg_feature_enable!` macro is designed to work specifically with the features 
+that can be used via `cfg_target_feature` and `#[target_feature]`. However, in the
+grand scheme of things, run-time detection of these features is only a small part
+of the information provided by `cpuid`-like CPU instructions. 
+
+Currently at least two great implementations of cpuid-like functionality exists in
+Rust for x86: [cupid](https://github.com/shepmaster/cupid) and 
+[rust-cpuid](https://github.com/gz/rust-cpuid). Adding the macro to the standard library
+does not prevent us from adding more comprehensive functionality in the future, and
+it does not prevent us from reusing any of these libraries in the internal
+implementation of the macro.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
@@ -493,7 +516,7 @@ unsafe fn baz() {
 If `foo_avx2` gets inlined into `baz`, optimizations that reorder its instructions 
 across the if condition might introduce undefined behavior. 
 
-Maybe, one could make `std::target_feature` a bit magical, so that when it is
+Maybe, one could make `cfg_feature_enabled!` a bit magical, so that when it is
 used in the typical ways the compiler can infer whether inlining is safe, e.g., 
 
 ```rust
@@ -501,7 +524,7 @@ used in the typical ways the compiler can infer whether inlining is safe, e.g.,
 unsafe fn baz() {
   // -- sse3 boundary start (applies to fn arguments as well)
   // -- sse3 boundary ends
-  if std::target_feature("avx") {
+  if cfg_feature_enabled!("avx") {
     // -- avx boundary starts
     unsafe { foo_avx(); }
     //    can be inlined here, but its code cannot be 
@@ -539,7 +562,7 @@ fn foo_fallback() {
 }
 
 // run-time feature detection on initialization
-static foo_ptr: fn() -> () = if std::target_feature("avx") { 
+static foo_ptr: fn() -> () = if cfg_feature_enabled!("avx") { 
     unsafe { foo_impl }
 } else {
     foo_fallback
