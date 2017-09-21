@@ -1595,9 +1595,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// Notable exception is made for situations where any of the directories
 /// specified in the `path` could not be created as it was being created concurrently.
-/// Such cases are considered success. In other words: calling `create_dir_all`
-/// concurrently from multiple threads or processes is guaranteed to not fail
-/// due to race itself.
+/// Such cases are considered to be successful. That is, calling `create_dir_all`
+/// concurrently from multiple threads or processes is guaranteed not to fail
+/// due to a race condition with itself.
 ///
 /// # Examples
 ///
