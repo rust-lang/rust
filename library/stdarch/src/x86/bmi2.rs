@@ -2,7 +2,7 @@
 //!
 //! The reference is [Intel 64 and IA-32 Architectures Software Developer's
 //! Manual Volume 2: Instruction Set Reference,
-//! A-Z](http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf).
+//! A-Z](http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectu res-software-developer-instruction-set-reference-manual-325383.pdf).
 //!
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#BMI2_.28Bit_Manipulation_Instruction_Set_2.29)
 //! provides a quick overview of the available instructions.
@@ -15,6 +15,8 @@ use assert_instr::assert_instr;
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
 /// the low half and the high half of the result.
 #[inline(always)]
+// LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
+#[cfg_attr(test, assert_instr(imul))]
 #[target_feature = "+bmi2"]
 pub fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
     let result: u64 = (a as u64) * (b as u64);
@@ -27,6 +29,7 @@ pub fn _mulx_u32(a: u32, b: u32) -> (u32, u32) {
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
 /// the low half and the high half of the result.
 #[inline(always)]
+#[cfg_attr(test, assert_instr(mulx))]
 #[target_feature = "+bmi2"]
 pub fn _mulx_u64(a: u64, b: u64) -> (u64, u64) {
     let result: u128 = (a as u128) * (b as u128);

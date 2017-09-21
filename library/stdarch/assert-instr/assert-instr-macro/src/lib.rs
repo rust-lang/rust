@@ -44,7 +44,9 @@ pub fn assert_instr(attr: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(non_snake_case)]
         {ignore}
         fn assert_instr_{name}() {{
-            ::assert_instr::assert({name} as usize, \"{instr}\");
+            ::assert_instr::assert({name} as usize,
+                                   \"{name}\",
+                                   \"{instr}\");
         }}
     ", name = name.as_str(), instr = instr.as_str(), ignore = ignore);
     let test: TokenStream = test.parse().unwrap();

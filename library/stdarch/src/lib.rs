@@ -20,6 +20,9 @@ pub mod simd {
 pub mod vendor {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     pub use x86::*;
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    pub use arm::*;
 }
 
 #[macro_use]
@@ -31,3 +34,6 @@ mod v512;
 mod v64;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+ mod arm;

@@ -15,7 +15,7 @@ debug = true
 opt-level = 3
 
 [profile.bench]
-debug = 1
+debug = true
 opt-level = 3
 
 [dev-dependencies]
