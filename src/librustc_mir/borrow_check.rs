@@ -916,10 +916,15 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                                          _context: Context,
                                          (lvalue, span): (&Lvalue, Span),
                                          borrow : &BorrowData) {
+        let described_lvalue = self.describe_lvalue(lvalue);
+        let borrow_span = self.retrieve_borrow_span(borrow);
+
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME 1: add span_label for "borrow of `()` occurs here"
-        // FIXME 2: add span_label for "use of `{}` occurs here"
+            span, &described_lvalue, Origin::Mir);
+
+        err.span_label(borrow_span, format!("borrow of `{}` occurs here", described_lvalue));
+        err.span_label(span, format!("use of borrowed `{}`", described_lvalue));
+
         err.emit();
     }
 
