@@ -10,7 +10,7 @@ error[E0423]: expected value, found struct `Z`
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
-16 |     use m::n::Z;
+22 |     use m::n::Z;
    |
 
 error[E0423]: expected value, found struct `S`
@@ -24,7 +24,7 @@ error[E0423]: expected value, found struct `S`
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
-15 | use m::S;
+32 | use m::S;
    |
 
 error[E0423]: expected value, found struct `xcrate::S`
@@ -38,7 +38,7 @@ error[E0423]: expected value, found struct `xcrate::S`
    |
 help: possible better candidate is found in another module, you can import it into scope
    |
-15 | use m::S;
+32 | use m::S;
    |
 
 error[E0603]: tuple struct `Z` is private

@@ -605,7 +605,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::Use(..) => {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
-                    if item.span == DUMMY_SP {
+                    if item.span.ctxt().outer().expn_info().is_none() {
                         self.span = Some(item.span.with_hi(item.span.lo()));
                         self.found_use = true;
                         return;
@@ -615,11 +615,22 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                 ItemKind::ExternCrate(_) => {}
                 // but place them before the first other item
                 _ => if self.span.map_or(true, |span| item.span < span ) {
-                    self.span = Some(item.span.with_hi(item.span.lo()));
+                    if item.span.ctxt().outer().expn_info().is_none() {
+                        // don't insert between attributes and an item
+                        if item.attrs.is_empty() {
+                            self.span = Some(item.span.with_hi(item.span.lo()));
+                        } else {
+                            // find the first attribute on the item
+                            for attr in &item.attrs {
+                                if self.span.map_or(true, |span| attr.span < span) {
+                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                }
+                            }
+                        }
+                    }
                 },
             }
         }
-        assert!(self.span.is_some(), "a file can't have no items and emit suggestions");
     }
 }
 
@@ -3553,8 +3564,7 @@ impl<'a> Resolver<'a> {
             };
             visit::walk_crate(&mut finder, krate);
             if !candidates.is_empty() {
-                let span = finder.span.expect("did not find module");
-                show_candidates(&mut err, span, &candidates, better, finder.found_use);
+                show_candidates(&mut err, finder.span, &candidates, better, finder.found_use);
             }
             err.emit();
         }
@@ -3748,7 +3758,8 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, St
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 fn show_candidates(err: &mut DiagnosticBuilder,
-                   span: Span,
+                   // This is `None` if all placement locations are inside expansions
+                   span: Option<Span>,
                    candidates: &[ImportSuggestion],
                    better: bool,
                    found_use: bool) {
@@ -3766,18 +3777,27 @@ fn show_candidates(err: &mut DiagnosticBuilder,
     };
     let msg = format!("possible {}candidate{} into scope", better, msg_diff);
 
-    for candidate in &mut path_strings {
-        // produce an additional newline to separate the new use statement
-        // from the directly following item.
-        let additional_newline = if found_use {
-            ""
-        } else {
-            "\n"
-        };
-        *candidate = format!("use {};\n{}", candidate, additional_newline);
-    }
+    if let Some(span) = span {
+        for candidate in &mut path_strings {
+            // produce an additional newline to separate the new use statement
+            // from the directly following item.
+            let additional_newline = if found_use {
+                ""
+            } else {
+                "\n"
+            };
+            *candidate = format!("use {};\n{}", candidate, additional_newline);
+        }
 
-    err.span_suggestions(span, &msg, path_strings);
+        err.span_suggestions(span, &msg, path_strings);
+    } else {
+        let mut msg = msg;
+        msg.push(':');
+        for candidate in path_strings {
+            msg.push('\n');
+            msg.push_str(&candidate);
+        }
+    }
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
