@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   python2.7-dev \
   git \
+  cmake \
+  ninja-build \
   sudo \
   bzip2 \
+  xz-utils \
   unzip
 
 WORKDIR /tmp
