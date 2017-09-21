@@ -360,8 +360,10 @@ git add path/to/submodule
 
 outside the submodule.
 
-It can also be more convenient during development to set `submodules = false`
-in the `config.toml` to prevent `x.py` from resetting to the original branch.
+In order to prepare your PR, you can run the build locally by doing
+`./x.py build src/tools/TOOL`. If you will be editing the sources
+there, you may wish to set `submodules = false` in the `config.toml`
+to prevent `x.py` from resetting to the original branch.
 
 ## Writing Documentation
 [writing-documentation]: #writing-documentation
