@@ -1004,7 +1004,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                     ProjectionElem::Downcast(..) =>
                         ("",   format!(""), None), // (dont emit downcast info)
                     ProjectionElem::Field(field, _ty) =>
-                        ("",   format!(".{}", field.index()), None),
+                        ("",   format!(".{}", field.index()), None), // FIXME: report name of field
                     ProjectionElem::Index(index) =>
                         ("",   format!(""), Some(index)),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
