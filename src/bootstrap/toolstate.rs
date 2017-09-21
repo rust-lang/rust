@@ -45,4 +45,5 @@ impl Default for ToolState {
 /// This is created from `toolstate.toml`.
 pub struct ToolStates {
     pub miri: ToolState,
+    pub clippy: ToolState,
 }

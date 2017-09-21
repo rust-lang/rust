@@ -405,7 +405,7 @@ impl Step for Clippy {
             tool: "clippy",
             mode: Mode::Librustc,
             path: "src/tools/clippy",
-            expectation: BuildExpectation::None,
+            expectation: builder.build.config.toolstate.clippy.passes(ToolState::Compiling),
         })
     }
 }

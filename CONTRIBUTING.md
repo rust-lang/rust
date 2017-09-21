@@ -330,23 +330,11 @@ it can be found
 Currently building Rust will also build the following external projects:
 
 * [clippy](https://github.com/rust-lang-nursery/rust-clippy)
+* [miri](https://github.com/solson/miri)
 
 If your changes break one of these projects, you need to fix them by opening
 a pull request against the broken project. When you have opened a pull request,
-you can point the submodule at your pull request by calling
-
-```
-git fetch origin pull/$id_of_your_pr/head:my_pr
-git checkout my_pr
-```
-
-within the submodule's directory. Don't forget to also add your changes with
-
-```
-git add path/to/submodule
-```
-
-outside the submodule.
+you can disable the tool via `src/tools/toolstate.toml`.
 
 It can also be more convenient during development to set `submodules = false`
 in the `config.toml` to prevent `x.py` from resetting to the original branch.

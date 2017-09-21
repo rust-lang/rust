@@ -10,15 +10,20 @@
 # configures whether the tool is included in the Rust distribution.
 #
 # If a tool was working before your PR but is broken now, consider
-# updating the tool within your PR. How to do that is described in
+# opening a PR against the tool so that it works with your changes.
+# If the tool stops compiling, change its state to `Broken`. If it
+# still builds, change it to `Compiling`.
+# How to do that is described in
 # "CONTRIBUTING.md#External Dependencies". If the effort required is not
 # warranted (e.g. due to the tool abusing some API that you changed, and
-# fixing the tool would mean a significant refactoring), you can disable
-# the tool here, by changing its state to `Broken`. Remember to ping
-# the tool authors if you do not fix their tool, so they can proactively
-# fix it, instead of being surprised by the breakage.
+# fixing the tool would mean a significant refactoring) remember to ping
+# the tool authors, so they can fix it, instead of being surprised by the
+# breakage.
 #
 # Each tool has a list of people to ping
 
 # ping @oli-obk @RalfJung @eddyb
 miri = "Testing"
+
+# ping @Manishearth @llogiq @mcarton @oli-obk
+clippy = "Broken"
