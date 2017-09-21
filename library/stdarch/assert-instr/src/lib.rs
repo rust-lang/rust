@@ -221,21 +221,28 @@ fn normalize(symbol: &str) -> String {
 ///
 /// This asserts that the function at `fnptr` contains the instruction
 /// `expected` provided.
-pub fn assert(fnptr: usize, expected: &str) {
+pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     // Translate this function pointer to a symbolic name that we'd have found
     // in the disassembly.
     let mut sym = None;
     backtrace::resolve(fnptr as *mut _, |name| {
         sym = name.name().and_then(|s| s.as_str()).map(normalize);
     });
-    let sym = match sym {
+
+    let functions = match sym.as_ref().and_then(|s| DISASSEMBLY.get(s)) {
         Some(s) => s,
-        None => panic!("failed to get symbol of function pointer: {}", fnptr),
+        None => {
+            if let Some(sym) = sym {
+                println!("assumed symbol name: `{}`", sym);
+            }
+            println!("maybe related functions");
+            for f in DISASSEMBLY.keys().filter(|k| k.contains(fnname)) {
+                println!("\t- {}", f);
+            }
+            panic!("failed to find disassembly of {:#x} ({})", fnptr, fnname);
+        }
     };
 
-    // Find our function in the list of all disassembled functions
-    let functions = &DISASSEMBLY.get(&sym)
-        .expect(&format!("failed to find disassembly of {}", sym));
     assert_eq!(functions.len(), 1);
     let function = &functions[0];
 
@@ -254,7 +261,7 @@ pub fn assert(fnptr: usize, expected: &str) {
 
     // Help debug by printing out the found disassembly, and then panic as we
     // didn't find the instruction.
-    println!("disassembly for {}: ", sym);
+    println!("disassembly for {}: ", sym.as_ref().unwrap());
     for (i, instr) in function.instrs.iter().enumerate() {
         print!("\t{:2}: ", i);
         for part in instr.parts.iter() {
@@ -264,4 +271,3 @@ pub fn assert(fnptr: usize, expected: &str) {
     }
     panic!("failed to find instruction `{}` in the disassembly", expected);
 }
-
