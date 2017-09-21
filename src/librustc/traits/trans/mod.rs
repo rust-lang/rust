@@ -19,7 +19,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use syntax::ast;
 use syntax_pos::Span;
-use traits::{FulfillmentContext, Obligation, ObligationCause, Reveal, SelectionContext, Vtable};
+use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -33,12 +33,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// obligations *could be* resolved if we wanted to.
     pub fn trans_fulfill_obligation(self,
                                     span: Span,
+                                    param_env: ty::ParamEnv<'tcx>,
                                     trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Vtable<'tcx, ()>
     {
         // Remove any references to regions; this helps improve caching.
         let trait_ref = self.erase_regions(&trait_ref);
-        let param_env = ty::ParamEnv::empty(Reveal::All);
 
         self.trans_trait_caches.trait_cache.memoize((param_env, trait_ref), || {
             debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
