@@ -1024,6 +1024,13 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
     }
+
+    // Retrieve span of given borrow from the current MIR representation
+    fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
+        self.mir.basic_blocks()[borrow.location.block]
+            .statements[borrow.location.statement_index]
+            .source_info.span
+    }
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
