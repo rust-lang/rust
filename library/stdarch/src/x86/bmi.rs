@@ -32,6 +32,7 @@ pub fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
+#[cfg(not(target_arch = "x86"))]
 pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
     _bextr2_u64(a, (start & 0xffu64) | ((len & 0xffu64) << 8u64))
 }
@@ -56,6 +57,7 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(bextr))]
+#[cfg(not(target_arch = "x86"))]
 pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
     unsafe { x86_bmi_bextr_64(a, control) }
 }
@@ -88,6 +90,7 @@ pub fn _blsi_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsi))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blsi_u64(x: u64) -> u64 {
     x & x.wrapping_neg()
 }
@@ -104,6 +107,7 @@ pub fn _blsmsk_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsmsk))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blsmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_sub(1u64))
 }
@@ -124,6 +128,7 @@ pub fn _blsr_u32(x: u32) -> u32 {
 #[inline(always)]
 #[target_feature = "+bmi"]
 #[cfg_attr(test, assert_instr(blsr))]
+#[cfg(not(target_arch = "x86"))] // generates lots of instructions
 pub fn _blsr_u64(x: u64) -> u64 {
     x & (x.wrapping_sub(1))
 }

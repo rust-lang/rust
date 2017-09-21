@@ -4,6 +4,9 @@
 
 pub use super::v7::*;
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 /// Reverse the order of the bytes.
 #[inline(always)]
 #[cfg_attr(test, assert_instr(rev))]
@@ -37,7 +40,7 @@ pub fn _rbit_u64(x: u64) -> u64 {
 /// bits.
 #[inline(always)]
 // LLVM Bug (should be cls): https://bugs.llvm.org/show_bug.cgi?id=31802
-#[cfg_attr(test, assert_instr(clz))] 
+#[cfg_attr(test, assert_instr(clz))]
 pub fn _cls_u32(x: u32) -> u32 {
     u32::leading_zeros(!x) as u32
 }
@@ -48,7 +51,7 @@ pub fn _cls_u32(x: u32) -> u32 {
 /// bits.
 #[inline(always)]
 // LLVM Bug (should be cls): https://bugs.llvm.org/show_bug.cgi?id=31802
-#[cfg_attr(test, assert_instr(clz))] 
+#[cfg_attr(test, assert_instr(clz))]
 pub fn _cls_u64(x: u64) -> u64 {
     u64::leading_zeros(!x) as u64
 }
