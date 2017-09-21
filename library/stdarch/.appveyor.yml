@@ -1,4 +1,9 @@
 environment:
+  # We don't want to do identical comdat folding as it messes up the ability to
+  # generate lossless backtraces in some cases. This is enabled by rustc by
+  # default so pass a flag to disable it to ensure our tests work ok.
+  RUSTFLAGS: -Clink-args=/OPT:NOICF
+
   matrix:
   - TARGET: x86_64-pc-windows-msvc
 
