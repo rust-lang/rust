@@ -419,7 +419,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             self.each_borrow_involving_path(
                 context, lvalue_span.0, flow_state, |this, _idx, borrow| {
                     if !borrow.compatible_with(BorrowKind::Shared) {
-                        this.report_use_while_mutably_borrowed(context, lvalue_span);
+                        this.report_use_while_mutably_borrowed(context, lvalue_span, borrow);
                         Control::Break
                     } else {
                         Control::Continue
@@ -914,7 +914,8 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_use_while_mutably_borrowed(&mut self,
                                          _context: Context,
-                                         (lvalue, span): (&Lvalue, Span)) {
+                                         (lvalue, span): (&Lvalue, Span),
+                                         borrow : &BorrowData) {
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
             span, &self.describe_lvalue(lvalue), Origin::Mir);
         // FIXME 1: add span_label for "borrow of `()` occurs here"
