@@ -31,6 +31,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// (necessarily) resolve all nested obligations on the impl. Note
     /// that type check should guarantee to us that all nested
     /// obligations *could be* resolved if we wanted to.
+    /// Assumes that this is run after the entire crate has been successfully type-checked.
     pub fn trans_fulfill_obligation(self,
                                     span: Span,
                                     param_env: ty::ParamEnv<'tcx>,
