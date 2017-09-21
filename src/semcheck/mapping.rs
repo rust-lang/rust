@@ -251,9 +251,19 @@ impl IdMapping {
         self.old_crate == did.krate
     }
 
+    /// Get the old crate's `CrateNum`.
+    pub fn get_old_crate(&self) -> CrateNum {
+        self.old_crate
+    }
+
     /// Check whether a `DefId` belongs to an item in the new crate.
     pub fn in_new_crate(&self, did: DefId) -> bool {
         self.new_crate == did.krate
+    }
+
+    /// Get the new crate's `CrateNum`.
+    pub fn get_new_crate(&self) -> CrateNum {
+        self.new_crate
     }
 }
 

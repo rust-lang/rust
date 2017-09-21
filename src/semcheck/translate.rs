@@ -391,6 +391,14 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     }
                 }))
             },
+            Predicate::ConstEvaluatable(orig_did, orig_substs) => {
+                if let Some((target_def_id, target_substs)) =
+                        self.translate_orig_substs(index_map, orig_did, orig_substs) {
+                    Predicate::ConstEvaluatable(target_def_id, target_substs)
+                } else {
+                    return None;
+                }
+            },
         })
     }
 

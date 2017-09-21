@@ -12,6 +12,7 @@ extern crate syntax;
 use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
+use rustc::middle::cstore::CrateStore;
 use rustc::session::{config, Session};
 use rustc::session::config::{Input, ErrorOutputType};
 
@@ -28,13 +29,13 @@ use syntax::ast;
 /// find their root modules and then proceed to walk their module trees.
 fn callback(state: &driver::CompileState, version: &str) {
     let tcx = state.tcx.unwrap();
-    let cstore = &tcx.sess.cstore;
+    // let cstore = &tcx.sess.cstore;
 
-    let cnums = cstore
+    let cnums = tcx
         .crates()
         .iter()
         .fold((None, None), |(o, n), crate_num| {
-            let name = cstore.crate_name(*crate_num);
+            let name = tcx.crate_name(*crate_num);
             if name == "old" {
                 (Some(*crate_num), n)
             } else if name == "new" {
@@ -108,12 +109,13 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
+                     cstore: &CrateStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
         self.default
-            .late_callback(matches, sess, input, odir, ofile)
+            .late_callback(matches, sess, cstore, input, odir, ofile)
     }
 
     fn build_controller(&mut self,

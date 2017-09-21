@@ -75,15 +75,14 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     use std::rc::Rc;
 
     // Get the visibility of the inner item, given the outer item's visibility.
-    fn get_vis(cstore: &Rc<CrateStore>, outer_vis: Visibility, def_id: DefId) -> Visibility {
+    fn get_vis(tcx: TyCtxt, outer_vis: Visibility, def_id: DefId) -> Visibility {
         if outer_vis == Public {
-            cstore.visibility(def_id)
+            tcx.visibility(def_id)
         } else {
             outer_vis
         }
     }
 
-    let cstore = &tcx.sess.cstore;
     let mut visited = HashSet::new();
     let mut children = NameMapping::default();
     let mut mod_queue = VecDeque::new();
@@ -98,8 +97,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
     // Pull a matched module pair from the queue, with the modules' global visibility.
     while let Some((old_def_id, new_def_id, old_vis, new_vis)) = mod_queue.pop_front() {
-        children.add(cstore.item_children(old_def_id, tcx.sess),
-                     cstore.item_children(new_def_id, tcx.sess));
+        children.add(tcx.item_children(old_def_id).to_vec(), // TODO: clean up
+                     tcx.item_children(new_def_id).to_vec());
 
         for items in children.drain() {
             match items {
@@ -107,8 +106,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                 (Some(o), Some(n)) => {
                     if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
                         if visited.insert((o_def_id, n_def_id)) {
-                            let o_vis = get_vis(cstore, old_vis, o_def_id);
-                            let n_vis = get_vis(cstore, new_vis, n_def_id);
+                            let o_vis = get_vis(tcx, old_vis , o_def_id);
+                            let n_vis = get_vis(tcx, new_vis , n_def_id);
 
                             if o_vis != n_vis {
                                 changes.new_change(o_def_id,
@@ -137,8 +136,8 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
 
                         let o_def_id = o.def.def_id();
                         let n_def_id = n.def.def_id();
-                        let o_vis = get_vis(cstore, old_vis, o_def_id);
-                        let n_vis = get_vis(cstore, new_vis, n_def_id);
+                        let o_vis = get_vis(tcx, old_vis, o_def_id);
+                        let n_vis = get_vis(tcx, new_vis, n_def_id);
 
                         let output = o_vis == Public || n_vis == Public;
                         changes.new_change(o_def_id,
@@ -254,7 +253,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if get_vis(cstore, old_vis, o.def.def_id()) == Public {
+                    if get_vis(tcx, old_vis , o.def.def_id()) == Public {
                         // delay the handling of removals until the id mapping is complete
                         removals.push(o);
                     }
@@ -266,7 +265,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                         continue;
                     }
 
-                    if get_vis(cstore, new_vis, n.def.def_id()) == Public {
+                    if get_vis(tcx, new_vis , n.def.def_id()) == Public {
                         // delay the handling of additions until the id mapping is complete
                         additions.push(n);
                     }
@@ -856,29 +855,33 @@ fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
-    let all_impls = tcx.sess.cstore.implementations_of_trait(None);
+    for old_impl_def_id in tcx.all_trait_implementations(id_mapping.get_old_crate()).iter() {
+        let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
 
-    for orig_impl_def_id in &all_impls {
-        let orig_trait_def_id = tcx.impl_trait_ref(*orig_impl_def_id).unwrap().def_id;
-
-        let (forward_trans, err_type) =
-            if id_mapping.in_old_crate(*orig_impl_def_id) {
-                (&to_new, TraitImplTightened)
-            } else if id_mapping.in_new_crate(*orig_impl_def_id) {
-                (&to_old, TraitImplLoosened)
-            } else {
-                continue
-            };
-
-        if !forward_trans.can_translate(orig_trait_def_id) {
+        if !to_new.can_translate(old_trait_def_id) {
             continue;
         }
 
-        if !match_trait_impl(tcx, forward_trans, *orig_impl_def_id) {
-            changes.new_change_impl(*orig_impl_def_id,
-                                    tcx.item_path_str(*orig_impl_def_id),
-                                    tcx.def_span(*orig_impl_def_id));
-            changes.add_change(err_type, *orig_impl_def_id, None);
+        if !match_trait_impl(tcx, &to_new, *old_impl_def_id) {
+            changes.new_change_impl(*old_impl_def_id,
+                                    tcx.item_path_str(*old_impl_def_id),
+                                    tcx.def_span(*old_impl_def_id));
+            changes.add_change(TraitImplTightened, *old_impl_def_id, None);
+        }
+    }
+
+    for new_impl_def_id in tcx.all_trait_implementations(id_mapping.get_new_crate()).iter() {
+        let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
+
+        if !to_old.can_translate(new_trait_def_id) {
+            continue;
+        }
+
+        if !match_trait_impl(tcx, &to_old, *new_impl_def_id) {
+            changes.new_change_impl(*new_impl_def_id,
+                                    tcx.item_path_str(*new_impl_def_id),
+                                    tcx.def_span(*new_impl_def_id));
+            changes.add_change(TraitImplLoosened, *new_impl_def_id, None);
         }
     }
 }
