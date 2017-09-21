@@ -246,10 +246,8 @@ pub fn assert(fnptr: usize, expected: &str) {
         if let Some(part) = instr.parts.get(0) {
             // Truncates the instruction with the length of the expected
             // instruction: tzcntl => tzcnt and compares that.
-            if let Some(part) = part.get(0..expected.len()) {
-                if part == expected {
-                    return
-                }
+            if part.starts_with(expected) {
+                return
             }
         }
     }
