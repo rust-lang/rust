@@ -53,6 +53,20 @@ struct FloatPoint {
     y: f64
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+struct FloatOne {
+    x: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+struct IntOdd {
+    a: i8,
+    b: i8,
+    c: i8,
+}
+
 #[link(name = "test", kind = "static")]
 extern {
     fn byval_rect(a: i32, b: i32, c: i32, d: i32, e: i32, s: Rect);
@@ -83,6 +97,10 @@ extern {
     fn huge_struct(s: Huge) -> Huge;
 
     fn float_point(p: FloatPoint) -> FloatPoint;
+
+    fn float_one(f: FloatOne) -> FloatOne;
+
+    fn int_odd(i: IntOdd) -> IntOdd;
 }
 
 fn main() {
@@ -91,6 +109,8 @@ fn main() {
     let u = FloatRect { a: 3489, b: 3490, c: 8. };
     let v = Huge { a: 5647, b: 5648, c: 5649, d: 5650, e: 5651 };
     let p = FloatPoint { x: 5., y: -3. };
+    let f1 = FloatOne { x: 7. };
+    let i = IntOdd { a: 1, b: 2, c: 3 };
 
     unsafe {
         byval_rect(1, 2, 3, 4, 5, s);
@@ -113,5 +133,12 @@ fn main() {
         assert_eq!(sret_byval_struct(1, 2, 3, 4, s), t);
         assert_eq!(sret_split_struct(1, 2, s), t);
         assert_eq!(float_point(p), p);
+        assert_eq!(int_odd(i), i);
+
+        // MSVC/GCC/Clang are not consistent in the ABI of single-float aggregates.
+        // x86_64: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82028
+        // i686: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=82041
+        #[cfg(not(all(windows, target_env = "gnu")))]
+        assert_eq!(float_one(f1), f1);
     }
 }

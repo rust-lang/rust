@@ -14,7 +14,6 @@ use {fold, attr};
 use ast;
 use codemap::Spanned;
 use parse::{token, ParseSess};
-use syntax_pos::Span;
 
 use ptr::P;
 use util::small_vector::SmallVector;
@@ -89,10 +88,10 @@ impl<'a> StripUnconfigured<'a> {
             parser.expect(&token::OpenDelim(token::Paren))?;
             let cfg = parser.parse_meta_item()?;
             parser.expect(&token::Comma)?;
-            let lo = parser.span.lo;
+            let lo = parser.span.lo();
             let (path, tokens) = parser.parse_path_and_tokens()?;
             parser.expect(&token::CloseDelim(token::Paren))?;
-            Ok((cfg, path, tokens, Span { lo: lo, ..parser.prev_span }))
+            Ok((cfg, path, tokens, parser.prev_span.with_lo(lo)))
         }) {
             Ok(result) => result,
             Err(mut e) => {

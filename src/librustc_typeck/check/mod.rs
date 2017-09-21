@@ -85,13 +85,12 @@ use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
-use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{ParamTy, LvaluePreference, NoPreference, PreferMutLvalue};
@@ -129,7 +128,6 @@ use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
-use rustc::middle::const_val::eval_length;
 use rustc_const_math::ConstInt;
 
 mod autoderef;
@@ -606,8 +604,9 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
         let item_id = tcx.hir.as_local_node_id(def_id);
         let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));
-        let implicit_region_bound = body_id.map(|body| {
-            tcx.mk_region(ty::ReScope(CodeExtent::CallSiteScope(body)))
+        let implicit_region_bound = body_id.map(|body_id| {
+            let body = tcx.hir.body(body_id);
+            tcx.mk_region(ty::ReScope(region::Scope::CallSite(body.value.hir_id.local_id)))
         });
 
         Inherited {
@@ -1214,55 +1213,11 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
 }
 
 fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    def_id: DefId,
+                                    trait_def_id: DefId,
                                     item: &hir::Item) {
-    let generics = tcx.generics_of(def_id);
-    if let Some(ref attr) = item.attrs.iter().find(|a| {
-        a.check_name("rustc_on_unimplemented")
-    }) {
-        if let Some(istring) = attr.value_str() {
-            let istring = istring.as_str();
-            let name = tcx.item_name(def_id).as_str();
-            let parser = Parser::new(&istring);
-            let types = &generics.types;
-            for token in parser {
-                match token {
-                    Piece::String(_) => (), // Normal string, no need to check it
-                    Piece::NextArgument(a) => match a.position {
-                        // `{Self}` is allowed
-                        Position::ArgumentNamed(s) if s == "Self" => (),
-                        // `{ThisTraitsName}` is allowed
-                        Position::ArgumentNamed(s) if s == name => (),
-                        // So is `{A}` if A is a type parameter
-                        Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.name == s
-                        }) {
-                            Some(_) => (),
-                            None => {
-                                span_err!(tcx.sess, attr.span, E0230,
-                                                 "there is no type parameter \
-                                                          {} on trait {}",
-                                                           s, name);
-                            }
-                        },
-                        // `{:1}` and `{}` are not to be used
-                        Position::ArgumentIs(_) => {
-                            span_err!(tcx.sess, attr.span, E0231,
-                                                  "only named substitution \
-                                                   parameters are allowed");
-                        }
-                    }
-                }
-            }
-        } else {
-            struct_span_err!(
-                tcx.sess, attr.span, E0232,
-                "this attribute must have a value")
-                .span_label(attr.span, "attribute requires a value")
-                .note(&format!("eg `#[rustc_on_unimplemented = \"foo\"]`"))
-                .emit();
-        }
-    }
+    let item_def_id = tcx.hir.local_def_id(item.id);
+    // an error would be reported if this fails.
+    let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id);
 }
 
 fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1598,9 +1553,12 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.sess.features.borrow().i128_type {
+        if !tcx.sess.features.borrow().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
-                             "i128_type", sp, GateIssue::Language, "128-bit type is unstable");
+                             "repr128",
+                             sp,
+                             GateIssue::Language,
+                             "repr with 128-bit type is unstable");
         }
     }
 
@@ -2340,13 +2298,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn resolve_lvalue_op(&self, op: LvalueOp, is_mut: bool) -> (Option<DefId>, Symbol) {
         let (tr, name) = match (op, is_mut) {
             (LvalueOp::Deref, false) =>
-                (self.tcx.lang_items.deref_trait(), "deref"),
+                (self.tcx.lang_items().deref_trait(), "deref"),
             (LvalueOp::Deref, true) =>
-                (self.tcx.lang_items.deref_mut_trait(), "deref_mut"),
+                (self.tcx.lang_items().deref_mut_trait(), "deref_mut"),
             (LvalueOp::Index, false) =>
-                (self.tcx.lang_items.index_trait(), "index"),
+                (self.tcx.lang_items().index_trait(), "index"),
             (LvalueOp::Index, true) =>
-                (self.tcx.lang_items.index_mut_trait(), "index_mut"),
+                (self.tcx.lang_items().index_mut_trait(), "index_mut"),
         };
         (tr, Symbol::intern(name))
     }
@@ -2486,9 +2444,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let mut sugg_span = sp.end_point();
+                let sugg_span = sp.end_point();
                 // remove closing `)` from the span
-                sugg_span.hi = sugg_span.lo;
+                let sugg_span = sugg_span.with_hi(sugg_span.lo());
                 err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`. You can create one with a pair of parenthesis",
@@ -2677,7 +2635,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ast::LitKind::Str(..) => tcx.mk_static_str(),
             ast::LitKind::ByteStr(ref v) => {
                 tcx.mk_imm_ref(tcx.types.re_static,
-                                tcx.mk_array(tcx.types.u8, v.len()))
+                                tcx.mk_array(tcx.types.u8, v.len() as u64))
             }
             ast::LitKind::Byte(_) => tcx.types.u8,
             ast::LitKind::Char(_) => tcx.types.char,
@@ -2818,6 +2776,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            formal_ret: Ty<'tcx>,
                                            formal_args: &[Ty<'tcx>])
                                            -> Vec<Ty<'tcx>> {
+        let formal_ret = self.resolve_type_vars_with_obligations(formal_ret);
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
             self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
@@ -3137,7 +3096,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     debug!("tuple struct named {:?}",  base_t);
                     let ident = ast::Ident {
                         name: Symbol::intern(&idx.node.to_string()),
-                        ctxt: idx.span.ctxt.modern(),
+                        ctxt: idx.span.ctxt().modern(),
                     };
                     let (ident, def_scope) =
                         self.tcx.adjust_ident(ident, base_def.did, self.body_id);
@@ -3935,11 +3894,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               } else {
                   self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
               };
-              tcx.mk_array(element_ty, args.len())
+              tcx.mk_array(element_ty, args.len() as u64)
           }
           hir::ExprRepeat(ref element, count) => {
-            let count = eval_length(self.tcx, count, "repeat count")
-                  .unwrap_or(0);
+            let count_def_id = tcx.hir.body_owner_def_id(count);
+            let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+            let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
+            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+
+            if let Err(ref err) = count {
+               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+            }
 
             let uty = match expected {
                 ExpectHasType(uty) => {
@@ -3963,21 +3928,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            if count > 1 {
-                // For [foo, ..n] where n > 1, `foo` must have
-                // Copy type:
-                let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
-                self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+            if let Ok(count) = count {
+                let zero_or_one = count.val.to_const_int().and_then(|count| {
+                    count.to_u64().map(|count| count <= 1)
+                }).unwrap_or(false);
+                if !zero_or_one {
+                    // For [foo, ..n] where n > 1, `foo` must have
+                    // Copy type:
+                    let lang_item = self.tcx.require_lang_item(lang_items::CopyTraitLangItem);
+                    self.require_type_meets(t, expr.span, traits::RepeatVec, lang_item);
+                }
             }
 
             if element_ty.references_error() {
                 tcx.types.err
+            } else if let Ok(count) = count {
+                tcx.mk_ty(ty::TyArray(t, count))
             } else {
-                tcx.mk_array(t, count)
+                tcx.types.err
             }
           }
           hir::ExprTup(ref elts) => {
             let flds = expected.only_has_type(self).and_then(|ty| {
+                let ty = self.resolve_type_vars_with_obligations(ty);
                 match ty.sty {
                     ty::TyTuple(ref flds, _) => Some(&flds[..]),
                     _ => None
@@ -4524,11 +4497,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
         let original_span = original_sp(last_stmt.span, blk.span);
-        let span_semi = Span {
-            lo: original_span.hi - BytePos(1),
-            hi: original_span.hi,
-            ctxt: original_span.ctxt,
-        };
+        let span_semi = original_span.with_lo(original_span.hi() - BytePos(1));
         err.span_suggestion(span_semi, "consider removing this semicolon", "".to_string());
     }
 
@@ -4658,8 +4627,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
 
         match def {
-            Def::Local(def_id) | Def::Upvar(def_id, ..) => {
-                let nid = self.tcx.hir.as_local_node_id(def_id).unwrap();
+            Def::Local(nid) | Def::Upvar(nid, ..) => {
                 let ty = self.local_ty(span, nid);
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(self.tcx.hir.node_to_hir_id(node_id), ty);

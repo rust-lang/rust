@@ -1,0 +1,30 @@
+warning: unused return value of `need_to_use_this_value` which must be used: it's important
+  --> $DIR/fn_must_use.rs:58:5
+   |
+58 |     need_to_use_this_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/fn_must_use.rs:12:9
+   |
+12 | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+warning: unused return value of `MyStruct::need_to_use_this_method_value` which must be used
+  --> $DIR/fn_must_use.rs:61:5
+   |
+61 |     m.need_to_use_this_method_value();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused return value of `EvenNature::is_even` which must be used: no side effects
+  --> $DIR/fn_must_use.rs:62:5
+   |
+62 |     m.is_even(); // trait method!
+   |     ^^^^^^^^^^^^
+
+warning: unused return value of `std::cmp::PartialEq::eq` which must be used
+  --> $DIR/fn_must_use.rs:66:5
+   |
+66 |     2.eq(&3);
+   |     ^^^^^^^^^
+

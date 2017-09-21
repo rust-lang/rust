@@ -129,23 +129,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.ctxt == NO_EXPANSION ||
+        if source_info.span.ctxt() == NO_EXPANSION ||
            self.ccx.sess().opts.debugging_opts.debug_macros {
-            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
+            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)
         } else {
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occur
             // at the level above that.
             let mut span = source_info.span;
-            while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {
-                if let Some(info) = span.ctxt.outer().expn_info() {
+            while span.ctxt() != NO_EXPANSION && span.ctxt() != self.mir.span.ctxt() {
+                if let Some(info) = span.ctxt().outer().expn_info() {
                     span = info.call_site;
                 } else {
                     break;
                 }
             }
-            let scope = self.scope_metadata_for_loc(source_info.scope, span.lo);
+            let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
             // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)
         }

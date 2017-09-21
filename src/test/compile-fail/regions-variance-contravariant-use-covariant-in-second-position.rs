@@ -32,7 +32,7 @@ fn use_<'short,'long>(c: S<'long, 'short>,
     // 'short <= 'long, this would be true if the Contravariant type were
     // covariant with respect to its parameter 'a.
 
-    let _: S<'long, 'long> = c; //~ ERROR mismatched types
+    let _: S<'long, 'long> = c; //~ ERROR E0623
 }
 
 fn main() {}

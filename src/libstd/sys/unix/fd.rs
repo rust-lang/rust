@@ -71,13 +71,21 @@ impl FileDesc {
         #[cfg(target_os = "android")]
         use super::android::cvt_pread64;
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(target_os = "emscripten")]
         unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
-            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
             use libc::pread64;
-            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            cvt(pread64(fd, buf, count, offset as i32))
+        }
+
+        #[cfg(not(any(target_os = "android", target_os = "emscripten")))]
+        unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(target_os = "linux")]
+            use libc::pread64;
+            #[cfg(not(target_os = "linux"))]
             use libc::pread as pread64;
             cvt(pread64(fd, buf, count, offset))
         }
@@ -104,13 +112,21 @@ impl FileDesc {
         #[cfg(target_os = "android")]
         use super::android::cvt_pwrite64;
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(target_os = "emscripten")]
         unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
-            #[cfg(any(target_os = "linux", target_os = "emscripten"))]
             use libc::pwrite64;
-            #[cfg(not(any(target_os = "linux", target_os = "emscripten")))]
+            cvt(pwrite64(fd, buf, count, offset as i32))
+        }
+
+        #[cfg(not(any(target_os = "android", target_os = "emscripten")))]
+        unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
+            -> io::Result<isize>
+        {
+            #[cfg(target_os = "linux")]
+            use libc::pwrite64;
+            #[cfg(not(target_os = "linux"))]
             use libc::pwrite as pwrite64;
             cvt(pwrite64(fd, buf, count, offset))
         }
@@ -128,6 +144,7 @@ impl FileDesc {
                   target_os = "solaris",
                   target_os = "emscripten",
                   target_os = "fuchsia",
+                  target_os = "l4re",
                   target_os = "haiku")))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -139,6 +156,7 @@ impl FileDesc {
               target_os = "solaris",
               target_os = "emscripten",
               target_os = "fuchsia",
+              target_os = "l4re",
               target_os = "haiku"))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {

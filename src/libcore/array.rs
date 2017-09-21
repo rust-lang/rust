@@ -124,14 +124,6 @@ macro_rules! array_impls {
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
-            #[cfg(stage0)]
-            impl<T:Copy> Clone for [T; $N] {
-                fn clone(&self) -> [T; $N] {
-                    *self
-                }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: Hash> Hash for [T; $N] {
                 fn hash<H: hash::Hasher>(&self, state: &mut H) {
                     Hash::hash(&self[..], state)

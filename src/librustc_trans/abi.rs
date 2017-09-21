@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, AttributePlace};
 use base;
 use builder::Builder;
-use common::{instance_ty, ty_fn_sig, type_is_fat_ptr, C_uint};
+use common::{instance_ty, ty_fn_sig, type_is_fat_ptr, C_usize};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -65,17 +65,17 @@ pub use self::attr_impl::ArgAttribute;
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags! {
-        #[derive(Default, Debug)]
-        flags ArgAttribute : u16 {
-            const ByVal     = 1 << 0,
-            const NoAlias   = 1 << 1,
-            const NoCapture = 1 << 2,
-            const NonNull   = 1 << 3,
-            const ReadOnly  = 1 << 4,
-            const SExt      = 1 << 5,
-            const StructRet = 1 << 6,
-            const ZExt      = 1 << 7,
-            const InReg     = 1 << 8,
+        #[derive(Default)]
+        pub struct ArgAttribute: u16 {
+            const ByVal     = 1 << 0;
+            const NoAlias   = 1 << 1;
+            const NoCapture = 1 << 2;
+            const NonNull   = 1 << 3;
+            const ReadOnly  = 1 << 4;
+            const SExt      = 1 << 5;
+            const StructRet = 1 << 6;
+            const ZExt      = 1 << 7;
+            const InReg     = 1 << 8;
         }
     }
 }
@@ -527,7 +527,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
         }
         let ccx = bcx.ccx;
         if self.is_indirect() {
-            let llsz = C_uint(ccx, self.layout.size(ccx).bytes());
+            let llsz = C_usize(ccx, self.layout.size(ccx).bytes());
             let llalign = self.layout.align(ccx).abi();
             base::call_memcpy(bcx, dst, val, llsz, llalign as u32);
         } else if let Some(ty) = self.cast {
@@ -564,7 +564,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 base::call_memcpy(bcx,
                                   bcx.pointercast(dst, Type::i8p(ccx)),
                                   bcx.pointercast(llscratch, Type::i8p(ccx)),
-                                  C_uint(ccx, self.layout.size(ccx).bytes()),
+                                  C_usize(ccx, self.layout.size(ccx).bytes()),
                                   cmp::min(self.layout.align(ccx).abi() as u32,
                                            llalign_of_min(ccx, ty)));
 
@@ -612,7 +612,7 @@ pub struct FnType<'tcx> {
 impl<'a, 'tcx> FnType<'tcx> {
     pub fn of_instance(ccx: &CrateContext<'a, 'tcx>, instance: &ty::Instance<'tcx>)
                        -> Self {
-        let fn_ty = instance_ty(ccx.shared(), &instance);
+        let fn_ty = instance_ty(ccx.tcx(), &instance);
         let sig = ty_fn_sig(ccx, fn_ty);
         let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
         Self::new(ccx, sig, &[])

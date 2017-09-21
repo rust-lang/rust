@@ -301,6 +301,37 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::str;
+///
+/// // "Hello, Rust!" as a mutable vector
+/// let mut hellorust = vec![72, 101, 108, 108, 111, 44, 32, 82, 117, 115, 116, 33];
+///
+/// // As we know these bytes are valid, we can use `unwrap()`
+/// let outstr = str::from_utf8_mut(&mut hellorust).unwrap();
+///
+/// assert_eq!("Hello, Rust!", outstr);
+/// ```
+///
+/// Incorrect bytes:
+///
+/// ```
+/// use std::str;
+///
+/// // Some invalid bytes in a mutable vector
+/// let mut invalid = vec![128, 223];
+///
+/// assert!(str::from_utf8_mut(&mut invalid).is_err());
+/// ```
+/// See the docs for [`Utf8Error`][error] for more details on the kinds of
+/// errors that can be returned.
+///
+/// [error]: struct.Utf8Error.html
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     run_utf8_validation(v)?;
@@ -372,7 +403,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
-    mem::transmute(v)
+    &*(v as *const [u8] as *const str)
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -381,10 +412,23 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// See the immutable version, [`from_utf8_unchecked()`][fromutf8], for more information.
 ///
 /// [fromutf8]: fn.from_utf8_unchecked.html
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// use std::str;
+///
+/// let mut heart = vec![240, 159, 146, 150];
+/// let heart = unsafe { str::from_utf8_unchecked_mut(&mut heart) };
+///
+/// assert_eq!("💖", heart);
+/// ```
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
 pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
-    mem::transmute(v)
+    &mut *(v as *mut [u8] as *mut str)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1468,7 +1512,10 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // When the pointer is aligned, read 2 words of data per iteration
             // until we find a word containing a non-ascii byte.
             let ptr = v.as_ptr();
-            let align = (ptr as usize + index) & (usize_bytes - 1);
+            let align = unsafe {
+                // the offset is safe, because `index` is guaranteed inbounds
+                ptr.offset(index as isize).align_offset(usize_bytes)
+            };
             if align == 0 {
                 while index < blocks_end {
                     unsafe {
@@ -2399,12 +2446,12 @@ impl StrExt for str {
 
     #[inline]
     fn as_bytes(&self) -> &[u8] {
-        unsafe { mem::transmute(self) }
+        unsafe { &*(self as *const str as *const [u8]) }
     }
 
     #[inline]
     unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        mem::transmute(self)
+        &mut *(self as *mut str as *mut [u8])
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {

@@ -325,8 +325,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            if let Some(exports) = self.tcx.export_map.get(&id) {
-                for export in exports {
+            let def_id = self.tcx.hir.local_def_id(id);
+            if let Some(exports) = self.tcx.module_exports(def_id) {
+                for export in exports.iter() {
                     if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
                     }
@@ -446,6 +447,7 @@ impl<'b, 'a, 'tcx> TypeVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'b
             ty::TyProjection(ref proj) => Some(proj.item_def_id),
             ty::TyFnDef(def_id, ..) |
             ty::TyClosure(def_id, ..) |
+            ty::TyGenerator(def_id, ..) |
             ty::TyAnon(def_id, _) => Some(def_id),
             _ => None
         };
@@ -477,7 +479,7 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
     // Checks that a field is accessible.
     fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
-        let ident = Ident { ctxt: span.ctxt.modern(), ..keywords::Invalid.ident() };
+        let ident = Ident { ctxt: span.ctxt().modern(), ..keywords::Invalid.ident() };
         let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
@@ -628,7 +630,7 @@ impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
                 };
                 ty::Visibility::from_hir(vis, node_id, self.tcx)
             }
-            None => self.tcx.sess.cstore.visibility(did),
+            None => self.tcx.visibility(did),
         }
     }
 

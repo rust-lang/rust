@@ -66,7 +66,7 @@ use hir::map as hir_map;
 use hir::def_id::DefId;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
-use ty::{self, Region, TyCtxt, TypeFoldable};
+use ty::{self, Region, Ty, TyCtxt, TypeFoldable};
 use ty::error::TypeError;
 use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
@@ -79,10 +79,11 @@ mod need_type_info;
 mod named_anon_conflict;
 #[macro_use]
 mod util;
-mod anon_anon_conflict;
+mod different_lifetimes;
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn note_and_explain_region(self,
+                                   region_scope_tree: &region::ScopeTree,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
                                    region: ty::Region<'tcx>,
@@ -118,7 +119,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         fn explain_span<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                         heading: &str, span: Span)
                                         -> (String, Option<Span>) {
-            let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
+            let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo());
             (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize() + 1),
              Some(span))
         }
@@ -130,14 +131,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.hir) {
-                    Some(s) => s,
-                    None => {
-                        err.note(&unknown_scope());
-                        return;
-                    }
-                };
-                let tag = match self.hir.find(scope.node_id()) {
+                let span = scope.span(self, region_scope_tree);
+                let tag = match self.hir.find(scope.node_id(self, region_scope_tree)) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -158,18 +153,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
                 let scope_decorated_tag = match scope {
-                    region::CodeExtent::Misc(_) => tag,
-                    region::CodeExtent::CallSiteScope(_) => {
+                    region::Scope::Node(_) => tag,
+                    region::Scope::CallSite(_) => {
                         "scope of call-site for function"
                     }
-                    region::CodeExtent::ParameterScope(_) => {
+                    region::Scope::Arguments(_) => {
                         "scope of function body"
                     }
-                    region::CodeExtent::DestructionScope(_) => {
+                    region::Scope::Destruction(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtent::Remainder(r) => {
+                    region::Scope::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]
@@ -260,8 +255,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-
-    pub fn report_region_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>) {
+    pub fn report_region_errors(&self,
+                                region_scope_tree: &region::ScopeTree,
+                                errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
         // try to pre-process the errors, which will group some of them
@@ -285,16 +281,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                   // the error. If all of these fails, we fall back to a rather
                   // general bit of code that displays the error information
                   ConcreteFailure(origin, sub, sup) => {
-
-                      self.report_concrete_failure(origin, sub, sup).emit();
+                      self.report_concrete_failure(region_scope_tree, origin, sub, sup).emit();
                   }
 
                   GenericBoundFailure(kind, param_ty, sub) => {
-                      self.report_generic_bound_failure(kind, param_ty, sub);
+                      self.report_generic_bound_failure(region_scope_tree, kind, param_ty, sub);
                   }
 
                   SubSupConflict(var_origin, sub_origin, sub_r, sup_origin, sup_r) => {
-                        self.report_sub_sup_conflict(var_origin,
+                        self.report_sub_sup_conflict(region_scope_tree,
+                                                     var_origin,
                                                      sub_origin,
                                                      sub_r,
                                                      sup_origin,
@@ -361,7 +357,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // for imported and non-imported crates
                 if exp_path == found_path
                 || exp_abs_path == found_abs_path {
-                    let crate_name = self.tcx.sess.cstore.crate_name(did1.krate);
+                    let crate_name = self.tcx.crate_name(did1.krate);
                     err.span_note(sp, &format!("Perhaps two different versions \
                                                 of crate `{}` are being used?",
                                                crate_name));
@@ -422,7 +418,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        name: String,
                        sub: &ty::subst::Substs<'tcx>,
                        pos: usize,
-                       other_ty: &ty::Ty<'tcx>) {
+                       other_ty: &Ty<'tcx>) {
         // `value` and `other_value` hold two incomplete type representation for display.
         // `name` is the path of both types being compared. `sub`
         value.push_highlighted(name);
@@ -495,7 +491,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     path: String,
                     sub: &ty::subst::Substs<'tcx>,
                     other_path: String,
-                    other_ty: &ty::Ty<'tcx>) -> Option<()> {
+                    other_ty: &Ty<'tcx>) -> Option<()> {
         for (i, ta) in sub.types().enumerate() {
             if &ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
@@ -526,7 +522,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Compare two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: ty::Ty<'tcx>, t2: ty::Ty<'tcx>)
+    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>)
         -> (DiagnosticStyledString, DiagnosticStyledString)
     {
         match (&t1.sty, &t2.sty) {
@@ -747,7 +743,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn expected_found_str_ty(&self,
-                             exp_found: &ty::error::ExpectedFound<ty::Ty<'tcx>>)
+                             exp_found: &ty::error::ExpectedFound<Ty<'tcx>>)
                              -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         let exp_found = self.resolve_type_vars_if_possible(exp_found);
         if exp_found.references_error() {
@@ -773,6 +769,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_generic_bound_failure(&self,
+                                    region_scope_tree: &region::ScopeTree,
                                     origin: SubregionOrigin<'tcx>,
                                     bound_kind: GenericKind<'tcx>,
                                     sub: Region<'tcx>)
@@ -840,6 +837,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.help(&format!("consider adding an explicit lifetime bound for `{}`",
                                   bound_kind));
                 self.tcx.note_and_explain_region(
+                    region_scope_tree,
                     &mut err,
                     &format!("{} must be valid for ", labeled_user_string),
                     sub,
@@ -853,6 +851,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_sub_sup_conflict(&self,
+                               region_scope_tree: &region::ScopeTree,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin<'tcx>,
                                sub_region: Region<'tcx>,
@@ -860,14 +859,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                sup_region: Region<'tcx>) {
         let mut err = self.report_inference_failure(var_origin);
 
-        self.tcx.note_and_explain_region(&mut err,
+        self.tcx.note_and_explain_region(region_scope_tree, &mut err,
             "first, the lifetime cannot outlive ",
             sup_region,
             "...");
 
         self.note_region_origin(&mut err, &sup_origin);
 
-        self.tcx.note_and_explain_region(&mut err,
+        self.tcx.note_and_explain_region(region_scope_tree, &mut err,
             "but, the lifetime must be valid for ",
             sub_region,
             "...");
@@ -914,8 +913,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                format!(" for capture of `{}` by closure",
-                        self.tcx.local_var_name_str_def_index(upvar_id.var_id))
+                let var_node_id = self.tcx.hir.hir_to_node_id(upvar_id.var_id);
+                let var_name = self.tcx.hir.name(var_node_id);
+                format!(" for capture of `{}` by closure", var_name)
             }
         };
 

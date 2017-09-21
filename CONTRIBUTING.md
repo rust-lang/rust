@@ -232,7 +232,34 @@ Some common invocations of `x.py` are:
   guidelines as of yet, but basic rules like 4 spaces for indentation and no
   more than 99 characters in a single line should be kept in mind when writing
   code.
-- `rustup toolchain link <name> build/<host-triple>/<stage>` - Use the custom compiler build via [rustup](https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds).
+
+### Using your local build
+
+If you use Rustup to manage your rust install, it has a feature called ["custom
+toolchains"][toolchain-link] that you can use to access your newly-built compiler
+without having to install it to your system or user PATH. If you've run `python
+x.py build`, then you can add your custom rustc to a new toolchain like this:
+
+[toolchain-link]: https://github.com/rust-lang-nursery/rustup.rs#working-with-custom-toolchains-and-local-builds
+
+```
+rustup toolchain link <name> build/<host-triple>/stage2
+```
+
+Where `<host-triple>` is the build triple for the host (the triple of your
+computer, by default), and `<name>` is the name for your custom toolchain. (If you
+added `--stage 1` to your build command, the compiler will be in the `stage1`
+folder instead.) You'll only need to do this once - it will automatically point
+to the latest build you've done.
+
+Once this is set up, you can use your custom toolchain just like any other. For
+example, if you've named your toolchain `local`, running `cargo +local build` will
+compile a project with your custom rustc, setting `rustup override set local` will
+override the toolchain for your current directory, and `cargo +local doc` will use
+your custom rustc and rustdoc to generate docs. (If you do this with a `--stage 1`
+build, you'll need to build rustdoc specially, since it's not normally built in
+stage 1. `python x.py build --stage 1 src/libstd src/tools/rustdoc` will build
+rustdoc and libstd, which will allow rustdoc to be run with that toolchain.)
 
 ## Pull Requests
 
@@ -298,6 +325,32 @@ Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found
 [here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
 
+### External Dependencies
+
+Currently building Rust will also build the following external projects:
+
+* [clippy](https://github.com/rust-lang-nursery/rust-clippy)
+
+If your changes break one of these projects, you need to fix them by opening
+a pull request against the broken project. When you have opened a pull request,
+you can point the submodule at your pull request by calling
+
+```
+git fetch origin pull/$id_of_your_pr/head:my_pr
+git checkout my_pr
+```
+
+within the submodule's directory. Don't forget to also add your changes with
+
+```
+git add path/to/submodule
+```
+
+outside the submodule.
+
+It can also be more convenient during development to set `submodules = false`
+in the `config.toml` to prevent `x.py` from resetting to the original branch.
+
 ## Writing Documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
@@ -347,30 +400,53 @@ labels to triage issues:
 
 * Magenta, **B**-prefixed labels identify bugs which are **blockers**.
 
+* Dark blue, **beta-** labels track changes which need to be backported into
+  the beta branches.
+
+* Light purple, **C**-prefixed labels represent the **category** of an issue.
+
 * Green, **E**-prefixed labels explain the level of **experience** necessary
   to fix the issue.
+
+* The dark blue **final-comment-period** label marks bugs that are using the
+  RFC signoff functionality of [rfcbot][rfcbot] and are currenty in the final
+  comment period.
 
 * Red, **I**-prefixed labels indicate the **importance** of the issue. The
   [I-nominated][inom] label indicates that an issue has been nominated for
   prioritizing at the next triage meeting.
 
+* The purple **metabug** label marks lists of bugs collected by other
+  categories.
+
+* Purple gray, **O**-prefixed labels are the **operating system** or platform
+  that this issue is specific to.
+
 * Orange, **P**-prefixed labels indicate a bug's **priority**. These labels
   are only assigned during triage meetings, and replace the [I-nominated][inom]
   label.
 
+* The gray **proposed-final-comment-period** label marks bugs that are using
+  the RFC signoff functionality of [rfcbot][rfcbot] and are currently awaiting
+  signoff of all team members in order to enter the final comment period.
+
+* Pink, **regression**-prefixed labels track regressions from stable to the
+  release channels.
+
+* The light orange **relnotes** label marks issues that should be documented in
+  the release notes of the next release.
+
+* Gray, **S**-prefixed labels are used for tracking the **status** of pull
+  requests.
+
 * Blue, **T**-prefixed bugs denote which **team** the issue belongs to.
-
-* Dark blue, **beta-** labels track changes which need to be backported into
-  the beta branches.
-
-* The purple **metabug** label marks lists of bugs collected by other
-  categories.
 
 If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
+[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
 
 ## Out-of-tree Contributions
 

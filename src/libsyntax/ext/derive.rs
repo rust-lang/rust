@@ -68,7 +68,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
         },
     });
 
-    let span = Span { ctxt: cx.backtrace(), ..span };
+    let span = span.with_ctxt(cx.backtrace());
     item.map_attrs(|mut attrs| {
         if names.contains(&Symbol::intern("Eq")) && names.contains(&Symbol::intern("PartialEq")) {
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));

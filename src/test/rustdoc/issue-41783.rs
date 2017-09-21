@@ -12,8 +12,10 @@
 // @!has - 'space'
 // @!has - 'comment'
 // @has - '# <span class="ident">single'
-// @has - '#<span class="attribute"># <span class="ident">double</span>'
-// @has - '#<span class="attribute">#<span class="attribute"># <span class="ident">triple</span>'
+// @has - '## <span class="ident">double</span>'
+// @has - '### <span class="ident">triple</span>'
+// @has - '<span class="attribute">#[<span class="ident">outer</span>]</span>'
+// @has - '<span class="attribute">#![<span class="ident">inner</span>]</span>'
 
 /// ```no_run
 /// # # space
@@ -21,5 +23,7 @@
 /// ## single
 /// ### double
 /// #### triple
+/// ##[outer]
+/// ##![inner]
 /// ```
 pub struct Foo;

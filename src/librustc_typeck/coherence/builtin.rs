@@ -12,7 +12,7 @@
 //! up data structures required by type-checking/translation.
 
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::middle::lang_items::UnsizeTraitLangItem;
 
 use rustc::traits::{self, ObligationCause};
@@ -28,9 +28,9 @@ use rustc::hir::{self, ItemImpl};
 
 pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
-        .check(tcx.lang_items.drop_trait(), visit_implementation_of_drop)
-        .check(tcx.lang_items.copy_trait(), visit_implementation_of_copy)
-        .check(tcx.lang_items.coerce_unsized_trait(),
+        .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
+        .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
+        .check(tcx.lang_items().coerce_unsized_trait(),
                visit_implementation_of_coerce_unsized);
 }
 
@@ -176,9 +176,9 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_did: DefId)
                                      -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
-    let coerce_unsized_trait = tcx.lang_items.coerce_unsized_trait().unwrap();
+    let coerce_unsized_trait = tcx.lang_items().coerce_unsized_trait().unwrap();
 
-    let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
+    let unsize_trait = match tcx.lang_items().require(UnsizeTraitLangItem) {
         Ok(id) => id,
         Err(err) => {
             tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
@@ -390,10 +390,10 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Finally, resolve all regions.
-        let region_maps = RegionMaps::new();
+        let region_scope_tree = region::ScopeTree::default();
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&param_env.caller_bounds);
-        infcx.resolve_regions_and_report_errors(impl_did, &region_maps, &free_regions);
+        infcx.resolve_regions_and_report_errors(impl_did, &region_scope_tree, &free_regions);
 
         CoerceUnsizedInfo {
             custom_kind: kind

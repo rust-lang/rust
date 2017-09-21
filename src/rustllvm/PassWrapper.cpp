@@ -299,10 +299,17 @@ static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {
 extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
   const TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
+  const Triple::ArchType HostArch = Triple(sys::getProcessTriple()).getArch();
+  const Triple::ArchType TargetArch = Target->getTargetTriple().getArch();
   const ArrayRef<SubtargetFeatureKV> CPUTable = MCInfo->getCPUTable();
   unsigned MaxCPULen = getLongestEntryLength(CPUTable);
 
   printf("Available CPUs for this target:\n");
+  if (HostArch == TargetArch) {
+    const StringRef HostCPU = sys::getHostCPUName();
+    printf("    %-*s - Select the CPU of the current host (currently %.*s).\n",
+      MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
+  }
   for (auto &CPU : CPUTable)
     printf("    %-*s - %s.\n", MaxCPULen, CPU.Key, CPU.Desc);
   printf("\n");

@@ -10,24 +10,25 @@
 
 use cstore;
 use encoder;
+use link_args;
+use native_libs;
 use schema;
 
 use rustc::ty::maps::QueryConfig;
-use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
-                            NativeLibrary, MetadataLoader, LinkMeta,
-                            LinkagePreference, LoadedMacro, EncodedMetadata,
-                            EncodedMetadataHashes};
+use rustc::middle::cstore::{CrateStore, DepKind,
+                            MetadataLoader, LinkMeta,
+                            LoadedMacro, EncodedMetadata,
+                            EncodedMetadataHashes, NativeLibraryKind};
+use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
-use rustc::middle::lang_items;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::hir::map::definitions::{DefPathTable, GlobalMetaDataKind};
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::{NodeSet, DefIdMap};
-use rustc_back::PanicStrategy;
 
 use std::any::Any;
 use std::rc::Rc;
@@ -38,15 +39,20 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION};
-use rustc::hir::svh::Svh;
+use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc::hir;
 
 macro_rules! provide {
-    (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident, $($name:ident => $compute:block)*) => {
+    (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
+      $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
+            $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
-                                        QueryConfig>::Value {
+                                        QueryConfig>::Value
+                where T: IntoArgs,
+            {
+                #[allow(unused_variables)]
+                let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
                 let def_path_hash = $tcx.def_path_hash($def_id);
@@ -54,7 +60,7 @@ macro_rules! provide {
 
                 $tcx.dep_graph.read(dep_node);
 
-                let $cdata = $tcx.sess.cstore.crate_data_as_rc_any($def_id.krate);
+                let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
                     .expect("CrateStore crated ata is not a CrateMetadata");
                 $compute
@@ -68,7 +74,25 @@ macro_rules! provide {
     }
 }
 
-provide! { <'tcx> tcx, def_id, cdata,
+// small trait to work around different signature queries all being defined via
+// the macro above.
+trait IntoArgs {
+    fn into_args(self) -> (DefId, DefId);
+}
+
+impl IntoArgs for DefId {
+    fn into_args(self) -> (DefId, DefId) { (self, self) }
+}
+
+impl IntoArgs for CrateNum {
+    fn into_args(self) -> (DefId, DefId) { (self.as_def_id(), self.as_def_id()) }
+}
+
+impl IntoArgs for (CrateNum, DefId) {
+    fn into_args(self) -> (DefId, DefId) { (self.0.as_def_id(), self.1) }
+}
+
+provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
     predicates_of => { cdata.get_predicates(def_id.index, tcx) }
@@ -106,7 +130,9 @@ provide! { <'tcx> tcx, def_id, cdata,
         mir
     }
     generator_sig => { cdata.generator_sig(def_id.index, tcx) }
-    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
+    mir_const_qualif => {
+        (cdata.mir_const_qualif(def_id.index), Rc::new(IdxSetBuf::new_empty(0)))
+    }
     typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
@@ -116,9 +142,13 @@ provide! { <'tcx> tcx, def_id, cdata,
     is_default_impl => { cdata.is_default_impl(def_id.index) }
     describe_def => { cdata.get_def(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
-    stability => { cdata.get_stability(def_id.index) }
-    deprecation => { cdata.get_deprecation(def_id.index) }
-    item_attrs => { cdata.get_item_attrs(def_id.index, &tcx.dep_graph) }
+    lookup_stability => {
+        cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
+    }
+    lookup_deprecation_entry => {
+        cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
+    }
+    item_attrs => { cdata.get_item_attrs(def_id.index) }
     // FIXME(#38501) We've skipped a `read` on the `HirBody` of
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
@@ -127,20 +157,83 @@ provide! { <'tcx> tcx, def_id, cdata,
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_exported_symbol => {
-        let dep_node = cdata.metadata_dep_node(GlobalMetaDataKind::ExportedSymbols);
-        cdata.exported_symbols.get(&tcx.dep_graph, dep_node).contains(&def_id.index)
+        cdata.exported_symbols.contains(&def_id.index)
     }
-    item_body_nested_bodies => { Rc::new(cdata.item_body_nested_bodies(def_id.index)) }
+    item_body_nested_bodies => { cdata.item_body_nested_bodies(def_id.index) }
     const_is_rvalue_promotable_to_static => {
         cdata.const_is_rvalue_promotable_to_static(def_id.index)
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
-    dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats(&tcx.dep_graph)) }
-    is_panic_runtime => { cdata.is_panic_runtime(&tcx.dep_graph) }
-    is_compiler_builtins => { cdata.is_compiler_builtins(&tcx.dep_graph) }
-    has_global_allocator => { cdata.has_global_allocator(&tcx.dep_graph) }
+    dylib_dependency_formats => { Rc::new(cdata.get_dylib_dependency_formats()) }
+    is_panic_runtime => { cdata.is_panic_runtime() }
+    is_compiler_builtins => { cdata.is_compiler_builtins() }
+    has_global_allocator => { cdata.has_global_allocator() }
+    is_sanitizer_runtime => { cdata.is_sanitizer_runtime() }
+    is_profiler_runtime => { cdata.is_profiler_runtime() }
+    panic_strategy => { cdata.panic_strategy() }
     extern_crate => { Rc::new(cdata.extern_crate.get()) }
+    is_no_builtins => { cdata.is_no_builtins() }
+    impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
+    exported_symbol_ids => { Rc::new(cdata.get_exported_symbols()) }
+    native_libraries => { Rc::new(cdata.get_native_libraries()) }
+    plugin_registrar_fn => {
+        cdata.root.plugin_registrar_fn.map(|index| {
+            DefId { krate: def_id.krate, index }
+        })
+    }
+    derive_registrar_fn => {
+        cdata.root.macro_derive_registrar.map(|index| {
+            DefId { krate: def_id.krate, index }
+        })
+    }
+    crate_disambiguator => { cdata.disambiguator() }
+    crate_hash => { cdata.hash() }
+    original_crate_name => { cdata.name() }
+
+    implementations_of_trait => {
+        let mut result = vec![];
+        let filter = Some(other);
+        cdata.get_implementations_for_trait(filter, &mut result);
+        Rc::new(result)
+    }
+
+    all_trait_implementations => {
+        let mut result = vec![];
+        cdata.get_implementations_for_trait(None, &mut result);
+        Rc::new(result)
+    }
+
+    is_dllimport_foreign_item => {
+        cdata.is_dllimport_foreign_item(def_id.index)
+    }
+    visibility => { cdata.get_visibility(def_id.index) }
+    dep_kind => { cdata.dep_kind.get() }
+    crate_name => { cdata.name }
+    item_children => {
+        let mut result = vec![];
+        cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
+        Rc::new(result)
+    }
+    defined_lang_items => { Rc::new(cdata.get_lang_items()) }
+    missing_lang_items => { Rc::new(cdata.get_missing_lang_items()) }
+
+    extern_const_body => {
+        debug!("item_body({:?}): inlining item", def_id);
+        cdata.extern_const_body(tcx, def_id.index)
+    }
+
+    missing_extern_crate_item => {
+        match cdata.extern_crate.get() {
+            Some(extern_crate) if !extern_crate.direct => true,
+            _ => false,
+        }
+    }
+
+    used_crate_source => { Rc::new(cdata.source.clone()) }
+
+    has_copy_closures => { cdata.has_copy_closures() }
+    has_clone_closures => { cdata.has_clone_closures() }
 }
 
 pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
@@ -155,8 +248,94 @@ pub fn provide_local<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
+    // FIXME(#44234) - almost all of these queries have no sub-queries and
+    // therefore no actual inputs, they're just reading tables calculated in
+    // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         is_const_fn,
+        is_dllimport_foreign_item: |tcx, id| {
+            tcx.native_library_kind(id) == Some(NativeLibraryKind::NativeUnknown)
+        },
+        is_statically_included_foreign_item: |tcx, id| {
+            match tcx.native_library_kind(id) {
+                Some(NativeLibraryKind::NativeStatic) |
+                Some(NativeLibraryKind::NativeStaticNobundle) => true,
+                _ => false,
+            }
+        },
+        native_library_kind: |tcx, id| {
+            tcx.native_libraries(id.krate)
+                .iter()
+                .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
+                .find(|l| l.foreign_items.contains(&id))
+                .map(|l| l.kind)
+        },
+        native_libraries: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(native_libs::collect(tcx))
+        },
+        link_args: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Rc::new(link_args::collect(tcx))
+        },
+
+        // Returns a map from a sufficiently visible external item (i.e. an
+        // external item that is visible from at least one local module) to a
+        // sufficiently visible parent (considering modules that re-export the
+        // external item to be parents).
+        visible_parent_map: |tcx, cnum| {
+            use std::collections::vec_deque::VecDeque;
+            use std::collections::hash_map::Entry;
+
+            assert_eq!(cnum, LOCAL_CRATE);
+            let mut visible_parent_map: DefIdMap<DefId> = DefIdMap();
+
+            for &cnum in tcx.crates().iter() {
+                // Ignore crates without a corresponding local `extern crate` item.
+                if tcx.missing_extern_crate_item(cnum) {
+                    continue
+                }
+
+                let bfs_queue = &mut VecDeque::new();
+                let visible_parent_map = &mut visible_parent_map;
+                let mut add_child = |bfs_queue: &mut VecDeque<_>,
+                                     child: &def::Export,
+                                     parent: DefId| {
+                    let child = child.def.def_id();
+
+                    if tcx.visibility(child) != ty::Visibility::Public {
+                        return;
+                    }
+
+                    match visible_parent_map.entry(child) {
+                        Entry::Occupied(mut entry) => {
+                            // If `child` is defined in crate `cnum`, ensure
+                            // that it is mapped to a parent in `cnum`.
+                            if child.krate == cnum && entry.get().krate != cnum {
+                                entry.insert(parent);
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            entry.insert(parent);
+                            bfs_queue.push_back(child);
+                        }
+                    }
+                };
+
+                bfs_queue.push_back(DefId {
+                    krate: cnum,
+                    index: CRATE_DEF_INDEX
+                });
+                while let Some(def) = bfs_queue.pop_front() {
+                    for child in tcx.item_children(def).iter() {
+                        add_child(bfs_queue, child, def);
+                    }
+                }
+            }
+
+            Rc::new(visible_parent_map)
+        },
+
         ..*providers
     };
 }
@@ -170,145 +349,34 @@ impl CrateStore for cstore::CStore {
         &*self.metadata_loader
     }
 
-    fn visibility(&self, def: DefId) -> ty::Visibility {
-        self.read_dep_node(def);
+    fn visibility_untracked(&self, def: DefId) -> ty::Visibility {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    fn item_generics_cloned(&self, def: DefId) -> ty::Generics {
-        self.read_dep_node(def);
+    fn item_generics_cloned_untracked(&self, def: DefId) -> ty::Generics {
         self.get_crate_data(def.krate).get_generics(def.index)
     }
 
-    fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
+    fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem
     {
-        let mut result = vec![];
-
-        self.iter_crate_data(|_, cdata| {
-            cdata.get_implementations_for_trait(filter, &self.dep_graph, &mut result)
-        });
-        result
-    }
-
-    fn impl_defaultness(&self, def: DefId) -> hir::Defaultness
-    {
-        self.read_dep_node(def);
-        self.get_crate_data(def.krate).get_impl_defaultness(def.index)
-    }
-
-    fn associated_item_cloned(&self, def: DefId) -> ty::AssociatedItem
-    {
-        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 
-    fn is_statically_included_foreign_item(&self, def_id: DefId) -> bool
+    fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind
     {
-        self.do_is_statically_included_foreign_item(def_id)
+        self.get_crate_data(cnum).dep_kind.get()
     }
 
-    fn is_dllimport_foreign_item(&self, def_id: DefId) -> bool {
-        if def_id.krate == LOCAL_CRATE {
-            self.dllimport_foreign_items.borrow().contains(&def_id.index)
-        } else {
-            self.get_crate_data(def_id.krate)
-                .is_dllimport_foreign_item(def_id.index, &self.dep_graph)
-        }
-    }
-
-    fn dep_kind(&self, cnum: CrateNum) -> DepKind
-    {
+    fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
-        let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
-        self.dep_graph.read(dep_node);
-        data.dep_kind.get()
-    }
-
-    fn export_macros(&self, cnum: CrateNum) {
-        let data = self.get_crate_data(cnum);
-        let dep_node = data.metadata_dep_node(GlobalMetaDataKind::CrateDeps);
-
-        self.dep_graph.read(dep_node);
         if data.dep_kind.get() == DepKind::UnexportedMacrosOnly {
             data.dep_kind.set(DepKind::MacrosOnly)
         }
     }
 
-    fn lang_items(&self, cnum: CrateNum) -> Vec<(DefIndex, usize)>
-    {
-        self.get_crate_data(cnum).get_lang_items(&self.dep_graph)
-    }
-
-    fn missing_lang_items(&self, cnum: CrateNum)
-                          -> Vec<lang_items::LangItem>
-    {
-        self.get_crate_data(cnum).get_missing_lang_items(&self.dep_graph)
-    }
-
-    fn is_compiler_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_compiler_builtins(&self.dep_graph)
-    }
-
-    fn is_sanitizer_runtime(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_sanitizer_runtime(&self.dep_graph)
-    }
-
-    fn is_profiler_runtime(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_profiler_runtime(&self.dep_graph)
-    }
-
-    fn panic_strategy(&self, cnum: CrateNum) -> PanicStrategy {
-        self.get_crate_data(cnum).panic_strategy(&self.dep_graph)
-    }
-
-    fn crate_name(&self, cnum: CrateNum) -> Symbol
+    fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
-    }
-
-    fn original_crate_name(&self, cnum: CrateNum) -> Symbol
-    {
-        self.get_crate_data(cnum).name()
-    }
-
-    fn crate_hash(&self, cnum: CrateNum) -> Svh
-    {
-        self.get_crate_hash(cnum)
-    }
-
-    fn crate_disambiguator(&self, cnum: CrateNum) -> Symbol
-    {
-        self.get_crate_data(cnum).disambiguator()
-    }
-
-    fn plugin_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-    {
-        self.get_crate_data(cnum).root.plugin_registrar_fn.map(|index| DefId {
-            krate: cnum,
-            index,
-        })
-    }
-
-    fn derive_registrar_fn(&self, cnum: CrateNum) -> Option<DefId>
-    {
-        self.get_crate_data(cnum).root.macro_derive_registrar.map(|index| DefId {
-            krate: cnum,
-            index,
-        })
-    }
-
-    fn native_libraries(&self, cnum: CrateNum) -> Vec<NativeLibrary>
-    {
-        self.get_crate_data(cnum).get_native_libraries(&self.dep_graph)
-    }
-
-    fn exported_symbols(&self, cnum: CrateNum) -> Vec<DefId>
-    {
-        self.get_crate_data(cnum).get_exported_symbols(&self.dep_graph)
-    }
-
-    fn is_no_builtins(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).is_no_builtins(&self.dep_graph)
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -340,22 +408,20 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).def_path_table.clone()
     }
 
-    fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
+    fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name>
     {
-        self.read_dep_node(def);
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    fn item_children(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
+    fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export>
     {
-        self.read_dep_node(def_id);
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child), sess);
         result
     }
 
-    fn load_macro(&self, id: DefId, sess: &Session) -> LoadedMacro {
+    fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.as_usize() - 1].1.clone());
@@ -369,11 +435,11 @@ impl CrateStore for cstore::CStore {
         let source_name = format!("<{} macros>", name);
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
-        let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
+        let local_span = Span::new(filemap.start_pos, filemap.end_pos, NO_EXPANSION);
         let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used
-        let attrs = data.get_item_attrs(id.index, &self.dep_graph);
+        let attrs = data.get_item_attrs(id.index);
         for attr in attrs.iter() {
             attr::mark_used(attr);
         }
@@ -384,7 +450,7 @@ impl CrateStore for cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::with_empty_ctxt(name),
+            ident: ast::Ident::from_str(&name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),
@@ -397,50 +463,20 @@ impl CrateStore for cstore::CStore {
         })
     }
 
-    fn item_body<'a, 'tcx>(&self,
-                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           def_id: DefId)
-                           -> &'tcx hir::Body {
-        self.read_dep_node(def_id);
-
-        if let Some(cached) = tcx.hir.get_inlined_body_untracked(def_id) {
-            return cached;
-        }
-
-        debug!("item_body({:?}): inlining item", def_id);
-
-        self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
-    }
-
-    fn crates(&self) -> Vec<CrateNum>
+    fn crates_untracked(&self) -> Vec<CrateNum>
     {
         let mut result = vec![];
         self.iter_crate_data(|cnum, _| result.push(cnum));
         result
     }
 
-    fn used_libraries(&self) -> Vec<NativeLibrary>
-    {
-        self.get_used_libraries().borrow().clone()
-    }
-
-    fn used_link_args(&self) -> Vec<String>
-    {
-        self.get_used_link_args().borrow().clone()
-    }
-    fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>
-    {
-        self.do_get_used_crates(prefer)
-    }
-
-    fn used_crate_source(&self, cnum: CrateNum) -> CrateSource
-    {
-        self.get_crate_data(cnum).source.clone()
-    }
-
-    fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>
+    fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>
     {
         self.do_extern_mod_stmt_cnum(emod_id)
+    }
+
+    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
+        self.do_postorder_cnums_untracked()
     }
 
     fn encode_metadata<'a, 'tcx>(&self,
@@ -455,68 +491,5 @@ impl CrateStore for cstore::CStore {
     fn metadata_encoding_version(&self) -> &[u8]
     {
         schema::METADATA_HEADER
-    }
-
-    /// Returns a map from a sufficiently visible external item (i.e. an external item that is
-    /// visible from at least one local module) to a sufficiently visible parent (considering
-    /// modules that re-export the external item to be parents).
-    fn visible_parent_map<'a>(&'a self, sess: &Session) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
-        {
-            let visible_parent_map = self.visible_parent_map.borrow();
-            if !visible_parent_map.is_empty() {
-                return visible_parent_map;
-            }
-        }
-
-        use std::collections::vec_deque::VecDeque;
-        use std::collections::hash_map::Entry;
-
-        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
-
-        for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
-            let cdata = self.get_crate_data(cnum);
-
-            match cdata.extern_crate.get() {
-                // Ignore crates without a corresponding local `extern crate` item.
-                Some(extern_crate) if !extern_crate.direct => continue,
-                _ => {},
-            }
-
-            let bfs_queue = &mut VecDeque::new();
-            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: def::Export, parent: DefId| {
-                let child = child.def.def_id();
-
-                if self.visibility(child) != ty::Visibility::Public {
-                    return;
-                }
-
-                match visible_parent_map.entry(child) {
-                    Entry::Occupied(mut entry) => {
-                        // If `child` is defined in crate `cnum`, ensure
-                        // that it is mapped to a parent in `cnum`.
-                        if child.krate == cnum && entry.get().krate != cnum {
-                            entry.insert(parent);
-                        }
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert(parent);
-                        bfs_queue.push_back(child);
-                    }
-                }
-            };
-
-            bfs_queue.push_back(DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX
-            });
-            while let Some(def) = bfs_queue.pop_front() {
-                for child in self.item_children(def, sess) {
-                    add_child(bfs_queue, child, def);
-                }
-            }
-        }
-
-        drop(visible_parent_map);
-        self.visible_parent_map.borrow()
     }
 }

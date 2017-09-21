@@ -21,7 +21,7 @@ fn use_<'short,'long>(c: Foo<'short>,
                       s: &'short isize,
                       l: &'long isize,
                       _where:Option<&'short &'long ()>) {
-    let _: Foo<'long> = c; //~ ERROR mismatched types
+    let _: Foo<'long> = c; //~ ERROR E0623
 }
 
 fn main() {

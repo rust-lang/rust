@@ -236,8 +236,7 @@ impl<'tcx> Action<'tcx> {
                 }
 
                 // Replace all uses of the destination local with the source local.
-                let src_lvalue = Lvalue::Local(src_local);
-                def_use_analysis.replace_all_defs_and_uses_with(dest_local, mir, src_lvalue);
+                def_use_analysis.replace_all_defs_and_uses_with(dest_local, mir, src_local);
 
                 // Finally, zap the now-useless assignment instruction.
                 debug!("  Deleting assignment");

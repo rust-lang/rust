@@ -26,14 +26,11 @@ impl StyledBuffer {
         }
     }
 
-    pub fn copy_tabs(&mut self, row: usize) {
-        if row < self.text.len() {
-            for i in row + 1..self.text.len() {
-                for j in 0..self.text[i].len() {
-                    if self.text[row].len() > j && self.text[row][j] == '\t' &&
-                       self.text[i][j] == ' ' {
-                        self.text[i][j] = '\t';
-                    }
+    fn replace_tabs(&mut self) {
+        for line in self.text.iter_mut() {
+            for c in line.iter_mut() {
+                if *c == '\t' {
+                    *c = ' ';
                 }
             }
         }
@@ -43,8 +40,8 @@ impl StyledBuffer {
         let mut output: Vec<Vec<StyledString>> = vec![];
         let mut styled_vec: Vec<StyledString> = vec![];
 
-        // before we render, do a little patch-up work to support tabs
-        self.copy_tabs(3);
+        // before we render, replace tabs with spaces
+        self.replace_tabs();
 
         for (row, row_style) in self.text.iter().zip(&self.styles) {
             let mut current_style = Style::NoStyle;

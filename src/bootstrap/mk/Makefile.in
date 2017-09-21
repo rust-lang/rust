@@ -55,6 +55,8 @@ check-aux:
 		src/tools/cargotest \
 		src/tools/cargo \
 		src/tools/rls \
+		src/tools/rustfmt \
+		src/tools/miri \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \

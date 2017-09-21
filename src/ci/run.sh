@@ -52,7 +52,11 @@ if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   fi
 else
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+  # We almost always want debug assertions enabled, but sometimes this takes too
+  # long for too little benefit, so we just turn them off.
+  if [ "$NO_DEBUG_ASSERTIONS" = "" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-debug-assertions"
+  fi
 
   # In general we always want to run tests with LLVM assertions enabled, but not
   # all platforms currently support that, so we have an option to disable.

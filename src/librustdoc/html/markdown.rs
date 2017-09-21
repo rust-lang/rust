@@ -16,10 +16,12 @@
 //! of `fmt::Display`. Example usage:
 //!
 //! ```
-//! use rustdoc::html::markdown::Markdown;
+//! #![feature(rustc_private)]
+//!
+//! use rustdoc::html::markdown::{RenderType, Markdown};
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s));
+//! let html = format!("{}", Markdown(s, RenderType::Pulldown));
 //! // ... something using html
 //! ```
 
@@ -158,10 +160,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
+        let compile_fail;
+        let ignore;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            if !LangString::parse(&lang).rust {
+            let parse_result = LangString::parse(&lang);
+            if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(lang)));
             }
+            compile_fail = parse_result.compile_fail;
+            ignore = parse_result.ignore;
         } else {
             return event;
         }
@@ -220,11 +227,22 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
                     url, test_escaped, channel
                 ))
             });
+            let tooltip = if ignore {
+                Some(("Be careful when using this code, it's not being tested!", "ignore"))
+            } else if compile_fail {
+                Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+            } else {
+                None
+            };
             s.push_str(&highlight::render_with_highlighting(
                         &text,
-                        Some("rust-example-rendered"),
+                        Some(&format!("rust-example-rendered{}",
+                                      if ignore { " ignore" }
+                                      else if compile_fail { " compile_fail" }
+                                      else { "" })),
                         None,
-                        playground_button.as_ref().map(String::as_str)));
+                        playground_button.as_ref().map(String::as_str),
+                        tooltip));
             Some(Event::Html(s.into()))
         })
     }
@@ -554,12 +572,18 @@ pub fn render(w: &mut fmt::Formatter,
             let origtext = str::from_utf8(text).unwrap();
             let origtext = origtext.trim_left();
             debug!("docblock: ==============\n{:?}\n=======", text);
+            let mut compile_fail = false;
+            let mut ignore = false;
+
             let rendered = if lang.is_null() || origtext.is_empty() {
                 false
             } else {
                 let rlang = (*lang).as_bytes();
                 let rlang = str::from_utf8(rlang).unwrap();
-                if !LangString::parse(rlang).rust {
+                let parse_result = LangString::parse(rlang);
+                compile_fail = parse_result.compile_fail;
+                ignore = parse_result.ignore;
+                if !parse_result.rust {
                     (my_opaque.dfltblk)(ob, orig_text, lang,
                                         opaque as *const hoedown_renderer_data,
                                         line);
@@ -614,11 +638,22 @@ pub fn render(w: &mut fmt::Formatter,
                         url, test_escaped, channel
                     ))
                 });
+                let tooltip = if ignore {
+                    Some(("Be careful when using this code, it's not being tested!", "ignore"))
+                } else if compile_fail {
+                    Some(("This code doesn't compile so be extra careful!", "compile_fail"))
+                } else {
+                    None
+                };
                 s.push_str(&highlight::render_with_highlighting(
                                &text,
-                               Some("rust-example-rendered"),
+                               Some(&format!("rust-example-rendered{}",
+                                             if ignore { " ignore" }
+                                             else if compile_fail { " compile_fail" }
+                                             else { "" })),
                                None,
-                               playground_button.as_ref().map(String::as_str)));
+                               playground_button.as_ref().map(String::as_str),
+                               tooltip));
                 hoedown_buffer_put(ob, s.as_ptr(), s.len());
             })
         }
@@ -909,10 +944,8 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
-        let mut allow_compile_fail = false;
         let mut allow_error_code_check = false;
         if UnstableFeatures::from_environment().is_nightly_build() {
-            allow_compile_fail = true;
             allow_error_code_check = true;
         }
 
@@ -936,7 +969,7 @@ impl LangString {
                     data.test_harness = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
-                "compile_fail" if allow_compile_fail => {
+                "compile_fail" => {
                     data.compile_fail = true;
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;

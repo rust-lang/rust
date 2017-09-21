@@ -5,7 +5,7 @@ that your tests are up to date and working.
 
 The basic idea is this:
 
-```rust,ignore
+```ignore
 /// # Examples
 ///
 /// ```
@@ -15,6 +15,19 @@ The basic idea is this:
 
 The triple backticks start and end code blocks. If this were in a file named `foo.rs`,
 running `rustdoc --test foo.rs` will extract this example, and then run it as a test.
+
+Please note that by default, if no language is set for the block code, `rustdoc`
+assumes it is `Rust` code. So the following:
+
+```rust
+let x = 5;
+```
+
+is strictly equivalent to:
+
+```
+let x = 5;
+```
 
 There's some subtlety though! Read on for more details.
 
@@ -106,7 +119,7 @@ our source code:
 ```text
     First, we set `x` to five:
 
-    ```rust
+    ```
     let x = 5;
     # let y = 6;
     # println!("{}", x + y);
@@ -114,7 +127,7 @@ our source code:
 
     Next, we set `y` to six:
 
-    ```rust
+    ```
     # let x = 5;
     let y = 6;
     # println!("{}", x + y);
@@ -122,7 +135,7 @@ our source code:
 
     Finally, we print the sum of `x` and `y`:
 
-    ```rust
+    ```
     # let x = 5;
     # let y = 6;
     println!("{}", x + y);
@@ -136,7 +149,7 @@ explanation.
 Another case where the use of `#` is handy is when you want to ignore
 error handling. Lets say you want the following,
 
-```rust,ignore
+```ignore
 /// use std::io;
 /// let mut input = String::new();
 /// io::stdin().read_line(&mut input)?;
@@ -145,7 +158,7 @@ error handling. Lets say you want the following,
 The problem is that `?` returns a `Result<T, E>` and test functions
 don't return anything so this will give a mismatched types error.
 
-```rust,ignore
+```ignore
 /// A doc test using ?
 ///
 /// ```
@@ -179,7 +192,7 @@ Here’s an example of documenting a macro:
 /// # }
 /// ```
 ///
-/// ```rust,should_panic
+/// ```should_panic
 /// # #[macro_use] extern crate foo;
 /// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
@@ -224,13 +237,25 @@ only shows the part you care about.
 `should_panic` tells `rustdoc` that the code should compile correctly, but
 not actually pass as a test.
 
-```rust
+```text
 /// ```no_run
 /// loop {
 ///     println!("Hello, world");
 /// }
 /// ```
 # fn foo() {}
+```
+
+`compile_fail` tells `rustdoc` that the compilation should fail. If it
+compiles, then the test will fail. However please note that code failing
+with the current Rust release may work in a future release, as new features
+are added.
+
+```text
+/// ```compile_fail
+/// let x = 5;
+/// x += 2; // shouldn't compile!
+/// ```
 ```
 
 The `no_run` attribute will compile your code, but not run it. This is

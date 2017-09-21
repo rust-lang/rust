@@ -25,8 +25,8 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
-        let temp_lifetime = cx.region_maps.temporary_scope(self.id);
-        let expr_extent = CodeExtent::Misc(self.id);
+        let temp_lifetime = cx.region_scope_tree.temporary_scope(self.hir_id.local_id);
+        let expr_scope = region::Scope::Node(self.hir_id.local_id);
 
         debug!("Expr::make_mirror(): id={}, span={:?}", self.id, self.span);
 
@@ -46,19 +46,20 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             ty: expr.ty,
             span: self.span,
             kind: ExprKind::Scope {
-                extent: expr_extent,
+                region_scope: expr_scope,
                 value: expr.to_ref(),
             },
         };
 
         // Finally, create a destruction scope, if any.
-        if let Some(extent) = cx.region_maps.opt_destruction_extent(self.id) {
+        if let Some(region_scope) =
+                cx.region_scope_tree.opt_destruction_scope(self.hir_id.local_id) {
             expr = Expr {
                 temp_lifetime,
                 ty: expr.ty,
                 span: self.span,
                 kind: ExprKind::Scope {
-                    extent,
+                    region_scope,
                     value: expr.to_ref(),
                 },
             };
@@ -125,7 +126,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // Convert this to a suitable `&foo` and
             // then an unsafe coercion. Limit the region to be just this
             // expression.
-            let region = ty::ReScope(CodeExtent::Misc(hir_expr.id));
+            let region = ty::ReScope(region::Scope::Node(hir_expr.hir_id.local_id));
             let region = cx.tcx.mk_region(region);
             expr = Expr {
                 temp_lifetime,
@@ -160,7 +161,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                           expr: &'tcx hir::Expr)
                                           -> Expr<'tcx> {
     let expr_ty = cx.tables().expr_ty(expr);
-    let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
+    let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
     let kind = match expr.node {
         // Here comes the interesting stuff:
@@ -472,7 +473,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let def_id = cx.tcx.hir.body_owner_def_id(count);
             let substs = Substs::identity_for_item(cx.tcx.global_tcx(), def_id);
             let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and((def_id, substs))) {
-                Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
+                Ok(&ty::Const { val: ConstVal::Integral(ConstInt::Usize(u)), .. }) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
                 Err(s) => cx.fatal_const_eval_err(&s, c.span, "expression")
             };
@@ -487,7 +488,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 hir::ScopeTarget::Block(target_id) |
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(target_id)) => ExprKind::Break {
-                    label: CodeExtent::Misc(target_id),
+                    label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(target_id).local_id),
                     value: value.to_ref(),
                 },
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
@@ -498,7 +499,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             match dest.target_id {
                 hir::ScopeTarget::Block(_) => bug!("cannot continue to blocks"),
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => ExprKind::Continue {
-                    label: CodeExtent::Misc(loop_id),
+                    label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),
                 },
                 hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
                     bug!("invalid loop id for continue: {}", err)
@@ -585,18 +586,22 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                  expr: &hir::Expr,
                                  custom_callee: Option<(DefId, &'tcx Substs<'tcx>)>)
                                  -> Expr<'tcx> {
-    let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
+    let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let (def_id, substs) = custom_callee.unwrap_or_else(|| {
         (cx.tables().type_dependent_defs()[expr.hir_id].def_id(),
          cx.tables().node_substs(expr.hir_id))
     });
+    let ty = cx.tcx().mk_fn_def(def_id, substs);
     Expr {
         temp_lifetime,
-        ty: cx.tcx().mk_fn_def(def_id, substs),
+        ty,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {
-                value: ConstVal::Function(def_id, substs),
+                value: cx.tcx.mk_const(ty::Const {
+                    val: ConstVal::Function(def_id, substs),
+                    ty
+                }),
             },
         },
     }
@@ -611,12 +616,7 @@ fn to_borrow_kind(m: hir::Mutability) -> BorrowKind {
 
 fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
     Arm {
-        patterns: arm.pats.iter().map(|p| {
-            Pattern::from_hir(cx.tcx.global_tcx(),
-                              cx.param_env.and(cx.identity_substs),
-                              cx.tables(),
-                              p)
-        }).collect(),
+        patterns: arm.pats.iter().map(|p| cx.pattern_from_hir(p)).collect(),
         guard: arm.guard.to_ref(),
         body: arm.body.to_ref(),
     }
@@ -634,15 +634,20 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::StructCtor(def_id, CtorKind::Fn) |
         Def::VariantCtor(def_id, CtorKind::Fn) => ExprKind::Literal {
             literal: Literal::Value {
-                value: ConstVal::Function(def_id, substs),
+                value: cx.tcx.mk_const(ty::Const {
+                    val: ConstVal::Function(def_id, substs),
+                    ty: cx.tables().node_id_to_type(expr.hir_id)
+                }),
             },
         },
 
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => ExprKind::Literal {
-            literal: Literal::Item {
-                def_id,
-                substs,
+            literal: Literal::Value {
+                value: cx.tcx.mk_const(ty::Const {
+                    val: ConstVal::Unevaluated(def_id, substs),
+                    ty: cx.tables().node_id_to_type(expr.hir_id)
+                }),
             },
         },
 
@@ -676,22 +681,18 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                expr: &'tcx hir::Expr,
                                def: Def)
                                -> ExprKind<'tcx> {
-    let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
+    let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
     match def {
-        Def::Local(def_id) => {
-            let node_id = cx.tcx.hir.as_local_node_id(def_id).unwrap();
-            ExprKind::VarRef { id: node_id }
-        }
+        Def::Local(id) => ExprKind::VarRef { id },
 
-        Def::Upvar(var_def_id, index, closure_expr_id) => {
-            let id_var = cx.tcx.hir.as_local_node_id(var_def_id).unwrap();
+        Def::Upvar(var_id, index, closure_expr_id) => {
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",
-                   id_var,
+                   var_id,
                    index,
                    closure_expr_id);
-            let var_ty = cx.tables()
-                           .node_id_to_type(cx.tcx.hir.node_to_hir_id(id_var));
+            let var_hir_id = cx.tcx.hir.node_to_hir_id(var_id);
+            let var_ty = cx.tables().node_id_to_type(var_hir_id);
 
             // FIXME free regions in closures are not right
             let closure_ty = cx.tables()
@@ -777,7 +778,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // ...but the upvar might be an `&T` or `&mut T` capture, at which
             // point we need an implicit deref
             let upvar_id = ty::UpvarId {
-                var_id: var_def_id.index,
+                var_id: var_hir_id,
                 closure_expr_id: closure_def_id.index,
             };
             match cx.tables().upvar_capture(upvar_id) {
@@ -867,7 +868,7 @@ fn overloaded_lvalue<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
     // construct the complete expression `foo()` for the overloaded call,
     // which will yield the &T type
-    let temp_lifetime = cx.region_maps.temporary_scope(expr.id);
+    let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
     let fun = method_callee(cx, expr, custom_callee);
     let ref_expr = Expr {
         temp_lifetime,
@@ -889,16 +890,14 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_def_id = freevar.def.def_id();
-    let var_node_id = cx.tcx.hir.as_local_node_id(var_def_id).unwrap();
+    let var_hir_id = cx.tcx.hir.node_to_hir_id(freevar.var_id());
     let upvar_id = ty::UpvarId {
-        var_id: var_def_id.index,
+        var_id: var_hir_id,
         closure_expr_id: cx.tcx.hir.local_def_id(closure_expr.id).index,
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
-    let temp_lifetime = cx.region_maps.temporary_scope(closure_expr.id);
-    let var_ty = cx.tables()
-                   .node_id_to_type(cx.tcx.hir.node_to_hir_id(var_node_id));
+    let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
+    let var_ty = cx.tables().node_id_to_type(var_hir_id);
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,

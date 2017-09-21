@@ -49,6 +49,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
         match dep_node.kind {
             DepKind::Krate |
             DepKind::Hir |
+            DepKind::InScopeTraits |
             DepKind::HirBody =>
                 true,
             DepKind::MetaData => {
@@ -66,6 +67,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             }
 
             // HIR nodes (which always come from our crate) are an input:
+            DepKind::InScopeTraits |
             DepKind::Hir |
             DepKind::HirBody => {
                 Some(self.incremental_hashes_map[dep_node])
@@ -133,7 +135,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
     fn load_data(&mut self, cnum: CrateNum) {
         debug!("load_data(cnum={})", cnum);
 
-        let svh = self.tcx.sess.cstore.crate_hash(cnum);
+        let svh = self.tcx.crate_hash(cnum);
         let old = self.crate_hashes.insert(cnum, svh);
         debug!("load_data: svh={}", svh);
         assert!(old.is_none(), "loaded data for crate {:?} twice", cnum);

@@ -22,6 +22,7 @@ use hash;
 use intrinsics;
 use marker::{Copy, PhantomData, Sized};
 use ptr;
+use ops::{Deref, DerefMut};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
@@ -188,26 +189,7 @@ pub fn forget<T>(t: T) {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-pub fn size_of<T>() -> usize {
-    unsafe { intrinsics::size_of::<T>() }
-}
-
-/// Returns the size of a type in bytes.
-///
-/// More specifically, this is the offset in bytes between successive
-/// items of the same type, including alignment padding.
-///
-/// # Examples
-///
-/// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::size_of::<i32>());
-/// ```
-#[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
+#[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_size_of"))]
 pub const fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
@@ -299,29 +281,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-pub fn align_of<T>() -> usize {
-    unsafe { intrinsics::min_align_of::<T>() }
-}
-
-/// Returns the [ABI]-required minimum alignment of a type.
-///
-/// Every reference to a value of the type `T` must be a multiple of this number.
-///
-/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
-///
-/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
-///
-/// # Examples
-///
-/// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::align_of::<i32>());
-/// ```
-#[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
+#[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_align_of"))]
 pub const fn align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -372,7 +332,6 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// Here's an example of how a collection might make use of needs_drop:
 ///
 /// ```
-/// #![feature(needs_drop)]
 /// use std::{mem, ptr};
 ///
 /// pub struct MyCollection<T> {
@@ -399,7 +358,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "needs_drop", issue = "41890")]
+#[stable(feature = "needs_drop", since = "1.22.0")]
 pub fn needs_drop<T>() -> bool {
     unsafe { intrinsics::needs_drop::<T>() }
 }
@@ -754,39 +713,39 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 /// Opaque type representing the discriminant of an enum.
 ///
 /// See the `discriminant` function in this module for more information.
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 pub struct Discriminant<T>(u64, PhantomData<*const T>);
 
 // N.B. These trait implementations cannot be derived because we don't want any bounds on T.
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> Copy for Discriminant<T> {}
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> clone::Clone for Discriminant<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> cmp::PartialEq for Discriminant<T> {
     fn eq(&self, rhs: &Self) -> bool {
         self.0 == rhs.0
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> cmp::Eq for Discriminant<T> {}
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> hash::Hash for Discriminant<T> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.0.hash(state);
     }
 }
 
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> fmt::Debug for Discriminant<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.debug_tuple("Discriminant")
@@ -811,7 +770,6 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// the actual data:
 ///
 /// ```
-/// #![feature(discriminant_value)]
 /// use std::mem;
 ///
 /// enum Foo { A(&'static str), B(i32), C(i32) }
@@ -820,7 +778,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert!(mem::discriminant(&Foo::B(1))     == mem::discriminant(&Foo::B(2)));
 /// assert!(mem::discriminant(&Foo::B(3))     != mem::discriminant(&Foo::C(3)));
 /// ```
-#[unstable(feature = "discriminant_value", reason = "recently added, follows RFC", issue = "24263")]
+#[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     unsafe {
         Discriminant(intrinsics::discriminant_value(v), PhantomData)
@@ -865,6 +823,7 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
 /// ```
 #[stable(feature = "manually_drop", since = "1.20.0")]
 #[allow(unions_with_drop_fields)]
+#[derive(Copy)]
 pub union ManuallyDrop<T>{ value: T }
 
 impl<T> ManuallyDrop<T> {
@@ -914,7 +873,7 @@ impl<T> ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> ::ops::Deref for ManuallyDrop<T> {
+impl<T> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -925,7 +884,7 @@ impl<T> ::ops::Deref for ManuallyDrop<T> {
 }
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
-impl<T> ::ops::DerefMut for ManuallyDrop<T> {
+impl<T> DerefMut for ManuallyDrop<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
@@ -940,6 +899,75 @@ impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
         unsafe {
             fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
         }
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Clone> Clone for ManuallyDrop<T> {
+    fn clone(&self) -> Self {
+        ManuallyDrop::new(self.deref().clone())
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.deref_mut().clone_from(source);
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Default> Default for ManuallyDrop<T> {
+    fn default() -> Self {
+        ManuallyDrop::new(Default::default())
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: PartialEq> PartialEq for ManuallyDrop<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.deref().eq(other)
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.deref().ne(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Eq> Eq for ManuallyDrop<T> {}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: PartialOrd> PartialOrd for ManuallyDrop<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<::cmp::Ordering> {
+        self.deref().partial_cmp(other)
+    }
+
+    fn lt(&self, other: &Self) -> bool {
+        self.deref().lt(other)
+    }
+
+    fn le(&self, other: &Self) -> bool {
+        self.deref().le(other)
+    }
+
+    fn gt(&self, other: &Self) -> bool {
+        self.deref().gt(other)
+    }
+
+    fn ge(&self, other: &Self) -> bool {
+        self.deref().ge(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: Ord> Ord for ManuallyDrop<T> {
+    fn cmp(&self, other: &Self) -> ::cmp::Ordering {
+        self.deref().cmp(other)
+    }
+}
+
+#[stable(feature = "manually_drop", since = "1.20.0")]
+impl<T: ::hash::Hash> ::hash::Hash for ManuallyDrop<T> {
+    fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
+        self.deref().hash(state);
     }
 }
 

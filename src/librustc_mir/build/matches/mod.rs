@@ -16,8 +16,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::const_val::ConstVal;
-use rustc::ty::{AdtDef, Ty};
+use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::hir;
 use hair::*;
@@ -194,7 +193,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
         self.cfg.push(block, Statement {
             source_info,
-            kind: StatementKind::StorageLive(Lvalue::Local(local_id))
+            kind: StatementKind::StorageLive(local_id)
         });
         Lvalue::Local(local_id)
     }
@@ -202,8 +201,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn schedule_drop_for_binding(&mut self, var: NodeId, span: Span) {
         let local_id = self.var_indices[&var];
         let var_ty = self.local_decls[local_id].ty;
-        let extent = self.hir.region_maps.var_scope(var);
-        self.schedule_drop(span, extent, &Lvalue::Local(local_id), var_ty);
+        let hir_id = self.hir.tcx().hir.node_to_hir_id(var);
+        let region_scope = self.hir.region_scope_tree.var_scope(hir_id.local_id);
+        self.schedule_drop(span, region_scope, &Lvalue::Local(local_id), var_ty);
     }
 
     pub fn visit_bindings<F>(&mut self, pattern: &Pattern<'tcx>, f: &mut F)
@@ -293,20 +293,20 @@ pub struct MatchPair<'pat, 'tcx:'pat> {
 enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
-        adt_def: &'tcx AdtDef,
+        adt_def: &'tcx ty::AdtDef,
         variants: BitVector,
     },
 
     // test the branches of enum
     SwitchInt {
         switch_ty: Ty<'tcx>,
-        options: Vec<ConstVal<'tcx>>,
-        indices: FxHashMap<ConstVal<'tcx>, usize>,
+        options: Vec<&'tcx ty::Const<'tcx>>,
+        indices: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
     },
 
     // test for equality
     Eq {
-        value: ConstVal<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
         ty: Ty<'tcx>,
     },
 

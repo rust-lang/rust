@@ -25,8 +25,6 @@
 
 
 // Reexport some of our utilities which are expected by other crates.
-#[cfg(stage0)]
-pub use panicking::begin_panic_new;
 pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 #[cfg(not(test))]

@@ -425,6 +425,9 @@ pub struct TargetOptions {
 
     /// Whether or not stack probes (__rust_probestack) are enabled
     pub stack_probes: bool,
+
+    /// The minimum alignment for global symbols.
+    pub min_global_align: Option<u64>,
 }
 
 impl Default for TargetOptions {
@@ -486,6 +489,7 @@ impl Default for TargetOptions {
             crt_static_default: false,
             crt_static_respected: false,
             stack_probes: false,
+            min_global_align: None,
         }
     }
 }
@@ -724,6 +728,7 @@ impl Target {
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
         key!(stack_probes, bool);
+        key!(min_global_align, Option<u64>);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -914,6 +919,7 @@ impl ToJson for Target {
         target_option_val!(crt_static_default);
         target_option_val!(crt_static_respected);
         target_option_val!(stack_probes);
+        target_option_val!(min_global_align);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

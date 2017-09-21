@@ -131,7 +131,7 @@ impl Type {
         Type::i8_llcx(llcx).ptr_to()
     }
 
-    pub fn int(ccx: &CrateContext) -> Type {
+    pub fn isize(ccx: &CrateContext) -> Type {
         match &ccx.tcx().sess.target.target.target_pointer_width[..] {
             "16" => Type::i16(ccx),
             "32" => Type::i32(ccx),
@@ -142,7 +142,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::IntTy::Is => ccx.int_type(),
+            ast::IntTy::Is => ccx.isize_ty(),
             ast::IntTy::I8 => Type::i8(ccx),
             ast::IntTy::I16 => Type::i16(ccx),
             ast::IntTy::I32 => Type::i32(ccx),
@@ -153,7 +153,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::UintTy::Us => ccx.int_type(),
+            ast::UintTy::Us => ccx.isize_ty(),
             ast::UintTy::U8 => Type::i8(ccx),
             ast::UintTy::U16 => Type::i16(ccx),
             ast::UintTy::U32 => Type::i32(ccx),
@@ -207,7 +207,7 @@ impl Type {
 
     pub fn vec(ccx: &CrateContext, ty: &Type) -> Type {
         Type::struct_(ccx,
-            &[Type::array(ty, 0), Type::int(ccx)],
+            &[Type::array(ty, 0), Type::isize(ccx)],
         false)
     }
 

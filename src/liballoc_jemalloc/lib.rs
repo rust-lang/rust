@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![no_std]
+#![allow(unused_attributes)]
 #![unstable(feature = "alloc_jemalloc",
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
@@ -19,8 +20,10 @@
 #![feature(libc)]
 #![feature(linkage)]
 #![feature(staged_api)]
+#![feature(rustc_attrs)]
 #![cfg_attr(dummy_jemalloc, allow(dead_code, unused_extern_crates))]
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
+#![rustc_alloc_kind = "exe"]
 
 extern crate alloc;
 extern crate alloc_system;

@@ -21,7 +21,7 @@ use graphviz as dot;
 use hir::def_id::DefIndex;
 use ty;
 use middle::free_region::RegionRelations;
-use middle::region::CodeExtent;
+use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
 use infer::region_inference::RegionVarBindings;
@@ -136,7 +136,7 @@ enum Node {
 #[derive(Clone, PartialEq, Eq, Debug, Copy)]
 enum Edge<'tcx> {
     Constraint(Constraint<'tcx>),
-    EnclScope(CodeExtent, CodeExtent),
+    EnclScope(region::Scope, region::Scope),
 }
 
 impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
                 add_node(n2);
             }
 
-            region_rels.region_maps.each_encl_scope(|sub, sup| {
+            region_rels.region_scope_tree.each_encl_scope(|sub, sup| {
                 add_node(Node::Region(ty::ReScope(sub)));
                 add_node(Node::Region(ty::ReScope(sup)));
             });
@@ -245,7 +245,9 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     fn edges(&self) -> dot::Edges<Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
-        self.region_rels.region_maps.each_encl_scope(|sub, sup| v.push(Edge::EnclScope(sub, sup)));
+        self.region_rels.region_scope_tree.each_encl_scope(|sub, sup| {
+            v.push(Edge::EnclScope(sub, sup))
+        });
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }

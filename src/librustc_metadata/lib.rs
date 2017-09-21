@@ -21,7 +21,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
-#![feature(discriminant_value)]
 #![feature(rustc_private)]
 
 #[macro_use]
@@ -51,6 +50,8 @@ mod decoder;
 mod cstore_impl;
 mod isolated_encoder;
 mod schema;
+mod native_libs;
+mod link_args;
 
 pub mod creader;
 pub mod cstore;

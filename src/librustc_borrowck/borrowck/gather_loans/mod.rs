@@ -43,12 +43,12 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let mut glcx = GatherLoanCtxt {
         bccx,
         all_loans: Vec::new(),
-        item_ub: region::CodeExtent::Misc(body.node_id),
-        move_data: MoveData::new(),
+        item_ub: region::Scope::Node(bccx.tcx.hir.body(body).value.hir_id.local_id),
+        move_data: MoveData::default(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
 
-    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_maps, bccx.tables)
+    euv::ExprUseVisitor::new(&mut glcx, bccx.tcx, param_env, &bccx.region_scope_tree, bccx.tables)
         .consume_body(bccx.body);
 
     glcx.report_potential_errors();
@@ -63,7 +63,7 @@ struct GatherLoanCtxt<'a, 'tcx: 'a> {
     all_loans: Vec<Loan<'tcx>>,
     /// `item_ub` is used as an upper-bound on the lifetime whenever we
     /// ask for the scope of an expression categorized as an upvar.
-    item_ub: region::CodeExtent,
+    item_ub: region::Scope,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
             euv::Move(move_reason) => {
                 gather_moves::gather_move_from_expr(
                     self.bccx, &self.move_data, &mut self.move_error_collector,
-                    consume_id, cmt, move_reason);
+                    self.bccx.tcx.hir.node_to_hir_id(consume_id).local_id, cmt, move_reason);
             }
             euv::Copy => { }
         }
@@ -126,7 +126,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
                bk={:?}, loan_cause={:?})",
                borrow_id, cmt, loan_region,
                bk, loan_cause);
-        self.guarantee_valid(borrow_id,
+        let hir_id = self.bccx.tcx.hir.node_to_hir_id(borrow_id);
+        self.guarantee_valid(hir_id.local_id,
                              borrow_span,
                              cmt,
                              bk,
@@ -272,8 +273,12 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     self.mark_loan_path_as_mutated(&lp);
                 }
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
-                                                assignment_id, assignment_span,
-                                                lp, cmt.id, mode);
+                                                self.bccx.tcx.hir.node_to_hir_id(assignment_id)
+                                                    .local_id,
+                                                assignment_span,
+                                                lp,
+                                                self.bccx.tcx.hir.node_to_hir_id(cmt.id).local_id,
+                                                mode);
             }
             None => {
                 // This can occur with e.g. `*foo() = 5`.  In such
@@ -287,13 +292,13 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     /// reports an error.  This may entail taking out loans, which will be added to the
     /// `req_loan_map`.
     fn guarantee_valid(&mut self,
-                       borrow_id: ast::NodeId,
+                       borrow_id: hir::ItemLocalId,
                        borrow_span: Span,
                        cmt: mc::cmt<'tcx>,
                        req_kind: ty::BorrowKind,
                        loan_region: ty::Region<'tcx>,
                        cause: euv::LoanCause) {
-        debug!("guarantee_valid(borrow_id={}, cmt={:?}, \
+        debug!("guarantee_valid(borrow_id={:?}, cmt={:?}, \
                 req_mutbl={:?}, loan_region={:?})",
                borrow_id,
                cmt,
@@ -346,11 +351,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReScope(scope) => scope,
 
                     ty::ReEarlyBound(ref br) => {
-                        self.bccx.region_maps.early_free_extent(self.tcx(), br)
+                        self.bccx.region_scope_tree.early_free_scope(self.tcx(), br)
                     }
 
                     ty::ReFree(ref fr) => {
-                        self.bccx.region_maps.free_extent(self.tcx(), fr)
+                        self.bccx.region_scope_tree.free_scope(self.tcx(), fr)
                     }
 
                     ty::ReStatic => self.item_ub,
@@ -368,7 +373,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = region::CodeExtent::Misc(borrow_id);
+                let borrow_scope = region::Scope::Node(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -392,7 +397,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
             }
         };
 
-        debug!("guarantee_valid(borrow_id={}), loan={:?}",
+        debug!("guarantee_valid(borrow_id={:?}), loan={:?}",
                borrow_id, loan);
 
         // let loan_path = loan.loan_path;
@@ -442,7 +447,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     None
                 }
                 LpUpvar(ty::UpvarId{ var_id, closure_expr_id: _ }) => {
-                    let local_id = self.tcx().hir.def_index_to_node_id(var_id);
+                    let local_id = self.tcx().hir.hir_to_node_id(var_id);
                     self.tcx().used_mut_nodes.borrow_mut().insert(local_id);
                     None
                 }
@@ -468,23 +473,23 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
     }
 
     pub fn compute_gen_scope(&self,
-                             borrow_scope: region::CodeExtent,
-                             loan_scope: region::CodeExtent)
-                             -> region::CodeExtent {
+                             borrow_scope: region::Scope,
+                             loan_scope: region::Scope)
+                             -> region::Scope {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
-        if self.bccx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
+        if self.bccx.region_scope_tree.is_subscope_of(borrow_scope, loan_scope) {
             borrow_scope
         } else {
             loan_scope
         }
     }
 
-    pub fn compute_kill_scope(&self, loan_scope: region::CodeExtent, lp: &LoanPath<'tcx>)
-                              -> region::CodeExtent {
+    pub fn compute_kill_scope(&self, loan_scope: region::Scope, lp: &LoanPath<'tcx>)
+                              -> region::Scope {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -507,10 +512,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! do not require restrictions and hence do not cause a loan.
 
         let lexical_scope = lp.kill_scope(self.bccx);
-        if self.bccx.region_maps.is_subscope_of(lexical_scope, loan_scope) {
+        if self.bccx.region_scope_tree.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.region_maps.is_subscope_of(loan_scope, lexical_scope));
+            assert!(self.bccx.region_scope_tree.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

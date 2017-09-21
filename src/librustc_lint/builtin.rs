@@ -44,7 +44,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
-use syntax_pos::Span;
+use syntax_pos::{Span, SyntaxContext};
 use syntax::symbol::keywords;
 
 use rustc::hir::{self, PatKind};
@@ -75,9 +75,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for WhileTrue {
         if let hir::ExprWhile(ref cond, ..) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
                 if let ast::LitKind::Bool(true) = lit.node {
-                    cx.span_lint(WHILE_TRUE,
-                                 e.span,
-                                 "denote infinite loops with loop { ... }");
+                    if lit.span.ctxt() == SyntaxContext::empty() {
+                        cx.span_lint(WHILE_TRUE,
+                                    e.span,
+                                    "denote infinite loops with loop { ... }");
+                    }
                 }
             }
         }
@@ -545,7 +547,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.lang_items.debug_trait() {
+        let debug = match cx.tcx.lang_items().debug_trait() {
             Some(debug) => debug,
             None => return,
         };
@@ -850,23 +852,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
             }
             visited.insert(cfg_id);
 
-            let node_id = cfg.graph.node_data(idx).id();
-
             // is this a recursive call?
-            let self_recursive = if node_id != ast::DUMMY_NODE_ID {
-                match method {
+            let local_id = cfg.graph.node_data(idx).id();
+            if local_id != hir::DUMMY_ITEM_LOCAL_ID {
+                let node_id = cx.tcx.hir.hir_to_node_id(hir::HirId {
+                    owner: body.value.hir_id.owner,
+                    local_id
+                });
+                let self_recursive = match method {
                     Some(ref method) => expr_refers_to_this_method(cx, method, node_id),
                     None => expr_refers_to_this_fn(cx, id, node_id),
+                };
+                if self_recursive {
+                    self_call_spans.push(cx.tcx.hir.span(node_id));
+                    // this is a self call, so we shouldn't explore past
+                    // this node in the CFG.
+                    continue;
                 }
-            } else {
-                false
-            };
-            if self_recursive {
-                self_call_spans.push(cx.tcx.hir.span(node_id));
-                // this is a self call, so we shouldn't explore past
-                // this node in the CFG.
-                continue;
             }
+
             // add the successors of this node to explore the graph further.
             for (_, edge) in cfg.graph.outgoing_edges(idx) {
                 let target_idx = edge.target();
@@ -909,7 +913,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     } else {
                         return false;
                     };
-                    def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    match def {
+                        Def::Local(..) | Def::Upvar(..) => false,
+                        _ => def.def_id() == cx.tcx.hir.local_def_id(fn_id)
+                    }
                 }
                 _ => false,
             }
@@ -1059,8 +1066,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
             _ => return,
         };
 
-        let prfn = match cx.sess().cstore.extern_mod_stmt_cnum(it.id) {
-            Some(cnum) => cx.sess().cstore.plugin_registrar_fn(cnum),
+        let def_id = cx.tcx.hir.local_def_id(it.id);
+        let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
+            Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
             None => {
                 // Probably means we aren't linking the crate for some reason.
                 //

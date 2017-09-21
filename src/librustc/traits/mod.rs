@@ -17,7 +17,8 @@ pub use self::ObligationCauseCode::*;
 
 use hir;
 use hir::def_id::DefId;
-use middle::region::RegionMaps;
+use middle::const_val::ConstEvalErr;
+use middle::region;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
@@ -28,17 +29,17 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
-pub use self::coherence::orphan_check;
-pub use self::coherence::overlapping_impls;
-pub use self::coherence::OrphanCheckErr;
+pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
+pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
-pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
+pub use self::select::IntercrateAmbiguityCause;
+pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::{SpecializesCache, find_associated_item};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
@@ -52,6 +53,7 @@ mod error_reporting;
 mod fulfill;
 mod project;
 mod object_safety;
+mod on_unimplemented;
 mod select;
 mod specialize;
 mod structural_impls;
@@ -217,6 +219,7 @@ pub enum SelectionError<'tcx> {
                                 ty::PolyTraitRef<'tcx>,
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
+    ConstEvalFailure(ConstEvalErr<'tcx>),
 }
 
 pub struct FulfillmentError<'tcx> {
@@ -378,7 +381,7 @@ pub struct VtableObjectData<'tcx, N> {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableFnPointerData<'tcx, N> {
-    pub fn_ty: ty::Ty<'tcx>,
+    pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
 }
 
@@ -532,9 +535,9 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("normalize_param_env_or_error: normalized predicates={:?}",
             predicates);
 
-        let region_maps = RegionMaps::new();
+        let region_scope_tree = region::ScopeTree::default();
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(region_context, &region_maps, &free_regions);
+        infcx.resolve_regions_and_report_errors(region_context, &region_scope_tree, &free_regions);
         let predicates = match infcx.fully_resolve(&predicates) {
             Ok(predicates) => predicates,
             Err(fixup_err) => {
@@ -831,6 +834,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
+        specializes: specialize::specializes,
         ..*providers
     };
 }
@@ -839,6 +843,7 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         is_object_safe: object_safety::is_object_safe_provider,
         specialization_graph_of: specialize::specialization_graph_provider,
+        specializes: specialize::specializes,
         ..*providers
     };
 }

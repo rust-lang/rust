@@ -56,6 +56,7 @@ use std::cmp::Ordering;
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     in_fn: bool,
+    in_static: bool,
     promotable: bool,
     mut_rvalue_borrows: NodeSet,
     param_env: ty::ParamEnv<'tcx>,
@@ -87,19 +88,14 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
         }
     }
 
-    // Adds the worst effect out of all the values of one type.
-    fn add_type(&mut self, ty: Ty<'gcx>) {
-        if !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
-            self.promotable = false;
-        }
-
-        if ty.needs_drop(self.tcx, self.param_env) {
-            self.promotable = false;
-        }
+    // Returns true iff all the values of the type are promotable.
+    fn type_has_only_promotable_values(&mut self, ty: Ty<'gcx>) -> bool {
+        ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) &&
+        !ty.needs_drop(self.tcx, self.param_env)
     }
 
     fn handle_const_fn_call(&mut self, def_id: DefId, ret_ty: Ty<'gcx>) {
-        self.add_type(ret_ty);
+        self.promotable &= self.type_has_only_promotable_values(ret_ty);
 
         self.promotable &= if let Some(fn_id) = self.tcx.hir.as_local_node_id(def_id) {
             FnLikeNode::from_node(self.tcx.hir.get(fn_id)).map_or(false, |fn_like| {
@@ -133,10 +129,16 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer_param_env = self.param_env;
         let outer_identity_substs = self.identity_substs;
 
-        self.in_fn = match MirSource::from_node(self.tcx, item_id) {
-            MirSource::Fn(_) => true,
-            _ => false
+        self.in_fn = false;
+        self.in_static = false;
+
+        match MirSource::from_node(self.tcx, item_id) {
+            MirSource::Fn(_) => self.in_fn = true,
+            MirSource::Static(_, _) => self.in_static = true,
+            _ => {}
         };
+
+
         self.tables = self.tcx.typeck_tables_of(item_def_id);
         self.param_env = self.tcx.param_env(item_def_id);
         self.identity_substs = Substs::identity_for_item(self.tcx, item_def_id);
@@ -148,8 +150,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
         let tcx = self.tcx;
         let param_env = self.param_env;
-        let region_maps = self.tcx.region_maps(item_def_id);
-        euv::ExprUseVisitor::new(self, tcx, param_env, &region_maps, self.tables)
+        let region_scope_tree = self.tcx.region_scope_tree(item_def_id);
+        euv::ExprUseVisitor::new(self, tcx, param_env, &region_scope_tree, self.tables)
             .consume_body(body);
 
         self.visit_body(body);
@@ -332,21 +334,61 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
                 Def::VariantCtor(..) | Def::StructCtor(..) |
-                Def::Fn(..) | Def::Method(..) => {}
-                Def::AssociatedConst(_) => v.add_type(node_ty),
-                Def::Const(did) => {
-                    v.promotable &= if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
-                        match v.tcx.hir.expect_item(node_id).node {
-                            hir::ItemConst(_, body) => {
+                Def::Fn(..) | Def::Method(..) =>  {}
+
+                // References to a static that are themselves within a static
+                // are inherently promotable with the exception
+                //  of "#[thread_loca]" statics, which may not
+                // outlive the current function
+                Def::Static(did, _) => {
+
+                    if v.in_static {
+                        let mut thread_local = false;
+
+                        for attr in &v.tcx.get_attrs(did)[..] {
+                            if attr.check_name("thread_local") {
+                                debug!("Reference to Static(id={:?}) is unpromotable \
+                                       due to a #[thread_local] attribute", did);
+                                v.promotable = false;
+                                thread_local = true;
+                                break;
+                            }
+                        }
+
+                        if !thread_local {
+                            debug!("Allowing promotion of reference to Static(id={:?})", did);
+                        }
+                    } else {
+                        debug!("Reference to Static(id={:?}) is unpromotable as it is not \
+                               referenced from a static", did);
+                        v.promotable = false;
+
+                    }
+                }
+
+                Def::Const(did) |
+                Def::AssociatedConst(did) => {
+                    let promotable = if v.tcx.trait_of_item(did).is_some() {
+                        // Don't peek inside trait associated constants.
+                        false
+                    } else if let Some(node_id) = v.tcx.hir.as_local_node_id(did) {
+                        match v.tcx.hir.maybe_body_owned_by(node_id) {
+                            Some(body) => {
                                 v.visit_nested_body(body);
                                 v.tcx.rvalue_promotable_to_static.borrow()[&body.node_id]
                             }
-                            _ => false
+                            None => false
                         }
                     } else {
                         v.tcx.const_is_rvalue_promotable_to_static(did)
                     };
+
+                    // Just in case the type is more specific than the definition,
+                    // e.g. impl associated const with type parameters, check it.
+                    // Also, trait associated consts are relaxed by this.
+                    v.promotable &= promotable || v.type_has_only_promotable_values(node_ty);
                 }
+
                 _ => {
                     v.promotable = false;
                 }
@@ -396,7 +438,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         hir::ExprStruct(..) => {
             if let ty::TyAdt(adt, ..) = v.tables.expr_ty(e).sty {
                 // unsafe_cell_type doesn't necessarily exist with no_core
-                if Some(adt.did) == v.tcx.lang_items.unsafe_cell_type() {
+                if Some(adt.did) == v.tcx.lang_items().unsafe_cell_type() {
                     v.promotable = false;
                 }
             }
@@ -476,6 +518,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         tcx,
         tables: &ty::TypeckTables::empty(None),
         in_fn: false,
+        in_static: false,
         promotable: false,
         mut_rvalue_borrows: NodeSet(),
         param_env: ty::ParamEnv::empty(Reveal::UserFacing),

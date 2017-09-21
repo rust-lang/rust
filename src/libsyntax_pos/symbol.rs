@@ -115,6 +115,12 @@ impl Symbol {
     }
 }
 
+impl<'a> From<&'a str> for Symbol {
+    fn from(string: &'a str) -> Symbol {
+        Symbol::intern(string)
+    }
+}
+
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}({})", self, self.0)

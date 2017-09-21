@@ -16,3 +16,5 @@
 
 extern crate core;
 extern crate weak_lang_items;
+
+fn main() {}

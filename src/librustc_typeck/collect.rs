@@ -8,50 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-
-# Collect phase
-
-The collect phase of type check has the job of visiting all items,
-determining their type, and writing that type into the `tcx.types`
-table.  Despite its name, this table does not really operate as a
-*cache*, at least not for the types of items defined within the
-current crate: we assume that after the collect phase, the types of
-all local items will be present in the table.
-
-Unlike most of the types that are present in Rust, the types computed
-for each item are in fact type schemes. This means that they are
-generic types that may have type parameters. TypeSchemes are
-represented by a pair of `Generics` and `Ty`.  Type
-parameters themselves are represented as `ty_param()` instances.
-
-The phasing of type conversion is somewhat complicated. There is no
-clear set of phases we can enforce (e.g., converting traits first,
-then types, or something like that) because the user can introduce
-arbitrary interdependencies. So instead we generally convert things
-lazilly and on demand, and include logic that checks for cycles.
-Demand is driven by calls to `AstConv::get_item_type_scheme` or
-`AstConv::trait_def`.
-
-Currently, we "convert" types and traits in two phases (note that
-conversion only affects the types of items / enum variants / methods;
-it does not e.g. compute the types of individual expressions):
-
-0. Intrinsics
-1. Trait/Type definitions
-
-Conversion itself is done by simply walking each of the items in turn
-and invoking an appropriate function (e.g., `trait_def_of_item` or
-`convert_item`). However, it is possible that while converting an
-item, we may need to compute the *type scheme* or *trait definition*
-for other items.
-
-There are some shortcomings in this design:
-- Because the item generics include defaults, cycles through type
-  parameter defaults are illegal even if those defaults are never
-  employed. This is not necessarily a bug.
-
-*/
+//! "Collection" is the process of determining the type and other external
+//! details of each item in Rust. Collection is specifically concerned
+//! with *interprocedural* things -- for example, for a function
+//! definition, collection will figure out the type and signature of the
+//! function, but it will not visit the *body* of the function in any way,
+//! nor examine type annotations on local variables (that's the job of
+//! type *checking*).
+//!
+//! Collecting is ultimately defined by a bundle of queries that
+//! inquire after various facts about the items in the crate (e.g.,
+//! `type_of`, `generics_of`, `predicates_of`, etc). See the `provide` function
+//! for the full set.
+//!
+//! At present, however, we do run collection across all items in the
+//! crate as a kind of pass. This should eventually be factored away.
 
 use astconv::{AstConv, Bounds};
 use lint;
@@ -572,7 +543,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             match result {
-                Ok(ConstVal::Integral(x)) => Some(x),
+                Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => Some(x),
                 _ => None
             }
         } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
@@ -812,7 +783,8 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fn visit_lifetime(&mut self, lt: &'tcx hir::Lifetime) {
             if self.has_late_bound_regions.is_some() { return }
 
-            match self.tcx.named_region_map.defs.get(&lt.id).cloned() {
+            let hir_id = self.tcx.hir.node_to_hir_id(lt.id);
+            match self.tcx.named_region(hir_id) {
                 Some(rl::Region::Static) | Some(rl::Region::EarlyBound(..)) => {}
                 Some(rl::Region::LateBound(debruijn, _)) |
                 Some(rl::Region::LateBoundAnon(debruijn, _))
@@ -830,7 +802,8 @@ fn has_late_bound_regions<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx, binder_depth: 1, has_late_bound_regions: None
         };
         for lifetime in &generics.lifetimes {
-            if tcx.named_region_map.late_bound.contains(&lifetime.lifetime.id) {
+            let hir_id = tcx.hir.node_to_hir_id(lifetime.lifetime.id);
+            if tcx.is_late_bound(hir_id) {
                 return Some(lifetime.lifetime.span);
             }
         }
@@ -987,8 +960,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }).collect::<Vec<_>>();
 
-    let object_lifetime_defaults =
-        tcx.named_region_map.object_lifetime_defaults.get(&node_id);
+    let hir_id = tcx.hir.node_to_hir_id(node_id);
+    let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id);
 
     // Now create the real type parameters.
     let type_start = own_start + regions.len() as u32;
@@ -1014,7 +987,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             def_id: tcx.hir.local_def_id(p.id),
             has_default: p.default.is_some(),
             object_lifetime_default:
-                object_lifetime_defaults.map_or(rl::Set1::Empty, |o| o[i]),
+                object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
             pure_wrt_drop: p.pure_wrt_drop,
         }
     });
@@ -1307,7 +1280,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
         }
     }
 
-    let kind_id = tcx.lang_items.require(SizedTraitLangItem);
+    let kind_id = tcx.lang_items().require(SizedTraitLangItem);
     match unbound {
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
@@ -1343,7 +1316,10 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     ast_generics
         .lifetimes
         .iter()
-        .filter(move |l| !tcx.named_region_map.late_bound.contains(&l.lifetime.id))
+        .filter(move |l| {
+            let hir_id = tcx.hir.node_to_hir_id(l.lifetime.id);
+            !tcx.is_late_bound(hir_id)
+        })
 }
 
 fn predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1575,7 +1551,7 @@ pub enum SizedByDefault { Yes, No, }
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
 /// built-in trait (formerly known as kind): Send.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
-                                        param_ty: ty::Ty<'tcx>,
+                                        param_ty: Ty<'tcx>,
                                         ast_bounds: &[hir::TyParamBound],
                                         sized_by_default: SizedByDefault,
                                         span: Span)
@@ -1668,7 +1644,7 @@ fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     // ABIs are handled at all correctly.
     if abi != abi::Abi::RustIntrinsic && abi != abi::Abi::PlatformIntrinsic
             && !tcx.sess.features.borrow().simd_ffi {
-        let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
+        let check = |ast_ty: &hir::Ty, ty: Ty| {
             if ty.is_simd() {
                 tcx.sess.struct_span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \

@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: unsupported cyclic reference between types/traits detected
+
 #![feature(const_fn)]
 
 struct Foo {
     bytes: [u8; std::mem::size_of::<Foo>()]
-    //~^ ERROR unsupported cyclic reference between types/traits detected
 }
 
 fn main() {}

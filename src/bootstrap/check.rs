@@ -23,7 +23,7 @@ use std::path::{PathBuf, Path};
 use std::process::Command;
 use std::io::Read;
 
-use build_helper::{self, output};
+use build_helper::{self, output, BuildExpectation};
 
 use builder::{Kind, RunConfig, ShouldRun, Builder, Compiler, Step};
 use cache::{INTERNER, Interned};
@@ -33,6 +33,7 @@ use native;
 use tool::{self, Tool};
 use util::{self, dylib_path, dylib_path_var};
 use {Build, Mode};
+use toolstate::ToolState;
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -64,22 +65,26 @@ impl fmt::Display for TestKind {
     }
 }
 
-fn try_run(build: &Build, cmd: &mut Command) {
+fn try_run_expecting(build: &Build, cmd: &mut Command, expect: BuildExpectation) {
     if !build.fail_fast {
-        if !build.try_run(cmd) {
-            let failures = build.delayed_failures.get();
-            build.delayed_failures.set(failures + 1);
+        if !build.try_run(cmd, expect) {
+            let mut failures = build.delayed_failures.borrow_mut();
+            failures.push(format!("{:?}", cmd));
         }
     } else {
-        build.run(cmd);
+        build.run_expecting(cmd, expect);
     }
+}
+
+fn try_run(build: &Build, cmd: &mut Command) {
+    try_run_expecting(build, cmd, BuildExpectation::None)
 }
 
 fn try_run_quiet(build: &Build, cmd: &mut Command) {
     if !build.fail_fast {
         if !build.try_run_quiet(cmd) {
-            let failures = build.delayed_failures.get();
-            build.delayed_failures.set(failures + 1);
+            let mut failures = build.delayed_failures.borrow_mut();
+            failures.push(format!("{:?}", cmd));
         }
     } else {
         build.run_quiet(cmd);
@@ -252,6 +257,97 @@ impl Step for Rls {
         try_run(build, &mut cargo);
     }
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Rustfmt {
+    stage: u32,
+    host: Interned<String>,
+}
+
+impl Step for Rustfmt {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/tools/rustfmt")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustfmt {
+            stage: run.builder.top_stage,
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for rustfmt.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+        cargo.arg("--manifest-path").arg(build.src.join("src/tools/rustfmt/Cargo.toml"));
+
+        // Don't build tests dynamically, just a pain to work with
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run(build, &mut cargo);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Miri {
+    host: Interned<String>,
+}
+
+impl Step for Miri {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let test_miri = run.builder.build.config.test_miri;
+        run.path("src/tools/miri").default_condition(test_miri)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Miri {
+            host: run.target,
+        });
+    }
+
+    /// Runs `cargo test` for miri.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let host = self.host;
+        let compiler = builder.compiler(1, host);
+
+        let miri = builder.ensure(tool::Miri { compiler, target: self.host });
+        let mut cargo = builder.cargo(compiler, Mode::Tool, host, "test");
+        cargo.arg("--manifest-path").arg(build.src.join("src/tools/miri/Cargo.toml"));
+
+        // Don't build tests dynamically, just a pain to work with
+        cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+        // miri tests need to know about the stage sysroot
+        cargo.env("MIRI_SYSROOT", builder.sysroot(compiler));
+        cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
+        cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
+        cargo.env("MIRI_PATH", miri);
+
+        builder.add_rustc_lib_path(compiler, &mut cargo);
+
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.miri.passes(ToolState::Testing),
+        );
+    }
+}
+
 
 fn path_for_cargo(builder: &Builder, compiler: Compiler) -> OsString {
     // Configure PATH to find the right rustc. NB. we have to use PATH
@@ -900,7 +996,6 @@ impl Step for CrateLibrustc {
     }
 }
 
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Crate {
     compiler: Compiler,
@@ -1076,6 +1171,75 @@ impl Step for Crate {
                       format!("{} run",
                               builder.tool_exe(Tool::RemoteTestClient).display()));
         }
+        try_run(build, &mut cargo);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Rustdoc {
+    host: Interned<String>,
+    test_kind: TestKind,
+}
+
+impl Step for Rustdoc {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/librustdoc").path("src/tools/rustdoc")
+    }
+
+    fn make_run(run: RunConfig) {
+        let builder = run.builder;
+
+        let test_kind = if builder.kind == Kind::Test {
+            TestKind::Test
+        } else if builder.kind == Kind::Bench {
+            TestKind::Bench
+        } else {
+            panic!("unexpected builder.kind in crate: {:?}", builder.kind);
+        };
+
+        builder.ensure(Rustdoc {
+            host: run.host,
+            test_kind,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let test_kind = self.test_kind;
+
+        let compiler = builder.compiler(builder.top_stage, self.host);
+        let target = compiler.host;
+
+        let mut cargo = tool::prepare_tool_cargo(builder,
+                                                 compiler,
+                                                 target,
+                                                 test_kind.subcommand(),
+                                                 "src/tools/rustdoc");
+        let _folder = build.fold_output(|| {
+            format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
+        });
+        println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
+                &compiler.host, target);
+
+        if test_kind.subcommand() == "test" && !build.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
+        cargo.arg("-p").arg("rustdoc:0.0.0");
+
+        cargo.arg("--");
+        cargo.args(&build.config.cmd.test_args());
+
+        if build.config.quiet_tests {
+            cargo.arg("--quiet");
+        }
+
+        let _time = util::timeit();
+
         try_run(build, &mut cargo);
     }
 }

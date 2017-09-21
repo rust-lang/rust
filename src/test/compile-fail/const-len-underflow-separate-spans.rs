@@ -20,5 +20,5 @@ const LEN: usize = ONE - TWO;
 
 fn main() {
     let a: [i8; LEN] = unimplemented!();
-    //~^ NOTE for array length here
+    //~^ NOTE for constant expression here
 }

@@ -20,6 +20,7 @@ use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
+use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos};
 
 use hir;
@@ -210,18 +211,6 @@ pub fn visibility_qualified(vis: &hir::Visibility, w: &str) -> String {
     })
 }
 
-fn needs_parentheses(expr: &hir::Expr) -> bool {
-    match expr.node {
-        hir::ExprAssign(..) |
-        hir::ExprBinary(..) |
-        hir::ExprClosure(..) |
-        hir::ExprAssignOp(..) |
-        hir::ExprCast(..) |
-        hir::ExprType(..) => true,
-        _ => false,
-    }
-}
-
 impl<'a> State<'a> {
     pub fn cbox(&mut self, u: usize) -> io::Result<()> {
         self.boxes.push(pp::Breaks::Consistent);
@@ -262,7 +251,7 @@ impl<'a> State<'a> {
                              indented: usize,
                              close_box: bool)
                              -> io::Result<()> {
-        self.maybe_print_comment(span.hi)?;
+        self.maybe_print_comment(span.hi())?;
         self.break_offset_if_not_bol(1, -(indented as isize))?;
         self.s.word("}")?;
         if close_box {
@@ -324,12 +313,12 @@ impl<'a> State<'a> {
         let len = elts.len();
         let mut i = 0;
         for elt in elts {
-            self.maybe_print_comment(get_span(elt).hi)?;
+            self.maybe_print_comment(get_span(elt).hi())?;
             op(self, elt)?;
             i += 1;
             if i < len {
                 self.s.word(",")?;
-                self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi))?;
+                self.maybe_print_trailing_comment(get_span(elt), Some(get_span(&elts[i]).hi()))?;
                 self.space_if_not_bol()?;
             }
         }
@@ -368,7 +357,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_type(&mut self, ty: &hir::Ty) -> io::Result<()> {
-        self.maybe_print_comment(ty.span.lo)?;
+        self.maybe_print_comment(ty.span.lo())?;
         self.ibox(0)?;
         match ty.node {
             hir::TySlice(ref ty) => {
@@ -458,7 +447,7 @@ impl<'a> State<'a> {
 
     pub fn print_foreign_item(&mut self, item: &hir::ForeignItem) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         match item.node {
             hir::ForeignItemFn(ref decl, ref arg_names, ref generics) => {
@@ -531,7 +520,7 @@ impl<'a> State<'a> {
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &hir::Item) -> io::Result<()> {
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(item.span.lo)?;
+        self.maybe_print_comment(item.span.lo())?;
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
@@ -797,7 +786,7 @@ impl<'a> State<'a> {
         self.bopen()?;
         for v in variants {
             self.space_if_not_bol()?;
-            self.maybe_print_comment(v.span.lo)?;
+            self.maybe_print_comment(v.span.lo())?;
             self.print_outer_attributes(&v.node.attrs)?;
             self.ibox(indent_unit)?;
             self.print_variant(v)?;
@@ -842,7 +831,7 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 self.popen()?;
                 self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    s.maybe_print_comment(field.span.lo)?;
+                    s.maybe_print_comment(field.span.lo())?;
                     s.print_outer_attributes(&field.attrs)?;
                     s.print_visibility(&field.vis)?;
                     s.print_type(&field.ty)
@@ -863,7 +852,7 @@ impl<'a> State<'a> {
 
             for field in struct_def.fields() {
                 self.hardbreak_if_not_bol()?;
-                self.maybe_print_comment(field.span.lo)?;
+                self.maybe_print_comment(field.span.lo())?;
                 self.print_outer_attributes(&field.attrs)?;
                 self.print_visibility(&field.vis)?;
                 self.print_name(field.name)?;
@@ -908,7 +897,7 @@ impl<'a> State<'a> {
     pub fn print_trait_item(&mut self, ti: &hir::TraitItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ti.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ti.span.lo)?;
+        self.maybe_print_comment(ti.span.lo())?;
         self.print_outer_attributes(&ti.attrs)?;
         match ti.node {
             hir::TraitItemKind::Const(ref ty, default) => {
@@ -938,7 +927,7 @@ impl<'a> State<'a> {
     pub fn print_impl_item(&mut self, ii: &hir::ImplItem) -> io::Result<()> {
         self.ann.pre(self, NodeSubItem(ii.id))?;
         self.hardbreak_if_not_bol()?;
-        self.maybe_print_comment(ii.span.lo)?;
+        self.maybe_print_comment(ii.span.lo())?;
         self.print_outer_attributes(&ii.attrs)?;
         self.print_defaultness(ii.defaultness)?;
 
@@ -962,7 +951,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
-        self.maybe_print_comment(st.span.lo)?;
+        self.maybe_print_comment(st.span.lo())?;
         match st.node {
             hir::StmtDecl(ref decl, _) => {
                 self.print_decl(&decl)?;
@@ -1017,7 +1006,7 @@ impl<'a> State<'a> {
             hir::PopUnsafeBlock(..) => self.word_space("pop_unsafe")?,
             hir::DefaultBlock => (),
         }
-        self.maybe_print_comment(blk.span.lo)?;
+        self.maybe_print_comment(blk.span.lo())?;
         self.ann.pre(self, NodeBlock(blk))?;
         self.bopen()?;
 
@@ -1030,7 +1019,7 @@ impl<'a> State<'a> {
             Some(ref expr) => {
                 self.space_if_not_bol()?;
                 self.print_expr(&expr)?;
-                self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi))?;
+                self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()))?;
             }
             _ => (),
         }
@@ -1047,7 +1036,7 @@ impl<'a> State<'a> {
                         self.cbox(indent_unit - 1)?;
                         self.ibox(0)?;
                         self.s.word(" else if ")?;
-                        self.print_expr(&i)?;
+                        self.print_expr_as_cond(&i)?;
                         self.s.space()?;
                         self.print_expr(&then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
@@ -1075,7 +1064,7 @@ impl<'a> State<'a> {
                     elseopt: Option<&hir::Expr>)
                     -> io::Result<()> {
         self.head("if")?;
-        self.print_expr(test)?;
+        self.print_expr_as_cond(test)?;
         self.s.space()?;
         self.print_expr(blk)?;
         self.print_else(elseopt)
@@ -1091,7 +1080,7 @@ impl<'a> State<'a> {
         self.print_pat(pat)?;
         self.s.space()?;
         self.word_space("=")?;
-        self.print_expr(expr)?;
+        self.print_expr_as_cond(expr)?;
         self.s.space()?;
         self.print_block(blk)?;
         self.print_else(elseopt)
@@ -1104,8 +1093,31 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
-    pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr) -> io::Result<()> {
-        let needs_par = needs_parentheses(expr);
+    pub fn print_expr_maybe_paren(&mut self, expr: &hir::Expr, prec: i8) -> io::Result<()> {
+        let needs_par = expr_precedence(expr) < prec;
+        if needs_par {
+            self.popen()?;
+        }
+        self.print_expr(expr)?;
+        if needs_par {
+            self.pclose()?;
+        }
+        Ok(())
+    }
+
+    /// Print an expr using syntax that's acceptable in a condition position, such as the `cond` in
+    /// `if cond { ... }`.
+    pub fn print_expr_as_cond(&mut self, expr: &hir::Expr) -> io::Result<()> {
+        let needs_par = match expr.node {
+            // These cases need parens due to the parse error observed in #26461: `if return {}`
+            // parses as the erroneous construct `if (return {})`, not `if (return) {}`.
+            hir::ExprClosure(..) |
+            hir::ExprRet(..) |
+            hir::ExprBreak(..) => true,
+
+            _ => contains_exterior_struct_lit(expr),
+        };
+
         if needs_par {
             self.popen()?;
         }
@@ -1182,7 +1194,14 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) -> io::Result<()> {
-        self.print_expr_maybe_paren(func)?;
+        let prec =
+            match func.node {
+                hir::ExprField(..) |
+                hir::ExprTupField(..) => parser::PREC_FORCE_PAREN,
+                _ => parser::PREC_POSTFIX,
+            };
+
+        self.print_expr_maybe_paren(func, prec)?;
         self.print_call_post(args)
     }
 
@@ -1191,7 +1210,7 @@ impl<'a> State<'a> {
                               args: &[hir::Expr])
                               -> io::Result<()> {
         let base_args = &args[1..];
-        self.print_expr(&args[0])?;
+        self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
         self.print_name(segment.name)?;
         if !segment.parameters.lifetimes.is_empty() ||
@@ -1207,15 +1226,25 @@ impl<'a> State<'a> {
                          lhs: &hir::Expr,
                          rhs: &hir::Expr)
                          -> io::Result<()> {
-        self.print_expr(lhs)?;
+        let assoc_op = bin_op_to_assoc_op(op.node);
+        let prec = assoc_op.precedence() as i8;
+        let fixity = assoc_op.fixity();
+
+        let (left_prec, right_prec) = match fixity {
+            Fixity::Left => (prec, prec + 1),
+            Fixity::Right => (prec + 1, prec),
+            Fixity::None => (prec + 1, prec + 1),
+        };
+
+        self.print_expr_maybe_paren(lhs, left_prec)?;
         self.s.space()?;
         self.word_space(op.node.as_str())?;
-        self.print_expr(rhs)
+        self.print_expr_maybe_paren(rhs, right_prec)
     }
 
     fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr) -> io::Result<()> {
         self.s.word(op.as_str())?;
-        self.print_expr_maybe_paren(expr)
+        self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
     fn print_expr_addr_of(&mut self,
@@ -1224,18 +1253,18 @@ impl<'a> State<'a> {
                           -> io::Result<()> {
         self.s.word("&")?;
         self.print_mutability(mutability)?;
-        self.print_expr_maybe_paren(expr)
+        self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
-        self.maybe_print_comment(expr.span.lo)?;
+        self.maybe_print_comment(expr.span.lo())?;
         self.print_outer_attributes(&expr.attrs)?;
         self.ibox(indent_unit)?;
         self.ann.pre(self, NodeExpr(expr))?;
         match expr.node {
             hir::ExprBox(ref expr) => {
                 self.word_space("box")?;
-                self.print_expr(expr)?;
+                self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)?;
             }
             hir::ExprArray(ref exprs) => {
                 self.print_expr_vec(exprs)?;
@@ -1268,13 +1297,15 @@ impl<'a> State<'a> {
                 self.print_literal(&lit)?;
             }
             hir::ExprCast(ref expr, ref ty) => {
-                self.print_expr(&expr)?;
+                let prec = AssocOp::As.precedence() as i8;
+                self.print_expr_maybe_paren(&expr, prec)?;
                 self.s.space()?;
                 self.word_space("as")?;
                 self.print_type(&ty)?;
             }
             hir::ExprType(ref expr, ref ty) => {
-                self.print_expr(&expr)?;
+                let prec = AssocOp::Colon.precedence() as i8;
+                self.print_expr_maybe_paren(&expr, prec)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
             }
@@ -1287,7 +1318,7 @@ impl<'a> State<'a> {
                     self.word_space(":")?;
                 }
                 self.head("while")?;
-                self.print_expr(&test)?;
+                self.print_expr_as_cond(&test)?;
                 self.s.space()?;
                 self.print_block(&blk)?;
             }
@@ -1304,7 +1335,7 @@ impl<'a> State<'a> {
                 self.cbox(indent_unit)?;
                 self.ibox(4)?;
                 self.word_nbsp("match")?;
-                self.print_expr(&expr)?;
+                self.print_expr_as_cond(&expr)?;
                 self.s.space()?;
                 self.bopen()?;
                 for arm in arms {
@@ -1335,30 +1366,32 @@ impl<'a> State<'a> {
                 self.print_block(&blk)?;
             }
             hir::ExprAssign(ref lhs, ref rhs) => {
-                self.print_expr(&lhs)?;
+                let prec = AssocOp::Assign.precedence() as i8;
+                self.print_expr_maybe_paren(&lhs, prec + 1)?;
                 self.s.space()?;
                 self.word_space("=")?;
-                self.print_expr(&rhs)?;
+                self.print_expr_maybe_paren(&rhs, prec)?;
             }
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
-                self.print_expr(&lhs)?;
+                let prec = AssocOp::Assign.precedence() as i8;
+                self.print_expr_maybe_paren(&lhs, prec + 1)?;
                 self.s.space()?;
                 self.s.word(op.node.as_str())?;
                 self.word_space("=")?;
-                self.print_expr(&rhs)?;
+                self.print_expr_maybe_paren(&rhs, prec)?;
             }
             hir::ExprField(ref expr, name) => {
-                self.print_expr(&expr)?;
+                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
                 self.print_name(name.node)?;
             }
             hir::ExprTupField(ref expr, id) => {
-                self.print_expr(&expr)?;
+                self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
                 self.print_usize(id.node)?;
             }
             hir::ExprIndex(ref expr, ref index) => {
-                self.print_expr(&expr)?;
+                self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
                 self.s.word("[")?;
                 self.print_expr(&index)?;
                 self.s.word("]")?;
@@ -1374,7 +1407,7 @@ impl<'a> State<'a> {
                     self.s.space()?;
                 }
                 if let Some(ref expr) = *opt_expr {
-                    self.print_expr(expr)?;
+                    self.print_expr_maybe_paren(expr, parser::PREC_JUMP)?;
                     self.s.space()?;
                 }
             }
@@ -1391,7 +1424,7 @@ impl<'a> State<'a> {
                 match *result {
                     Some(ref expr) => {
                         self.s.word(" ")?;
-                        self.print_expr(&expr)?;
+                        self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
                     }
                     _ => (),
                 }
@@ -1462,8 +1495,8 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             hir::ExprYield(ref expr) => {
-                self.s.word("yield")?;
-                self.print_expr(&expr)?;
+                self.word_space("yield")?;
+                self.print_expr_maybe_paren(&expr, parser::PREC_JUMP)?;
             }
         }
         self.ann.post(self, NodeExpr(expr))?;
@@ -1480,7 +1513,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_decl(&mut self, decl: &hir::Decl) -> io::Result<()> {
-        self.maybe_print_comment(decl.span.lo)?;
+        self.maybe_print_comment(decl.span.lo())?;
         match decl.node {
             hir::DeclLocal(ref loc) => {
                 self.space_if_not_bol()?;
@@ -1523,7 +1556,7 @@ impl<'a> State<'a> {
                       path: &hir::Path,
                       colons_before_params: bool)
                       -> io::Result<()> {
-        self.maybe_print_comment(path.span.lo)?;
+        self.maybe_print_comment(path.span.lo())?;
 
         for (i, segment) in path.segments.iter().enumerate() {
             if i > 0 {
@@ -1641,7 +1674,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_pat(&mut self, pat: &hir::Pat) -> io::Result<()> {
-        self.maybe_print_comment(pat.span.lo)?;
+        self.maybe_print_comment(pat.span.lo())?;
         self.ann.pre(self, NodePat(pat))?;
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
@@ -1897,7 +1930,7 @@ impl<'a> State<'a> {
         match decl.output {
             hir::Return(ref ty) => {
                 self.print_type(&ty)?;
-                self.maybe_print_comment(ty.span.lo)
+                self.maybe_print_comment(ty.span.lo())
             }
             hir::DefaultReturn(..) => unreachable!(),
         }
@@ -2074,7 +2107,7 @@ impl<'a> State<'a> {
         self.end()?;
 
         match decl.output {
-            hir::Return(ref output) => self.maybe_print_comment(output.span.lo),
+            hir::Return(ref output) => self.maybe_print_comment(output.span.lo()),
             _ => Ok(()),
         }
     }
@@ -2124,13 +2157,13 @@ impl<'a> State<'a> {
             if (*cmnt).style != comments::Trailing {
                 return Ok(());
             }
-            let span_line = cm.lookup_char_pos(span.hi);
+            let span_line = cm.lookup_char_pos(span.hi());
             let comment_line = cm.lookup_char_pos((*cmnt).pos);
             let mut next = (*cmnt).pos + BytePos(1);
             if let Some(p) = next_pos {
                 next = p;
             }
-            if span.hi < (*cmnt).pos && (*cmnt).pos < next &&
+            if span.hi() < (*cmnt).pos && (*cmnt).pos < next &&
                span_line.line == comment_line.line {
                 self.print_comment(cmnt)?;
             }
@@ -2244,5 +2277,113 @@ fn stmt_ends_with_semi(stmt: &hir::Stmt_) -> bool {
         hir::StmtSemi(..) => {
             false
         }
+    }
+}
+
+
+fn expr_precedence(expr: &hir::Expr) -> i8 {
+    use syntax::util::parser::*;
+
+    match expr.node {
+        hir::ExprClosure(..) => PREC_CLOSURE,
+
+        hir::ExprBreak(..) |
+        hir::ExprAgain(..) |
+        hir::ExprRet(..) |
+        hir::ExprYield(..) => PREC_JUMP,
+
+        // Binop-like expr kinds, handled by `AssocOp`.
+        hir::ExprBinary(op, _, _) => bin_op_to_assoc_op(op.node).precedence() as i8,
+
+        hir::ExprCast(..) => AssocOp::As.precedence() as i8,
+        hir::ExprType(..) => AssocOp::Colon.precedence() as i8,
+
+        hir::ExprAssign(..) |
+        hir::ExprAssignOp(..) => AssocOp::Assign.precedence() as i8,
+
+        // Unary, prefix
+        hir::ExprBox(..) |
+        hir::ExprAddrOf(..) |
+        hir::ExprUnary(..) => PREC_PREFIX,
+
+        // Unary, postfix
+        hir::ExprCall(..) |
+        hir::ExprMethodCall(..) |
+        hir::ExprField(..) |
+        hir::ExprTupField(..) |
+        hir::ExprIndex(..) |
+        hir::ExprInlineAsm(..) => PREC_POSTFIX,
+
+        // Never need parens
+        hir::ExprArray(..) |
+        hir::ExprRepeat(..) |
+        hir::ExprTup(..) |
+        hir::ExprLit(..) |
+        hir::ExprPath(..) |
+        hir::ExprIf(..) |
+        hir::ExprWhile(..) |
+        hir::ExprLoop(..) |
+        hir::ExprMatch(..) |
+        hir::ExprBlock(..) |
+        hir::ExprStruct(..) => PREC_PAREN,
+    }
+}
+
+fn bin_op_to_assoc_op(op: hir::BinOp_) -> AssocOp {
+    use hir::BinOp_::*;
+    match op {
+        BiAdd => AssocOp::Add,
+        BiSub => AssocOp::Subtract,
+        BiMul => AssocOp::Multiply,
+        BiDiv => AssocOp::Divide,
+        BiRem => AssocOp::Modulus,
+
+        BiAnd => AssocOp::LAnd,
+        BiOr => AssocOp::LOr,
+
+        BiBitXor => AssocOp::BitXor,
+        BiBitAnd => AssocOp::BitAnd,
+        BiBitOr => AssocOp::BitOr,
+        BiShl => AssocOp::ShiftLeft,
+        BiShr => AssocOp::ShiftRight,
+
+        BiEq => AssocOp::Equal,
+        BiLt => AssocOp::Less,
+        BiLe => AssocOp::LessEqual,
+        BiNe => AssocOp::NotEqual,
+        BiGe => AssocOp::GreaterEqual,
+        BiGt => AssocOp::Greater,
+    }
+}
+
+/// Expressions that syntactically contain an "exterior" struct literal i.e. not surrounded by any
+/// parens or other delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
+/// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
+fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
+    match value.node {
+        hir::ExprStruct(..) => true,
+
+        hir::ExprAssign(ref lhs, ref rhs) |
+        hir::ExprAssignOp(_, ref lhs, ref rhs) |
+        hir::ExprBinary(_, ref lhs, ref rhs) => {
+            // X { y: 1 } + X { y: 2 }
+            contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
+        }
+        hir::ExprUnary(_, ref x) |
+        hir::ExprCast(ref x, _) |
+        hir::ExprType(ref x, _) |
+        hir::ExprField(ref x, _) |
+        hir::ExprTupField(ref x, _) |
+        hir::ExprIndex(ref x, _) => {
+            // &X { y: 1 }, X { y: 1 }.y
+            contains_exterior_struct_lit(&x)
+        }
+
+        hir::ExprMethodCall(.., ref exprs) => {
+            // X { y: 1 }.bar(...)
+            contains_exterior_struct_lit(&exprs[0])
+        }
+
+        _ => false,
     }
 }

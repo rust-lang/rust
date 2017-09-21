@@ -31,7 +31,7 @@ fn ignored_span(sp: Span) -> Span {
             allow_internal_unsafe: false,
         }
     });
-    Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..sp }
+    sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }
 
 pub fn injected_crate_name(krate: &ast::Crate) -> Option<&'static str> {

@@ -13,7 +13,8 @@ crate-type = ["dylib"]
 static-libstdcpp = []
 
 [dependencies]
-rustc_bitflags = { path = "../librustc_bitflags" }
+bitflags = "1.0"
+rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

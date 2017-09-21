@@ -110,6 +110,19 @@ impl<'a> DiagnosticBuilder<'a> {
         // }
     }
 
+    /// Convenience function for internal use, clients should use one of the
+    /// span_* methods instead.
+    pub fn sub<S: Into<MultiSpan>>(
+        &mut self,
+        level: Level,
+        message: &str,
+        span: Option<S>,
+    ) -> &mut Self {
+        let span = span.map(|s| s.into()).unwrap_or(MultiSpan::new());
+        self.diagnostic.sub(level, message, span, None);
+        self
+    }
+
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but

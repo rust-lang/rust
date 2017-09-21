@@ -244,6 +244,7 @@ use boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
+use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
@@ -252,7 +253,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::Unsize;
-use core::mem::{self, forget, size_of_val, uninitialized};
+use core::mem::{self, align_of_val, forget, size_of_val, uninitialized};
 use core::ops::Deref;
 use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
@@ -358,7 +359,9 @@ impl<T> Rc<T> {
             Err(this)
         }
     }
+}
 
+impl<T: ?Sized> Rc<T> {
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -412,17 +415,21 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
-        // `value` field from the pointer.
+        // Align the unsized value to the end of the RcBox.
+        // Because it is ?Sized, it will always be the last field in memory.
+        let align = align_of_val(&*ptr);
+        let layout = Layout::new::<RcBox<()>>();
+        let offset = (layout.size() + layout.padding_needed_for(align)) as isize;
 
-        let ptr = (ptr as *const u8).offset(-offset_of!(RcBox<T>, value));
+        // Reverse the offset to find the original RcBox.
+        let fake_ptr = ptr as *mut RcBox<T>;
+        let rc_ptr = set_data_ptr(fake_ptr, (ptr as *mut u8).offset(-offset));
+
         Rc {
-            ptr: Shared::new_unchecked(ptr as *mut u8 as *mut _)
+            ptr: Shared::new_unchecked(rc_ptr),
         }
     }
-}
 
-impl<T: ?Sized> Rc<T> {
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
@@ -604,6 +611,46 @@ impl<T: Clone> Rc<T> {
         // reference to the inner value.
         unsafe {
             &mut this.ptr.as_mut().value
+        }
+    }
+}
+
+impl Rc<Any> {
+    #[inline]
+    #[unstable(feature = "rc_downcast", issue = "44608")]
+    /// Attempt to downcast the `Rc<Any>` to a concrete type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_downcast)]
+    /// use std::any::Any;
+    /// use std::rc::Rc;
+    ///
+    /// fn print_if_string(value: Rc<Any>) {
+    ///     if let Ok(string) = value.downcast::<String>() {
+    ///         println!("String ({}): {}", string.len(), string);
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let my_string = "Hello World".to_string();
+    ///     print_if_string(Rc::new(my_string));
+    ///     print_if_string(Rc::new(0i8));
+    /// }
+    /// ```
+    pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<Any>> {
+        if (*self).is::<T>() {
+            // avoid the pointer arithmetic in from_raw
+            unsafe {
+                let raw: *const RcBox<Any> = self.ptr.as_ptr();
+                forget(self);
+                Ok(Rc {
+                    ptr: Shared::new_unchecked(raw as *const RcBox<T> as *mut _),
+                })
+            }
+        } else {
+            Err(self)
         }
     }
 }
@@ -1482,6 +1529,28 @@ mod tests {
     }
 
     #[test]
+    fn test_into_from_raw_unsized() {
+        use std::fmt::Display;
+        use std::string::ToString;
+
+        let rc: Rc<str> = Rc::from("foo");
+
+        let ptr = Rc::into_raw(rc.clone());
+        let rc2 = unsafe { Rc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }, "foo");
+        assert_eq!(rc, rc2);
+
+        let rc: Rc<Display> = Rc::new(123);
+
+        let ptr = Rc::into_raw(rc.clone());
+        let rc2 = unsafe { Rc::from_raw(ptr) };
+
+        assert_eq!(unsafe { &*ptr }.to_string(), "123");
+        assert_eq!(rc2.to_string(), "123");
+    }
+
+    #[test]
     fn get_mut() {
         let mut x = Rc::new(3);
         *Rc::get_mut(&mut x).unwrap() = 4;
@@ -1695,6 +1764,26 @@ mod tests {
         let r: Rc<[u32]> = Rc::from(v);
 
         assert_eq!(&r[..], [1, 2, 3]);
+    }
+
+    #[test]
+    fn test_downcast() {
+        use std::any::Any;
+
+        let r1: Rc<Any> = Rc::new(i32::max_value());
+        let r2: Rc<Any> = Rc::new("abc");
+
+        assert!(r1.clone().downcast::<u32>().is_err());
+
+        let r1i32 = r1.downcast::<i32>();
+        assert!(r1i32.is_ok());
+        assert_eq!(r1i32.unwrap(), Rc::new(i32::max_value()));
+
+        assert!(r2.clone().downcast::<i32>().is_err());
+
+        let r2str = r2.downcast::<&'static str>();
+        assert!(r2str.is_ok());
+        assert_eq!(r2str.unwrap(), Rc::new("abc"));
     }
 }
 

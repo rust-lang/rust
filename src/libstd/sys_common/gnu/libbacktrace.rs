@@ -30,6 +30,12 @@ where F: FnMut(&[u8], libc::c_int) -> io::Result<()>
     let ret;
     let fileline_count = {
         let state = unsafe { init_state() };
+        if state.is_null() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "failed to allocate libbacktrace state")
+            )
+        }
         let mut fileline_win: &mut [FileLine] = &mut fileline_buf;
         let fileline_addr = &mut fileline_win as *mut &mut [FileLine];
         ret = unsafe {
@@ -62,23 +68,25 @@ pub fn resolve_symname<F>(frame: Frame,
     let symname = {
         let state = unsafe { init_state() };
         if state.is_null() {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "failed to allocate libbacktrace state")
+            )
+        }
+        let mut data = ptr::null();
+        let data_addr = &mut data as *mut *const libc::c_char;
+        let ret = unsafe {
+            backtrace_syminfo(state,
+                              frame.symbol_addr as libc::uintptr_t,
+                              syminfo_cb,
+                              error_cb,
+                              data_addr as *mut libc::c_void)
+        };
+        if ret == 0 || data.is_null() {
             None
         } else {
-            let mut data = ptr::null();
-            let data_addr = &mut data as *mut *const libc::c_char;
-            let ret = unsafe {
-                backtrace_syminfo(state,
-                                  frame.symbol_addr as libc::uintptr_t,
-                                  syminfo_cb,
-                                  error_cb,
-                                  data_addr as *mut libc::c_void)
-            };
-            if ret == 0 || data.is_null() {
-                None
-            } else {
-                unsafe {
-                    CStr::from_ptr(data).to_str().ok()
-                }
+            unsafe {
+                CStr::from_ptr(data).to_str().ok()
             }
         }
     };

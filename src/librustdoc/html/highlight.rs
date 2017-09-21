@@ -34,12 +34,18 @@ use syntax_pos::Span;
 
 /// Highlights `src`, returning the HTML output.
 pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>,
-                                extension: Option<&str>) -> String {
+                                extension: Option<&str>,
+                                tooltip: Option<(&str, &str)>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
+    if let Some((tooltip, class)) = tooltip {
+        write!(out, "<div class='information'><div class='tooltip {}'>⚠<span \
+                     class='tooltiptext'>{}</span></div></div>",
+               class, tooltip).unwrap();
+    }
     write_header(class, id, &mut out).unwrap();
 
     let mut classifier = Classifier::new(lexer::StringReader::new(&sess, fm), sess.codemap());
@@ -172,6 +178,21 @@ impl<'a> Classifier<'a> {
         }
     }
 
+    /// Gets the next token out of the lexer, emitting fatal errors if lexing fails.
+    fn try_next_token(&mut self) -> io::Result<TokenAndSpan> {
+        match self.lexer.try_next_token() {
+            Ok(tas) => Ok(tas),
+            Err(_) => {
+                self.lexer.emit_fatal_errors();
+                self.lexer.sess.span_diagnostic
+                    .struct_warn("Backing out of syntax highlighting")
+                    .note("You probably did not intend to render this as a rust code-block")
+                    .emit();
+                Err(io::Error::new(io::ErrorKind::Other, ""))
+            }
+        }
+    }
+
     /// Exhausts the `lexer` writing the output into `out`.
     ///
     /// The general structure for this method is to iterate over each token,
@@ -183,18 +204,7 @@ impl<'a> Classifier<'a> {
                                    out: &mut W)
                                    -> io::Result<()> {
         loop {
-            let next = match self.lexer.try_next_token() {
-                Ok(tas) => tas,
-                Err(_) => {
-                    self.lexer.emit_fatal_errors();
-                    self.lexer.sess.span_diagnostic
-                        .struct_warn("Backing out of syntax highlighting")
-                        .note("You probably did not intend to render this as a rust code-block")
-                        .emit();
-                    return Err(io::Error::new(io::ErrorKind::Other, ""));
-                }
-            };
-
+            let next = self.try_next_token()?;
             if next.tok == token::Eof {
                 break;
             }
@@ -255,13 +265,37 @@ impl<'a> Classifier<'a> {
                 }
             }
 
-            // This is the start of an attribute. We're going to want to
+            // This might be the start of an attribute. We're going to want to
             // continue highlighting it as an attribute until the ending ']' is
             // seen, so skip out early. Down below we terminate the attribute
             // span when we see the ']'.
             token::Pound => {
-                self.in_attribute = true;
-                out.enter_span(Class::Attribute)?;
+                // We can't be sure that our # begins an attribute (it could
+                // just be appearing in a macro) until we read either `#![` or
+                // `#[` from the input stream.
+                //
+                // We don't want to start highlighting as an attribute until
+                // we're confident there is going to be a ] coming up, as
+                // otherwise # tokens in macros highlight the rest of the input
+                // as an attribute.
+
+                // Case 1: #![inner_attribute]
+                if self.lexer.peek().tok == token::Not {
+                    self.try_next_token()?; // NOTE: consumes `!` token!
+                    if self.lexer.peek().tok == token::OpenDelim(token::Bracket) {
+                        self.in_attribute = true;
+                        out.enter_span(Class::Attribute)?;
+                    }
+                    out.string("#", Class::None, None)?;
+                    out.string("!", Class::None, None)?;
+                    return Ok(());
+                }
+
+                // Case 2: #[outer_attribute]
+                if self.lexer.peek().tok == token::OpenDelim(token::Bracket) {
+                    self.in_attribute = true;
+                    out.enter_span(Class::Attribute)?;
+                }
                 out.string("#", Class::None, None)?;
                 return Ok(());
             }

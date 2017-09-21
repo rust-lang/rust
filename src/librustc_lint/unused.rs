@@ -22,6 +22,7 @@ use syntax::attr;
 use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
 use syntax::symbol::keywords;
 use syntax::ptr::P;
+use syntax::util::parser;
 use syntax_pos::Span;
 
 use rustc_back::slice;
@@ -84,20 +85,12 @@ impl LintPass for UnusedMut {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedMut {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        if let hir::ExprMatch(_, ref arms, _) = e.node {
-            for a in arms {
-                self.check_unused_mut_pat(cx, &a.pats)
-            }
-        }
+    fn check_arm(&mut self, cx: &LateContext, a: &hir::Arm) {
+        self.check_unused_mut_pat(cx, &a.pats)
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
-        if let hir::StmtDecl(ref d, _) = s.node {
-            if let hir::DeclLocal(ref l) = d.node {
-                self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
-            }
-        }
+    fn check_local(&mut self, cx: &LateContext, l: &hir::Local) {
+        self.check_unused_mut_pat(cx, slice::ref_slice(&l.pat));
     }
 
     fn check_fn(&mut self,
@@ -200,60 +193,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
             }
             false
-        }
-    }
-}
-
-declare_lint! {
-    pub UNUSED_UNSAFE,
-    Warn,
-    "unnecessary use of an `unsafe` block"
-}
-
-#[derive(Copy, Clone)]
-pub struct UnusedUnsafe;
-
-impl LintPass for UnusedUnsafe {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_UNSAFE)
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedUnsafe {
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
-        /// Return the NodeId for an enclosing scope that is also `unsafe`
-        fn is_enclosed(cx: &LateContext, id: ast::NodeId) -> Option<(String, ast::NodeId)> {
-            let parent_id = cx.tcx.hir.get_parent_node(id);
-            if parent_id != id {
-                if cx.tcx.used_unsafe.borrow().contains(&parent_id) {
-                    Some(("block".to_string(), parent_id))
-                } else if let Some(hir::map::NodeItem(&hir::Item {
-                    node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
-                    ..
-                })) = cx.tcx.hir.find(parent_id) {
-                    Some(("fn".to_string(), parent_id))
-                } else {
-                    is_enclosed(cx, parent_id)
-                }
-            } else {
-                None
-            }
-        }
-        if let hir::ExprBlock(ref blk) = e.node {
-            // Don't warn about generated blocks, that'll just pollute the output.
-            if blk.rules == hir::UnsafeBlock(hir::UserProvided) &&
-               !cx.tcx.used_unsafe.borrow().contains(&blk.id) {
-
-                let mut db = cx.struct_span_lint(UNUSED_UNSAFE, blk.span,
-                                                 "unnecessary `unsafe` block");
-
-                db.span_label(blk.span, "unnecessary `unsafe` block");
-                if let Some((kind, id)) = is_enclosed(cx, blk.id) {
-                    db.span_note(cx.tcx.hir.span(id),
-                                 &format!("because it's nested under this `unsafe` {}", kind));
-                }
-                db.emit();
-            }
         }
     }
 }
@@ -367,45 +306,12 @@ impl UnusedParens {
                                 msg: &str,
                                 struct_lit_needs_parens: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&inner);
+            let necessary = struct_lit_needs_parens &&
+                            parser::contains_exterior_struct_lit(&inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS,
                              value.span,
                              &format!("unnecessary parentheses around {}", msg))
-            }
-        }
-
-        /// Expressions that syntactically contain an "exterior" struct
-        /// literal i.e. not surrounded by any parens or other
-        /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
-        /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {
-        /// y: 1 }) == foo` does not.
-        fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
-            match value.node {
-                ast::ExprKind::Struct(..) => true,
-
-                ast::ExprKind::Assign(ref lhs, ref rhs) |
-                ast::ExprKind::AssignOp(_, ref lhs, ref rhs) |
-                ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
-                    // X { y: 1 } + X { y: 2 }
-                    contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
-                }
-                ast::ExprKind::Unary(_, ref x) |
-                ast::ExprKind::Cast(ref x, _) |
-                ast::ExprKind::Type(ref x, _) |
-                ast::ExprKind::Field(ref x, _) |
-                ast::ExprKind::TupField(ref x, _) |
-                ast::ExprKind::Index(ref x, _) => {
-                    // &X { y: 1 }, X { y: 1 }.y
-                    contains_exterior_struct_lit(&x)
-                }
-
-                ast::ExprKind::MethodCall(.., ref exprs) => {
-                    // X { y: 1 }.bar(...)
-                    contains_exterior_struct_lit(&exprs[0])
-                }
-
-                _ => false,
             }
         }
     }

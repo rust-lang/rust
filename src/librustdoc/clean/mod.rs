@@ -27,19 +27,22 @@ use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::{self, DUMMY_SP, Pos};
 
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::traits::Reveal;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, AdtKind};
+use rustc::ty::{self, Ty, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
 
 use rustc::hir;
 
+use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -117,6 +120,7 @@ pub struct Crate {
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: FxHashMap<DefId, Trait>,
+    pub masked_crates: FxHashSet<CrateNum>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -125,13 +129,13 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         {
             let mut r = cx.renderinfo.borrow_mut();
-            r.deref_trait_did = cx.tcx.lang_items.deref_trait();
-            r.deref_mut_trait_did = cx.tcx.lang_items.deref_mut_trait();
-            r.owned_box_did = cx.tcx.lang_items.owned_box();
+            r.deref_trait_did = cx.tcx.lang_items().deref_trait();
+            r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+            r.owned_box_did = cx.tcx.lang_items().owned_box();
         }
 
         let mut externs = Vec::new();
-        for cnum in cx.sess().cstore.crates() {
+        for &cnum in cx.tcx.crates().iter() {
             externs.push((cnum, cnum.clean(cx)));
             // Analyze doc-reachability for extern items
             LibEmbargoVisitor::new(cx).visit_lib(cnum);
@@ -141,6 +145,18 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
         let mut module = self.module.clean(cx);
+        let mut masked_crates = FxHashSet();
+
+        match module.inner {
+            ModuleItem(ref module) => {
+                for it in &module.items {
+                    if it.is_extern_crate() && it.attrs.has_doc_masked() {
+                        masked_crates.insert(it.def_id.krate);
+                    }
+                }
+            }
+            _ => unreachable!(),
+        }
 
         let ExternalCrate { name, src, primitives, .. } = LOCAL_CRATE.clean(cx);
         {
@@ -173,6 +189,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             primitives,
             access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
             external_traits: mem::replace(&mut external_traits, Default::default()),
+            masked_crates,
         }
     }
 }
@@ -244,7 +261,7 @@ impl Clean<ExternalCrate> for CrateNum {
                 }
             }).collect()
         } else {
-            cx.tcx.sess.cstore.item_children(root, cx.tcx.sess).iter().map(|item| item.def)
+            cx.tcx.item_children(root).iter().map(|item| item.def)
               .filter_map(as_primitive).collect()
         };
 
@@ -325,6 +342,9 @@ impl Item {
     }
     pub fn is_import(&self) -> bool {
         self.type_() == ItemType::Import
+    }
+    pub fn is_extern_crate(&self) -> bool {
+        self.type_() == ItemType::ExternCrate
     }
 
     pub fn is_stripped(&self) -> bool {
@@ -457,8 +477,8 @@ impl Clean<Item> for doctree::Module {
         // the outer `mod` item for the source code.
         let whence = {
             let cm = cx.sess().codemap();
-            let outer = cm.lookup_char_pos(self.where_outer.lo);
-            let inner = cm.lookup_char_pos(self.where_inner.lo);
+            let outer = cm.lookup_char_pos(self.where_outer.lo());
+            let inner = cm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
                 // mod foo { ... }
                 self.where_outer
@@ -571,6 +591,20 @@ impl Attributes {
         None
     }
 
+    pub fn has_doc_masked(&self) -> bool {
+        for attr in &self.other_attrs {
+            if !attr.check_name("doc") { continue; }
+
+            if let Some(items) = attr.meta_item_list() {
+                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name("masked")) {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
@@ -672,7 +706,7 @@ impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+        let path = external_path(cx, &cx.tcx.item_name(did),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
@@ -689,7 +723,7 @@ impl TyParamBound {
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
         if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
-            if trait_.def_id() == cx.tcx.lang_items.sized_trait() {
+            if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
                 return true;
             }
         }
@@ -713,7 +747,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<DefId>, has_self: boo
 
     match trait_did {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
-        Some(did) if cx.tcx.lang_items.fn_trait_kind(did).is_some() => {
+        Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
                 ty::TyTuple(ref tys, _) => tys.iter().map(|t| t.clean(cx)).collect(),
@@ -763,7 +797,7 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
 impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(self.def_id).as_str(),
+        let path = external_path(cx, &cx.tcx.item_name(self.def_id),
                                  Some(self.def_id), true, vec![], self.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", self.substs);
@@ -830,7 +864,8 @@ impl Lifetime {
 
 impl Clean<Lifetime> for hir::Lifetime {
     fn clean(&self, cx: &DocContext) -> Lifetime {
-        let def = cx.tcx.named_region_map.defs.get(&self.id).cloned();
+        let hir_id = cx.tcx.hir.node_to_hir_id(self.id);
+        let def = cx.tcx.named_region(hir_id);
         match def {
             Some(rl::Region::EarlyBound(_, node_id)) |
             Some(rl::Region::LateBound(_, node_id)) |
@@ -933,6 +968,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
             Predicate::ClosureKind(..) => panic!("not user writable"),
+            Predicate::ConstEvaluatable(..) => panic!("not user writable"),
         }
     }
 }
@@ -973,7 +1009,7 @@ impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Region<'tcx>, ty:
     }
 }
 
-impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<ty::Ty<'tcx>, ty::Region<'tcx>> {
+impl<'tcx> Clean<WherePredicate> for ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
         let ty::OutlivesPredicate(ref ty, ref lt) = *self;
 
@@ -1554,7 +1590,7 @@ pub enum Type {
     BareFunction(Box<BareFunctionDecl>),
     Tuple(Vec<Type>),
     Slice(Box<Type>),
-    Array(Box<Type>, usize),
+    Array(Box<Type>, String),
     Never,
     Unique(Box<Type>),
     RawPointer(Mutability, Box<Type>),
@@ -1651,6 +1687,16 @@ impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
+            Primitive(p) => ::html::render::cache().primitive_locations.get(&p).cloned(),
+            BorrowedRef { type_: box Generic(..), .. } =>
+                Primitive(PrimitiveType::Reference).def_id(),
+            BorrowedRef { ref type_, .. } => type_.def_id(),
+            Tuple(..) => Primitive(PrimitiveType::Tuple).def_id(),
+            BareFunction(..) => Primitive(PrimitiveType::Fn).def_id(),
+            Slice(..) => Primitive(PrimitiveType::Slice).def_id(),
+            Array(..) => Primitive(PrimitiveType::Array).def_id(),
+            RawPointer(..) => Primitive(PrimitiveType::RawPointer).def_id(),
+            QPath { ref self_type, .. } => self_type.def_id(),
             _ => None,
         }
     }
@@ -1771,9 +1817,22 @@ impl Clean<Type> for hir::Ty {
                              type_: box m.ty.clean(cx)}
             }
             TySlice(ref ty) => Slice(box ty.clean(cx)),
-            TyArray(ref ty, length) => {
-                use rustc::middle::const_val::eval_length;
-                let n = eval_length(cx.tcx, length, "array length").unwrap();
+            TyArray(ref ty, n) => {
+                let def_id = cx.tcx.hir.body_owner_def_id(n);
+                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let substs = Substs::identity_for_item(cx.tcx, def_id);
+                let n = cx.tcx.const_eval(param_env.and((def_id, substs))).unwrap();
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
+                        print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
+                    } else {
+                        inline::print_inlined_const(cx, def_id)
+                    }
+                } else {
+                    format!("{:?}", n)
+                };
                 Array(box ty.clean(cx), n)
             },
             TyTup(ref tys) => Tuple(tys.clean(cx)),
@@ -1807,7 +1866,8 @@ impl Clean<Type> for hir::Ty {
                     for (i, lt_param) in generics.lifetimes.iter().enumerate() {
                         if let Some(lt) = provided_params.lifetimes.get(i).cloned() {
                             if !lt.is_elided() {
-                                lt_substs.insert(lt_param.lifetime.id, lt.clean(cx));
+                                let lt_def_id = cx.tcx.hir.local_def_id(lt_param.lifetime.id);
+                                lt_substs.insert(lt_def_id, lt.clean(cx));
                             }
                         }
                     }
@@ -1873,7 +1933,7 @@ impl Clean<Type> for hir::Ty {
     }
 }
 
-impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
+impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         match self.sty {
             ty::TyNever => Never,
@@ -1884,7 +1944,20 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyFloat(float_ty) => Primitive(float_ty.into()),
             ty::TyStr => Primitive(PrimitiveType::Str),
             ty::TySlice(ty) => Slice(box ty.clean(cx)),
-            ty::TyArray(ty, n) => Array(box ty.clean(cx), n),
+            ty::TyArray(ty, n) => {
+                let n = if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
+                    n.to_string()
+                } else if let ConstVal::Unevaluated(def_id, _) = n.val {
+                    if let Some(node_id) = cx.tcx.hir.as_local_node_id(def_id) {
+                        print_const_expr(cx, cx.tcx.hir.body_owned_by(node_id))
+                    } else {
+                        inline::print_inlined_const(cx, def_id)
+                    }
+                } else {
+                    format!("{:?}", n)
+                };
+                Array(box ty.clean(cx), n)
+            }
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
             ty::TyRef(r, mt) => BorrowedRef {
                 lifetime: r.clean(cx),
@@ -1914,7 +1987,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                let path = external_path(cx, &cx.tcx.item_name(did),
                                          None, false, vec![], substs);
                 ResolvedPath {
                     path,
@@ -1932,7 +2005,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     reg.clean(cx).map(|b| typarams.push(RegionBound(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
-                        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                        let path = external_path(cx, &cx.tcx.item_name(did),
                             Some(did), false, vec![], empty);
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
                         let bound = TraitBound(PolyTrait {
@@ -1955,7 +2028,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
+                    let path = external_path(cx, &cx.tcx.item_name(did), Some(did),
                         false, bindings, principal.0.substs);
                     ResolvedPath {
                         path,
@@ -2251,8 +2324,8 @@ impl Clean<Span> for syntax_pos::Span {
 
         let cm = cx.sess().codemap();
         let filename = cm.span_to_filename(*self);
-        let lo = cm.lookup_char_pos(self.lo);
-        let hi = cm.lookup_char_pos(self.hi);
+        let lo = cm.lookup_char_pos(self.lo());
+        let hi = cm.lookup_char_pos(self.hi());
         Span {
             filename: filename.to_string(),
             loline: lo.line,
@@ -2525,7 +2598,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if trait_.def_id() == cx.tcx.lang_items.deref_trait() {
+        if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
             build_deref_target_impls(cx, &items, &mut ret);
         }
 
@@ -2581,27 +2654,27 @@ fn build_deref_target_impls(cx: &DocContext,
             }
         };
         let did = match primitive {
-            Isize => tcx.lang_items.isize_impl(),
-            I8 => tcx.lang_items.i8_impl(),
-            I16 => tcx.lang_items.i16_impl(),
-            I32 => tcx.lang_items.i32_impl(),
-            I64 => tcx.lang_items.i64_impl(),
-            I128 => tcx.lang_items.i128_impl(),
-            Usize => tcx.lang_items.usize_impl(),
-            U8 => tcx.lang_items.u8_impl(),
-            U16 => tcx.lang_items.u16_impl(),
-            U32 => tcx.lang_items.u32_impl(),
-            U64 => tcx.lang_items.u64_impl(),
-            U128 => tcx.lang_items.u128_impl(),
-            F32 => tcx.lang_items.f32_impl(),
-            F64 => tcx.lang_items.f64_impl(),
-            Char => tcx.lang_items.char_impl(),
+            Isize => tcx.lang_items().isize_impl(),
+            I8 => tcx.lang_items().i8_impl(),
+            I16 => tcx.lang_items().i16_impl(),
+            I32 => tcx.lang_items().i32_impl(),
+            I64 => tcx.lang_items().i64_impl(),
+            I128 => tcx.lang_items().i128_impl(),
+            Usize => tcx.lang_items().usize_impl(),
+            U8 => tcx.lang_items().u8_impl(),
+            U16 => tcx.lang_items().u16_impl(),
+            U32 => tcx.lang_items().u32_impl(),
+            U64 => tcx.lang_items().u64_impl(),
+            U128 => tcx.lang_items().u128_impl(),
+            F32 => tcx.lang_items().f32_impl(),
+            F64 => tcx.lang_items().f64_impl(),
+            Char => tcx.lang_items().char_impl(),
             Bool => None,
-            Str => tcx.lang_items.str_impl(),
-            Slice => tcx.lang_items.slice_impl(),
-            Array => tcx.lang_items.slice_impl(),
+            Str => tcx.lang_items().str_impl(),
+            Slice => tcx.lang_items().slice_impl(),
+            Array => tcx.lang_items().slice_impl(),
             Tuple => None,
-            RawPointer => tcx.lang_items.const_ptr_impl(),
+            RawPointer => tcx.lang_items().const_ptr_impl(),
             Reference => None,
             Fn => None,
         };

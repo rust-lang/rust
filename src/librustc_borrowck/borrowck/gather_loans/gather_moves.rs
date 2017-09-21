@@ -27,7 +27,7 @@ use rustc::hir::*;
 use rustc::hir::map::Node::*;
 
 struct GatherMoveInfo<'tcx> {
-    id: ast::NodeId,
+    id: hir::ItemLocalId,
     kind: MoveKind,
     cmt: mc::cmt<'tcx>,
     span_path_opt: Option<MovePlace<'tcx>>
@@ -79,13 +79,14 @@ pub fn gather_decl<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              var_id: ast::NodeId,
                              var_ty: Ty<'tcx>) {
     let loan_path = Rc::new(LoanPath::new(LpVar(var_id), var_ty));
-    move_data.add_move(bccx.tcx, loan_path, var_id, Declared);
+    let hir_id = bccx.tcx.hir.node_to_hir_id(var_id);
+    move_data.add_move(bccx.tcx, loan_path, hir_id.local_id, Declared);
 }
 
 pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_data: &MoveData<'tcx>,
                                        move_error_collector: &mut MoveErrorCollector<'tcx>,
-                                       move_expr_id: ast::NodeId,
+                                       move_expr_id: hir::ItemLocalId,
                                        cmt: mc::cmt<'tcx>,
                                        move_reason: euv::MoveReason) {
     let kind = match move_reason {
@@ -118,7 +119,7 @@ pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         _ => None,
     };
     let move_info = GatherMoveInfo {
-        id: move_pat.id,
+        id: move_pat.hir_id.local_id,
         kind: MovePat,
         cmt,
         span_path_opt: pat_span_path_opt,
@@ -135,7 +136,7 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                          move_data: &MoveData<'tcx>,
                          move_error_collector: &mut MoveErrorCollector<'tcx>,
                          move_info: GatherMoveInfo<'tcx>) {
-    debug!("gather_move(move_id={}, cmt={:?})",
+    debug!("gather_move(move_id={:?}, cmt={:?})",
            move_info.id, move_info.cmt);
 
     let potentially_illegal_move =
@@ -161,10 +162,10 @@ fn gather_move<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
 pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                    move_data: &MoveData<'tcx>,
-                                   assignment_id: ast::NodeId,
+                                   assignment_id: hir::ItemLocalId,
                                    assignment_span: Span,
                                    assignee_loan_path: Rc<LoanPath<'tcx>>,
-                                   assignee_id: ast::NodeId,
+                                   assignee_id: hir::ItemLocalId,
                                    mode: euv::MutateMode) {
     move_data.add_assignment(bccx.tcx,
                              assignee_loan_path,

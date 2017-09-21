@@ -10,16 +10,16 @@
 
 //! # Standalone Tests for the Inference Module
 
+use std::path::PathBuf;
+use std::sync::mpsc;
+
 use driver;
-use rustc::dep_graph::DepGraph;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans;
-use rustc::middle::lang_items;
 use rustc::middle::free_region::FreeRegionMap;
-use rustc::middle::region::{CodeExtent, RegionMaps};
+use rustc::middle::region;
 use rustc::middle::resolve_lifetime;
-use rustc::middle::stability;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::traits::{ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -29,6 +29,7 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::mir::transform::Passes;
 use rustc::session::{self, config};
+use rustc::session::config::{OutputFilenames, OutputTypes};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -45,12 +46,12 @@ use rustc::hir;
 
 struct Env<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'gcx, 'tcx>,
-    region_maps: &'a mut RegionMaps,
+    region_scope_tree: &'a mut region::ScopeTree,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 struct RH<'a> {
-    id: ast::NodeId,
+    id: hir::ItemLocalId,
     sub: &'a [RH<'a>],
 }
 
@@ -104,15 +105,11 @@ fn test_env<F>(source_string: &str,
     options.unstable_features = UnstableFeatures::Allow;
     let diagnostic_handler = errors::Handler::with_emitter(true, false, emitter);
 
-    let dep_graph = DepGraph::new(false);
-    let _ignore = dep_graph.in_ignore();
-    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
     let sess = session::build_session_(options,
-                                       &dep_graph,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())),
-                                       cstore.clone());
+                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
@@ -133,17 +130,23 @@ fn test_env<F>(source_string: &str,
                                              |_| Ok(()))
             .expect("phase 2 aborted")
     };
-    let _ignore = dep_graph.in_ignore();
 
     let arena = DroplessArena::new();
     let arenas = ty::GlobalArenas::new();
-    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
+    let hir_map = hir_map::map_crate(&mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(&sess, &hir_map);
-    let named_region_map = resolve_lifetime::krate(&sess, &hir_map);
-    let index = stability::Index::new(&sess);
+    let named_region_map = resolve_lifetime::krate(&sess, &*cstore, &hir_map);
+    let (tx, _rx) = mpsc::channel();
+    let outputs = OutputFilenames {
+        out_directory: PathBuf::new(),
+        out_filestem: String::new(),
+        single_output_file: None,
+        extra: String::new(),
+        outputs: OutputTypes::new(&[]),
+    };
     TyCtxt::create_and_enter(&sess,
+                             &*cstore,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              Rc::new(Passes::new()),
@@ -152,20 +155,20 @@ fn test_env<F>(source_string: &str,
                              resolutions,
                              named_region_map.unwrap(),
                              hir_map,
-                             lang_items,
-                             index,
                              "test_crate",
+                             tx,
+                             &outputs,
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
-            let mut region_maps = RegionMaps::new();
+            let mut region_scope_tree = region::ScopeTree::default();
             body(Env {
                 infcx: &infcx,
-                region_maps: &mut region_maps,
+                region_scope_tree: &mut region_scope_tree,
                 param_env: ty::ParamEnv::empty(Reveal::UserFacing),
             });
             let free_regions = FreeRegionMap::new();
             let def_id = tcx.hir.local_def_id(ast::CRATE_NODE_ID);
-            infcx.resolve_regions_and_report_errors(def_id, &region_maps, &free_regions);
+            infcx.resolve_regions_and_report_errors(def_id, &region_scope_tree, &free_regions);
             assert_eq!(tcx.sess.err_count(), expected_err_count);
         });
     });
@@ -176,9 +179,9 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: CodeExtent) {
-        let me = CodeExtent::Misc(rh.id);
-        self.region_maps.record_code_extent(me, Some(parent));
+    pub fn create_region_hierarchy(&mut self, rh: &RH, parent: region::Scope) {
+        let me = region::Scope::Node(rh.id);
+        self.region_scope_tree.record_scope_parent(me, Some(parent));
         for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh, me);
         }
@@ -188,21 +191,19 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
 
-        let node = ast::NodeId::from_u32;
-        let dscope = CodeExtent::DestructionScope(node(1));
-        self.region_maps.record_code_extent(dscope, None);
+        let dscope = region::Scope::Destruction(hir::ItemLocalId(1));
+        self.region_scope_tree.record_scope_parent(dscope, None);
         self.create_region_hierarchy(&RH {
-                                         id: node(1),
-                                         sub: &[RH {
-                                                    id: node(10),
-                                                    sub: &[],
-                                                },
-                                                RH {
-                                                    id: node(11),
-                                                    sub: &[],
-                                                }],
-                                     },
-                                     dscope);
+            id: hir::ItemLocalId(1),
+            sub: &[RH {
+                id: hir::ItemLocalId(10),
+                sub: &[],
+            },
+            RH {
+                id: hir::ItemLocalId(11),
+                sub: &[],
+            }],
+        }, dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -335,7 +336,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: u32) -> Ty<'tcx> {
-        let r = ty::ReScope(CodeExtent::Misc(ast::NodeId::from_u32(id)));
+        let r = ty::ReScope(region::Scope::Node(hir::ItemLocalId(id)));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
@@ -809,13 +810,13 @@ fn walk_ty() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
-                   [tup2_ty, tup1_ty, int_ty, uint_ty, int_ty, uint_ty, tup1_ty, int_ty,
-                    uint_ty, int_ty, uint_ty, uint_ty]);
+                   [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
+                    usize_ty, int_ty, usize_ty, usize_ty]);
     })
 }
 
@@ -824,20 +825,20 @@ fn walk_ty_skip_subtree() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
-        let uint_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, uint_ty, int_ty, uint_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, uint_ty], false);
+        let usize_ty = tcx.types.usize;
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.
         let mut expected = vec![(tup2_ty, false),
                                 (tup1_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (int_ty, false),
-                                (uint_ty, false),
+                                (usize_ty, false),
                                 (tup1_ty, true), // skip the isize/usize/isize/usize
-                                (uint_ty, false)];
+                                (usize_ty, false)];
         expected.reverse();
 
         let mut walker = tup2_ty.walk();

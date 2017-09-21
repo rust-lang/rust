@@ -21,7 +21,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
@@ -31,9 +30,15 @@
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
 
+#![cfg_attr(stage0, feature(const_fn))]
+#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
+#![cfg_attr(not(stage0), feature(const_once_new))]
+
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
+#[macro_use]
+extern crate bitflags;
 extern crate flate2;
 extern crate libc;
 extern crate owning_ref;
@@ -45,9 +50,6 @@ extern crate rustc_incremental;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
-#[macro_use]
-#[no_link]
-extern crate rustc_bitflags;
 extern crate rustc_demangle;
 extern crate jobserver;
 extern crate num_cpus;
@@ -61,13 +63,22 @@ extern crate serialize;
 extern crate gcc; // Used to locate MSVC, not gcc :)
 
 pub use base::trans_crate;
-pub use back::symbol_names::provide;
 
 pub use metadata::LlvmMetadataLoader;
 pub use llvm_util::{init, target_features, print_version, print_passes, print, enable_llvm_debug};
 
+use std::rc::Rc;
+
+use rustc::hir::def_id::CrateNum;
+use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+use rustc::ty::maps::Providers;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
+
+mod diagnostics;
+
 pub mod back {
     mod archive;
+    mod command;
     pub(crate) mod linker;
     pub mod link;
     mod lto;
@@ -76,8 +87,6 @@ pub mod back {
     pub mod write;
     mod rpath;
 }
-
-mod diagnostics;
 
 mod abi;
 mod adt;
@@ -216,7 +225,36 @@ pub struct CrateTranslation {
     pub link: rustc::middle::cstore::LinkMeta,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
-    linker_info: back::linker::LinkerInfo
+    linker_info: back::linker::LinkerInfo,
+    crate_info: CrateInfo,
+}
+
+// Misc info we load from metadata to persist beyond the tcx
+pub struct CrateInfo {
+    panic_runtime: Option<CrateNum>,
+    compiler_builtins: Option<CrateNum>,
+    profiler_runtime: Option<CrateNum>,
+    sanitizer_runtime: Option<CrateNum>,
+    is_no_builtins: FxHashSet<CrateNum>,
+    native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    crate_name: FxHashMap<CrateNum, String>,
+    used_libraries: Rc<Vec<NativeLibrary>>,
+    link_args: Rc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Rc<CrateSource>>,
+    used_crates_static: Vec<(CrateNum, LibSource)>,
+    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
+
+pub fn provide_local(providers: &mut Providers) {
+    back::symbol_names::provide(providers);
+    back::symbol_export::provide_local(providers);
+    base::provide_local(providers);
+}
+
+pub fn provide_extern(providers: &mut Providers) {
+    back::symbol_names::provide(providers);
+    back::symbol_export::provide_extern(providers);
+    base::provide_extern(providers);
+}

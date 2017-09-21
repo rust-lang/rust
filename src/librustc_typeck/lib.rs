@@ -84,7 +84,6 @@ This API is completely unstable and subject to change.
 extern crate syntax_pos;
 
 extern crate arena;
-extern crate fmt_macros;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_back;

@@ -38,6 +38,7 @@ o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-opt
 o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
+o("test-miri", "rust.test-miri", "run miri's test suite")
 o("debuginfo-tests", "rust.debuginfo-tests", "build tests with debugger metadata")
 o("quiet-tests", "rust.quiet-tests", "enable quieter output when running tests")
 o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
@@ -247,11 +248,17 @@ def set(key, value):
               arr = arr[part]
 
 for key in known_args:
-    # The `set` option is special and an be passed a bunch of times
+    # The `set` option is special and can be passed a bunch of times
     if key == 'set':
         for option, value in known_args[key]:
             keyval = value.split('=', 1)
-            set(keyval[0], True if len(keyval) == 1 else keyval[1])
+            if len(keyval) == 1 or keyval[1] == "true":
+                value = True
+            elif keyval[1] == "false":
+                value = False
+            else:
+                value = keyval[1]
+            set(keyval[0], value)
         continue
 
     # Ensure each option is only passed once

@@ -10,8 +10,10 @@
 
 // Tests the default for the unused_features lint
 
-#![deny(warnings)]
+// FIXME(#44232) we should warn that this isn't used.
+#![feature(this_is_not_a_feature)]
 
-#![feature(this_is_not_a_feature)] //~ ERROR: unused or unknown feature
+#![feature(rustc_attrs)]
 
-fn main() { }
+#[rustc_error]
+fn main() { } //~ ERROR: compilation successful

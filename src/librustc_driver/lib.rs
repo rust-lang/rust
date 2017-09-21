@@ -64,7 +64,6 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
@@ -72,6 +71,7 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
+use rustc::middle::cstore::CrateStore;
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc::util::common::{time, ErrorReported};
@@ -293,13 +293,12 @@ pub fn run_compiler<'a>(args: &[String],
         },
     };
 
-    let dep_graph = DepGraph::new(sopts.build_dep_graph());
-    let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
+    let cstore = Rc::new(CStore::new(box ::MetadataLoader));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
-        sopts, &dep_graph, input_file_path, descriptions, cstore.clone(), codemap, emitter_dest,
+        sopts, input_file_path, descriptions, codemap, emitter_dest,
     );
     rustc_trans::init(&sess);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
@@ -308,11 +307,22 @@ pub fn run_compiler<'a>(args: &[String],
     target_features::add_configuration(&mut cfg, &sess);
     sess.parse_sess.config = cfg;
 
-    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
+    do_or_return!(callbacks.late_callback(&matches,
+                                          &sess,
+                                          &*cstore,
+                                          &input,
+                                          &odir,
+                                          &ofile), Some(sess));
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess, &matches);
-    (driver::compile_input(&sess, &cstore, &input, &odir, &ofile, Some(plugins), &control),
+    (driver::compile_input(&sess,
+                           &cstore,
+                           &input,
+                           &odir,
+                           &ofile,
+                           Some(plugins),
+                           &control),
      Some(sess))
 }
 
@@ -400,6 +410,7 @@ pub trait CompilerCalls<'a> {
     fn late_callback(&mut self,
                      _: &getopts::Matches,
                      _: &Session,
+                     _: &CrateStore,
                      _: &Input,
                      _: &Option<PathBuf>,
                      _: &Option<PathBuf>)
@@ -573,13 +584,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     describe_lints(&ls, false);
                     return None;
                 }
-                let dep_graph = DepGraph::new(sopts.build_dep_graph());
-                let cstore = Rc::new(CStore::new(&dep_graph, box ::MetadataLoader));
                 let mut sess = build_session(sopts.clone(),
-                    &dep_graph,
                     None,
-                    descriptions.clone(),
-                    cstore.clone());
+                    descriptions.clone());
                 rustc_trans::init(&sess);
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
@@ -601,12 +608,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
+                     cstore: &CrateStore,
                      input: &Input,
                      odir: &Option<PathBuf>,
                      ofile: &Option<PathBuf>)
                      -> Compilation {
         RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile)
-            .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
+            .and_then(|| RustcDefaultCalls::list_metadata(sess, cstore, matches, input))
     }
 
     fn build_controller(&mut self,
@@ -627,6 +635,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 };
                 control.after_hir_lowering.callback = box move |state| {
                     pretty::print_after_hir_lowering(state.session,
+                                                     state.cstore.unwrap(),
                                                      state.hir_map.unwrap(),
                                                      state.analysis.unwrap(),
                                                      state.resolutions.unwrap(),
@@ -636,6 +645,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                                      ppm,
                                                      state.arena.unwrap(),
                                                      state.arenas.unwrap(),
+                                                     state.output_filenames.unwrap(),
                                                      opt_uii.clone(),
                                                      state.out_file);
                 };
@@ -711,7 +721,11 @@ fn save_analysis(sess: &Session) -> bool {
 }
 
 impl RustcDefaultCalls {
-    pub fn list_metadata(sess: &Session, matches: &getopts::Matches, input: &Input) -> Compilation {
+    pub fn list_metadata(sess: &Session,
+                         cstore: &CrateStore,
+                         matches: &getopts::Matches,
+                         input: &Input)
+                         -> Compilation {
         let r = matches.opt_strs("Z");
         if r.contains(&("ls".to_string())) {
             match input {
@@ -720,7 +734,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                sess.cstore.metadata_loader(),
+                                                cstore.metadata_loader(),
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
@@ -741,7 +755,9 @@ impl RustcDefaultCalls {
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
                         -> Compilation {
-        if sess.opts.prints.is_empty() {
+        // PrintRequest::NativeStaticLibs is special - printed during linking
+        // (empty iterator returns true)
+        if sess.opts.prints.iter().all(|&p| p==PrintRequest::NativeStaticLibs) {
             return Compilation::Continue;
         }
 
@@ -850,6 +866,9 @@ impl RustcDefaultCalls {
                 }
                 PrintRequest::TargetCPUs | PrintRequest::TargetFeatures => {
                     rustc_trans::print(*req, sess);
+                }
+                PrintRequest::NativeStaticLibs => {
+                    println!("Native static libs can be printed only during linking");
                 }
             }
         }

@@ -39,6 +39,7 @@
 //! These methods return true to indicate that the visitor has found what it is looking for
 //! and does not need to visit anything else.
 
+use middle::const_val::ConstVal;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
 use std::fmt;
@@ -67,7 +68,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.visit_with(&mut HasTypeFlagsVisitor { flags: flags })
     }
-    fn has_projection_types(&self) -> bool {
+    fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
     fn references_error(&self) -> bool {
@@ -139,6 +140,10 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         r.super_fold_with(self)
     }
+
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        c.super_fold_with(self)
+    }
 }
 
 pub trait TypeVisitor<'tcx> : Sized {
@@ -152,6 +157,10 @@ pub trait TypeVisitor<'tcx> : Sized {
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         r.super_visit_with(self)
+    }
+
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        c.super_visit_with(self)
     }
 }
 
@@ -602,6 +611,17 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         let flags = r.type_flags();
         debug!("HasTypeFlagsVisitor: r={:?} r.flags={:?} self.flags={:?}", r, flags, self.flags);
         flags.intersects(self.flags)
+    }
+
+    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
+        if let ConstVal::Unevaluated(..) = c.val {
+            let projection_flags = TypeFlags::HAS_NORMALIZABLE_PROJECTION |
+                TypeFlags::HAS_PROJECTION;
+            if projection_flags.intersects(self.flags) {
+                return true;
+            }
+        }
+        c.super_visit_with(self)
     }
 }
 

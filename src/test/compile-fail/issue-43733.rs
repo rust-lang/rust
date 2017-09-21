@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn, drop_types_in_const)]
+#![feature(const_fn)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 
 type Foo = std::cell::RefCell<String>;

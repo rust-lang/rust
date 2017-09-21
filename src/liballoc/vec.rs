@@ -370,6 +370,7 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via [`String`]/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
+    /// * `ptr`'s `T` needs to have the same size and alignment as it was allocated with.
     /// * `length` needs to be less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
@@ -1942,7 +1943,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(splice)]
     /// let mut v = vec![1, 2, 3];
     /// let new = [7, 8];
     /// let u: Vec<_> = v.splice(..2, new.iter().cloned()).collect();
@@ -1950,7 +1950,7 @@ impl<T> Vec<T> {
     /// assert_eq!(u, &[1, 2]);
     /// ```
     #[inline]
-    #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+    #[stable(feature = "vec_splice", since = "1.22.0")]
     pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<I::IntoIter>
         where R: RangeArgument<usize>, I: IntoIterator<Item=T>
     {
@@ -1969,16 +1969,19 @@ impl<T> Vec<T> {
     /// Using this method is equivalent to the following code:
     ///
     /// ```
-    /// # let some_predicate = |x: &mut i32| { *x == 2 };
-    /// # let mut vec = vec![1, 2, 3, 4, 5];
+    /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
+    /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
     /// let mut i = 0;
     /// while i != vec.len() {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
+    ///     } else {
+    ///         i += 1;
     ///     }
-    ///     i += 1;
     /// }
+    ///
+    /// # assert_eq!(vec, vec![1, 4, 5]);
     /// ```
     ///
     /// But `drain_filter` is easier to use. `drain_filter` is also more efficient,
@@ -2550,13 +2553,13 @@ impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
 /// [`splice()`]: struct.Vec.html#method.splice
 /// [`Vec`]: struct.Vec.html
 #[derive(Debug)]
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[stable(feature = "vec_splice", since = "1.22.0")]
 pub struct Splice<'a, I: Iterator + 'a> {
     drain: Drain<'a, I::Item>,
     replace_with: I,
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[stable(feature = "vec_splice", since = "1.22.0")]
 impl<'a, I: Iterator> Iterator for Splice<'a, I> {
     type Item = I::Item;
 
@@ -2569,18 +2572,18 @@ impl<'a, I: Iterator> Iterator for Splice<'a, I> {
     }
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[stable(feature = "vec_splice", since = "1.22.0")]
 impl<'a, I: Iterator> DoubleEndedIterator for Splice<'a, I> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.drain.next_back()
     }
 }
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[stable(feature = "vec_splice", since = "1.22.0")]
 impl<'a, I: Iterator> ExactSizeIterator for Splice<'a, I> {}
 
 
-#[unstable(feature = "splice", reason = "recently added", issue = "32310")]
+#[stable(feature = "vec_splice", since = "1.22.0")]
 impl<'a, I: Iterator> Drop for Splice<'a, I> {
     fn drop(&mut self) {
         // exhaust drain first
@@ -2691,7 +2694,13 @@ impl<'a, T, F> Iterator for DrainFilter<'a, T, F>
                     self.del += 1;
                     return Some(ptr::read(&v[i]));
                 } else if self.del > 0 {
-                    v.swap(i - self.del, i);
+                    let del = self.del;
+                    let src: *const T = &v[i];
+                    let dst: *mut T = &mut v[i - del];
+                    // This is safe because self.vec has length 0
+                    // thus its elements will not have Drop::drop
+                    // called on them in the event of a panic.
+                    ptr::copy_nonoverlapping(src, dst, 1);
                 }
             }
             None

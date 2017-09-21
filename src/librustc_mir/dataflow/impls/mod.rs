@@ -27,6 +27,10 @@ use super::drop_flag_effects_for_function_entry;
 use super::drop_flag_effects_for_location;
 use super::on_lookup_result_bits;
 
+mod storage_liveness;
+
+pub use self::storage_liveness::*;
+
 #[allow(dead_code)]
 pub(super) mod borrows;
 

@@ -20,7 +20,7 @@ pub use self::region_inference::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use middle::free_region::{FreeRegionMap, RegionRelations};
-use middle::region::RegionMaps;
+use middle::region;
 use middle::lang_items;
 use mir::tcx::LvalueTy;
 use ty::subst::{Kind, Subst, Substs};
@@ -442,6 +442,7 @@ macro_rules! impl_trans_normalize {
 
 impl_trans_normalize!('gcx,
     Ty<'gcx>,
+    &'gcx ty::Const<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
     ty::PolyFnSig<'gcx>,
@@ -493,7 +494,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let param_env = ty::ParamEnv::empty(Reveal::All);
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 
@@ -515,7 +516,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
         let value = self.erase_regions(value);
 
-        if !value.has_projection_types() {
+        if !value.has_projections() {
             return value;
         }
 
@@ -643,7 +644,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
+    pub fn unsolved_variables(&self) -> Vec<Ty<'tcx>> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
@@ -1070,7 +1071,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn resolve_regions_and_report_errors(&self,
                                              region_context: DefId,
-                                             region_map: &RegionMaps,
+                                             region_map: &region::ScopeTree,
                                              free_regions: &FreeRegionMap<'tcx>) {
         let region_rels = RegionRelations::new(self.tcx,
                                                region_context,
@@ -1084,7 +1085,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors); // see error_reporting module
+            self.report_region_errors(region_map, &errors); // see error_reporting module
         }
     }
 
@@ -1158,6 +1159,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
         let mut r = resolve::OpportunisticTypeResolver::new(self);
         value.fold_with(&mut r)
+    }
+
+    /// Returns true if `T` contains unresolved type variables. In the
+    /// process of visiting `T`, this will resolve (where possible)
+    /// type variables in `T`, but it never constructs the final,
+    /// resolved type, so it's more efficient than
+    /// `resolve_type_vars_if_possible()`.
+    pub fn any_unresolved_type_vars<T>(&self, value: &T) -> bool
+        where T: TypeFoldable<'tcx>
+    {
+        let mut r = resolve::UnresolvedTypeFinder::new(self);
+        value.visit_with(&mut r)
     }
 
     pub fn resolve_type_and_region_vars_if_possible<T>(&self, value: &T) -> T

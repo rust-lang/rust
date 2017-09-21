@@ -15,5 +15,10 @@
 pub trait Sugar { fn dummy(&self) { } }
 pub trait Sweet { fn dummy(&self) { } }
 impl<T:Sugar> Sweet for T { }
-impl<U:Sugar> Sweet for Box<U> { } //~ ERROR E0119
+//~^ NOTE first implementation here
+impl<U:Sugar> Sweet for Box<U> { }
+//~^ ERROR E0119
+//~| NOTE conflicting implementation for `std::boxed::Box<_>`
+//~| NOTE downstream crates may implement trait `Sugar` for type `std::boxed::Box<_>`
+
 fn main() { }

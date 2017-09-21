@@ -28,6 +28,7 @@ use libc;
 #[cfg(all(not(dox), target_os = "solaris"))]   pub use os::solaris as platform;
 #[cfg(all(not(dox), target_os = "emscripten"))] pub use os::emscripten as platform;
 #[cfg(all(not(dox), target_os = "fuchsia"))]   pub use os::fuchsia as platform;
+#[cfg(all(not(dox), target_os = "l4re"))]      pub use os::linux as platform;
 
 #[macro_use]
 pub mod weak;
@@ -44,7 +45,12 @@ pub mod fd;
 pub mod fs;
 pub mod memchr;
 pub mod mutex;
+#[cfg(not(target_os = "l4re"))]
 pub mod net;
+#[cfg(target_os = "l4re")]
+mod l4re;
+#[cfg(target_os = "l4re")]
+pub use self::l4re::net;
 pub mod os;
 pub mod os_str;
 pub mod path;

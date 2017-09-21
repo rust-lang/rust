@@ -11,13 +11,12 @@
 
 // pretty-expanded FIXME #23616
 
-#[repr(simd)]
+#[repr(simd)] //~ ERROR SIMD types are experimental
 struct RGBA {
     r: f32,
     g: f32,
     b: f32,
     a: f32
 }
-//~^^^^^^ ERROR SIMD types are experimental and possibly buggy (see issue #27731)
 
 pub fn main() {}

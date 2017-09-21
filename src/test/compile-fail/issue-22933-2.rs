@@ -15,7 +15,4 @@ enum Delicious {
     //~^ ERROR no associated item named `PIE` found for type `Delicious`
 }
 
-const FOO: [u32; u8::MIN as usize] = [];
-//~^ ERROR no associated item named `MIN` found for type `u8`
-
 fn main() {}

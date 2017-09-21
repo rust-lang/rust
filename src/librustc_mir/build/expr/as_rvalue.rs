@@ -21,8 +21,8 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
-use rustc::middle::region::CodeExtent;
-use rustc::ty;
+use rustc::middle::region;
+use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use syntax::ast;
 use syntax_pos::Span;
@@ -38,7 +38,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
+    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<region::Scope>, expr: M)
                         -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn expr_as_rvalue(&mut self,
                       mut block: BasicBlock,
-                      scope: Option<CodeExtent>,
+                      scope: Option<region::Scope>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
@@ -58,9 +58,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope { extent, value } => {
-                let extent = (extent, source_info);
-                this.in_scope(extent, block, |this| this.as_rvalue(block, scope, value))
+            ExprKind::Scope { region_scope, value } => {
+                let region_scope = (region_scope, source_info);
+                this.in_scope(region_scope, block, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));
@@ -96,23 +96,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Box { value } => {
                 let value = this.hir.mirror(value);
-                let result = this.temp(expr.ty, expr_span);
+                // The `Box<T>` temporary created here is not a part of the HIR,
+                // and therefore is not considered during generator OIBIT
+                // determination. See the comment about `box` at `yield_in_scope`.
+                let result = this.local_decls.push(
+                    LocalDecl::new_internal(expr.ty, expr_span));
+                this.cfg.push(block, Statement {
+                    source_info,
+                    kind: StatementKind::StorageLive(result)
+                });
                 if let Some(scope) = scope {
                     // schedule a shallow free of that memory, lest we unwind:
-                    this.cfg.push(block, Statement {
-                        source_info,
-                        kind: StatementKind::StorageLive(result.clone())
-                    });
-                    this.schedule_drop(expr_span, scope, &result, value.ty);
+                    this.schedule_drop(expr_span, scope, &Lvalue::Local(result), value.ty);
                 }
 
                 // malloc some memory of suitable type (thus far, uninitialized):
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
-                this.cfg.push_assign(block, source_info, &result, box_);
+                this.cfg.push_assign(block, source_info, &Lvalue::Local(result), box_);
 
                 // initialize the box contents:
-                unpack!(block = this.into(&result.clone().deref(), block, value));
-                block.and(Rvalue::Use(Operand::Consume(result)))
+                unpack!(block = this.into(&Lvalue::Local(result).deref(), block, value));
+                block.and(Rvalue::Use(Operand::Consume(Lvalue::Local(result))))
             }
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);
@@ -197,7 +201,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         span: expr_span,
                         ty: this.hir.tcx().types.u32,
                         literal: Literal::Value {
-                            value: ConstVal::Integral(ConstInt::U32(0)),
+                            value: this.hir.tcx().mk_const(ty::Const {
+                                val: ConstVal::Integral(ConstInt::U32(0)),
+                                ty: this.hir.tcx().types.u32
+                            }),
                         },
                     }));
                     box AggregateKind::Generator(closure_id, substs, interior)
@@ -288,7 +295,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn build_binary_op(&mut self, mut block: BasicBlock,
-                           op: BinOp, span: Span, ty: ty::Ty<'tcx>,
+                           op: BinOp, span: Span, ty: Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
@@ -375,7 +382,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     // Helper to get a `-1` value of the appropriate type
-    fn neg_1_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+    fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyInt(ity) => {
                 let val = match ity {
@@ -385,13 +392,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I64 => ConstInt::I64(-1),
                     ast::IntTy::I128 => ConstInt::I128(-1),
                     ast::IntTy::Is => {
-                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let val = ConstIsize::new(-1, int_ty).unwrap();
                         ConstInt::Isize(val)
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
@@ -402,7 +414,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     // Helper to get the minimum value of the appropriate type
-    fn minval_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+    fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let literal = match ty.sty {
             ty::TyInt(ity) => {
                 let val = match ity {
@@ -412,7 +424,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     ast::IntTy::I64 => ConstInt::I64(i64::min_value()),
                     ast::IntTy::I128 => ConstInt::I128(i128::min_value()),
                     ast::IntTy::Is => {
-                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let int_ty = self.hir.tcx().sess.target.isize_ty;
                         let min = match int_ty {
                             ast::IntTy::I16 => std::i16::MIN as i64,
                             ast::IntTy::I32 => std::i32::MIN as i64,
@@ -424,7 +436,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                Literal::Value { value: ConstVal::Integral(val) }
+                Literal::Value {
+                    value: self.hir.tcx().mk_const(ty::Const {
+                        val: ConstVal::Integral(val),
+                        ty
+                    })
+                }
             }
             _ => {
                 span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)

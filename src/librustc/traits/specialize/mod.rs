@@ -25,6 +25,7 @@ use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
+use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
@@ -36,6 +37,7 @@ pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
     pub self_desc: Option<String>,
+    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -150,14 +152,11 @@ pub fn find_associated_item<'a, 'tcx>(
 /// Specialization is determined by the sets of types to which the impls apply;
 /// impl1 specializes impl2 if it applies to a subset of the types impl2 applies
 /// to.
-pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             impl1_def_id: DefId,
-                             impl2_def_id: DefId) -> bool {
+pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    (impl1_def_id, impl2_def_id): (DefId, DefId))
+    -> bool
+{
     debug!("specializes({:?}, {:?})", impl1_def_id, impl2_def_id);
-
-    if let Some(r) = tcx.specializes_cache.borrow().check(impl1_def_id, impl2_def_id) {
-        return r;
-    }
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
@@ -188,7 +187,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
-    let result = tcx.infer_ctxt().enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
         let impl1_trait_ref =
@@ -204,10 +203,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Attempt to prove that impl2 applies, given all of the above.
         fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
-    });
-
-    tcx.specializes_cache.borrow_mut().insert(impl1_def_id, impl2_def_id, result);
-    result
+    })
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with
@@ -341,6 +337,10 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                     Err(cname) => {
                         err.note(&format!("conflicting implementation in crate `{}`", cname));
                     }
+                }
+
+                for cause in &overlap.intercrate_ambiguity_causes {
+                    cause.add_intercrate_ambiguity_hint(&mut err);
                 }
 
                 err.emit();

@@ -38,9 +38,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = this.source_info(expr_span);
 
         match expr.kind {
-            ExprKind::Scope { extent, value } => {
-                let extent = (extent, source_info);
-                this.in_scope(extent, block, |this| this.into(destination, block, value))
+            ExprKind::Scope { region_scope, value } => {
+                let region_scope = (region_scope, source_info);
+                this.in_scope(region_scope, block, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block, source_info)
@@ -209,7 +209,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         let f = ty.fn_sig(this.hir.tcx());
                         if f.abi() == Abi::RustIntrinsic ||
                            f.abi() == Abi::PlatformIntrinsic {
-                            Some(this.hir.tcx().item_name(def_id).as_str())
+                            Some(this.hir.tcx().item_name(def_id))
                         } else {
                             None
                         }
@@ -229,7 +229,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     let topmost_scope = this.topmost_scope();
                     let ptr = unpack!(block = this.as_temp(block, Some(topmost_scope), ptr));
-                    this.into(&ptr.deref(), block, val)
+                    this.into(&Lvalue::Local(ptr).deref(), block, val)
                 } else {
                     let args: Vec<_> =
                         args.into_iter()

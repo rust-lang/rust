@@ -15,8 +15,11 @@ use super::{
     Obligation,
     ObligationCause,
     ObligationCauseCode,
+    OnUnimplementedDirective,
+    OnUnimplementedNote,
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
+    ConstEvalFailure,
     PredicateObligation,
     Reveal,
     SelectionContext,
@@ -25,11 +28,11 @@ use super::{
 };
 
 use errors::DiagnosticBuilder;
-use fmt_macros::{Parser, Piece, Position};
 use hir;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
+use middle::const_val;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
@@ -316,77 +319,56 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn on_unimplemented_note(&self,
-                             trait_ref: ty::PolyTraitRef<'tcx>,
-                             obligation: &PredicateObligation<'tcx>) -> Option<String> {
+    fn on_unimplemented_note(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        obligation: &PredicateObligation<'tcx>) ->
+        OnUnimplementedNote
+    {
         let def_id = self.impl_similar_to(trait_ref, obligation)
             .unwrap_or(trait_ref.def_id());
-        let trait_ref = trait_ref.skip_binder();
+        let trait_ref = *trait_ref.skip_binder();
 
-        let span = obligation.cause.span;
-        let mut report = None;
-        if let Some(item) = self.tcx
-            .get_attrs(def_id)
-            .into_iter()
-            .filter(|a| a.check_name("rustc_on_unimplemented"))
-            .next()
-        {
-            let name = self.tcx.item_name(def_id).as_str();
-            let err_sp = item.span.substitute_dummy(span);
-            let trait_str = self.tcx.item_path_str(trait_ref.def_id);
-            if let Some(istring) = item.value_str() {
-                let istring = &*istring.as_str();
-                let generics = self.tcx.generics_of(trait_ref.def_id);
-                let generic_map = generics.types.iter().map(|param| {
-                    (param.name.as_str().to_string(),
-                        trait_ref.substs.type_for_def(param).to_string())
-                }).collect::<FxHashMap<String, String>>();
-                let parser = Parser::new(istring);
-                let mut errored = false;
-                let err: String = parser.filter_map(|p| {
-                    match p {
-                        Piece::String(s) => Some(s),
-                        Piece::NextArgument(a) => match a.position {
-                            Position::ArgumentNamed(s) => match generic_map.get(s) {
-                                Some(val) => Some(val),
-                                None if s == name => {
-                                    Some(&trait_str)
-                                }
-                                None => {
-                                    span_err!(self.tcx.sess, err_sp, E0272,
-                                              "the #[rustc_on_unimplemented] attribute on trait \
-                                               definition for {} refers to non-existent type \
-                                               parameter {}",
-                                              trait_str, s);
-                                    errored = true;
-                                    None
-                                }
-                            },
-                            _ => {
-                                span_err!(self.tcx.sess, err_sp, E0273,
-                                          "the #[rustc_on_unimplemented] attribute on trait \
-                                           definition for {} must have named format arguments, eg \
-                                           `#[rustc_on_unimplemented = \"foo {{T}}\"]`",
-                                          trait_str);
-                                errored = true;
-                                None
-                            }
-                        }
-                    }
-                }).collect();
-                // Report only if the format string checks out
-                if !errored {
-                    report = Some(err);
-                }
-            } else {
-                span_err!(self.tcx.sess, err_sp, E0274,
-                                        "the #[rustc_on_unimplemented] attribute on \
-                                                    trait definition for {} must have a value, \
-                                                    eg `#[rustc_on_unimplemented = \"foo\"]`",
-                                                    trait_str);
+        let desugaring;
+        let method;
+        let mut flags = vec![];
+        let direct = match obligation.cause.code {
+            ObligationCauseCode::BuiltinDerivedObligation(..) |
+            ObligationCauseCode::ImplDerivedObligation(..) => false,
+            _ => true
+        };
+        if direct {
+            // this is a "direct", user-specified, rather than derived,
+            // obligation.
+            flags.push(("direct", None));
+        }
+
+        if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
+            // FIXME: maybe also have some way of handling methods
+            // from other traits? That would require name resolution,
+            // which we might want to be some sort of hygienic.
+            //
+            // Currently I'm leaving it for what I need for `try`.
+            if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
+                method = self.tcx.item_name(item);
+                flags.push(("from_method", None));
+                flags.push(("from_method", Some(&*method)));
             }
         }
-        report
+
+        if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
+            desugaring = k.as_symbol().as_str();
+            flags.push(("from_desugaring", None));
+            flags.push(("from_desugaring", Some(&*desugaring)));
+        }
+
+        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(
+            self.tcx, trait_ref.def_id, def_id
+        ) {
+            command.evaluate(self.tcx, trait_ref, &flags)
+        } else {
+            OnUnimplementedNote::empty()
+        }
     }
 
     fn find_similar_impl_candidates(&self,
@@ -577,17 +559,23 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let (post_message, pre_message) =
                             self.get_parent_trait_ref(&obligation.cause.code)
                                 .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
-                                .unwrap_or((String::new(), String::new()));
+                            .unwrap_or((String::new(), String::new()));
+
+                        let OnUnimplementedNote { message, label }
+                            = self.on_unimplemented_note(trait_ref, obligation);
+                        let have_alt_message = message.is_some() || label.is_some();
+
                         let mut err = struct_span_err!(
                             self.tcx.sess,
                             span,
                             E0277,
-                            "the trait bound `{}` is not satisfied{}",
-                            trait_ref.to_predicate(),
-                            post_message);
+                            "{}",
+                            message.unwrap_or_else(|| {
+                                format!("the trait bound `{}` is not satisfied{}",
+                                         trait_ref.to_predicate(), post_message)
+                            }));
 
-                        let unimplemented_note = self.on_unimplemented_note(trait_ref, obligation);
-                        if let Some(ref s) = unimplemented_note {
+                        if let Some(ref s) = label {
                             // If it has a custom "#[rustc_on_unimplemented]"
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
@@ -615,7 +603,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                                 trait_ref.to_predicate()));
-                        } else if unimplemented_note.is_none() {
+                        } else if !have_alt_message {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
@@ -712,6 +700,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // (which may fail).
                         span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
+
+                    ty::Predicate::ConstEvaluatable(..) => {
+                        // Errors for `ConstEvaluatable` predicates show up as
+                        // `SelectionError::ConstEvalFailure`,
+                        // not `Unimplemented`.
+                        span_bug!(span,
+                            "const-evaluatable requirement gave wrong error: `{:?}`", obligation)
+                    }
                 }
             }
 
@@ -775,6 +771,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let violations = self.tcx.object_safety_violations(did);
                 self.tcx.report_object_safety_error(span, did,
                                                     violations)
+            }
+
+            ConstEvalFailure(ref err) => {
+                if let const_val::ErrKind::TypeckError = err.kind {
+                    return;
+                }
+                err.struct_error(self.tcx, span, "constant expression")
             }
         };
         self.note_obligation_cause(&mut err, obligation);
@@ -933,7 +936,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // anyway. In that case, why inundate the user.
                 if !self.tcx.sess.has_errors() {
                     if
-                        self.tcx.lang_items.sized_trait()
+                        self.tcx.lang_items().sized_trait()
                         .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                     {
                         self.need_type_info(body_id, span, self_ty);

@@ -18,32 +18,54 @@ use std::mem;
 
 use syntax::ast;
 use syntax::parse::token;
+use syntax::symbol::InternedString;
 use syntax::tokenstream;
-use syntax_pos::{Span, FileMap};
+use syntax_pos::FileMap;
 
 use hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
+                                           StableHasher, StableHasherResult};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
-for ::syntax::symbol::InternedString {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for InternedString {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let s: &str = &**self;
         s.hash_stable(hcx, hasher);
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::Name {
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for InternedString {
+    type KeyType = InternedString;
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          _: &StableHashingContext<'gcx>)
+                          -> InternedString {
+        self.clone()
+    }
+}
+
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::Name {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         self.as_str().hash_stable(hcx, hasher);
+    }
+}
+
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for ast::Name {
+    type KeyType = InternedString;
+
+    #[inline]
+    fn to_stable_hash_key(&self,
+                          _: &StableHashingContext<'gcx>)
+                          -> InternedString {
+        self.as_str()
     }
 }
 
@@ -81,12 +103,17 @@ impl_stable_hash_for!(enum ::syntax::abi::Abi {
 });
 
 impl_stable_hash_for!(struct ::syntax::attr::Deprecation { since, note });
-impl_stable_hash_for!(struct ::syntax::attr::Stability { level, feature, rustc_depr });
+impl_stable_hash_for!(struct ::syntax::attr::Stability {
+    level,
+    feature,
+    rustc_depr,
+    rustc_const_unstable
+});
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for ::syntax::attr::StabilityLevel {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
@@ -102,6 +129,7 @@ for ::syntax::attr::StabilityLevel {
 }
 
 impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason });
+impl_stable_hash_for!(struct ::syntax::attr::RustcConstUnstable { feature });
 
 
 impl_stable_hash_for!(enum ::syntax::attr::IntType {
@@ -137,10 +165,15 @@ impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, span, ident });
 impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for [ast::Attribute] {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for [ast::Attribute] {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
+        if self.len() == 0 {
+            self.len().hash_stable(hcx, hasher);
+            return
+        }
+
         // Some attributes are always ignored during hashing.
         let filtered: AccumulateVec<[&ast::Attribute; 8]> = self
             .iter()
@@ -157,9 +190,9 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for [ast::
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::Attribute {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ast::Attribute {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         // Make sure that these have been filtered out.
         debug_assert!(self.name().map(|name| !hcx.is_ignored_attr(name)).unwrap_or(true));
@@ -186,16 +219,16 @@ impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for ast::A
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for tokenstream::TokenTree {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
             tokenstream::TokenTree::Token(span, ref token) => {
                 span.hash_stable(hcx, hasher);
-                hash_token(token, hcx, hasher, span);
+                hash_token(token, hcx, hasher);
             }
             tokenstream::TokenTree::Delimited(span, ref delimited) => {
                 span.hash_stable(hcx, hasher);
@@ -208,10 +241,10 @@ for tokenstream::TokenTree {
     }
 }
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>>
+impl<'gcx> HashStable<StableHashingContext<'gcx>>
 for tokenstream::TokenStream {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         for sub_tt in self.trees() {
             sub_tt.hash_stable(hcx, hasher);
@@ -219,10 +252,9 @@ for tokenstream::TokenStream {
     }
 }
 
-fn hash_token<'a, 'gcx, 'tcx, W: StableHasherResult>(token: &token::Token,
-                                               hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
-                                               hasher: &mut StableHasher<W>,
-                                               error_reporting_span: Span) {
+fn hash_token<'gcx, W: StableHasherResult>(token: &token::Token,
+                                           hcx: &mut StableHashingContext<'gcx>,
+                                           hasher: &mut StableHasher<W>) {
     mem::discriminant(token).hash_stable(hcx, hasher);
     match *token {
         token::Token::Eq |
@@ -285,20 +317,8 @@ fn hash_token<'a, 'gcx, 'tcx, W: StableHasherResult>(token: &token::Token,
         token::Token::Ident(ident) |
         token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
 
-        token::Token::Interpolated(ref non_terminal) => {
-            // FIXME(mw): This could be implemented properly. It's just a
-            //            lot of work, since we would need to hash the AST
-            //            in a stable way, in addition to the HIR.
-            //            Since this is hardly used anywhere, just emit a
-            //            warning for now.
-            if hcx.tcx().sess.opts.debugging_opts.incremental.is_some() {
-                let msg = format!("Quasi-quoting might make incremental \
-                                   compilation very inefficient: {:?}",
-                                  non_terminal);
-                hcx.tcx().sess.span_warn(error_reporting_span, &msg[..]);
-            }
-
-            std_hash::Hash::hash(non_terminal, hasher);
+        token::Token::Interpolated(_) => {
+            bug!("interpolated tokens should not be present in the HIR")
         }
 
         token::Token::DocComment(val) |
@@ -325,9 +345,9 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
-impl<'a, 'gcx, 'tcx> HashStable<StableHashingContext<'a, 'gcx, 'tcx>> for FileMap {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for FileMap {
     fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'gcx, 'tcx>,
+                                          hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let FileMap {
             ref name,

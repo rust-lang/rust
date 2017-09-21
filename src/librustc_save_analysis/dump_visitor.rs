@@ -1432,8 +1432,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         // process collected paths
         for &(id, ref p, immut) in &collector.collected_paths {
             match self.save_ctxt.get_path_def(id) {
-                HirDef::Local(def_id) => {
-                    let id = self.tcx.hir.as_local_node_id(def_id).unwrap();
+                HirDef::Local(id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(p.span).to_string()
                     } else {

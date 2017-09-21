@@ -16,7 +16,8 @@
 //  which is a reduction of this code to more directly show the reason
 //  for the error message we see here.)
 
-#![feature(const_fn, rustc_private)]
+#![feature(rustc_private)]
+#![feature(const_atomic_usize_new)]
 
 extern crate arena;
 

@@ -27,6 +27,7 @@ use util::exe;
 use cache::{INTERNER, Interned};
 use flags::Flags;
 pub use flags::Subcommand;
+use toolstate::ToolStates;
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
@@ -111,6 +112,7 @@ pub struct Config {
     pub low_priority: bool,
     pub channel: String,
     pub quiet_tests: bool,
+    pub test_miri: bool,
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
@@ -130,6 +132,8 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+
+    pub toolstate: ToolStates,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -269,6 +273,7 @@ struct Rust {
     debug: Option<bool>,
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
+    test_miri: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -304,6 +309,7 @@ impl Config {
         config.codegen_tests = true;
         config.ignore_git = false;
         config.rust_dist_src = true;
+        config.test_miri = false;
 
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
@@ -329,6 +335,18 @@ impl Config {
                 }
             }
         }).unwrap_or_else(|| TomlConfig::default());
+
+        let toolstate_toml_path = config.src.join("src/tools/toolstate.toml");
+        let parse_toolstate = || -> Result<_, Box<::std::error::Error>> {
+            let mut f = File::open(toolstate_toml_path)?;
+            let mut contents = String::new();
+            f.read_to_string(&mut contents)?;
+            Ok(toml::from_str(&contents)?)
+        };
+        config.toolstate = parse_toolstate().unwrap_or_else(|err| {
+            println!("failed to parse TOML configuration 'toolstate.toml': {}", err);
+            process::exit(2);
+        });
 
         let build = toml.build.clone().unwrap_or(Build::default());
         set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
@@ -401,6 +419,7 @@ impl Config {
         let mut debuginfo = None;
         let mut debug_assertions = None;
         let mut optimize = None;
+        let mut ignore_git = None;
 
         if let Some(ref llvm) = toml.llvm {
             match llvm.ccache {
@@ -432,6 +451,7 @@ impl Config {
             debuginfo_lines = rust.debuginfo_lines;
             debuginfo_only_std = rust.debuginfo_only_std;
             optimize = rust.optimize;
+            ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
@@ -440,9 +460,9 @@ impl Config {
             set(&mut config.use_jemalloc, rust.use_jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
-            set(&mut config.ignore_git, rust.ignore_git);
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.quiet_tests, rust.quiet_tests);
+            set(&mut config.test_miri, rust.test_miri);
             config.rustc_default_linker = rust.default_linker.clone();
             config.rustc_default_ar = rust.default_ar.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
@@ -515,6 +535,9 @@ impl Config {
         config.rust_debuginfo = debuginfo.unwrap_or(default);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
         config.rust_optimize = optimize.unwrap_or(!default);
+
+        let default = config.channel == "dev";
+        config.ignore_git = ignore_git.unwrap_or(default);
 
         config
     }

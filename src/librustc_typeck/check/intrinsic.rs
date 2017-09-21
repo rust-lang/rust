@@ -313,6 +313,11 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
+            "align_offset" => {
+                let ptr_ty = tcx.mk_imm_ptr(tcx.mk_nil());
+                (0, vec![ptr_ty, tcx.types.usize], tcx.types.usize)
+            },
+
             ref other => {
                 struct_span_err!(tcx.sess, it.span, E0093,
                                 "unrecognized intrinsic function: `{}`",
@@ -355,7 +360,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match name["simd_shuffle".len()..].parse() {
                 Ok(n) => {
                     let params = vec![param(0), param(0),
-                                      tcx.mk_ty(ty::TyArray(tcx.types.u32, n))];
+                                      tcx.mk_array(tcx.types.u32, n)];
                     (2, params, param(1))
                 }
                 Err(_) => {
@@ -418,8 +423,8 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         position: &str,
         span: Span,
-        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
-        expected: &'a intrinsics::Type, t: ty::Ty<'tcx>)
+        structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, Ty<'tcx>>,
+        expected: &'a intrinsics::Type, t: Ty<'tcx>)
 {
     use intrinsics::Type::*;
 

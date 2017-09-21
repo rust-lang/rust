@@ -231,6 +231,9 @@ elf*) FORMAT_FILE="elf.lo" ;;
 pecoff) FORMAT_FILE="pecoff.lo"
         backtrace_supports_data=no
 	;;
+macho*) FORMAT_FILE="macho.lo"
+        backtrace_supports_data=no
+        ;;
 *) AC_MSG_WARN([could not determine output file type])
    FORMAT_FILE="unknown.lo"
    backtrace_supported=no

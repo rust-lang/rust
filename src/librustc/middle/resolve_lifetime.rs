@@ -16,9 +16,10 @@
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
 use hir::map::Map;
-use session::Session;
 use hir::def::Def;
 use hir::def_id::DefId;
+use middle::cstore::CrateStore;
+use session::Session;
 use ty;
 
 use std::cell::Cell;
@@ -38,22 +39,24 @@ use hir::intravisit::{self, Visitor, NestedVisitorMap};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum Region {
     Static,
-    EarlyBound(/* index */ u32, /* lifetime decl */ ast::NodeId),
-    LateBound(ty::DebruijnIndex, /* lifetime decl */ ast::NodeId),
+    EarlyBound(/* index */ u32, /* lifetime decl */ DefId),
+    LateBound(ty::DebruijnIndex, /* lifetime decl */ DefId),
     LateBoundAnon(ty::DebruijnIndex, /* anon index */ u32),
-    Free(DefId, /* lifetime decl */ ast::NodeId),
+    Free(DefId, /* lifetime decl */ DefId),
 }
 
 impl Region {
-    fn early(index: &mut u32, def: &hir::LifetimeDef) -> (ast::Name, Region) {
+    fn early(hir_map: &Map, index: &mut u32, def: &hir::LifetimeDef) -> (ast::Name, Region) {
         let i = *index;
         *index += 1;
-        (def.lifetime.name, Region::EarlyBound(i, def.lifetime.id))
+        let def_id = hir_map.local_def_id(def.lifetime.id);
+        (def.lifetime.name, Region::EarlyBound(i, def_id))
     }
 
-    fn late(def: &hir::LifetimeDef) -> (ast::Name, Region) {
+    fn late(hir_map: &Map, def: &hir::LifetimeDef) -> (ast::Name, Region) {
         let depth = ty::DebruijnIndex::new(1);
-        (def.lifetime.name, Region::LateBound(depth, def.lifetime.id))
+        let def_id = hir_map.local_def_id(def.lifetime.id);
+        (def.lifetime.name, Region::LateBound(depth, def_id))
     }
 
     fn late_anon(index: &Cell<u32>) -> Region {
@@ -63,7 +66,7 @@ impl Region {
         Region::LateBoundAnon(depth, i)
     }
 
-    fn id(&self) -> Option<ast::NodeId> {
+    fn id(&self) -> Option<DefId> {
         match *self {
             Region::Static |
             Region::LateBoundAnon(..) => None,
@@ -160,6 +163,7 @@ pub struct NamedRegionMap {
 
 struct LifetimeContext<'a, 'tcx: 'a> {
     sess: &'a Session,
+    cstore: &'a CrateStore,
     hir_map: &'a Map<'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
@@ -251,6 +255,7 @@ type ScopeRef<'a> = &'a Scope<'a>;
 const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 
 pub fn krate(sess: &Session,
+             cstore: &CrateStore,
              hir_map: &Map)
              -> Result<NamedRegionMap, ErrorReported> {
     let krate = hir_map.krate();
@@ -262,6 +267,7 @@ pub fn krate(sess: &Session,
     sess.track_errors(|| {
         let mut visitor = LifetimeContext {
             sess,
+            cstore,
             hir_map,
             map: &mut map,
             scope: ROOT_SCOPE,
@@ -333,7 +339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     0
                 };
                 let lifetimes = generics.lifetimes.iter().map(|def| {
-                    Region::early(&mut index, def)
+                    Region::early(self.hir_map, &mut index, def)
                 }).collect();
                 let scope = Scope::Binder {
                     lifetimes,
@@ -364,7 +370,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         match ty.node {
             hir::TyBareFn(ref c) => {
                 let scope = Scope::Binder {
-                    lifetimes: c.lifetimes.iter().map(Region::late).collect(),
+                    lifetimes: c.lifetimes.iter().map(|def| {
+                            Region::late(self.hir_map, def)
+                        }).collect(),
                     s: self.scope
                 };
                 self.with(scope, |old_scope, this| {
@@ -463,7 +471,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     if !bound_lifetimes.is_empty() {
                         self.trait_ref_hack = true;
                         let scope = Scope::Binder {
-                            lifetimes: bound_lifetimes.iter().map(Region::late).collect(),
+                            lifetimes: bound_lifetimes.iter().map(|def| {
+                                    Region::late(self.hir_map, def)
+                                }).collect(),
                             s: self.scope
                         };
                         let result = self.with(scope, |old_scope, this| {
@@ -508,7 +518,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                           "nested quantification of lifetimes");
             }
             let scope = Scope::Binder {
-                lifetimes: trait_ref.bound_lifetimes.iter().map(Region::late).collect(),
+                lifetimes: trait_ref.bound_lifetimes.iter().map(|def| {
+                        Region::late(self.hir_map, def)
+                    }).collect(),
                 s: self.scope
             };
             self.with(scope, |old_scope, this| {
@@ -643,10 +655,13 @@ fn extract_labels(ctxt: &mut LifetimeContext, body: &hir::Body) {
                 Scope::Binder { ref lifetimes, s } => {
                     // FIXME (#24278): non-hygienic comparison
                     if let Some(def) = lifetimes.get(&label) {
+                        let node_id = hir_map.as_local_node_id(def.id().unwrap())
+                                             .unwrap();
+
                         signal_shadowing_problem(
                             sess,
                             label,
-                            original_lifetime(hir_map.span(def.id().unwrap())),
+                            original_lifetime(hir_map.span(node_id)),
                             shadower_label(label_span));
                         return;
                     }
@@ -745,7 +760,8 @@ fn object_lifetime_defaults_for_item(hir_map: &Map, generics: &hir::Generics)
                     generics.lifetimes.iter().enumerate().find(|&(_, def)| {
                         def.lifetime.name == name
                     }).map_or(Set1::Many, |(i, def)| {
-                        Set1::One(Region::EarlyBound(i as u32, def.lifetime.id))
+                        let def_id = hir_map.local_def_id(def.lifetime.id);
+                        Set1::One(Region::EarlyBound(i as u32, def_id))
                     })
                 }
             }
@@ -765,12 +781,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn with<F>(&mut self, wrap_scope: Scope, f: F) where
         F: for<'b> FnOnce(ScopeRef, &mut LifetimeContext<'b, 'tcx>),
     {
-        let LifetimeContext {sess, hir_map, ref mut map, ..} = *self;
+        let LifetimeContext {sess, cstore, hir_map, ref mut map, ..} = *self;
         let labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
         let xcrate_object_lifetime_defaults =
             replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap());
         let mut this = LifetimeContext {
             sess,
+            cstore,
             hir_map,
             map: *map,
             scope: &wrap_scope,
@@ -830,9 +847,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         let lifetimes = generics.lifetimes.iter().map(|def| {
             if self.map.late_bound.contains(&def.lifetime.id) {
-                Region::late(def)
+                Region::late(self.hir_map, def)
             } else {
-                Region::early(&mut index, def)
+                Region::early(self.hir_map, &mut index, def)
             }
         }).collect();
 
@@ -932,7 +949,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let def_key = if def_id.is_local() {
                 this.hir_map.def_key(def_id)
             } else {
-                this.sess.cstore.def_key(def_id)
+                this.cstore.def_key(def_id)
             };
             DefId {
                 krate: def_id.krate,
@@ -976,9 +993,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let unsubst = if let Some(id) = self.hir_map.as_local_node_id(def_id) {
                 &map.object_lifetime_defaults[&id]
             } else {
-                let cstore = &self.sess.cstore;
+                let cstore = self.cstore;
                 self.xcrate_object_lifetime_defaults.entry(def_id).or_insert_with(|| {
-                    cstore.item_generics_cloned(def_id).types.into_iter().map(|def| {
+                    cstore.item_generics_cloned_untracked(def_id).types.into_iter().map(|def| {
                         def.object_lifetime_default
                     }).collect()
                 })
@@ -1478,10 +1495,14 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
                 Scope::Binder { ref lifetimes, s } => {
                     if let Some(&def) = lifetimes.get(&lifetime.name) {
+                        let node_id = self.hir_map
+                                          .as_local_node_id(def.id().unwrap())
+                                          .unwrap();
+
                         signal_shadowing_problem(
                             self.sess,
                             lifetime.name,
-                            original_lifetime(self.hir_map.span(def.id().unwrap())),
+                            original_lifetime(self.hir_map.span(node_id)),
                             shadower_lifetime(&lifetime));
                         return;
                     }

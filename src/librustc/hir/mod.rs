@@ -413,6 +413,10 @@ pub struct WhereEqPredicate {
 
 pub type CrateConfig = HirVec<P<MetaItem>>;
 
+/// The top-level data structure that stores the entire contents of
+/// the crate currently being compiled.
+///
+/// For more details, see [the module-level README](README.md).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,
@@ -611,7 +615,7 @@ pub enum BindingAnnotation {
   RefMut,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum RangeEnd {
     Included,
     Excluded,
@@ -623,8 +627,10 @@ pub enum PatKind {
     Wild,
 
     /// A fresh binding `ref mut binding @ OPT_SUBPATTERN`.
-    /// The `DefId` is for the definition of the variable being bound.
-    Binding(BindingAnnotation, DefId, Spanned<Name>, Option<P<Pat>>),
+    /// The `NodeId` is the canonical ID for the variable being bound,
+    /// e.g. in `Ok(x) | Err(x)`, both `x` use the same canonical ID,
+    /// which is the pattern ID of the first `x`.
+    Binding(BindingAnnotation, NodeId, Spanned<Name>, Option<P<Pat>>),
 
     /// A struct or struct variant pattern, e.g. `Variant {x, y, ..}`.
     /// The `bool` is `true` in the presence of a `..`.
@@ -925,7 +931,27 @@ pub struct BodyId {
     pub node_id: NodeId,
 }
 
-/// The body of a function or constant value.
+/// The body of a function, closure, or constant value. In the case of
+/// a function, the body contains not only the function body itself
+/// (which is an expression), but also the argument patterns, since
+/// those are something that the caller doesn't really care about.
+///
+/// # Examples
+///
+/// ```
+/// fn foo((x, y): (u32, u32)) -> u32 {
+///     x + y
+/// }
+/// ```
+///
+/// Here, the `Body` associated with `foo()` would contain:
+///
+/// - an `arguments` array containing the `(x, y)` pattern
+/// - a `value` containing the `x + y` expression (maybe wrapped in a block)
+/// - `is_generator` would be false
+///
+/// All bodies have an **owner**, which can be accessed via the HIR
+/// map using `body_owner_def_id()`.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Body {
     pub arguments: HirVec<Arg>,
@@ -1841,6 +1867,15 @@ pub struct Freevar {
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
+}
+
+impl Freevar {
+    pub fn var_id(&self) -> NodeId {
+        match self.def {
+            Def::Local(id) | Def::Upvar(id, ..) => id,
+            _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
+        }
+    }
 }
 
 pub type FreevarMap = NodeMap<Vec<Freevar>>;

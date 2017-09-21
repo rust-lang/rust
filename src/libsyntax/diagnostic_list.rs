@@ -219,29 +219,6 @@ Erroneous code example:
 Delete the offending feature attribute.
 "##,
 
-E0558: r##"
-The `export_name` attribute was malformed.
-
-Erroneous code example:
-
-```compile_fail,E0558
-#[export_name] // error: export_name attribute has invalid format
-pub fn something() {}
-
-fn main() {}
-```
-
-The `export_name` attribute expects a string in order to determine the name of
-the exported symbol. Example:
-
-```
-#[export_name = "some_function"] // ok!
-pub fn something() {}
-
-fn main() {}
-```
-"##,
-
 E0565: r##"
 A literal was used in an attribute that doesn't support literals.
 
@@ -357,8 +334,11 @@ register_diagnostics! {
     E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
     E0550, // multiple deprecated attributes
     E0551, // incorrect meta item
+    E0553, // multiple rustc_const_unstable attributes
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0584, // file for module `..` found at both .. and ..
     E0589, // invalid `repr(align)` attribute
+    E0629, // missing 'feature' (rustc_const_unstable)
+    E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
 }

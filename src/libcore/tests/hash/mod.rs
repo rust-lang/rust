@@ -109,3 +109,16 @@ fn test_custom_state() {
 
     assert_eq!(hash(&Custom { hash: 5 }), 5);
 }
+
+// FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.
+// See https://github.com/kripken/emscripten-fastcomp/issues/169
+#[cfg(not(target_os = "emscripten"))]
+#[test]
+fn test_indirect_hasher() {
+    let mut hasher = MyHasher { hash: 0 };
+    {
+        let mut indirect_hasher: &mut Hasher = &mut hasher;
+        5u32.hash(&mut indirect_hasher);
+    }
+    assert_eq!(hasher.hash, 5);
+}

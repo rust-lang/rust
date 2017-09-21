@@ -22,21 +22,14 @@ pub fn resolve_symname<F>(frame: Frame,
 {
     unsafe {
         let mut info: Dl_info = intrinsics::init();
-        let symname = if dladdr(frame.exact_position, &mut info) == 0 {
+        let symname = if dladdr(frame.exact_position, &mut info) == 0 ||
+                         info.dli_sname.is_null() {
             None
         } else {
             CStr::from_ptr(info.dli_sname).to_str().ok()
         };
         callback(symname)
     }
-}
-
-pub fn foreach_symbol_fileline<F>(_symbol_addr: Frame,
-                                  _f: F,
-                                  _: &BacktraceContext) -> io::Result<bool>
-    where F: FnMut(&[u8], libc::c_int) -> io::Result<()>
-{
-    Ok(false)
 }
 
 #[repr(C)]

@@ -11,10 +11,9 @@
 
 use build;
 use hair::cx::Cx;
-use hair::Pattern;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::{MutVisitor, Lookup};
@@ -164,6 +163,26 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
             span_bug!(self.span,
                       "found type `{:?}` with inference types/regions in MIR",
                       ty);
+        }
+    }
+
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(region) {
+            *region = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found region `{:?}` with inference types/regions in MIR",
+                      region);
+        }
+    }
+
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+        if let Some(lifted) = self.tcx.lift(constant) {
+            *constant = lifted;
+        } else {
+            span_bug!(self.span,
+                      "found constant `{:?}` with inference types/regions in MIR",
+                      constant);
         }
     }
 
@@ -355,16 +374,16 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         arguments.len(),
         return_ty);
 
-    let call_site_extent = CodeExtent::CallSiteScope(body.id());
-    let arg_extent = CodeExtent::ParameterScope(body.id());
+    let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
+    let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
-    unpack!(block = builder.in_scope((call_site_extent, source_info), block, |builder| {
-        unpack!(block = builder.in_scope((arg_extent, source_info), block, |builder| {
-            builder.args_and_body(block, &arguments, arg_extent, &body.value)
+    unpack!(block = builder.in_scope((call_site_scope, source_info), block, |builder| {
+        unpack!(block = builder.in_scope((arg_scope, source_info), block, |builder| {
+            builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
-        let fn_end = Span { lo: span.hi, ..span };
+        let fn_end = span.with_lo(span.hi());
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
         builder.cfg.terminate(block, source_info,
@@ -384,11 +403,11 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     // Gather the upvars of a closure, if any.
     let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
         freevars.iter().map(|fv| {
-            let var_def_id = fv.def.def_id();
-            let var_node_id = tcx.hir.as_local_node_id(var_def_id).unwrap();
+            let var_id = fv.var_id();
+            let var_hir_id = tcx.hir.node_to_hir_id(var_id);
             let closure_expr_id = tcx.hir.local_def_id(fn_id).index;
             let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_id: var_def_id.index,
+                var_id: var_hir_id,
                 closure_expr_id,
             });
             let by_ref = match capture {
@@ -399,7 +418,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 debug_name: keywords::Invalid.name(),
                 by_ref,
             };
-            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_node_id) {
+            if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
                 if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
                     decl.debug_name = ident.node;
                 }
@@ -503,7 +522,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
-                     argument_extent: CodeExtent,
+                     argument_scope: region::Scope,
                      ast_body: &'gcx hir::Expr)
                      -> BlockAnd<()>
     {
@@ -537,17 +556,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let lvalue = Lvalue::Local(Local::new(index + 1));
 
             if let Some(pattern) = pattern {
-                let pattern = Pattern::from_hir(self.hir.tcx().global_tcx(),
-                                                self.hir.param_env.and(self.hir.identity_substs),
-                                                self.hir.tables(),
-                                                pattern);
+                let pattern = self.hir.pattern_from_hir(pattern);
                 scope = self.declare_bindings(scope, ast_body.span, &pattern);
                 unpack!(block = self.lvalue_into_pattern(block, pattern, &lvalue));
             }
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(pattern.as_ref().map_or(ast_body.span, |pat| pat.span),
-                               argument_extent, &lvalue, ty);
+                               argument_scope, &lvalue, ty);
 
         }
 
