@@ -3,7 +3,6 @@ FROM ubuntu:16.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
-  ninja-build \
   file \
   curl \
   ca-certificates \
@@ -11,15 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   git \
   sudo \
   bzip2 \
-  xz-utils \
-  swig \
-  libedit-dev \
-  libncurses5-dev \
-  patch \
   unzip
-
-RUN curl -L https://cmake.org/files/v3.9/cmake-3.9.2-Linux-x86_64.tar.gz | \
-      tar xzf - -C /usr/local --strip-components=1
 
 WORKDIR /tmp
 COPY dist-fuchsia/shared.sh dist-fuchsia/build-toolchain.sh /tmp/
