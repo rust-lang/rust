@@ -98,6 +98,7 @@
 #![feature(generic_param_attrs)]
 #![feature(i128_type)]
 #![feature(inclusive_range)]
+#![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]

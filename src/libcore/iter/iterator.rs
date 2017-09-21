@@ -1337,7 +1337,7 @@ pub trait Iterator {
         (left, right)
     }
 
-    /// An iterator adaptor that applies a function, producing a single, final value.
+    /// An iterator method that applies a function, producing a single, final value.
     ///
     /// `fold()` takes two arguments: an initial value, and a closure with two
     /// arguments: an 'accumulator', and an element. The closure returns the value that
