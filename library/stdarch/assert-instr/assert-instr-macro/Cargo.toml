@@ -1,0 +1,7 @@
+[package]
+name = "assert-instr-macro"
+version = "0.1.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+
+[lib]
+proc-macro = true

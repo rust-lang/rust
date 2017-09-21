@@ -13,3 +13,10 @@ license = "MIT"
 [profile.release]
 debug = true
 opt-level = 3
+
+[profile.bench]
+debug = 1
+opt-level = 3
+
+[dev-dependencies]
+assert-instr = { path = "assert-instr" }

@@ -7,6 +7,9 @@
 //! [Wikipedia](https://en.wikipedia.org/wiki/Bit_Manipulation_Instruction_Sets#BMI2_.28Bit_Manipulation_Instruction_Set_2.29)
 //! provides a quick overview of the available instructions.
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 /// Unsigned multiply without affecting flags.
 ///
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
@@ -51,6 +54,7 @@ extern "C" {
 /// Zero higher bits of `a` >= `index`.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(bzhi))]
 pub fn _bzhi_u32(a: u32, index: u32) -> u32 {
     unsafe { x86_bmi2_bzhi_32(a, index) }
 }
@@ -58,6 +62,7 @@ pub fn _bzhi_u32(a: u32, index: u32) -> u32 {
 /// Zero higher bits of `a` >= `index`.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(bzhi))]
 pub fn _bzhi_u64(a: u64, index: u64) -> u64 {
     unsafe { x86_bmi2_bzhi_64(a, index) }
 }
@@ -67,6 +72,7 @@ pub fn _bzhi_u64(a: u64, index: u64) -> u64 {
 /// specified by the `mask`.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(pdep))]
 pub fn _pdep_u32(a: u32, mask: u32) -> u32 {
     unsafe { x86_bmi2_pdep_32(a, mask) }
 }
@@ -75,6 +81,7 @@ pub fn _pdep_u32(a: u32, mask: u32) -> u32 {
 /// specified by the `mask`.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(pdep))]
 pub fn _pdep_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pdep_64(a, mask) }
 }
@@ -83,6 +90,7 @@ pub fn _pdep_u64(a: u64, mask: u64) -> u64 {
 /// order bit positions of the result.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(pext))]
 pub fn _pext_u32(a: u32, mask: u32) -> u32 {
     unsafe { x86_bmi2_pext_32(a, mask) }
 }
@@ -91,6 +99,7 @@ pub fn _pext_u32(a: u32, mask: u32) -> u32 {
 /// order bit positions of the result.
 #[inline(always)]
 #[target_feature = "+bmi2"]
+#[cfg_attr(test, assert_instr(pext))]
 pub fn _pext_u64(a: u64, mask: u64) -> u64 {
     unsafe { x86_bmi2_pext_64(a, mask) }
 }
