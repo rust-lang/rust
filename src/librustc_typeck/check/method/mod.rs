@@ -68,24 +68,24 @@ pub enum MethodError<'tcx> {
 // could lead to matches if satisfied, and a list of not-in-scope traits which may work.
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
-    pub lev_candidates: Vec<ty::AssociatedItem>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
     pub out_of_scope_traits: Vec<DefId>,
+    pub lev_candidate: Option<ty::AssociatedItem>,
     pub mode: probe::Mode,
 }
 
 impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
-               lev_candidates: Vec<ty::AssociatedItem>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
                out_of_scope_traits: Vec<DefId>,
+               lev_candidate: Option<ty::AssociatedItem>,
                mode: probe::Mode)
                -> Self {
         NoMatchData {
             static_candidates,
-            lev_candidates,
             unsatisfied_predicates,
             out_of_scope_traits,
+            lev_candidate,
             mode,
         }
     }

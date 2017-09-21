@@ -23,7 +23,7 @@ use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
 use rustc::infer::{self, InferOk};
 use syntax::ast;
-use syntax::util::lev_distance::lev_distance;
+use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
 use syntax_pos::Span;
 use rustc::hir;
 use std::mem;
@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
                                                                      Vec::new(),
                                                                      Vec::new(),
-                                                                     Vec::new(),
+                                                                     None,
                                                                      mode)))
                 }
             }
@@ -806,12 +806,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if let Some(def) = private_candidate {
             return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
         }
-        let lev_candidates = self.probe_for_lev_candidates()?;
+        let lev_candidate = self.probe_for_lev_candidate()?;
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
-                                                  lev_candidates,
                                                   unsatisfied_predicates,
                                                   out_of_scope_traits,
+                                                  lev_candidate,
                                                   self.mode)))
     }
 
@@ -1133,9 +1133,10 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Similarly to `probe_for_return_type`, this method attempts to find candidate methods where
-    /// the method name may have been misspelt.
-    fn probe_for_lev_candidates(&mut self) -> Result<Vec<ty::AssociatedItem>, MethodError<'tcx>> {
+    /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
+    /// candidate method where the method name may have been misspelt. Similarly to other
+    /// Levenshtein based suggestions, we provide at most one such suggestion.
+    fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssociatedItem>, MethodError<'tcx>> {
         debug!("Probing for method names similar to {:?}",
                self.method_name);
 
@@ -1149,7 +1150,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             let method_names = pcx.candidate_method_names();
             pcx.allow_similar_names = false;
-            Ok(method_names
+            let applicable_close_candidates: Vec<ty::AssociatedItem> = method_names
                 .iter()
                 .filter_map(|&method_name| {
                     pcx.reset();
@@ -1162,7 +1163,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                 .and_then(|pick| Some(pick.item))
                         })
                 })
-               .collect())
+               .collect();
+
+            if applicable_close_candidates.is_empty() {
+                Ok(None)
+            } else {
+                let best_name = {
+                    let names = applicable_close_candidates.iter().map(|cand| &cand.name);
+                    find_best_match_for_name(names,
+                                             &self.method_name.unwrap().as_str(),
+                                             None)
+                }.unwrap();
+                Ok(applicable_close_candidates
+                   .into_iter()
+                   .find(|method| method.name == best_name))
+            }
         })
     }
 
