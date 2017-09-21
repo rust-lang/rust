@@ -326,6 +326,9 @@ define_maps! { <'tcx>
     [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
     [] fn output_filenames: output_filenames_node(CrateNum)
         -> Arc<OutputFilenames>,
+
+    [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
+    [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
 }
 
 //////////////////////////////////////////////////////////////////////

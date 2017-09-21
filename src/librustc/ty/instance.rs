@@ -38,7 +38,7 @@ pub enum InstanceDef<'tcx> {
     /// drop_in_place::<T>; None for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
-    /// Builtin method implementation, e.g. `Clone::clone`.
+    ///`<T as Clone>::clone` shim.
     CloneShim(DefId, Ty<'tcx>),
 }
 

@@ -218,6 +218,16 @@ impl CrateMetadata {
         attr::contains_name(&attrs, "no_builtins")
     }
 
+     pub fn has_copy_closures(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_feature_attr(&attrs, "copy_closures")
+    }
+
+    pub fn has_clone_closures(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_feature_attr(&attrs, "clone_closures")
+    }
+
     pub fn panic_strategy(&self) -> PanicStrategy {
         self.root.panic_strategy.clone()
     }

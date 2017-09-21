@@ -296,9 +296,15 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let len = len.val.to_const_int().unwrap().to_u64().unwrap();
             builder.array_shim(ty, len)
         }
-        ty::TyTuple(tys, _) => builder.tuple_shim(tys),
+        ty::TyClosure(def_id, substs) => {
+            builder.tuple_like_shim(
+                &substs.upvar_tys(def_id, tcx).collect::<Vec<_>>(),
+                AggregateKind::Closure(def_id, substs)
+            )
+        }
+        ty::TyTuple(tys, _) => builder.tuple_like_shim(&**tys, AggregateKind::Tuple),
         _ => {
-            bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty);
+            bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
     };
 
@@ -613,7 +619,12 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         self.block(vec![], TerminatorKind::Resume, true);
     }
 
-    fn tuple_shim(&mut self, tys: &ty::Slice<Ty<'tcx>>) {
+    fn tuple_like_shim(&mut self, tys: &[ty::Ty<'tcx>], kind: AggregateKind<'tcx>) {
+        match kind {
+            AggregateKind::Tuple | AggregateKind::Closure(..) => (),
+            _ => bug!("only tuples and closures are accepted"),
+        };
+
         let rcvr = Lvalue::Local(Local::new(1+0)).deref();
 
         let mut returns = Vec::new();
@@ -646,17 +657,17 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             }
         }
 
-        // `return (returns[0], returns[1], ..., returns[tys.len() - 1]);`
+        // `return kind(returns[0], returns[1], ..., returns[tys.len() - 1]);`
         let ret_statement = self.make_statement(
             StatementKind::Assign(
                 Lvalue::Local(RETURN_POINTER),
                 Rvalue::Aggregate(
-                    box AggregateKind::Tuple,
+                    box kind,
                     returns.into_iter().map(Operand::Consume).collect()
                 )
             )
         );
-       self.block(vec![ret_statement], TerminatorKind::Return, false);
+        self.block(vec![ret_statement], TerminatorKind::Return, false);
     }
 }
 

@@ -1340,7 +1340,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             self.assemble_candidates_from_impls(obligation, &mut candidates)?;
 
             // For other types, we'll use the builtin rules.
-            let copy_conditions = self.copy_conditions(obligation);
+            let copy_conditions = self.copy_clone_conditions(obligation);
             self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
         } else if lang_items.sized_trait() == Some(def_id) {
             // Sized is never implementable by end-users, it is
@@ -1355,7 +1355,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                  // Same builtin conditions as `Copy`, i.e. every type which has builtin support
                  // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
                  // types have builtin support for `Clone`.
-                 let clone_conditions = self.copy_conditions(obligation);
+                 let clone_conditions = self.copy_clone_conditions(obligation);
                  self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
              }
 
@@ -2050,7 +2050,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn copy_conditions(&mut self, obligation: &TraitObligation<'tcx>)
+    fn copy_clone_conditions(&mut self, obligation: &TraitObligation<'tcx>)
                      -> BuiltinImplConditions<'tcx>
     {
         // NOTE: binder moved to (*)
@@ -2068,8 +2068,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(Vec::new()))
             }
 
-            ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
-            ty::TyClosure(..) | ty::TyGenerator(..) |
+            ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) | ty::TyGenerator(..) |
             ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 Never
             }
@@ -2082,6 +2081,22 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyTuple(tys, _) => {
                 // (*) binder moved here
                 Where(ty::Binder(tys.to_vec()))
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                let trait_id = obligation.predicate.def_id();
+                let copy_closures =
+                    Some(trait_id) == self.tcx().lang_items().copy_trait() &&
+                    self.tcx().has_copy_closures(def_id.krate);
+                let clone_closures =
+                    Some(trait_id) == self.tcx().lang_items().clone_trait() &&
+                    self.tcx().has_clone_closures(def_id.krate);
+
+                if copy_closures || clone_closures {
+                    Where(ty::Binder(substs.upvar_tys(def_id, self.tcx()).collect()))
+                } else {
+                    Never
+                }
             }
 
             ty::TyAdt(..) | ty::TyProjection(..) | ty::TyParam(..) | ty::TyAnon(..) => {
@@ -2370,10 +2385,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     self.sized_conditions(obligation)
                 }
                 _ if Some(trait_def) == lang_items.copy_trait() => {
-                    self.copy_conditions(obligation)
+                    self.copy_clone_conditions(obligation)
                 }
                 _ if Some(trait_def) == lang_items.clone_trait() => {
-                    self.copy_conditions(obligation)
+                    self.copy_clone_conditions(obligation)
                 }
                 _ => bug!("unexpected builtin trait {:?}", trait_def)
             };
