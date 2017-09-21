@@ -682,7 +682,7 @@ def bootstrap():
     try:
         with open(args.config or 'config.toml') as config:
             build.config_toml = config.read()
-    except OSError:
+    except (OSError, IOError):
         pass
 
     if '\nverbose = 2' in build.config_toml:
