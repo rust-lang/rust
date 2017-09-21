@@ -16,9 +16,8 @@ extern crate term;
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 use rustfmt::*;
 use rustfmt::filemap::{write_system_newlines, FileMap};
