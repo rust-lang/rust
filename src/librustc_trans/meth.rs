@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
+use abi::FnType;
 use callee;
 use common::*;
 use builder::Builder;
@@ -31,10 +32,13 @@ impl<'a, 'tcx> VirtualIndex {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>,
+                  llvtable: ValueRef,
+                  fn_ty: &FnType<'tcx>) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
+        let llvtable = bcx.pointercast(llvtable, fn_ty.llvm_type(bcx.ccx).ptr_to().ptr_to());
         let ptr = bcx.load_nonnull(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);

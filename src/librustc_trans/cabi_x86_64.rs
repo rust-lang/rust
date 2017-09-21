@@ -14,7 +14,7 @@
 use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, Layout, FullLayout, Size};
+use rustc::ty::layout::{self, Layout, TyLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -53,7 +53,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
     }
 
     fn classify<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          layout: FullLayout<'tcx>,
+                          layout: TyLayout<'tcx>,
                           cls: &mut [Class],
                           off: Size)
                           -> Result<(), Memory> {
@@ -90,7 +90,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                 // FIXME(eddyb) have to work around Rust enums for now.
                 // Fix is either guarantee no data where there is no field,
                 // by putting variants in fields, or be more clever.
-                match *layout.layout {
+                match layout.layout {
                     Layout::General { .. } |
                     Layout::NullablePointer { .. } => return Err(Memory),
                     _ => {}

@@ -31,7 +31,7 @@ use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u
 use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, C_fat_ptr};
 use common::const_to_opt_u128;
 use consts;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Const<'tcx> {
         let val = if llty == llvalty && common::type_is_imm_pair(ccx, self.ty) {
             let (a, b) = self.get_pair(ccx);
             OperandValue::Pair(a, b)
-        } else if llty == llvalty && common::type_is_immediate(ccx, self.ty) {
+        } else if llty == llvalty && ccx.layout_of(self.ty).is_llvm_immediate() {
             // If the types match, we can use the value directly.
             OperandValue::Immediate(self.llval)
         } else {
@@ -676,11 +676,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                         C_fat_ptr(self.ccx, base, info)
                     }
-                    mir::CastKind::Misc if common::type_is_immediate(self.ccx, operand.ty) => {
-                        debug_assert!(common::type_is_immediate(self.ccx, cast_ty));
+                    mir::CastKind::Misc if self.ccx.layout_of(operand.ty).is_llvm_immediate() => {
                         let r_t_in = CastTy::from_ty(operand.ty).expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                        let ll_t_out = self.ccx.layout_of(cast_ty).immediate_llvm_type(self.ccx);
+                        let cast_layout = self.ccx.layout_of(cast_ty);
+                        assert!(cast_layout.is_llvm_immediate());
+                        let ll_t_out = cast_layout.immediate_llvm_type(self.ccx);
                         let llval = operand.llval;
                         let signed = match self.ccx.layout_of(operand.ty).abi {
                             layout::Abi::Scalar(layout::Int(_, signed)) => signed,
@@ -729,8 +730,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         if common::type_is_fat_ptr(self.ccx, operand.ty) {
                             let (data_ptr, meta) = operand.get_fat_ptr(self.ccx);
                             if common::type_is_fat_ptr(self.ccx, cast_ty) {
-                                let llcast_ty = type_of::fat_ptr_base_ty(self.ccx, cast_ty);
-                                let data_cast = consts::ptrcast(data_ptr, llcast_ty);
+                                let thin_ptr = self.ccx.layout_of(cast_ty)
+                                    .field(self.ccx, abi::FAT_PTR_ADDR);
+                                let data_cast = consts::ptrcast(data_ptr,
+                                    thin_ptr.llvm_type(self.ccx));
                                 C_fat_ptr(self.ccx, data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
@@ -1034,7 +1037,7 @@ fn trans_const_adt<'a, 'tcx>(
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
     };
-    match *l.layout {
+    match l.layout {
         layout::Layout::General { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
@@ -1090,7 +1093,7 @@ fn trans_const_adt<'a, 'tcx>(
 /// a two-element struct will locate it at offset 4, and accesses to it
 /// will read the wrong memory.
 fn build_const_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                layout: layout::FullLayout<'tcx>,
+                                layout: layout::TyLayout<'tcx>,
                                 vals: &[Const<'tcx>],
                                 discr: Option<Const<'tcx>>)
                                 -> Const<'tcx> {

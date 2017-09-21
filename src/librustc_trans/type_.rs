@@ -207,10 +207,6 @@ impl Type {
         ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
     }
 
-    pub fn vtable_ptr(ccx: &CrateContext) -> Type {
-        Type::func(&[Type::i8p(ccx)], &Type::void(ccx)).ptr_to().ptr_to()
-    }
-
     pub fn kind(&self) -> TypeKind {
         unsafe {
             llvm::LLVMRustGetTypeKind(self.to_ref())

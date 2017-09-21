@@ -54,20 +54,11 @@ pub fn type_is_fat_ptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> 
     }
 }
 
-pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    let layout = ccx.layout_of(ty);
-    match layout.abi {
-        layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
-
-        layout::Abi::Aggregate { .. } => layout.is_zst()
-    }
-}
-
 /// Returns true if the type is represented as a pair of immediates.
 pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                                   -> bool {
     let layout = ccx.layout_of(ty);
-    match *layout.fields {
+    match layout.fields {
         layout::FieldPlacement::Arbitrary { .. } => {
             // There must be only 2 fields.
             if layout.fields.count() != 2 {
@@ -75,8 +66,8 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
             }
 
             // The two fields must be both immediates.
-            type_is_immediate(ccx, layout.field(ccx, 0).ty) &&
-            type_is_immediate(ccx, layout.field(ccx, 1).ty)
+            layout.field(ccx, 0).is_llvm_immediate() &&
+            layout.field(ccx, 1).is_llvm_immediate()
         }
         _ => false
     }
@@ -256,16 +247,7 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx().mk_str()).llvm_type(cx).ptr_to());
-    let empty = C_array(Type::i8(cx), &[]);
-    assert_eq!(abi::FAT_PTR_ADDR, 0);
-    assert_eq!(abi::FAT_PTR_EXTRA, 1);
-    C_named_struct(cx.str_slice_type(), &[
-        empty,
-        cs,
-        empty,
-        C_usize(cx, len as u64),
-        empty
-    ])
+    C_fat_ptr(cx, cs, C_usize(cx, len as u64))
 }
 
 pub fn C_fat_ptr(cx: &CrateContext, ptr: ValueRef, meta: ValueRef) -> ValueRef {
@@ -290,12 +272,6 @@ pub fn C_struct_in_context(llcx: ContextRef, elts: &[ValueRef], packed: bool) ->
         llvm::LLVMConstStructInContext(llcx,
                                        elts.as_ptr(), elts.len() as c_uint,
                                        packed as Bool)
-    }
-}
-
-pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
-    unsafe {
-        llvm::LLVMConstNamedStruct(t.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 

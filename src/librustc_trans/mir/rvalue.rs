@@ -15,13 +15,14 @@ use rustc::ty::layout::{self, Layout, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
+use abi;
 use base;
 use builder::Builder;
 use callee;
 use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint};
 use monomorphize;
 use type_::Type;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use value::Value;
 
 use super::{MirContext, LocalRef};
@@ -229,8 +230,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 //   &'a fmt::Debug+Send => &'a fmt::Debug,
                                 // So we need to pointercast the base to ensure
                                 // the types match up.
-                                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, cast.ty);
-                                let lldata = bcx.pointercast(lldata, llcast_ty);
+                                let thin_ptr = cast.field(bcx.ccx, abi::FAT_PTR_ADDR);
+                                let lldata = bcx.pointercast(lldata, thin_ptr.llvm_type(bcx.ccx));
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -248,8 +249,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::CastKind::Misc if common::type_is_fat_ptr(bcx.ccx, operand.layout.ty) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if common::type_is_fat_ptr(bcx.ccx, cast.ty) {
-                                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, cast.ty);
-                                let data_cast = bcx.pointercast(data_ptr, llcast_ty);
+                                let thin_ptr = cast.field(bcx.ccx, abi::FAT_PTR_ADDR);
+                                let data_cast = bcx.pointercast(data_ptr,
+                                    thin_ptr.llvm_type(bcx.ccx));
                                 OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
@@ -263,7 +265,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         }
                     }
                     mir::CastKind::Misc => {
-                        debug_assert!(common::type_is_immediate(bcx.ccx, cast.ty));
+                        assert!(cast.is_llvm_immediate());
                         let r_t_in = CastTy::from_ty(operand.layout.ty)
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
@@ -271,7 +273,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let ll_t_out = cast.immediate_llvm_type(bcx.ccx);
                         let llval = operand.immediate();
 
-                        if let Layout::General { ref discr_range, .. } = *operand.layout.layout {
+                        if let Layout::General { ref discr_range, .. } = operand.layout.layout {
                             if discr_range.end > discr_range.start {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most

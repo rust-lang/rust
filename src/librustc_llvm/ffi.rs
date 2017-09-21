@@ -1304,11 +1304,6 @@ extern "C" {
                              ElementCount: c_uint,
                              Packed: Bool);
 
-    pub fn LLVMConstNamedStruct(S: TypeRef,
-                                ConstantVals: *const ValueRef,
-                                Count: c_uint)
-                                -> ValueRef;
-
     /// Enables LLVM debug output.
     pub fn LLVMRustSetDebug(Enabled: c_int);
 

@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty;
-use rustc::ty::layout::{LayoutOf, FullLayout};
+use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -71,7 +71,7 @@ pub struct OperandRef<'tcx> {
     pub val: OperandValue,
 
     // The layout of value, based on its Rust type.
-    pub layout: FullLayout<'tcx>,
+    pub layout: TyLayout<'tcx>,
 }
 
 impl<'tcx> fmt::Debug for OperandRef<'tcx> {
@@ -82,7 +82,7 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 
 impl<'a, 'tcx> OperandRef<'tcx> {
     pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
-                   layout: FullLayout<'tcx>) -> OperandRef<'tcx> {
+                   layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
         let llty = layout.llvm_type(ccx);
         // FIXME(eddyb) ZSTs should always be immediate, not pairs.

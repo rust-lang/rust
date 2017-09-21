@@ -274,13 +274,22 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
 
                 let lvalue = self.trans_lvalue(&bcx, location);
-                let fn_ty = FnType::of_instance(bcx.ccx, &drop_fn);
-                let (drop_fn, need_extra) = match ty.sty {
-                    ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
-                                          false),
-                    _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
+                let mut args: &[_] = &[lvalue.llval, lvalue.llextra];
+                args = &args[..1 + lvalue.has_extra() as usize];
+                let (drop_fn, fn_ty) = match ty.sty {
+                    ty::TyDynamic(..) => {
+                        let fn_ty = common::instance_ty(bcx.ccx.tcx(), &drop_fn);
+                        let sig = common::ty_fn_sig(bcx.ccx, fn_ty);
+                        let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                        let fn_ty = FnType::new_vtable(bcx.ccx, sig, &[]);
+                        args = &args[..1];
+                        (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra, &fn_ty), fn_ty)
+                    }
+                    _ => {
+                        (callee::get_fn(bcx.ccx, drop_fn),
+                         FnType::of_instance(bcx.ccx, &drop_fn))
+                    }
                 };
-                let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
                 do_call(self, bcx, fn_ty, drop_fn, args,
                         Some((ReturnDest::Nothing, target)),
                         unwind);
@@ -561,19 +570,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     (&args[..], None)
                 };
 
-                for (idx, arg) in first_args.iter().enumerate() {
+                for (i, arg) in first_args.iter().enumerate() {
                     let op = self.trans_operand(&bcx, arg);
-                    if idx == 0 {
+                    if i == 0 {
                         if let Pair(_, meta) = op.val {
                             if let Some(ty::InstanceDef::Virtual(_, idx)) = def {
-                                let llmeth = meth::VirtualIndex::from_index(idx)
-                                    .get_fn(&bcx, meta);
-                                let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
-                                llfn = Some(bcx.pointercast(llmeth, llty));
+                                llfn = Some(meth::VirtualIndex::from_index(idx)
+                                    .get_fn(&bcx, meta, &fn_ty));
                             }
                         }
                     }
-                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty.args[idx]);
+                    self.trans_argument(&bcx, op, &mut llargs, &fn_ty.args[i]);
                 }
                 if let Some(tup) = untuple {
                     self.trans_arguments_untupled(&bcx, tup, &mut llargs,

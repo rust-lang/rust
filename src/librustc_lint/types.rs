@@ -753,7 +753,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                     bug!("failed to get layout for `{}`: {}", t, e)
                 });
 
-                if let Layout::General { ref variants, discr, .. } = *layout.layout {
+                if let Layout::General { ref variants, discr, .. } = layout.layout {
                     let discr_size = discr.size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
