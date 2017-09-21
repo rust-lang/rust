@@ -1,3 +1,6 @@
 [build]
 build = "i686-pc-windows-msvc"
 target = ["i686-pc-windows-msvc"]
+
+[rust]
+ignore-git = false

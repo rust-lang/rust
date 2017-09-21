@@ -1,3 +1,6 @@
 [build]
 build = "x86_64-pc-windows-msvc"
 target = ["x86_64-pc-windows-msvc"]
+
+[rust]
+ignore-git = false
