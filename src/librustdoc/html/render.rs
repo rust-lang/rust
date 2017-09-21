@@ -60,6 +60,7 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
+use rustc::session::config::Externs;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability, Span};
 use doctree;
