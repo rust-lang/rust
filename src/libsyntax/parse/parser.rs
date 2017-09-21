@@ -38,7 +38,7 @@ use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast::{BinOpKind, UnOp};
-use ast::RangeEnd;
+use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{self, Span, BytePos};
@@ -3557,7 +3557,8 @@ impl<'a> Parser<'a> {
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
                         let end_kind = match self.token {
                             token::DotDot => RangeEnd::Excluded,
-                            token::DotDotDot | token::DotDotEq => RangeEnd::Included,
+                            token::DotDotDot => RangeEnd::Included(RangeSyntax::DotDotDot),
+                            token::DotDotEq => RangeEnd::Included(RangeSyntax::DotDotEq),
                             _ => panic!("can only parse `..`/`...`/`..=` for ranges \
                                          (checked above)"),
                         };
@@ -3600,10 +3601,12 @@ impl<'a> Parser<'a> {
                     Ok(begin) => {
                         if self.eat(&token::DotDotDot) {
                             let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end, RangeEnd::Included);
+                            pat = PatKind::Range(begin, end,
+                                    RangeEnd::Included(RangeSyntax::DotDotDot));
                         } else if self.eat(&token::DotDotEq) {
                             let end = self.parse_pat_range_end()?;
-                            pat = PatKind::Range(begin, end, RangeEnd::Included);
+                            pat = PatKind::Range(begin, end,
+                                    RangeEnd::Included(RangeSyntax::DotDotEq));
                         } else if self.eat(&token::DotDot) {
                             let end = self.parse_pat_range_end()?;
                             pat = PatKind::Range(begin, end, RangeEnd::Excluded);
