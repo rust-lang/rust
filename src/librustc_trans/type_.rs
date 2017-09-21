@@ -140,6 +140,10 @@ impl Type {
         }
     }
 
+    pub fn c_int(ccx: &CrateContext) -> Type {
+        Type::i32(ccx)
+    }
+
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
             ast::IntTy::Is => ccx.isize_ty(),
