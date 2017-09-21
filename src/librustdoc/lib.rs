@@ -170,6 +170,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable("no-default", |o| {
             o.optflag("", "no-defaults", "don't run the default passes")
         }),
+        stable("document-private-items", |o| {
+            o.optflag("", "document-private-items", "document private items")
+        }),
         stable("test", |o| o.optflag("", "test", "run code examples as tests")),
         stable("test-args", |o| {
             o.optmulti("", "test-args", "arguments to pass to the test runner",
@@ -461,6 +464,18 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
 
+    // We hardcode in the passes here, as this is a new flag and we
+    // are generally deprecating passes.
+    if matches.opt_present("document-private-items") {
+        default_passes = false;
+
+        passes = vec![
+            String::from("strip-hidden"),
+            String::from("collapse-docs"),
+            String::from("unindent-comments"),
+        ];
+    }
+
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
@@ -570,5 +585,9 @@ fn check_deprecated_options(matches: &getopts::Matches) {
             eprintln!("WARNING: the '{}' flag is considered deprecated", flag);
             eprintln!("WARNING: please see https://github.com/rust-lang/rust/issues/44136");
         }
+    }
+
+    if matches.opt_present("no-defaults") {
+        eprintln!("WARNING: (you may want to use --document-private-items)");
     }
 }
