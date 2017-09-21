@@ -445,7 +445,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path, _: ast::NodeId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
-            self.visit_segment_parameters(path.def, depth, &segment.parameters);
+            if let Some(ref parameters) = segment.parameters {
+                self.visit_segment_parameters(path.def, depth, parameters);
+            }
         }
     }
 

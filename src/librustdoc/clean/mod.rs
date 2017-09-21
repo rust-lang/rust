@@ -1852,25 +1852,27 @@ impl Clean<Type> for hir::Ty {
                 };
 
                 if let Some(&hir::ItemTy(ref ty, ref generics)) = alias {
-                    let provided_params = &path.segments.last().unwrap().parameters;
+                    let provided_params = &path.segments.last().unwrap();
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
-                    for (i, ty_param) in generics.ty_params.iter().enumerate() {
-                        let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
-                        if let Some(ty) = provided_params.types.get(i).cloned() {
-                            ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
-                        } else if let Some(default) = ty_param.default.clone() {
-                            ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
-                        }
-                    }
-                    for (i, lt_param) in generics.lifetimes.iter().enumerate() {
-                        if let Some(lt) = provided_params.lifetimes.get(i).cloned() {
-                            if !lt.is_elided() {
-                                let lt_def_id = cx.tcx.hir.local_def_id(lt_param.lifetime.id);
-                                lt_substs.insert(lt_def_id, lt.clean(cx));
+                    provided_params.with_parameters(|provided_params| {
+                        for (i, ty_param) in generics.ty_params.iter().enumerate() {
+                            let ty_param_def = Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
+                            if let Some(ty) = provided_params.types.get(i).cloned() {
+                                ty_substs.insert(ty_param_def, ty.unwrap().clean(cx));
+                            } else if let Some(default) = ty_param.default.clone() {
+                                ty_substs.insert(ty_param_def, default.unwrap().clean(cx));
                             }
                         }
-                    }
+                        for (i, lt_param) in generics.lifetimes.iter().enumerate() {
+                            if let Some(lt) = provided_params.lifetimes.get(i).cloned() {
+                                if !lt.is_elided() {
+                                    let lt_def_id = cx.tcx.hir.local_def_id(lt_param.lifetime.id);
+                                    lt_substs.insert(lt_def_id, lt.clean(cx));
+                                }
+                            }
+                        }
+                    });
                     return cx.enter_alias(ty_substs, lt_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.id)
@@ -2419,7 +2421,7 @@ impl Clean<PathSegment> for hir::PathSegment {
     fn clean(&self, cx: &DocContext) -> PathSegment {
         PathSegment {
             name: self.name.clean(cx),
-            params: self.parameters.clean(cx)
+            params: self.with_parameters(|parameters| parameters.clean(cx))
         }
     }
 }

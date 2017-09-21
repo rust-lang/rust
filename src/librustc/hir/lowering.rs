@@ -690,10 +690,9 @@ impl<'a> LoweringContext<'a> {
             TyKind::ImplicitSelf => {
                 hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
                     def: self.expect_full_def(t.id),
-                    segments: hir_vec![hir::PathSegment {
-                        name: keywords::SelfType.name(),
-                        parameters: hir::PathParameters::none()
-                    }],
+                    segments: hir_vec![
+                        hir::PathSegment::from_name(keywords::SelfType.name())
+                    ],
                     span: t.span,
                 })))
             }
@@ -914,12 +913,8 @@ impl<'a> LoweringContext<'a> {
             segments: segments.map(|segment| {
                 self.lower_path_segment(p.span, segment, param_mode, 0,
                                         ParenthesizedGenericArgs::Err)
-            }).chain(name.map(|name| {
-                hir::PathSegment {
-                    name,
-                    parameters: hir::PathParameters::none()
-                }
-            })).collect(),
+            }).chain(name.map(|name| hir::PathSegment::from_name(name)))
+              .collect(),
             span: p.span,
         }
     }
@@ -940,7 +935,7 @@ impl<'a> LoweringContext<'a> {
                           expected_lifetimes: usize,
                           parenthesized_generic_args: ParenthesizedGenericArgs)
                           -> hir::PathSegment {
-        let mut parameters = if let Some(ref parameters) = segment.parameters {
+        let (mut parameters, infer_types) = if let Some(ref parameters) = segment.parameters {
             let msg = "parenthesized parameters may only be used with a trait";
             match **parameters {
                 PathParameters::AngleBracketed(ref data) => {
@@ -951,12 +946,12 @@ impl<'a> LoweringContext<'a> {
                     ParenthesizedGenericArgs::Warn => {
                         self.sess.buffer_lint(PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                                               CRATE_NODE_ID, data.span, msg.into());
-                        hir::PathParameters::none()
+                        (hir::PathParameters::none(), true)
                     }
                     ParenthesizedGenericArgs::Err => {
                         struct_span_err!(self.sess, data.span, E0214, "{}", msg)
                             .span_label(data.span, "only traits may use parentheses").emit();
-                        hir::PathParameters::none()
+                        (hir::PathParameters::none(), true)
                     }
                 }
             }
@@ -970,29 +965,29 @@ impl<'a> LoweringContext<'a> {
             }).collect();
         }
 
-        hir::PathSegment {
-            name: self.lower_ident(segment.identifier),
+        hir::PathSegment::new(
+            self.lower_ident(segment.identifier),
             parameters,
-        }
+            infer_types
+        )
     }
 
     fn lower_angle_bracketed_parameter_data(&mut self,
                                             data: &AngleBracketedParameterData,
                                             param_mode: ParamMode)
-                                            -> hir::PathParameters {
+                                            -> (hir::PathParameters, bool) {
         let &AngleBracketedParameterData { ref lifetimes, ref types, ref bindings, .. } = data;
-        hir::PathParameters {
+        (hir::PathParameters {
             lifetimes: self.lower_lifetimes(lifetimes),
             types: types.iter().map(|ty| self.lower_ty(ty)).collect(),
-            infer_types: types.is_empty() && param_mode == ParamMode::Optional,
             bindings: bindings.iter().map(|b| self.lower_ty_binding(b)).collect(),
             parenthesized: false,
-        }
+        }, types.is_empty() && param_mode == ParamMode::Optional)
     }
 
     fn lower_parenthesized_parameter_data(&mut self,
                                           data: &ParenthesizedParameterData)
-                                          -> hir::PathParameters {
+                                          -> (hir::PathParameters, bool) {
         let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
         let inputs = inputs.iter().map(|ty| self.lower_ty(ty)).collect();
         let mk_tup = |this: &mut Self, tys, span| {
@@ -1000,10 +995,9 @@ impl<'a> LoweringContext<'a> {
             P(hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span })
         };
 
-        hir::PathParameters {
+        (hir::PathParameters {
             lifetimes: hir::HirVec::new(),
             types: hir_vec![mk_tup(self, inputs, span)],
-            infer_types: false,
             bindings: hir_vec![hir::TypeBinding {
                 id: self.next_id().node_id,
                 name: Symbol::intern(FN_OUTPUT_NAME),
@@ -1012,7 +1006,7 @@ impl<'a> LoweringContext<'a> {
                 span: output.as_ref().map_or(span, |ty| ty.span),
             }],
             parenthesized: true,
-        }
+        }, false)
     }
 
     fn lower_local(&mut self, l: &Local) -> P<hir::Local> {

@@ -4668,7 +4668,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= fn_start;
                 fn_segment
             };
-            let lifetimes = segment.map_or(&[][..], |(s, _)| &s.parameters.lifetimes[..]);
+            let lifetimes = segment.map_or(&[][..], |(s, _)| {
+                s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
+            });
 
             if let Some(lifetime) = lifetimes.get(i) {
                 AstConv::ast_region_to_region(self, lifetime, Some(def))
@@ -4692,7 +4694,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 fn_segment
             };
             let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
-                (&s.parameters.types[..], s.parameters.infer_types)
+                (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
             });
 
             // Skip over the lifetimes in the same segment.
@@ -4769,8 +4771,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   is_method_call: bool) {
         let (lifetimes, types, infer_types, bindings) = segment.map_or(
             (&[][..], &[][..], true, &[][..]),
-            |(s, _)| (&s.parameters.lifetimes[..], &s.parameters.types[..],
-                      s.parameters.infer_types, &s.parameters.bindings[..]));
+            |(s, _)| s.parameters.as_ref().map_or(
+                (&[][..], &[][..], s.infer_types, &[][..]),
+                |p| (&p.lifetimes[..], &p.types[..],
+                     s.infer_types, &p.bindings[..])));
         let infer_lifetimes = lifetimes.len() == 0;
 
         let count_lifetime_params = |n| {

@@ -1213,11 +1213,17 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(&args[0], parser::PREC_POSTFIX)?;
         self.s.word(".")?;
         self.print_name(segment.name)?;
-        if !segment.parameters.lifetimes.is_empty() ||
-                !segment.parameters.types.is_empty() ||
-                !segment.parameters.bindings.is_empty() {
-            self.print_path_parameters(&segment.parameters, true)?;
-        }
+
+        segment.with_parameters(|parameters| {
+            if !parameters.lifetimes.is_empty() ||
+                !parameters.types.is_empty() ||
+                !parameters.bindings.is_empty()
+            {
+                self.print_path_parameters(&parameters, segment.infer_types, true)
+            } else {
+                Ok(())
+            }
+        })?;
         self.print_call_post(base_args)
     }
 
@@ -1564,8 +1570,12 @@ impl<'a> State<'a> {
             }
             if segment.name != keywords::CrateRoot.name() &&
                segment.name != keywords::DollarCrate.name() {
-                self.print_name(segment.name)?;
-                self.print_path_parameters(&segment.parameters, colons_before_params)?;
+               self.print_name(segment.name)?;
+               segment.with_parameters(|parameters| {
+                   self.print_path_parameters(parameters,
+                                              segment.infer_types,
+                                              colons_before_params)
+               })?;
             }
         }
 
@@ -1593,7 +1603,11 @@ impl<'a> State<'a> {
                     if segment.name != keywords::CrateRoot.name() &&
                        segment.name != keywords::DollarCrate.name() {
                         self.print_name(segment.name)?;
-                        self.print_path_parameters(&segment.parameters, colons_before_params)?;
+                        segment.with_parameters(|parameters| {
+                            self.print_path_parameters(parameters,
+                                                       segment.infer_types,
+                                                       colons_before_params)
+                        })?;
                     }
                 }
 
@@ -1601,7 +1615,11 @@ impl<'a> State<'a> {
                 self.s.word("::")?;
                 let item_segment = path.segments.last().unwrap();
                 self.print_name(item_segment.name)?;
-                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+                item_segment.with_parameters(|parameters| {
+                    self.print_path_parameters(parameters,
+                                               item_segment.infer_types,
+                                               colons_before_params)
+                })
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
                 self.s.word("<")?;
@@ -1609,13 +1627,18 @@ impl<'a> State<'a> {
                 self.s.word(">")?;
                 self.s.word("::")?;
                 self.print_name(item_segment.name)?;
-                self.print_path_parameters(&item_segment.parameters, colons_before_params)
+                item_segment.with_parameters(|parameters| {
+                    self.print_path_parameters(parameters,
+                                               item_segment.infer_types,
+                                               colons_before_params)
+                })
             }
         }
     }
 
     fn print_path_parameters(&mut self,
                              parameters: &hir::PathParameters,
+                             infer_types: bool,
                              colons_before_params: bool)
                              -> io::Result<()> {
         if parameters.parenthesized {
@@ -1652,7 +1675,7 @@ impl<'a> State<'a> {
 
             // FIXME(eddyb) This would leak into error messages, e.g.:
             // "non-exhaustive patterns: `Some::<..>(_)` not covered".
-            if parameters.infer_types && false {
+            if infer_types && false {
                 start_or_comma(self)?;
                 self.s.word("..")?;
             }
