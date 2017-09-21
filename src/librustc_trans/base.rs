@@ -28,6 +28,7 @@ use super::ModuleSource;
 use super::ModuleTranslation;
 use super::ModuleKind;
 
+use abi;
 use assert_module_sources;
 use back::link;
 use back::symbol_export;
@@ -40,7 +41,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::trans::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata, EncodedMetadataHashes};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, FullLayout, LayoutOf};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepKind, DepConstructor};
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
@@ -68,7 +69,7 @@ use symbol_names_test;
 use time_graph;
 use trans_item::{TransItem, BaseTransItemExt, TransItemExt, DefPathBasedNames};
 use type_::Type;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
@@ -203,8 +204,10 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::TyDynamic(ref data, ..)) => {
+            let vtable_ptr = ccx.layout_of(ccx.tcx().mk_mut_ptr(target))
+                .field(ccx, abi::FAT_PTR_EXTRA);
             consts::ptrcast(meth::get_vtable(ccx, source, data.principal()),
-                            Type::vtable_ptr(ccx))
+                            vtable_ptr.llvm_type(ccx))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                                      source,
@@ -255,8 +258,8 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
-                let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
-                (bcx.pointercast(base, llcast_ty), info)
+                let thin_ptr = dst.layout.field(bcx.ccx, abi::FAT_PTR_ADDR);
+                (bcx.pointercast(base, thin_ptr.llvm_type(bcx.ccx)), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bcx, base, src_ty, dst_ty)
@@ -371,7 +374,7 @@ pub fn from_immediate(bcx: &Builder, val: ValueRef) -> ValueRef {
     }
 }
 
-pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::FullLayout) -> ValueRef {
+pub fn to_immediate(bcx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
     if let layout::Abi::Scalar(layout::Int(layout::I1, _)) = layout.abi {
         bcx.trunc(val, Type::i1(bcx.ccx))
     } else {
@@ -400,7 +403,7 @@ pub fn memcpy_ty<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     dst: ValueRef,
     src: ValueRef,
-    layout: FullLayout<'tcx>,
+    layout: TyLayout<'tcx>,
     align: Option<Align>,
 ) {
     let ccx = bcx.ccx;

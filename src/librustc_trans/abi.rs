@@ -36,7 +36,7 @@ use type_of::LayoutLlvmExt;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, Size, FullLayout};
+use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc_back::PanicStrategy;
 
@@ -275,7 +275,7 @@ pub trait LayoutExt<'tcx> {
     fn homogeneous_aggregate<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Option<Reg>;
 }
 
-impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
+impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
             layout::Abi::Scalar(_) |
@@ -311,7 +311,7 @@ impl<'tcx> LayoutExt<'tcx> for FullLayout<'tcx> {
                 let mut total = Size::from_bytes(0);
                 let mut result = None;
 
-                let is_union = match *self.fields {
+                let is_union = match self.fields {
                     layout::FieldPlacement::Array { count, .. } => {
                         if count > 0 {
                             return self.field(ccx, 0).homogeneous_aggregate(ccx);
@@ -424,7 +424,7 @@ impl CastTarget {
 #[derive(Debug)]
 pub struct ArgType<'tcx> {
     kind: ArgKind,
-    pub layout: FullLayout<'tcx>,
+    pub layout: TyLayout<'tcx>,
     /// Cast target, either a single uniform or a pair of registers.
     pub cast: Option<CastTarget>,
     /// Dummy argument, which is emitted before the real argument.
@@ -435,7 +435,7 @@ pub struct ArgType<'tcx> {
 }
 
 impl<'a, 'tcx> ArgType<'tcx> {
-    fn new(layout: FullLayout<'tcx>) -> ArgType<'tcx> {
+    fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
         ArgType {
             kind: ArgKind::Direct,
             layout,
@@ -610,7 +610,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         let fn_ty = instance_ty(ccx.tcx(), &instance);
         let sig = ty_fn_sig(ccx, fn_ty);
         let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
-        Self::new(ccx, sig, &[])
+        FnType::new(ccx, sig, &[])
     }
 
     pub fn new(ccx: &CrateContext<'a, 'tcx>,

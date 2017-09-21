@@ -11,131 +11,68 @@
 use abi::FnType;
 use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, HasDataLayout, Align, LayoutOf, Size, FullLayout};
+use rustc::ty::layout::{self, HasDataLayout, Align, LayoutOf, Size, TyLayout};
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
-use syntax::ast;
+use std::fmt::Write;
 
-pub fn fat_ptr_base_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
-    match ty.sty {
-        ty::TyRef(_, ty::TypeAndMut { ty: t, .. }) |
-        ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) if ccx.shared().type_has_metadata(t) => {
-            ccx.layout_of(t).llvm_type(ccx).ptr_to()
-        }
-        ty::TyAdt(def, _) if def.is_box() => {
-            ccx.layout_of(ty.boxed_ty()).llvm_type(ccx).ptr_to()
-        }
-        _ => bug!("expected fat ptr ty but got {:?}", ty)
-    }
-}
-
-pub fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
-    let unsized_part = ccx.tcx().struct_tail(ty);
-    match unsized_part.sty {
-        ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
-            Type::uint_from_ty(ccx, ast::UintTy::Us)
-        }
-        ty::TyDynamic(..) => Type::vtable_ptr(ccx),
-        _ => bug!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
-                          unsized_part, ty)
-    }
-}
-
-fn uncached_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                ty: Ty<'tcx>,
-                                defer: &mut Option<(Type, FullLayout<'tcx>)>)
+fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                layout: TyLayout<'tcx>,
+                                defer: &mut Option<(Type, TyLayout<'tcx>)>)
                                 -> Type {
-    let ptr_ty = |ty: Ty<'tcx>| {
-        if cx.shared().type_has_metadata(ty) {
-            if let ty::TyStr = ty.sty {
-                // This means we get a nicer name in the output (str is always
-                // unsized).
-                cx.str_slice_type()
-            } else {
-                let ptr_ty = cx.layout_of(ty).llvm_type(cx).ptr_to();
-                let info_ty = unsized_info_ty(cx, ty);
-                Type::struct_(cx, &[
-                    Type::array(&Type::i8(cx), 0),
-                    ptr_ty,
-                    Type::array(&Type::i8(cx), 0),
-                    info_ty,
-                    Type::array(&Type::i8(cx), 0)
-                ], false)
-            }
-        } else {
-            cx.layout_of(ty).llvm_type(cx).ptr_to()
+    match layout.abi {
+        layout::Abi::Scalar(_) => bug!("handled elsewhere"),
+        layout::Abi::Vector { .. } => {
+            return Type::vector(&layout.field(ccx, 0).llvm_type(ccx),
+                                layout.fields.count() as u64);
         }
-    };
-    match ty.sty {
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => {
-            return ptr_ty(ty);
-        }
-        ty::TyAdt(def, _) if def.is_box() => {
-            return ptr_ty(ty.boxed_ty());
-        }
-        ty::TyFnPtr(sig) => {
-            let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
-            return FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to();
-        }
-        _ => {}
+        layout::Abi::Aggregate { .. } => {}
     }
 
-    let layout = cx.layout_of(ty);
-    if let layout::Abi::Scalar(value) = layout.abi {
-        let llty = match value {
-            layout::Int(layout::I1, _) => Type::i8(cx),
-            layout::Int(i, _) => Type::from_integer(cx, i),
-            layout::F32 => Type::f32(cx),
-            layout::F64 => Type::f64(cx),
-            layout::Pointer => {
-                cx.layout_of(layout::Pointer.to_ty(cx.tcx())).llvm_type(cx)
-            }
-        };
-        return llty;
-    }
-
-    if let layout::Abi::Vector { .. } = layout.abi {
-        return Type::vector(&layout.field(cx, 0).llvm_type(cx),
-                            layout.fields.count() as u64);
-    }
-
-    let name = match ty.sty {
-        ty::TyClosure(..) | ty::TyGenerator(..) | ty::TyAdt(..) => {
+    let name = match layout.ty.sty {
+        ty::TyClosure(..) |
+        ty::TyGenerator(..) |
+        ty::TyAdt(..) |
+        ty::TyDynamic(..) |
+        ty::TyForeign(..) |
+        ty::TyStr => {
             let mut name = String::with_capacity(32);
-            let printer = DefPathBasedNames::new(cx.tcx(), true, true);
-            printer.push_type_name(ty, &mut name);
+            let printer = DefPathBasedNames::new(ccx.tcx(), true, true);
+            printer.push_type_name(layout.ty, &mut name);
+            if let (&ty::TyAdt(def, _), Some(v)) = (&layout.ty.sty, layout.variant_index) {
+                write!(&mut name, "::{}", def.variants[v].name).unwrap();
+            }
             Some(name)
         }
         _ => None
     };
 
-    match *layout.fields {
+    match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let size = layout.size(cx).bytes();
-            let fill = Type::array(&Type::i8(cx), size);
+            let size = layout.size(ccx).bytes();
+            let fill = Type::array(&Type::i8(ccx), size);
             match name {
                 None => {
-                    Type::struct_(cx, &[fill], layout.is_packed())
+                    Type::struct_(ccx, &[fill], layout.is_packed())
                 }
                 Some(ref name) => {
-                    let mut llty = Type::named_struct(cx, name);
+                    let mut llty = Type::named_struct(ccx, name);
                     llty.set_struct_body(&[fill], layout.is_packed());
                     llty
                 }
             }
         }
         layout::FieldPlacement::Array { count, .. } => {
-            Type::array(&layout.field(cx, 0).llvm_type(cx), count)
+            Type::array(&layout.field(ccx, 0).llvm_type(ccx), count)
         }
         layout::FieldPlacement::Arbitrary { .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, layout), layout.is_packed())
+                    Type::struct_(ccx, &struct_llfields(ccx, layout), layout.is_packed())
                 }
                 Some(ref name) => {
-                    let llty = Type::named_struct(cx, name);
+                    let llty = Type::named_struct(ccx, name);
                     *defer = Some((llty, layout));
                     llty
                 }
@@ -144,37 +81,37 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 layout: FullLayout<'tcx>) -> Vec<Type> {
+fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                             layout: TyLayout<'tcx>) -> Vec<Type> {
     debug!("struct_llfields: {:#?}", layout);
-    let align = layout.align(cx);
-    let size = layout.size(cx);
+    let align = layout.align(ccx);
+    let size = layout.size(ccx);
     let field_count = layout.fields.count();
 
     let mut offset = Size::from_bytes(0);
     let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
-        let field = layout.field(cx, i);
+        let field = layout.field(ccx, i);
         let target_offset = layout.fields.offset(i as usize);
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?}",
             i, field, offset, target_offset);
         assert!(target_offset >= offset);
         let padding = target_offset - offset;
-        result.push(Type::array(&Type::i8(cx), padding.bytes()));
+        result.push(Type::array(&Type::i8(ccx), padding.bytes()));
         debug!("    padding before: {:?}", padding);
 
-        result.push(field.llvm_type(cx));
+        result.push(field.llvm_type(ccx));
 
         if layout.is_packed() {
             assert_eq!(padding.bytes(), 0);
         } else {
-            let field_align = field.align(cx);
+            let field_align = field.align(ccx);
             assert!(field_align.abi() <= align.abi(),
                     "non-packed type has field with larger align ({}): {:#?}",
                     field_align.abi(), layout);
         }
 
-        offset = target_offset + field.size(cx);
+        offset = target_offset + field.size(ccx);
     }
     if !layout.is_unsized() && field_count > 0 {
         if offset > size {
@@ -184,7 +121,7 @@ pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let padding = size - offset;
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, size);
-        result.push(Type::array(&Type::i8(cx), padding.bytes()));
+        result.push(Type::array(&Type::i8(ccx), padding.bytes()));
         assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
@@ -210,13 +147,22 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
 }
 
 pub trait LayoutLlvmExt<'tcx> {
+    fn is_llvm_immediate(&self) -> bool;
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn over_align(&self, ccx: &CrateContext) -> Option<Align>;
     fn llvm_field_index(&self, index: usize) -> u64;
 }
 
-impl<'tcx> LayoutLlvmExt<'tcx> for FullLayout<'tcx> {
+impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
+    fn is_llvm_immediate(&self) -> bool {
+        match self.abi {
+            layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => true,
+
+            layout::Abi::Aggregate { .. } => self.is_zst()
+        }
+    }
+
     /// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
     /// The pointee type of the pointer in `LvalueRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`
@@ -229,8 +175,42 @@ impl<'tcx> LayoutLlvmExt<'tcx> for FullLayout<'tcx> {
     /// of that field's type - this is useful for taking the address of
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type {
+        if let layout::Abi::Scalar(value) = self.abi {
+            // Use a different cache for scalars because pointers to DSTs
+            // can be either fat or thin (data pointers of fat pointers).
+            if let Some(&llty) = ccx.scalar_lltypes().borrow().get(&self.ty) {
+                return llty;
+            }
+            let llty = match value {
+                layout::Int(layout::I1, _) => Type::i8(ccx),
+                layout::Int(i, _) => Type::from_integer(ccx, i),
+                layout::F32 => Type::f32(ccx),
+                layout::F64 => Type::f64(ccx),
+                layout::Pointer => {
+                    let pointee = match self.ty.sty {
+                        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                            ccx.layout_of(ty).llvm_type(ccx)
+                        }
+                        ty::TyAdt(def, _) if def.is_box() => {
+                            ccx.layout_of(self.ty.boxed_ty()).llvm_type(ccx)
+                        }
+                        ty::TyFnPtr(sig) => {
+                            let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                            FnType::new(ccx, sig, &[]).llvm_type(ccx)
+                        }
+                        _ => Type::i8(ccx)
+                    };
+                    pointee.ptr_to()
+                }
+            };
+            ccx.scalar_lltypes().borrow_mut().insert(self.ty, llty);
+            return llty;
+        }
+
+
         // Check the cache.
-        if let Some(&llty) = ccx.lltypes().borrow().get(&self.ty) {
+        if let Some(&llty) = ccx.lltypes().borrow().get(&(self.ty, self.variant_index)) {
             return llty;
         }
 
@@ -244,13 +224,17 @@ impl<'tcx> LayoutLlvmExt<'tcx> for FullLayout<'tcx> {
 
         let mut defer = None;
         let llty = if self.ty != normal_ty {
-            ccx.layout_of(normal_ty).llvm_type(ccx)
+            let mut layout = ccx.layout_of(normal_ty);
+            if let Some(v) = self.variant_index {
+                layout = layout.for_variant(v);
+            }
+            layout.llvm_type(ccx)
         } else {
-            uncached_llvm_type(ccx, self.ty, &mut defer)
+            uncached_llvm_type(ccx, *self, &mut defer)
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        ccx.lltypes().borrow_mut().insert(self.ty, llty);
+        ccx.lltypes().borrow_mut().insert((self.ty, self.variant_index), llty);
 
         if let Some((mut llty, layout)) = defer {
             llty.set_struct_body(&struct_llfields(ccx, layout), layout.is_packed())
@@ -279,11 +263,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for FullLayout<'tcx> {
 
     fn llvm_field_index(&self, index: usize) -> u64 {
         if let layout::Abi::Scalar(_) = self.abi {
-            bug!("FullLayout::llvm_field_index({:?}): not applicable", self);
+            bug!("TyLayout::llvm_field_index({:?}): not applicable", self);
         }
-        match *self.fields {
+        match self.fields {
             layout::FieldPlacement::Union(_) => {
-                bug!("FullLayout::llvm_field_index({:?}): not applicable", self)
+                bug!("TyLayout::llvm_field_index({:?}): not applicable", self)
             }
 
             layout::FieldPlacement::Array { .. } => {

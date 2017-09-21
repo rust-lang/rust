@@ -97,43 +97,43 @@ pub fn struct_return() -> S {
 pub fn helper(_: usize) {
 }
 
-// CHECK: @slice(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @slice([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn slice(_: &[u8]) {
 }
 
-// CHECK: @mutable_slice(i8* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @mutable_slice([0 x i8]* nonnull %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 // ... there's this LLVM bug that forces us to not use noalias, see #29485
 #[no_mangle]
 pub fn mutable_slice(_: &mut [u8]) {
 }
 
-// CHECK: @unsafe_slice(%UnsafeInner* nonnull %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @unsafe_slice([0 x %UnsafeInner]* nonnull %arg0.0, [[USIZE]] %arg0.1)
 // unsafe interior means this isn't actually readonly and there may be aliases ...
 #[no_mangle]
 pub fn unsafe_slice(_: &[UnsafeInner]) {
 }
 
-// CHECK: @str(i8* noalias nonnull readonly %arg0.ptr, [[USIZE]] %arg0.meta)
+// CHECK: @str([0 x i8]* noalias nonnull readonly %arg0.0, [[USIZE]] %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn str(_: &[u8]) {
 }
 
-// CHECK: @trait_borrow({}* nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_borrow(%"core::ops::drop::Drop"* nonnull %arg0.0, {}* noalias nonnull readonly %arg0.1)
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &Drop) {
 }
 
-// CHECK: @trait_box({}* noalias nonnull, {}* noalias nonnull readonly)
+// CHECK: @trait_box(%"core::ops::drop::Drop"* noalias nonnull, {}* noalias nonnull readonly)
 #[no_mangle]
 pub fn trait_box(_: Box<Drop>) {
 }
 
-// CHECK: { [0 x i8], [0 x i16]*, [0 x i8], [[USIZE]], [0 x i8] } @return_slice(i16* noalias nonnull readonly %x.ptr, [[USIZE]] %x.meta)
+// CHECK: { [0 x i8], [0 x i16]*, [0 x i8], [[USIZE]], [0 x i8] } @return_slice([0 x i16]* noalias nonnull readonly %x.0, [[USIZE]] %x.1)
 #[no_mangle]
 pub fn return_slice(x: &[u16]) -> &[u16] {
   x

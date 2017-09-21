@@ -12,18 +12,17 @@ use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
 use rustc::ty::{self, TypeFoldable};
-use rustc::ty::layout::{LayoutOf, FullLayout};
+use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, Funclet};
+use common::{CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{ArgAttribute, FnType};
-use type_of::{self, LayoutLlvmExt};
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -85,7 +84,7 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// directly using an `OperandRef`, which makes for tighter LLVM
     /// IR. The conditions for using an `OperandRef` are as follows:
     ///
-    /// - the type of the local must be judged "immediate" by `type_is_immediate`
+    /// - the type of the local must be judged "immediate" by `is_llvm_immediate`
     /// - the operand must never be referenced indirectly
     ///     - we should not take its address using the `&` operator
     ///     - nor should it appear in an lvalue path like `tmp.a`
@@ -177,7 +176,7 @@ enum LocalRef<'tcx> {
 }
 
 impl<'a, 'tcx> LocalRef<'tcx> {
-    fn new_operand(ccx: &CrateContext<'a, 'tcx>, layout: FullLayout<'tcx>) -> LocalRef<'tcx> {
+    fn new_operand(ccx: &CrateContext<'a, 'tcx>, layout: TyLayout<'tcx>) -> LocalRef<'tcx> {
         if layout.is_zst() {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
@@ -448,31 +447,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             assert!(!a.is_ignore() && a.cast.is_none() && a.pad.is_none());
             assert!(!b.is_ignore() && b.cast.is_none() && b.pad.is_none());
 
-            let mut a = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            let a = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            bcx.set_value_name(a, &(name.clone() + ".0"));
             llarg_idx += 1;
 
-            let mut b = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            let b = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
+            bcx.set_value_name(b, &(name + ".1"));
             llarg_idx += 1;
-
-            if common::type_is_fat_ptr(bcx.ccx, arg.layout.ty) {
-                // FIXME(eddyb) As we can't perfectly represent the data and/or
-                // vtable pointer in a fat pointers in Rust's typesystem, and
-                // because we split fat pointers into two ArgType's, they're
-                // not the right type so we have to cast them for now.
-                let pointee = match arg.layout.ty.sty {
-                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
-                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => ty,
-                    ty::TyAdt(def, _) if def.is_box() => arg.layout.ty.boxed_ty(),
-                    _ => bug!()
-                };
-                let data_llty = bcx.ccx.layout_of(pointee).llvm_type(bcx.ccx);
-                let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
-
-                a = bcx.pointercast(a, data_llty.ptr_to());
-                bcx.set_value_name(a, &(name.clone() + ".ptr"));
-                b = bcx.pointercast(b, meta_llty);
-                bcx.set_value_name(b, &(name + ".meta"));
-            }
 
             return LocalRef::Operand(Some(OperandRef {
                 val: OperandValue::Pair(a, b),

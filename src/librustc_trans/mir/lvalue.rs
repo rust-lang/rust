@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, FullLayout, LayoutOf};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,7 +19,7 @@ use base;
 use builder::Builder;
 use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, val_ty};
 use consts;
-use type_of::{self, LayoutLlvmExt};
+use type_of::LayoutLlvmExt;
 use type_::Type;
 use value::Value;
 use glue;
@@ -54,8 +54,8 @@ impl ops::BitOr for Alignment {
     }
 }
 
-impl<'a> From<FullLayout<'a>> for Alignment {
-    fn from(layout: FullLayout) -> Self {
+impl<'a> From<TyLayout<'a>> for Alignment {
+    fn from(layout: TyLayout) -> Self {
         if let layout::Abi::Aggregate { packed: true, align, .. } = layout.abi {
             Alignment::Packed(align)
         } else {
@@ -86,7 +86,7 @@ pub struct LvalueRef<'tcx> {
     pub llextra: ValueRef,
 
     /// Monomorphized type of this lvalue, including variant information
-    pub layout: FullLayout<'tcx>,
+    pub layout: TyLayout<'tcx>,
 
     /// Whether this lvalue is known to be aligned according to its layout
     pub alignment: Alignment,
@@ -94,7 +94,7 @@ pub struct LvalueRef<'tcx> {
 
 impl<'a, 'tcx> LvalueRef<'tcx> {
     pub fn new_sized(llval: ValueRef,
-                     layout: FullLayout<'tcx>,
+                     layout: TyLayout<'tcx>,
                      alignment: Alignment)
                      -> LvalueRef<'tcx> {
         LvalueRef {
@@ -105,7 +105,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         }
     }
 
-    pub fn alloca(bcx: &Builder<'a, 'tcx>, layout: FullLayout<'tcx>, name: &str)
+    pub fn alloca(bcx: &Builder<'a, 'tcx>, layout: TyLayout<'tcx>, name: &str)
                   -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bcx.alloca(
@@ -114,7 +114,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn len(&self, ccx: &CrateContext<'a, 'tcx>) -> ValueRef {
-        if let layout::FieldPlacement::Array { count, .. } = *self.layout.fields {
+        if let layout::FieldPlacement::Array { count, .. } = self.layout.fields {
             if self.layout.is_unsized() {
                 assert!(self.has_extra());
                 assert_eq!(count, 0);
@@ -163,7 +163,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             OperandValue::Pair(
                 self.project_field(bcx, 0).load(bcx).pack_if_pair(bcx).immediate(),
                 self.project_field(bcx, 1).load(bcx).pack_if_pair(bcx).immediate())
-        } else if common::type_is_immediate(bcx.ccx, self.layout.ty) {
+        } else if self.layout.is_llvm_immediate() {
             let mut const_llval = ptr::null_mut();
             unsafe {
                 let global = llvm::LLVMIsAGlobalVariable(self.llval);
@@ -202,28 +202,15 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let ccx = bcx.ccx;
         let field = self.layout.field(ccx, ix);
         let offset = self.layout.fields.offset(ix).bytes();
-
         let alignment = self.alignment | Alignment::from(self.layout);
-
-        // Unions and newtypes only use an offset of 0.
-        let has_llvm_fields = match *self.layout.fields {
-            layout::FieldPlacement::Union(_) => false,
-            layout::FieldPlacement::Array { .. } => true,
-            layout::FieldPlacement::Arbitrary { .. } => {
-                match self.layout.abi {
-                    layout::Abi::Scalar(_) | layout::Abi::Vector { .. } => false,
-                    layout::Abi::Aggregate { .. } => true
-                }
-            }
-        };
 
         let simple = || {
             LvalueRef {
-                llval: if has_llvm_fields {
-                    bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
-                } else {
-                    assert_eq!(offset, 0);
+                // Unions and newtypes only use an offset of 0.
+                llval: if offset == 0 {
                     bcx.pointercast(self.llval, field.llvm_type(ccx).ptr_to())
+                } else {
+                    bcx.struct_gep(self.llval, self.layout.llvm_field_index(ix))
                 },
                 llextra: if ccx.shared().type_has_metadata(field.ty) {
                     self.llextra
@@ -309,7 +296,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     /// Obtain the actual discriminant of a value.
     pub fn trans_get_discr(self, bcx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
         let cast_to = bcx.ccx.layout_of(cast_to).immediate_llvm_type(bcx.ccx);
-        match *self.layout.layout {
+        match self.layout.layout {
             layout::Layout::Univariant { .. } |
             layout::Layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
             _ => {}
@@ -320,7 +307,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::Abi::Scalar(discr) => discr,
             _ => bug!("discriminant not scalar: {:#?}", discr.layout)
         };
-        let (min, max) = match *self.layout.layout {
+        let (min, max) = match self.layout.layout {
             layout::Layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
             _ => (0, u64::max_value()),
         };
@@ -346,7 +333,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 bcx.load(discr.llval, discr.alignment.non_abi())
             }
         };
-        match *self.layout.layout {
+        match self.layout.layout {
             layout::Layout::General { .. } => {
                 let signed = match discr_scalar {
                     layout::Int(_, signed) => signed,
@@ -369,7 +356,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let to = self.layout.ty.ty_adt_def().unwrap()
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
-        match *self.layout.layout {
+        match self.layout.layout {
             layout::Layout::General { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
@@ -419,17 +406,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(variant_index);
 
-        // If this is an enum, cast to the appropriate variant struct type.
-        match *self.layout.layout {
-            layout::Layout::NullablePointer { .. } |
-            layout::Layout::General { .. } => {
-                let variant_ty = Type::struct_(bcx.ccx,
-                    &type_of::struct_llfields(bcx.ccx, downcast.layout),
-                    downcast.layout.is_packed());
-                downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
-            }
-            _ => {}
-        }
+        // Cast to the appropriate variant struct type.
+        let variant_ty = downcast.layout.llvm_type(bcx.ccx);
+        downcast.llval = bcx.pointercast(downcast.llval, variant_ty.ptr_to());
 
         downcast
     }

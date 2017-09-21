@@ -24,10 +24,10 @@ pub fn helper(_: usize) {
 pub fn ref_dst(s: &[u8]) {
     // We used to generate an extra alloca and memcpy to ref the dst, so check that we copy
     // directly to the alloca for "x"
-// CHECK: [[X0:%[0-9]+]] = getelementptr {{.*}} { [0 x i8], [0 x i8]*, [0 x i8], [[USIZE]], [0 x i8] }* %x, i32 0, i32 1
-// CHECK: store [0 x i8]* %s.ptr, [0 x i8]** [[X0]]
+// CHECK: [[X0:%[0-9]+]] = bitcast { [0 x i8], [0 x i8]*, [0 x i8], [[USIZE]], [0 x i8] }* %x to [0 x i8]**
+// CHECK: store [0 x i8]* %s.0, [0 x i8]** [[X0]]
 // CHECK: [[X1:%[0-9]+]] = getelementptr {{.*}} { [0 x i8], [0 x i8]*, [0 x i8], [[USIZE]], [0 x i8] }* %x, i32 0, i32 3
-// CHECK: store [[USIZE]] %s.meta, [[USIZE]]* [[X1]]
+// CHECK: store [[USIZE]] %s.1, [[USIZE]]* [[X1]]
 
     let x = &*s;
     &x; // keep variable in an alloca
