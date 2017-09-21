@@ -69,10 +69,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             old: DefId,
                             new: DefId) {
-    use rustc::middle::cstore::CrateStore;
     use rustc::hir::def::Def::*;
-
-    use std::rc::Rc;
 
     // Get the visibility of the inner item, given the outer item's visibility.
     fn get_vis(tcx: TyCtxt, outer_vis: Visibility, def_id: DefId) -> Visibility {

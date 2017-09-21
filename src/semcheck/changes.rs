@@ -713,11 +713,7 @@ pub mod tests {
         fn arbitrary<G: Gen>(g: &mut G) -> Span_ {
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);
-            Span_(Span {
-                lo: BytePos(min(a, b)),
-                hi: BytePos(max(a, b)),
-                ctxt: SyntaxContext::empty(),
-            })
+            Span_(Span::new(BytePos(min(a, b)), BytePos(max(a, b)), SyntaxContext::empty()))
         }
     }
 
