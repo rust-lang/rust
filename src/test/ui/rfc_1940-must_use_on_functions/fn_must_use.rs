@@ -61,10 +61,9 @@ fn main() {
     m.need_to_use_this_method_value();
     m.is_even(); // trait method!
 
-    m.replace(3);
+    m.replace(3); // won't warn (annotation needs to be in trait definition)
 
-    2.eq(&3);
+    2.eq(&3); // comparison methods are `must_use`
 
-    // FIXME: operators should probably be `must_use` if underlying method is
-    2 == 3;
+    2 == 3; // lint includes comparison operators
 }

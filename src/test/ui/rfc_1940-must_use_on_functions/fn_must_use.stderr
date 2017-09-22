@@ -25,6 +25,12 @@ warning: unused return value of `EvenNature::is_even` which must be used: no sid
 warning: unused return value of `std::cmp::PartialEq::eq` which must be used
   --> $DIR/fn_must_use.rs:66:5
    |
-66 |     2.eq(&3);
+66 |     2.eq(&3); // comparison methods are `must_use`
    |     ^^^^^^^^^
+
+warning: unused comparison which must be used
+  --> $DIR/fn_must_use.rs:68:5
+   |
+68 |     2 == 3; // lint includes comparison operators
+   |     ^^^^^^
 

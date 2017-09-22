@@ -153,6 +153,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         };
 
         let mut fn_warned = false;
+        let mut op_warned = false;
         if cx.tcx.sess.features.borrow().fn_must_use {
             let maybe_def = match expr.node {
                 hir::ExprCall(ref callee, _) => {
@@ -172,9 +173,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 let def_id = def.def_id();
                 fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
             }
+
+            if let hir::ExprBinary(bin_op, ..) = expr.node {
+                match bin_op.node {
+                    // Hardcoding the comparison operators here seemed more
+                    // expedient than the refactoring that would be needed to
+                    // look up the `#[must_use]` attribute which does exist on
+                    // the comparison trait methods
+                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => {
+                        let msg = "unused comparison which must be used";
+                        cx.span_lint(UNUSED_MUST_USE, expr.span, msg);
+                        op_warned = true;
+                    },
+                    _ => {},
+                }
+            }
         }
 
-        if !(ty_warned || fn_warned) {
+        if !(ty_warned || fn_warned || op_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
