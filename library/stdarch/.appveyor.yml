@@ -1,0 +1,24 @@
+environment:
+  # We don't want to do identical comdat folding as it messes up the ability to
+  # generate lossless backtraces in some cases. This is enabled by rustc by
+  # default so pass a flag to disable it to ensure our tests work ok.
+  RUSTFLAGS: -Clink-args=/OPT:NOICF
+
+  matrix:
+  - TARGET: x86_64-pc-windows-msvc
+
+install:
+  # Install rust, x86_64-pc-windows-msvc host
+  - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - rustup-init.exe -y --default-host x86_64-pc-windows-msvc --default-toolchain nightly
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - if NOT "%TARGET%" == "x86_64-pc-windows-msvc" rustup target add %TARGET%
+  - rustc -vV
+  - cargo -vV
+
+build: false
+
+test_script:
+  - cargo test --target %TARGET%
+  - set RUST_BACKTRACE=1
+  - cargo test --target %TARGET% --release

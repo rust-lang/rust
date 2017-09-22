@@ -57,7 +57,7 @@ extern {
     fn dpps(a: f32x4, b: f32x4, imm8: u8) -> f32x4;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse4.1", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use v128::*;
     use x86::sse41;

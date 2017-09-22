@@ -9,6 +9,9 @@ use x86::__m128i;
 use v128::*;
 use v64::*;
 
+#[cfg(test)]
+use assert_instr::assert_instr;
+
 /// Provide a hint to the processor that the code sequence is a spin-wait loop.
 ///
 /// This can help improve the performance and power consumption of spin-wait
@@ -89,6 +92,7 @@ pub fn _mm_adds_epi8(a: i8x16, b: i8x16) -> i8x16 {
 /// Add packed 16-bit integers in `a` and `b` using saturation.
 #[inline(always)]
 #[target_feature = "+sse2"]
+#[cfg_attr(test, assert_instr(paddsw))]
 pub fn _mm_adds_epi16(a: i16x8, b: i16x8) -> i16x8 {
     unsafe { paddsw(a, b) }
 }
@@ -1716,7 +1720,7 @@ extern {
     fn movmskpd(a: f64x2) -> i32;
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_feature = "sse2", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tests {
     use std::os::raw::c_void;
 

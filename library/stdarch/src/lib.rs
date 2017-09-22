@@ -1,8 +1,12 @@
 #![allow(dead_code)]
 #![feature(
     const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd, simd_ffi,
-    target_feature,
+    target_feature, cfg_target_feature, i128_type
 )]
+#![cfg_attr(test, feature(proc_macro))]
+
+#[cfg(test)]
+extern crate assert_instr;
 
 /// Platform independent SIMD vector types and operations.
 pub mod simd {
@@ -16,6 +20,9 @@ pub mod simd {
 pub mod vendor {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     pub use x86::*;
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    pub use arm::*;
 }
 
 #[macro_use]
@@ -27,3 +34,6 @@ mod v512;
 mod v64;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;
+
+#[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+ mod arm;
