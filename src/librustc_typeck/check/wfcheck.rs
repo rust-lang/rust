@@ -523,7 +523,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
 
             let (span, name) = if index < ast_generics.lifetimes.len() {
                 (ast_generics.lifetimes[index].lifetime.span,
-                 ast_generics.lifetimes[index].lifetime.name)
+                 ast_generics.lifetimes[index].lifetime.name.name())
             } else {
                 let index = index - ast_generics.lifetimes.len();
                 (ast_generics.ty_params[index].span,

@@ -123,6 +123,13 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItemId {
     }
 }
 
+impl_stable_hash_for!(enum hir::LifetimeName {
+    Implicit,
+    Underscore,
+    Static,
+    Name(name)
+});
+
 impl_stable_hash_for!(struct hir::Lifetime {
     id,
     span,

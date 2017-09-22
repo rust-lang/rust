@@ -145,7 +145,27 @@ pub struct Lifetime {
     /// HIR lowering inserts these placeholders in type paths that
     /// refer to type definitions needing lifetime parameters,
     /// `&T` and `&mut T`, and trait objects without `... + 'a`.
-    pub name: Name,
+    pub name: LifetimeName,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+pub enum LifetimeName {
+    Implicit,
+    Underscore,
+    Static,
+    Name(Name),
+}
+
+impl LifetimeName {
+    pub fn name(&self) -> Name {
+        use self::LifetimeName::*;
+        match *self {
+            Implicit => keywords::Invalid.name(),
+            Underscore => Symbol::intern("'_"),
+            Static => keywords::StaticLifetime.name(),
+            Name(name) => name,
+        }
+    }
 }
 
 impl fmt::Debug for Lifetime {
@@ -159,11 +179,15 @@ impl fmt::Debug for Lifetime {
 
 impl Lifetime {
     pub fn is_elided(&self) -> bool {
-        self.name == keywords::Invalid.name()
+        use self::LifetimeName::*;
+        match self.name {
+            Implicit | Underscore => true,
+            Static | Name(_) => false,
+        }
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == "'static"
+        self.name == LifetimeName::Static
     }
 }
 

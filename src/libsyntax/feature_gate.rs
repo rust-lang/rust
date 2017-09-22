@@ -389,6 +389,9 @@ declare_features! (
     // Copy/Clone closures (RFC 2132)
     (active, clone_closures, "1.22.0", Some(44490)),
     (active, copy_closures, "1.22.0", Some(44490)),
+
+    // allow `'_` placeholder lifetimes
+    (active, underscore_lifetimes, "1.22.0", Some(44524)),
 );
 
 declare_features! (
@@ -1571,6 +1574,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                "attributes on lifetime bindings are experimental");
         }
         visit::walk_lifetime_def(self, lifetime_def)
+    }
+
+    fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
+        if lt.ident.name == "'_" {
+            gate_feature_post!(&self, underscore_lifetimes, lt.span,
+                               "underscore lifetimes are unstable");
+        }
+        visit::walk_lifetime(self, lt)
     }
 }
 
