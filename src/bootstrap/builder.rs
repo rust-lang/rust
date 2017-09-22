@@ -458,6 +458,12 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
+        let cgus = if mode == Mode::Libstd {
+            self.config.rust_codegen_units
+        } else {
+            self.config.rustc_codegen_units.unwrap_or(self.config.rust_codegen_units)
+        };
+
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
@@ -468,8 +474,7 @@ impl<'a> Builder<'a> {
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.rustc(compiler))
              .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_CODEGEN_UNITS",
-                  self.config.rust_codegen_units.to_string())
+             .env("RUSTC_CODEGEN_UNITS", cgus.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SYSROOT", self.sysroot(compiler))

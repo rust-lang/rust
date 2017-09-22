@@ -82,6 +82,7 @@ pub struct Config {
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: u32,
+    pub rustc_codegen_units: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
@@ -254,6 +255,7 @@ impl Default for StringOrBool {
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
+    rustc_codegen_units: Option<u32>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
@@ -471,6 +473,10 @@ impl Config {
                 Some(0) => config.rust_codegen_units = num_cpus::get() as u32,
                 Some(n) => config.rust_codegen_units = n,
                 None => {}
+            }
+            match rust.rustc_codegen_units {
+                Some(0) => config.rustc_codegen_units = Some(num_cpus::get() as u32),
+                other => config.rustc_codegen_units = other,
             }
         }
 

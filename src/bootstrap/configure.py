@@ -256,6 +256,8 @@ for key in known_args:
                 value = True
             elif keyval[1] == "false":
                 value = False
+            elif keyval[1].isdigit():
+                value = int(keyval[1])
             else:
                 value = keyval[1]
             set(keyval[0], value)
@@ -357,6 +359,8 @@ def to_toml(value):
         return '[' + ', '.join(map(to_toml, value)) + ']'
     elif isinstance(value, str):
         return "'" + value + "'"
+    elif isinstance(value, int):
+        return str(value)
     else:
         raise 'no toml'
 
