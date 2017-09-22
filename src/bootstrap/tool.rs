@@ -449,7 +449,7 @@ impl Step for Rls {
             tool: "rls",
             mode: Mode::Librustc,
             path: "src/tools/rls",
-            expectation: BuildExpectation::None,
+            expectation: builder.build.config.toolstate.rls.passes(ToolState::Compiling),
         })
     }
 }
@@ -484,7 +484,7 @@ impl Step for Rustfmt {
             tool: "rustfmt",
             mode: Mode::Librustc,
             path: "src/tools/rustfmt",
-            expectation: BuildExpectation::None,
+            expectation: builder.build.config.toolstate.rustfmt.passes(ToolState::Compiling),
         })
     }
 }

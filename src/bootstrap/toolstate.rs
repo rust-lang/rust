@@ -46,4 +46,6 @@ impl Default for ToolState {
 pub struct ToolStates {
     pub miri: ToolState,
     pub clippy: ToolState,
+    pub rls: ToolState,
+    pub rustfmt: ToolState,
 }
