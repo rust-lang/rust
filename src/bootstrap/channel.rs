@@ -24,7 +24,7 @@ use Build;
 use config::Config;
 
 // The version number
-pub const CFG_RELEASE_NUM: &str = "1.21.0";
+pub const CFG_RELEASE_NUM: &str = "1.22.0";
 
 // An optional number to put after the label, e.g. '.2' -> '-beta.2'
 // Be sure to make this starts with a dot to conform to semver pre-release

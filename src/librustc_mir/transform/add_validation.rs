@@ -18,7 +18,7 @@ use rustc::ty::{self, TyCtxt, RegionKind};
 use rustc::hir;
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource};
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region;
 
 pub struct AddValidation;
 
@@ -27,7 +27,7 @@ fn lval_context<'a, 'tcx, D>(
     lval: &Lvalue<'tcx>,
     local_decls: &D,
     tcx: TyCtxt<'a, 'tcx, 'tcx>
-) -> (Option<CodeExtent>, hir::Mutability)
+) -> (Option<region::Scope>, hir::Mutability)
     where D: HasLocalDecls<'tcx>
 {
     use rustc::mir::Lvalue::*;

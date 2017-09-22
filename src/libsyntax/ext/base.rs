@@ -731,7 +731,7 @@ impl<'a> ExtCtxt<'a> {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }
-                ctxt = info.call_site.ctxt;
+                ctxt = info.call_site.ctxt();
                 last_macro = Some(info.call_site);
                 Some(())
             }).is_none() {
@@ -792,7 +792,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
-    pub fn trace_macros_diag(&self) {
+    pub fn trace_macros_diag(&mut self) {
         for (sp, notes) in self.expansions.iter() {
             let mut db = self.parse_sess.span_diagnostic.span_note_diag(*sp, "trace_macro");
             for note in notes {
@@ -800,6 +800,8 @@ impl<'a> ExtCtxt<'a> {
             }
             db.emit();
         }
+        // Fixme: does this result in errors?
+        self.expansions.clear();
     }
     pub fn bug(&self, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.bug(msg);
@@ -837,7 +839,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
                               -> Option<Spanned<(Symbol, ast::StrStyle)>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
-        expr.span.ctxt = expr.span.ctxt.apply_mark(cx.current_expansion.mark);
+        expr.span = expr.span.with_ctxt(expr.span.ctxt().apply_mark(cx.current_expansion.mark));
         expr
     });
 

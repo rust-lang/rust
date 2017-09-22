@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+bitflags = "1.0"
 num_cpus = "1.0"
 flate2 = "0.2"
 jobserver = "0.1.5"
@@ -19,7 +20,6 @@ rustc-demangle = "0.1.4"
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
 rustc_back = { path = "../librustc_back" }
-rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

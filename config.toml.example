@@ -146,10 +146,10 @@
 # option to true.
 #full-bootstrap = false
 
-# Enable a build of the and extended rust tool set which is not only the
-# compiler but also tools such as Cargo. This will also produce "combined
-# installers" which are used to install Rust and Cargo together. This is
-# disabled by default.
+# Enable a build of the extended rust tool set which is not only the compiler
+# but also tools such as Cargo. This will also produce "combined installers"
+# which are used to install Rust and Cargo together. This is disabled by
+# default.
 #extended = false
 
 # Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
@@ -175,7 +175,7 @@
 # script.
 #configure-args = []
 
-# Indicates that a local rebuild is ocurring instead of a full bootstrap,
+# Indicates that a local rebuild is occurring instead of a full bootstrap,
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 #local-rebuild = false
 
@@ -283,10 +283,17 @@
 #codegen-tests = true
 
 # Flag indicating whether git info will be retrieved from .git automatically.
-#ignore-git = false
+# Having the git information can cause a lot of rebuilds during development.
+# Note: If this attribute is not explicity set (e.g. if left commented out) it
+# will default to true if channel = "dev", but will default to false otherwise.
+#ignore-git = true
 
 # When creating source tarballs whether or not to create a source tarball.
 #dist-src = false
+
+# Whether to also run the Miri tests suite when running tests.
+# As a side-effect also generates MIR for all libraries.
+#test-miri = false
 
 # =============================================================================
 # Options for specific targets

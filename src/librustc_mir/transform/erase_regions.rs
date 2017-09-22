@@ -15,7 +15,7 @@
 //! "types-as-contracts"-validation, namely, AcquireValid, ReleaseValid, and EndRegion.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{Ty, TyCtxt, ClosureSubsts};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Lookup};
 use rustc::mir::transform::{MirPass, MirSource};
@@ -37,38 +37,25 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: Lookup) {
         if !self.in_validation_statement {
-            *ty = self.tcx.erase_regions(&{*ty});
+            *ty = self.tcx.erase_regions(ty);
         }
         self.super_ty(ty);
     }
 
-    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
-        *substs = self.tcx.erase_regions(&{*substs});
+    fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
+        *region = self.tcx.types.re_erased;
     }
 
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
-        match *rvalue {
-            Rvalue::Ref(ref mut r, _, _) => {
-                *r = self.tcx.types.re_erased;
-            }
-            Rvalue::Use(..) |
-            Rvalue::Repeat(..) |
-            Rvalue::Len(..) |
-            Rvalue::Cast(..) |
-            Rvalue::BinaryOp(..) |
-            Rvalue::CheckedBinaryOp(..) |
-            Rvalue::UnaryOp(..) |
-            Rvalue::Discriminant(..) |
-            Rvalue::NullaryOp(..) |
-            Rvalue::Aggregate(..) => {
-                // These variants don't contain regions.
-            }
-        }
-        self.super_rvalue(rvalue, location);
+    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {
+        *constant = self.tcx.erase_regions(constant);
+    }
+
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>, _: Location) {
+        *substs = self.tcx.erase_regions(substs);
     }
 
     fn visit_closure_substs(&mut self,
-                            substs: &mut ClosureSubsts<'tcx>,
+                            substs: &mut ty::ClosureSubsts<'tcx>,
                             _: Location) {
         *substs = self.tcx.erase_regions(substs);
     }

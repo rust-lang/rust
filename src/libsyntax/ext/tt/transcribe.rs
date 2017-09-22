@@ -155,7 +155,7 @@ pub fn transcribe(cx: &ExtCtxt,
                         if let NtTT(ref tt) = **nt {
                             result.push(tt.clone().into());
                         } else {
-                            sp.ctxt = sp.ctxt.apply_mark(cx.current_expansion.mark);
+                            sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
                             let token = TokenTree::Token(sp, Token::interpolated((**nt).clone()));
                             result.push(token.into());
                         }
@@ -166,13 +166,13 @@ pub fn transcribe(cx: &ExtCtxt,
                 } else {
                     let ident =
                         Ident { ctxt: ident.ctxt.apply_mark(cx.current_expansion.mark), ..ident };
-                    sp.ctxt = sp.ctxt.apply_mark(cx.current_expansion.mark);
+                    sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
                     result.push(TokenTree::Token(sp, token::Dollar).into());
                     result.push(TokenTree::Token(sp, token::Ident(ident)).into());
                 }
             }
             quoted::TokenTree::Delimited(mut span, delimited) => {
-                span.ctxt = span.ctxt.apply_mark(cx.current_expansion.mark);
+                span = span.with_ctxt(span.ctxt().apply_mark(cx.current_expansion.mark));
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }

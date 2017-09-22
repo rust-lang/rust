@@ -8,4 +8,5 @@ name = "rustc_apfloat"
 path = "lib.rs"
 
 [dependencies]
-rustc_bitflags = { path = "../librustc_bitflags" }
+bitflags = "1.0"
+rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }

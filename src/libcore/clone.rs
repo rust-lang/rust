@@ -88,7 +88,7 @@
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(stage0), lang = "clone")]
+#[lang = "clone"]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
     ///
@@ -130,45 +130,3 @@ pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData
            reason = "deriving hack, should not be public",
            issue = "0")]
 pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<'a, T: ?Sized> Clone for &'a T {
-    /// Returns a shallow copy of the reference.
-    #[inline]
-    fn clone(&self) -> &'a T { *self }
-}
-
-macro_rules! clone_impl {
-    ($t:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[cfg(stage0)]
-        impl Clone for $t {
-            /// Returns a deep copy of the value.
-            #[inline]
-            fn clone(&self) -> $t { *self }
-        }
-    }
-}
-
-clone_impl! { isize }
-clone_impl! { i8 }
-clone_impl! { i16 }
-clone_impl! { i32 }
-clone_impl! { i64 }
-clone_impl! { i128 }
-
-clone_impl! { usize }
-clone_impl! { u8 }
-clone_impl! { u16 }
-clone_impl! { u32 }
-clone_impl! { u64 }
-clone_impl! { u128 }
-
-clone_impl! { f32 }
-clone_impl! { f64 }
-
-clone_impl! { ! }
-clone_impl! { () }
-clone_impl! { bool }
-clone_impl! { char }

@@ -96,7 +96,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyArray(inner_type, len) => {
             output.push('[');
             push_debuginfo_type_name(cx, inner_type, true, output);
-            output.push_str(&format!("; {}", len));
+            output.push_str(&format!("; {}", len.val.to_const_int().unwrap().to_u64().unwrap()));
             output.push(']');
         },
         ty::TySlice(inner_type) => {
@@ -189,7 +189,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.push_str(&path_element.data.as_interned_str());
             }
         } else {
-            output.push_str(&cx.tcx().item_name(def_id).as_str());
+            output.push_str(&cx.tcx().item_name(def_id));
         }
     }
 

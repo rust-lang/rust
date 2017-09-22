@@ -523,10 +523,6 @@ class RustBuild(object):
         >>> rb.config_toml = 'rustc = "rustc"\\n'
         >>> rb.program_config('rustc')
         'rustc'
-        >>> cargo_path = rb.program_config('cargo')
-        >>> cargo_path.rstrip(".exe") == os.path.join("/tmp/rust",
-        ... "bin", "cargo")
-        True
         >>> rb.config_toml = ''
         >>> cargo_path = rb.program_config('cargo')
         >>> cargo_path.rstrip(".exe") == os.path.join(rb.bin_root(),
@@ -629,7 +625,6 @@ class RustBuild(object):
 
     def build_triple(self):
         """Build triple as in LLVM"""
-        default_encoding = sys.getdefaultencoding()
         config = self.get_toml('build')
         if config:
             return config
@@ -642,7 +637,7 @@ class RustBuild(object):
             return
         print('Updating submodules')
         default_encoding = sys.getdefaultencoding()
-        run(["git", "submodule", "-q", "sync"], cwd=self.rust_root)
+        run(["git", "submodule", "-q", "sync"], cwd=self.rust_root, verbose=self.verbose)
         submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
             ["git", "config", "--file",
              os.path.join(self.rust_root, ".gitmodules"),
@@ -687,7 +682,7 @@ def bootstrap():
     try:
         with open(args.config or 'config.toml') as config:
             build.config_toml = config.read()
-    except:
+    except OSError:
         pass
 
     if '\nverbose = 2' in build.config_toml:

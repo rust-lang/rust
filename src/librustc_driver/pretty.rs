@@ -21,8 +21,9 @@ use rustc::ty::{self, TyCtxt, GlobalArenas, Resolutions};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
 use rustc::dep_graph::DepGraph;
+use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
-use rustc::session::config::Input;
+use rustc::session::config::{Input, OutputFilenames};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 
@@ -198,11 +199,13 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, F>(&self,
                                                sess: &'tcx Session,
+                                               cstore: &'tcx CrateStore,
                                                hir_map: &hir_map::Map<'tcx>,
                                                analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
+                                               output_filenames: &OutputFilenames,
                                                id: &str,
                                                f: F)
                                                -> A
@@ -226,13 +229,15 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                                 cstore,
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
                                                                  arena,
                                                                  arenas,
                                                                  id,
-                                                                 |tcx, _, _, _| {
+                                                                 output_filenames,
+                                                                 |tcx, _, _, _, _| {
                     let empty_tables = ty::TypeckTables::empty(None);
                     let annotation = TypedAnnotation {
                         tcx,
@@ -765,7 +770,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
-        hir_map: &tcx.hir,
+        tcx,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
         labelled_edges,
@@ -875,6 +880,7 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                                cstore: &'tcx CrateStore,
                                                 hir_map: &hir_map::Map<'tcx>,
                                                 analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
@@ -884,6 +890,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 ppm: PpMode,
                                                 arena: &'tcx DroplessArena,
                                                 arenas: &'tcx GlobalArenas<'tcx>,
+                                                output_filenames: &OutputFilenames,
                                                 opt_uii: Option<UserIdentifiedItem>,
                                                 ofile: Option<&Path>) {
     let dep_graph = DepGraph::new(false);
@@ -891,12 +898,14 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     if ppm.needs_analysis() {
         print_with_analysis(sess,
+                            cstore,
                             hir_map,
                             analysis,
                             resolutions,
                             crate_name,
                             arena,
                             arenas,
+                            output_filenames,
                             ppm,
                             opt_uii,
                             ofile);
@@ -929,11 +938,13 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmHir(s), None) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
+                                           cstore,
                                            hir_map,
                                            analysis,
                                            resolutions,
                                            arena,
                                            arenas,
+                                           output_filenames,
                                            crate_name,
                                            move |annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
@@ -952,11 +963,13 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
             (PpmHir(s), Some(uii)) => {
                 let out: &mut Write = &mut out;
                 s.call_with_pp_support_hir(sess,
+                                           cstore,
                                            hir_map,
                                            analysis,
                                            resolutions,
                                            arena,
                                            arenas,
+                                           output_filenames,
                                            crate_name,
                                            move |annotation, _| {
                     debug!("pretty printing source code {:?}", s);
@@ -993,12 +1006,14 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                       cstore: &'a CrateStore,
                                        hir_map: &hir_map::Map<'tcx>,
                                        analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
                                        arena: &'tcx DroplessArena,
                                        arenas: &'tcx GlobalArenas<'tcx>,
+                                       output_filenames: &OutputFilenames,
                                        ppm: PpMode,
                                        uii: Option<UserIdentifiedItem>,
                                        ofile: Option<&Path>) {
@@ -1013,13 +1028,15 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     let mut out = Vec::new();
 
     abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                     cstore,
                                                      hir_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
                                                      arena,
                                                      arenas,
                                                      crate_name,
-                                                     |tcx, _, _, _| {
+                                                     output_filenames,
+                                                     |tcx, _, _, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
                 if let Some(nodeid) = nodeid {

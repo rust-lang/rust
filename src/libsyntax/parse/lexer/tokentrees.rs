@@ -11,7 +11,6 @@
 use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
-use syntax_pos::Span;
 use tokenstream::{Delimited, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
@@ -20,7 +19,7 @@ impl<'a> StringReader<'a> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
             let tree = self.parse_token_tree()?;
-            let is_joint = tree.span().hi == self.span.lo && token::is_op(&self.token);
+            let is_joint = tree.span().hi() == self.span.lo() && token::is_op(&self.token);
             tts.push(if is_joint { tree.joint() } else { tree.into() });
         }
         Ok(TokenStream::concat(tts))
@@ -40,7 +39,7 @@ impl<'a> StringReader<'a> {
                     return TokenStream::concat(tts);
                 }
             };
-            let is_joint = tree.span().hi == self.span.lo && token::is_op(&self.token);
+            let is_joint = tree.span().hi() == self.span.lo() && token::is_op(&self.token);
             tts.push(if is_joint { tree.joint() } else { tree.into() });
         }
     }
@@ -69,7 +68,7 @@ impl<'a> StringReader<'a> {
                 let tts = self.parse_token_trees_until_close_delim();
 
                 // Expand to cover the entire delimited token tree
-                let span = Span { hi: self.span.hi, ..pre_span };
+                let span = pre_span.with_hi(self.span.hi());
 
                 match self.token {
                     // Correct delimiter.

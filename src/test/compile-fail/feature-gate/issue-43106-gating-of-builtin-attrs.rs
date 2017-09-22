@@ -99,7 +99,8 @@
 
 // For #![crate_id], see issue #43142. (I cannot bear to enshrine current behavior in a test)
 
-#![feature                    ( x0600)] //~ WARN unused or unknown feature
+// FIXME(#44232) we should warn that this isn't used.
+#![feature                    ( x0600)]
 
 // For #![no_start], see issue #43144. (I cannot bear to enshrine current behavior in a test)
 
@@ -354,8 +355,7 @@ mod repr {
     #[repr = "3900"] fn f() { }
     //~^ WARN unused attribute
 
-    #[repr = "3900"] struct S;
-    //~^ WARN unused attribute
+    struct S;
 
     #[repr = "3900"] type T = S;
     //~^ WARN unused attribute

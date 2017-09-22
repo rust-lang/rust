@@ -24,6 +24,8 @@ error[E0592]: duplicate definitions with name `baz`
 ...
 43 |     fn baz(&self) {}
    |     ---------------- other definition for `baz`
+   |
+   = note: upstream crates may add new impl of trait `std::marker::Copy` for type `std::vec::Vec<_>` in future versions
 
 error: aborting due to 3 previous errors
 

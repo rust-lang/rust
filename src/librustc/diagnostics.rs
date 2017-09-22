@@ -688,8 +688,8 @@ See also https://doc.rust-lang.org/book/first-edition/no-stdlib.html
 "##,
 
 E0214: r##"
-A generic type was described using parentheses rather than angle brackets. For
-example:
+A generic type was described using parentheses rather than angle brackets.
+For example:
 
 ```compile_fail,E0214
 fn main() {
@@ -700,6 +700,93 @@ fn main() {
 This is not currently supported: `v` should be defined as `Vec<&str>`.
 Parentheses are currently only used with generic types when defining parameters
 for `Fn`-family traits.
+"##,
+
+E0230: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```compile_fail
+#![feature(on_unimplemented)]
+
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { /* ... */ }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+There will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for
+substitution with the actual types (using the regular format string syntax) in
+a given situation. Furthermore, `{Self}` will substitute to the type (in this
+case, `bool`) that we tried to use.
+
+This error appears when the curly braces contain an identifier which doesn't
+match with any of the type parameters or the string `Self`. This might happen
+if you misspelled a type parameter, or if you intended to use literal curly
+braces. If it is the latter, escape the curly braces with a second curly brace
+of the same type; e.g. a literal `{` is `{{`.
+"##,
+
+E0231: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```compile_fail
+#![feature(on_unimplemented)]
+
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { /* ... */ }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for
+substitution with the actual types (using the regular format string syntax) in
+a given situation. Furthermore, `{Self}` will substitute to the type (in this
+case, `bool`) that we tried to use.
+
+This error appears when the curly braces do not contain an identifier. Please
+add one of the same name as a type parameter. If you intended to use literal
+braces, use `{{` and `}}` to escape them.
+"##,
+
+E0232: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```compile_fail
+#![feature(on_unimplemented)]
+
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { /* ... */ }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+For this to work, some note must be specified. An empty attribute will not do
+anything, please remove the attribute or add some helpful note for users of the
+trait.
 "##,
 
 E0261: r##"
@@ -917,92 +1004,6 @@ for v in &vs {
 ```
 "##,
 
-E0272: r##"
-The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
-message for when a particular trait isn't implemented on a type placed in a
-position that needs that trait. For example, when the following code is
-compiled:
-
-```compile_fail
-#![feature(on_unimplemented)]
-
-fn foo<T: Index<u8>>(x: T){}
-
-#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { /* ... */ }
-
-foo(true); // `bool` does not implement `Index<u8>`
-```
-
-There will be an error about `bool` not implementing `Index<u8>`, followed by a
-note saying "the type `bool` cannot be indexed by `u8`".
-
-As you can see, you can specify type parameters in curly braces for
-substitution with the actual types (using the regular format string syntax) in
-a given situation. Furthermore, `{Self}` will substitute to the type (in this
-case, `bool`) that we tried to use.
-
-This error appears when the curly braces contain an identifier which doesn't
-match with any of the type parameters or the string `Self`. This might happen
-if you misspelled a type parameter, or if you intended to use literal curly
-braces. If it is the latter, escape the curly braces with a second curly brace
-of the same type; e.g. a literal `{` is `{{`.
-"##,
-
-E0273: r##"
-The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
-message for when a particular trait isn't implemented on a type placed in a
-position that needs that trait. For example, when the following code is
-compiled:
-
-```compile_fail
-#![feature(on_unimplemented)]
-
-fn foo<T: Index<u8>>(x: T){}
-
-#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { /* ... */ }
-
-foo(true); // `bool` does not implement `Index<u8>`
-```
-
-there will be an error about `bool` not implementing `Index<u8>`, followed by a
-note saying "the type `bool` cannot be indexed by `u8`".
-
-As you can see, you can specify type parameters in curly braces for
-substitution with the actual types (using the regular format string syntax) in
-a given situation. Furthermore, `{Self}` will substitute to the type (in this
-case, `bool`) that we tried to use.
-
-This error appears when the curly braces do not contain an identifier. Please
-add one of the same name as a type parameter. If you intended to use literal
-braces, use `{{` and `}}` to escape them.
-"##,
-
-E0274: r##"
-The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
-message for when a particular trait isn't implemented on a type placed in a
-position that needs that trait. For example, when the following code is
-compiled:
-
-```compile_fail
-#![feature(on_unimplemented)]
-
-fn foo<T: Index<u8>>(x: T){}
-
-#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { /* ... */ }
-
-foo(true); // `bool` does not implement `Index<u8>`
-```
-
-there will be an error about `bool` not implementing `Index<u8>`, followed by a
-note saying "the type `bool` cannot be indexed by `u8`".
-
-For this to work, some note must be specified. An empty attribute will not do
-anything, please remove the attribute or add some helpful note for users of the
-trait.
-"##,
 
 E0275: r##"
 This error occurs when there was a recursive trait requirement that overflowed
@@ -1388,30 +1389,66 @@ A lifetime of reference outlives lifetime of borrowed content.
 Erroneous code example:
 
 ```compile_fail,E0312
-fn make_child<'human, 'elve>(x: &mut &'human isize, y: &mut &'elve isize) {
-    *x = *y;
-    // error: lifetime of reference outlives lifetime of borrowed content
+fn make_child<'tree, 'human>(
+  x: &'human i32,
+  y: &'tree i32
+) -> &'human i32 {
+    if x > y
+       { x }
+    else
+       { y }
+       // error: lifetime of reference outlives lifetime of borrowed content
 }
 ```
 
-The compiler cannot determine if the `human` lifetime will live long enough
-to keep up on the elve one. To solve this error, you have to give an
-explicit lifetime hierarchy:
+The function declares that it returns a reference with the `'human`
+lifetime, but it may return data with the `'tree` lifetime. As neither
+lifetime is declared longer than the other, this results in an
+error. Sometimes, this error is because the function *body* is
+incorrect -- that is, maybe you did not *mean* to return data from
+`y`. In that case, you should fix the function body.
+
+Often, however, the body is correct. In that case, the function
+signature needs to be altered to match the body, so that the caller
+understands that data from either `x` or `y` may be returned. The
+simplest way to do this is to give both function parameters the *same*
+named lifetime:
 
 ```
-fn make_child<'human, 'elve: 'human>(x: &mut &'human isize,
-                                     y: &mut &'elve isize) {
-    *x = *y; // ok!
+fn make_child<'human>(
+  x: &'human i32,
+  y: &'human i32
+) -> &'human i32 {
+    if x > y
+       { x }
+    else
+       { y } // ok!
 }
 ```
 
-Or use the same lifetime for every variable:
+However, in some cases, you may prefer to explicitly declare that one lifetime
+outlives another using a `where` clause:
 
 ```
-fn make_child<'elve>(x: &mut &'elve isize, y: &mut &'elve isize) {
-    *x = *y; // ok!
+fn make_child<'tree, 'human>(
+  x: &'human i32,
+  y: &'tree i32
+) -> &'human i32
+where
+  'tree: 'human
+{
+    if x > y
+       { x }
+    else
+       { y } // ok!
 }
 ```
+
+Here, the where clause `'tree: 'human` can be read as "the lifetime
+'tree outlives the lifetime 'human" -- meaning, references with the
+`'tree` lifetime live *at least as long as* references with the
+`'human` lifetime. Therefore, it is safe to return data with lifetime
+`'tree` when data with the lifetime `'human` is needed.
 "##,
 
 E0317: r##"
@@ -2011,6 +2048,9 @@ register_diagnostics! {
 //  E0102, // replaced with E0282
 //  E0134,
 //  E0135,
+//  E0272, // on_unimplemented #0
+//  E0273, // on_unimplemented #1
+//  E0274, // on_unimplemented #2
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied

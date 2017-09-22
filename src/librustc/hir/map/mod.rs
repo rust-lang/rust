@@ -26,7 +26,7 @@ use syntax_pos::Span;
 
 use hir::*;
 use hir::print::Nested;
-use util::nodemap::DefIdMap;
+use util::nodemap::{DefIdMap, FxHashMap};
 
 use arena::TypedArena;
 use std::cell::RefCell;
@@ -247,10 +247,13 @@ pub struct Map<'hir> {
     /// plain old integers.
     map: Vec<MapEntry<'hir>>,
 
-    definitions: Definitions,
+    definitions: &'hir Definitions,
 
     /// Bodies inlined from other crates are cached here.
     inlined_bodies: RefCell<DefIdMap<&'hir Body>>,
+
+    /// The reverse mapping of `node_to_hir_id`.
+    hir_to_node_id: FxHashMap<HirId, NodeId>,
 }
 
 impl<'hir> Map<'hir> {
@@ -301,8 +304,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn definitions(&self) -> &Definitions {
-        &self.definitions
+    pub fn definitions(&self) -> &'hir Definitions {
+        self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
@@ -337,6 +340,11 @@ impl<'hir> Map<'hir> {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         self.definitions.as_local_node_id(def_id)
+    }
+
+    #[inline]
+    pub fn hir_to_node_id(&self, hir_id: HirId) -> NodeId {
+        self.hir_to_node_id[&hir_id]
     }
 
     #[inline]
@@ -870,7 +878,17 @@ impl<'hir> Map<'hir> {
 
             Some(RootCrate(_)) => self.forest.krate.span,
             Some(NotPresent) | None => {
-                bug!("hir::map::Map::span: id not in map: {:?}", id)
+                // Some nodes, notably macro definitions, are not
+                // present in the map for whatever reason, but
+                // they *do* have def-ids. So if we encounter an
+                // empty hole, check for that case.
+                if let Some(def_index) = self.definitions.opt_def_index(id) {
+                    let def_path_hash = self.definitions.def_path_hash(def_index);
+                    self.dep_graph.read(def_path_hash.to_dep_node(DepKind::Hir));
+                    DUMMY_SP
+                } else {
+                    bug!("hir::map::Map::span: id not in map: {:?}", id)
+                }
             }
         }
     }
@@ -995,7 +1013,7 @@ impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
 pub fn map_crate<'hir>(forest: &'hir mut Forest,
-                       definitions: Definitions)
+                       definitions: &'hir Definitions)
                        -> Map<'hir> {
     let map = {
         let mut collector = NodeCollector::root(&forest.krate,
@@ -1021,10 +1039,15 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
               entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
     }
 
+    // Build the reverse mapping of `node_to_hir_id`.
+    let hir_to_node_id = definitions.node_to_hir_id.iter_enumerated()
+        .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
+
     let map = Map {
         forest,
         dep_graph: forest.dep_graph.clone(),
         map,
+        hir_to_node_id,
         definitions,
         inlined_bodies: RefCell::new(DefIdMap()),
     };

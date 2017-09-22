@@ -125,6 +125,9 @@ pub struct HashSet<T, S = RandomState> {
 impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// Creates an empty `HashSet`.
     ///
+    /// The hash set is initially created with a capacity of 0, so it will not allocate until it
+    /// is first inserted into.
+    ///
     /// # Examples
     ///
     /// ```

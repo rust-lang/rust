@@ -174,7 +174,7 @@ use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
 use sys_common::mutex;
 use sys_common::thread_info;
-use sys_common::util;
+use sys_common::thread;
 use sys_common::{AsInner, IntoInner};
 use time::Duration;
 
@@ -287,6 +287,8 @@ impl Builder {
     /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
     ///
+    /// The name must not contain null bytes (`\0`).
+    ///
     /// For more information about named threads, see
     /// [this module-level documentation][naming-threads].
     ///
@@ -355,6 +357,10 @@ impl Builder {
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     ///
+    /// # Panics
+    ///
+    /// Panics if a thread name was set and it contained null bytes.
+    ///
     /// # Examples
     ///
     /// ```
@@ -374,7 +380,7 @@ impl Builder {
     {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or_else(util::min_stack);
+        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
@@ -941,6 +947,7 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
+    // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
             CString::new(n).expect("thread name may not contain interior null bytes")

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions
+// compile-flags: -Z identify_regions -Z emit-end-regions
 // ignore-tidy-linelength
 
 // We will EndRegion for borrows in a loop that occur before break but
@@ -27,8 +27,8 @@ fn main() {
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     let _2: bool;
-//     let _3: &'7_1rce bool;
-//     let _7: &'7_3rce bool;
+//     let _3: &'23_1rs bool;
+//     let _7: &'23_3rs bool;
 //     let mut _4: ();
 //     let mut _5: bool;
 //     bb0: {
@@ -38,7 +38,7 @@ fn main() {
 //         StorageLive(_2);
 //         _2 = const true;
 //         StorageLive(_3);
-//         _3 = &'7_1rce _2;
+//         _3 = &'23_1rs _2;
 //         StorageLive(_5);
 //         _5 = _2;
 //         switchInt(_5) -> [0u8: bb3, otherwise: bb2];
@@ -46,20 +46,20 @@ fn main() {
 //     bb2: {
 //         _0 = ();
 //         StorageDead(_5);
+//         EndRegion('23_1rs);
 //         StorageDead(_3);
-//         EndRegion('7_1rce);
 //         StorageDead(_2);
 //         return;
 //     }
 //     bb3: {
 //         StorageDead(_5);
 //         StorageLive(_7);
-//         _7 = &'7_3rce _2;
+//         _7 = &'23_3rs _2;
 //         _1 = ();
+//         EndRegion('23_3rs);
 //         StorageDead(_7);
-//         EndRegion('7_3rce);
+//         EndRegion('23_1rs);
 //         StorageDead(_3);
-//         EndRegion('7_1rce);
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }

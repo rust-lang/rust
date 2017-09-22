@@ -36,3 +36,8 @@ mod foo {
 fn main() {
     while true {} //~ ERROR: infinite loops
 }
+
+#[deny(while_true)]
+fn bar() {
+    while cfg!(unix) {} // no error
+}

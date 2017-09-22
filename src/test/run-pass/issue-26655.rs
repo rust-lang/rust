@@ -10,9 +10,9 @@
 
 // ignore-emscripten no threads support
 
-#![feature(const_fn)]
-
 // Check that the destructors of simple enums are run on unwinding
+
+#![feature(const_atomic_usize_new)]
 
 use std::sync::atomic::{Ordering, AtomicUsize};
 use std::thread;

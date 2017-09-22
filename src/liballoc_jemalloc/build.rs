@@ -16,7 +16,7 @@ extern crate gcc;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
-use build_helper::{run, native_lib_boilerplate};
+use build_helper::{run, native_lib_boilerplate, BuildExpectation};
 
 fn main() {
     // FIXME: This is a hack to support building targets that don't
@@ -63,7 +63,7 @@ fn main() {
         _ => return,
     };
 
-    let compiler = gcc::Config::new().get_compiler();
+    let compiler = gcc::Build::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
     let ar = build_helper::cc2ar(compiler.path(), &target).unwrap();
     let cflags = compiler.args()
@@ -111,9 +111,11 @@ fn main() {
         cmd.arg("--with-jemalloc-prefix=je_");
     }
 
-    if cfg!(feature = "debug-jemalloc") {
-        cmd.arg("--enable-debug");
-    }
+    // FIXME: building with jemalloc assertions is currently broken.
+    // See <https://github.com/rust-lang/rust/issues/44152>.
+    //if cfg!(feature = "debug") {
+    //    cmd.arg("--enable-debug");
+    //}
 
     cmd.arg(format!("--host={}", build_helper::gnu_target(&target)));
     cmd.arg(format!("--build={}", build_helper::gnu_target(&host)));
@@ -124,7 +126,7 @@ fn main() {
         cmd.arg("--with-lg-quantum=4");
     }
 
-    run(&mut cmd);
+    run(&mut cmd, BuildExpectation::None);
 
     let mut make = Command::new(build_helper::make(&host));
     make.current_dir(&native.out_dir)
@@ -141,14 +143,14 @@ fn main() {
             .arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set"));
     }
 
-    run(&mut make);
+    run(&mut make, BuildExpectation::None);
 
     // The pthread_atfork symbols is used by jemalloc on android but the really
     // old android we're building on doesn't have them defined, so just make
     // sure the symbols are available.
     if target.contains("androideabi") {
         println!("cargo:rerun-if-changed=pthread_atfork_dummy.c");
-        gcc::Config::new()
+        gcc::Build::new()
             .flag("-fvisibility=hidden")
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");

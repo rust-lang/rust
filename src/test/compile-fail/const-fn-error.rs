@@ -23,5 +23,5 @@ const fn f(x: usize) -> usize {
 
 #[allow(unused_variables)]
 fn main() {
-    let a : [i32; f(X)]; //~ NOTE for array length here
+    let a : [i32; f(X)]; //~ NOTE for constant expression here
 }

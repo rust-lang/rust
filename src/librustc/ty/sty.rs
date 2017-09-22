@@ -12,13 +12,13 @@
 
 use hir::def_id::DefId;
 
+use middle::const_val::ConstVal;
 use middle::region;
 use ty::subst::{Substs, Subst};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use ty::subst::Kind;
 
-use std::fmt;
 use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
@@ -109,7 +109,7 @@ pub enum TypeVariants<'tcx> {
     TyStr,
 
     /// An array with the given length. Written as `[T; n]`.
-    TyArray(Ty<'tcx>, usize),
+    TyArray(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// The pointee of an array slice.  Written as `[T]`.
     TySlice(Ty<'tcx>),
@@ -213,8 +213,8 @@ pub enum TypeVariants<'tcx> {
 /// as extra type parameters? The reason for this design is that the
 /// upvar types can reference lifetimes that are internal to the
 /// creating function. In my example above, for example, the lifetime
-/// `'b` represents the extent of the closure itself; this is some
-/// subset of `foo`, probably just the extent of the call to the to
+/// `'b` represents the scope of the closure itself; this is some
+/// subset of `foo`, probably just the scope of the call to the to
 /// `do()`. If we just had the lifetime/type parameters from the
 /// enclosing function, we couldn't name this lifetime `'b`. Note that
 /// there can also be lifetimes in the types of the upvars themselves,
@@ -576,12 +576,6 @@ impl<T> Binder<T> {
     }
 }
 
-impl fmt::Debug for TypeFlags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:x}", self.bits)
-    }
-}
-
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -845,10 +839,10 @@ pub enum RegionKind {
     /// region parameters.
     ReFree(FreeRegion),
 
-    /// A concrete region naming some statically determined extent
+    /// A concrete region naming some statically determined scope
     /// (e.g. an expression or sequence of statements) within the
     /// current function.
-    ReScope(region::CodeExtent),
+    ReScope(region::Scope),
 
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
@@ -1040,19 +1034,6 @@ impl RegionKind {
         debug!("type_flags({:?}) = {:?}", self, flags);
 
         flags
-    }
-
-    // This method returns whether the given Region is Named
-    pub fn is_named_region(&self) -> bool {
-        match *self {
-            ty::ReFree(ref free_region) => {
-                match free_region.bound_region {
-                    ty::BrNamed(..) => true,
-                    _ => false,
-                }
-            }
-            _ => false,
-        }
     }
 }
 
@@ -1471,3 +1452,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 }
+
+/// Typed constant value.
+#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+pub struct Const<'tcx> {
+    pub ty: Ty<'tcx>,
+
+    // FIXME(eddyb) Replace this with a miri value.
+    pub val: ConstVal<'tcx>,
+}
+
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

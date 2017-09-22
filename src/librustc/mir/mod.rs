@@ -12,7 +12,7 @@
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
-use middle::region::CodeExtent;
+use middle::region;
 use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
@@ -21,7 +21,7 @@ use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, ClosureSubsts, Region, Ty, GeneratorInterior};
+use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
 use rustc_back::slice;
@@ -644,7 +644,7 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
+    pub fn if_<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
                          t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
         static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
         TerminatorKind::SwitchInt {
@@ -901,10 +901,10 @@ pub enum StatementKind<'tcx> {
     SetDiscriminant { lvalue: Lvalue<'tcx>, variant_index: usize },
 
     /// Start a live range for the storage of the local.
-    StorageLive(Lvalue<'tcx>),
+    StorageLive(Local),
 
     /// End the current live range for the storage of the local.
-    StorageDead(Lvalue<'tcx>),
+    StorageDead(Local),
 
     /// Execute a piece of inline Assembly.
     InlineAsm {
@@ -918,9 +918,9 @@ pub enum StatementKind<'tcx> {
     /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
     Validate(ValidationOp, Vec<ValidationOperand<'tcx, Lvalue<'tcx>>>),
 
-    /// Mark one terminating point of an extent (i.e. static region).
+    /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
-    EndRegion(CodeExtent),
+    EndRegion(region::Scope),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -939,7 +939,7 @@ pub enum ValidationOp {
     Release,
     /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
     /// access *until* the given region ends.  Then, access will be recovered.
-    Suspend(CodeExtent),
+    Suspend(region::Scope),
 }
 
 impl Debug for ValidationOp {
@@ -959,7 +959,7 @@ impl Debug for ValidationOp {
 pub struct ValidationOperand<'tcx, T> {
     pub lval: T,
     pub ty: Ty<'tcx>,
-    pub re: Option<CodeExtent>,
+    pub re: Option<region::Scope>,
     pub mutbl: hir::Mutability,
 }
 
@@ -1077,12 +1077,12 @@ pub enum ProjectionElem<'tcx, V, T> {
 }
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueProjection<'tcx> = Projection<'tcx, Lvalue<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in lvalues, where the base is an lvalue
-/// and the index is an operand.
-pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Operand<'tcx>, Ty<'tcx>>;
+/// and the index is a local.
+pub type LvalueElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
 newtype_index!(Field, "field");
 
@@ -1099,7 +1099,7 @@ impl<'tcx> Lvalue<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
-    pub fn index(self, index: Operand<'tcx>) -> Lvalue<'tcx> {
+    pub fn index(self, index: Local) -> Lvalue<'tcx> {
         self.elem(ProjectionElem::Index(index))
     }
 
@@ -1182,15 +1182,21 @@ impl<'tcx> Debug for Operand<'tcx> {
 
 impl<'tcx> Operand<'tcx> {
     pub fn function_handle<'a>(
-        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
         substs: &'tcx Substs<'tcx>,
         span: Span,
     ) -> Self {
+        let ty = tcx.type_of(def_id).subst(tcx, substs);
         Operand::Constant(box Constant {
             span,
-            ty: tcx.type_of(def_id).subst(tcx, substs),
-            literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
+            ty,
+            literal: Literal::Value {
+                value: tcx.mk_const(ty::Const {
+                    val: ConstVal::Function(def_id, substs),
+                    ty
+                })
+            },
         })
     }
 
@@ -1416,10 +1422,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let def_id = freevar.def.def_id();
-                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                                    let var_name = tcx.local_var_name_str(var_id);
-                                    struct_fmt.field(&var_name, lv);
+                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    struct_fmt.field(&var_name.as_str(), lv);
                                 }
                             });
 
@@ -1436,10 +1440,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(node_id, |freevars| {
                                 for (freevar, lv) in freevars.iter().zip(lvs) {
-                                    let def_id = freevar.def.def_id();
-                                    let var_id = tcx.hir.as_local_node_id(def_id).unwrap();
-                                    let var_name = tcx.local_var_name_str(var_id);
-                                    struct_fmt.field(&var_name, lv);
+                                    let var_name = tcx.hir.name(freevar.var_id());
+                                    struct_fmt.field(&var_name.as_str(), lv);
                                 }
                                 struct_fmt.field("$state", &lvs[freevars.len()]);
                                 for i in (freevars.len() + 1)..lvs.len() {
@@ -1477,12 +1479,8 @@ newtype_index!(Promoted, "promoted");
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
-    Item {
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-    },
     Value {
-        value: ConstVal<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     },
     Promoted {
         // Index into the `promoted` vector of `Mir`.
@@ -1500,12 +1498,9 @@ impl<'tcx> Debug for Literal<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::Literal::*;
         match *self {
-            Item { def_id, substs } => {
-                ppaux::parameterized(fmt, substs, def_id, &[])
-            }
-            Value { ref value } => {
+            Value { value } => {
                 write!(fmt, "const ")?;
-                fmt_const_val(fmt, value)
+                fmt_const_val(fmt, &value.val)
             }
             Promoted { index } => {
                 write!(fmt, "{:?}", index)
@@ -1520,9 +1515,9 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
         Integral(n) => write!(fmt, "{}", n),
-        Str(ref s) => write!(fmt, "{:?}", s),
-        ByteStr(ref bytes) => {
-            let escaped: String = bytes
+        Str(s) => write!(fmt, "{:?}", s),
+        ByteStr(bytes) => {
+            let escaped: String = bytes.data
                 .iter()
                 .flat_map(|&ch| ascii::escape_default(ch).map(|c| c as char))
                 .collect();
@@ -1532,8 +1527,8 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Char(c) => write!(fmt, "{:?}", c),
         Variant(def_id) |
         Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
-        Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
-            bug!("ConstVal `{:?}` should not be in MIR", const_val),
+        Aggregate(_) => bug!("`ConstVal::{:?}` should not be in MIR", const_val),
+        Unevaluated(..) => write!(fmt, "{:?}", const_val)
     }
 }
 
@@ -1701,19 +1696,19 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                 lvalue: lvalue.fold_with(folder),
                 variant_index,
             },
-            StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
-            StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
+            StorageLive(ref local) => StorageLive(local.fold_with(folder)),
+            StorageDead(ref local) => StorageDead(local.fold_with(folder)),
             InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
                 asm: asm.clone(),
                 outputs: outputs.fold_with(folder),
                 inputs: inputs.fold_with(folder)
             },
 
-            // Note for future: If we want to expose the extents
+            // Note for future: If we want to expose the region scopes
             // during the fold, we need to either generalize EndRegion
             // to carry `[ty::Region]`, or extend the `TypeFolder`
-            // trait with a `fn fold_extent`.
-            EndRegion(ref extent) => EndRegion(extent.clone()),
+            // trait with a `fn fold_scope`.
+            EndRegion(ref region_scope) => EndRegion(region_scope.clone()),
 
             Validate(ref op, ref lvals) =>
                 Validate(op.clone(),
@@ -1732,17 +1727,17 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
 
         match self.kind {
             Assign(ref lval, ref rval) => { lval.visit_with(visitor) || rval.visit_with(visitor) }
-            SetDiscriminant { ref lvalue, .. } |
-            StorageLive(ref lvalue) |
-            StorageDead(ref lvalue) => lvalue.visit_with(visitor),
+            SetDiscriminant { ref lvalue, .. } => lvalue.visit_with(visitor),
+            StorageLive(ref local) |
+            StorageDead(ref local) => local.visit_with(visitor),
             InlineAsm { ref outputs, ref inputs, .. } =>
                 outputs.visit_with(visitor) || inputs.visit_with(visitor),
 
-            // Note for future: If we want to expose the extents
+            // Note for future: If we want to expose the region scopes
             // during the visit, we need to either generalize EndRegion
             // to carry `[ty::Region]`, or extend the `TypeVisitor`
-            // trait with a `fn visit_extent`.
-            EndRegion(ref _extent) => false,
+            // trait with a `fn visit_scope`.
+            EndRegion(ref _scope) => false,
 
             Validate(ref _op, ref lvalues) =>
                 lvalues.iter().any(|ty_and_lvalue| ty_and_lvalue.visit_with(visitor)),
@@ -2000,17 +1995,16 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            Literal::Item { def_id, substs } => Literal::Item {
-                def_id,
-                substs: substs.fold_with(folder)
+            Literal::Value { value } => Literal::Value {
+                value: value.fold_with(folder)
             },
-            _ => self.clone()
+            Literal::Promoted { index } => Literal::Promoted { index }
         }
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            Literal::Item { substs, .. } => substs.visit_with(visitor),
-            _ => false
+            Literal::Value { value } => value.visit_with(visitor),
+            Literal::Promoted { .. } => false
         }
     }
 }

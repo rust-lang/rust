@@ -38,7 +38,7 @@ mod sig;
 use rustc::hir;
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeItem};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{LOCAL_CRATE, DefId};
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
@@ -91,13 +91,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         use rls_span::{Row, Column};
 
         let cm = self.tcx.sess.codemap();
-        let start = cm.lookup_char_pos(span.lo);
-        let end = cm.lookup_char_pos(span.hi);
+        let start = cm.lookup_char_pos(span.lo());
+        let end = cm.lookup_char_pos(span.hi());
 
         SpanData {
             file_name: start.file.name.clone().into(),
-            byte_start: span.lo.0,
-            byte_end: span.hi.0,
+            byte_start: span.lo().0,
+            byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
             line_end: Row::new_one_indexed(end.line as u32),
             column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
@@ -109,7 +109,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::new();
 
-        for n in self.tcx.sess.cstore.crates() {
+        for &n in self.tcx.crates().iter() {
             let span = match *self.tcx.extern_crate(n.as_def_id()) {
                 Some(ref c) => c.span,
                 None => {
@@ -117,9 +117,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     continue;
                 }
             };
-            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo);
+            let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
-                name: self.tcx.sess.cstore.crate_name(n).to_string(),
+                name: self.tcx.crate_name(n).to_string(),
                 num: n.as_u32(),
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             });
@@ -586,9 +586,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 self.tables.qpath_def(qpath, hir_id)
             }
 
-            Node::NodeBinding(&hir::Pat { node: hir::PatKind::Binding(_, def_id, ..), .. }) => {
-                HirDef::Local(def_id)
-            }
+            Node::NodeBinding(&hir::Pat {
+                node: hir::PatKind::Binding(_, canonical_id, ..), ..
+            }) => HirDef::Local(canonical_id),
 
             Node::NodeTy(ty) => {
                 if let hir::Ty { node: hir::TyPath(ref qpath), .. } = *ty {
@@ -616,8 +616,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let sub_span = self.span_utils.span_for_last_ident(path.span);
         filter!(self.span_utils, sub_span, path.span, None);
         match def {
-            HirDef::Upvar(..) |
-            HirDef::Local(..) |
+            HirDef::Upvar(id, ..) |
+            HirDef::Local(id) => {
+                let span = self.span_from_span(sub_span.unwrap());
+                Some(Ref {
+                    kind: RefKind::Variable,
+                    span,
+                    ref_id: id_from_node_id(id, self),
+                })
+            }
             HirDef::Static(..) |
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
@@ -999,7 +1006,7 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 fn generated_code(span: Span) -> bool {
-    span.ctxt != NO_EXPANSION || span == DUMMY_SP
+    span.ctxt() != NO_EXPANSION || span == DUMMY_SP
 }
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
@@ -1013,7 +1020,15 @@ fn id_from_def_id(id: DefId) -> rls_data::Id {
 
 fn id_from_node_id(id: NodeId, scx: &SaveContext) -> rls_data::Id {
     let def_id = scx.tcx.hir.opt_local_def_id(id);
-    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(null_id)
+    def_id.map(|id| id_from_def_id(id)).unwrap_or_else(|| {
+        // Create a *fake* `DefId` out of a `NodeId` by subtracting the `NodeId`
+        // out of the maximum u32 value. This will work unless you have *billions*
+        // of definitions in a single crate (very unlikely to actually happen).
+        rls_data::Id {
+            krate: LOCAL_CRATE.as_u32(),
+            index: !id.as_u32(),
+        }
+    })
 }
 
 fn null_id() -> rls_data::Id {

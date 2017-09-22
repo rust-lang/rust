@@ -20,7 +20,7 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
 
@@ -365,6 +365,9 @@ impl Step for Rustc {
         // tiny morsel of metadata is used by rust-packaging
         let version = build.rust_version();
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        if let Some(sha) = build.rust_sha() {
+            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+        }
 
         // On MinGW we've got a few runtime DLL dependencies that we need to
         // include. The first argument to this script is where to put these DLLs
@@ -429,7 +432,7 @@ impl Step for Rustc {
 
             // Man pages
             t!(fs::create_dir_all(image.join("share/man/man1")));
-            cp_r(&build.src.join("man"), &image.join("share/man/man1"));
+            cp_r(&build.src.join("src/doc/man"), &image.join("share/man/man1"));
 
             // Debugger scripts
             builder.ensure(DebuggerScripts {
@@ -724,6 +727,9 @@ impl Step for Src {
         let dst_src = dst.join("rust");
         t!(fs::create_dir_all(&dst_src));
 
+        let src_files = [
+            "src/Cargo.lock",
+        ];
         // This is the reduced set of paths which will become the rust-src component
         // (essentially libstd and all of its path dependencies)
         let std_src_dirs = [
@@ -754,11 +760,14 @@ impl Step for Src {
             "src/libprofiler_builtins",
         ];
         let std_src_dirs_exclude = [
-            "src/compiler-rt/test",
+            "src/libcompiler_builtins/compiler-rt/test",
             "src/jemalloc/test/unit",
         ];
 
         copy_src_dirs(build, &std_src_dirs[..], &std_src_dirs_exclude[..], &dst_src);
+        for file in src_files.iter() {
+            copy(&build.src.join(file), &dst_src.join(file));
+        }
 
         // Create source tarball in rust-installer format
         let mut cmd = rust_installer(builder);
@@ -825,7 +834,6 @@ impl Step for PlainSourceTarball {
             "config.toml.example",
         ];
         let src_dirs = [
-            "man",
             "src",
         ];
 
@@ -838,6 +846,9 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
+        if let Some(sha) = build.rust_sha() {
+            write_file(&plain_dst_src.join("git-commit-hash"), sha.as_bytes());
+        }
 
         // If we're building from git sources, we need to vendor a complete distribution.
         if build.rust_info.is_git() {
@@ -888,7 +899,12 @@ impl Step for PlainSourceTarball {
 fn install(src: &Path, dstdir: &Path, perms: u32) {
     let dst = dstdir.join(src.file_name().unwrap());
     t!(fs::create_dir_all(dstdir));
-    t!(fs::copy(src, &dst));
+    drop(fs::remove_file(&dst));
+    {
+        let mut s = t!(fs::File::open(&src));
+        let mut d = t!(fs::File::create(&dst));
+        io::copy(&mut s, &mut d).expect("failed to copy");
+    }
     chmod(&dst, perms);
 }
 
@@ -1082,12 +1098,43 @@ impl Step for Rls {
            .arg("--output-dir").arg(&distdir(build))
            .arg("--non-installed-overlay").arg(&overlay)
            .arg(format!("--package-name={}-{}", name, target))
-           .arg("--component-name=rls")
            .arg("--legacy-manifest-dirs=rustlib,cargo");
+
+        if build.config.channel == "nightly" {
+            cmd.arg("--component-name=rls");
+        } else {
+            cmd.arg("--component-name=rls-preview");
+        }
+
         build.run(&mut cmd);
         distdir(build).join(format!("{}-{}.tar.gz", name, target))
     }
 }
+
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct DontDistWithMiriEnabled;
+
+impl Step for DontDistWithMiriEnabled {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let build_miri = run.builder.build.config.test_miri;
+        run.default_condition(build_miri)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(DontDistWithMiriEnabled);
+    }
+
+    fn run(self, _: &Builder) -> PathBuf {
+        panic!("Do not distribute with miri enabled.\n\
+                The distributed libraries would include all MIR (increasing binary size).
+                The distributed MIR would include validation statements.");
+    }
+}
+
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Extended {
@@ -1151,6 +1198,9 @@ impl Step for Extended {
         install(&build.src.join("LICENSE-MIT"), &overlay, 0o644);
         let version = build.rust_version();
         t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+        if let Some(sha) = build.rust_sha() {
+            t!(t!(File::create(overlay.join("git-commit-hash"))).write_all(sha.as_bytes()));
+        }
         install(&etc.join("README.md"), &overlay, 0o644);
 
         // When rust-std package split from rustc, we needed to ensure that during
@@ -1158,7 +1208,10 @@ impl Step for Extended {
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
         let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
-                                analysis_installer, docs_installer, std_installer];
+                                analysis_installer, std_installer];
+        if build.config.docs {
+            tarballs.push(docs_installer);
+        }
         if target.contains("pc-windows-gnu") {
             tarballs.push(mingw_installer.unwrap());
         }
@@ -1280,9 +1333,12 @@ impl Step for Extended {
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target))
                         .join(format!("rust-std-{}", target)),
                     &exe.join("rust-std"));
-            cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target))
-                        .join("rls"),
-                    &exe.join("rls"));
+            let rls_path = if build.config.channel == "nightly" {
+                work.join(&format!("{}-{}", pkgname(build, "rls"), target)).join("rls")
+            } else {
+                work.join(&format!("{}-{}", pkgname(build, "rls"), target)).join("rls-preview")
+            };
+            cp_r(&rls_path, &exe.join("rls"));
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target))
                         .join(format!("rust-analysis-{}", target)),
                     &exe.join("rust-analysis"));

@@ -8,34 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
-
-#[repr(packed)]
-#[derive(Copy, Clone)]
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 struct Foo {
     a: i8,
     b: i16,
     c: i8
-}
-
-impl PartialEq for Foo {
-    fn eq(&self, other: &Foo) -> bool {
-        self.a == other.a && self.b == other.b && self.c == other.c
-    }
-}
-
-impl fmt::Debug for Foo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let a = self.a;
-        let b = self.b;
-        let c = self.c;
-
-        f.debug_struct("Foo")
-            .field("a", &a)
-            .field("b", &b)
-            .field("c", &c)
-            .finish()
-    }
 }
 
 #[link(name = "test", kind = "static")]

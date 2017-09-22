@@ -107,7 +107,7 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
         self.borrows.len()
     }
     fn start_block_effect(&self, _sets: &mut BlockSets<BorrowIndex>)  {
-        // no borrows of code extents have been taken prior to
+        // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect on
         // `_sets`.
     }
@@ -121,9 +121,9 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
             panic!("could not find statement at location {:?}");
         });
         match stmt.kind {
-            mir::StatementKind::EndRegion(extent) => {
-                let borrow_indexes = self.region_map.get(&ReScope(extent)).unwrap_or_else(|| {
-                    panic!("could not find BorrowIndexs for code-extent {:?}", extent);
+            mir::StatementKind::EndRegion(region_scope) => {
+                let borrow_indexes = self.region_map.get(&ReScope(region_scope)).unwrap_or_else(|| {
+                    panic!("could not find BorrowIndexs for region scope {:?}", region_scope);
                 });
 
                 for idx in borrow_indexes { sets.kill(&idx); }
@@ -153,7 +153,7 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
     fn terminator_effect(&self,
                          _sets: &mut BlockSets<BorrowIndex>,
                          _location: Location) {
-        // no terminators start nor end code extents.
+        // no terminators start nor end region scopes.
     }
 
     fn propagate_call_return(&self,
@@ -161,7 +161,7 @@ impl<'a, 'tcx> BitDenotation for Borrows<'a, 'tcx> {
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_lval: &mir::Lvalue) {
-        // there are no effects on the extents from method calls.
+        // there are no effects on the region scopes from method calls.
     }
 }
 

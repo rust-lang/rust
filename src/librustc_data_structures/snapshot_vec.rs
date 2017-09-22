@@ -66,6 +66,13 @@ impl<D: SnapshotVecDelegate> SnapshotVec<D> {
         }
     }
 
+    pub fn with_capacity(n: usize) -> SnapshotVec<D> {
+        SnapshotVec {
+            values: Vec::with_capacity(n),
+            undo_log: Vec::new(),
+        }
+    }
+
     fn in_snapshot(&self) -> bool {
         !self.undo_log.is_empty()
     }

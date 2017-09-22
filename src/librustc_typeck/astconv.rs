@@ -12,7 +12,7 @@
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
-use rustc::middle::const_val::eval_length;
+use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use hir;
 use hir::def::Def;
@@ -96,35 +96,40 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
-        let r = match tcx.named_region_map.defs.get(&lifetime.id) {
-            Some(&rl::Region::Static) => {
+        let lifetime_name = |def_id| {
+            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap())
+        };
+
+        let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+        let r = match tcx.named_region(hir_id) {
+            Some(rl::Region::Static) => {
                 tcx.types.re_static
             }
 
-            Some(&rl::Region::LateBound(debruijn, id)) => {
-                let name = tcx.hir.name(id);
+            Some(rl::Region::LateBound(debruijn, id)) => {
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReLateBound(debruijn,
-                    ty::BrNamed(tcx.hir.local_def_id(id), name)))
+                    ty::BrNamed(id, name)))
             }
 
-            Some(&rl::Region::LateBoundAnon(debruijn, index)) => {
+            Some(rl::Region::LateBoundAnon(debruijn, index)) => {
                 tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(index)))
             }
 
-            Some(&rl::Region::EarlyBound(index, id)) => {
-                let name = tcx.hir.name(id);
+            Some(rl::Region::EarlyBound(index, id)) => {
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    def_id: tcx.hir.local_def_id(id),
+                    def_id: id,
                     index,
                     name,
                 }))
             }
 
-            Some(&rl::Region::Free(scope, id)) => {
-                let name = tcx.hir.name(id);
+            Some(rl::Region::Free(scope, id)) => {
+                let name = lifetime_name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
                     scope,
-                    bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name)
+                    bound_region: ty::BrNamed(id, name)
                 }))
 
                     // (*) -- not late-bound, won't change
@@ -627,7 +632,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             self.ast_region_to_region(lifetime, None)
         } else {
             self.compute_object_lifetime_bound(span, existential_predicates).unwrap_or_else(|| {
-                if tcx.named_region_map.defs.contains_key(&lifetime.id) {
+                let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
+                if tcx.named_region(hir_id).is_some() {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(span, None).unwrap_or_else(|| {
@@ -1080,11 +1086,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyArray(ref ty, length) => {
-                if let Ok(length) = eval_length(tcx, length, "array length") {
-                    tcx.mk_array(self.ast_ty_to_ty(&ty), length)
-                } else {
-                    self.tcx().types.err
-                }
+                let length_def_id = tcx.hir.body_owner_def_id(length);
+                let substs = Substs::identity_for_item(tcx, length_def_id);
+                let length = tcx.mk_const(ty::Const {
+                    val: ConstVal::Unevaluated(length_def_id, substs),
+                    ty: tcx.types.usize
+                });
+                let array_ty = tcx.mk_ty(ty::TyArray(self.ast_ty_to_ty(&ty), length));
+                self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyTypeof(ref _e) => {
                 struct_span_err!(tcx.sess, ast_ty.span, E0516,
@@ -1286,8 +1295,8 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             Def::Trait(trait_did) => {
                 // Checks whether `trait_did` refers to one of the builtin
                 // traits, like `Send`, and adds it to `auto_traits` if so.
-                if Some(trait_did) == tcx.lang_items.send_trait() ||
-                    Some(trait_did) == tcx.lang_items.sync_trait() {
+                if Some(trait_did) == tcx.lang_items().send_trait() ||
+                    Some(trait_did) == tcx.lang_items().sync_trait() {
                     let segments = &bound.trait_ref.path.segments;
                     let parameters = &segments[segments.len() - 1].parameters;
                     if !parameters.types.is_empty() {
@@ -1400,7 +1409,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
 
         // If it could be sized, and is, add the sized predicate
         if self.implicitly_sized {
-            if let Some(sized) = tcx.lang_items.sized_trait() {
+            if let Some(sized) = tcx.lang_items().sized_trait() {
                 let trait_ref = ty::TraitRef {
                     def_id: sized,
                     substs: tcx.mk_substs_trait(param_ty, &[])

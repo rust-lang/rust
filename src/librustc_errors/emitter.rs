@@ -183,8 +183,8 @@ impl EmitterWriter {
                     continue;
                 }
 
-                let lo = cm.lookup_char_pos(span_label.span.lo);
-                let mut hi = cm.lookup_char_pos(span_label.span.hi);
+                let lo = cm.lookup_char_pos(span_label.span.lo());
+                let mut hi = cm.lookup_char_pos(span_label.span.hi());
 
                 // Watch out for "empty spans". If we get a span like 6..6, we
                 // want to just display a `^` at 6, so convert that to
@@ -683,7 +683,7 @@ impl EmitterWriter {
         if let Some(ref cm) = self.cm {
             for primary_span in msp.primary_spans() {
                 if primary_span != &DUMMY_SP {
-                    let hi = cm.lookup_char_pos(primary_span.hi);
+                    let hi = cm.lookup_char_pos(primary_span.hi());
                     if hi.line > max {
                         max = hi.line;
                     }
@@ -691,7 +691,7 @@ impl EmitterWriter {
             }
             for span_label in msp.span_labels() {
                 if span_label.span != DUMMY_SP {
-                    let hi = cm.lookup_char_pos(span_label.span.hi);
+                    let hi = cm.lookup_char_pos(span_label.span.hi());
                     if hi.line > max {
                         max = hi.line;
                     }
@@ -914,7 +914,7 @@ impl EmitterWriter {
         let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
             if primary_span != &&DUMMY_SP {
-                (cm.lookup_char_pos(primary_span.lo), cm)
+                (cm.lookup_char_pos(primary_span.lo()), cm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;
                 return Ok(());
@@ -1091,7 +1091,7 @@ impl EmitterWriter {
                                Some(Style::HeaderMsg));
 
             let suggestions = suggestion.splice_lines(cm.borrow());
-            let span_start_pos = cm.lookup_char_pos(primary_sub.span.lo);
+            let span_start_pos = cm.lookup_char_pos(primary_sub.span.lo());
             let line_start = span_start_pos.line;
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
             let mut row_num = 2;

@@ -48,6 +48,9 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
         ty::Predicate::Subtype(ref data) =>
             ty::Predicate::Subtype(tcx.anonymize_late_bound_regions(data)),
+
+        ty::Predicate::ConstEvaluatable(def_id, substs) =>
+            ty::Predicate::ConstEvaluatable(def_id, substs),
     }
 }
 
@@ -174,6 +177,10 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
             }
             ty::Predicate::ClosureKind(..) => {
                 // Nothing to elaborate when waiting for a closure's kind to be inferred.
+            }
+            ty::Predicate::ConstEvaluatable(..) => {
+                // Currently, we do not elaborate const-evaluatable
+                // predicates.
             }
 
             ty::Predicate::RegionOutlives(..) => {
@@ -538,8 +545,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
             None => {
                 self.global_tcx()
-                    .sess
-                    .cstore
                     .impl_defaultness(node_item_def_id)
                     .is_default()
             }

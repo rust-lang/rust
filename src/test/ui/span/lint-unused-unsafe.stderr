@@ -65,14 +65,12 @@ note: because it's nested under this `unsafe` block
    | |_____^
 
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:39:5
+  --> $DIR/lint-unused-unsafe.rs:40:9
    |
-39 | /     unsafe {                             //~ ERROR: unnecessary `unsafe` block
-40 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
+40 | /         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
-43 | |     }
-   | |_____^ unnecessary `unsafe` block
+   | |_________^ unnecessary `unsafe` block
    |
 note: because it's nested under this `unsafe` fn
   --> $DIR/lint-unused-unsafe.rs:38:1
@@ -87,12 +85,14 @@ note: because it's nested under this `unsafe` fn
    | |_^
 
 error: unnecessary `unsafe` block
-  --> $DIR/lint-unused-unsafe.rs:40:9
+  --> $DIR/lint-unused-unsafe.rs:39:5
    |
-40 | /         unsafe {                         //~ ERROR: unnecessary `unsafe` block
+39 | /     unsafe {                             //~ ERROR: unnecessary `unsafe` block
+40 | |         unsafe {                         //~ ERROR: unnecessary `unsafe` block
 41 | |             unsf()
 42 | |         }
-   | |_________^ unnecessary `unsafe` block
+43 | |     }
+   | |_____^ unnecessary `unsafe` block
    |
 note: because it's nested under this `unsafe` fn
   --> $DIR/lint-unused-unsafe.rs:38:1

@@ -104,7 +104,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
-    let name = &*tcx.item_name(def_id).as_str();
+    let name = &*tcx.item_name(def_id);
 
     let llret_ty = type_of::type_of(ccx, ret_ty);
 
@@ -135,7 +135,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "size_of" => {
             let tp_ty = substs.type_at(0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
         }
         "size_of_val" => {
             let tp_ty = substs.type_at(0);
@@ -145,12 +145,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 llsize
             } else {
                 let lltp_ty = type_of::type_of(ccx, tp_ty);
-                C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+                C_usize(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
             }
         }
         "min_align_of" => {
             let tp_ty = substs.type_at(0);
-            C_uint(ccx, ccx.align_of(tp_ty))
+            C_usize(ccx, ccx.align_of(tp_ty) as u64)
         }
         "min_align_of_val" => {
             let tp_ty = substs.type_at(0);
@@ -159,13 +159,13 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
                 llalign
             } else {
-                C_uint(ccx, ccx.align_of(tp_ty))
+                C_usize(ccx, ccx.align_of(tp_ty) as u64)
             }
         }
         "pref_align_of" => {
             let tp_ty = substs.type_at(0);
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty))
+            C_usize(ccx, machine::llalign_of_pref(ccx, lltp_ty) as u64)
         }
         "type_name" => {
             let tp_ty = substs.type_at(0);
@@ -182,7 +182,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 // If we store a zero constant, LLVM will drown in vreg allocation for large data
                 // structures, and the generated code will be awful. (A telltale sign of this is
                 // large quantities of `mov [byte ptr foo],0` in the generated code.)
-                memset_intrinsic(bcx, false, ty, llresult, C_u8(ccx, 0), C_uint(ccx, 1usize));
+                memset_intrinsic(bcx, false, ty, llresult, C_u8(ccx, 0), C_usize(ccx, 1));
             }
             C_nil(ccx)
         }
@@ -382,6 +382,18 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 }
                 _ => C_null(llret_ty)
             }
+        }
+
+        "align_offset" => {
+            // `ptr as usize`
+            let ptr_val = bcx.ptrtoint(llargs[0], bcx.ccx.isize_ty());
+            // `ptr_val % align`
+            let offset = bcx.urem(ptr_val, llargs[1]);
+            let zero = C_null(bcx.ccx.isize_ty());
+            // `offset == 0`
+            let is_zero = bcx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
+            // `if offset == 0 { 0 } else { offset - align }`
+            bcx.select(is_zero, zero, bcx.sub(offset, llargs[1]))
         }
         name if name.starts_with("simd_") => {
             generic_simd_intrinsic(bcx, name,
@@ -676,7 +688,7 @@ fn copy_intrinsic<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, ccx.align_of(tp_ty) as i32);
     let size = machine::llsize_of(ccx, lltp_ty);
-    let int_size = machine::llbitsize_of_real(ccx, ccx.int_type());
+    let int_size = machine::llbitsize_of_real(ccx, ccx.isize_ty());
 
     let operation = if allow_overlap {
         "memmove"
@@ -810,7 +822,7 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         catchswitch.add_handler(cs, catchpad.llbb());
 
         let tcx = ccx.tcx();
-        let tydesc = match tcx.lang_items.msvc_try_filter() {
+        let tydesc = match tcx.lang_items().msvc_try_filter() {
             Some(did) => ::consts::get_static(ccx, did),
             None => bug!("msvc_try_filter not defined"),
         };

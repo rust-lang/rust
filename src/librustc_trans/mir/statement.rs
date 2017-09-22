@@ -67,11 +67,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     variant_index as u64);
                 bcx
             }
-            mir::StatementKind::StorageLive(ref lvalue) => {
-                self.trans_storage_liveness(bcx, lvalue, base::Lifetime::Start)
+            mir::StatementKind::StorageLive(local) => {
+                self.trans_storage_liveness(bcx, local, base::Lifetime::Start)
             }
-            mir::StatementKind::StorageDead(ref lvalue) => {
-                self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
+            mir::StatementKind::StorageDead(local) => {
+                self.trans_storage_liveness(bcx, local, base::Lifetime::End)
             }
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
@@ -94,13 +94,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
     fn trans_storage_liveness(&self,
                               bcx: Builder<'a, 'tcx>,
-                              lvalue: &mir::Lvalue<'tcx>,
+                              index: mir::Local,
                               intrinsic: base::Lifetime)
                               -> Builder<'a, 'tcx> {
-        if let mir::Lvalue::Local(index) = *lvalue {
-            if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
-                intrinsic.call(&bcx, tr_lval.llval);
-            }
+        if let LocalRef::Lvalue(tr_lval) = self.locals[index] {
+            intrinsic.call(&bcx, tr_lval.llval);
         }
         bcx
     }

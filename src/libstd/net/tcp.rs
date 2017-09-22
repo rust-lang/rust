@@ -111,19 +111,39 @@ impl TcpStream {
     /// `addr` is an address of the remote host. Anything which implements
     /// [`ToSocketAddrs`] trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
-    /// In case [`ToSocketAddrs::to_socket_addrs()`] returns more than one entry,
-    /// then the first valid and reachable address is used.
+    ///
+    /// If `addr` yields multiple addresses, `connect` will be attempted with
+    /// each of the addresses until a connection is successful. If none of
+    /// the addresses result in a successful connection, the error returned from
+    /// the last connection attempt (the last address) is returned.
     ///
     /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
-    /// [`ToSocketAddrs::to_socket_addrs()`]:
-    /// ../../std/net/trait.ToSocketAddrs.html#tymethod.to_socket_addrs
     ///
     /// # Examples
+    ///
+    /// Open a TCP connection to `127.0.0.1:8080`:
     ///
     /// ```no_run
     /// use std::net::TcpStream;
     ///
     /// if let Ok(stream) = TcpStream::connect("127.0.0.1:8080") {
+    ///     println!("Connected to the server!");
+    /// } else {
+    ///     println!("Couldn't connect to server...");
+    /// }
+    /// ```
+    ///
+    /// Open a TCP connection to `127.0.0.1:8080`. If the connection fails, open
+    /// a TCP connection to `127.0.0.1:8081`:
+    ///
+    /// ```no_run
+    /// use std::net::{SocketAddr, TcpStream};
+    ///
+    /// let addrs = [
+    ///     SocketAddr::from(([127, 0, 0, 1], 8080)),
+    ///     SocketAddr::from(([127, 0, 0, 1], 8081)),
+    /// ];
+    /// if let Ok(stream) = TcpStream::connect(&addrs[..]) {
     ///     println!("Connected to the server!");
     /// } else {
     ///     println!("Couldn't connect to server...");
@@ -147,7 +167,7 @@ impl TcpStream {
     /// connection request.
     ///
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
-    #[unstable(feature = "tcpstream_connect_timeout", issue = "43079")]
+    #[stable(feature = "tcpstream_connect_timeout", since = "1.22.0")]
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpStream> {
         net_imp::TcpStream::connect_timeout(addr, timeout).map(TcpStream)
     }
@@ -557,15 +577,35 @@ impl TcpListener {
     /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
     ///
+    /// If `addr` yields multiple addresses, `bind` will be attempted with
+    /// each of the addresses until one succeeds and returns the listener. If
+    /// none of the addresses succeed in creating a listener, the error returned
+    /// from the last attempt (the last address) is returned.
+    ///
     /// [`local_addr`]: #method.local_addr
     /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
+    /// Create a TCP listener bound to `127.0.0.1:80`:
+    ///
     /// ```no_run
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// ```
+    ///
+    /// Create a TCP listener bound to `127.0.0.1:80`. If that fails, create a
+    /// TCP listener bound to `127.0.0.1:443`:
+    ///
+    /// ```no_run
+    /// use std::net::{SocketAddr, TcpListener};
+    ///
+    /// let addrs = [
+    ///     SocketAddr::from(([127, 0, 0, 1], 80)),
+    ///     SocketAddr::from(([127, 0, 0, 1], 443)),
+    /// ];
+    /// let listener = TcpListener::bind(&addrs[..]).unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
@@ -1530,10 +1570,13 @@ mod tests {
 
     #[test]
     fn connect_timeout_unroutable() {
-        // this IP is unroutable, so connections should always time out.
+        // this IP is unroutable, so connections should always time out,
+        // provided the network is reachable to begin with.
         let addr = "10.255.255.1:80".parse().unwrap();
         let e = TcpStream::connect_timeout(&addr, Duration::from_millis(250)).unwrap_err();
-        assert_eq!(e.kind(), io::ErrorKind::TimedOut);
+        assert!(e.kind() == io::ErrorKind::TimedOut ||
+                e.kind() == io::ErrorKind::Other,
+                "bad error: {} {:?}", e, e.kind());
     }
 
     #[test]

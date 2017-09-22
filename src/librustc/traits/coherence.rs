@@ -13,6 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
 use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
+use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Subst;
 
@@ -21,12 +22,17 @@ use infer::{InferCtxt, InferOk};
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
+pub struct OverlapResult<'tcx> {
+    pub impl_header: ty::ImplHeader<'tcx>,
+    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+}
+
 /// If there are types that satisfy both impls, returns a suitably-freshened
 /// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'gcx, 'tcx>(infcx: &InferCtxt<'cx, 'gcx, 'tcx>,
                                           impl1_def_id: DefId,
                                           impl2_def_id: DefId)
-                                          -> Option<ty::ImplHeader<'tcx>>
+                                          -> Option<OverlapResult<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -65,7 +71,7 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                             a_def_id: DefId,
                             b_def_id: DefId)
-                            -> Option<ty::ImplHeader<'tcx>>
+                            -> Option<OverlapResult<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,
@@ -113,11 +119,14 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         return None
     }
 
-    Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
+    Some(OverlapResult {
+        impl_header: selcx.infcx().resolve_type_vars_if_possible(&a_impl_header),
+        intercrate_ambiguity_causes: selcx.intercrate_ambiguity_causes().to_vec(),
+    })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                             trait_ref: &ty::TraitRef<'tcx>) -> bool
+                                             trait_ref: ty::TraitRef<'tcx>) -> bool
 {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
 
@@ -131,10 +140,7 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // if the trait is not marked fundamental, then it's always possible that
     // an ancestor crate will impl this in the future, if they haven't
     // already
-    if
-        trait_ref.def_id.krate != LOCAL_CRATE &&
-        !tcx.has_attr(trait_ref.def_id, "fundamental")
-    {
+    if !trait_ref_is_local_or_fundamental(tcx, trait_ref) {
         debug!("trait_ref_is_knowable: trait is neither local nor fundamental");
         return false;
     }
@@ -146,6 +152,12 @@ pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // must be visible to us, and -- since the trait is fundamental
     // -- we can test.
     orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(true)).is_err()
+}
+
+pub fn trait_ref_is_local_or_fundamental<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                         trait_ref: ty::TraitRef<'tcx>)
+                                                         -> bool {
+    trait_ref.def_id.krate == LOCAL_CRATE || tcx.has_attr(trait_ref.def_id, "fundamental")
 }
 
 pub enum OrphanCheckErr<'tcx> {
@@ -177,11 +189,11 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, &trait_ref, InferIsLocal(false))
+    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(false))
 }
 
 fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt,
-                                trait_ref: &ty::TraitRef<'tcx>,
+                                trait_ref: ty::TraitRef<'tcx>,
                                 infer_is_local: InferIsLocal)
                                 -> Result<(), OrphanCheckErr<'tcx>>
 {

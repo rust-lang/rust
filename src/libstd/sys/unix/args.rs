@@ -65,6 +65,7 @@ impl DoubleEndedIterator for Args {
           target_os = "solaris",
           target_os = "emscripten",
           target_os = "haiku",
+          target_os = "l4re",
           target_os = "fuchsia"))]
 mod imp {
     use os::unix::prelude::*;

@@ -3,7 +3,7 @@ Version 1.20.0 (2017-08-31)
 
 Language
 --------
-- [Associated constants in traits is now stabilised.][42809]
+- [Associated constants are now stabilised.][42809]
 - [A lot of macro bugs are now fixed.][42913]
 
 Compiler
@@ -77,7 +77,7 @@ Stabilized APIs
 - [`slice::sort_unstable_by_key`]
 - [`slice::sort_unstable_by`]
 - [`slice::sort_unstable`]
-- [`ste::from_boxed_utf8_unchecked`]
+- [`str::from_boxed_utf8_unchecked`]
 - [`str::as_bytes_mut`]
 - [`str::as_bytes_mut`]
 - [`str::from_utf8_mut`]
@@ -170,7 +170,7 @@ Compatibility Notes
 [`slice::sort_unstable_by_key`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by_key
 [`slice::sort_unstable_by`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
 [`slice::sort_unstable`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable
-[`ste::from_boxed_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_boxed_utf8_unchecked.html
+[`str::from_boxed_utf8_unchecked`]: https://doc.rust-lang.org/std/str/fn.from_boxed_utf8_unchecked.html
 [`str::as_bytes_mut`]: https://doc.rust-lang.org/std/primitive.str.html#method.as_bytes_mut
 [`str::from_utf8_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_mut.html
 [`str::from_utf8_unchecked_mut`]: https://doc.rust-lang.org/std/str/fn.from_utf8_unchecked_mut.html

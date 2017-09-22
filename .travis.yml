@@ -12,14 +12,19 @@ matrix:
   fast_finish: true
   include:
     # Images used in testing PR and try-build should be run first.
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
-    - env: IMAGE=dist-x86_64-linux DEPLOY=1 ALLOW_TRY=1
+    - env: IMAGE=x86_64-gnu-llvm-3.7 RUST_BACKTRACE=1
+      if: type = pull_request OR branch = auto
+
+    - env: IMAGE=dist-x86_64-linux DEPLOY=1
+      if: branch = try OR branch = auto
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
     # turned on, they're deployed to a different location primarily for projects
     # which are stuck on nightly and don't want llvm assertions in the artifacts
     # that they use.
     - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
+      if: branch = auto
+
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler"
@@ -28,8 +33,11 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
+      if: branch = auto
 
     # macOS builders. These are placed near the beginning because they are very
     # slow to run.
@@ -46,8 +54,12 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode8.2
+      if: branch = auto
+
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
@@ -56,8 +68,11 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode8.2
+      if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
     # just produce a bunch of artifacts.
@@ -73,8 +88,12 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
+      if: branch = auto
+
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended --enable-sanitizers --enable-profiler"
@@ -83,83 +102,98 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
+        NO_LLVM_ASSERTIONS=1
+        NO_DEBUG_ASSERTIONS=1
       os: osx
       osx_image: xcode7
+      if: branch = auto
 
     # Linux builders, remaining docker images
     - env: IMAGE=arm-android
+      if: branch = auto
     - env: IMAGE=armhf-gnu
+      if: branch = auto
     - env: IMAGE=cross DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-android DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-arm-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-armhf-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-armv7-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-fuchsia DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-i686-freebsd DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-i686-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mips-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mips64-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mips64el-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-mipsel-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-powerpc64-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-powerpc64le-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-s390x-linux DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-x86_64-freebsd DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-x86_64-musl DEPLOY=1
+      if: branch = auto
     - env: IMAGE=dist-x86_64-netbsd DEPLOY=1
+      if: branch = auto
     - env: IMAGE=asmjs
+      if: branch = auto
     - env: IMAGE=i686-gnu
+      if: branch = auto
     - env: IMAGE=i686-gnu-nopt
+      if: branch = auto
     # - env: IMAGE=wasm32 issue 42646
+    #   if: branch = auto
     - env: IMAGE=x86_64-gnu
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-full-bootstrap
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-aux
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-debug
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-nopt
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-distcheck
+      if: branch = auto
     - env: IMAGE=x86_64-gnu-incremental
+      if: branch = auto
 
 env:
   global:
-    - SCCACHE_BUCKET=rust-lang-ci-sccache
-    - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
+    - SCCACHE_BUCKET=rust-lang-ci-sccache2
+    - SCCACHE_REGION=us-west-1
+    - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
     # AWS_SECRET_ACCESS_KEY=...
-    - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
+    - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
 
 before_install:
-  # If we are building a pull request, do the build if $ALLOW_PR == 1
-  # Otherwise, do the build if we are on the auto branch, or the try branch and $ALLOW_TRY == 1
-  - >
-    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
-        if [[ "$ALLOW_PR" == "1" ]]; then
-            export SKIP_BUILD=false;
-        else
-            export SKIP_BUILD=true;
-        fi;
-    elif [[ "$TRAVIS_BRANCH" == "auto" || ( "$ALLOW_TRY" == "1" && "$TRAVIS_BRANCH" == "try" ) ]]; then
-        export SKIP_BUILD=false;
-    else
-        export SKIP_BUILD=true;
-    fi
-  - >
-    if [[ "$SKIP_BUILD" == false ]]; then
-      zcat $HOME/docker/rust-ci.tar.gz | docker load || true
-    fi
+  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
   - mkdir -p $HOME/rustsrc
 
 install:
-  - >
-    if [[ "$SKIP_BUILD" == true ]]; then
-      echo echo skipping, not a full build > $HOME/stamp &&
-        chmod +x $HOME/stamp &&
-        export PATH=$PATH:$HOME;
-    else
-      case "$TRAVIS_OS_NAME" in
+  - case "$TRAVIS_OS_NAME" in
         linux)
-          travis_retry curl -fo $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+          travis_retry curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
             chmod +x $HOME/stamp &&
             export PATH=$PATH:$HOME
           ;;
@@ -168,13 +202,12 @@ install:
             travis_retry brew update &&
             travis_retry brew install xz;
           fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
-          travis_retry curl -fo /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/stamp
           ;;
-      esac
-    fi
+    esac
 
 before_script:
   - >
@@ -254,45 +287,45 @@ before_deploy:
 
 deploy:
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds
     acl: public_read
-    region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
       condition: $DEPLOY = 1
 
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds-try
     acl: public_read
-    region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: try
-      condition: $DEPLOY = 1 && $ALLOW_TRY = 1
+      condition: $DEPLOY = 1
 
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
-    bucket: rust-lang-ci
+    bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
     upload_dir: rustc-builds-alt
     acl: public_read
-    region: us-east-1
-    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    region: us-west-1
+    access_key_id: AKIAJVBODR3IA4O72THQ
     secret_access_key:
-      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
     on:
       branch: auto
       condition: $DEPLOY_ALT = 1

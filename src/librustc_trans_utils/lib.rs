@@ -19,7 +19,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
@@ -27,6 +26,8 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(conservative_impl_trait)]
+
+#![cfg_attr(stage0, feature(const_fn))]
 
 extern crate rustc;
 extern crate syntax;

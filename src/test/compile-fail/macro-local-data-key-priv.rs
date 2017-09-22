@@ -16,5 +16,5 @@ mod bar {
 
 fn main() {
     bar::baz.with(|_| ());
-    //~^ ERROR static `baz` is private
+    //~^ ERROR `baz` is private
 }

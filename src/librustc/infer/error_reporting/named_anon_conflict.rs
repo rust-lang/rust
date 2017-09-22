@@ -13,6 +13,7 @@
 use infer::InferCtxt;
 use infer::region_inference::RegionResolutionError::*;
 use infer::region_inference::RegionResolutionError;
+use ty;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // This method generates the error message for the case when
@@ -24,6 +25,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             _ => return false, // inapplicable
         };
 
+        debug!("try_report_named_anon_conflict(sub={:?}, sup={:?})",
+               sub,
+               sup);
+
         // Determine whether the sub and sup consist of one named region ('a)
         // and one anonymous (elided) region. If so, find the parameter arg
         // where the anonymous region appears (there must always be one; we
@@ -31,17 +36,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // version new_ty of its type where the anonymous region is replaced
         // with the named one.//scope_def_id
         let (named, anon_arg_info, region_info) =
-            if sub.is_named_region() && self.is_suitable_anonymous_region(sup).is_some() {
+            if self.is_named_region(sub) && self.is_suitable_region(sup).is_some() &&
+               self.find_arg_with_region(sup, sub).is_some() {
                 (sub,
-                 self.find_arg_with_anonymous_region(sup, sub).unwrap(),
-                 self.is_suitable_anonymous_region(sup).unwrap())
-            } else if sup.is_named_region() && self.is_suitable_anonymous_region(sub).is_some() {
+                 self.find_arg_with_region(sup, sub).unwrap(),
+                 self.is_suitable_region(sup).unwrap())
+            } else if self.is_named_region(sup) && self.is_suitable_region(sub).is_some() &&
+                      self.find_arg_with_region(sub, sup).is_some() {
                 (sup,
-                 self.find_arg_with_anonymous_region(sub, sup).unwrap(),
-                 self.is_suitable_anonymous_region(sub).unwrap())
+                 self.find_arg_with_region(sub, sup).unwrap(),
+                 self.is_suitable_region(sub).unwrap())
             } else {
                 return false; // inapplicable
             };
+
+        debug!("try_report_named_anon_conflict: named = {:?}", named);
+        debug!("try_report_named_anon_conflict: anon_arg_info = {:?}",
+               anon_arg_info);
+        debug!("try_report_named_anon_conflict: region_info = {:?}",
+               region_info);
 
         let (arg, new_ty, br, is_first, scope_def_id, is_impl_item) = (anon_arg_info.arg,
                                                                        anon_arg_info.arg_ty,
@@ -49,14 +62,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                                        anon_arg_info.is_first,
                                                                        region_info.def_id,
                                                                        region_info.is_impl_item);
+        match br {
+            ty::BrAnon(_) => {}
+            _ => {
+                /* not an anonymous region */
+                debug!("try_report_named_anon_conflict: not an anonymous region");
+                return false;
+            }
+        }
+
         if is_impl_item {
+            debug!("try_report_named_anon_conflict: impl item, bail out");
             return false;
         }
 
-        if self.is_return_type_anon(scope_def_id, br) || self.is_self_anon(is_first, scope_def_id) {
+        if self.is_return_type_anon(scope_def_id, br) {
+            debug!("try_report_named_anon_conflict: is_return_type_anon({:?}, {:?}) = true",
+                   scope_def_id,
+                   br);
+            return false;
+        } else if self.is_self_anon(is_first, scope_def_id) {
+            debug!("try_report_named_anon_conflict: is_self_anon({:?}, {:?}) = true",
+                   is_first,
+                   scope_def_id);
             return false;
         } else {
-
             let (error_var, span_label_var) = if let Some(simple_name) = arg.pat.simple_name() {
                 (format!("the type of `{}`", simple_name), format!("the type of `{}`", simple_name))
             } else {
@@ -72,9 +102,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 format!("consider changing {} to `{}`", span_label_var, new_ty))
                     .span_label(span, format!("lifetime `{}` required", named))
                     .emit();
-
-
+            return true;
         }
-        return true;
     }
 }

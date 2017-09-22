@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions
+// compile-flags: -Z identify_regions -Z emit-end-regions
 // ignore-tidy-linelength
 
 // This is just about the simplest program that exhibits an EndRegion.
@@ -22,16 +22,16 @@ fn main() {
 // START rustc.node4.SimplifyCfg-qualify-consts.after.mir
 //     let mut _0: ();
 //     let _1: i32;
-//     let _2: &'6_1rce i32;
+//     let _2: &'10_1rs i32;
 //
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const 3i32;
 //         StorageLive(_2);
-//         _2 = &'6_1rce _1;
+//         _2 = &'10_1rs _1;
 //         _0 = ();
+//         EndRegion('10_1rs);
 //         StorageDead(_2);
-//         EndRegion('6_1rce);
 //         StorageDead(_1);
 //         return;
 //     }

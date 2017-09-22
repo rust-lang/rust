@@ -71,7 +71,7 @@ pub struct StringReader<'a> {
 
 impl<'a> StringReader<'a> {
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        unwrap_or!(self.override_span, Span { lo: lo, hi: hi, ctxt: NO_EXPANSION})
+        unwrap_or!(self.override_span, Span::new(lo, hi, NO_EXPANSION))
     }
 
     fn next_token(&mut self) -> TokenAndSpan where Self: Sized {
@@ -190,20 +190,20 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {
-        let begin = sess.codemap().lookup_byte_offset(span.lo);
-        let end = sess.codemap().lookup_byte_offset(span.hi);
+        let begin = sess.codemap().lookup_byte_offset(span.lo());
+        let end = sess.codemap().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
-        if span.lo > span.hi || begin.fm.start_pos != end.fm.start_pos {
-            span.hi = span.lo;
+        if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {
+            span = span.with_hi(span.lo());
         }
 
         let mut sr = StringReader::new_raw_internal(sess, begin.fm);
 
         // Seek the lexer to the right byte range.
         sr.save_new_lines_and_multibyte = false;
-        sr.next_pos = span.lo;
-        sr.terminator = Some(span.hi);
+        sr.next_pos = span.lo();
+        sr.terminator = Some(span.hi());
 
         sr.bump();
 
@@ -963,60 +963,67 @@ impl<'a> StringReader<'a> {
         true
     }
 
-    /// Scan over a \u{...} escape
+    /// Scan over a `\u{...}` escape
     ///
-    /// At this point, we have already seen the \ and the u, the { is the current character. We
-    /// will read at least one digit, and up to 6, and pass over the }.
+    /// At this point, we have already seen the `\` and the `u`, the `{` is the current character.
+    /// We will read a hex number (with `_` separators), with 1 to 6 actual digits,
+    /// and pass over the `}`.
     fn scan_unicode_escape(&mut self, delim: char) -> bool {
         self.bump(); // past the {
         let start_bpos = self.pos;
-        let mut count = 0;
-        let mut accum_int = 0;
         let mut valid = true;
 
-        while !self.ch_is('}') && count <= 6 {
-            let c = match self.ch {
-                Some(c) => c,
+        if let Some('_') = self.ch {
+            // disallow leading `_`
+            self.err_span_(self.pos,
+                           self.next_pos,
+                           "invalid start of unicode escape");
+            valid = false;
+        }
+
+        let count = self.scan_digits(16, 16);
+
+        if count > 6 {
+            self.err_span_(start_bpos,
+                           self.pos,
+                           "overlong unicode escape (must have at most 6 hex digits)");
+            valid = false;
+        }
+        loop {
+            match self.ch {
+                Some('}') => {
+                    if valid && count == 0 {
+                        self.err_span_(start_bpos,
+                                       self.pos,
+                                       "empty unicode escape (must have at least 1 hex digit)");
+                        valid = false;
+                    }
+                    self.bump(); // past the ending `}`
+                    break;
+                },
+                Some(c) => {
+                    if c == delim {
+                        self.err_span_(self.pos,
+                                       self.pos,
+                                       "unterminated unicode escape (needed a `}`)");
+                        valid = false;
+                        break;
+                    } else if valid {
+                        self.err_span_char(start_bpos,
+                                           self.pos,
+                                           "invalid character in unicode escape",
+                                           c);
+                        valid = false;
+                    }
+                },
                 None => {
                     panic!(self.fatal_span_(start_bpos,
                                             self.pos,
                                             "unterminated unicode escape (found EOF)"));
                 }
-            };
-            accum_int *= 16;
-            accum_int += c.to_digit(16).unwrap_or_else(|| {
-                if c == delim {
-                    panic!(self.fatal_span_(self.pos,
-                                            self.next_pos,
-                                            "unterminated unicode escape (needed a `}`)"));
-                } else {
-                    self.err_span_char(self.pos,
-                                       self.next_pos,
-                                       "invalid character in unicode escape",
-                                       c);
-                }
-                valid = false;
-                0
-            });
+            }
             self.bump();
-            count += 1;
         }
-
-        if count > 6 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "overlong unicode escape (can have at most 6 hex digits)");
-            valid = false;
-        }
-
-        if valid && (char::from_u32(accum_int).is_none() || count == 0) {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "invalid unicode character escape");
-            valid = false;
-        }
-
-        self.bump(); // past the ending }
         valid
     }
 
@@ -1745,11 +1752,7 @@ mod tests {
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan {
             tok: token::Ident(id),
-            sp: Span {
-                lo: BytePos(21),
-                hi: BytePos(23),
-                ctxt: NO_EXPANSION,
-            },
+            sp: Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
         };
         assert_eq!(tok1, tok2);
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
@@ -1759,11 +1762,7 @@ mod tests {
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan {
             tok: token::Ident(Ident::from_str("main")),
-            sp: Span {
-                lo: BytePos(24),
-                hi: BytePos(28),
-                ctxt: NO_EXPANSION,
-            },
+            sp: Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
         };
         assert_eq!(tok3, tok4);
         // the lparen is already read:
@@ -1921,7 +1920,7 @@ mod tests {
         let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
         let comment = lexer.next_token();
         assert_eq!(comment.tok, token::Comment);
-        assert_eq!((comment.sp.lo, comment.sp.hi), (BytePos(0), BytePos(7)));
+        assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));
         assert_eq!(lexer.next_token().tok, token::Whitespace);
         assert_eq!(lexer.next_token().tok,
                    token::DocComment(Symbol::intern("/// test")));

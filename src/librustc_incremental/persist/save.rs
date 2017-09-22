@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::ich::Fingerprint;
@@ -79,21 +79,21 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                             &current_metadata_hashes);
 }
 
-pub fn save_work_products(sess: &Session) {
+pub fn save_work_products(sess: &Session, dep_graph: &DepGraph) {
     if sess.opts.incremental.is_none() {
         return;
     }
 
     debug!("save_work_products()");
-    let _ignore = sess.dep_graph.in_ignore();
+    let _ignore = dep_graph.in_ignore();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_products(sess, e));
+    save_in(sess, path, |e| encode_work_products(dep_graph, e));
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
     // content, they are just not needed anymore.
-    let new_work_products = sess.dep_graph.work_products();
-    let previous_work_products = sess.dep_graph.previous_work_products();
+    let new_work_products = dep_graph.work_products();
+    let previous_work_products = dep_graph.previous_work_products();
 
     for (id, wp) in previous_work_products.iter() {
         if !new_work_products.contains_key(id) {
@@ -309,8 +309,9 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn encode_work_products(sess: &Session, encoder: &mut Encoder) -> io::Result<()> {
-    let work_products: Vec<_> = sess.dep_graph
+pub fn encode_work_products(dep_graph: &DepGraph,
+                            encoder: &mut Encoder) -> io::Result<()> {
+    let work_products: Vec<_> = dep_graph
         .work_products()
         .iter()
         .map(|(id, work_product)| {

@@ -40,12 +40,13 @@
 //! get confused if the spans from leaf AST nodes occur in multiple places
 //! in the HIR, especially for multiple identifiers.
 
+use dep_graph::DepGraph;
 use hir;
-use hir::map::{Definitions, DefKey, REGULAR_SPACE};
-use hir::map::definitions::DefPathData;
+use hir::map::{Definitions, DefKey};
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
 use lint::builtin::PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES;
+use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
 use session::Session;
 use util::common::FN_OUTPUT_NAME;
@@ -63,6 +64,8 @@ use syntax::ptr::P;
 use syntax::codemap::{self, respan, Spanned, CompilerDesugaringKind};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
+use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
+use syntax::parse::token::{Token, DelimToken};
 use syntax::util::small_vector::SmallVector;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -74,6 +77,8 @@ pub struct LoweringContext<'a> {
 
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
     sess: &'a Session,
+
+    cstore: &'a CrateStore,
 
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
@@ -119,17 +124,20 @@ pub trait Resolver {
 }
 
 pub fn lower_crate(sess: &Session,
+                   cstore: &CrateStore,
+                   dep_graph: &DepGraph,
                    krate: &Crate,
                    resolver: &mut Resolver)
                    -> hir::Crate {
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to
     // incr. comp. yet.
-    let _ignore = sess.dep_graph.in_ignore();
+    let _ignore = dep_graph.in_ignore();
 
     LoweringContext {
         crate_root: std_inject::injected_crate_name(krate),
         sess,
+        cstore,
         parent_def: None,
         resolver,
         name_map: FxHashMap(),
@@ -425,8 +433,7 @@ impl<'a> LoweringContext<'a> {
         Symbol::gensym(s)
     }
 
-    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, mut span: Span)
-        -> Span
+    fn allow_internal_unstable(&self, reason: CompilerDesugaringKind, span: Span) -> Span
     {
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(codemap::ExpnInfo {
@@ -438,8 +445,7 @@ impl<'a> LoweringContext<'a> {
                 allow_internal_unsafe: false,
             },
         });
-        span.ctxt = SyntaxContext::empty().apply_mark(mark);
-        span
+        span.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     }
 
     fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
@@ -537,7 +543,7 @@ impl<'a> LoweringContext<'a> {
         if id.is_local() {
             self.resolver.definitions().def_key(id.index)
         } else {
-            self.sess.cstore.def_key(id)
+            self.cstore.def_key(id)
         }
     }
 
@@ -585,7 +591,50 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
-        attrs.clone().into()
+        attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
+    }
+
+    fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
+        Attribute {
+            id: attr.id,
+            style: attr.style,
+            path: attr.path.clone(),
+            tokens: self.lower_token_stream(attr.tokens.clone()),
+            is_sugared_doc: attr.is_sugared_doc,
+            span: attr.span,
+        }
+    }
+
+    fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
+        tokens.into_trees().map(|tree| self.lower_token_tree(tree)).collect()
+    }
+
+    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenTree {
+        match tree {
+            TokenTree::Token(span, token) => {
+                self.lower_token(token, span)
+            }
+            TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, Delimited {
+                    delim: delimited.delim,
+                    tts: self.lower_token_stream(delimited.tts.into()).into(),
+                })
+            }
+        }
+    }
+
+    fn lower_token(&mut self, token: Token, span: Span) -> TokenTree {
+        match token {
+            Token::Interpolated(_) => {}
+            other => return TokenTree::Token(span, other),
+        }
+
+        let tts = token.interpolated_to_tokenstream(&self.sess.parse_sess, span);
+        let tts = self.lower_token_stream(tts);
+        TokenTree::Delimited(span, Delimited {
+            delim: DelimToken::NoDelim,
+            tts: tts.into(),
+        })
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
@@ -613,7 +662,7 @@ impl<'a> LoweringContext<'a> {
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
             TyKind::Rptr(ref region, ref mt) => {
-                let span = Span { hi: t.span.lo, ..t.span };
+                let span = t.span.with_hi(t.span.lo());
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
                     None => self.elided_lifetime(span)
@@ -789,7 +838,7 @@ impl<'a> LoweringContext<'a> {
                         return n;
                     }
                     assert!(!def_id.is_local());
-                    let n = self.sess.cstore.item_generics_cloned(def_id).regions.len();
+                    let n = self.cstore.item_generics_cloned_untracked(def_id).regions.len();
                     self.type_def_lifetime_params.insert(def_id, n);
                     n
                 });
@@ -1237,7 +1286,7 @@ impl<'a> LoweringContext<'a> {
             name: self.lower_ident(match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried) positional field hygiene
-                None => Ident { name: Symbol::intern(&index.to_string()), ctxt: f.span.ctxt },
+                None => Ident { name: Symbol::intern(&index.to_string()), ctxt: f.span.ctxt() },
             }),
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty),
@@ -1621,13 +1670,14 @@ impl<'a> LoweringContext<'a> {
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
+                let body = self.lower_token_stream(def.stream());
                 self.exported_macros.push(hir::MacroDef {
                     name,
                     vis,
                     attrs,
                     id: i.id,
                     span: i.span,
-                    body: def.stream(),
+                    body,
                     legacy: def.legacy,
                 });
             }
@@ -1740,29 +1790,28 @@ impl<'a> LoweringContext<'a> {
             node: match p.node {
                 PatKind::Wild => hir::PatKind::Wild,
                 PatKind::Ident(ref binding_mode, pth1, ref sub) => {
-                    self.with_parent_def(p.id, |this| {
-                        match this.resolver.get_resolution(p.id).map(|d| d.base_def()) {
-                            // `None` can occur in body-less function signatures
-                            def @ None | def @ Some(Def::Local(_)) => {
-                                let def_id = def.map(|d| d.def_id()).unwrap_or_else(|| {
-                                    this.resolver.definitions().local_def_id(p.id)
-                                });
-                                hir::PatKind::Binding(this.lower_binding_mode(binding_mode),
-                                                      def_id,
-                                                      respan(pth1.span, pth1.node.name),
-                                                      sub.as_ref().map(|x| this.lower_pat(x)))
-                            }
-                            Some(def) => {
-                                hir::PatKind::Path(hir::QPath::Resolved(None, P(hir::Path {
-                                    span: pth1.span,
-                                    def,
-                                    segments: hir_vec![
-                                        hir::PathSegment::from_name(pth1.node.name)
-                                    ],
-                                })))
-                            }
+                    match self.resolver.get_resolution(p.id).map(|d| d.base_def()) {
+                        // `None` can occur in body-less function signatures
+                        def @ None | def @ Some(Def::Local(_)) => {
+                            let canonical_id = match def {
+                                Some(Def::Local(id)) => id,
+                                _ => p.id
+                            };
+                            hir::PatKind::Binding(self.lower_binding_mode(binding_mode),
+                                                  canonical_id,
+                                                  respan(pth1.span, pth1.node.name),
+                                                  sub.as_ref().map(|x| self.lower_pat(x)))
                         }
-                    })
+                        Some(def) => {
+                            hir::PatKind::Path(hir::QPath::Resolved(None, P(hir::Path {
+                                span: pth1.span,
+                                def,
+                                segments: hir_vec![
+                                    hir::PathSegment::from_name(pth1.node.name)
+                                ],
+                            })))
+                        }
+                    }
                 }
                 PatKind::Lit(ref e) => hir::PatKind::Lit(P(self.lower_expr(e))),
                 PatKind::TupleStruct(ref path, ref pats, ddpos) => {
@@ -2717,14 +2766,9 @@ impl<'a> LoweringContext<'a> {
                                         id: Name,
                                         binding: NodeId,
                                         attrs: ThinVec<Attribute>) -> hir::Expr {
-        let def = {
-            let defs = self.resolver.definitions();
-            Def::Local(defs.local_def_id(binding))
-        };
-
         let expr_path = hir::ExprPath(hir::QPath::Resolved(None, P(hir::Path {
             span,
-            def,
+            def: Def::Local(binding),
             segments: hir_vec![hir::PathSegment::from_name(id)],
         })));
 
@@ -2862,23 +2906,12 @@ impl<'a> LoweringContext<'a> {
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingAnnotation)
                               -> P<hir::Pat> {
         let LoweredNodeId { node_id, hir_id } = self.next_id();
-        let parent_def = self.parent_def.unwrap();
-        let def_id = {
-            let defs = self.resolver.definitions();
-            let def_path_data = DefPathData::Binding(name);
-            let def_index = defs.create_def_with_parent(parent_def,
-                                                        node_id,
-                                                        def_path_data,
-                                                        REGULAR_SPACE,
-                                                        Mark::root());
-            DefId::local(def_index)
-        };
 
         P(hir::Pat {
             id: node_id,
             hir_id,
             node: hir::PatKind::Binding(bm,
-                                        def_id,
+                                        node_id,
                                         Spanned {
                                             span,
                                             node: name,

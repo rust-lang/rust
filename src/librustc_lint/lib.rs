@@ -128,7 +128,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  NonSnakeCase,
                  NonUpperCaseGlobals,
                  NonShorthandFieldPatterns,
-                 UnusedUnsafe,
                  UnsafeCode,
                  UnusedMut,
                  UnusedAllocation,

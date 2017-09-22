@@ -242,6 +242,7 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
+#![feature(align_offset)]
 #![feature(asm)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
@@ -276,7 +277,6 @@
 #![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
-#![feature(needs_drop)]
 #![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
@@ -292,6 +292,7 @@
 #![feature(raw)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
+#![cfg_attr(not(stage0), feature(rustc_const_unstable))]
 #![feature(shared)]
 #![feature(sip_hash_13)]
 #![feature(slice_bytes)]
@@ -313,7 +314,19 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(doc_cfg)]
+#![feature(doc_masked)]
 #![cfg_attr(test, feature(update_panic_count))]
+
+#![cfg_attr(not(stage0), feature(const_max_value))]
+#![cfg_attr(not(stage0), feature(const_atomic_bool_new))]
+#![cfg_attr(not(stage0), feature(const_atomic_isize_new))]
+#![cfg_attr(not(stage0), feature(const_atomic_usize_new))]
+#![cfg_attr(all(not(stage0), windows), feature(const_atomic_ptr_new))]
+#![cfg_attr(not(stage0), feature(const_unsafe_cell_new))]
+#![cfg_attr(not(stage0), feature(const_cell_new))]
+#![cfg_attr(not(stage0), feature(const_once_new))]
+#![cfg_attr(not(stage0), feature(const_ptr_null))]
+#![cfg_attr(not(stage0), feature(const_ptr_null_mut))]
 
 #![default_lib_allocator]
 
@@ -322,14 +335,12 @@
 // if the user has disabled jemalloc in `./configure`).
 // `force_alloc_system` is *only* intended as a workaround for local rebuilds
 // with a rustc without jemalloc.
-// The not(stage0+msvc) gates will only last until the next stage0 bump
-#![cfg_attr(all(
-        not(all(stage0, target_env = "msvc")),
-        any(stage0, feature = "force_alloc_system")),
-    feature(global_allocator))]
-#[cfg(all(
-    not(all(stage0, target_env = "msvc")),
-    any(stage0, feature = "force_alloc_system")))]
+// FIXME(#44236) shouldn't need MSVC logic
+#![cfg_attr(all(not(target_env = "msvc"),
+                any(stage0, feature = "force_alloc_system")),
+            feature(global_allocator))]
+#[cfg(all(not(target_env = "msvc"),
+          any(stage0, feature = "force_alloc_system")))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 
@@ -349,19 +360,24 @@ use prelude::v1::*;
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
 extern crate core as __core;
 
-#[allow(deprecated)] extern crate rand as core_rand;
+#[doc(masked)]
+#[allow(deprecated)]
+extern crate rand as core_rand;
 #[macro_use]
 #[macro_reexport(vec, format)]
 extern crate alloc;
 extern crate alloc_system;
 extern crate std_unicode;
+#[doc(masked)]
 extern crate libc;
 
 // We always need an unwinder currently for backtraces
+#[doc(masked)]
 #[allow(unused_extern_crates)]
 extern crate unwind;
 
 // compiler-rt intrinsics
+#[doc(masked)]
 extern crate compiler_builtins;
 
 // During testing, this crate is not actually the "real" std library, but rather

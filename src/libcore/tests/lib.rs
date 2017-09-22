@@ -11,7 +11,6 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
-#![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
@@ -27,7 +26,6 @@
 #![feature(inclusive_range_syntax)]
 #![feature(iter_rfind)]
 #![feature(nonzero)]
-#![feature(ord_max_min)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(refcell_replace_swap)]
@@ -41,6 +39,10 @@
 #![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(unique)]
+
+#![feature(const_atomic_bool_new)]
+#![feature(const_atomic_usize_new)]
+#![feature(const_atomic_isize_new)]
 
 extern crate core;
 extern crate test;

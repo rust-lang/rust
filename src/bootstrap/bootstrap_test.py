@@ -15,6 +15,7 @@ import doctest
 import unittest
 import tempfile
 import hashlib
+import sys
 
 from shutil import rmtree
 
@@ -110,5 +111,6 @@ if __name__ == '__main__':
         TEST_LOADER.loadTestsFromTestCase(VerifyTestCase),
         TEST_LOADER.loadTestsFromTestCase(ProgramOutOfDate)])
 
-    RUNNER = unittest.TextTestRunner(verbosity=2)
-    RUNNER.run(SUITE)
+    RUNNER = unittest.TextTestRunner(stream=sys.stdout, verbosity=2)
+    result = RUNNER.run(SUITE)
+    sys.exit(0 if result.wasSuccessful() else 1)

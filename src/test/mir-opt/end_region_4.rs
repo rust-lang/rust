@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z identify_regions
+// compile-flags: -Z identify_regions -Z emit-end-regions
 // ignore-tidy-linelength
 
 // Unwinding should EndRegion for in-scope borrows: Direct borrows.
@@ -33,8 +33,8 @@ fn foo(i: i32) {
 //     let mut _0: ();
 //     let _1: D;
 //     let _2: i32;
-//     let _3: &'6_2rce i32;
-//     let _6: &'6_4rce i32;
+//     let _3: &'26_2rs i32;
+//     let _6: &'26_4rs i32;
 //     let mut _4: ();
 //     let mut _5: i32;
 //     bb0: {
@@ -43,7 +43,7 @@ fn foo(i: i32) {
 //         StorageLive(_2);
 //         _2 = const 0i32;
 //         StorageLive(_3);
-//         _3 = &'6_2rce _2;
+//         _3 = &'26_2rs _2;
 //         StorageLive(_5);
 //         _5 = (*_3);
 //         _4 = const foo(_5) -> [return: bb1, unwind: bb3];
@@ -51,12 +51,12 @@ fn foo(i: i32) {
 //     bb1: {
 //         StorageDead(_5);
 //         StorageLive(_6);
-//         _6 = &'6_4rce _2;
+//         _6 = &'26_4rs _2;
 //         _0 = ();
+//         EndRegion('26_4rs);
 //         StorageDead(_6);
-//         EndRegion('6_4rce);
+//         EndRegion('26_2rs);
 //         StorageDead(_3);
-//         EndRegion('6_2rce);
 //         StorageDead(_2);
 //         drop(_1) -> bb4;
 //     }
@@ -64,7 +64,7 @@ fn foo(i: i32) {
 //         resume;
 //     }
 //     bb3: {
-//         EndRegion('6_2rce);
+//         EndRegion('26_2rs);
 //         drop(_1) -> bb2;
 //     }
 //     bb4: {

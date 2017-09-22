@@ -848,12 +848,12 @@ extern "rust-intrinsic" {
     /// // The no-copy, unsafe way, still using transmute, but not UB.
     /// // This is equivalent to the original, but safer, and reuses the
     /// // same Vec internals. Therefore the new inner type must have the
-    /// // exact same size, and the same or lesser alignment, as the old
-    /// // type. The same caveats exist for this method as transmute, for
+    /// // exact same size, and the same alignment, as the old type.
+    /// // The same caveats exist for this method as transmute, for
     /// // the original inner type (`&i32`) to the converted inner type
     /// // (`Option<&i32>`), so read the nomicon pages linked above.
     /// let v_from_raw = unsafe {
-    ///     Vec::from_raw_parts(v_orig.as_mut_ptr(),
+    ///     Vec::from_raw_parts(v_orig.as_mut_ptr() as *mut Option<&i32>,
     ///                         v_orig.len(),
     ///                         v_orig.capacity())
     /// };
@@ -1343,4 +1343,50 @@ extern "rust-intrinsic" {
     /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
+
+    /// Computes the byte offset that needs to be applied to `ptr` in order to
+    /// make it aligned to `align`.
+    /// If it is not possible to align `ptr`, the implementation returns
+    /// `usize::max_value()`.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not
+    /// overflow or go beyond the allocation that `ptr` points into.
+    /// It is up to the caller to ensure that the returned offset is correct
+    /// in all terms other than alignment.
+    ///
+    /// # Examples
+    ///
+    /// Accessing adjacent `u8` as `u16`
+    ///
+    /// ```
+    /// # #![feature(core_intrinsics)]
+    /// # fn foo(n: usize) {
+    /// # use std::intrinsics::align_offset;
+    /// # use std::mem::align_of;
+    /// # unsafe {
+    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
+    /// let ptr = &x[n] as *const u8;
+    /// let offset = align_offset(ptr as *const (), align_of::<u16>());
+    /// if offset < x.len() - n - 1 {
+    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
+    ///     assert_ne!(*u16_ptr, 500);
+    /// } else {
+    ///     // while the pointer can be aligned via `offset`, it would point
+    ///     // outside the allocation
+    /// }
+    /// # } }
+    /// ```
+    #[cfg(not(stage0))]
+    pub fn align_offset(ptr: *const (), align: usize) -> usize;
+}
+
+#[cfg(stage0)]
+/// remove me after the next release
+pub unsafe fn align_offset(ptr: *const (), align: usize) -> usize {
+    let offset = ptr as usize % align;
+    if offset == 0 {
+        0
+    } else {
+        align - offset
+    }
 }

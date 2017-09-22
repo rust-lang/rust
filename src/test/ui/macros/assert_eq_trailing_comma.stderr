@@ -4,3 +4,5 @@ error: unexpected end of macro invocation
 12 |     assert_eq!(1, 1,);
    |                    ^
 
+error: aborting due to previous error
+

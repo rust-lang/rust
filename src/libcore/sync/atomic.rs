@@ -241,6 +241,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_atomic_bool_new"))]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -649,6 +650,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_atomic_ptr_new"))]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -920,7 +922,7 @@ impl<T> AtomicPtr<T> {
 
 #[cfg(target_has_atomic = "ptr")]
 macro_rules! atomic_int {
-    ($stable:meta,
+    ($stable:meta, $const_unstable:meta,
      $stable_cxchg:meta,
      $stable_debug:meta,
      $stable_access:meta,
@@ -969,6 +971,7 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
+            #[cfg_attr(not(stage0), $const_unstable)]
             pub const fn new(v: $int_type) -> Self {
                 $atomic_type {v: UnsafeCell::new(v)}
             }
@@ -1332,6 +1335,7 @@ macro_rules! atomic_int {
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_i8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1340,6 +1344,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "8")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_u8_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1348,6 +1353,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_i16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1356,6 +1362,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "16")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_u16_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1364,6 +1371,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_i32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1372,6 +1380,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "32")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_u32_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1380,6 +1389,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_i64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1388,6 +1398,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "64")]
 atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
+    rustc_const_unstable(feature = "const_atomic_u64_new"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
@@ -1396,6 +1407,7 @@ atomic_int! {
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
+    rustc_const_unstable(feature = "const_atomic_isize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
@@ -1404,6 +1416,7 @@ atomic_int!{
 #[cfg(target_has_atomic = "ptr")]
 atomic_int!{
     stable(feature = "rust1", since = "1.0.0"),
+    rustc_const_unstable(feature = "const_atomic_usize_new"),
     stable(feature = "extended_compare_and_swap", since = "1.10.0"),
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
@@ -1666,10 +1679,14 @@ pub fn fence(order: Ordering) {
 
 /// A compiler memory fence.
 ///
-/// `compiler_fence` does not emit any machine code, but prevents the compiler from re-ordering
-/// memory operations across this point. Which reorderings are disallowed is dictated by the given
-/// [`Ordering`]. Note that `compiler_fence` does *not* introduce inter-thread memory
-/// synchronization; for that, a [`fence`] is needed.
+/// `compiler_fence` does not emit any machine code, but restricts the kinds
+/// of memory re-ordering the compiler is allowed to do. Specifically, depending on
+/// the given [`Ordering`] semantics, the compiler may be disallowed from moving reads
+/// or writes from before or after the call to the other side of the call to
+/// `compiler_fence`. Note that it does **not** prevent the *hardware*
+/// from doing such re-ordering. This is not a problem in a single-threaded,
+/// execution context, but when other threads may modify memory at the same
+/// time, stronger synchronization primitives such as [`fence`] are required.
 ///
 /// The re-ordering prevented by the different ordering semantics are:
 ///
@@ -1678,9 +1695,53 @@ pub fn fence(order: Ordering) {
 ///  - with [`Acquire`], subsequent reads and writes cannot be moved ahead of preceding reads.
 ///  - with [`AcqRel`], both of the above rules are enforced.
 ///
+/// `compiler_fence` is generally only useful for preventing a thread from
+/// racing *with itself*. That is, if a given thread is executing one piece
+/// of code, and is then interrupted, and starts executing code elsewhere
+/// (while still in the same thread, and conceptually still on the same
+/// core). In traditional programs, this can only occur when a signal
+/// handler is registered. In more low-level code, such situations can also
+/// arise when handling interrupts, when implementing green threads with
+/// pre-emption, etc. Curious readers are encouraged to read the Linux kernel's
+/// discussion of [memory barriers].
+///
 /// # Panics
 ///
 /// Panics if `order` is [`Relaxed`].
+///
+/// # Examples
+///
+/// Without `compiler_fence`, the `assert_eq!` in following code
+/// is *not* guaranteed to succeed, despite everything happening in a single thread.
+/// To see why, remember that the compiler is free to swap the stores to
+/// `IMPORTANT_VARIABLE` and `IS_READ` since they are both
+/// `Ordering::Relaxed`. If it does, and the signal handler is invoked right
+/// after `IS_READY` is updated, then the signal handler will see
+/// `IS_READY=1`, but `IMPORTANT_VARIABLE=0`.
+/// Using a `compiler_fence` remedies this situation.
+///
+/// ```
+/// use std::sync::atomic::{AtomicBool, AtomicUsize};
+/// use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
+/// use std::sync::atomic::Ordering;
+/// use std::sync::atomic::compiler_fence;
+///
+/// static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
+/// static IS_READY: AtomicBool = ATOMIC_BOOL_INIT;
+///
+/// fn main() {
+///     IMPORTANT_VARIABLE.store(42, Ordering::Relaxed);
+///     // prevent earlier writes from being moved beyond this point
+///     compiler_fence(Ordering::Release);
+///     IS_READY.store(true, Ordering::Relaxed);
+/// }
+///
+/// fn signal_handler() {
+///     if IS_READY.load(Ordering::Relaxed) {
+///         assert_eq!(IMPORTANT_VARIABLE.load(Ordering::Relaxed), 42);
+///     }
+/// }
+/// ```
 ///
 /// [`fence`]: fn.fence.html
 /// [`Ordering`]: enum.Ordering.html
@@ -1689,8 +1750,9 @@ pub fn fence(order: Ordering) {
 /// [`Release`]: enum.Ordering.html#variant.Release
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+/// [memory barriers]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 #[inline]
-#[unstable(feature = "compiler_fences", issue = "41091")]
+#[stable(feature = "compiler_fences", since = "1.22.0")]
 pub fn compiler_fence(order: Ordering) {
     unsafe {
         match order {

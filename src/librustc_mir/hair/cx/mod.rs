@@ -22,7 +22,7 @@ use rustc_const_eval::ConstContext;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::region::RegionMaps;
+use rustc::middle::region;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -42,7 +42,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Identity `Substs` for use with const-evaluation.
     pub identity_substs: &'gcx Substs<'gcx>,
 
-    pub region_maps: Rc<RegionMaps>,
+    pub region_scope_tree: Rc<region::ScopeTree>,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
@@ -92,7 +92,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             infcx,
             param_env: tcx.param_env(src_def_id),
             identity_substs: Substs::identity_for_item(tcx.global_tcx(), src_def_id),
-            region_maps: tcx.region_maps(src_def_id),
+            region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables: tcx.typeck_tables_of(src_def_id),
             constness,
             src,
@@ -112,8 +112,15 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
-        match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
-            Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val)) },
+        match ConstUsize::new(value, self.tcx.sess.target.usize_ty) {
+            Ok(val) => {
+                Literal::Value {
+                    value: self.tcx.mk_const(ty::Const {
+                        val: ConstVal::Integral(ConstInt::Usize(val)),
+                        ty: self.tcx.types.usize
+                    })
+                }
+            }
             Err(_) => bug!("usize literal out of range for target"),
         }
     }
@@ -127,11 +134,21 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     }
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(true) }
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Bool(true),
+                ty: self.tcx.types.bool
+            })
+        }
     }
 
     pub fn false_literal(&mut self) -> Literal<'tcx> {
-        Literal::Value { value: ConstVal::Bool(false) }
+        Literal::Value {
+            value: self.tcx.mk_const(ty::Const {
+                val: ConstVal::Bool(false),
+                ty: self.tcx.types.bool
+            })
+        }
     }
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
@@ -139,10 +156,22 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let const_cx = ConstContext::new(tcx,
                                          self.param_env.and(self.identity_substs),
                                          self.tables());
-        match const_cx.eval(e) {
-            Ok(value) => Literal::Value { value: value },
+        match const_cx.eval(tcx.hir.expect_expr(e.id)) {
+            Ok(value) => Literal::Value { value },
             Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
         }
+    }
+
+    pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
+        let tcx = self.tcx.global_tcx();
+        let p = match tcx.hir.get(p.id) {
+            hir::map::NodePat(p) | hir::map::NodeBinding(p) => p,
+            node => bug!("pattern became {:?}", node)
+        };
+        Pattern::from_hir(tcx,
+                          self.param_env.and(self.identity_substs),
+                          self.tables(),
+                          p)
     }
 
     pub fn fatal_const_eval_err(&mut self,
@@ -170,7 +199,10 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let method_ty = method_ty.subst(self.tcx, substs);
                 return (method_ty,
                         Literal::Value {
-                            value: ConstVal::Function(item.def_id, substs),
+                            value: self.tcx.mk_const(ty::Const {
+                                val: ConstVal::Function(item.def_id, substs),
+                                ty: method_ty
+                            }),
                         });
             }
         }

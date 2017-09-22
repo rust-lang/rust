@@ -45,7 +45,7 @@ use super::FnCtxt;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
@@ -126,9 +126,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
             for freevar in freevars {
-                let var_def_id = freevar.def.def_id();
                 let upvar_id = ty::UpvarId {
-                    var_id: var_def_id.index,
+                    var_id: self.tcx.hir.node_to_hir_id(freevar.var_id()),
                     closure_expr_id: closure_def_id.index,
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -152,7 +151,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         {
             let body_owner_def_id = self.tcx.hir.body_owner_def_id(body.id());
-            let region_maps = &self.tcx.region_maps(body_owner_def_id);
+            let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
             let mut delegate = InferBorrowKind {
                 fcx: self,
                 adjust_closure_kinds: FxHashMap(),
@@ -161,7 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             euv::ExprUseVisitor::with_infer(&mut delegate,
                                             &self.infcx,
                                             self.param_env,
-                                            region_maps,
+                                            region_scope_tree,
                                             &self.tables.borrow())
                 .consume_body(body);
 
@@ -236,11 +235,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter().map(|freevar| {
-                let var_def_id = freevar.def.def_id();
-                let var_node_id = tcx.hir.as_local_node_id(var_def_id).unwrap();
-                let freevar_ty = self.node_ty(tcx.hir.node_to_hir_id(var_node_id));
+                let var_node_id = freevar.var_id();
+                let var_hir_id = tcx.hir.node_to_hir_id(var_node_id);
+                let freevar_ty = self.node_ty(var_hir_id);
                 let upvar_id = ty::UpvarId {
-                    var_id: var_def_id.index,
+                    var_id: var_hir_id,
                     closure_expr_id: closure_def_index,
                 };
                 let capture = self.tables.borrow().upvar_capture(upvar_id);
@@ -587,7 +586,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     }
 }
 
-fn var_name(tcx: ty::TyCtxt, var_def_index: DefIndex) -> ast::Name {
-    let var_node_id = tcx.hir.def_index_to_node_id(var_def_index);
+fn var_name(tcx: TyCtxt, var_hir_id: hir::HirId) -> ast::Name {
+    let var_node_id = tcx.hir.hir_to_node_id(var_hir_id);
     tcx.hir.name(var_node_id)
 }

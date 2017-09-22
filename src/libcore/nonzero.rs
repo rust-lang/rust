@@ -68,6 +68,10 @@ pub struct NonZero<T: Zeroable>(T);
 impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
+    #[unstable(feature = "nonzero",
+               reason = "needs an RFC to flesh out the design",
+               issue = "27730")]
+    #[cfg_attr(not(stage0), rustc_const_unstable(feature = "const_nonzero_new"))]
     #[inline]
     pub const unsafe fn new_unchecked(inner: T) -> Self {
         NonZero(inner)

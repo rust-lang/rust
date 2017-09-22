@@ -23,16 +23,16 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
 use rustc::middle::mem_categorization as mc;
 use rustc::ty::{self, TyCtxt};
-use rustc::util::nodemap::{FxHashMap, NodeSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::usize;
-use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::intravisit::IdRange;
 
+#[derive(Default)]
 pub struct MoveData<'tcx> {
     /// Move paths. See section "Move paths" in `README.md`.
     pub paths: RefCell<Vec<MovePath<'tcx>>>,
@@ -54,7 +54,7 @@ pub struct MoveData<'tcx> {
     pub path_assignments: RefCell<Vec<Assignment>>,
 
     /// Assignments to a variable or path, like `x = foo`, but not `x += foo`.
-    pub assignee_ids: RefCell<NodeSet>,
+    pub assignee_ids: RefCell<FxHashSet<hir::ItemLocalId>>,
 }
 
 pub struct FlowedMoveData<'a, 'tcx: 'a> {
@@ -133,7 +133,7 @@ pub struct Move {
     pub path: MovePathIndex,
 
     /// id of node that is doing the move.
-    pub id: ast::NodeId,
+    pub id: hir::ItemLocalId,
 
     /// Kind of move, for error messages.
     pub kind: MoveKind,
@@ -148,13 +148,13 @@ pub struct Assignment {
     pub path: MovePathIndex,
 
     /// id where assignment occurs
-    pub id: ast::NodeId,
+    pub id: hir::ItemLocalId,
 
     /// span of node where assignment occurs
     pub span: Span,
 
     /// id for l-value expression on lhs of assignment
-    pub assignee_id: ast::NodeId,
+    pub assignee_id: hir::ItemLocalId,
 }
 
 #[derive(Clone, Copy)]
@@ -189,17 +189,6 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
 }
 
 impl<'a, 'tcx> MoveData<'tcx> {
-    pub fn new() -> MoveData<'tcx> {
-        MoveData {
-            paths: RefCell::new(Vec::new()),
-            path_map: RefCell::new(FxHashMap()),
-            moves: RefCell::new(Vec::new()),
-            path_assignments: RefCell::new(Vec::new()),
-            var_assignments: RefCell::new(Vec::new()),
-            assignee_ids: RefCell::new(NodeSet()),
-        }
-    }
-
     /// return true if there are no trackable assignments or moves
     /// in this move data - that means that there is nothing that
     /// could cause a borrow error.
@@ -345,7 +334,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
     pub fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     orig_lp: Rc<LoanPath<'tcx>>,
-                    id: ast::NodeId,
+                    id: hir::ItemLocalId,
                     kind: MoveKind) {
         // Moving one union field automatically moves all its fields. Also move siblings of
         // all parent union fields, moves do not propagate upwards automatically.
@@ -373,9 +362,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        lp: Rc<LoanPath<'tcx>>,
-                       id: ast::NodeId,
+                       id: hir::ItemLocalId,
                        kind: MoveKind) {
-        debug!("add_move(lp={:?}, id={}, kind={:?})",
+        debug!("add_move(lp={:?}, id={:?}, kind={:?})",
                lp,
                id,
                kind);
@@ -398,9 +387,9 @@ impl<'a, 'tcx> MoveData<'tcx> {
     /// `span`.
     pub fn add_assignment(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           lp: Rc<LoanPath<'tcx>>,
-                          assign_id: ast::NodeId,
+                          assign_id: hir::ItemLocalId,
                           span: Span,
-                          assignee_id: ast::NodeId,
+                          assignee_id: hir::ItemLocalId,
                           mode: euv::MutateMode) {
         // Assigning to one union field automatically assigns to all its fields.
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
@@ -429,11 +418,11 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              lp: Rc<LoanPath<'tcx>>,
-                             assign_id: ast::NodeId,
+                             assign_id: hir::ItemLocalId,
                              span: Span,
-                             assignee_id: ast::NodeId,
+                             assignee_id: hir::ItemLocalId,
                              mode: euv::MutateMode) {
-        debug!("add_assignment(lp={:?}, assign_id={}, assignee_id={}",
+        debug!("add_assignment(lp={:?}, assign_id={:?}, assignee_id={:?}",
                lp, assign_id, assignee_id);
 
         let path_index = self.move_path(tcx, lp.clone());
@@ -496,7 +485,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(bccx);
                     let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
-                    self.kill_moves(path, kill_scope.node_id(),
+                    self.kill_moves(path, kill_scope.item_local_id(),
                                     KillFrom::ScopeEnd, dfcx_moves);
                 }
                 LpExtend(..) => {}
@@ -511,7 +500,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(bccx);
                     dfcx_assign.add_kill(KillFrom::ScopeEnd,
-                                         kill_scope.node_id(),
+                                         kill_scope.item_local_id(),
                                          assignment_index);
                 }
                 LpExtend(..) => {
@@ -579,7 +568,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     fn kill_moves(&self,
                   path: MovePathIndex,
-                  kill_id: ast::NodeId,
+                  kill_id: hir::ItemLocalId,
                   kill_kind: KillFrom,
                   dfcx_moves: &mut MoveDataFlow) {
         // We can only perform kills for paths that refer to a unique location,
@@ -589,7 +578,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
         let loan_path = self.path_loan_path(path);
         if loan_path_is_precise(&loan_path) {
             self.each_applicable_move(path, |move_index| {
-                debug!("kill_moves add_kill {:?} kill_id={} move_index={}",
+                debug!("kill_moves add_kill {:?} kill_id={:?} move_index={}",
                        kill_kind, kill_id, move_index.get());
                 dfcx_moves.add_kill(kill_kind, kill_id, move_index.get());
                 true
@@ -642,7 +631,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     }
 
     pub fn kind_of_move_of_path(&self,
-                                id: ast::NodeId,
+                                id: hir::ItemLocalId,
                                 loan_path: &Rc<LoanPath<'tcx>>)
                                 -> Option<MoveKind> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
@@ -667,7 +656,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// have occurred on entry to `id` without an intervening assignment. In other words, any moves
     /// that would invalidate a reference to `loan_path` at location `id`.
     pub fn each_move_of<F>(&self,
-                           id: ast::NodeId,
+                           id: hir::ItemLocalId,
                            loan_path: &Rc<LoanPath<'tcx>>,
                            mut f: F)
                            -> bool where
@@ -724,7 +713,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     /// Iterates through every assignment to `loan_path` that may have occurred on entry to `id`.
     /// `loan_path` must be a single variable.
     pub fn each_assignment_of<F>(&self,
-                                 id: ast::NodeId,
+                                 id: hir::ItemLocalId,
                                  loan_path: &Rc<LoanPath<'tcx>>,
                                  mut f: F)
                                  -> bool where

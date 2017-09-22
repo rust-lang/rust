@@ -115,28 +115,34 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
             _ => None
         };
 
-        if let Some(def) = def {
-            let def_id = def.def_id();
-            if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
-                if self.def_id_represents_local_inlined_item(def_id) {
-                    self.worklist.push(node_id);
-                } else {
-                    match def {
-                        // If this path leads to a constant, then we need to
-                        // recurse into the constant to continue finding
-                        // items that are reachable.
-                        Def::Const(..) | Def::AssociatedConst(..) => {
-                            self.worklist.push(node_id);
-                        }
+        match def {
+            Some(Def::Local(node_id)) | Some(Def::Upvar(node_id, ..)) => {
+                self.reachable_symbols.insert(node_id);
+            }
+            Some(def) => {
+                let def_id = def.def_id();
+                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                    if self.def_id_represents_local_inlined_item(def_id) {
+                        self.worklist.push(node_id);
+                    } else {
+                        match def {
+                            // If this path leads to a constant, then we need to
+                            // recurse into the constant to continue finding
+                            // items that are reachable.
+                            Def::Const(..) | Def::AssociatedConst(..) => {
+                                self.worklist.push(node_id);
+                            }
 
-                        // If this wasn't a static, then the destination is
-                        // surely reachable.
-                        _ => {
-                            self.reachable_symbols.insert(node_id);
+                            // If this wasn't a static, then the destination is
+                            // surely reachable.
+                            _ => {
+                                self.reachable_symbols.insert(node_id);
+                            }
                         }
                     }
                 }
             }
+            _ => {}
         }
 
         intravisit::walk_expr(self, expr)
@@ -227,8 +233,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 } else {
                     false
                 };
-                let is_extern = attr::contains_extern_indicator(&self.tcx.sess.diagnostic(),
-                                                                &item.attrs);
+                let def_id = self.tcx.hir.local_def_id(item.id);
+                let is_extern = self.tcx.contains_extern_indicator(def_id);
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
@@ -363,11 +369,13 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
     }
 }
 
-pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<NodeSet> {
-    tcx.reachable_set(LOCAL_CRATE)
-}
+// We introduce a new-type here, so we can have a specialized HashStable
+// implementation for it.
+#[derive(Clone)]
+pub struct ReachableSet(pub Rc<NodeSet>);
 
-fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> Rc<NodeSet> {
+
+fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -392,7 +400,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     for (id, _) in &access_levels.map {
         reachable_context.worklist.push(*id);
     }
-    for item in tcx.lang_items.items().iter() {
+    for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(node_id) = tcx.hir.as_local_node_id(did) {
                 reachable_context.worklist.push(node_id);
@@ -412,7 +420,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     reachable_context.propagate();
 
     // Return the set of reachable symbols.
-    Rc::new(reachable_context.reachable_symbols)
+    ReachableSet(Rc::new(reachable_context.reachable_symbols))
 }
 
 pub fn provide(providers: &mut Providers) {

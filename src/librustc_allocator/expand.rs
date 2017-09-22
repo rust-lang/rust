@@ -82,10 +82,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
                 allow_internal_unsafe: false,
             }
         });
-        let span = Span {
-            ctxt: SyntaxContext::empty().apply_mark(mark),
-            ..item.span
-        };
+        let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
         let ecfg = ExpansionConfig::default(name.to_string());
         let mut f = AllocFnFactory {
             span,

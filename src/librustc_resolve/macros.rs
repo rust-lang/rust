@@ -402,7 +402,8 @@ impl<'a> Resolver<'a> {
         let ast::Path { ref segments, span } = *path;
         let path: Vec<_> = segments.iter().map(|seg| respan(seg.span, seg.identifier)).collect();
         let invocation = self.invocations[&scope];
-        self.current_module = invocation.module.get();
+        let module = invocation.module.get();
+        self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
         if path.len() > 1 {
             if !self.use_extern_macros && self.gated_errors.insert(span) {
@@ -777,7 +778,7 @@ impl<'a> Resolver<'a> {
             _ => return,
         };
 
-        let crate_name = self.session.cstore.crate_name(krate);
+        let crate_name = self.cstore.crate_name_untracked(krate);
 
         self.session.struct_span_err(use_span, warn_msg)
             .help(&format!("instead, import the procedural macro like any other item: \

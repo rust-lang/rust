@@ -14,17 +14,16 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
-use std::process::Command;
-
-use context::SharedCrateContext;
 
 use back::archive;
-use back::symbol_export::ExportedSymbols;
-use rustc::middle::dependency_format::Linkage;
+use back::command::Command;
+use back::symbol_export;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
-use rustc_back::LinkerFlavor;
+use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
+use rustc::ty::TyCtxt;
+use rustc_back::LinkerFlavor;
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
@@ -33,19 +32,18 @@ pub struct LinkerInfo {
     exports: HashMap<CrateType, Vec<String>>,
 }
 
-impl<'a, 'tcx> LinkerInfo {
-    pub fn new(scx: &SharedCrateContext<'a, 'tcx>,
-               exports: &ExportedSymbols) -> LinkerInfo {
+impl LinkerInfo {
+    pub fn new(tcx: TyCtxt) -> LinkerInfo {
         LinkerInfo {
-            exports: scx.sess().crate_types.borrow().iter().map(|&c| {
-                (c, exported_symbols(scx, exports, c))
+            exports: tcx.sess.crate_types.borrow().iter().map(|&c| {
+                (c, exported_symbols(tcx, c))
             }).collect(),
         }
     }
 
-    pub fn to_linker(&'a self,
-                     cmd: Command,
-                     sess: &'a Session) -> Box<Linker+'a> {
+    pub fn to_linker<'a>(&'a self,
+                         cmd: Command,
+                         sess: &'a Session) -> Box<Linker+'a> {
         match sess.linker_flavor() {
             LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker {
@@ -498,6 +496,18 @@ impl<'a> Linker for MsvcLinker<'a> {
         let sysroot = self.sess.sysroot();
         let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+            // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
+            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
+            // them, eventually mooting this workaround, per this landed patch:
+            // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
+            if let Some(ref linker_path) = self.sess.opts.cg.linker {
+                if let Some(linker_name) = Path::new(&linker_path).file_stem() {
+                    if linker_name.to_str().unwrap().to_lowercase() == "lld-link" {
+                        self.sess.warn("not embedding natvis: lld-link may not support the flag");
+                        return;
+                    }
+                }
+            }
             for entry in natvis_dir {
                 match entry {
                     Ok(entry) => {
@@ -734,16 +744,17 @@ impl<'a> Linker for EmLinker<'a> {
     }
 }
 
-fn exported_symbols(scx: &SharedCrateContext,
-                    exported_symbols: &ExportedSymbols,
-                    crate_type: CrateType)
-                    -> Vec<String> {
+fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
-    exported_symbols.for_each_exported_symbol(LOCAL_CRATE, |name, _, _| {
-        symbols.push(name.to_owned());
-    });
 
-    let formats = scx.sess().dependency_formats.borrow();
+    let export_threshold = symbol_export::threshold(tcx);
+    for &(ref name, _, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+        if level.is_below_threshold(export_threshold) {
+            symbols.push(name.clone());
+        }
+    }
+
+    let formats = tcx.sess.dependency_formats.borrow();
     let deps = formats[&crate_type].iter();
 
     for (index, dep_format) in deps.enumerate() {
@@ -751,9 +762,11 @@ fn exported_symbols(scx: &SharedCrateContext,
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             // ... we add its symbol list to our export list.
-            exported_symbols.for_each_exported_symbol(cnum, |name, _, _| {
-                symbols.push(name.to_owned());
-            })
+            for &(ref name, _, level) in tcx.exported_symbols(cnum).iter() {
+                if level.is_below_threshold(export_threshold) {
+                    symbols.push(name.clone());
+                }
+            }
         }
     }
 

@@ -366,7 +366,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          -> bool {
         member_llvm_types.len() == 2 &&
         member_llvm_types[0] == type_of::type_of(cx, element_type).ptr_to() &&
-        member_llvm_types[1] == cx.int_type()
+        member_llvm_types[1] == cx.isize_ty()
     }
 }
 
@@ -530,7 +530,8 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::TyArray(typ, len) => {
-            fixed_vec_metadata(cx, unique_type_id, typ, Some(len as u64), usage_site_span)
+            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+            fixed_vec_metadata(cx, unique_type_id, typ, Some(len), usage_site_span)
         }
         ty::TySlice(typ) => {
             fixed_vec_metadata(cx, unique_type_id, typ, None, usage_site_span)
@@ -821,9 +822,9 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
 
             let gcov_cu_info = [
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.output_filenames().with_extension("gcno")),
+                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcno")),
                 path_to_mdstring(debug_context.llcontext,
-                                 &scc.output_filenames().with_extension("gcda")),
+                                 &scc.tcx().output_filenames(LOCAL_CRATE).with_extension("gcda")),
                 cu_desc_metadata,
             ];
             let gcov_metadata = llvm::LLVMMDNodeInContext(debug_context.llcontext,
@@ -1612,7 +1613,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn get_enum_discriminant_name(cx: &CrateContext,
                                   def_id: DefId)
                                   -> InternedString {
-        cx.tcx().item_name(def_id).as_str()
+        cx.tcx().item_name(def_id)
     }
 }
 
@@ -1802,7 +1803,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = common::def_ty(cx.shared(), node_def_id, Substs::empty());
+    let variable_type = common::def_ty(cx.tcx(), node_def_id, Substs::empty());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");

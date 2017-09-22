@@ -16,7 +16,7 @@ use rustc::hir::map as hir_map;
 use rustc::middle::const_val::ConstEvalErr;
 use {debuginfo, machine};
 use base;
-use trans_item::TransItem;
+use trans_item::{TransItem, TransItemExt};
 use common::{self, CrateContext, val_ty};
 use declare;
 use monomorphize::Instance;
@@ -26,6 +26,7 @@ use rustc::ty;
 
 use rustc::hir;
 
+use std::cmp;
 use std::ffi::{CStr, CString};
 use syntax::ast;
 use syntax::attr;
@@ -42,6 +43,25 @@ pub fn bitcast(val: ValueRef, ty: Type) -> ValueRef {
     }
 }
 
+fn set_global_alignment(ccx: &CrateContext,
+                        gv: ValueRef,
+                        mut align: machine::llalign) {
+    // The target may require greater alignment for globals than the type does.
+    // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
+    // which can force it to be smaller.  Rust doesn't support this yet.
+    if let Some(min) = ccx.sess().target.target.options.min_global_align {
+        match ty::layout::Align::from_bits(min, min) {
+            Ok(min) => align = cmp::max(align, min.abi() as machine::llalign),
+            Err(err) => {
+                ccx.sess().err(&format!("invalid minimum global alignment: {}", err));
+            }
+        }
+    }
+    unsafe {
+        llvm::LLVMSetAlignment(gv, align);
+    }
+}
+
 pub fn addr_of_mut(ccx: &CrateContext,
                    cv: ValueRef,
                    align: machine::llalign,
@@ -53,7 +73,7 @@ pub fn addr_of_mut(ccx: &CrateContext,
             bug!("symbol `{}` is already defined", name);
         });
         llvm::LLVMSetInitializer(gv, cv);
-        llvm::LLVMSetAlignment(gv, align);
+        set_global_alignment(ccx, gv, align);
         llvm::LLVMRustSetLinkage(gv, llvm::Linkage::InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
@@ -89,7 +109,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = common::instance_ty(ccx.shared(), &instance);
+    let ty = common::instance_ty(ccx.tcx(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -110,7 +130,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
                 let g = declare::define_global(ccx, &sym[..], llty).unwrap();
 
-                if !ccx.exported_symbols().local_exports().contains(&id) {
+                if !ccx.tcx().is_exported_symbol(def_id) {
                     unsafe {
                         llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                     }
@@ -130,7 +150,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     // extern "C" fn() from being non-null, so we can't just declare a
                     // static and call it a day. Some linkages (like weak) will make it such
                     // that the static actually has a null value.
-                    let linkage = match base::llvm_linkage_by_name(&name.as_str()) {
+                    let linkage = match base::linkage_by_name(&name.as_str()) {
                         Some(linkage) => linkage,
                         None => {
                             ccx.sess().span_fatal(span, "invalid linkage specified");
@@ -145,7 +165,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
                     unsafe {
                         // Declare a symbol `foo` with the desired linkage.
                         let g1 = declare::declare_global(ccx, &sym, llty2);
-                        llvm::LLVMRustSetLinkage(g1, linkage);
+                        llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
                         // Declare an internal global `extern_with_linkage_foo` which
                         // is initialized with the address of `foo`.  If `foo` is
@@ -211,12 +231,17 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         g
     };
 
-    if ccx.use_dll_storage_attrs() && ccx.sess().cstore.is_dllimport_foreign_item(def_id) {
-        // For foreign (native) libs we know the exact storage type to use.
-        unsafe {
-            llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+
+    // FIXME(#42293) we should actually track this, but fails too many tests
+    // today.
+    ccx.tcx().dep_graph.with_ignore(|| {
+        if ccx.use_dll_storage_attrs() && ccx.tcx().is_dllimport_foreign_item(def_id) {
+            // For foreign (native) libs we know the exact storage type to use.
+            unsafe {
+                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
+            }
         }
-    }
+    });
     ccx.instances().borrow_mut().insert(instance, g);
     ccx.statics().borrow_mut().insert(g, def_id);
     g
@@ -244,7 +269,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         };
 
         let instance = Instance::mono(ccx.tcx(), def_id);
-        let ty = common::instance_ty(ccx.shared(), &instance);
+        let ty = common::instance_ty(ccx.tcx(), &instance);
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g
@@ -271,7 +296,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ccx.statics_to_rauw().borrow_mut().push((g, new_g));
             new_g
         };
-        llvm::LLVMSetAlignment(g, ccx.align_of(ty));
+        set_global_alignment(ccx, g, ccx.align_of(ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior

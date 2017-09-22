@@ -9,7 +9,7 @@
 // except according to those terms.
 #![feature(attr_literals)]
 
-#[repr(align(64))]
-struct Foo(u64, u64); //~ error: the struct `#[repr(align(u16))]` attribute is experimental
+#[repr(align(64))] //~ error: the struct `#[repr(align(u16))]` attribute is experimental
+struct Foo(u64, u64);
 
 fn main() {}

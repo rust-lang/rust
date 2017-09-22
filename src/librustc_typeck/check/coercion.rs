@@ -438,8 +438,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
     fn coerce_unsized(&self, source: Ty<'tcx>, target: Ty<'tcx>) -> CoerceResult<'tcx> {
         debug!("coerce_unsized(source={:?}, target={:?})", source, target);
 
-        let traits = (self.tcx.lang_items.unsize_trait(),
-                      self.tcx.lang_items.coerce_unsized_trait());
+        let traits = (self.tcx.lang_items().unsize_trait(),
+                      self.tcx.lang_items().coerce_unsized_trait());
         let (unsize_did, coerce_unsized_did) = if let (Some(u), Some(cu)) = traits {
             (u, cu)
         } else {

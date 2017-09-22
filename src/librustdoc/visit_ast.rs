@@ -21,7 +21,7 @@ use syntax_pos::Span;
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::middle::cstore::LoadedMacro;
+use rustc::middle::cstore::{LoadedMacro, CrateStore};
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FxHashSet;
 
@@ -40,6 +40,7 @@ use doctree::*;
 // framework from syntax?
 
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
+    cstore: &'tcx CrateStore,
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
@@ -51,7 +52,8 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
+    pub fn new(cstore: &'tcx CrateStore,
+               cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
         let mut stack = FxHashSet();
         stack.insert(ast::CRATE_NODE_ID);
@@ -63,6 +65,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             inlining: false,
             inside_public_path: true,
             reexported_macros: FxHashSet(),
+            cstore,
         }
     }
 
@@ -199,15 +202,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        if let Some(exports) = self.cx.tcx.export_map.get(&id) {
-            for export in exports {
+        let def_id = self.cx.tcx.hir.local_def_id(id);
+        if let Some(exports) = self.cx.tcx.module_exports(def_id) {
+            for export in exports.iter() {
                 if let Def::Macro(def_id, ..) = export.def {
                     if def_id.krate == LOCAL_CRATE || self.reexported_macros.contains(&def_id) {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
 
-                    let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
-                    let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
+                    let imported_from = self.cx.tcx.original_crate_name(def_id.krate);
+                    let def = match self.cstore.load_macro_untracked(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
                         // FIXME(jseyfried): document proc macro reexports
                         LoadedMacro::ProcMacro(..) => continue,
@@ -370,9 +374,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             _ if self.inlining && item.vis != hir::Public => {}
             hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(ref p) => {
-                let cstore = &self.cx.sess().cstore;
+                let def_id = self.cx.tcx.hir.local_def_id(item.id);
                 om.extern_crates.push(ExternCrate {
-                    cnum: cstore.extern_mod_stmt_cnum(item.id)
+                    cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
                     name,
                     path: p.map(|x|x.to_string()),

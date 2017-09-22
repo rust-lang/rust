@@ -13,12 +13,12 @@
 struct MyStruct;
 
 impl MyStruct {
-    #[must_use]
-    fn need_to_use_method() -> bool { true } //~ WARN `#[must_use]` on methods is experimental
+    #[must_use] //~ WARN `#[must_use]` on methods is experimental
+    fn need_to_use_method() -> bool { true }
 }
 
-#[must_use]
-fn need_to_use_it() -> bool { true } //~ WARN `#[must_use]` on functions is experimental
+#[must_use] //~ WARN `#[must_use]` on functions is experimental
+fn need_to_use_it() -> bool { true }
 
 
 // Feature gates are tidy-required to have a specially named (or

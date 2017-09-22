@@ -10,9 +10,9 @@
 
 // ignore-emscripten no threads support
 
-#![feature(const_fn)]
 #![feature(rand)]
 #![feature(sort_unstable)]
+#![feature(const_atomic_usize_new)]
 
 use std::__rand::{thread_rng, Rng};
 use std::cell::Cell;

@@ -29,7 +29,6 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use std::fmt;
-use std::u32;
 
 pub struct ElaborateDrops;
 
@@ -193,7 +192,7 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
         self.ctxt.mir
     }
 
-    fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.ctxt.tcx
     }
 
@@ -521,7 +520,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         Rvalue::Use(Operand::Constant(Box::new(Constant {
             span,
             ty: self.tcx.types.bool,
-            literal: Literal::Value { value: ConstVal::Bool(val) }
+            literal: Literal::Value {
+                value: self.tcx.mk_const(ty::Const {
+                    val: ConstVal::Bool(val),
+                    ty: self.tcx.types.bool
+                })
+            }
         })))
     }
 

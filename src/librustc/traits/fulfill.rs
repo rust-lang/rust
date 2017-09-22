@@ -25,7 +25,7 @@ use super::{FulfillmentError, FulfillmentErrorCode};
 use super::{ObligationCause, PredicateObligation, Obligation};
 use super::project;
 use super::select::SelectionContext;
-use super::Unimplemented;
+use super::{Unimplemented, ConstEvalFailure};
 
 impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
     type Predicate = ty::Predicate<'tcx>;
@@ -537,6 +537,29 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                                                             subtype.skip_binder().a,
                                                             subtype.skip_binder().b);
                     Err(FulfillmentErrorCode::CodeSubtypeError(expected_found, err))
+                }
+            }
+        }
+
+        ty::Predicate::ConstEvaluatable(def_id, substs) => {
+            match selcx.tcx().lift_to_global(&obligation.param_env) {
+                None => {
+                    Ok(None)
+                }
+                Some(param_env) => {
+                    match selcx.tcx().lift_to_global(&substs) {
+                        None => {
+                            pending_obligation.stalled_on = substs.types().collect();
+                            Ok(None)
+                        }
+                        Some(substs) => {
+                            match selcx.tcx().at(obligation.cause.span)
+                                             .const_eval(param_env.and((def_id, substs))) {
+                                Ok(_) => Ok(Some(vec![])),
+                                Err(e) => Err(CodeSelectionError(ConstEvalFailure(e)))
+                            }
+                        }
+                    }
                 }
             }
         }

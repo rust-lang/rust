@@ -20,12 +20,11 @@ use ty::TyCtxt;
 use std::io;
 use std::mem;
 use std::usize;
-use syntax::ast;
 use syntax::print::pprust::PrintState;
 
 use rustc_data_structures::graph::OUTGOING;
 
-use util::nodemap::NodeMap;
+use util::nodemap::FxHashMap;
 use hir;
 use hir::intravisit::{self, IdRange};
 use hir::print as pprust;
@@ -56,7 +55,7 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
 
     // mapping from node to cfg node index
     // FIXME (#6298): Shouldn't this go with CFG?
-    nodeid_to_index: NodeMap<Vec<CFGIndex>>,
+    local_id_to_index: FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
 
     // Bit sets per cfg node.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
@@ -97,15 +96,16 @@ struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
     changed: bool
 }
 
-fn get_cfg_indices<'a>(id: ast::NodeId, index: &'a NodeMap<Vec<CFGIndex>>) -> &'a [CFGIndex] {
-    let opt_indices = index.get(&id);
-    opt_indices.map(|v| &v[..]).unwrap_or(&[])
+fn get_cfg_indices<'a>(id: hir::ItemLocalId,
+                       index: &'a FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>)
+                       -> &'a [CFGIndex] {
+    index.get(&id).map_or(&[], |v| &v[..])
 }
 
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
-    fn has_bitset_for_nodeid(&self, n: ast::NodeId) -> bool {
-        assert!(n != ast::DUMMY_NODE_ID);
-        self.nodeid_to_index.contains_key(&n)
+    fn has_bitset_for_local_id(&self, n: hir::ItemLocalId) -> bool {
+        assert!(n != hir::DUMMY_ITEM_LOCAL_ID);
+        self.local_id_to_index.contains_key(&n)
     }
 }
 
@@ -117,19 +117,20 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
            ps: &mut pprust::State,
            node: pprust::AnnNode) -> io::Result<()> {
         let id = match node {
-            pprust::NodeName(_) => ast::CRATE_NODE_ID,
-            pprust::NodeExpr(expr) => expr.id,
-            pprust::NodeBlock(blk) => blk.id,
-            pprust::NodeItem(_) | pprust::NodeSubItem(_) => ast::CRATE_NODE_ID,
-            pprust::NodePat(pat) => pat.id
+            pprust::NodeName(_) => return Ok(()),
+            pprust::NodeExpr(expr) => expr.hir_id.local_id,
+            pprust::NodeBlock(blk) => blk.hir_id.local_id,
+            pprust::NodeItem(_) |
+            pprust::NodeSubItem(_) => return Ok(()),
+            pprust::NodePat(pat) => pat.hir_id.local_id
         };
 
-        if !self.has_bitset_for_nodeid(id) {
+        if !self.has_bitset_for_local_id(id) {
             return Ok(());
         }
 
         assert!(self.bits_per_id > 0);
-        let indices = get_cfg_indices(id, &self.nodeid_to_index);
+        let indices = get_cfg_indices(id, &self.local_id_to_index);
         for &cfgidx in indices {
             let (start, end) = self.compute_id_range(cfgidx);
             let on_entry = &self.on_entry[start.. end];
@@ -157,7 +158,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
             };
 
             ps.synth_comment(
-                format!("id {}: {}{}{}{}", id, entry_str,
+                format!("id {}: {}{}{}{}", id.as_usize(), entry_str,
                         gens_str, action_kills_str, scope_kills_str))?;
             ps.s.space()?;
         }
@@ -165,9 +166,10 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
     }
 }
 
-fn build_nodeid_to_index(body: Option<&hir::Body>,
-                         cfg: &cfg::CFG) -> NodeMap<Vec<CFGIndex>> {
-    let mut index = NodeMap();
+fn build_local_id_to_index(body: Option<&hir::Body>,
+                           cfg: &cfg::CFG)
+                           -> FxHashMap<hir::ItemLocalId, Vec<CFGIndex>> {
+    let mut index = FxHashMap();
 
     // FIXME (#6298): Would it be better to fold formals from decl
     // into cfg itself?  i.e. introduce a fn-based flow-graph in
@@ -188,14 +190,14 @@ fn build_nodeid_to_index(body: Option<&hir::Body>,
 
     /// Add mappings from the ast nodes for the formal bindings to
     /// the entry-node in the graph.
-    fn add_entries_from_fn_body(index: &mut NodeMap<Vec<CFGIndex>>,
+    fn add_entries_from_fn_body(index: &mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
                                 body: &hir::Body,
                                 entry: CFGIndex) {
         use hir::intravisit::Visitor;
 
         struct Formals<'a> {
             entry: CFGIndex,
-            index: &'a mut NodeMap<Vec<CFGIndex>>,
+            index: &'a mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
         }
         let mut formals = Formals { entry: entry, index: index };
         for arg in &body.arguments {
@@ -207,7 +209,7 @@ fn build_nodeid_to_index(body: Option<&hir::Body>,
             }
 
             fn visit_pat(&mut self, p: &hir::Pat) {
-                self.index.entry(p.id).or_insert(vec![]).push(self.entry);
+                self.index.entry(p.hir_id.local_id).or_insert(vec![]).push(self.entry);
                 intravisit::walk_pat(self, p)
             }
         }
@@ -259,13 +261,13 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let kills2 = zeroes;
         let on_entry = vec![entry; num_nodes * words_per_id];
 
-        let nodeid_to_index = build_nodeid_to_index(body, cfg);
+        let local_id_to_index = build_local_id_to_index(body, cfg);
 
         DataFlowContext {
             tcx,
             analysis_name,
             words_per_id,
-            nodeid_to_index,
+            local_id_to_index,
             bits_per_id,
             oper,
             gens,
@@ -275,14 +277,14 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         }
     }
 
-    pub fn add_gen(&mut self, id: ast::NodeId, bit: usize) {
+    pub fn add_gen(&mut self, id: hir::ItemLocalId, bit: usize) {
         //! Indicates that `id` generates `bit`
-        debug!("{} add_gen(id={}, bit={})",
+        debug!("{} add_gen(id={:?}, bit={})",
                self.analysis_name, id, bit);
-        assert!(self.nodeid_to_index.contains_key(&id));
+        assert!(self.local_id_to_index.contains_key(&id));
         assert!(self.bits_per_id > 0);
 
-        let indices = get_cfg_indices(id, &self.nodeid_to_index);
+        let indices = get_cfg_indices(id, &self.local_id_to_index);
         for &cfgidx in indices {
             let (start, end) = self.compute_id_range(cfgidx);
             let gens = &mut self.gens[start.. end];
@@ -290,14 +292,14 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         }
     }
 
-    pub fn add_kill(&mut self, kind: KillFrom, id: ast::NodeId, bit: usize) {
+    pub fn add_kill(&mut self, kind: KillFrom, id: hir::ItemLocalId, bit: usize) {
         //! Indicates that `id` kills `bit`
-        debug!("{} add_kill(id={}, bit={})",
+        debug!("{} add_kill(id={:?}, bit={})",
                self.analysis_name, id, bit);
-        assert!(self.nodeid_to_index.contains_key(&id));
+        assert!(self.local_id_to_index.contains_key(&id));
         assert!(self.bits_per_id > 0);
 
-        let indices = get_cfg_indices(id, &self.nodeid_to_index);
+        let indices = get_cfg_indices(id, &self.local_id_to_index);
         for &cfgidx in indices {
             let (start, end) = self.compute_id_range(cfgidx);
             let kills = match kind {
@@ -341,15 +343,15 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     }
 
 
-    pub fn each_bit_on_entry<F>(&self, id: ast::NodeId, mut f: F) -> bool where
+    pub fn each_bit_on_entry<F>(&self, id: hir::ItemLocalId, mut f: F) -> bool where
         F: FnMut(usize) -> bool,
     {
         //! Iterates through each bit that is set on entry to `id`.
         //! Only useful after `propagate()` has been called.
-        if !self.has_bitset_for_nodeid(id) {
+        if !self.has_bitset_for_local_id(id) {
             return true;
         }
-        let indices = get_cfg_indices(id, &self.nodeid_to_index);
+        let indices = get_cfg_indices(id, &self.local_id_to_index);
         for &cfgidx in indices {
             if !self.each_bit_for_node(EntryOrExit::Entry, cfgidx, |i| f(i)) {
                 return false;
@@ -387,11 +389,11 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         self.each_bit(slice, f)
     }
 
-    pub fn each_gen_bit<F>(&self, id: ast::NodeId, mut f: F) -> bool where
+    pub fn each_gen_bit<F>(&self, id: hir::ItemLocalId, mut f: F) -> bool where
         F: FnMut(usize) -> bool,
     {
         //! Iterates through each bit in the gen set for `id`.
-        if !self.has_bitset_for_nodeid(id) {
+        if !self.has_bitset_for_local_id(id) {
             return true;
         }
 
@@ -401,11 +403,11 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
             return true;
         }
 
-        let indices = get_cfg_indices(id, &self.nodeid_to_index);
+        let indices = get_cfg_indices(id, &self.local_id_to_index);
         for &cfgidx in indices {
             let (start, end) = self.compute_id_range(cfgidx);
             let gens = &self.gens[start.. end];
-            debug!("{} each_gen_bit(id={}, gens={})",
+            debug!("{} each_gen_bit(id={:?}, gens={})",
                    self.analysis_name, id, bits_to_string(gens));
             if !self.each_bit(gens, |i| f(i)) {
                 return false;
@@ -472,17 +474,17 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
             let mut orig_kills = self.scope_kills[start.. end].to_vec();
 
             let mut changed = false;
-            for &node_id in &edge.data.exiting_scopes {
-                let opt_cfg_idx = self.nodeid_to_index.get(&node_id);
+            for &id in &edge.data.exiting_scopes {
+                let opt_cfg_idx = self.local_id_to_index.get(&id);
                 match opt_cfg_idx {
                     Some(indices) => {
                         for &cfg_idx in indices {
                             let (start, end) = self.compute_id_range(cfg_idx);
                             let kills = &self.scope_kills[start.. end];
                             if bitwise(&mut orig_kills, kills, &Union) {
-                                debug!("scope exits: scope id={} \
+                                debug!("scope exits: scope id={:?} \
                                         (node={:?} of {:?}) added killset: {}",
-                                       node_id, cfg_idx, indices,
+                                       id, cfg_idx, indices,
                                        bits_to_string(kills));
                                 changed = true;
                             }
@@ -490,8 +492,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                     }
                     None => {
                         debug!("{} add_kills_from_flow_exits flow_exit={:?} \
-                                no cfg_idx for exiting_scope={}",
-                               self.analysis_name, flow_exit, node_id);
+                                no cfg_idx for exiting_scope={:?}",
+                               self.analysis_name, flow_exit, id);
                     }
                 }
             }
@@ -559,7 +561,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
         // Iterate over nodes in reverse postorder
         for &node_index in nodes_po.iter().rev() {
             let node = cfg.graph.node(node_index);
-            debug!("DataFlowContext::walk_cfg idx={:?} id={} begin in_out={}",
+            debug!("DataFlowContext::walk_cfg idx={:?} id={:?} begin in_out={}",
                    node_index, node.data.id(), bits_to_string(in_out));
 
             let (start, end) = self.dfcx.compute_id_range(node_index);

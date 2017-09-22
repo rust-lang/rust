@@ -289,7 +289,7 @@ impl Step for TestHelpers {
         let _folder = build.fold_output(|| "build_test_helpers");
         println!("Building test helpers");
         t!(fs::create_dir_all(&dst));
-        let mut cfg = gcc::Config::new();
+        let mut cfg = gcc::Build::new();
 
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform gcc of these compilers. Note, though, that
@@ -306,6 +306,7 @@ impl Step for TestHelpers {
            .target(&target)
            .host(&build.build)
            .opt_level(0)
+           .warnings(false)
            .debug(false)
            .file(build.src.join("src/rt/rust_test_helpers.c"))
            .compile("librust_test_helpers.a");
@@ -349,7 +350,7 @@ impl Step for Openssl {
         if !tarball.exists() {
             let tmp = tarball.with_extension("tmp");
             // originally from https://www.openssl.org/source/...
-            let url = format!("https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/{}",
+            let url = format!("https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/{}",
                               name);
             let mut ok = false;
             for _ in 0..3 {
@@ -388,7 +389,8 @@ impl Step for Openssl {
         drop(fs::remove_dir_all(&dst));
         build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
 
-        let mut configure = Command::new(obj.join("Configure"));
+        let mut configure = Command::new("perl");
+        configure.arg(obj.join("Configure"));
         configure.arg(format!("--prefix={}", dst.display()));
         configure.arg("no-dso");
         configure.arg("no-ssl2");
@@ -407,6 +409,7 @@ impl Step for Openssl {
             "i686-unknown-freebsd" => "BSD-x86-elf",
             "i686-unknown-linux-gnu" => "linux-elf",
             "i686-unknown-linux-musl" => "linux-elf",
+            "i686-unknown-netbsd" => "BSD-x86-elf",
             "mips-unknown-linux-gnu" => "linux-mips32",
             "mips64-unknown-linux-gnuabi64" => "linux64-mips64",
             "mips64el-unknown-linux-gnuabi64" => "linux64-mips64",
@@ -415,6 +418,7 @@ impl Step for Openssl {
             "powerpc64-unknown-linux-gnu" => "linux-ppc64",
             "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
             "s390x-unknown-linux-gnu" => "linux64-s390x",
+            "sparc64-unknown-netbsd" => "BSD-sparc64",
             "x86_64-apple-darwin" => "darwin64-x86_64-cc",
             "x86_64-linux-android" => "linux-x86_64",
             "x86_64-unknown-freebsd" => "BSD-x86_64",
@@ -433,6 +437,15 @@ impl Step for Openssl {
         if target == "aarch64-linux-android" || target == "x86_64-linux-android" {
             configure.arg("-mandroid");
             configure.arg("-fomit-frame-pointer");
+        }
+        if target == "sparc64-unknown-netbsd" {
+            // Need -m64 to get assembly generated correctly for sparc64.
+            configure.arg("-m64");
+            if build.build.contains("netbsd") {
+                // Disable sparc64 asm on NetBSD builders, it uses
+                // m4(1)'s -B flag, which NetBSD m4 does not support.
+                configure.arg("no-asm");
+            }
         }
         // Make PIE binaries
         // Non-PIE linker support was removed in Lollipop

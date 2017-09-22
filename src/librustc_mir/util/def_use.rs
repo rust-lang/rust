@@ -10,7 +10,7 @@
 
 //! Def-use analysis.
 
-use rustc::mir::{Local, Location, Lvalue, Mir};
+use rustc::mir::{Local, Location, Mir};
 use rustc::mir::visit::{LvalueContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
@@ -51,7 +51,7 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     }
 
     fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
-                               where F: for<'a> FnMut(&'a mut Lvalue<'tcx>,
+                               where F: for<'a> FnMut(&'a mut Local,
                                                       LvalueContext<'tcx>,
                                                       Location) {
         for lvalue_use in &self.info[local].defs_and_uses {
@@ -65,8 +65,8 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
                                           mir: &mut Mir<'tcx>,
-                                          new_lvalue: Lvalue<'tcx>) {
-        self.mutate_defs_and_uses(local, mir, |lvalue, _, _| *lvalue = new_lvalue.clone())
+                                          new_local: Local) {
+        self.mutate_defs_and_uses(local, mir, |local, _, _| *local = new_local)
     }
 }
 
@@ -74,30 +74,15 @@ struct DefUseFinder<'tcx> {
     info: IndexVec<Local, Info<'tcx>>,
 }
 
-impl<'tcx> DefUseFinder<'tcx> {
-    fn lvalue_mut_info(&mut self, lvalue: &Lvalue<'tcx>) -> Option<&mut Info<'tcx>> {
-        let info = &mut self.info;
-
-        if let Lvalue::Local(local) = *lvalue {
-            Some(&mut info[local])
-        } else {
-            None
-        }
-    }
-}
-
 impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
-    fn visit_lvalue(&mut self,
-                    lvalue: &Lvalue<'tcx>,
-                    context: LvalueContext<'tcx>,
-                    location: Location) {
-        if let Some(ref mut info) = self.lvalue_mut_info(lvalue) {
-            info.defs_and_uses.push(Use {
-                context,
-                location,
-            })
-        }
-        self.super_lvalue(lvalue, context, location)
+    fn visit_local(&mut self,
+                   &local: &Local,
+                   context: LvalueContext<'tcx>,
+                   location: Location) {
+        self.info[local].defs_and_uses.push(Use {
+            context,
+            location,
+        });
     }
 }
 
@@ -134,7 +119,7 @@ struct MutateUseVisitor<'tcx, F> {
 impl<'tcx, F> MutateUseVisitor<'tcx, F> {
     fn new(query: Local, callback: F, _: &Mir<'tcx>)
            -> MutateUseVisitor<'tcx, F>
-           where F: for<'a> FnMut(&'a mut Lvalue<'tcx>, LvalueContext<'tcx>, Location) {
+           where F: for<'a> FnMut(&'a mut Local, LvalueContext<'tcx>, Location) {
         MutateUseVisitor {
             query,
             callback,
@@ -144,16 +129,13 @@ impl<'tcx, F> MutateUseVisitor<'tcx, F> {
 }
 
 impl<'tcx, F> MutVisitor<'tcx> for MutateUseVisitor<'tcx, F>
-              where F: for<'a> FnMut(&'a mut Lvalue<'tcx>, LvalueContext<'tcx>, Location) {
-    fn visit_lvalue(&mut self,
-                    lvalue: &mut Lvalue<'tcx>,
+              where F: for<'a> FnMut(&'a mut Local, LvalueContext<'tcx>, Location) {
+    fn visit_local(&mut self,
+                    local: &mut Local,
                     context: LvalueContext<'tcx>,
                     location: Location) {
-        if let Lvalue::Local(local) = *lvalue {
-            if local == self.query {
-                (self.callback)(lvalue, context, location)
-            }
+        if *local == self.query {
+            (self.callback)(local, context, location)
         }
-        self.super_lvalue(lvalue, context, location)
     }
 }

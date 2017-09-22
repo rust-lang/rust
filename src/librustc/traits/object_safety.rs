@@ -169,7 +169,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::ClosureKind(..) |
                     ty::Predicate::Subtype(..) |
-                    ty::Predicate::Equate(..) => {
+                    ty::Predicate::Equate(..) |
+                    ty::Predicate::ConstEvaluatable(..) => {
                         false
                     }
                 }
@@ -181,7 +182,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn generics_require_sized_self(self, def_id: DefId) -> bool {
-        let sized_def_id = match self.lang_items.sized_trait() {
+        let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
         };
@@ -203,7 +204,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::ClosureKind(..) |
-                    ty::Predicate::TypeOutlives(..) => {
+                    ty::Predicate::TypeOutlives(..) |
+                    ty::Predicate::ConstEvaluatable(..) => {
                         false
                     }
                 }
