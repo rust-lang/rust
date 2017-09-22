@@ -292,12 +292,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => false,
                     };
                     if !derive_allowed {
-                        let span = item.attrs().iter()
+                        let attr = item.attrs().iter()
                             .find(|attr| attr.check_name("derive"))
-                            .expect("`derive` attribute should exist").span;
-                        self.cx.span_err(span,
-                                         "`derive` may only be applied to structs, enums \
-                                          and unions");
+                            .expect("`derive` attribute should exist");
+                        let span = attr.span;
+                        let mut err = self.cx.mut_span_err(span,
+                                                           "`derive` may only be applied to \
+                                                            structs, enums and unions");
+                        if let ast::AttrStyle::Inner = attr.style {
+                            let trait_list = traits.iter()
+                                .map(|t| format!("{}", t)).collect::<Vec<_>>();
+                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+                            err.span_suggestion(span, "try an outer attribute", suggestion);
+                        }
+                        err.emit();
                     }
 
                     let item = item
