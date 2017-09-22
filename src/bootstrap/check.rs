@@ -254,7 +254,11 @@ impl Step for Rls {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run(build, &mut cargo);
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.rls.passes(ToolState::Testing),
+        );
     }
 }
 
@@ -295,7 +299,11 @@ impl Step for Rustfmt {
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
-        try_run(build, &mut cargo);
+        try_run_expecting(
+            build,
+            &mut cargo,
+            builder.build.config.toolstate.rustfmt.passes(ToolState::Testing),
+        );
     }
 }
 
