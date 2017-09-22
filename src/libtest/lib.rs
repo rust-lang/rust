@@ -258,12 +258,14 @@ impl Clone for MetricMap {
 #[derive(Copy, Clone, Debug)]
 pub struct Options {
     display_output: bool,
+    display_service_messages: bool
 }
 
 impl Options {
     pub fn new() -> Options {
         Options {
             display_output: false,
+            display_service_messages: false
         }
     }
 
@@ -385,6 +387,7 @@ fn optgroups() -> getopts::Options {
                                 of stdout", "PATH")
         .optflag("", "nocapture", "don't capture stdout/stderr of each \
                                    task, allow printing directly")
+        .optflag("", "teamcity", "Print Teamcity Service Messages to stdout to track test history.")
         .optopt("", "test-threads", "Number of threads used for running tests \
                                      in parallel", "n_threads")
         .optmulti("", "skip", "Skip tests whose names contain FILTER (this flag can \
@@ -468,6 +471,15 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         };
     }
 
+    let mut teamcity = matches.opt_present("teamcity");
+    println!("teamcity set to {}", teamcity);
+    if !teamcity {
+        teamcity = match env::var("RUST_TEST_TEAMCITY_SERVICE_MESSAGES") {
+            Ok(val) => &val != "0",
+            Err(_) => false
+        };
+    }
+    println!("teamcity set to {}", teamcity);
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) =>
             match n_str.parse::<usize>() {
@@ -507,8 +519,12 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         quiet,
         test_threads,
         skip: matches.opt_strs("skip"),
-        options: Options::new(),
+        options: Options{
+            display_output: false,
+            display_service_messages: teamcity
+        },
     };
+   // test_opts.options.display_service_messages = teamcity;
 
     Some(Ok(test_opts))
 }
@@ -587,16 +603,31 @@ impl<T: Write> ConsoleTestState<T> {
         })
     }
 
-    pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_short_result("ok", ".", term::color::GREEN)
+    pub fn write_ok(&mut self, test: &TestDesc) -> io::Result<()> {
+        self.write_short_result("ok", ".", term::color::GREEN)?;
+
+        let name : String = service_message_escape(test.name.as_slice());
+        if self.options.display_service_messages {
+            self.write_plain(&format!("\n##teamcity[testFinished name='{}']\n", name))?;
+        }
+        std::result::Result::Ok(())
     }
 
-    pub fn write_failed(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED", "F", term::color::RED)
+    pub fn write_failed(&mut self, test: &TestDesc) -> io::Result<()> {
+
+        self.write_short_result("FAILED", "F", term::color::RED)?;
+        if self.options.display_service_messages {
+            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n", service_message_escape(test.name.as_slice())))?;
+        }
+        std::result::Result::Ok(())
     }
 
-    pub fn write_ignored(&mut self) -> io::Result<()> {
-        self.write_short_result("ignored", "i", term::color::YELLOW)
+    pub fn write_ignored(&mut self, test: &TestDesc) -> io::Result<()> {
+        self.write_short_result("ignored", "i", term::color::YELLOW)?;
+        if self.options.display_service_messages {
+            self.write_plain(&format!("\n##teamcity[testIgnored name='{}']\n", service_message_escape(test.name.as_slice())))?;
+        }
+        std::result::Result::Ok(())
     }
 
     pub fn write_allowed_fail(&mut self) -> io::Result<()> {
@@ -669,15 +700,24 @@ impl<T: Write> ConsoleTestState<T> {
             Ok(())
         } else {
             let name = test.padded_name(self.max_name_len, align);
+            if self.options.display_service_messages {
+                let use_std_out = if stdout_isatty() {
+                    "true"
+                } else {
+                    "false"
+                };
+                self.write_plain(&format!("\n##teamcity[testStarted name='{}' captureStandardOutput='{}']\n",
+                                          service_message_escape(test.name.as_slice()), use_std_out))?;
+            }
             self.write_plain(&format!("test {} ... ", name))
         }
     }
 
-    pub fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
+    pub fn write_result(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
         match *result {
-            TrOk => self.write_ok(),
-            TrFailed | TrFailedMsg(_) => self.write_failed(),
-            TrIgnored => self.write_ignored(),
+            TrOk => self.write_ok(&test),
+            TrFailed | TrFailedMsg(_) => self.write_failed(&test),
+            TrIgnored => self.write_ignored(&test),
             TrAllowedFail => self.write_allowed_fail(),
             TrMetrics(ref mm) => {
                 self.write_metric()?;
@@ -685,12 +725,16 @@ impl<T: Write> ConsoleTestState<T> {
             }
             TrBench(ref bs) => {
                 self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
+                let msg = self.fmt_bench_samples(test, bs).clone();
+                self.write_plain(&format!(": {}\n", msg))
             }
         }
     }
 
     pub fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
+        if self.options.display_service_messages {
+            self.write_plain(&format!("\n##teamcity[testFailed name='{}']\n", service_message_escape(desc.name.as_slice())))?;
+        }
         self.write_plain(&format!("test {} has been running for over {} seconds\n",
                                   desc.name,
                                   TEST_WARN_TIMEOUT_S))
@@ -705,8 +749,7 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_log_result(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
-        self.write_log(
-            format!("{} {}\n",
+        let msg =format!("{} {}\n",
                     match *result {
                         TrOk => "ok".to_owned(),
                         TrFailed => "failed".to_owned(),
@@ -714,9 +757,40 @@ impl<T: Write> ConsoleTestState<T> {
                         TrIgnored => "ignored".to_owned(),
                         TrAllowedFail => "failed (allowed)".to_owned(),
                         TrMetrics(ref mm) => mm.fmt_metrics(),
-                        TrBench(ref bs) => fmt_bench_samples(bs),
+                        TrBench(ref bs) => self.fmt_bench_samples(test, bs),
                     },
-                    test.name))
+                    test.name);
+        self.write_log(msg)
+    }
+
+    pub fn fmt_bench_samples(&self, test: &TestDesc, bs: &BenchSamples) -> String {
+        use std::fmt::Write;
+        let mut output = String::new();
+
+        let median = bs.ns_iter_summ.median as usize;
+        let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
+
+        output.write_fmt(format_args!("{:>11} ns/iter (+/- {})",
+                                      fmt_thousands_sep(median, ','),
+                                      fmt_thousands_sep(deviation, ','))).unwrap();
+
+        if bs.mb_s != 0 {
+            output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
+
+            if self.options.display_service_messages {
+                output.write_fmt(format_args!("##teamcity[buildStatisticValue key='{}_MB_s' value='{}']\n",
+                                              test.name.as_slice(), bs.mb_s)).unwrap();
+            }
+        }
+        if self.options.display_service_messages {
+            output.write_fmt(format_args!("\n##teamcity[buildStatisticValue key='{}_ns_iter_median' value='{}']\n",
+                                          test.name.as_slice(), median)).unwrap();
+
+            output.write_fmt(format_args!("##teamcity[buildStatisticValue key='{}_std_dev' value='{}']\n",
+                                          test.name.as_slice(), deviation)).unwrap();
+        }
+        output.write_fmt(format_args!("##teamcity[testFinished name='{}']\n", test.name.as_slice())).unwrap();
+        output
     }
 
     pub fn write_failures(&mut self) -> io::Result<()> {
@@ -813,6 +887,17 @@ impl<T: Write> ConsoleTestState<T> {
     }
 }
 
+// Follow TeamCity escaping rules for service messages.
+fn service_message_escape(message: &str) -> String {
+    message.replace('|', "||")
+        .replace('\'', "|'")
+        .replace('\n', "|n")
+        .replace('\r', "|r")
+        .replace('[', "|[")
+        .replace(']', "|]")
+    //TODO \uNNNN (unicode symbol with code 0xNNNN) to "|0xNNNN'
+}
+
 // Format a number with thousands separators
 fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     use std::fmt::Write;
@@ -837,22 +922,6 @@ fn fmt_thousands_sep(mut n: usize, sep: char) -> String {
     output
 }
 
-pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
-    use std::fmt::Write;
-    let mut output = String::new();
-
-    let median = bs.ns_iter_summ.median as usize;
-    let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
-
-    output.write_fmt(format_args!("{:>11} ns/iter (+/- {})",
-                                  fmt_thousands_sep(median, ','),
-                                  fmt_thousands_sep(deviation, ',')))
-          .unwrap();
-    if bs.mb_s != 0 {
-        output.write_fmt(format_args!(" = {} MB/s", bs.mb_s)).unwrap();
-    }
-    output
-}
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
@@ -908,7 +977,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
             TeTimeout(ref test) => st.write_timeout(test),
             TeResult(test, result, stdout) => {
                 st.write_log_result(&test, &result)?;
-                st.write_result(&result)?;
+                st.write_result(&test, &result)?;
                 match result {
                     TrOk => {
                         st.passed += 1;
