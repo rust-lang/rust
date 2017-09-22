@@ -244,9 +244,6 @@ impl DepGraph {
             data.edges.borrow_mut().read(v);
 
             let mut current = data.current.borrow_mut();
-            debug_assert!(current.node_to_node_index.contains_key(&v),
-                          "DepKind {:?} should be pre-allocated but isn't.",
-                          v.kind);
             if let Some(&dep_node_index_new) = current.node_to_node_index.get(&v) {
                 current.read_index(dep_node_index_new);
             } else {
