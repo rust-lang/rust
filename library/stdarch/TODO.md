@@ -59,23 +59,23 @@ sse
 * [ ] `_m_pmovmskb`
 * [ ] `_mm_shuffle_pi16`
 * [ ] `_m_pshufw`
-* [ ] `_mm_add_ss`
-* [ ] `_mm_add_ps`
-* [ ] `_mm_sub_ss`
-* [ ] `_mm_sub_ps`
-* [ ] `_mm_mul_ss`
-* [ ] `_mm_mul_ps`
-* [ ] `_mm_div_ss`
-* [ ] `_mm_div_ps`
-* [ ] `_mm_sqrt_ss`
+* [x] `_mm_add_ss`
+* [x] `_mm_add_ps`
+* [x] `_mm_sub_ss`
+* [x] `_mm_sub_ps`
+* [x] `_mm_mul_ss`
+* [x] `_mm_mul_ps`
+* [x] `_mm_div_ss`
+* [x] `_mm_div_ps`
+* [x] `_mm_sqrt_ss`
 * [x] `_mm_sqrt_ps`
-* [ ] `_mm_rcp_ss`
+* [x] `_mm_rcp_ss`
 * [x] `_mm_rcp_ps`
-* [ ] `_mm_rsqrt_ss`
+* [x] `_mm_rsqrt_ss`
 * [x] `_mm_rsqrt_ps`
-* [ ] `_mm_min_ss`
+* [x] `_mm_min_ss`
 * [x] `_mm_min_ps`
-* [ ] `_mm_max_ss`
+* [x] `_mm_max_ss`
 * [x] `_mm_max_ps`
 * [ ] `_mm_and_ps`
 * [ ] `_mm_andnot_ps`
@@ -458,8 +458,8 @@ sse4.1
 * [ ] `_mm_blendv_ps`
 * [x] `_mm_blendv_epi8`
 * [ ] `_mm_blend_epi16`
-* [ ] `_mm_dp_pd`
-* [ ] `_mm_dp_ps`
+* [x] `_mm_dp_pd`
+* [x] `_mm_dp_ps`
 * [ ] `_mm_extract_ps`
 * [ ] `_mm_extract_epi8`
 * [ ] `_mm_extract_epi32`
