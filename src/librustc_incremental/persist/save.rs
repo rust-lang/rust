@@ -174,6 +174,19 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
     }
 }
 
+fn encode_dep_graph_new(tcx: TyCtxt,
+                        encoder: &mut Encoder)
+                        -> io::Result<()> {
+    // First encode the commandline arguments hash
+    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
+
+    // Encode the graph data.
+    let serialized_graph = tcx.dep_graph.serialize();
+    serialized_graph.encode(encoder)?;
+
+    Ok(())
+}
+
 pub fn encode_dep_graph(tcx: TyCtxt,
                         preds: &Predecessors,
                         encoder: &mut Encoder)

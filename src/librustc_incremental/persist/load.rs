@@ -433,3 +433,38 @@ fn process_edge<'a, 'tcx, 'edges>(
         }
     }
 }
+
+pub fn load_dep_graph_new(sess: &Session) -> PreviousDepGraph {
+    use rustc::dep_graph::SerializedDepGraph as SerializedDepGraphNew;
+
+    let empty = PreviousDepGraph::new(SerializedDepGraphNew::new());
+
+    if sess.opts.incremental.is_none() {
+        return empty
+    }
+
+    if let Some(bytes) = load_data(sess, &dep_graph_path_new(sess)) {
+        let mut decoder = Decoder::new(&bytes, 0);
+        let prev_commandline_args_hash = u64::decode(&mut decoder)
+            .expect("Error reading commandline arg hash from cached dep-graph");
+
+        if prev_commandline_args_hash != sess.opts.dep_tracking_hash() {
+            if sess.opts.debugging_opts.incremental_info {
+                eprintln!("incremental: completely ignoring cache because of \
+                           differing commandline arguments");
+            }
+            // We can't reuse the cache, purge it.
+            debug!("load_dep_graph_new: differing commandline arg hashes");
+
+            // No need to do any further work
+            return empty
+        }
+
+        let dep_graph = SerializedDepGraphNew::decode(&mut decoder)
+            .expect("Error reading cached dep-graph");
+
+        PreviousDepGraph::new(dep_graph)
+    } else {
+        empty
+    }
+}

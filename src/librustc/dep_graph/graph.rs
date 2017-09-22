@@ -25,6 +25,8 @@ use super::query::DepGraphQuery;
 use super::raii;
 use super::safe::DepGraphSafe;
 use super::edges::{self, DepGraphEdges};
+use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+use super::prev::PreviousDepGraph;
 
 #[derive(Clone)]
 pub struct DepGraph {
@@ -68,6 +70,10 @@ struct DepGraphData {
     /// current one anymore.
     current: RefCell<CurrentDepGraph>,
 
+    /// The dep-graph from the previous compilation session. It contains all
+    /// nodes and edges as well as all fingerprints of nodes that have them.
+    previous: PreviousDepGraph,
+
     /// When we load, there may be `.o` files, cached mir, or other such
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
@@ -81,19 +87,24 @@ struct DepGraphData {
 }
 
 impl DepGraph {
-    pub fn new(enabled: bool) -> DepGraph {
+
+    pub fn new(prev_graph: PreviousDepGraph) -> DepGraph {
         DepGraph {
-            data: if enabled {
-                Some(Rc::new(DepGraphData {
-                    previous_work_products: RefCell::new(FxHashMap()),
-                    work_products: RefCell::new(FxHashMap()),
-                    edges: RefCell::new(DepGraphEdges::new()),
-                    dep_node_debug: RefCell::new(FxHashMap()),
-                    current: RefCell::new(CurrentDepGraph::new()),
-                }))
-            } else {
-                None
-            },
+            data: Some(Rc::new(DepGraphData {
+                previous_work_products: RefCell::new(FxHashMap()),
+                work_products: RefCell::new(FxHashMap()),
+                edges: RefCell::new(DepGraphEdges::new()),
+                dep_node_debug: RefCell::new(FxHashMap()),
+                current: RefCell::new(CurrentDepGraph::new()),
+                previous: prev_graph,
+            })),
+            fingerprints: Rc::new(RefCell::new(FxHashMap())),
+        }
+    }
+
+    pub fn new_disabled() -> DepGraph {
+        DepGraph {
+            data: None,
             fingerprints: Rc::new(RefCell::new(FxHashMap())),
         }
     }
@@ -231,7 +242,16 @@ impl DepGraph {
     pub fn read(&self, v: DepNode) {
         if let Some(ref data) = self.data {
             data.edges.borrow_mut().read(v);
-            data.current.borrow_mut().read(v);
+
+            let mut current = data.current.borrow_mut();
+            debug_assert!(current.node_to_node_index.contains_key(&v),
+                          "DepKind {:?} should be pre-allocated but isn't.",
+                          v.kind);
+            if let Some(&dep_node_index_new) = current.node_to_node_index.get(&v) {
+                current.read_index(dep_node_index_new);
+            } else {
+                bug!("DepKind {:?} should be pre-allocated but isn't.", v.kind)
+            }
         }
     }
 
@@ -254,22 +274,12 @@ impl DepGraph {
         self.data.as_ref().unwrap().edges.borrow_mut().add_node(node);
     }
 
-    pub fn alloc_input_node(&self, node: DepNode) -> DepNodeIndex {
-        if let Some(ref data) = self.data {
-            let dep_node_index_legacy = data.edges.borrow_mut().add_node(node);
-            let dep_node_index_new = data.current.borrow_mut()
-                                                 .alloc_node(node, Vec::new());
-            DepNodeIndex {
-                legacy: dep_node_index_legacy,
-                new: dep_node_index_new,
-            }
-        } else {
-            DepNodeIndex::INVALID
-        }
+    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
+        self.fingerprints.borrow()[dep_node]
     }
 
-    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
-        self.fingerprints.borrow().get(dep_node).cloned()
+    pub fn prev_fingerprint_of(&self, dep_node: &DepNode) -> Fingerprint {
+        self.data.as_ref().unwrap().previous.fingerprint_of(dep_node)
     }
 
     /// Indicates that a previous work product exists for `v`. This is
@@ -337,6 +347,44 @@ impl DepGraph {
 
     pub(super) fn dep_node_debug_str(&self, dep_node: DepNode) -> Option<String> {
         self.data.as_ref().and_then(|t| t.dep_node_debug.borrow().get(&dep_node).cloned())
+    }
+
+    pub fn serialize(&self) -> SerializedDepGraph {
+        let fingerprints = self.fingerprints.borrow();
+        let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
+
+        let nodes: IndexVec<_, _> = current_dep_graph.nodes.iter().map(|dep_node| {
+            let fingerprint = fingerprints.get(dep_node)
+                                          .cloned()
+                                          .unwrap_or(Fingerprint::zero());
+            (*dep_node, fingerprint)
+        }).collect();
+
+        let total_edge_count: usize = current_dep_graph.edges.iter()
+                                                             .map(|v| v.len())
+                                                             .sum();
+
+        let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
+        let mut edge_list_data = Vec::with_capacity(total_edge_count);
+
+        for (current_dep_node_index, edges) in current_dep_graph.edges.iter_enumerated() {
+            let start = edge_list_data.len() as u32;
+            // This should really just be a memcpy :/
+            edge_list_data.extend(edges.iter().map(|i| SerializedDepNodeIndex(i.index)));
+            let end = edge_list_data.len() as u32;
+
+            debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());
+            edge_list_indices.push((start, end));
+        }
+
+        debug_assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
+        debug_assert_eq!(edge_list_data.len(), total_edge_count);
+
+        SerializedDepGraph {
+            nodes,
+            edge_list_indices,
+            edge_list_data,
+        }
     }
 }
 
@@ -478,11 +526,6 @@ impl CurrentDepGraph {
         }
     }
 
-    fn read(&mut self, source: DepNode) {
-        let dep_node_index = self.maybe_alloc_node(source);
-        self.read_index(dep_node_index);
-    }
-
     fn read_index(&mut self, source: DepNodeIndexNew) {
         match self.task_stack.last_mut() {
             Some(&mut OpenTask::Regular {
@@ -520,27 +563,6 @@ impl CurrentDepGraph {
         self.node_to_node_index.insert(dep_node, dep_node_index);
         self.edges.push(edges);
         dep_node_index
-    }
-
-    fn maybe_alloc_node(&mut self,
-                        dep_node: DepNode)
-                        -> DepNodeIndexNew {
-        debug_assert_eq!(self.edges.len(), self.nodes.len());
-        debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
-
-        let CurrentDepGraph {
-            ref mut node_to_node_index,
-            ref mut nodes,
-            ref mut edges,
-            ..
-        } = *self;
-
-        *node_to_node_index.entry(dep_node).or_insert_with(|| {
-            let next_id = nodes.len();
-            nodes.push(dep_node);
-            edges.push(Vec::new());
-            DepNodeIndexNew::new(next_id)
-        })
     }
 }
 
