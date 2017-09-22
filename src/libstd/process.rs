@@ -157,7 +157,8 @@ impl fmt::Debug for Child {
 /// This struct is used in the [`stdin`] field on [`Child`].
 ///
 /// When an instance of `ChildStdin` is [dropped], the `ChildStdin`'s underlying
-/// file handle will be closed.
+/// file handle will be closed. If the child process was blocked on input prior
+/// to being dropped, it will become unblocked after dropping.
 ///
 /// [`Child`]: struct.Child.html
 /// [`stdin`]: struct.Child.html#structfield.stdin
