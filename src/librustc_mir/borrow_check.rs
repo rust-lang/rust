@@ -544,19 +544,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
     }
-
-    #[cfg(not_anymore)]
-    fn borrow(&mut self,
-              context: Context,
-              location: Location,
-              bk: BorrowKind,
-              lvalue_span: (&Lvalue<'gcx>, Span),
-              flow_state: &InProgress<'b, 'gcx>) {
-        debug!("borrow location: {:?} lvalue: {:?} span: {:?}",
-               location, lvalue_span.0, lvalue_span.1);
-        self.check_if_path_is_moved(context, lvalue_span, flow_state);
-        self.check_for_conflicting_loans(context, location, bk, lvalue_span, flow_state);
-    }
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
@@ -697,64 +684,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             }
         }
     }
-
-    #[cfg(not_anymore)]
-    fn check_for_conflicting_loans(&mut self,
-                                   context: Context,
-                                   _location: Location,
-                                   _bk: BorrowKind,
-                                   lvalue_span: (&Lvalue<'gcx>, Span),
-                                   flow_state: &InProgress<'b, 'gcx>) {
-        // NOTE FIXME: The analogous code in old borrowck
-        // check_loans.rs is careful to iterate over every *issued*
-        // loan, as opposed to just the in scope ones.
-        //
-        // (Or if you prefer, all the *other* iterations over loans
-        // only consider loans that are in scope of some given
-        // region::Scope)
-        //
-        // The (currently skeletal) code here does not encode such a
-        // distinction, which means it is almost certainly over
-        // looking something.
-        //
-        // (It is probably going to reject code that should be
-        // accepted, I suspect, by treated issued-but-out-of-scope
-        // loans as issued-and-in-scope, and thus causing them to
-        // interfere with other loans.)
-        //
-        // However, I just want to get something running, especially
-        // since I am trying to move into new territory with NLL, so
-        // lets get this going first, and then address the issued vs
-        // in-scope distinction later.
-
-        let state = &flow_state.borrows;
-        let data = &state.base_results.operator().borrows();
-
-        debug!("check_for_conflicting_loans location: {:?}", _location);
-
-        // does any loan generated here conflict with a previously issued loan?
-        let mut loans_generated = 0;
-        for (g, gen) in state.elems_generated().map(|g| (g, &data[g])) {
-            loans_generated += 1;
-            for (i, issued) in state.elems_incoming().map(|i| (i, &data[i])) {
-                debug!("check_for_conflicting_loans gen: {:?} issued: {:?} conflicts: {}",
-                       (g, gen, self.base_path(&gen.lvalue),
-                        self.restrictions(&gen.lvalue).collect::<Vec<_>>()),
-                       (i, issued, self.base_path(&issued.lvalue),
-                        self.restrictions(&issued.lvalue).collect::<Vec<_>>()),
-                       self.conflicts_with(gen, issued));
-                if self.conflicts_with(gen, issued) {
-                    self.report_conflicting_borrow(context, lvalue_span, gen, issued);
-                }
-            }
-        }
-
-        // MIR statically ensures each statement gens *at most one*
-        // loan; mutual conflict (within a statement) can't arise.
-        //
-        // As safe-guard, assert that above property actually holds.
-        assert!(loans_generated <= 1);
-    } }
+}
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
     fn each_borrow_involving_path<F>(&mut self,
@@ -954,194 +884,6 @@ mod prefixes {
             }
         }
     }
-    }
-
-#[cfg(not_anymore)]
-mod restrictions {
-    use super::MirBorrowckCtxt;
-
-    use rustc::hir;
-    use rustc::ty::{self, TyCtxt};
-    use rustc::mir::{Lvalue, Mir, ProjectionElem};
-
-    pub(super) struct Restrictions<'c, 'tcx: 'c> {
-        mir: &'c Mir<'tcx>,
-        tcx: TyCtxt<'c, 'tcx, 'tcx>,
-        lvalue_stack: Vec<&'c Lvalue<'tcx>>,
-    }
-
-    impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
-        pub(super) fn restrictions<'d>(&self,
-                                       lvalue: &'d Lvalue<'gcx>)
-                                       -> Restrictions<'d, 'gcx> where 'b: 'd
-        {
-            let lvalue_stack = if self.has_restrictions(lvalue) { vec![lvalue] } else { vec![] };
-            Restrictions { lvalue_stack, mir: self.mir, tcx: self.tcx }
-        }
-
-        fn has_restrictions(&self, lvalue: &Lvalue<'gcx>) -> bool {
-            let mut cursor = lvalue;
-            loop {
-                let proj = match *cursor {
-                    Lvalue::Local(_) => return true,
-                    Lvalue::Static(_) => return false,
-                    Lvalue::Projection(ref proj) => proj,
-                };
-                match proj.elem {
-                    ProjectionElem::Index(..) |
-                    ProjectionElem::ConstantIndex { .. } |
-                    ProjectionElem::Downcast(..) |
-                    ProjectionElem::Subslice { .. } |
-                    ProjectionElem::Field(_/*field*/, _/*ty*/) => {
-                        cursor = &proj.base;
-                        continue;
-                    }
-                    ProjectionElem::Deref => {
-                        let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                        match ty.sty {
-                            ty::TyRawPtr(_) => {
-                                return false;
-                            }
-                            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                                // FIXME: do I need to check validity of
-                                // region here though? (I think the original
-                                // check_loans code did, like readme says)
-                                return false;
-                            }
-                            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                                cursor = &proj.base;
-                                continue;
-                            }
-                            ty::TyAdt(..) if ty.is_box() => {
-                                cursor = &proj.base;
-                                continue;
-                            }
-                            _ => {
-                                panic!("unknown type fed to Projection Deref.");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    impl<'c, 'tcx> Iterator for Restrictions<'c, 'tcx> {
-        type Item = &'c Lvalue<'tcx>;
-        fn next(&mut self) -> Option<Self::Item> {
-            'pop: loop {
-                let lvalue = match self.lvalue_stack.pop() {
-                    None => return None,
-                    Some(lvalue) => lvalue,
-                };
-
-                // `lvalue` may not be a restriction itself, but may
-                // hold one further down (e.g. we never return
-                // downcasts here, but may return a base of a
-                // downcast).
-                //
-                // Also, we need to enqueue any additional
-                // subrestrictions that it implies, since we can only
-                // return from from this call alone.
-
-                let mut cursor = lvalue;
-                'cursor: loop {
-                    let proj = match *cursor {
-                        Lvalue::Local(_) => return Some(cursor), // search yielded this leaf
-                        Lvalue::Static(_) => continue 'pop, // fruitless leaf; try next on stack
-                        Lvalue::Projection(ref proj) => proj,
-                    };
-
-                    match proj.elem {
-                        ProjectionElem::Field(_/*field*/, _/*ty*/) => {
-                            // FIXME: add union handling
-                            self.lvalue_stack.push(&proj.base);
-                            return Some(cursor);
-                        }
-                        ProjectionElem::Downcast(..) |
-                        ProjectionElem::Subslice { .. } |
-                        ProjectionElem::ConstantIndex { .. } |
-                        ProjectionElem::Index(_) => {
-                            cursor = &proj.base;
-                            continue 'cursor;
-                        }
-                        ProjectionElem::Deref => {
-                            // (handled below)
-                        }
-                    }
-
-                    assert_eq!(proj.elem, ProjectionElem::Deref);
-
-                    let ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
-                    match ty.sty {
-                        ty::TyRawPtr(_) => {
-                            // borrowck ignores raw ptrs; treat analogous to imm borrow
-                            continue 'pop;
-                        }
-                        // R-Deref-Imm-Borrowed
-                        ty::TyRef(_/*rgn*/, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                            // immutably-borrowed referents do not
-                            // have recursively-implied restrictions
-                            // (because preventing actions on `*LV`
-                            // does nothing about aliases like `*LV1`)
-
-                            // FIXME: do I need to check validity of
-                            // `_r` here though? (I think the original
-                            // check_loans code did, like the readme
-                            // says)
-
-                            // (And do I *really* not have to
-                            // recursively process the `base` as a
-                            // further search here? Leaving this `if
-                            // false` here as a hint to look at this
-                            // again later.
-                            //
-                            // Ah, it might be because the
-                            // restrictions are distinct from the path
-                            // substructure. Note that there is a
-                            // separate loop over the path
-                            // substructure in fn
-                            // each_borrow_involving_path, for better
-                            // or for worse.
-
-                            if false {
-                                cursor = &proj.base;
-                                continue 'cursor;
-                            } else {
-                                continue 'pop;
-                            }
-                        }
-
-                        // R-Deref-Mut-Borrowed
-                        ty::TyRef(_/*rgn*/, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                            // mutably-borrowed referents are
-                            // themselves restricted.
-
-                            // FIXME: do I need to check validity of
-                            // `_r` here though? (I think the original
-                            // check_loans code did, like the readme
-                            // says)
-
-                            // schedule base for future iteration.
-                            self.lvalue_stack.push(&proj.base);
-                            return Some(cursor); // search yielded interior node
-                        }
-
-                        // R-Deref-Send-Pointer
-                        ty::TyAdt(..) if ty.is_box() => {
-                            // borrowing interior of a box implies that
-                            // its base can no longer be mutated (o/w box
-                            // storage would be freed)
-                            self.lvalue_stack.push(&proj.base);
-                            return Some(cursor); // search yielded interior node
-                        }
-
-                        _ => panic!("unknown type fed to Projection Deref."),
-                    }
-                }
-            }
-        }
-    }
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
@@ -1319,26 +1061,6 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 }
 
 impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> {
-    // FIXME: needs to be able to express errors analogous to check_loans.rs
-    #[cfg(not_anymore)]
-    fn conflicts_with(&self, loan1: &BorrowData<'gcx>, loan2: &BorrowData<'gcx>) -> bool {
-        if loan1.compatible_with(loan2.kind) { return false; }
-
-        let loan2_base_path = self.base_path(&loan2.lvalue);
-        for restricted in self.restrictions(&loan1.lvalue) {
-            if restricted != loan2_base_path { continue; }
-            return true;
-        }
-
-        let loan1_base_path = self.base_path(&loan1.lvalue);
-        for restricted in self.restrictions(&loan2.lvalue) {
-            if restricted != loan1_base_path { continue; }
-            return true;
-        }
-
-        return false;
-    }
-
     // FIXME (#16118): function intended to allow the borrow checker
     // to be less precise in its handling of Box while still allowing
     // moves out of a Box. They should be removed when/if we stop
@@ -1518,28 +1240,8 @@ impl<BD> FlowInProgress<BD> where BD: BitDenotation {
         self.curr_state.subtract(&self.stmt_kill);
     }
 
-    #[allow(dead_code)]
-    fn elems_generated(&self) -> indexed_set::Elems<BD::Idx> {
-        let univ = self.base_results.sets().bits_per_block();
-        self.stmt_gen.elems(univ)
-    }
-
     fn elems_incoming(&self) -> indexed_set::Elems<BD::Idx> {
         let univ = self.base_results.sets().bits_per_block();
         self.curr_state.elems(univ)
-    }
-}
-
-impl<'tcx> BorrowData<'tcx> {
-    #[allow(dead_code)]
-    fn compatible_with(&self, bk: BorrowKind) -> bool {
-        match (self.kind, bk) {
-            (BorrowKind::Shared, BorrowKind::Shared) => true,
-
-            (BorrowKind::Mut, _) |
-            (BorrowKind::Unique, _) |
-            (_, BorrowKind::Mut) |
-            (_, BorrowKind::Unique) => false,
-        }
     }
 }
