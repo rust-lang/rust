@@ -108,6 +108,7 @@ struct Manifest {
     manifest_version: String,
     date: String,
     pkg: BTreeMap<String, Package>,
+    renames: BTreeMap<String, Rename>
 }
 
 #[derive(Serialize)]
@@ -115,6 +116,11 @@ struct Package {
     version: String,
     git_commit_hash: Option<String>,
     target: BTreeMap<String, Target>,
+}
+
+#[derive(Serialize)]
+struct Rename {
+    to: String,
 }
 
 #[derive(Serialize)]
@@ -236,6 +242,7 @@ impl Builder {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
             pkg: BTreeMap::new(),
+            renames: BTreeMap::new(),
         };
 
         self.package("rustc", &mut manifest.pkg, HOSTS);
@@ -244,13 +251,10 @@ impl Builder {
         self.package("rust-std", &mut manifest.pkg, TARGETS);
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
-        let rls_package_name = if self.rust_release == "nightly" {
-            "rls"
-        } else {
-            "rls-preview"
-        };
-        self.package(rls_package_name, &mut manifest.pkg, HOSTS);
+        self.package("rls-preview", &mut manifest.pkg, HOSTS);
         self.package("rust-analysis", &mut manifest.pkg, TARGETS);
+
+        manifest.renames.insert("rls".to_owned(), Rename { to: "rls-preview".to_owned() });
 
         let mut pkg = Package {
             version: self.cached_version("rust").to_string(),
@@ -287,7 +291,7 @@ impl Builder {
             }
 
             extensions.push(Component {
-                pkg: rls_package_name.to_string(),
+                pkg: "rls-preview".to_string(),
                 target: host.to_string(),
             });
             extensions.push(Component {
@@ -319,7 +323,7 @@ impl Builder {
         }
         manifest.pkg.insert("rust".to_string(), pkg);
 
-        return manifest
+        return manifest;
     }
 
     fn package(&mut self,
