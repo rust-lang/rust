@@ -452,6 +452,7 @@ impl Builder {
         cmd.arg("--no-tty")
             .arg("--yes")
             .arg("--passphrase-fd").arg("0")
+            .arg("--personal-digest-preferences").arg("SHA512")
             .arg("--armor")
             .arg("--output").arg(&asc)
             .arg("--detach-sign").arg(path)
