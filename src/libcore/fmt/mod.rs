@@ -1700,8 +1700,18 @@ impl<T: ?Sized + Debug> Debug for RefCell<T> {
                     .finish()
             }
             Err(_) => {
+                // The RefCell is mutably borrowed so we can't look at its value
+                // here. Show a placeholder instead.
+                struct BorrowedPlaceholder;
+
+                impl Debug for BorrowedPlaceholder {
+                    fn fmt(&self, f: &mut Formatter) -> Result {
+                        f.write_str("<borrowed>")
+                    }
+                }
+
                 f.debug_struct("RefCell")
-                    .field("value", &"<borrowed>")
+                    .field("value", &BorrowedPlaceholder)
                     .finish()
             }
         }
