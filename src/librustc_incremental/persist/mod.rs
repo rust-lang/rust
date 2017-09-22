@@ -15,7 +15,6 @@
 mod data;
 mod dirty_clean;
 mod fs;
-mod hash;
 mod load;
 mod preds;
 mod save;
