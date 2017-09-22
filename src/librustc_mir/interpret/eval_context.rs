@@ -1818,7 +1818,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                 let val = match val {
                     PrimVal::Bytes(0) => false,
                     PrimVal::Bytes(1) => true,
-                    // TODO: This seems a little overeager, should reading at bool type already be UB?
+                    // TODO: This seems a little overeager, should reading at bool type already be insta-UB?
                     _ => return err!(InvalidBool),
                 };
                 PrimVal::from_bool(val)
@@ -2235,10 +2235,6 @@ impl IntegerExt for layout::Integer {
             I128 => Size::from_bits(128),
         }
     }
-}
-
-pub fn is_inhabited<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.uninhabited_from(&mut HashMap::default(), tcx).is_empty()
 }
 
 /// FIXME: expose trans::monomorphize::resolve_closure

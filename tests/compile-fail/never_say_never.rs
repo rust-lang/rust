@@ -1,3 +1,6 @@
+// This should fail even without validation
+// compile-flags: -Zmir-emit-validate=0
+
 #![feature(never_type)]
 #![allow(unreachable_code)]
 

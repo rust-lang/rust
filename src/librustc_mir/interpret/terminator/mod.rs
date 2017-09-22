@@ -251,9 +251,6 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
                     _ => return err!(Unreachable),
                 };
                 let ty = sig.output();
-                if !eval_context::is_inhabited(self.tcx, ty) {
-                    return err!(Unreachable);
-                }
                 let layout = self.type_layout(ty)?;
                 M::call_intrinsic(self, instance, args, ret, ty, layout, target)?;
                 self.dump_local(ret);
