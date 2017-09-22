@@ -245,7 +245,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let load = bcx.load(
                         bcx.pointercast(llslot, cast_ty.llvm_type(bcx.ccx).ptr_to()),
-                        Some(self.fn_ty.ret.layout.align(bcx.ccx)));
+                        Some(self.fn_ty.ret.layout.align));
                     load
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
@@ -662,7 +662,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 llval = base::to_immediate(bcx, llval, arg.layout);
             } else if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
-                                 (align | Alignment::Packed(arg.layout.align(bcx.ccx)))
+                                 (align | Alignment::Packed(arg.layout.align))
                                     .non_abi());
             } else {
                 llval = bcx.load(llval, align.non_abi());
@@ -882,7 +882,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let src = self.trans_operand(bcx, src);
         let llty = src.layout.llvm_type(bcx.ccx);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
-        let align = src.layout.align(bcx.ccx).min(dst.layout.align(bcx.ccx));
+        let align = src.layout.align.min(dst.layout.align);
         src.val.store(bcx,
             LvalueRef::new_sized(cast_ptr, src.layout, Alignment::Packed(align)));
     }

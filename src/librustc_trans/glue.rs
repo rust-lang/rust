@@ -60,7 +60,7 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
 
             let i = layout.fields.count() - 1;
             let sized_size = layout.fields.offset(i).bytes();
-            let sized_align = layout.align(ccx).abi();
+            let sized_align = layout.align.abi();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
             let sized_size = C_usize(ccx, sized_size);

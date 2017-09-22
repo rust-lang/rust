@@ -566,7 +566,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
-    (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size(tcx).bytes())
+    (tcx, param_env).layout_of(ty).ok().map(|layout| layout.size.bytes())
 }
 
 /**

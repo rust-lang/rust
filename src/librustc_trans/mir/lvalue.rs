@@ -56,8 +56,8 @@ impl ops::BitOr for Alignment {
 
 impl<'a> From<TyLayout<'a>> for Alignment {
     fn from(layout: TyLayout) -> Self {
-        if let layout::Abi::Aggregate { packed: true, align, .. } = layout.abi {
-            Alignment::Packed(align)
+        if layout.is_packed() {
+            Alignment::Packed(layout.align)
         } else {
             Alignment::AbiAligned
         }
@@ -109,7 +109,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                   -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, layout);
         let tmp = bcx.alloca(
-            layout.llvm_type(bcx.ccx), name, layout.over_align(bcx.ccx));
+            layout.llvm_type(bcx.ccx), name, layout.over_align());
         Self::new_sized(tmp, layout, Alignment::AbiAligned)
     }
 
@@ -374,7 +374,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                         // than storing null to single target field.
                         let llptr = bcx.pointercast(self.llval, Type::i8(bcx.ccx).ptr_to());
                         let fill_byte = C_u8(bcx.ccx, 0);
-                        let (size, align) = self.layout.size_and_align(bcx.ccx);
+                        let (size, align) = self.layout.size_and_align();
                         let size = C_usize(bcx.ccx, size.bytes());
                         let align = C_u32(bcx.ccx, align.abi() as u32);
                         base::call_memset(bcx, llptr, fill_byte, size, align, false);
@@ -414,11 +414,11 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     }
 
     pub fn storage_live(&self, bcx: &Builder<'a, 'tcx>) {
-        bcx.lifetime_start(self.llval, self.layout.size(bcx.ccx));
+        bcx.lifetime_start(self.llval, self.layout.size);
     }
 
     pub fn storage_dead(&self, bcx: &Builder<'a, 'tcx>) {
-        bcx.lifetime_end(self.llval, self.layout.size(bcx.ccx));
+        bcx.lifetime_end(self.llval, self.layout.size);
     }
 }
 

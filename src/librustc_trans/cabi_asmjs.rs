@@ -19,7 +19,7 @@ use context::CrateContext;
 fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
     if ret.layout.is_aggregate() {
         if let Some(unit) = ret.layout.homogeneous_aggregate(ccx) {
-            let size = ret.layout.size(ccx);
+            let size = ret.layout.size;
             if unit.size == size {
                 ret.cast_to(Uniform {
                     unit,
@@ -29,13 +29,13 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
             }
         }
 
-        ret.make_indirect(ccx);
+        ret.make_indirect();
     }
 }
 
-fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty(arg: &mut ArgType) {
     if arg.layout.is_aggregate() {
-        arg.make_indirect(ccx);
+        arg.make_indirect();
         arg.attrs.set(ArgAttribute::ByVal);
     }
 }
@@ -47,6 +47,6 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg);
+        classify_arg_ty(arg);
     }
 }

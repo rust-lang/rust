@@ -14,7 +14,7 @@ use context::CrateContext;
 fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
                                      -> Option<Uniform> {
     arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
-        let size = arg.layout.size(ccx);
+        let size = arg.layout.size;
 
         // Ensure we have at most four uniquely addressable members.
         if size > unit.size.checked_mul(4, ccx).unwrap() {
@@ -47,7 +47,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         ret.cast_to(uniform);
         return;
     }
-    let size = ret.layout.size(ccx);
+    let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {
@@ -66,7 +66,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         });
         return;
     }
-    ret.make_indirect(ccx);
+    ret.make_indirect();
 }
 
 fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
@@ -78,7 +78,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
         arg.cast_to(uniform);
         return;
     }
-    let size = arg.layout.size(ccx);
+    let size = arg.layout.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {
@@ -97,7 +97,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
         });
         return;
     }
-    arg.make_indirect(ccx);
+    arg.make_indirect();
 }
 
 pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {

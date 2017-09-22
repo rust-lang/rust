@@ -320,12 +320,12 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
             };
             match &tcx.item_name(def_id)[..] {
                 "size_of" => {
-                    let size = layout_of(substs.type_at(0))?.size(tcx).bytes();
+                    let size = layout_of(substs.type_at(0))?.size.bytes();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(size,
                         tcx.sess.target.usize_ty).unwrap()))));
                 }
                 "min_align_of" => {
-                    let align = layout_of(substs.type_at(0))?.align(tcx).abi();
+                    let align = layout_of(substs.type_at(0))?.align.abi();
                     return Ok(mk_const(Integral(Usize(ConstUsize::new(align,
                         tcx.sess.target.usize_ty).unwrap()))));
                 }

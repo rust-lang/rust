@@ -28,25 +28,23 @@ fn is_homogeneous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       abi: ABI)
                                      -> Option<Uniform> {
     arg.layout.homogeneous_aggregate(ccx).and_then(|unit| {
-        let size = arg.layout.size(ccx);
-
         // ELFv1 only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
-        if (abi == ELFv1 && size > unit.size)
-                || size > unit.size.checked_mul(8, ccx).unwrap() {
+        if (abi == ELFv1 && arg.layout.size > unit.size)
+                || arg.layout.size > unit.size.checked_mul(8, ccx).unwrap() {
             return None;
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => size.bits() == 128
+            RegKind::Vector => arg.layout.size.bits() == 128
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: size
+                total: arg.layout.size
             })
         } else {
             None
@@ -62,7 +60,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
 
     // The ELFv1 ABI doesn't return aggregates in registers
     if abi == ELFv1 {
-        ret.make_indirect(ccx);
+        ret.make_indirect();
         return;
     }
 
@@ -71,7 +69,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         return;
     }
 
-    let size = ret.layout.size(ccx);
+    let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {
@@ -91,7 +89,7 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tc
         return;
     }
 
-    ret.make_indirect(ccx);
+    ret.make_indirect();
 }
 
 fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>, abi: ABI) {
@@ -105,7 +103,7 @@ fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tc
         return;
     }
 
-    let size = arg.layout.size(ccx);
+    let size = arg.layout.size;
     let (unit, total) = match abi {
         ELFv1 => {
             // In ELFv1, aggregates smaller than a doubleword should appear in

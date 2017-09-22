@@ -50,7 +50,7 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let size = layout.size(ccx).bytes();
+            let size = layout.size.bytes();
             let fill = Type::array(&Type::i8(ccx), size);
             match name {
                 None => {
@@ -84,8 +84,6 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                              layout: TyLayout<'tcx>) -> Vec<Type> {
     debug!("struct_llfields: {:#?}", layout);
-    let align = layout.align(ccx);
-    let size = layout.size(ccx);
     let field_count = layout.fields.count();
 
     let mut offset = Size::from_bytes(0);
@@ -105,27 +103,26 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         if layout.is_packed() {
             assert_eq!(padding.bytes(), 0);
         } else {
-            let field_align = field.align(ccx);
-            assert!(field_align.abi() <= align.abi(),
+            assert!(field.align.abi() <= layout.align.abi(),
                     "non-packed type has field with larger align ({}): {:#?}",
-                    field_align.abi(), layout);
+                    field.align.abi(), layout);
         }
 
-        offset = target_offset + field.size(ccx);
+        offset = target_offset + field.size;
     }
     if !layout.is_unsized() && field_count > 0 {
-        if offset > size {
+        if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}",
-                 layout, size, offset);
+                 layout, layout.size, offset);
         }
-        let padding = size - offset;
+        let padding = layout.size - offset;
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-               padding, offset, size);
+               padding, offset, layout.size);
         result.push(Type::array(&Type::i8(ccx), padding.bytes()));
         assert!(result.len() == 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
-               offset, size);
+               offset, layout.size);
     }
 
     result
@@ -133,16 +130,15 @@ fn struct_llfields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align(self)
+        self.layout_of(ty).align
     }
 
     pub fn size_of(&self, ty: Ty<'tcx>) -> Size {
-        self.layout_of(ty).size(self)
+        self.layout_of(ty).size
     }
 
     pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
-        let layout = self.layout_of(ty);
-        (layout.size(self), layout.align(self))
+        self.layout_of(ty).size_and_align()
     }
 }
 
@@ -150,7 +146,7 @@ pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
     fn immediate_llvm_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> Type;
-    fn over_align(&self, ccx: &CrateContext) -> Option<Align>;
+    fn over_align(&self) -> Option<Align>;
     fn llvm_field_index(&self, index: usize) -> u64;
 }
 
@@ -251,11 +247,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn over_align(&self, ccx: &CrateContext) -> Option<Align> {
-        let align = self.align(ccx);
-        let primitive_align = self.primitive_align(ccx);
-        if align != primitive_align {
-            Some(align)
+    fn over_align(&self) -> Option<Align> {
+        if self.align != self.primitive_align {
+            Some(self.align)
         } else {
             None
         }

@@ -50,27 +50,25 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let t = &ccx.sess().target.target;
             if t.options.is_like_osx || t.options.is_like_windows
                 || t.options.is_like_openbsd {
-                let size = fty.ret.layout.size(ccx);
-
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
                 if !t.options.is_like_msvc && is_single_fp_element(ccx, fty.ret.layout) {
-                    match size.bytes() {
+                    match fty.ret.layout.size.bytes() {
                         4 => fty.ret.cast_to(Reg::f32()),
                         8 => fty.ret.cast_to(Reg::f64()),
-                        _ => fty.ret.make_indirect(ccx)
+                        _ => fty.ret.make_indirect()
                     }
                 } else {
-                    match size.bytes() {
+                    match fty.ret.layout.size.bytes() {
                         1 => fty.ret.cast_to(Reg::i8()),
                         2 => fty.ret.cast_to(Reg::i16()),
                         4 => fty.ret.cast_to(Reg::i32()),
                         8 => fty.ret.cast_to(Reg::i64()),
-                        _ => fty.ret.make_indirect(ccx)
+                        _ => fty.ret.make_indirect()
                     }
                 }
             } else {
-                fty.ret.make_indirect(ccx);
+                fty.ret.make_indirect();
             }
         } else {
             fty.ret.extend_integer_width_to(32);
@@ -80,7 +78,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
         if arg.layout.is_aggregate() {
-            arg.make_indirect(ccx);
+            arg.make_indirect();
             arg.attrs.set(ArgAttribute::ByVal);
         } else {
             arg.extend_integer_width_to(32);
@@ -104,13 +102,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             // At this point we know this must be a primitive of sorts.
             let unit = arg.layout.homogeneous_aggregate(ccx).unwrap();
-            let size = arg.layout.size(ccx);
-            assert_eq!(unit.size, size);
+            assert_eq!(unit.size, arg.layout.size);
             if unit.kind == RegKind::Float {
                 continue;
             }
 
-            let size_in_regs = (size.bits() + 31) / 32;
+            let size_in_regs = (arg.layout.size.bits() + 31) / 32;
 
             if size_in_regs == 0 {
                 continue;
@@ -122,7 +119,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             free_regs -= size_in_regs;
 
-            if size.bits() <= 32 && unit.kind == RegKind::Integer {
+            if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
                 arg.attrs.set(ArgAttribute::InReg);
             }
 

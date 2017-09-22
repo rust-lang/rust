@@ -102,9 +102,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 if let OperandValue::Immediate(v) = tr_elem.val {
                     let align = dest.alignment.non_abi()
-                        .unwrap_or_else(|| tr_elem.layout.align(bcx.ccx));
+                        .unwrap_or(tr_elem.layout.align);
                     let align = C_i32(bcx.ccx, align.abi() as i32);
-                    let size = C_usize(bcx.ccx, dest.layout.size(bcx.ccx).bytes());
+                    let size = C_usize(bcx.ccx, dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if common::is_const_integral(v) && common::const_to_uint(v) == 0 {

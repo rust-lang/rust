@@ -1059,7 +1059,7 @@ fn trans_const_adt<'a, 'tcx>(
             assert_eq!(variant_index, 0);
             let contents = [
                 vals[0].llval,
-                padding(ccx, l.size(ccx) - ccx.size_of(vals[0].ty))
+                padding(ccx, l.size - ccx.size_of(vals[0].ty))
             ];
 
             Const::new(C_struct(ccx, &contents, l.is_packed()), t)
