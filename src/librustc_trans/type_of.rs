@@ -40,8 +40,13 @@ fn uncached_llvm_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let mut name = String::with_capacity(32);
             let printer = DefPathBasedNames::new(ccx.tcx(), true, true);
             printer.push_type_name(layout.ty, &mut name);
-            if let (&ty::TyAdt(def, _), Some(v)) = (&layout.ty.sty, layout.variant_index) {
-                write!(&mut name, "::{}", def.variants[v].name).unwrap();
+            match (&layout.ty.sty, &layout.variants) {
+                (&ty::TyAdt(def, _), &layout::Variants::Single { index }) => {
+                    if def.is_enum() && !def.variants.is_empty() {
+                        write!(&mut name, "::{}", def.variants[index].name).unwrap();
+                    }
+                }
+                _ => {}
             }
             Some(name)
         }
@@ -206,7 +211,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
 
         // Check the cache.
-        if let Some(&llty) = ccx.lltypes().borrow().get(&(self.ty, self.variant_index)) {
+        let variant_index = match self.variants {
+            layout::Variants::Single { index } => Some(index),
+            _ => None
+        };
+        if let Some(&llty) = ccx.lltypes().borrow().get(&(self.ty, variant_index)) {
             return llty;
         }
 
@@ -221,7 +230,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         let mut defer = None;
         let llty = if self.ty != normal_ty {
             let mut layout = ccx.layout_of(normal_ty);
-            if let Some(v) = self.variant_index {
+            if let Some(v) = variant_index {
                 layout = layout.for_variant(v);
             }
             layout.llvm_type(ccx)
@@ -230,7 +239,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         };
         debug!("--> mapped {:#?} to llty={:?}", self, llty);
 
-        ccx.lltypes().borrow_mut().insert((self.ty, self.variant_index), llty);
+        ccx.lltypes().borrow_mut().insert((self.ty, variant_index), llty);
 
         if let Some((mut llty, layout)) = defer {
             llty.set_struct_body(&struct_llfields(ccx, layout), layout.is_packed())

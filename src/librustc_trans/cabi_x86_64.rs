@@ -14,7 +14,7 @@
 use abi::{ArgType, ArgAttribute, CastTarget, FnType, LayoutExt, Reg, RegKind};
 use context::CrateContext;
 
-use rustc::ty::layout::{self, Layout, TyLayout, Size};
+use rustc::ty::layout::{self, TyLayout, Size};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum Class {
@@ -87,17 +87,15 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
             }
 
             layout::Abi::Aggregate { .. } => {
-                // FIXME(eddyb) have to work around Rust enums for now.
-                // Fix is either guarantee no data where there is no field,
-                // by putting variants in fields, or be more clever.
-                match layout.layout {
-                    Layout::General { .. } |
-                    Layout::NullablePointer { .. } => return Err(Memory),
-                    _ => {}
-                }
-                for i in 0..layout.fields.count() {
-                    let field_off = off + layout.fields.offset(i);
-                    classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                match layout.variants {
+                    layout::Variants::Single { .. } => {
+                        for i in 0..layout.fields.count() {
+                            let field_off = off + layout.fields.offset(i);
+                            classify(ccx, layout.field(ccx, i), cls, field_off)?;
+                        }
+                    }
+                    layout::Variants::Tagged { .. } |
+                    layout::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 

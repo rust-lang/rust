@@ -296,10 +296,13 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
     /// Obtain the actual discriminant of a value.
     pub fn trans_get_discr(self, bcx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
         let cast_to = bcx.ccx.layout_of(cast_to).immediate_llvm_type(bcx.ccx);
-        match self.layout.layout {
-            layout::Layout::Univariant { .. } |
-            layout::Layout::UntaggedUnion { .. } => return C_uint(cast_to, 0),
-            _ => {}
+        match self.layout.variants {
+            layout::Variants::Single { index } => {
+                assert_eq!(index, 0);
+                return C_uint(cast_to, 0);
+            }
+            layout::Variants::Tagged { .. } |
+            layout::Variants::NicheFilling { .. } => {},
         }
 
         let discr = self.project_field(bcx, 0);
@@ -307,8 +310,10 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::Abi::Scalar(discr) => discr,
             _ => bug!("discriminant not scalar: {:#?}", discr.layout)
         };
-        let (min, max) = match self.layout.layout {
-            layout::Layout::General { ref discr_range, .. } => (discr_range.start, discr_range.end),
+        let (min, max) = match self.layout.variants {
+            layout::Variants::Tagged { ref discr_range, .. } => {
+                (discr_range.start, discr_range.end)
+            }
             _ => (0, u64::max_value()),
         };
         let max_next = max.wrapping_add(1);
@@ -333,20 +338,20 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                 bcx.load(discr.llval, discr.alignment.non_abi())
             }
         };
-        match self.layout.layout {
-            layout::Layout::General { .. } => {
+        match self.layout.variants {
+            layout::Variants::Single { .. } => bug!(),
+            layout::Variants::Tagged { .. } => {
                 let signed = match discr_scalar {
                     layout::Int(_, signed) => signed,
                     _ => false
                 };
                 bcx.intcast(lldiscr, cast_to, signed)
             }
-            layout::Layout::NullablePointer { nndiscr, .. } => {
+            layout::Variants::NicheFilling { nndiscr, .. } => {
                 let cmp = if nndiscr == 0 { llvm::IntEQ } else { llvm::IntNE };
                 let zero = C_null(discr.layout.llvm_type(bcx.ccx));
                 bcx.intcast(bcx.icmp(cmp, lldiscr, zero), cast_to, false)
             }
-            _ => bug!("{} is not an enum", self.layout.ty)
         }
     }
 
@@ -356,13 +361,17 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         let to = self.layout.ty.ty_adt_def().unwrap()
             .discriminant_for_variant(bcx.tcx(), variant_index)
             .to_u128_unchecked() as u64;
-        match self.layout.layout {
-            layout::Layout::General { .. } => {
+        match self.layout.variants {
+            layout::Variants::Single { index } => {
+                assert_eq!(to, 0);
+                assert_eq!(variant_index, index);
+            }
+            layout::Variants::Tagged { .. } => {
                 let ptr = self.project_field(bcx, 0);
                 bcx.store(C_int(ptr.layout.llvm_type(bcx.ccx), to as i64),
                     ptr.llval, ptr.alignment.non_abi());
             }
-            layout::Layout::NullablePointer { nndiscr, .. } => {
+            layout::Variants::NicheFilling { nndiscr, .. } => {
                 if to != nndiscr {
                     let use_memset = match self.layout.abi {
                         layout::Abi::Scalar(_) => false,
@@ -384,9 +393,6 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
                             ptr.llval, ptr.alignment.non_abi());
                     }
                 }
-            }
-            _ => {
-                assert_eq!(to, 0);
             }
         }
     }

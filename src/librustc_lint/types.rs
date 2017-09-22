@@ -13,7 +13,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
-use rustc::ty::layout::{Layout, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf};
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
 use util::nodemap::FxHashSet;
@@ -753,7 +753,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                     bug!("failed to get layout for `{}`: {}", t, e)
                 });
 
-                if let Layout::General { ref variants, discr, .. } = layout.layout {
+                if let layout::Variants::Tagged { ref variants, discr, .. } = layout.variants {
                     let discr_size = discr.size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
