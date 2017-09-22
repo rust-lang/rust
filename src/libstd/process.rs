@@ -549,8 +549,7 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's standard input (stdin) handle
-    /// (file descriptor 0).
+    /// Configuration for the child process's standard input (stdin) handle.
     ///
     /// # Examples
     ///
@@ -570,8 +569,7 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's standard output (stdout) handle
-    /// (file descriptor 1).
+    /// Configuration for the child process's standard output (stdout) handle.
     ///
     /// # Examples
     ///
@@ -591,8 +589,7 @@ impl Command {
         self
     }
 
-    /// Configuration for the child process's standard error (stderr) handle
-    /// (file descriptor 2).
+    /// Configuration for the child process's standard error (stderr) handle.
     ///
     /// # Examples
     ///
