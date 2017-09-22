@@ -401,6 +401,7 @@ are:
   discuss Rust's internals
 * The [generated documentation for rust's compiler][gdfrustc]
 * The [rust reference][rr], even though it doesn't specifically talk about Rust's internals, it's a great resource nonetheless
+* [Rust Forge][rustforge] contains supplementary useful documentation
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
@@ -412,6 +413,7 @@ are:
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
 [rr]: https://doc.rust-lang.org/book/README.html
+[rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
 [rctd]: ./src/test/COMPILER_TESTS.md
