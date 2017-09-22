@@ -48,6 +48,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
+
 /// A type used as the error type for implementations of fallible conversion
 /// traits in cases where conversions cannot actually fail.
 ///
@@ -58,6 +60,12 @@
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Infallible {}
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl fmt::Display for Infallible {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "an error of this type can never exist".fmt(f)
+    }
+}
 /// A cheap reference-to-reference conversion. Used to convert a value to a
 /// reference value within generic code.
 ///
