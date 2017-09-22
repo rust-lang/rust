@@ -44,6 +44,7 @@ use rustc::hir;
 
 use rustc_const_math::ConstInt;
 use std::{mem, slice, vec};
+use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -299,6 +300,11 @@ impl Item {
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
         self.attrs.doc_value()
+    }
+    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
+    /// with newlines.
+    pub fn collapsed_doc_value(&self) -> Option<String> {
+        self.attrs.collapsed_doc_value()
     }
     pub fn is_crate(&self) -> bool {
         match self.inner {
@@ -564,9 +570,69 @@ impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
     }
 }
 
+/// A portion of documentation, extracted from a `#[doc]` attribute.
+///
+/// Each variant contains the line number within the complete doc-comment where the fragment
+/// starts, as well as the Span where the corresponding doc comment or attribute is located.
+///
+/// Included files are kept separate from inline doc comments so that proper line-number
+/// information can be given when a doctest fails. Sugared doc comments and "raw" doc comments are
+/// kept separate because of issue #42760.
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+pub enum DocFragment {
+    // FIXME #44229 (misdreavus): sugared and raw doc comments can be brought back together once
+    // hoedown is completely removed from rustdoc.
+    /// A doc fragment created from a `///` or `//!` doc comment.
+    SugaredDoc(usize, syntax_pos::Span, String),
+    /// A doc fragment created from a "raw" `#[doc=""]` attribute.
+    RawDoc(usize, syntax_pos::Span, String),
+    /// A doc fragment created from a `#[doc(include="filename")]` attribute. Contains both the
+    /// given filename and the file contents.
+    Include(usize, syntax_pos::Span, String, String),
+}
+
+impl DocFragment {
+    pub fn as_str(&self) -> &str {
+        match *self {
+            DocFragment::SugaredDoc(_, _, ref s) => &s[..],
+            DocFragment::RawDoc(_, _, ref s) => &s[..],
+            DocFragment::Include(_, _, _, ref s) => &s[..],
+        }
+    }
+
+    pub fn span(&self) -> syntax_pos::Span {
+        match *self {
+            DocFragment::SugaredDoc(_, span, _) |
+                DocFragment::RawDoc(_, span, _) |
+                DocFragment::Include(_, span, _, _) => span,
+        }
+    }
+}
+
+impl<'a> FromIterator<&'a DocFragment> for String {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = &'a DocFragment>
+    {
+        iter.into_iter().fold(String::new(), |mut acc, frag| {
+            if !acc.is_empty() {
+                acc.push('\n');
+            }
+            match *frag {
+                DocFragment::SugaredDoc(_, _, ref docs)
+                    | DocFragment::RawDoc(_, _, ref docs)
+                    | DocFragment::Include(_, _, _, ref docs) =>
+                    acc.push_str(docs),
+            }
+
+            acc
+        })
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Default)]
 pub struct Attributes {
-    pub doc_strings: Vec<String>,
+    pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
@@ -596,6 +662,47 @@ impl Attributes {
         None
     }
 
+    /// Reads a `MetaItem` from within an attribute, looks for whether it is a
+    /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
+    /// its expansion.
+    fn extract_include(mi: &ast::MetaItem)
+        -> Option<(String, String)>
+    {
+        mi.meta_item_list().and_then(|list| {
+            for meta in list {
+                if meta.check_name("include") {
+                    // the actual compiled `#[doc(include="filename")]` gets expanded to
+                    // `#[doc(include(file="filename", contents="file contents")]` so we need to
+                    // look for that instead
+                    return meta.meta_item_list().and_then(|list| {
+                        let mut filename: Option<String> = None;
+                        let mut contents: Option<String> = None;
+
+                        for it in list {
+                            if it.check_name("file") {
+                                if let Some(name) = it.value_str() {
+                                    filename = Some(name.to_string());
+                                }
+                            } else if it.check_name("contents") {
+                                if let Some(docs) = it.value_str() {
+                                    contents = Some(docs.to_string());
+                                }
+                            }
+                        }
+
+                        if let (Some(filename), Some(contents)) = (filename, contents) {
+                            Some((filename, contents))
+                        } else {
+                            None
+                        }
+                    });
+                }
+            }
+
+            None
+        })
+    }
+
     pub fn has_doc_flag(&self, flag: &str) -> bool {
         for attr in &self.other_attrs {
             if !attr.check_name("doc") { continue; }
@@ -610,10 +717,12 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(diagnostic: &::errors::Handler,
+                    attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
+        let mut doc_line = 0;
 
         let other_attrs = attrs.iter().filter_map(|attr| {
             attr.with_desugared_doc(|attr| {
@@ -621,7 +730,16 @@ impl Attributes {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {
                             // Extracted #[doc = "..."]
-                            doc_strings.push(value.to_string());
+                            let value = value.to_string();
+                            let line = doc_line;
+                            doc_line += value.lines().count();
+
+                            if attr.is_sugared_doc {
+                                doc_strings.push(DocFragment::SugaredDoc(line, attr.span, value));
+                            } else {
+                                doc_strings.push(DocFragment::RawDoc(line, attr.span, value));
+                            }
+
                             if sp.is_none() {
                                 sp = Some(attr.span);
                             }
@@ -633,6 +751,14 @@ impl Attributes {
                                 Err(e) => diagnostic.span_err(e.span, e.msg),
                             }
                             return None;
+                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
+                        {
+                            let line = doc_line;
+                            doc_line += contents.lines().count();
+                            doc_strings.push(DocFragment::Include(line,
+                                                                  attr.span,
+                                                                  filename,
+                                                                  contents));
                         }
                     }
                 }
@@ -650,7 +776,17 @@ impl Attributes {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
-        self.doc_strings.first().map(|s| &s[..])
+        self.doc_strings.first().map(|s| s.as_str())
+    }
+
+    /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
+    /// with newlines.
+    pub fn collapsed_doc_value(&self) -> Option<String> {
+        if !self.doc_strings.is_empty() {
+            Some(self.doc_strings.iter().collect())
+        } else {
+            None
+        }
     }
 }
 

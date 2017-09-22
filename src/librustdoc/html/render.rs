@@ -36,6 +36,7 @@ pub use self::ExternalLocation::*;
 
 #[cfg(stage0)]
 use std::ascii::AsciiExt;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashSet};
@@ -140,6 +141,23 @@ impl SharedContext {
         }
 
         Ok(())
+    }
+}
+
+impl SharedContext {
+    /// Returns whether the `collapse-docs` pass was run on this crate.
+    pub fn was_collapsed(&self) -> bool {
+        self.passes.contains("collapse-docs")
+    }
+
+    /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
+    /// `collapsed_doc_value` of the given item.
+    pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
+        if self.was_collapsed() {
+            item.collapsed_doc_value().map(|s| s.into())
+        } else {
+            item.doc_value().map(|s| s.into())
+        }
     }
 }
 
@@ -1817,6 +1835,9 @@ fn plain_summary_line(s: Option<&str>) -> String {
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
+    if let Some(ref name) = item.name {
+        info!("Documenting {}", name);
+    }
     document_stability(w, cx, item)?;
     let prefix = render_assoc_const_value(item);
     document_full(w, item, cx, &prefix)?;
@@ -1893,8 +1914,9 @@ fn render_assoc_const_value(item: &clean::Item) -> String {
 
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
                  cx: &Context, prefix: &str) -> fmt::Result {
-    if let Some(s) = item.doc_value() {
-        render_markdown(w, s, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
+    if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
+        debug!("Doc block: =====\n{}\n=====", s);
+        render_markdown(w, &*s, item.source.clone(), cx.render_type, prefix, &cx.shared)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock'>{}</div>", prefix)?;
     }
@@ -3326,8 +3348,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         }
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
-        if let Some(ref dox) = i.impl_item.doc_value() {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, cx.render_type))?;
+        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+            write!(w, "<div class='docblock'>{}</div>", Markdown(&*dox, cx.render_type))?;
         }
     }
 

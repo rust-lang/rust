@@ -665,6 +665,7 @@ pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
+    pub root_path: PathBuf,
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
@@ -680,6 +681,7 @@ impl<'a> ExtCtxt<'a> {
             parse_sess,
             ecfg,
             crate_root: None,
+            root_path: PathBuf::new(),
             resolver,
             resolve_err_count: 0,
             current_expansion: ExpansionData {
