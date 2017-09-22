@@ -55,6 +55,7 @@ use alloc::allocator;
 use any::TypeId;
 use cell;
 use char;
+use convert;
 use fmt::{self, Debug, Display};
 use mem::transmute;
 use num;
@@ -347,6 +348,12 @@ impl Error for char::ParseCharError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for convert::Infallible {
+    fn description(&self) -> &str {
+        "an error of this type can never exist"
+    }
+}
 
 // copied from any.rs
 impl Error + 'static {
