@@ -708,7 +708,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 ItemRibKind
             }
             FnKind::Method(_, sig, _, _) => {
-                self.visit_generics(&sig.generics);
                 MethodRibKind(!sig.decl.has_self())
             }
             FnKind::Closure(_) => ClosureRibKind(node_id),
@@ -1845,6 +1844,7 @@ impl<'a> Resolver<'a> {
 
                         for trait_item in trait_items {
                             this.check_proc_macro_attrs(&trait_item.attrs);
+                            this.visit_generics(&trait_item.generics);
 
                             match trait_item.node {
                                 TraitItemKind::Const(ref ty, ref default) => {
@@ -1861,7 +1861,7 @@ impl<'a> Resolver<'a> {
                                 }
                                 TraitItemKind::Method(ref sig, _) => {
                                     let type_parameters =
-                                        HasTypeParameters(&sig.generics,
+                                        HasTypeParameters(&trait_item.generics,
                                                           MethodRibKind(!sig.decl.has_self()));
                                     this.with_type_parameter_rib(type_parameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -2056,6 +2056,7 @@ impl<'a> Resolver<'a> {
                         this.with_current_self_type(self_type, |this| {
                             for impl_item in impl_items {
                                 this.check_proc_macro_attrs(&impl_item.attrs);
+                                this.visit_generics(&impl_item.generics);
                                 this.resolve_visibility(&impl_item.vis);
                                 match impl_item.node {
                                     ImplItemKind::Const(..) => {
@@ -2078,7 +2079,7 @@ impl<'a> Resolver<'a> {
                                         // We also need a new scope for the method-
                                         // specific type parameters.
                                         let type_parameters =
-                                            HasTypeParameters(&sig.generics,
+                                            HasTypeParameters(&impl_item.generics,
                                                             MethodRibKind(!sig.decl.has_self()));
                                         this.with_type_parameter_rib(type_parameters, |this| {
                                             visit::walk_impl_item(this, impl_item);

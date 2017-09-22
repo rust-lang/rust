@@ -77,13 +77,14 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext) -> Option<Si
 
 pub fn method_signature(id: NodeId,
                         ident: ast::Ident,
+                        generics: &ast::Generics,
                         m: &ast::MethodSig,
                         scx: &SaveContext)
                         -> Option<Signature> {
     if !scx.config.signatures {
         return None;
     }
-    make_method_signature(id, ident, m, scx).ok()
+    make_method_signature(id, ident, generics, m, scx).ok()
 }
 
 pub fn assoc_const_signature(id: NodeId,
@@ -895,6 +896,7 @@ fn make_assoc_const_signature(id: NodeId,
 
 fn make_method_signature(id: NodeId,
                          ident: ast::Ident,
+                         generics: &ast::Generics,
                          m: &ast::MethodSig,
                          scx: &SaveContext)
                          -> Result {
@@ -915,7 +917,7 @@ fn make_method_signature(id: NodeId,
 
     let mut sig = name_and_generics(text,
                                     0,
-                                    &m.generics,
+                                    generics,
                                     id,
                                     ident,
                                     scx)?;

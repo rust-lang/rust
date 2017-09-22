@@ -1522,6 +1522,7 @@ impl<'a> State<'a> {
 
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
+                            generics: &ast::Generics,
                             m: &ast::MethodSig,
                             vis: &ast::Visibility)
                             -> io::Result<()> {
@@ -1530,7 +1531,7 @@ impl<'a> State<'a> {
                       m.constness.node,
                       m.abi,
                       Some(ident),
-                      &m.generics,
+                      &generics,
                       vis)
     }
 
@@ -1550,7 +1551,7 @@ impl<'a> State<'a> {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.ident, sig, &ast::Visibility::Inherited)?;
+                self.print_method_sig(ti.ident, &ti.generics, sig, &ast::Visibility::Inherited)?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -1589,7 +1590,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("")?;
-                self.print_method_sig(ii.ident, sig, &ii.vis)?;
+                self.print_method_sig(ii.ident, &ii.generics, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }

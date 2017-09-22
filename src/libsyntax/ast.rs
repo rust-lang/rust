@@ -1174,7 +1174,6 @@ pub struct MethodSig {
     pub constness: Spanned<Constness>,
     pub abi: Abi,
     pub decl: P<FnDecl>,
-    pub generics: Generics,
 }
 
 /// Represents an item declaration within a trait declaration,
@@ -1186,6 +1185,7 @@ pub struct TraitItem {
     pub id: NodeId,
     pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: TraitItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
@@ -1207,6 +1207,7 @@ pub struct ImplItem {
     pub vis: Visibility,
     pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
+    pub generics: Generics,
     pub node: ImplItemKind,
     pub span: Span,
     /// See `Item::tokens` for what this is
