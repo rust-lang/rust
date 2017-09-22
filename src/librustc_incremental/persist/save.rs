@@ -89,6 +89,7 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 |e| encode_dep_graph_new(tcx, e));
     });
 
+    dirty_clean::check_dirty_clean_annotations(tcx);
     dirty_clean::check_dirty_clean_metadata(tcx,
                                             &prev_metadata_hashes,
                                             &current_metadata_hashes);

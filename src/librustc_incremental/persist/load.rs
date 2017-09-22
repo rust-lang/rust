@@ -23,7 +23,6 @@ use rustc_serialize::opaque::Decoder;
 use std::path::{Path};
 
 use super::data::*;
-use super::dirty_clean;
 use super::fs::*;
 use super::file_format;
 use super::work_product;
@@ -186,9 +185,6 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // dirty.
     reconcile_work_products(tcx, work_products, &clean_work_products);
 
-    dirty_clean::check_dirty_clean_annotations(tcx,
-                                               &serialized_dep_graph.nodes,
-                                               &dirty_raw_nodes);
     Ok(())
 }
 

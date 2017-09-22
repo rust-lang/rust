@@ -37,7 +37,7 @@ mod y {
 
     #[rustc_clean(label="TypeckTables", cfg="cfail2")]
     pub fn y() {
-        //[cfail2]~^ ERROR `TypeckTables(y::y)` not found in dep graph, but should be clean
+        //[cfail2]~^ ERROR `TypeckTables(y::y)` should be clean but is not
         x::x();
     }
 }
@@ -45,6 +45,6 @@ mod y {
 mod z {
     #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
     pub fn z() {
-        //[cfail2]~^ ERROR `TypeckTables(z::z)` found in dep graph, but should be dirty
+        //[cfail2]~^ ERROR `TypeckTables(z::z)` should be dirty but is not
     }
 }
