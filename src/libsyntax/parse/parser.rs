@@ -4920,7 +4920,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a method or a macro invocation in a trait impl.
     fn parse_impl_method(&mut self, vis: &Visibility, at_end: &mut bool)
-                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::Generics, ast::ImplItemKind)> {
+                         -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::Generics,
+                             ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
             // Method macro.
@@ -4947,7 +4948,8 @@ impl<'a> Parser<'a> {
             }
 
             let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
-            Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(), ast::ImplItemKind::Macro(mac)))
+            Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
+                ast::ImplItemKind::Macro(mac)))
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
