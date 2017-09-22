@@ -40,7 +40,7 @@ fn test_estimated_capacity() {
 }
 
 #[test]
-fn additional_slice_formatting() {
+fn test_additional_slice_formatting() {
     let a: &[u8] = &[1, 2, 7, 8, 120, 255];
     let b: &[f32] = &[3e5, 5e7];
 

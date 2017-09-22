@@ -1635,7 +1635,7 @@ impl<T: ?Sized> Debug for *mut T {
 macro_rules! additional_slice_formatting {
     ($($tr:ident),*) => {
         $(
-        #[unstable(feature = "additional_slice_formatting", issue = "1916")]
+        #[stable(feature = "additional_slice_formatting", since = "1.22.0")]
         impl<T: $tr> $tr for [T] {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut has_items = false;
