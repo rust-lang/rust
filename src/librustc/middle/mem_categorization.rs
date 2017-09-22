@@ -424,7 +424,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
 
         // Subtle: we can't do rvalue promotion analysis until the
-        // typeck false is complete, which means that you can't trust
+        // typeck phase is complete, which means that you can't trust
         // the rvalue lifetimes that result, but that's ok, since we
         // don't need to know those during type inference.
         let rvalue_promotable_map = None;
