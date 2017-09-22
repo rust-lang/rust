@@ -19,15 +19,15 @@ fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
     } else {
-        ret.make_indirect(ccx);
+        ret.make_indirect();
         *offset += ccx.tcx().data_layout.pointer_size;
     }
 }
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut Size) {
     let dl = &ccx.tcx().data_layout;
-    let size = arg.layout.size(ccx);
-    let align = arg.layout.align(ccx).max(dl.i32_align).min(dl.i64_align);
+    let size = arg.layout.size;
+    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.is_aggregate() {
         arg.cast_to(Uniform {

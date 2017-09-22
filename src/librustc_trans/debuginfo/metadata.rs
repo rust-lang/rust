@@ -430,16 +430,16 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
                 syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(0),
-            size: data_ptr_field.size(cx),
-            align: data_ptr_field.align(cx),
+            size: data_ptr_field.size,
+            align: data_ptr_field.align,
             flags: DIFlags::FlagArtificial,
         },
         MemberDescription {
             name: "vtable".to_string(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
-            size: vtable_field.size(cx),
-            align: vtable_field.align(cx),
+            size: vtable_field.size,
+            align: vtable_field.align,
             flags: DIFlags::FlagArtificial,
         },
     ];
@@ -946,7 +946,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 f.name.to_string()
             };
             let field = layout.field(cx, i);
-            let (size, align) = field.size_and_align(cx);
+            let (size, align) = field.size_and_align();
             MemberDescription {
                 name,
                 type_metadata: type_metadata(cx, field.ty, self.span),
@@ -1062,7 +1062,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                                       -> Vec<MemberDescription> {
         self.variant.fields.iter().enumerate().map(|(i, f)| {
             let field = self.layout.field(cx, i);
-            let (size, align) = field.size_and_align(cx);
+            let (size, align) = field.size_and_align();
             MemberDescription {
                 name: f.name.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
@@ -1153,8 +1153,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         name: "".to_string(),
                         type_metadata: variant_type_metadata,
                         offset: Size::from_bytes(0),
-                        size: variant.size(cx),
-                        align: variant.align(cx),
+                        size: variant.size,
+                        align: variant.align,
                         flags: DIFlags::FlagZero
                     }
                 }).collect()
@@ -1184,8 +1184,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             name: "".to_string(),
                             type_metadata: variant_type_metadata,
                             offset: Size::from_bytes(0),
-                            size: self.type_rep.size(cx),
-                            align: self.type_rep.align(cx),
+                            size: self.type_rep.size,
+                            align: self.type_rep.align,
                             flags: DIFlags::FlagZero
                         }
                     ]
@@ -1230,7 +1230,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         }
                         let inner_offset = offset - field_offset;
                         let field = layout.field(ccx, i);
-                        if inner_offset + size <= field.size(ccx) {
+                        if inner_offset + size <= field.size {
                             write!(name, "{}$", i).unwrap();
                             compute_field_path(ccx, name, field, inner_offset, size);
                         }
@@ -1248,8 +1248,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         name,
                         type_metadata: variant_type_metadata,
                         offset: Size::from_bytes(0),
-                        size: variant.size(cx),
-                        align: variant.align(cx),
+                        size: variant.size,
+                        align: variant.align,
                         flags: DIFlags::FlagZero
                     }
                 ]
@@ -1443,7 +1443,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => {}
     }
 
-    let (enum_type_size, enum_type_align) = type_rep.size_and_align(cx);
+    let (enum_type_size, enum_type_align) = type_rep.size_and_align();
 
     let enum_name = CString::new(enum_name).unwrap();
     let unique_type_id_str = CString::new(

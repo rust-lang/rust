@@ -757,15 +757,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                     let discr_size = discr.size(cx.tcx).bytes();
 
                     debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
-                      t, layout.size(cx.tcx).bytes(), layout);
+                      t, layout.size.bytes(), layout);
 
                     let (largest, slargest, largest_index) = enum_definition.variants
                         .iter()
                         .zip(variants)
                         .map(|(variant, variant_layout)| {
                             // Subtract the size of the enum discriminant
-                            let bytes = variant_layout.abi.size(cx.tcx)
-                                .bytes()
+                            let bytes = variant_layout.size.bytes()
                                 .saturating_sub(discr_size);
 
                             debug!("- variant `{}` is {} bytes large", variant.node.name, bytes);

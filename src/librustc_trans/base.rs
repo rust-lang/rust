@@ -406,15 +406,13 @@ pub fn memcpy_ty<'a, 'tcx>(
     layout: TyLayout<'tcx>,
     align: Option<Align>,
 ) {
-    let ccx = bcx.ccx;
-
-    let size = layout.size(ccx).bytes();
+    let size = layout.size.bytes();
     if size == 0 {
         return;
     }
 
-    let align = align.unwrap_or_else(|| layout.align(ccx));
-    call_memcpy(bcx, dst, src, C_usize(ccx, size), align);
+    let align = align.unwrap_or(layout.align);
+    call_memcpy(bcx, dst, src, C_usize(bcx.ccx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,

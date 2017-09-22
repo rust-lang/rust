@@ -16,11 +16,11 @@ use context::CrateContext;
 
 use rustc::ty::layout::{self, TyLayout};
 
-fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
-    if !ret.layout.is_aggregate() && ret.layout.size(ccx).bits() <= 64 {
+fn classify_ret_ty(ret: &mut ArgType) {
+    if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
-        ret.make_indirect(ccx);
+        ret.make_indirect();
     }
 }
 
@@ -41,32 +41,31 @@ fn is_single_fp_element<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
-    let size = arg.layout.size(ccx);
-    if !arg.layout.is_aggregate() && size.bits() <= 64 {
+    if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;
     }
 
     if is_single_fp_element(ccx, arg.layout) {
-        match size.bytes() {
+        match arg.layout.size.bytes() {
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),
-            _ => arg.make_indirect(ccx)
+            _ => arg.make_indirect()
         }
     } else {
-        match size.bytes() {
+        match arg.layout.size.bytes() {
             1 => arg.cast_to(Reg::i8()),
             2 => arg.cast_to(Reg::i16()),
             4 => arg.cast_to(Reg::i32()),
             8 => arg.cast_to(Reg::i64()),
-            _ => arg.make_indirect(ccx)
+            _ => arg.make_indirect()
         }
     }
 }
 
 pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret);
+        classify_ret_ty(&mut fty.ret);
     }
 
     for arg in &mut fty.args {

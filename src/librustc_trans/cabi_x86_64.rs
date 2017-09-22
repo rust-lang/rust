@@ -57,7 +57,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
                           cls: &mut [Class],
                           off: Size)
                           -> Result<(), Memory> {
-        if !off.is_abi_aligned(layout.align(ccx)) {
+        if !off.is_abi_aligned(layout.align) {
             if !layout.is_zst() {
                 return Err(Memory);
             }
@@ -106,7 +106,7 @@ fn classify_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &ArgType<'tcx>)
         Ok(())
     }
 
-    let n = ((arg.layout.size(ccx).bytes() + 7) / 8) as usize;
+    let n = ((arg.layout.size.bytes() + 7) / 8) as usize;
     if n > MAX_EIGHTBYTES {
         return Err(Memory);
     }
@@ -213,7 +213,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
         };
 
         if in_mem {
-            arg.make_indirect(ccx);
+            arg.make_indirect();
             if is_arg {
                 arg.attrs.set(ArgAttribute::ByVal);
             } else {
@@ -226,7 +226,7 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
             sse_regs -= needed_sse;
 
             if arg.layout.is_aggregate() {
-                let size = arg.layout.size(ccx);
+                let size = arg.layout.size;
                 arg.cast_to(cast_target(cls.as_ref().unwrap(), size))
             } else {
                 arg.extend_integer_width_to(32);
