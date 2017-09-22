@@ -1,3 +1,10 @@
+rustc (1.22.0-dev-20170921-1) unstable; urgency=low
+
+  * New upstream release.
+  * Set `ignore-git` to false in build configuration files.
+
+ -- Onur Aslan <onur@onur.im>  Fri, 22 Sep 2017 12:04:49 +0300
+
 rustc (1.21.0-dev-20170829-1) unstable; urgency=low
 
   * New upstream release.
