@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::{self, Layout, LayoutOf};
+use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
@@ -273,8 +273,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let ll_t_out = cast.immediate_llvm_type(bcx.ccx);
                         let llval = operand.immediate();
 
-                        if let Layout::General { ref discr_range, .. } = operand.layout.layout {
-                            if discr_range.end > discr_range.start {
+                        match operand.layout.variants {
+                            layout::Variants::Tagged {
+                                ref discr_range, ..
+                            } if discr_range.end > discr_range.start => {
                                 // We want `table[e as usize]` to not
                                 // have bound checks, and this is the most
                                 // convenient place to put the `assume`.
@@ -285,6 +287,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     C_uint(ll_t_in, discr_range.end)
                                 ));
                             }
+                            _ => {}
                         }
 
                         let signed = match operand.layout.abi {

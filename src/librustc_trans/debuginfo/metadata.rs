@@ -1090,7 +1090,7 @@ fn prepare_union_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 // offset of zero bytes).
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
-    type_rep: TyLayout<'tcx>,
+    layout: TyLayout<'tcx>,
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     span: Span,
@@ -1100,12 +1100,44 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
         let adt = &self.enum_type.ty_adt_def().unwrap();
-        match self.type_rep.layout {
-            layout::Layout::General { ref variants, .. } => {
+        match self.layout.variants {
+            layout::Variants::Single { .. } => {
+                assert!(adt.variants.len() <= 1);
+
+                if adt.variants.is_empty() {
+                    vec![]
+                } else {
+                    let (variant_type_metadata, member_description_factory) =
+                        describe_enum_variant(cx,
+                                              self.layout,
+                                              &adt.variants[0],
+                                              NoDiscriminant,
+                                              self.containing_scope,
+                                              self.span);
+
+                    let member_descriptions =
+                        member_description_factory.create_member_descriptions(cx);
+
+                    set_members_of_composite_type(cx,
+                                                  variant_type_metadata,
+                                                  &member_descriptions[..]);
+                    vec![
+                        MemberDescription {
+                            name: "".to_string(),
+                            type_metadata: variant_type_metadata,
+                            offset: Size::from_bytes(0),
+                            size: self.layout.size,
+                            align: self.layout.align,
+                            flags: DIFlags::FlagZero
+                        }
+                    ]
+                }
+            }
+            layout::Variants::Tagged { ref variants, .. } => {
                 let discriminant_info = RegularDiscriminant(self.discriminant_type_metadata
                     .expect(""));
                 (0..variants.len()).map(|i| {
-                    let variant = self.type_rep.for_variant(i);
+                    let variant = self.layout.for_variant(i);
                     let (variant_type_metadata, member_desc_factory) =
                         describe_enum_variant(cx,
                                               variant,
@@ -1129,45 +1161,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         flags: DIFlags::FlagZero
                     }
                 }).collect()
-            },
-            layout::Layout::Univariant => {
-                assert!(adt.variants.len() <= 1);
-
-                if adt.variants.is_empty() {
-                    vec![]
-                } else {
-                    let (variant_type_metadata, member_description_factory) =
-                        describe_enum_variant(cx,
-                                              self.type_rep,
-                                              &adt.variants[0],
-                                              NoDiscriminant,
-                                              self.containing_scope,
-                                              self.span);
-
-                    let member_descriptions =
-                        member_description_factory.create_member_descriptions(cx);
-
-                    set_members_of_composite_type(cx,
-                                                  variant_type_metadata,
-                                                  &member_descriptions[..]);
-                    vec![
-                        MemberDescription {
-                            name: "".to_string(),
-                            type_metadata: variant_type_metadata,
-                            offset: Size::from_bytes(0),
-                            size: self.type_rep.size,
-                            align: self.type_rep.align,
-                            flags: DIFlags::FlagZero
-                        }
-                    ]
-                }
             }
-            layout::Layout::NullablePointer {
+            layout::Variants::NicheFilling {
                 nndiscr,
                 discr,
                 ..
             } => {
-                let variant = self.type_rep.for_variant(nndiscr as usize);
+                let variant = self.layout.for_variant(nndiscr as usize);
                 // Create a description of the non-null variant
                 let (variant_type_metadata, member_description_factory) =
                     describe_enum_variant(cx,
@@ -1208,8 +1208,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 }
                 compute_field_path(cx, &mut name,
-                                   self.type_rep,
-                                   self.type_rep.fields.offset(0),
+                                   self.layout,
+                                   self.layout.fields.offset(0),
                                    discr.size(cx));
                 name.push_str(&adt.variants[(1 - nndiscr) as usize].name.as_str());
 
@@ -1224,8 +1224,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         flags: DIFlags::FlagZero
                     }
                 ]
-            },
-            ref l @ _ => bug!("Not an enum layout: {:#?}", l)
+            }
         }
     }
 }
@@ -1400,21 +1399,20 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let type_rep = cx.layout_of(enum_type);
+    let layout = cx.layout_of(enum_type);
 
-    let discriminant_type_metadata = match type_rep.layout {
-        layout::Layout::NullablePointer { .. } |
-        layout::Layout::Univariant { .. } => None,
-        layout::Layout::General { discr, .. } => Some(discriminant_type_metadata(discr)),
-        ref l @ _ => bug!("Not an enum layout: {:#?}", l)
+    let discriminant_type_metadata = match layout.variants {
+        layout::Variants::Single { .. } |
+        layout::Variants::NicheFilling { .. } => None,
+        layout::Variants::Tagged { discr, .. } => Some(discriminant_type_metadata(discr)),
     };
 
-    match (type_rep.abi, discriminant_type_metadata) {
+    match (layout.abi, discriminant_type_metadata) {
         (layout::Abi::Scalar(_), Some(discr)) => return FinalMetadata(discr),
         _ => {}
     }
 
-    let (enum_type_size, enum_type_align) = type_rep.size_and_align();
+    let (enum_type_size, enum_type_align) = layout.size_and_align();
 
     let enum_name = CString::new(enum_name).unwrap();
     let unique_type_id_str = CString::new(
@@ -1442,7 +1440,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_metadata,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type,
-            type_rep,
+            layout,
             discriminant_type_metadata,
             containing_scope,
             span,

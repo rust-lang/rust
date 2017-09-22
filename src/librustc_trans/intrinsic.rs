@@ -394,12 +394,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         },
 
         "discriminant_value" => {
-            match substs.type_at(0).sty {
-                ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    args[0].deref(bcx.ccx).trans_get_discr(bcx, ret_ty)
-                }
-                _ => C_null(llret_ty)
-            }
+            args[0].deref(bcx.ccx).trans_get_discr(bcx, ret_ty)
         }
 
         "align_offset" => {

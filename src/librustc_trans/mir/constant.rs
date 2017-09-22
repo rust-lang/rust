@@ -1037,8 +1037,26 @@ fn trans_const_adt<'a, 'tcx>(
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
     };
-    match l.layout {
-        layout::Layout::General { .. } => {
+    match l.variants {
+        layout::Variants::Single { index } => {
+            assert_eq!(variant_index, index);
+            if let layout::Abi::Vector { .. } = l.abi {
+                Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
+            } else if let layout::FieldPlacement::Union(_) = l.fields {
+                assert_eq!(variant_index, 0);
+                assert_eq!(vals.len(), 1);
+                let contents = [
+                    vals[0].llval,
+                    padding(ccx, l.size - ccx.size_of(vals[0].ty))
+                ];
+
+                Const::new(C_struct(ccx, &contents, l.is_packed()), t)
+            } else {
+                assert_eq!(variant_index, 0);
+                build_const_struct(ccx, l, vals, None)
+            }
+        }
+        layout::Variants::Tagged { .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
                     adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
@@ -1055,23 +1073,7 @@ fn trans_const_adt<'a, 'tcx>(
                 build_const_struct(ccx, l.for_variant(variant_index), vals, Some(discr))
             }
         }
-        layout::Layout::UntaggedUnion => {
-            assert_eq!(variant_index, 0);
-            let contents = [
-                vals[0].llval,
-                padding(ccx, l.size - ccx.size_of(vals[0].ty))
-            ];
-
-            Const::new(C_struct(ccx, &contents, l.is_packed()), t)
-        }
-        layout::Layout::Univariant => {
-            assert_eq!(variant_index, 0);
-            build_const_struct(ccx, l, vals, None)
-        }
-        layout::Layout::Vector => {
-            Const::new(C_vector(&vals.iter().map(|x| x.llval).collect::<Vec<_>>()), t)
-        }
-        layout::Layout::NullablePointer { nndiscr, .. } => {
+        layout::Variants::NicheFilling { nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 build_const_struct(ccx, l.for_variant(variant_index), vals, None)
             } else {
@@ -1080,7 +1082,6 @@ fn trans_const_adt<'a, 'tcx>(
                 Const::new(C_null(ccx.layout_of(t).llvm_type(ccx)), t)
             }
         }
-        _ => bug!("trans_const_adt: cannot handle type {} repreented as {:#?}", t, l)
     }
 }
 
