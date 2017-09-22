@@ -310,7 +310,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             hir_map::NodeVariant(_) |
             hir_map::NodeStructCtor(_) |
             hir_map::NodeField(_) |
-            hir_map::NodeTy(_) => {}
+            hir_map::NodeTy(_) |
+            hir_map::NodeMacroDef(_) => {}
             _ => {
                 bug!("found unexpected thingy in worklist: {}",
                      self.tcx.hir.node_to_string(search_item))

@@ -30,7 +30,7 @@ use rustc::traits;
 use rustc::util::common::{ErrorReported, time};
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
-use rustc_incremental::{self, IncrementalHashesMap};
+use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -175,7 +175,7 @@ pub fn compile_input(sess: &Session,
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
                            "indexing hir",
-                           || hir_map::map_crate(&mut hir_forest, &defs));
+                           || hir_map::map_crate(sess, cstore, &mut hir_forest, &defs));
 
         {
             let _ignore = hir_map.dep_graph.in_ignore();
@@ -218,7 +218,7 @@ pub fn compile_input(sess: &Session,
                                     &arenas,
                                     &crate_name,
                                     &outputs,
-                                    |tcx, analysis, incremental_hashes_map, rx, result| {
+                                    |tcx, analysis, rx, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -246,9 +246,7 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
-            let trans = phase_4_translate_to_llvm(tcx,
-                                                  incremental_hashes_map,
-                                                  rx);
+            let trans = phase_4_translate_to_llvm(tcx, rx);
 
             if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
@@ -921,7 +919,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                -> Result<R, CompileIncomplete>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             ty::CrateAnalysis,
-                            IncrementalHashesMap,
                             mpsc::Receiver<Box<Any + Send>>,
                             CompileResult) -> R
 {
@@ -1053,22 +1050,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                              tx,
                              output_filenames,
                              |tcx| {
-        let incremental_hashes_map =
-            time(time_passes,
-                 "compute_incremental_hashes_map",
-                 || rustc_incremental::compute_incremental_hashes_map(tcx));
-
         time(time_passes,
              "load_dep_graph",
-             || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
+             || rustc_incremental::load_dep_graph(tcx));
 
         time(time_passes,
              "stability checking",
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        try_with_f!(typeck::check_crate(tcx),
-                    (tcx, analysis, incremental_hashes_map, rx));
+        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, rx));
 
         time(time_passes,
              "const checking",
@@ -1112,7 +1103,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         // lint warnings and so on -- kindck used to do this abort, but
         // kindck is gone now). -nmatsakis
         if sess.err_count() > 0 {
-            return Ok(f(tcx, analysis, incremental_hashes_map, rx, sess.compile_status()));
+            return Ok(f(tcx, analysis, rx, sess.compile_status()));
         }
 
         time(time_passes, "death checking", || middle::dead::check_crate(tcx));
@@ -1123,14 +1114,13 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes, "lint checking", || lint::check_crate(tcx));
 
-        return Ok(f(tcx, analysis, incremental_hashes_map, rx, tcx.sess.compile_status()));
+        return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
     })
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           incremental_hashes_map: IncrementalHashesMap,
                                            rx: mpsc::Receiver<Box<Any + Send>>)
                                            -> write::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -1141,7 +1131,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let translation =
         time(time_passes, "translation", move || {
-            trans::trans_crate(tcx, incremental_hashes_map, rx)
+            trans::trans_crate(tcx, rx)
         });
 
     if tcx.sess.profile_queries() {

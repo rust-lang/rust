@@ -20,17 +20,16 @@ use rustc::session::config::{self, NoDebugInfo, OutputFilenames, OutputType, Pri
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
+use rustc::ich::Fingerprint;
 use rustc::middle::cstore::{LinkMeta, NativeLibrary, LibSource, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use {CrateTranslation, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
-use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel};
-use rustc_incremental::IncrementalHashesMap;
 use context::get_reloc_model;
 use llvm;
 
@@ -92,10 +91,9 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
 pub use self::rustc_trans_utils::link::{find_crate_name, filename_for_input,
                                         default_output_for_target, invalid_output_for_target};
 
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
-    let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
+pub fn build_link_meta(crate_hash: Fingerprint) -> LinkMeta {
     let r = LinkMeta {
-        crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
+        crate_hash: Svh::new(crate_hash.to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;

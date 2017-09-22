@@ -18,7 +18,6 @@ use rustc_data_structures::flock;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
 
-use IncrementalHashesMap;
 use super::data::*;
 use super::fs::*;
 use super::file_format;
@@ -28,49 +27,27 @@ use std::fmt::Debug;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    incremental_hashes_map: &'a IncrementalHashesMap,
     metadata_hashes: FxHashMap<DefId, Fingerprint>,
     crate_hashes: FxHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               incremental_hashes_map: &'a IncrementalHashesMap)
-               -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         HashContext {
             tcx,
-            incremental_hashes_map,
             metadata_hashes: FxHashMap(),
             crate_hashes: FxHashMap(),
         }
     }
 
-    pub fn is_hashable(tcx: TyCtxt, dep_node: &DepNode) -> bool {
-        match dep_node.kind {
-            DepKind::Krate |
-            DepKind::Hir |
-            DepKind::InScopeTraits |
-            DepKind::HirBody =>
-                true,
-            DepKind::MetaData => {
-                let def_id = dep_node.extract_def_id(tcx).unwrap();
-                !def_id.is_local()
-            }
-            _ => false,
-        }
-    }
-
     pub fn hash(&mut self, dep_node: &DepNode) -> Option<Fingerprint> {
         match dep_node.kind {
-            DepKind::Krate => {
-                Some(self.incremental_hashes_map[dep_node])
-            }
-
             // HIR nodes (which always come from our crate) are an input:
+            DepKind::Krate |
             DepKind::InScopeTraits |
             DepKind::Hir |
             DepKind::HirBody => {
-                Some(self.incremental_hashes_map[dep_node])
+                Some(self.tcx.dep_graph.fingerprint_of(dep_node).unwrap())
             }
 
             // MetaData from other crates is an *input* to us.
@@ -79,13 +56,11 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             // save it for others to use.
             DepKind::MetaData => {
                 let def_id = dep_node.extract_def_id(self.tcx).unwrap();
-                if !def_id.is_local() {
-                    Some(self.metadata_hash(def_id,
+                assert!(!def_id.is_local());
+
+                Some(self.metadata_hash(def_id,
                                         def_id.krate,
                                         |this| &mut this.metadata_hashes))
-                } else {
-                    None
-                }
             }
 
             _ => {

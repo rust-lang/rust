@@ -80,14 +80,28 @@ macro_rules! erase {
     ($x:tt) => ({})
 }
 
-macro_rules! anon_attr_to_bool {
-    (anon) => (true)
+macro_rules! is_anon_attr {
+    (anon) => (true);
+    ($attr:ident) => (false);
+}
+
+macro_rules! is_input_attr {
+    (input) => (true);
+    ($attr:ident) => (false);
+}
+
+macro_rules! contains_anon_attr {
+    ($($attr:ident),*) => ({$(is_anon_attr!($attr) | )* false});
+}
+
+macro_rules! contains_input_attr {
+    ($($attr:ident),*) => ({$(is_input_attr!($attr) | )* false});
 }
 
 macro_rules! define_dep_nodes {
     (<$tcx:tt>
     $(
-        [$($anon:ident)*]
+        [$($attr:ident),* ]
         $variant:ident $(( $($tuple_arg:tt),* ))*
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
@@ -105,7 +119,9 @@ macro_rules! define_dep_nodes {
                 match *self {
                     $(
                         DepKind :: $variant => {
-                            $(return !anon_attr_to_bool!($anon);)*
+                            if contains_anon_attr!($($attr),*) {
+                                return false;
+                            }
 
                             // tuple args
                             $({
@@ -126,15 +142,20 @@ macro_rules! define_dep_nodes {
                 }
             }
 
-            #[allow(unreachable_code)]
             #[inline]
-            pub fn is_anon<$tcx>(&self) -> bool {
+            pub fn is_anon(&self) -> bool {
                 match *self {
                     $(
-                        DepKind :: $variant => {
-                            $(return anon_attr_to_bool!($anon);)*
-                            false
-                        }
+                        DepKind :: $variant => { contains_anon_attr!($($attr),*) }
+                    )*
+                }
+            }
+
+            #[inline]
+            pub fn is_input(&self) -> bool {
+                match *self {
+                    $(
+                        DepKind :: $variant => { contains_input_attr!($($attr),*) }
                     )*
                 }
             }
@@ -366,6 +387,17 @@ impl DefId {
     }
 }
 
+impl DepKind {
+    #[inline]
+    pub fn fingerprint_needed_for_crate_hash(self) -> bool {
+        match self {
+            DepKind::HirBody |
+            DepKind::Krate => true,
+            _ => false,
+        }
+    }
+}
+
 define_dep_nodes!( <'tcx>
     // Represents the `Krate` as a whole (the `hir::Krate` value) (as
     // distinct from the krate module). This is basically a hash of
@@ -378,18 +410,17 @@ define_dep_nodes!( <'tcx>
     // suitable wrapper, you can use `tcx.dep_graph.ignore()` to gain
     // access to the krate, but you must remember to add suitable
     // edges yourself for the individual items that you read.
-    [] Krate,
-
-    // Represents the HIR node with the given node-id
-    [] Hir(DefId),
+    [input] Krate,
 
     // Represents the body of a function or method. The def-id is that of the
     // function/method.
-    [] HirBody(DefId),
+    [input] HirBody(DefId),
 
-    // Represents the metadata for a given HIR node, typically found
-    // in an extern crate.
-    [] MetaData(DefId),
+    // Represents the HIR node with the given node-id
+    [input] Hir(DefId),
+
+    // Represents metadata from an extern crate.
+    [input] MetaData(DefId),
 
     // Represents some artifact that we save to disk. Note that these
     // do not have a def-id as part of their identifier.
@@ -529,7 +560,7 @@ define_dep_nodes!( <'tcx>
     [] ExternCrate(DefId),
     [] LintLevels,
     [] Specializes { impl1: DefId, impl2: DefId },
-    [] InScopeTraits(DefIndex),
+    [input] InScopeTraits(DefIndex),
     [] ModuleExports(DefId),
     [] IsSanitizerRuntime(CrateNum),
     [] IsProfilerRuntime(CrateNum),

@@ -698,7 +698,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let hir::TraitItem {
-            id,
+            id: _,
             hir_id: _,
             name,
             ref attrs,
@@ -707,7 +707,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::TraitItem {
         } = *self;
 
         hcx.hash_hir_item_like(attrs, |hcx| {
-            id.hash_stable(hcx, hasher);
             name.hash_stable(hcx, hasher);
             attrs.hash_stable(hcx, hasher);
             node.hash_stable(hcx, hasher);
@@ -732,7 +731,7 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
         let hir::ImplItem {
-            id,
+            id: _,
             hir_id: _,
             name,
             ref vis,
@@ -743,7 +742,6 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for hir::ImplItem {
         } = *self;
 
         hcx.hash_hir_item_like(attrs, |hcx| {
-            id.hash_stable(hcx, hasher);
             name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
             defaultness.hash_stable(hcx, hasher);
@@ -1166,6 +1164,25 @@ for hir::TraitCandidate {
         });
     }
 }
+
+impl<'gcx> ToStableHashKey<StableHashingContext<'gcx>> for hir::TraitCandidate {
+    type KeyType = (DefPathHash, Option<(DefPathHash, hir::ItemLocalId)>);
+
+    fn to_stable_hash_key(&self,
+                          hcx: &StableHashingContext<'gcx>)
+                          -> Self::KeyType {
+        let hir::TraitCandidate {
+            def_id,
+            import_id,
+        } = *self;
+
+        let import_id = import_id.map(|node_id| hcx.node_to_hir_id(node_id))
+                                 .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
+                                                hir_id.local_id));
+        (hcx.def_path_hash(def_id), import_id)
+    }
+}
+
 
 impl_stable_hash_for!(struct hir::Freevar {
     def,

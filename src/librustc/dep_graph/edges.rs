@@ -123,6 +123,7 @@ impl DepGraphEdges {
             reads
         } = popped_node {
             debug_assert_eq!(node, key);
+            debug_assert!(!node.kind.is_input() || reads.is_empty());
 
             let target_id = self.get_or_create_node(node);
 
