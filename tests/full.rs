@@ -35,7 +35,7 @@ macro_rules! full_test {
             if let Some(path) = env::var_os("PATH") {
                 let mut paths = env::split_paths(&path).collect::<Vec<_>>();
                 let current_dir = env::current_dir().expect("could not determine current dir");
-                paths.push(current_dir.join("target/debug"));
+                paths.insert(0, current_dir.join("target/debug"));
                 let new_path = env::join_paths(paths).unwrap();
                 env::set_var("PATH", &new_path);
             } else {
@@ -75,7 +75,6 @@ macro_rules! full_test {
 
             assert!(success, "awk");
 
-            eprintln!("path: {}", out_file);
             success &= Command::new("git")
                 .args(&["diff", "--exit-code", out_file])
                 .env("PAGER", "")

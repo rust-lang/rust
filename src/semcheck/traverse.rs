@@ -963,7 +963,7 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                 (tcx.mk_fn_ptr(orig_sig), tcx.mk_fn_ptr(target_sig))
             },
             _ => {
-                unreachable!();
+                unreachable!()
             },
         };
 
