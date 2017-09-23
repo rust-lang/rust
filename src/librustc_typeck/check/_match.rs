@@ -787,11 +787,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for field in variant.fields
                 .iter()
                 .filter(|field| !used_fields.contains_key(&field.name)) {
-                struct_span_err!(tcx.sess, span, E0027,
-                                "pattern does not mention field `{}`",
-                                field.name)
-                                .span_label(span, format!("missing field `{}`", field.name))
-                                .emit();
+                let mut diag = struct_span_err!(tcx.sess, span, E0027,
+                                                "pattern does not mention field `{}`",
+                                                field.name);
+                diag.span_label(span, format!("missing field `{}`", field.name));
+                if variant.ctor_kind == CtorKind::Fn {
+                    diag.note("trying to match a tuple variant with a struct variant pattern");
+                }
+                diag.emit();
             }
         }
     }
