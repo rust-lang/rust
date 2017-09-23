@@ -28,12 +28,6 @@ error: this expression mutably borrows a mutable reference. Consider reborrowing
    |                     ^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:30:17
-   |
-30 |         let y : &mut &mut u32 = &mut &mut 2;
-   |                 ^^^^^^^^^^^^^
-
-error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:30:33
    |
 30 |         let y : &mut &mut u32 = &mut &mut 2;
@@ -46,6 +40,18 @@ error: generally you want to avoid `&mut &mut _` if possible
    |                 ^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
+  --> $DIR/mut_mut.rs:30:17
+   |
+30 |         let y : &mut &mut u32 = &mut &mut 2;
+   |                 ^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
+  --> $DIR/mut_mut.rs:35:38
+   |
+35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
+   |                                      ^^^^^^^^^^^^^^^^
+
+error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:35:17
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
@@ -56,12 +62,6 @@ error: generally you want to avoid `&mut &mut _` if possible
    |
 35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
    |                      ^^^^^^^^^^^^^
-
-error: generally you want to avoid `&mut &mut _` if possible
-  --> $DIR/mut_mut.rs:35:38
-   |
-35 |         let y : &mut &mut &mut u32 = &mut &mut &mut 2;
-   |                                      ^^^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:35:17
