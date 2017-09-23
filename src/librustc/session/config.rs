@@ -1373,20 +1373,20 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  always = always colorize output;
                                  never  = never colorize output", "auto|always|never"),
 
-        opt::flagopt("", "pretty",
-                     "Pretty-print the input instead of compiling;
-                      valid types are: `normal` (un-annotated source),
-                      `expanded` (crates expanded), or
-                      `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                     "TYPE"),
-        opt::flagopt("", "unpretty",
-                     "Present the input source, unstable (and less-pretty) variants;
-                      valid types are any of the types for `--pretty`, as well as:
-                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-                      `everybody_loops` (all function bodies replaced with `loop {}`),
-                      `hir` (the HIR), `hir,identified`, or
-                      `hir,typed` (HIR with types for each node).",
-                     "TYPE"),
+        opt::opt("", "pretty",
+                 "Pretty-print the input instead of compiling;
+                  valid types are: `normal` (un-annotated source),
+                  `expanded` (crates expanded), or
+                  `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+                 "TYPE"),
+        opt::opt("", "unpretty",
+                 "Present the input source, unstable (and less-pretty) variants;
+                  valid types are any of the types for `--pretty`, as well as:
+                  `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                  `everybody_loops` (all function bodies replaced with `loop {}`),
+                  `hir` (the HIR), `hir,identified`, or
+                  `hir,typed` (HIR with types for each node).",
+                 "TYPE"),
     ]);
     opts
 }

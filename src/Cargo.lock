@@ -46,8 +46,8 @@ dependencies = [
  "alloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
 ]
 
@@ -140,9 +140,9 @@ name = "bootstrap"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cmake 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.31 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1225,8 +1225,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1632,7 +1632,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "build_helper 0.1.0",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
 ]
 
@@ -1762,8 +1762,8 @@ name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 0.2.20 (registry+https://github.com/rust-lang/crates.io-index)",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "jobserver 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1826,8 +1826,8 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "html-diff 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2018,10 +2018,10 @@ dependencies = [
  "alloc_jemalloc 0.0.0",
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
+ "cc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "collections 0.0.0",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
- "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
