@@ -371,11 +371,13 @@ impl Attribute {
             let meta = mk_name_value_item_str(
                 Symbol::intern("doc"),
                 Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
-            if self.style == ast::AttrStyle::Outer {
-                f(&mk_attr_outer(self.span, self.id, meta))
+            let mut attr = if self.style == ast::AttrStyle::Outer {
+                mk_attr_outer(self.span, self.id, meta)
             } else {
-                f(&mk_attr_inner(self.span, self.id, meta))
-            }
+                mk_attr_inner(self.span, self.id, meta)
+            };
+            attr.is_sugared_doc = true;
+            f(&attr)
         } else {
             f(self)
         }
