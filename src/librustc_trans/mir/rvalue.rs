@@ -23,7 +23,7 @@ use base;
 use builder::Builder;
 use callee;
 use common::{self, val_ty};
-use common::{C_bool, C_u8, C_i32, C_u32, C_u64, C_null, C_usize, C_uint, C_big_integral};
+use common::{C_bool, C_u8, C_i32, C_u32, C_u64, C_null, C_usize, C_uint, C_uint_big};
 use consts;
 use monomorphize;
 use type_::Type;
@@ -289,7 +289,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
                                     llval,
-                                    C_uint(ll_t_in, discr_range.end)
+                                    C_uint_big(ll_t_in, discr_range.end)
                                 ));
                             }
                             _ => {}
@@ -807,7 +807,7 @@ fn cast_int_to_float(bcx: &Builder,
     if is_u128_to_f32 {
         // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
         // and for everything else LLVM's uitofp works just fine.
-        let max = C_big_integral(int_ty, MAX_F32_PLUS_HALF_ULP);
+        let max = C_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bcx.icmp(llvm::IntUGE, x, max);
         let infinity_bits = C_u32(bcx.ccx, ieee::Single::INFINITY.to_bits() as u32);
         let infinity = consts::bitcast(infinity_bits, float_ty);
@@ -934,8 +934,8 @@ fn cast_float_to_int(bcx: &Builder,
     // performed is ultimately up to the backend, but at least x86 does perform them.
     let less_or_nan = bcx.fcmp(llvm::RealULT, x, f_min);
     let greater = bcx.fcmp(llvm::RealOGT, x, f_max);
-    let int_max = C_big_integral(int_ty, int_max(signed, int_ty));
-    let int_min = C_big_integral(int_ty, int_min(signed, int_ty) as u128);
+    let int_max = C_uint_big(int_ty, int_max(signed, int_ty));
+    let int_min = C_uint_big(int_ty, int_min(signed, int_ty) as u128);
     let s0 = bcx.select(less_or_nan, int_min, fptosui_result);
     let s1 = bcx.select(greater, int_max, s0);
 

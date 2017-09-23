@@ -24,6 +24,7 @@ use rustc::session::{config, Session};
 
 use std::borrow::Cow;
 use std::ffi::CString;
+use std::ops::Range;
 use std::ptr;
 use syntax_pos::Span;
 
@@ -549,35 +550,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
 
-    pub fn load_range_assert(&self, ptr: ValueRef, lo: u64,
-                             hi: u64, signed: llvm::Bool,
-                             align: Option<Align>) -> ValueRef {
-        let value = self.load(ptr, align);
-
+    pub fn range_metadata(&self, load: ValueRef, range: Range<u128>) {
         unsafe {
-            let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(ptr));
-            let min = llvm::LLVMConstInt(t, lo, signed);
-            let max = llvm::LLVMConstInt(t, hi, signed);
+            let llty = val_ty(load);
+            let v = [
+                C_uint_big(llty, range.start),
+                C_uint_big(llty, range.end)
+            ];
 
-            let v = [min, max];
-
-            llvm::LLVMSetMetadata(value, llvm::MD_range as c_uint,
+            llvm::LLVMSetMetadata(load, llvm::MD_range as c_uint,
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx(),
                                                             v.as_ptr(),
                                                             v.len() as c_uint));
         }
-
-        value
     }
 
-    pub fn load_nonnull(&self, ptr: ValueRef, align: Option<Align>) -> ValueRef {
-        let value = self.load(ptr, align);
+    pub fn nonnull_metadata(&self, load: ValueRef) {
         unsafe {
-            llvm::LLVMSetMetadata(value, llvm::MD_nonnull as c_uint,
+            llvm::LLVMSetMetadata(load, llvm::MD_nonnull as c_uint,
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
         }
-
-        value
     }
 
     pub fn store(&self, val: ValueRef, ptr: ValueRef, align: Option<Align>) -> ValueRef {

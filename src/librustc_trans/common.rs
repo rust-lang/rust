@@ -178,9 +178,9 @@ pub fn C_uint(t: Type, i: u64) -> ValueRef {
     }
 }
 
-pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+pub fn C_uint_big(t: Type, u: u128) -> ValueRef {
     unsafe {
-        let words = [u as u64, u.wrapping_shr(64) as u64];
+        let words = [u as u64, (u >> 64) as u64];
         llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
     }
 }
