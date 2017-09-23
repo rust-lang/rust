@@ -5,7 +5,10 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
    |     ^^^^^^^^^^
    |
    = note: `-D int-plus-one` implied by `-D warnings`
-   = help: Consider reducing `x >= y + 1` or `x - 1 >= y` to `x > y`
+help: change `>= y + 1` to `> y` as shown
+   |
+10 |     x > y;
+   |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
   --> $DIR/int_plus_one.rs:11:5
@@ -13,7 +16,10 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
 11 |     y + 1 <= x;
    |     ^^^^^^^^^^
    |
-   = help: Consider reducing `x >= y + 1` or `x - 1 >= y` to `x > y`
+help: change `>= y + 1` to `> y` as shown
+   |
+11 |     y < x;
+   |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
   --> $DIR/int_plus_one.rs:13:5
@@ -21,7 +27,10 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
 13 |     x - 1 >= y;
    |     ^^^^^^^^^^
    |
-   = help: Consider reducing `x >= y + 1` or `x - 1 >= y` to `x > y`
+help: change `>= y + 1` to `> y` as shown
+   |
+13 |     x > y;
+   |     ^^^^^
 
 error: Unnecessary `>= y + 1` or `x - 1 >=`
   --> $DIR/int_plus_one.rs:14:5
@@ -29,7 +38,10 @@ error: Unnecessary `>= y + 1` or `x - 1 >=`
 14 |     y <= x - 1;
    |     ^^^^^^^^^^
    |
-   = help: Consider reducing `x >= y + 1` or `x - 1 >= y` to `x > y`
+help: change `>= y + 1` to `> y` as shown
+   |
+14 |     y < x;
+   |     ^^^^^
 
 error: aborting due to 4 previous errors
 

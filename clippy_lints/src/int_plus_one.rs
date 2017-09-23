@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 
-use utils::span_help_and_lint;
+use utils::{span_lint_and_then, snippet_opt};
 
 /// **What it does:** Checks for usage of `x >= y + 1` or `x - 1 >= y` (and `<=`) in a block
 ///
@@ -45,6 +45,11 @@ impl LintPass for IntPlusOne {
 // x + 1 <= y
 // x <= y - 1
 
+enum Side {
+    LHS,
+    RHS,
+}
+
 impl IntPlusOne {
     #[allow(cast_sign_loss)]
     fn check_lit(&self, lit: &Lit, target_value: i128) -> bool {
@@ -54,62 +59,125 @@ impl IntPlusOne {
         false
     }
 
-    fn check_binop(&self, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> bool {
+    fn check_binop(&self, cx: &EarlyContext, block: &Expr, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<(bool, Option<String>)> {
         match (binop, &lhs.node, &rhs.node) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
                 match (lhskind.node, &lhslhs.node, &lhsrhs.node) {
                     // `-1 + x`
-                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => self.check_lit(lit, -1),
+                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => {
+                        let recommendation = self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS);
+                        if self.check_lit(lit, -1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
                     // `x - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => self.check_lit(lit, 1),
-                    _ => false
+                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => {
+                        let recommendation = self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    }
+                    _ => ()
                 }
             },
             // case where `... >= y + 1` or `... >= 1 + y`
             (BinOpKind::Ge, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs)) if rhskind.node == BinOpKind::Add => {
                 match (&rhslhs.node, &rhsrhs.node) {
                     // `y + 1` and `1 + y`
-                    (&ExprKind::Lit(ref lit), _)|(_, &ExprKind::Lit(ref lit)) => self.check_lit(lit, 1),
-                    _ => false
+                    (&ExprKind::Lit(ref lit), _) => {
+                        let recommendation = self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
+                    (_, &ExprKind::Lit(ref lit)) => {
+                        let recommendation = self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
+                    _ => ()
                 }
             },
             // case where `x + 1 <= ...` or `1 + x <= ...`
             (BinOpKind::Le, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) if lhskind.node == BinOpKind::Add => {
                 match (&lhslhs.node, &lhsrhs.node) {
                     // `1 + x` and `x + 1`
-                    (&ExprKind::Lit(ref lit), _)|(_, &ExprKind::Lit(ref lit)) => self.check_lit(lit, 1),
-                    _ => false
+                    (&ExprKind::Lit(ref lit), _) => {
+                        let recommendation = self.generate_recommendation(cx, binop, lhsrhs, rhs, Side::LHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
+                    (_, &ExprKind::Lit(ref lit)) => {
+                        let recommendation = self.generate_recommendation(cx, binop, lhslhs, rhs, Side::LHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
+                    _ => ()
                 }
             },
             // case where `... >= y - 1` or `... >= -1 + y`
             (BinOpKind::Le, _, &ExprKind::Binary(ref rhskind, ref rhslhs, ref rhsrhs)) => {
                 match (rhskind.node, &rhslhs.node, &rhsrhs.node) {
                     // `-1 + y`
-                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => self.check_lit(lit, -1),
+                    (BinOpKind::Add, &ExprKind::Lit(ref lit), _) => {
+                        let recommendation = self.generate_recommendation(cx, binop, rhsrhs, lhs, Side::RHS);
+                        if self.check_lit(lit, -1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
                     // `y - 1`
-                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => self.check_lit(lit, 1),
-                    _ => false
+                    (BinOpKind::Sub, _, &ExprKind::Lit(ref lit)) => {
+                        let recommendation = self.generate_recommendation(cx, binop, rhslhs, lhs, Side::RHS);
+                        if self.check_lit(lit, 1) {
+                            self.emit_warning(cx, block, recommendation)
+                        }
+                    },
+                    _ => ()
                 }
             },
-            _ => false
+            _ => ()
         }
     }
 
+    fn generate_recommendation(&self, cx: &EarlyContext, binop: BinOpKind, node: &Expr, other_side: &Expr, side: Side) -> Option<String> {
+        let binop_string = match binop {
+            BinOpKind::Ge => ">",
+            BinOpKind::Le => "<",
+            _ => return None
+        };
+        if let Some(snippet) = snippet_opt(cx, node.span) {
+            if let Some(other_side_snippet) = snippet_opt(cx, other_side.span) {
+                let rec = match side {
+                    Side::LHS => Some(format!("{} {} {}", snippet, binop_string, other_side_snippet)),
+                    Side::RHS => Some(format!("{} {} {}", other_side_snippet, binop_string, snippet)),
+                };
+                return rec;
+            }
+        }
+        None
+    }
+
+    fn emit_warning(&self, cx: &EarlyContext, block: &Expr, recommendation: Option<String>) {
+        if let Some(rec) = recommendation {
+            span_lint_and_then(cx,
+                               INT_PLUS_ONE,
+                               block.span,
+                               "Unnecessary `>= y + 1` or `x - 1 >=`",
+                               |db| {
+                db.span_suggestion(block.span, "change `>= y + 1` to `> y` as shown", rec);
+            });
+        }
+    }
 }
 
 impl EarlyLintPass for IntPlusOne {
     fn check_expr(&mut self, cx: &EarlyContext, item: &Expr) {
         if let ExprKind::Binary(ref kind, ref lhs, ref rhs) = item.node {
-            if self.check_binop(kind.node, lhs, rhs) {
-                span_help_and_lint(
-                    cx,
-                    INT_PLUS_ONE,
-                    item.span,
-                    "Unnecessary `>= y + 1` or `x - 1 >=`",
-                    "Consider reducing `x >= y + 1` or `x - 1 >= y` to `x > y`",
-                );
-            }
+            self.check_binop(cx, item, kind.node, lhs, rhs);
         }
     }
 }
