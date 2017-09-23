@@ -1554,7 +1554,6 @@ dependencies = [
  "ar 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "arena 0.0.0",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "flate2 0.2.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "owning_ref 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",

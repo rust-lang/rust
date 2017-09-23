@@ -10,7 +10,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
-flate2 = "0.2"
 graphviz = { path = "../libgraphviz" }
 log = { version = "0.3", features = ["release_max_level_info"] }
 owning_ref = "0.3.3"
