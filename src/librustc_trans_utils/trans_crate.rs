@@ -153,7 +153,6 @@ impl MetadataLoaderTrait for NoLlvmMetadataLoader {
     }
 }
 
-#[allow(dead_code)]
 pub struct MetadataOnlyTransCrate;
 pub struct OngoingCrateTranslation {
     metadata: EncodedMetadata,

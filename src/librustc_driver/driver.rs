@@ -275,7 +275,11 @@ pub fn compile_input(sess: &Session,
                             phase5_result);
     phase5_result?;
 
-    phase_6_link_output::<DefaultTransCrate>(sess, &trans, &outputs);
+    // Run the linker on any artifacts that resulted from the LLVM run.
+    // This should produce either a finished executable or library.
+    time(sess.time_passes(), "linking", || {
+        DefaultTransCrate::link_binary(sess, &trans, &outputs)
+    });
 
     // Now that we won't touch anything in the incremental compilation directory
     // any more, we can finalize it (which involves renaming it)
@@ -1112,9 +1116,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx, T: TransCrate>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn phase_4_translate_to_llvm<'a, 'tcx, Trans: TransCrate>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            rx: mpsc::Receiver<Box<Any + Send>>)
-                                           -> <T as TransCrate>::OngoingCrateTranslation {
+                                           -> <Trans as TransCrate>::OngoingCrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
@@ -1123,7 +1127,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx, T: TransCrate>(tcx: TyCtxt<'a, 'tcx, 
 
     let translation =
         time(time_passes, "translation", move || {
-            T::trans_crate(tcx, rx)
+            Trans::trans_crate(tcx, rx)
         });
     if tcx.sess.profile_queries() {
         profile::dump("profile_queries".to_string())
@@ -1134,14 +1138,14 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx, T: TransCrate>(tcx: TyCtxt<'a, 'tcx, 
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
-pub fn phase_5_run_llvm_passes<T: TransCrate>(sess: &Session,
+pub fn phase_5_run_llvm_passes<Trans: TransCrate>(sess: &Session,
                                dep_graph: &DepGraph,
-                               trans: <T as TransCrate>::OngoingCrateTranslation)
-                               -> (CompileResult, <T as TransCrate>::TranslatedCrate) {
-    let trans = T::join_trans(trans, sess, dep_graph);
+                               trans: <Trans as TransCrate>::OngoingCrateTranslation)
+                               -> (CompileResult, <Trans as TransCrate>::TranslatedCrate) {
+    let trans = Trans::join_trans(trans, sess, dep_graph);
 
     if sess.opts.debugging_opts.incremental_info {
-        T::dump_incremental_data(&trans);
+        Trans::dump_incremental_data(&trans);
     }
 
     time(sess.time_passes(),
@@ -1149,16 +1153,6 @@ pub fn phase_5_run_llvm_passes<T: TransCrate>(sess: &Session,
          move || rustc_incremental::save_work_products(sess, dep_graph));
 
     (sess.compile_status(), trans)
-}
-
-/// Run the linker on any artifacts that resulted from the LLVM run.
-/// This should produce either a finished executable or library.
-pub fn phase_6_link_output<T: TransCrate>(sess: &Session,
-                           trans: &<T as TransCrate>::TranslatedCrate,
-                           outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", || {
-        T::link_binary(sess, trans, outputs)
-    });
 }
 
 fn escape_dep_filename(filename: &str) -> String {
