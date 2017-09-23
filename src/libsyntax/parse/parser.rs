@@ -2632,7 +2632,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (span, self.mk_unary(UnOp::Not, e))
+                (lo.to(span), self.mk_unary(UnOp::Not, e))
             }
             // Suggest `!` for bitwise negation when encountering a `~`
             token::Tilde => {
@@ -2645,26 +2645,26 @@ impl<'a> Parser<'a> {
                 err.span_label(span_of_tilde, "did you mean `!`?");
                 err.help("use `!` instead of `~` if you meant to perform bitwise negation");
                 err.emit();
-                (span, self.mk_unary(UnOp::Not, e))
+                (lo.to(span), self.mk_unary(UnOp::Not, e))
             }
             token::BinOp(token::Minus) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (span, self.mk_unary(UnOp::Neg, e))
+                (lo.to(span), self.mk_unary(UnOp::Neg, e))
             }
             token::BinOp(token::Star) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (span, self.mk_unary(UnOp::Deref, e))
+                (lo.to(span), self.mk_unary(UnOp::Deref, e))
             }
             token::BinOp(token::And) | token::AndAnd => {
                 self.expect_and()?;
                 let m = self.parse_mutability();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (span, ExprKind::AddrOf(m, e))
+                (lo.to(span), ExprKind::AddrOf(m, e))
             }
             token::Ident(..) if self.token.is_keyword(keywords::In) => {
                 self.bump();
@@ -2675,13 +2675,13 @@ impl<'a> Parser<'a> {
                 let blk = self.parse_block()?;
                 let span = blk.span;
                 let blk_expr = self.mk_expr(span, ExprKind::Block(blk), ThinVec::new());
-                (span, ExprKind::InPlace(place, blk_expr))
+                (lo.to(span), ExprKind::InPlace(place, blk_expr))
             }
             token::Ident(..) if self.token.is_keyword(keywords::Box) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
                 let (span, e) = self.interpolated_or_expr_span(e)?;
-                (span, ExprKind::Box(e))
+                (lo.to(span), ExprKind::Box(e))
             }
             _ => return self.parse_dot_or_call_expr(Some(attrs))
         };
