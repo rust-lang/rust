@@ -61,7 +61,7 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 #[cfg(windows)]
-extern crate gcc; // Used to locate MSVC, not gcc :)
+extern crate cc; // Used to locate MSVC
 
 pub use base::trans_crate;
 

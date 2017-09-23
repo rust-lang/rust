@@ -125,7 +125,7 @@ pub fn get_linker(sess: &Session) -> (String, Command, Vec<(OsString, OsString)>
 
 #[cfg(windows)]
 pub fn msvc_link_exe_cmd(sess: &Session) -> (Command, Vec<(OsString, OsString)>) {
-    use gcc::windows_registry;
+    use cc::windows_registry;
 
     let target = &sess.opts.target_triple;
     let tool = windows_registry::find_tool(target, "link.exe");

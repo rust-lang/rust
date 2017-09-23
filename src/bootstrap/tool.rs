@@ -126,6 +126,10 @@ pub fn prepare_tool_cargo(
         cargo.env("LIBZ_SYS_STATIC", "1");
     }
 
+    // if tools are using lzma we want to force the build script to build its
+    // own copy
+    cargo.env("LZMA_API_STATIC", "1");
+
     cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
     cargo.env("CFG_VERSION", build.rust_version());
 
