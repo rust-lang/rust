@@ -896,10 +896,13 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_use_of_moved(&mut self,
                            _context: Context,
                            (lvalue, span): (&Lvalue, Span)) {
-        let mut err = self.tcx.cannot_act_on_uninitialized_variable(
-            span, "use", &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME: add span_label for use of uninitialized variable
-        err.emit();
+        self.tcx.cannot_act_on_uninitialized_variable(span,
+                                                      "use",
+                                                      &self.describe_lvalue(lvalue),
+                                                      Origin::Mir)
+                .span_label(span, format!("use of possibly uninitialized `{}`",
+                                          self.describe_lvalue(lvalue)))
+                .emit();
     }
 
     fn report_move_out_while_borrowed(&mut self,
