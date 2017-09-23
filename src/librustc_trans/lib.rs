@@ -138,12 +138,13 @@ mod type_;
 mod type_of;
 mod value;
 
-use rustc::ty::{self, TyCtxt, CrateAnalysis};
+use std::sync::mpsc;
+use std::any::Any;
+use rustc::ty::{self, TyCtxt};
 use rustc::session::Session;
 use rustc::session::config::OutputFilenames;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
-use rustc_incremental::IncrementalHashesMap;
 
 pub struct LlvmTransCrate(());
 
@@ -162,17 +163,19 @@ impl rustc_trans_utils::trans_crate::TransCrate for LlvmTransCrate {
         box metadata::LlvmMetadataLoader
     }
 
-    fn provide(providers: &mut ty::maps::Providers) {
-        back::symbol_names::provide(providers);
+    fn provide_local(providers: &mut ty::maps::Providers) {
+        provide_local(providers);
+    }
+
+    fn provide_extern(providers: &mut ty::maps::Providers) {
+        provide_extern(providers);
     }
 
     fn trans_crate<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        analysis: CrateAnalysis,
-        incr_hashes_map: IncrementalHashesMap,
-        output_filenames: &OutputFilenames
+        rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Self::OngoingCrateTranslation {
-        base::trans_crate(tcx, analysis, incr_hashes_map, output_filenames)
+        base::trans_crate(tcx, rx)
     }
 
     fn join_trans(

@@ -94,6 +94,8 @@ use syntax::ast;
 
 use mir::lvalue::Alignment;
 
+pub use rustc_trans_utils::find_exported_symbols;
+
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
@@ -887,7 +889,6 @@ fn iter_globals(llmod: llvm::ModuleRef) -> ValueIter {
 pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              rx: mpsc::Receiver<Box<Any + Send>>)
                              -> OngoingCrateTranslation {
-    use rustc_trans_utils::find_exported_symbols;
 
     check_for_rustc_errors_attr(tcx);
 

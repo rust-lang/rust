@@ -21,10 +21,12 @@
 
 #![feature(box_syntax)]
 
+use std::any::Any;
 use std::io::prelude::*;
 use std::io::{self, Cursor};
 use std::fs::File;
 use std::path::Path;
+use std::sync::mpsc;
 
 use owning_ref::{ErasedBoxRef, OwningRef};
 use ar::{Archive, Builder, Header};
@@ -35,13 +37,12 @@ use syntax::symbol::Symbol;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::Session;
 use rustc::session::config::{CrateType, OutputFilenames};
-use rustc::ty::{CrateAnalysis, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader as MetadataLoaderTrait;
-use rustc::dep_graph::DepGraph;
+use rustc::dep_graph::{DepGraph, DepNode, DepKind};
 use rustc_back::target::Target;
-use rustc_incremental::IncrementalHashesMap;
 use link::{build_link_meta, out_filename};
 
 pub trait TransCrate {
@@ -50,12 +51,11 @@ pub trait TransCrate {
     type TranslatedCrate;
 
     fn metadata_loader() -> Box<MetadataLoaderTrait>;
-    fn provide(_providers: &mut Providers);
+    fn provide_local(_providers: &mut Providers);
+    fn provide_extern(_providers: &mut Providers);
     fn trans_crate<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        analysis: CrateAnalysis,
-        incr_hashes_map: IncrementalHashesMap,
-        output_filenames: &OutputFilenames
+        rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Self::OngoingCrateTranslation;
     fn join_trans(
         trans: Self::OngoingCrateTranslation,
@@ -77,15 +77,17 @@ impl TransCrate for DummyTransCrate {
         box DummyMetadataLoader(())
     }
 
-    fn provide(_providers: &mut Providers) {
-        bug!("DummyTransCrate::provide");
+    fn provide_local(_providers: &mut Providers) {
+        bug!("DummyTransCrate::provide_local");
+    }
+
+    fn provide_extern(_providers: &mut Providers) {
+        bug!("DummyTransCrate::provide_extern");
     }
 
     fn trans_crate<'a, 'tcx>(
         _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        _analysis: CrateAnalysis,
-        _incr_hashes_map: IncrementalHashesMap,
-        _output_filenames: &OutputFilenames
+        _rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Self::OngoingCrateTranslation {
         bug!("DummyTransCrate::trans_crate");
     }
@@ -176,16 +178,18 @@ impl TransCrate for MetadataOnlyTransCrate {
         box NoLlvmMetadataLoader
     }
 
-    fn provide(_providers: &mut Providers) {}
+    fn provide_local(_providers: &mut Providers) {}
+    fn provide_extern(_providers: &mut Providers) {}
 
     fn trans_crate<'a, 'tcx>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        analysis: CrateAnalysis,
-        incr_hashes_map: IncrementalHashesMap,
-        _output_filenames: &OutputFilenames,
+        _rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Self::OngoingCrateTranslation {
-        let link_meta = build_link_meta(&incr_hashes_map);
-        let exported_symbols = ::find_exported_symbols(tcx, &analysis.reachable);
+        let crate_hash = tcx.dep_graph
+                        .fingerprint_of(&DepNode::new_no_params(DepKind::Krate))
+                        .unwrap();
+        let link_meta = build_link_meta(crate_hash);
+        let exported_symbols = ::find_exported_symbols(tcx);
         let (metadata, _hashes) = tcx.encode_metadata(&link_meta, &exported_symbols);
 
         OngoingCrateTranslation {

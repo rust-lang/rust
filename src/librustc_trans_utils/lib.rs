@@ -38,12 +38,12 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
-extern crate rustc_incremental;
 extern crate syntax;
 extern crate syntax_pos;
 
 use rustc::ty::TyCtxt;
 use rustc::hir;
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir::map as hir_map;
 use rustc::util::nodemap::NodeSet;
 
@@ -60,8 +60,8 @@ pub mod trans_crate;
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
-    reachable.iter().cloned().filter(|&id| {
+pub fn find_exported_symbols(tcx: TyCtxt) -> NodeSet {
+    tcx.reachable_set(LOCAL_CRATE).0.iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:

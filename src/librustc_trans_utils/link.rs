@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::ich::Fingerprint;
 use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
 use rustc::middle::cstore::{self, LinkMeta};
-use rustc::dep_graph::{DepKind, DepNode};
 use rustc::hir::svh::Svh;
-use rustc_incremental::IncrementalHashesMap;
 use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax_pos::Span;
@@ -51,10 +50,9 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
-    let krate_dep_node = &DepNode::new_no_params(DepKind::Krate);
+pub fn build_link_meta(crate_hash: Fingerprint) -> LinkMeta {
     let r = LinkMeta {
-        crate_hash: Svh::new(incremental_hashes_map[krate_dep_node].to_smaller_hash()),
+        crate_hash: Svh::new(crate_hash.to_smaller_hash()),
     };
     info!("{:?}", r);
     return r;
