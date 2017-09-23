@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "core 0.0.0",
  "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1987,7 +1987,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "collections 0.0.0",
- "compiler_builtins 0.0.0",
+ "compiler_builtins 0.1.0",
  "core 0.0.0",
  "gcc 0.3.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.0.0",
