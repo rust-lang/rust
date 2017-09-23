@@ -94,7 +94,7 @@ use syntax::ast;
 
 use mir::lvalue::Alignment;
 
-pub use rustc_trans_utils::find_exported_symbols;
+pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -657,20 +657,6 @@ pub fn set_link_section(ccx: &CrateContext,
         unsafe {
             let buf = CString::new(sect.as_str().as_bytes()).unwrap();
             llvm::LLVMSetSection(llval, buf.as_ptr());
-        }
-    }
-}
-
-// check for the #[rustc_error] annotation, which forces an
-// error in trans. This is used to write compile-fail tests
-// that actually test that compilation succeeds without
-// reporting an error.
-fn check_for_rustc_errors_attr(tcx: TyCtxt) {
-    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
-        let main_def_id = tcx.hir.local_def_id(id);
-
-        if tcx.has_attr(main_def_id, "rustc_error") {
-            tcx.sess.span_fatal(span, "compilation successful");
         }
     }
 }

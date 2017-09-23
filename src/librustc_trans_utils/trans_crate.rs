@@ -192,6 +192,11 @@ impl TransCrate for MetadataOnlyTransCrate {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Self::OngoingCrateTranslation {
+        ::check_for_rustc_errors_attr(tcx);
+        let _ = tcx.link_args(LOCAL_CRATE);
+        let _ = tcx.native_libraries(LOCAL_CRATE);
+        tcx.sess.abort_if_errors();
+
         let crate_hash = tcx.dep_graph
                         .fingerprint_of(&DepNode::new_no_params(DepKind::Krate))
                         .unwrap();

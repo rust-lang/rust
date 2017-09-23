@@ -52,6 +52,20 @@ use syntax::attr;
 pub mod link;
 pub mod trans_crate;
 
+/// check for the #[rustc_error] annotation, which forces an
+/// error in trans. This is used to write compile-fail tests
+/// that actually test that compilation succeeds without
+/// reporting an error.
+pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
+    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
+        let main_def_id = tcx.hir.local_def_id(id);
+
+        if tcx.has_attr(main_def_id, "rustc_error") {
+            tcx.sess.span_fatal(span, "compilation successful");
+        }
+    }
+}
+
 /// The context provided lists a set of reachable ids as calculated by
 /// middle::reachable, but this contains far more ids and symbols than we're
 /// actually exposing from the object file. This function will filter the set in
