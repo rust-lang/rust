@@ -1640,18 +1640,18 @@ macro_rules! additional_slice_formatting {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut has_items = false;
 
-                write!(f, "[")?;
+                f.write_str("[")?;
 
-                for o in self.iter() {
+                for i in self.iter() {
                     if has_items {
-                        write!(f, ", ")?;
+                        f.write_str(", ")?;
                     }
 
-                    <T as $tr>::fmt(o, f)?;
+                    <T as $tr>::fmt(i, f)?;
                     has_items = true;
                 }
 
-                write!(f, "]")?;
+                f.write_str("]")?;
 
                 Ok(())
             }
