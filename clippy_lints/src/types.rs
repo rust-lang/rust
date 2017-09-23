@@ -223,7 +223,7 @@ fn check_ty(cx: &LateContext, ast_ty: &hir::Ty, is_local: bool) {
                         let ltopt = if lt.is_elided() {
                             "".to_owned()
                         } else {
-                            format!("{} ", lt.name.as_str())
+                            format!("{} ", lt.name.name().as_str())
                         };
                         let mutopt = if *mutbl == Mutability::MutMutable {
                             "mut "
