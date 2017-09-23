@@ -181,6 +181,7 @@
 
 use cmp::Ordering;
 use fmt::{self, Debug, Display};
+use hash::{Hash, Hasher};
 use marker::Unsize;
 use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
@@ -872,7 +873,7 @@ impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     #[inline]
     fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
-        self.borrow().partial_cmp(&*other.borrow())
+        self.borrow().partial_cmp(&other.borrow())
     }
 
     #[inline]
@@ -900,7 +901,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 impl<T: ?Sized + Ord> Ord for RefCell<T> {
     #[inline]
     fn cmp(&self, other: &RefCell<T>) -> Ordering {
-        self.borrow().cmp(&*other.borrow())
+        self.borrow().cmp(&other.borrow())
     }
 }
 
@@ -1032,6 +1033,61 @@ impl<'a, T: ?Sized + fmt::Display> fmt::Display for Ref<'a, T> {
     }
 }
 
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Hash> Hash for Ref<'a, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + PartialEq> PartialEq for Ref<'a, T> {
+    #[inline]
+    fn eq(&self, other: &Ref<T>) -> bool {
+        self.value == other.value
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Eq> Eq for Ref<'a, T> { }
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Ord> Ord for Ref<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &Ref<T>) -> Ordering {
+        self.value.cmp(other.value)
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + PartialOrd> PartialOrd for Ref<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Ref<T>) -> Option<Ordering> {
+        self.value.partial_cmp(&other.value)
+    }
+
+    #[inline]
+    fn lt(&self, other: &Ref<T>) -> bool {
+        self.value < other.value
+    }
+
+    #[inline]
+    fn le(&self, other: &Ref<T>) -> bool {
+        self.value <= other.value
+    }
+
+    #[inline]
+    fn gt(&self, other: &Ref<T>) -> bool {
+        self.value > other.value
+    }
+
+    #[inline]
+    fn ge(&self, other: &Ref<T>) -> bool {
+        self.value >= other.value
+    }
+}
+
 impl<'b, T: ?Sized> RefMut<'b, T> {
     /// Make a new `RefMut` for a component of the borrowed data, e.g. an enum
     /// variant.
@@ -1128,6 +1184,61 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 impl<'a, T: ?Sized + fmt::Display> fmt::Display for RefMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.value.fmt(f)
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Hash> Hash for RefMut<'a, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + PartialEq> PartialEq for RefMut<'a, T> {
+    #[inline]
+    fn eq(&self, other: &RefMut<T>) -> bool {
+        self.value == other.value
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Eq> Eq for RefMut<'a, T> { }
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + Ord> Ord for RefMut<'a, T> {
+    #[inline]
+    fn cmp(&self, other: &RefMut<T>) -> Ordering {
+        self.value.cmp(&other.value)
+    }
+}
+
+#[stable(feature = "std_guard_impls_ext", since = "1.23.0")]
+impl<'a, T: ?Sized + PartialOrd> PartialOrd for RefMut<'a, T> {
+    #[inline]
+    fn partial_cmp(&self, other: &RefMut<T>) -> Option<Ordering> {
+        self.value.partial_cmp(&other.value)
+    }
+
+    #[inline]
+    fn lt(&self, other: &RefMut<T>) -> bool {
+        *self.value < *other.value
+    }
+
+    #[inline]
+    fn le(&self, other: &RefMut<T>) -> bool {
+        *self.value <= *other.value
+    }
+
+    #[inline]
+    fn gt(&self, other: &RefMut<T>) -> bool {
+        *self.value > *other.value
+    }
+
+    #[inline]
+    fn ge(&self, other: &RefMut<T>) -> bool {
+        *self.value >= *other.value
     }
 }
 
