@@ -20,7 +20,7 @@ use syntax_pos::DUMMY_SP;
 
 use std::cmp;
 use std::fmt;
-use std::i64;
+use std::i128;
 use std::iter;
 use std::mem;
 use std::ops::{Add, Sub, Mul, AddAssign, Deref, RangeInclusive};
@@ -467,7 +467,7 @@ impl<'a, 'tcx> Integer {
     }
 
     /// Find the smallest Integer type which can represent the signed value.
-    pub fn fit_signed(x: i64) -> Integer {
+    pub fn fit_signed(x: i128) -> Integer {
         match x {
             -0x0000_0000_0000_0001...0x0000_0000_0000_0000 => I1,
             -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
@@ -479,7 +479,7 @@ impl<'a, 'tcx> Integer {
     }
 
     /// Find the smallest Integer type which can represent the unsigned value.
-    pub fn fit_unsigned(x: u64) -> Integer {
+    pub fn fit_unsigned(x: u128) -> Integer {
         match x {
             0...0x0000_0000_0000_0001 => I1,
             0...0x0000_0000_0000_00ff => I8,
@@ -495,7 +495,7 @@ impl<'a, 'tcx> Integer {
         let dl = cx.data_layout();
 
         let wanted = align.abi();
-        for &candidate in &[I8, I16, I32, I64] {
+        for &candidate in &[I8, I16, I32, I64, I128] {
             let ty = Int(candidate, false);
             if wanted == ty.align(dl).abi() && wanted == ty.size(dl).bytes() {
                 return Some(candidate);
@@ -522,19 +522,19 @@ impl<'a, 'tcx> Integer {
 
     /// Find the appropriate Integer type and signedness for the given
     /// signed discriminant range and #[repr] attribute.
-    /// N.B.: u64 values above i64::MAX will be treated as signed, but
+    /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
     fn repr_discr(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ty: Ty<'tcx>,
                   repr: &ReprOptions,
-                  min: i64,
-                  max: i64)
+                  min: i128,
+                  max: i128)
                   -> (Integer, bool) {
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
-        // are any negative values, the only valid unsigned representation is u64
-        // which can fit all i64 values, so the result remains unaffected.
-        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u64, max as u64));
+        // are any negative values, the only valid unsigned representation is u128
+        // which can fit all i128 values, so the result remains unaffected.
+        let unsigned_fit = Integer::fit_unsigned(cmp::max(min as u128, max as u128));
         let signed_fit = cmp::max(Integer::fit_signed(min), Integer::fit_signed(max));
 
         let mut min_from_extern = None;
@@ -782,11 +782,11 @@ pub enum Variants {
     Tagged {
         discr: Primitive,
         /// Inclusive wrap-around range of discriminant values, that is,
-        /// if min > max, it represents min..=u64::MAX followed by 0..=max.
+        /// if min > max, it represents min..=u128::MAX followed by 0..=max.
         // FIXME(eddyb) always use the shortest range, e.g. by finding
         // the largest space between two consecutive discriminants and
         // taking everything else as the (shortest) discriminant range.
-        discr_range: RangeInclusive<u64>,
+        discr_range: RangeInclusive<u128>,
         variants: Vec<CachedLayout>,
     },
 
@@ -1375,14 +1375,12 @@ impl<'a, 'tcx> CachedLayout {
                     }
                 }
 
-                let (mut min, mut max) = (i64::max_value(), i64::min_value());
+                let (mut min, mut max) = (i128::max_value(), i128::min_value());
                 for discr in def.discriminants(tcx) {
-                    let x = discr.to_u128_unchecked() as i64;
+                    let x = discr.to_u128_unchecked() as i128;
                     if x < min { min = x; }
                     if x > max { max = x; }
                 }
-                // FIXME: should handle i128? signed-value based impl is weird and hard to
-                // grok.
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
                 let mut align = dl.aggregate_align;
@@ -1479,9 +1477,7 @@ impl<'a, 'tcx> CachedLayout {
                 tcx.intern_layout(CachedLayout {
                     variants: Variants::Tagged {
                         discr,
-
-                        // FIXME: should be u128?
-                        discr_range: (min as u64)..=(max as u64),
+                        discr_range: (min as u128)..=(max as u128),
                         variants
                     },
                     // FIXME(eddyb): using `FieldPlacement::Arbitrary` here results

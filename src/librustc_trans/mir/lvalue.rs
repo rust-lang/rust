@@ -14,10 +14,9 @@ use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
-use abi;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null, val_ty};
+use common::{self, CrateContext, C_usize, C_u8, C_u32, C_uint, C_int, C_null};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -140,30 +139,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             return OperandRef::new_zst(bcx.ccx, self.layout);
         }
 
-        let val = if common::type_is_fat_ptr(bcx.ccx, self.layout.ty) {
-            let data = self.project_field(bcx, abi::FAT_PTR_ADDR);
-            let lldata = if self.layout.ty.is_region_ptr() || self.layout.ty.is_box() {
-                bcx.load_nonnull(data.llval, data.alignment.non_abi())
-            } else {
-                bcx.load(data.llval, data.alignment.non_abi())
-            };
-
-            let extra = self.project_field(bcx, abi::FAT_PTR_EXTRA);
-            let meta_ty = val_ty(extra.llval);
-            // If the 'extra' field is a pointer, it's a vtable, so use load_nonnull
-            // instead
-            let llextra = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
-                bcx.load_nonnull(extra.llval, extra.alignment.non_abi())
-            } else {
-                bcx.load(extra.llval, extra.alignment.non_abi())
-            };
-
-            OperandValue::Pair(lldata, llextra)
-        } else if common::type_is_imm_pair(bcx.ccx, self.layout.ty) {
-            OperandValue::Pair(
-                self.project_field(bcx, 0).load(bcx).pack_if_pair(bcx).immediate(),
-                self.project_field(bcx, 1).load(bcx).pack_if_pair(bcx).immediate())
-        } else if self.layout.is_llvm_immediate() {
+        let val = if self.layout.is_llvm_immediate() {
             let mut const_llval = ptr::null_mut();
             unsafe {
                 let global = llvm::LLVMIsAGlobalVariable(self.llval);
@@ -174,22 +150,26 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
             let llval = if !const_llval.is_null() {
                 const_llval
-            } else if self.layout.ty.is_bool() {
-                bcx.load_range_assert(self.llval, 0, 2, llvm::False,
-                    self.alignment.non_abi())
-            } else if self.layout.ty.is_char() {
-                // a char is a Unicode codepoint, and so takes values from 0
-                // to 0x10FFFF inclusive only.
-                bcx.load_range_assert(self.llval, 0, 0x10FFFF + 1, llvm::False,
-                    self.alignment.non_abi())
-            } else if self.layout.ty.is_region_ptr() ||
-                      self.layout.ty.is_box() ||
-                      self.layout.ty.is_fn() {
-                bcx.load_nonnull(self.llval, self.alignment.non_abi())
             } else {
-                bcx.load(self.llval, self.alignment.non_abi())
+                let load = bcx.load(self.llval, self.alignment.non_abi());
+                if self.layout.ty.is_bool() {
+                    bcx.range_metadata(load, 0..2);
+                } else if self.layout.ty.is_char() {
+                    // a char is a Unicode codepoint, and so takes values from 0
+                    // to 0x10FFFF inclusive only.
+                    bcx.range_metadata(load, 0..0x10FFFF+1);
+                } else if self.layout.ty.is_region_ptr() ||
+                        self.layout.ty.is_box() ||
+                        self.layout.ty.is_fn() {
+                    bcx.nonnull_metadata(load);
+                }
+                load
             };
             OperandValue::Immediate(base::to_immediate(bcx, llval, self.layout))
+        } else if common::type_is_imm_pair(bcx.ccx, self.layout.ty) {
+            OperandValue::Pair(
+                self.project_field(bcx, 0).load(bcx).pack_if_pair(bcx).immediate(),
+                self.project_field(bcx, 1).load(bcx).pack_if_pair(bcx).immediate())
         } else {
             OperandValue::Ref(self.llval, self.alignment)
         };
@@ -314,28 +294,26 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
             layout::Variants::Tagged { ref discr_range, .. } => {
                 (discr_range.start, discr_range.end)
             }
-            _ => (0, u64::max_value()),
+            _ => (0, !0),
         };
         let max_next = max.wrapping_add(1);
         let bits = discr_scalar.size(bcx.ccx).bits();
-        assert!(bits <= 64);
-        let mask = !0u64 >> (64 - bits);
-        let lldiscr = match discr_scalar {
+        assert!(bits <= 128);
+        let mask = !0u128 >> (128 - bits);
+        let lldiscr = bcx.load(discr.llval, discr.alignment.non_abi());
+        match discr_scalar {
             // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
             // However, that is fine here (it would still represent the full range),
             layout::Int(..) if max_next & mask != min & mask => {
                 // llvm::ConstantRange can deal with ranges that wrap around,
                 // so an overflow on (max + 1) is fine.
-                bcx.load_range_assert(discr.llval, min, max_next,
-                                      /* signed: */ llvm::True,
-                                      discr.alignment.non_abi())
+                bcx.range_metadata(lldiscr, min..max_next);
             }
             _ => {
                 // i.e., if the range is everything.  The lo==hi case would be
                 // rejected by the LLVM verifier (it would mean either an
                 // empty set, which is impossible, or the entire range of the
                 // type, which is pointless).
-                bcx.load(discr.llval, discr.alignment.non_abi())
             }
         };
         match self.layout.variants {

@@ -39,7 +39,8 @@ impl<'a, 'tcx> VirtualIndex {
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 
         let llvtable = bcx.pointercast(llvtable, fn_ty.llvm_type(bcx.ccx).ptr_to().ptr_to());
-        let ptr = bcx.load_nonnull(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
+        let ptr = bcx.load(bcx.inbounds_gep(llvtable, &[C_usize(bcx.ccx, self.0)]), None);
+        bcx.nonnull_metadata(ptr);
         // Vtable loads are invariant
         bcx.set_invariant_load(ptr);
         ptr

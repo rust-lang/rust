@@ -19,7 +19,7 @@ use abi;
 use base;
 use builder::Builder;
 use callee;
-use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint};
+use common::{self, val_ty, C_bool, C_i32, C_null, C_u8, C_usize, C_uint_big};
 use monomorphize;
 use type_::Type;
 use type_of::LayoutLlvmExt;
@@ -284,7 +284,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 base::call_assume(&bcx, bcx.icmp(
                                     llvm::IntULE,
                                     llval,
-                                    C_uint(ll_t_in, discr_range.end)
+                                    C_uint_big(ll_t_in, discr_range.end)
                                 ));
                             }
                             _ => {}

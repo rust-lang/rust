@@ -656,16 +656,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if arg.layout.ty == bcx.tcx().types.bool {
-                llval = bcx.load_range_assert(llval, 0, 2, llvm::False, None);
-                // We store bools as i8 so we need to truncate to i1.
-                llval = base::to_immediate(bcx, llval, arg.layout);
-            } else if let Some(ty) = arg.cast {
+            if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.llvm_type(bcx.ccx).ptr_to()),
                                  (align | Alignment::Packed(arg.layout.align))
                                     .non_abi());
             } else {
                 llval = bcx.load(llval, align.non_abi());
+            }
+            if arg.layout.ty == bcx.tcx().types.bool {
+                bcx.range_metadata(llval, 0..2);
+                // We store bools as i8 so we need to truncate to i1.
+                llval = base::to_immediate(bcx, llval, arg.layout);
             }
         }
 

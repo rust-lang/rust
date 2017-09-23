@@ -27,7 +27,7 @@ use abi::{self, Abi};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
-use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_big_integral, C_u32, C_u64};
+use common::{C_array, C_bool, C_bytes, C_int, C_uint, C_uint_big, C_u32, C_u64};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_usize, C_vector, C_fat_ptr};
 use common::const_to_opt_u128;
 use consts;
@@ -69,13 +69,13 @@ impl<'a, 'tcx> Const<'tcx> {
             I16(v) => (C_int(Type::i16(ccx), v as i64), tcx.types.i16),
             I32(v) => (C_int(Type::i32(ccx), v as i64), tcx.types.i32),
             I64(v) => (C_int(Type::i64(ccx), v as i64), tcx.types.i64),
-            I128(v) => (C_big_integral(Type::i128(ccx), v as u128), tcx.types.i128),
+            I128(v) => (C_uint_big(Type::i128(ccx), v as u128), tcx.types.i128),
             Isize(v) => (C_int(Type::isize(ccx), v.as_i64()), tcx.types.isize),
             U8(v) => (C_uint(Type::i8(ccx), v as u64), tcx.types.u8),
             U16(v) => (C_uint(Type::i16(ccx), v as u64), tcx.types.u16),
             U32(v) => (C_uint(Type::i32(ccx), v as u64), tcx.types.u32),
             U64(v) => (C_uint(Type::i64(ccx), v), tcx.types.u64),
-            U128(v) => (C_big_integral(Type::i128(ccx), v), tcx.types.u128),
+            U128(v) => (C_uint_big(Type::i128(ccx), v), tcx.types.u128),
             Usize(v) => (C_uint(Type::isize(ccx), v.as_u64()), tcx.types.usize),
         };
         Const { llval: llval, ty: ty }
