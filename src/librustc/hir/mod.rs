@@ -1354,6 +1354,7 @@ pub struct Ty {
     pub id: NodeId,
     pub node: Ty_,
     pub span: Span,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Ty {

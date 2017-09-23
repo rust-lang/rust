@@ -1665,6 +1665,10 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn set_tainted_by_errors(&self) {
         self.infcx.set_tainted_by_errors()
     }
+
+    fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {
+        self.write_ty(hir_id, ty)
+    }
 }
 
 /// Controls whether the arguments are tupled. This is used for the call

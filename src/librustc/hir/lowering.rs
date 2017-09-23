@@ -683,7 +683,7 @@ impl<'a> LoweringContext<'a> {
                 return self.lower_ty(ty);
             }
             TyKind::Path(ref qself, ref path) => {
-                let id = self.lower_node_id(t.id).node_id;
+                let id = self.lower_node_id(t.id);
                 let qpath = self.lower_qpath(t.id, qself, path, ParamMode::Explicit);
                 return self.ty_path(id, t.span, qpath);
             }
@@ -732,10 +732,12 @@ impl<'a> LoweringContext<'a> {
             TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
         };
 
+        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(t.id);
         P(hir::Ty {
-            id: self.lower_node_id(t.id).node_id,
+            id: node_id,
             node: kind,
             span: t.span,
+            hir_id,
         })
     }
 
@@ -861,7 +863,7 @@ impl<'a> LoweringContext<'a> {
             // Otherwise, the base path is an implicit `Self` type path,
             // e.g. `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
-            let new_id = self.next_id().node_id;
+            let new_id = self.next_id();
             self.ty_path(new_id, p.span, hir::QPath::Resolved(qself, path))
         };
 
@@ -886,7 +888,7 @@ impl<'a> LoweringContext<'a> {
             }
 
             // Wrap the associated extension in another type node.
-            let new_id = self.next_id().node_id;
+            let new_id = self.next_id();
             ty = self.ty_path(new_id, p.span, qpath);
         }
 
@@ -994,7 +996,8 @@ impl<'a> LoweringContext<'a> {
         let &ParenthesizedParameterData { ref inputs, ref output, span } = data;
         let inputs = inputs.iter().map(|ty| self.lower_ty(ty)).collect();
         let mk_tup = |this: &mut Self, tys, span| {
-            P(hir::Ty { node: hir::TyTup(tys), id: this.next_id().node_id, span })
+            let LoweredNodeId { node_id, hir_id } = this.next_id();
+            P(hir::Ty { node: hir::TyTup(tys), id: node_id, hir_id, span })
         };
 
         hir::PathParameters {
@@ -2974,7 +2977,7 @@ impl<'a> LoweringContext<'a> {
         self.expr_block(block, attrs)
     }
 
-    fn ty_path(&mut self, id: NodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
+    fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {
         let mut id = id;
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
@@ -2984,14 +2987,14 @@ impl<'a> LoweringContext<'a> {
                         bound_lifetimes: hir_vec![],
                         trait_ref: hir::TraitRef {
                             path: path.and_then(|path| path),
-                            ref_id: id,
+                            ref_id: id.node_id,
                         },
                         span,
                     };
 
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
-                    id = self.next_id().node_id;
+                    id = self.next_id();
 
                     hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
                 } else {
@@ -3000,7 +3003,7 @@ impl<'a> LoweringContext<'a> {
             }
             _ => hir::TyPath(qpath)
         };
-        P(hir::Ty { id, node, span })
+        P(hir::Ty { id: id.node_id, hir_id: id.hir_id, node, span })
     }
 
     fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {
