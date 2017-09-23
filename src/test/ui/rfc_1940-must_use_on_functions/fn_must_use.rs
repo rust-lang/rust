@@ -11,6 +11,7 @@
 #![feature(fn_must_use)]
 #![warn(unused_must_use)]
 
+#[derive(PartialEq, Eq)]
 struct MyStruct {
     n: usize,
 }
@@ -58,12 +59,18 @@ fn main() {
     need_to_use_this_value();
 
     let mut m = MyStruct { n: 2 };
+    let n = MyStruct { n: 3 };
+
     m.need_to_use_this_method_value();
     m.is_even(); // trait method!
 
     m.replace(3); // won't warn (annotation needs to be in trait definition)
 
-    2.eq(&3); // comparison methods are `must_use`
+    // comparison methods are `must_use`
+    2.eq(&3);
+    m.eq(&n);
 
-    2 == 3; // lint includes comparison operators
+    // lint includes comparison operators
+    2 == 3;
+    m == n;
 }
