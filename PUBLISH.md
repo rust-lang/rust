@@ -7,7 +7,7 @@ Steps to publish a new clippy version
 - `git push`
 - Wait for Travis's approval.
 - Merge.
-- `cargo publish` in `./clippy_clints`.
+- `cargo publish` in `./clippy_lints`.
 - `cargo publish` in the root directory.
 - `git pull`.
 - `git tag -s v0.0.X -m "v0.0.X"`.

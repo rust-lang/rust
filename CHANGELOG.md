@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.163
+* Update to *rustc 1.22.0-nightly (14039a42a 2017-09-22)*
+
 ## 0.0.162
 * Update to *rustc 1.22.0-nightly (0701b37d9 2017-09-18)*
 * New lint: [`chars_last_cmp`]
