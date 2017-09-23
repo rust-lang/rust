@@ -4,5 +4,6 @@
                 not(any(target_env = "gnu", target_env = "musl")),
                 target_os = "linux",
                 test), no_std)]
+#![cfg(not(target_arch = "mips"))] // FIXME(#168)
 
 include!(concat!(env!("OUT_DIR"), "/floattidf.rs"));
