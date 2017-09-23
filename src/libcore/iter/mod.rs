@@ -488,7 +488,7 @@ impl<'a, I, T: 'a> FusedIterator for Cloned<I>
 {}
 
 #[doc(hidden)]
-unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
+default unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
     where I: TrustedRandomAccess<Item=&'a T>, T: Clone
 {
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
@@ -497,6 +497,18 @@ unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
 
     #[inline]
     fn may_have_side_effect() -> bool { true }
+}
+
+#[doc(hidden)]
+unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
+    where I: TrustedRandomAccess<Item=&'a T>, T: Copy
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        *self.it.get_unchecked(i)
+    }
+
+    #[inline]
+    fn may_have_side_effect() -> bool { false }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
