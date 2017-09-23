@@ -267,7 +267,8 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    let (phase5_result, trans) = phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
+    let (phase5_result, trans) =
+        phase_5_run_llvm_passes::<DefaultTransCrate>(sess, &dep_graph, trans);
 
     controller_entry_point!(after_llvm,
                             sess,

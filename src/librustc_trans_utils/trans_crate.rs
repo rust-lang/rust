@@ -112,11 +112,19 @@ impl TransCrate for DummyTransCrate {
 pub struct DummyMetadataLoader(());
 
 impl MetadataLoaderTrait for DummyMetadataLoader {
-    fn get_rlib_metadata(&self, _target: &Target, _filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_rlib_metadata(
+        &self,
+        _target: &Target,
+        _filename: &Path
+    ) -> Result<ErasedBoxRef<[u8]>, String> {
         bug!("DummyMetadataLoader::get_rlib_metadata");
     }
 
-    fn get_dylib_metadata(&self, _target: &Target, _filename: &Path) -> Result<ErasedBoxRef<[u8]>, String> {
+    fn get_dylib_metadata(
+        &self,
+        _target: &Target,
+        _filename: &Path
+    ) -> Result<ErasedBoxRef<[u8]>, String> {
         bug!("DummyMetadataLoader::get_dylib_metadata");
     }
 }
