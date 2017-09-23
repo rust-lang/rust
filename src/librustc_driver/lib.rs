@@ -177,8 +177,6 @@ mod rustc_trans {
             pub const CODE_GEN_MODEL_ARGS: [(&'static str, ()); 0] = [];
         }
     }
-
-    __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
@@ -1264,6 +1262,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     all_errors.extend_from_slice(&rustc_borrowck::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
+    #[cfg(feature="llvm")]
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
