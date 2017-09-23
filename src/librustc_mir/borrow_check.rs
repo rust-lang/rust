@@ -419,7 +419,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             self.each_borrow_involving_path(
                 context, lvalue_span.0, flow_state, |this, _idx, borrow| {
                     if !borrow.compatible_with(BorrowKind::Shared) {
-                        this.report_use_while_mutably_borrowed(context, lvalue_span);
+                        this.report_use_while_mutably_borrowed(context, lvalue_span, borrow);
                         Control::Break
                     } else {
                         Control::Continue
@@ -914,11 +914,17 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
 
     fn report_use_while_mutably_borrowed(&mut self,
                                          _context: Context,
-                                         (lvalue, span): (&Lvalue, Span)) {
+                                         (lvalue, span): (&Lvalue, Span),
+                                         borrow : &BorrowData) {
+        let described_lvalue = self.describe_lvalue(lvalue);
+        let borrow_span = self.retrieve_borrow_span(borrow);
+
         let mut err = self.tcx.cannot_use_when_mutably_borrowed(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME 1: add span_label for "borrow of `()` occurs here"
-        // FIXME 2: add span_label for "use of `{}` occurs here"
+            span, &described_lvalue, Origin::Mir);
+
+        err.span_label(borrow_span, format!("borrow of `{}` occurs here", described_lvalue));
+        err.span_label(span, format!("use of borrowed `{}`", described_lvalue));
+
         err.emit();
     }
 
@@ -998,7 +1004,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                     ProjectionElem::Downcast(..) =>
                         ("",   format!(""), None), // (dont emit downcast info)
                     ProjectionElem::Field(field, _ty) =>
-                        ("",   format!(".{}", field.index()), None),
+                        ("",   format!(".{}", field.index()), None), // FIXME: report name of field
                     ProjectionElem::Index(index) =>
                         ("",   format!(""), Some(index)),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
@@ -1023,6 +1029,13 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
                 }
             }
         }
+    }
+
+    // Retrieve span of given borrow from the current MIR representation
+    fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
+        self.mir.basic_blocks()[borrow.location.block]
+            .statements[borrow.location.statement_index]
+            .source_info.span
     }
 }
 
