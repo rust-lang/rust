@@ -3957,7 +3957,7 @@ macro_rules! panic {
 
 #[cfg(feature = "c")]
 mod c {
-    extern crate gcc;
+    extern crate cc;
 
     use std::collections::BTreeMap;
     use std::env;
@@ -4008,7 +4008,7 @@ mod c {
         let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
         let target_vendor = env::var("CARGO_CFG_TARGET_VENDOR").unwrap();
 
-        let cfg = &mut gcc::Build::new();
+        let cfg = &mut cc::Build::new();
 
         cfg.warnings(false);
 
