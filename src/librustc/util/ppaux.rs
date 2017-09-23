@@ -676,6 +676,12 @@ impl<'tcx> fmt::Display for ty::Binder<ty::TraitRef<'tcx>> {
     }
 }
 
+impl<'tcx> fmt::Display for ty::Binder<ty::FnSig<'tcx>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
+    }
+}
+
 impl<'tcx> fmt::Display for ty::Binder<ty::TraitPredicate<'tcx>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))

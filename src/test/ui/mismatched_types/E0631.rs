@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo<F: Fn(usize)>(x: F) { }
+#![feature(unboxed_closures)]
 
+fn foo<F: Fn(usize)>(_: F) {}
+fn bar<F: Fn<usize>>(_: F) {}
 fn main() {
-    foo(|y: String| { });
-    //~^ ERROR E0281
-    //~| ERROR E0281
-    //~| NOTE implements
-    //~| NOTE implements
-    //~| NOTE requires
-    //~| NOTE requires
-    //~| NOTE expected usize, found struct `std::string::String`
-    //~| NOTE expected usize, found struct `std::string::String`
-    //~| NOTE required by `foo`
-    //~| NOTE required by `foo`
+    fn f(_: u64) {}
+    foo(|_: isize| {});
+    bar(|_: isize| {});
+    foo(f);
+    bar(f);
 }

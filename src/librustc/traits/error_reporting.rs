@@ -37,7 +37,7 @@ use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
-use ty::error::{ExpectedFound, TypeError};
+use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
 use ty::subst::Subst;
@@ -711,7 +711,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, ref e) => {
+            OutputTypeParameterMismatch(ref expected_trait_ref, ref actual_trait_ref, _) => {
                 let expected_trait_ref = self.resolve_type_vars_if_possible(&*expected_trait_ref);
                 let actual_trait_ref = self.resolve_type_vars_if_possible(&*actual_trait_ref);
                 if actual_trait_ref.self_ty().references_error() {
@@ -722,48 +722,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     self.tcx.hir.span_if_local(did)
                 });
 
-                if let &TypeError::TupleSize(ref expected_found) = e {
-                    // Expected `|x| { }`, found `|x, y| { }`
-                    self.report_arg_count_mismatch(span,
-                                                   found_span,
-                                                   expected_found.expected,
-                                                   expected_found.found,
-                                                   expected_trait_ty.is_closure())
-                } else if let &TypeError::Sorts(ref expected_found) = e {
-                    let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
-                        tys.len()
-                    } else {
-                        1
+                let self_ty_count =
+                    match expected_trait_ref.skip_binder().substs.type_at(1).sty {
+                        ty::TyTuple(ref tys, _) => tys.len(),
+                        _ => 1,
                     };
-                    let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
-                        tys.len()
-                    } else {
-                        1
+                let arg_ty_count =
+                    match actual_trait_ref.skip_binder().substs.type_at(1).sty {
+                        ty::TyTuple(ref tys, _) => tys.len(),
+                        _ => 1,
                     };
-
-                    if expected != found {
-                        // Expected `|| { }`, found `|x, y| { }`
-                        // Expected `fn(x) -> ()`, found `|| { }`
-                        self.report_arg_count_mismatch(span,
-                                                       found_span,
-                                                       expected,
-                                                       found,
-                                                       expected_trait_ty.is_closure())
-                    } else {
-                        self.report_type_argument_mismatch(span,
-                                                            found_span,
-                                                            expected_trait_ty,
-                                                            expected_trait_ref,
-                                                            actual_trait_ref,
-                                                            e)
-                    }
+                if self_ty_count == arg_ty_count {
+                    self.report_closure_arg_mismatch(span,
+                                                     found_span,
+                                                     expected_trait_ref,
+                                                     actual_trait_ref)
                 } else {
-                    self.report_type_argument_mismatch(span,
-                                                        found_span,
-                                                        expected_trait_ty,
-                                                        expected_trait_ref,
-                                                        actual_trait_ref,
-                                                        e)
+                    // Expected `|| { }`, found `|x, y| { }`
+                    // Expected `fn(x) -> ()`, found `|| { }`
+                    self.report_arg_count_mismatch(
+                        span,
+                        found_span,
+                        arg_ty_count,
+                        self_ty_count,
+                        expected_trait_ty.is_closure()
+                    )
                 }
             }
 
@@ -782,31 +765,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
-    }
-
-    fn report_type_argument_mismatch(&self,
-                                      span: Span,
-                                      found_span: Option<Span>,
-                                      expected_ty: Ty<'tcx>,
-                                      expected_ref: ty::PolyTraitRef<'tcx>,
-                                      found_ref: ty::PolyTraitRef<'tcx>,
-                                      type_error: &TypeError<'tcx>)
-        -> DiagnosticBuilder<'tcx>
-    {
-        let mut err = struct_span_err!(self.tcx.sess, span, E0281,
-            "type mismatch: `{}` implements the trait `{}`, but the trait `{}` is required",
-            expected_ty,
-            expected_ref,
-            found_ref);
-
-        err.span_label(span, format!("{}", type_error));
-
-        if let Some(sp) = found_span {
-            err.span_label(span, format!("requires `{}`", found_ref));
-            err.span_label(sp, format!("implements `{}`", expected_ref));
-        }
-
-        err
     }
 
     fn report_arg_count_mismatch(&self,
@@ -835,6 +793,57 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                           found,
                                           if found == 1 { "" } else { "s" }));
         }
+        err
+    }
+
+    fn report_closure_arg_mismatch(&self,
+                           span: Span,
+                           found_span: Option<Span>,
+                           expected_ref: ty::PolyTraitRef<'tcx>,
+                           found: ty::PolyTraitRef<'tcx>)
+        -> DiagnosticBuilder<'tcx>
+    {
+        fn build_fn_sig_string<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+                                               trait_ref: &ty::TraitRef<'tcx>) -> String {
+            let inputs = trait_ref.substs.type_at(1);
+            let sig = if let ty::TyTuple(inputs, _) = inputs.sty {
+                tcx.mk_fn_sig(
+                    inputs.iter().map(|&x| x),
+                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                    false,
+                    hir::Unsafety::Normal,
+                    ::syntax::abi::Abi::Rust
+                )
+            } else {
+                tcx.mk_fn_sig(
+                    ::std::iter::once(inputs),
+                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                    false,
+                    hir::Unsafety::Normal,
+                    ::syntax::abi::Abi::Rust
+                )
+            };
+            format!("{}", ty::Binder(sig))
+        }
+
+        let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
+        let mut err = struct_span_err!(self.tcx.sess, span, E0631,
+                                       "type mismatch in {} arguments",
+                                       if argument_is_closure { "closure" } else { "function" });
+
+        let found_str = format!(
+            "expected signature of `{}`",
+            build_fn_sig_string(self.tcx, found.skip_binder())
+        );
+        err.span_label(span, found_str);
+
+        let found_span = found_span.unwrap_or(span);
+        let expected_str = format!(
+            "found signature of `{}`",
+            build_fn_sig_string(self.tcx, expected_ref.skip_binder())
+        );
+        err.span_label(found_span, expected_str);
+
         err
     }
 }
