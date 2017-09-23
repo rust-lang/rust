@@ -282,6 +282,32 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let expansion = self.expand_invoc(invoc, ext);
                     self.collect_invocations(expansion, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
+                    let derive_allowed = match item {
+                        Annotatable::Item(ref item) => match item.node {
+                            ast::ItemKind::Struct(..) |
+                            ast::ItemKind::Enum(..) |
+                            ast::ItemKind::Union(..) => true,
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+                    if !derive_allowed {
+                        let attr = item.attrs().iter()
+                            .find(|attr| attr.check_name("derive"))
+                            .expect("`derive` attribute should exist");
+                        let span = attr.span;
+                        let mut err = self.cx.mut_span_err(span,
+                                                           "`derive` may only be applied to \
+                                                            structs, enums and unions");
+                        if let ast::AttrStyle::Inner = attr.style {
+                            let trait_list = traits.iter()
+                                .map(|t| format!("{}", t)).collect::<Vec<_>>();
+                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+                            err.span_suggestion(span, "try an outer attribute", suggestion);
+                        }
+                        err.emit();
+                    }
+
                     let item = item
                         .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
                     let item_with_markers =
