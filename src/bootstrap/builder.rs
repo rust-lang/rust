@@ -542,12 +542,6 @@ impl<'a> Builder<'a> {
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
-        if self.build.config.llvm_enabled {
-            cargo.env("RUSTC_LLVM_ENABLED", "1");
-        } else {
-            cargo.env("RUSTC_LLVM_ENABLED", "0");
-        }
-
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness across builds if the compiler
         // is changing under your feet.`
