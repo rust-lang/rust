@@ -2621,7 +2621,8 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
-        let mut head_len = format!("{}{}{:#}fn {}{:#}",
+        let mut head_len = format!("{}{}{}{:#}fn {}{:#}",
+                                   VisSpace(&meth.visibility),
                                    ConstnessSpace(constness),
                                    UnsafetySpace(unsafety),
                                    AbiSpace(abi),
@@ -2633,8 +2634,9 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         } else {
             (0, true)
         };
-        write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
+               VisSpace(&meth.visibility),
                ConstnessSpace(constness),
                UnsafetySpace(unsafety),
                AbiSpace(abi),

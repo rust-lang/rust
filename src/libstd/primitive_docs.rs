@@ -710,6 +710,10 @@ mod prim_u128 { }
 //
 /// The pointer-sized signed integer type.
 ///
+/// The size of this primitive is how many bytes it takes to reference any
+/// location in memory. For example, on a 32 bit target, this is 4 bytes
+/// and on a 64 bit target, this is 8 bytes.
+///
 /// *[See also the `std::isize` module](isize/index.html).*
 ///
 /// However, please note that examples are shared between primitive integer
@@ -721,6 +725,10 @@ mod prim_isize { }
 #[doc(primitive = "usize")]
 //
 /// The pointer-sized unsigned integer type.
+///
+/// The size of this primitive is how many bytes it takes to reference any
+/// location in memory. For example, on a 32 bit target, this is 4 bytes
+/// and on a 64 bit target, this is 8 bytes.
 ///
 /// *[See also the `std::usize` module](usize/index.html).*
 ///

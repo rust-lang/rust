@@ -65,7 +65,7 @@ use syntax::codemap::{self, respan, Spanned, CompilerDesugaringKind};
 use syntax::std_inject;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
-use syntax::parse::token::{Token, DelimToken};
+use syntax::parse::token::Token;
 use syntax::util::small_vector::SmallVector;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -606,10 +606,12 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
-        tokens.into_trees().map(|tree| self.lower_token_tree(tree)).collect()
+        tokens.into_trees()
+            .flat_map(|tree| self.lower_token_tree(tree).into_trees())
+            .collect()
     }
 
-    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenTree {
+    fn lower_token_tree(&mut self, tree: TokenTree) -> TokenStream {
         match tree {
             TokenTree::Token(span, token) => {
                 self.lower_token(token, span)
@@ -618,23 +620,19 @@ impl<'a> LoweringContext<'a> {
                 TokenTree::Delimited(span, Delimited {
                     delim: delimited.delim,
                     tts: self.lower_token_stream(delimited.tts.into()).into(),
-                })
+                }).into()
             }
         }
     }
 
-    fn lower_token(&mut self, token: Token, span: Span) -> TokenTree {
+    fn lower_token(&mut self, token: Token, span: Span) -> TokenStream {
         match token {
             Token::Interpolated(_) => {}
-            other => return TokenTree::Token(span, other),
+            other => return TokenTree::Token(span, other).into(),
         }
 
         let tts = token.interpolated_to_tokenstream(&self.sess.parse_sess, span);
-        let tts = self.lower_token_stream(tts);
-        TokenTree::Delimited(span, Delimited {
-            delim: DelimToken::NoDelim,
-            tts: tts.into(),
-        })
+        self.lower_token_stream(tts)
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
