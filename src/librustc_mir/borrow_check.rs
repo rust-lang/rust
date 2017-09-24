@@ -408,7 +408,7 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
             self.each_borrow_involving_path(
                 context, lvalue_span.0, flow_state, |this, _idx, borrow| {
                     if !borrow.compatible_with(BorrowKind::Mut) {
-                        this.report_move_out_while_borrowed(context, lvalue_span);
+                        this.report_move_out_while_borrowed(context, lvalue_span, borrow);
                         Control::Break
                     } else {
                         Control::Continue
@@ -896,20 +896,28 @@ impl<'c, 'b, 'a: 'b+'c, 'gcx, 'tcx: 'a> MirBorrowckCtxt<'c, 'b, 'a, 'gcx, 'tcx> 
     fn report_use_of_moved(&mut self,
                            _context: Context,
                            (lvalue, span): (&Lvalue, Span)) {
-        let mut err = self.tcx.cannot_act_on_uninitialized_variable(
-            span, "use", &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME: add span_label for use of uninitialized variable
-        err.emit();
+        self.tcx.cannot_act_on_uninitialized_variable(span,
+                                                      "use",
+                                                      &self.describe_lvalue(lvalue),
+                                                      Origin::Mir)
+                .span_label(span, format!("use of possibly uninitialized `{}`",
+                                          self.describe_lvalue(lvalue)))
+                .emit();
     }
 
     fn report_move_out_while_borrowed(&mut self,
                                       _context: Context,
-                                      (lvalue, span): (&Lvalue, Span)) {
-        let mut err = self.tcx.cannot_move_when_borrowed(
-            span, &self.describe_lvalue(lvalue), Origin::Mir);
-        // FIXME 1: add span_label for "borrow of `()` occurs here"
-        // FIXME 2: add span_label for "move out of `{}` occurs here"
-        err.emit();
+                                      (lvalue, span): (&Lvalue, Span),
+                                      borrow: &BorrowData) {
+        self.tcx.cannot_move_when_borrowed(span,
+                                           &self.describe_lvalue(lvalue),
+                                           Origin::Mir)
+                .span_label(self.retrieve_borrow_span(borrow),
+                            format!("borrow of `{}` occurs here",
+                                    self.describe_lvalue(&borrow.lvalue)))
+                .span_label(span, format!("move out of `{}` occurs here",
+                                          self.describe_lvalue(lvalue)))
+                .emit();
     }
 
     fn report_use_while_mutably_borrowed(&mut self,

@@ -380,7 +380,7 @@ declare_features! (
     // #[doc(masked)]
     (active, doc_masked, "1.21.0", None),
 
-    // allow `#[must_use]` on functions (RFC 1940)
+    // allow `#[must_use]` on functions and comparison operators (RFC 1940)
     (active, fn_must_use, "1.21.0", Some(43302)),
 
     // allow '|' at beginning of match arms (RFC 1925)
