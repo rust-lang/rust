@@ -471,14 +471,13 @@ pub fn parse_opts(args: &[String], mut options: Options) -> Option<OptRes> {
     }
 
     let mut teamcity = matches.opt_present("teamcity");
-    println!("teamcity set to {}", teamcity);
     if !teamcity {
         teamcity = match env::var("RUST_TEST_TEAMCITY_SERVICE_MESSAGES") {
             Ok(val) => &val != "0",
             Err(_) => false
         };
     }
-    println!("teamcity set to {}", teamcity);
+
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) =>
             match n_str.parse::<usize>() {
@@ -606,7 +605,6 @@ impl<T: Write> ConsoleTestState<T> {
         self.write_short_result("ok", ".", term::color::GREEN)?;
 
         let name : String = service_message_escape(test.name.as_slice());
-        println!("display_service_messages {}", &self.options.display_service_messages);
         if self.options.display_service_messages {
             self.write_plain(&format!("\n##teamcity[testFinished name='{}']\n", name))?;
         }
@@ -1039,7 +1037,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         let n = t.desc.name.as_slice();
         st.max_name_len = n.len();
     }
-    println!("opts are {}", opts.options.display_service_messages);
     run_tests(opts, tests, |x| callback(&x, &mut st))?;
     return st.write_run_finish();
 }
