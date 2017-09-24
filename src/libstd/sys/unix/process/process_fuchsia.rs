@@ -83,7 +83,7 @@ impl Command {
         // Load the executable
         zx_cvt(launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.get_argv()[0])))?;
         zx_cvt(launchpad_load_vdso(launchpad, ZX_HANDLE_INVALID))?;
-        zx_cvt(launchpad_clone(launchpad, LP_CLONE_FDIO_ROOT | LP_CLONE_FDIO_CWD))?;
+        zx_cvt(launchpad_clone(launchpad, LP_CLONE_FDIO_NAMESPACE | LP_CLONE_FDIO_CWD))?;
 
         // Clone stdin, stdout, and stderr
         if let Some(fd) = stdio.stdin.fd() {

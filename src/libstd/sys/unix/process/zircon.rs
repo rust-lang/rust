@@ -180,7 +180,7 @@ extern {
 
 // Launchpad clone constants
 
-pub const LP_CLONE_FDIO_ROOT: u32 = 0x0001;
+pub const LP_CLONE_FDIO_NAMESPACE: u32 = 0x0001;
 pub const LP_CLONE_FDIO_CWD: u32 = 0x0002;
 // LP_CLONE_FDIO_STDIO = 0x0004
 // LP_CLONE_FDIO_ALL = 0x00FF
